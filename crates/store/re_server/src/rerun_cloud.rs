@@ -40,7 +40,7 @@ use re_protos::{
     common::v1alpha1::ext::IfDuplicateBehavior,
 };
 use tokio_stream::StreamExt as _;
-use tonic::Status;
+use tonic::{Code, Status};
 use tonic::service::LayerExt;
 
 use crate::store::{Dataset, InMemoryStore, Table};
@@ -335,12 +335,37 @@ impl RerunCloudService for RerunCloudHandler {
             .and_then(|filter| filter.entry_kind)
             .map(EntryKind::try_from)
             .transpose()
-            .map_err(|err| Status::invalid_argument("find_entries: invalid entry kind {err}"))?
-            .unwrap_or(EntryKind::Dataset);
+            .map_err(|err| Status::invalid_argument("find_entries: invalid entry kind {err}"))?;
 
         let entries = match kind {
-            EntryKind::Dataset => self.find_datasets(entry_id, name).await?,
-            EntryKind::Table => self.find_tables(entry_id, name).await?,
+            Some(EntryKind::Dataset) => self.find_datasets(entry_id, name).await?,
+            Some(EntryKind::Table) => self.find_tables(entry_id, name).await?,
+            None => {
+                let mut datasets = match self.find_datasets(entry_id, name.clone()).await {
+                    Ok(datasets) => datasets,
+                    Err(err) => {
+                        if err.code() == Code::NotFound {
+                            vec![]
+                        }
+                        else {
+                            return Err(err);
+                        }
+                    }
+                };
+                let tables = match self.find_tables(entry_id, name).await {
+                    Ok(tables) => tables,
+                    Err(err) => {
+                        if err.code() == Code::NotFound {
+                            vec![]
+                        }
+                        else {
+                            return Err(err);
+                        }
+                    }
+                };
+                datasets.extend(tables);
+                datasets
+            }
             _ => {
                 return Err(Status::unimplemented(
                     "find_entries: only datasets and tables are implemented",
