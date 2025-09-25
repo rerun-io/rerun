@@ -19,7 +19,7 @@ use re_types_core::{Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE, Loggable 
 
 use super::{
     FloatFilter, IntFilter, NonNullableBooleanFilter, NullableBooleanFilter, StringFilter,
-    TimestampFilter,
+    TimestampFilter, is_supported_string_datatype,
 };
 
 /// The nullability of a nested arrow datatype.
@@ -192,7 +192,9 @@ impl FilterKind {
                 Some(Self::Float(Default::default()))
             }
 
-            DataType::Utf8 | DataType::Utf8View => Some(Self::String(Default::default())),
+            data_type if is_supported_string_datatype(data_type) => {
+                Some(Self::String(Default::default()))
+            }
 
             DataType::Timestamp(_, _) => Some(Self::Timestamp(Default::default())),
 
@@ -223,7 +225,7 @@ impl FilterKind {
                 Ok(udf.call(vec![col(column.clone())]))
             }
 
-            Self::String(string_filter) => string_filter.as_filter_expression(column, field),
+            Self::String(string_filter) => Ok(string_filter.as_filter_expression(column)),
         }
     }
 }
