@@ -403,9 +403,15 @@ impl TimePanel {
                         time_ctrl.timeline().name()
                     ))
                     .heading()
-                    .color(ui.style().visuals.weak_text_color()),
+                    .strong(),
                 );
-                if ui.button("Go to default timeline").clicked() {
+                if ui
+                    .button(
+                        egui::RichText::new("Go to default timeline")
+                            .color(ui.style().visuals.weak_text_color()),
+                    )
+                    .clicked()
+                {
                     time_ctrl.set_timeline(*time_ctrl.timeline());
                 }
             });
