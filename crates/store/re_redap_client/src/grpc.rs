@@ -256,7 +256,7 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
             // not going to make this one single pipeline any faster, but it will prevent starvation of
             // the Tokio runtime (which would slow down every other futures currently scheduled!).
             tokio::task::spawn_blocking(move || {
-                let r = resp.map_err(|e| StreamPartitionError::StreamingChunks(e.into()))?;
+                let r = resp.map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?;
                 let _span =
                     tracing::trace_span!("get_chunks::batch_decode", num_chunks = r.chunks.len())
                         .entered();
@@ -302,7 +302,7 @@ pub fn fetch_chunks_response_to_chunk_and_partition_id(
             // not going to make this one single pipeline any faster, but it will prevent starvation of
             // the Tokio runtime (which would slow down every other futures currently scheduled!).
             tokio::task::spawn_blocking(move || {
-                let r = resp.map_err(|e| StreamPartitionError::StreamingChunks(e.into()))?;
+                let r = resp.map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?;
                 let _span =
                     tracing::trace_span!("get_chunks::batch_decode", num_chunks = r.chunks.len())
                         .entered();
@@ -336,7 +336,7 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming<re_protos::cloud::v1alpha1::GetChunksResponse>,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
     response.map(|resp| {
-        let resp = resp.map_err(|e| StreamPartitionError::StreamingChunks(e.into()))?;
+        let resp = resp.map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?;
 
         let _span =
             tracing::trace_span!("get_chunks::batch_decode", num_chunks = resp.chunks.len())
@@ -366,7 +366,7 @@ pub fn fetch_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming<re_protos::cloud::v1alpha1::FetchChunksResponse>,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
     response.map(|resp| {
-        let resp = resp.map_err(|e| StreamPartitionError::StreamingChunks(e.into()))?;
+        let resp = resp.map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?;
 
         let _span =
             tracing::trace_span!("get_chunks::batch_decode", num_chunks = resp.chunks.len())
@@ -519,7 +519,7 @@ async fn stream_partition_from_server(
                 query: None,
             })
             .await
-            .map_err(|e| StreamPartitionError::StreamingChunks(e.into()))?
+            .map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?
             .into_inner()
     };
 
@@ -557,7 +557,7 @@ async fn stream_partition_from_server(
                 }),
             })
             .await
-            .map_err(|e| StreamPartitionError::StreamingChunks(e.into()))?
+            .map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?
             .into_inner()
     };
 
