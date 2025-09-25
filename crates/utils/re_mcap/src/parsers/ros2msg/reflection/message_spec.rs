@@ -1,4 +1,27 @@
-use crate::parsers::ros2msg::reflection::Ros2IdlError;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum ParseError {
+    /// Bad text/shape: missing tokens, bad delimiters, malformed constructs
+    #[error("syntax error: {0}")]
+    Syntax(String),
+
+    /// Type names/annotations: unknown/invalid types, bad bounds, array forms
+    #[error("type error: {0}")]
+    Type(String),
+
+    /// Literal/default/constant value parsing and type mismatches
+    #[error("value error: {0}")]
+    Value(String),
+
+    /// Cross-entry checks: duplicates, bounds exceeded, defaults not allowed, naming rules
+    #[error("validation error: {0}")]
+    Validate(String),
+
+    /// Deliberately unsupported features
+    #[error("unsupported: {0}")]
+    Unsupported(String),
+}
 
 /// A parsed ROS 2 message specification, including fields and constants.
 ///
@@ -25,7 +48,7 @@ pub struct MessageSpecification {
 }
 
 impl MessageSpecification {
-    pub(super) fn parse(name: &str, input: &str) -> Result<Self, Ros2IdlError> {
+    pub(super) fn parse(name: &str, input: &str) -> Result<Self, ParseError> {
         let mut fields = Vec::new();
         let mut constants = Vec::new();
 
@@ -86,15 +109,23 @@ impl Constant {
     /// We look for the first `=` that is not inside quotes or brackets to make this determination.
     fn is_constant_line(line: &str) -> bool {
         let mut in_quote = false;
-        let mut bracket = 0usize;
-        for c in line.chars() {
+        let mut bracket_depth = 0usize;
+        let mut chars = line.chars().peekable();
+
+        while let Some(c) = chars.next() {
             match c {
                 '"' | '\'' => in_quote = !in_quote,
-                '[' => bracket += 1,
-                ']' => {
-                    bracket = bracket.saturating_sub(1);
+                '[' if !in_quote => bracket_depth += 1,
+                ']' if !in_quote => {
+                    bracket_depth = bracket_depth.saturating_sub(1);
                 }
-                '=' if !in_quote && bracket == 0 => return true,
+                '<' if !in_quote && bracket_depth == 0 => {
+                    // Check if this is part of a <= in a bounded string type
+                    if chars.peek() == Some(&'=') {
+                        chars.next(); // consume the '='
+                    }
+                }
+                '=' if !in_quote && bracket_depth == 0 => return true,
                 _ => {}
             }
         }
@@ -102,28 +133,28 @@ impl Constant {
         false
     }
 
-    fn parse(line: &str) -> Result<Self, Ros2IdlError> {
+    fn parse(line: &str) -> Result<Self, ParseError> {
         let (type_and_name, value_str) = line
             .split_once('=')
-            .ok_or_else(|| Ros2IdlError::Parse("constant definition missing '='".to_owned()))?;
+            .ok_or_else(|| ParseError::Syntax("constant definition missing '='".to_owned()))?;
 
         let (type_str, name) = type_and_name.trim().rsplit_once(' ').ok_or_else(|| {
-            Ros2IdlError::Parse(
-                "constant definition missing space between type and name".to_owned(),
-            )
+            ParseError::Syntax(format!(
+                "constant definition `{type_and_name}` missing space between type and name"
+            ))
         })?;
 
         let ty = Type::parse(type_str)?;
         let value = Literal::parse(value_str.trim(), &ty)?;
 
         if matches!(ty, Type::Array { .. }) {
-            return Err(Ros2IdlError::Parse(
+            return Err(ParseError::Type(
                 "constant type cannot be an array".to_owned(),
             ));
         }
 
         if !Self::is_valid_constant_name(name) {
-            return Err(Ros2IdlError::Parse(format!(
+            return Err(ParseError::Validate(format!(
                 "constant name must be all-caps alphanumeric and underscores only, got `{name}`"
             )));
         }
@@ -181,7 +212,7 @@ pub struct Field {
 }
 
 impl Field {
-    fn parse(line: &str) -> Result<Self, Ros2IdlError> {
+    fn parse(line: &str) -> Result<Self, ParseError> {
         let line = line.trim();
 
         // Parse first two whitespace-delimited tokens (type and name) with indices
@@ -202,12 +233,12 @@ impl Field {
         }
 
         let (ty_start, ty_end) = next_token_bounds(line, 0).ok_or_else(|| {
-            Ros2IdlError::Parse(format!("field definition (`{line}`) missing type"))
+            ParseError::Syntax(format!("field definition (`{line}`) missing type"))
         })?;
         let type_str = &line[ty_start..ty_end];
 
         let (name_start, name_end) = next_token_bounds(line, ty_end).ok_or_else(|| {
-            Ros2IdlError::Parse(format!("field definition (`{line}`) missing name"))
+            ParseError::Syntax(format!("field definition (`{line}`) missing name"))
         })?;
         let name = &line[name_start..name_end];
 
@@ -215,14 +246,14 @@ impl Field {
         let optional_default = if rest.is_empty() { None } else { Some(rest) };
 
         let ty = Type::parse(type_str).map_err(|_e| {
-            Ros2IdlError::Parse(format!(
+            ParseError::Type(format!(
                 "failed to parse type `{type_str}` in field definition `{line}`"
             ))
         })?;
 
         let default = if let Some(default_str) = optional_default {
             Some(Literal::parse(default_str, &ty).map_err(|_e| {
-                Ros2IdlError::Parse(format!(
+                ParseError::Value(format!(
                     "failed to parse default value `{default_str}` for type `{ty:?}` in field definition `{line}`"
                 ))
             })?)
@@ -269,7 +300,7 @@ pub enum Type {
 
 impl Type {
     /// Parse a type definition, e.g. `int32`, `string<=10`, `float32[3]`, `pkg/Type[]`, `pkg/Type[<=5]`, etc.
-    fn parse(s: &str) -> Result<Self, Ros2IdlError> {
+    fn parse(s: &str) -> Result<Self, ParseError> {
         let s = s.trim();
 
         if let Some((base, array_part)) = s.split_once('[') {
@@ -297,7 +328,7 @@ impl Type {
                 "uint64" => Ok(Self::BuiltIn(BuiltInType::UInt64)),
                 "string" => Ok(Self::BuiltIn(BuiltInType::String(None))),
                 s if s.starts_with("string<=") => Self::parse_bounded_string(s), // e.g. `string<=10`
-                s if s.starts_with("wstring<=") => Err(Ros2IdlError::Parse(
+                s if s.starts_with("wstring<=") => Err(ParseError::Unsupported(
                     "wstring types are not supported yet".to_owned(),
                 )), // TODO(gijsd): Support utf16 strings.
                 s => ComplexType::parse(s).map(Type::Complex),
@@ -305,14 +336,14 @@ impl Type {
         }
     }
 
-    fn parse_bounded_string(s: &str) -> Result<Self, Ros2IdlError> {
+    fn parse_bounded_string(s: &str) -> Result<Self, ParseError> {
         if let Some(len_str) = s.strip_prefix("string<=") {
             let len = len_str.parse::<usize>().map_err(|e| {
-                Ros2IdlError::Parse(format!("failed to parse bounded string length: {e}"))
+                ParseError::Type(format!("failed to parse bounded string length: {e}"))
             })?;
             Ok(Self::BuiltIn(BuiltInType::String(Some(len))))
         } else {
-            Err(Ros2IdlError::Parse(format!(
+            Err(ParseError::Type(format!(
                 "invalid string type specifier: `{s}`"
             )))
         }
@@ -339,10 +370,10 @@ pub enum ComplexType {
 }
 
 impl ComplexType {
-    fn parse(s: &str) -> Result<Self, Ros2IdlError> {
+    fn parse(s: &str) -> Result<Self, ParseError> {
         if let Some((package, name)) = s.rsplit_once('/') {
             if package.is_empty() || name.is_empty() {
-                Err(Ros2IdlError::Parse(format!(
+                Err(ParseError::Type(format!(
                     "invalid complex type specifier: `{s}`, expected `some_package/SomeMessage` format"
                 )))
             } else {
@@ -352,7 +383,7 @@ impl ComplexType {
                 })
             }
         } else if s.is_empty() {
-            Err(Ros2IdlError::Parse(format!(
+            Err(ParseError::Type(format!(
                 "invalid complex type specifier: `{s}`, expected `some_package/SomeMessage` or `SomeMessage` format"
             )))
         } else {
@@ -375,10 +406,10 @@ pub enum ArraySize {
 }
 
 impl ArraySize {
-    fn parse(array_part: &str) -> Result<Self, Ros2IdlError> {
+    fn parse(array_part: &str) -> Result<Self, ParseError> {
         let array_part = array_part
             .strip_suffix(']')
-            .ok_or_else(|| Ros2IdlError::Parse("Missing closing ']' in array type".to_owned()))?;
+            .ok_or_else(|| ParseError::Syntax("Missing closing ']' in array type".to_owned()))?;
 
         let array_size = if array_part.is_empty() {
             Self::Unbounded
@@ -386,11 +417,11 @@ impl ArraySize {
             Self::Fixed(size)
         } else if let Some(n) = array_part.strip_prefix("<=") {
             let size = n.parse::<usize>().map_err(|e| {
-                Ros2IdlError::Parse(format!("Failed to parse bounded array size: {e}"))
+                ParseError::Value(format!("Failed to parse bounded array size: {e}"))
             })?;
             Self::Bounded(size)
         } else {
-            return Err(Ros2IdlError::Parse(format!(
+            return Err(ParseError::Value(format!(
                 "invalid array size specifier: `{array_part}`"
             )));
         };
@@ -412,7 +443,7 @@ pub enum Literal {
 }
 
 impl Literal {
-    fn parse(s: &str, ty: &Type) -> Result<Self, Ros2IdlError> {
+    fn parse(s: &str, ty: &Type) -> Result<Self, ParseError> {
         use BuiltInType::{
             Bool, Byte, Char, Float32, Float64, Int8, Int16, Int32, Int64, String, UInt8, UInt16,
             UInt32, UInt64, WString,
@@ -423,32 +454,40 @@ impl Literal {
                 Bool => match s {
                     "true" => Ok(Self::Bool(true)),
                     "false" => Ok(Self::Bool(false)),
-                    _ => Err(Ros2IdlError::Parse(format!(
+                    _ => Err(ParseError::Value(format!(
                         "failed to parse bool literal: `{s}`"
                     ))),
                 },
                 // Char is a signed 8-bit integer representing an ASCII character.
                 Char | Int8 | Int16 | Int32 | Int64 => {
                     s.parse::<i64>().map(Self::Int).map_err(|e| {
-                        Ros2IdlError::Parse(format!("failed to parse integer literal `{s}`: {e}"))
+                        ParseError::Value(format!("failed to parse integer literal `{s}`: {e}"))
                     })
                 }
                 // Byte is an unsigned 8-bit integer.
                 Byte | UInt8 | UInt16 | UInt32 | UInt64 => {
                     s.parse::<u64>().map(Self::UInt).map_err(|e| {
-                        Ros2IdlError::Parse(format!(
+                        ParseError::Value(format!(
                             "failed to parse unsigned integer literal `{s}`: {e}"
                         ))
                     })
                 }
                 Float32 | Float64 => s.parse::<f64>().map(Self::Float).map_err(|e| {
-                    Ros2IdlError::Parse(format!("failed to parse float literal `{s}`: {e}"))
+                    ParseError::Value(format!("failed to parse float literal `{s}`: {e}"))
                 }),
                 String(_) => {
-                    let s = s.trim_matches('"');
+                    let s = if (s.starts_with('"') && s.ends_with('"'))
+                        || (s.starts_with('\'') && s.ends_with('\''))
+                    {
+                        // Remove quotes from quoted strings (both " and ')
+                        &s[1..s.len() - 1]
+                    } else {
+                        // Use unquoted strings as-is
+                        s
+                    };
                     Ok(Self::String(s.to_owned()))
                 }
-                WString(_) => Err(Ros2IdlError::Parse(
+                WString(_) => Err(ParseError::Unsupported(
                     "wstring literals are not supported yet".to_owned(),
                 )), // TODO(gijsd): Support utf16 strings.
             },
@@ -459,7 +498,7 @@ impl Literal {
                 let s = s.trim();
 
                 if !s.starts_with('[') || !s.ends_with(']') {
-                    Err(Ros2IdlError::Parse(format!(
+                    Err(ParseError::Value(format!(
                         "array literal must start with '[' and end with ']': `{s}`"
                     )))
                 } else {
@@ -469,12 +508,12 @@ impl Literal {
                         .map(|e| e.trim())
                         .filter(|e| !e.is_empty())
                         .map(|elem_str| Self::parse(elem_str, elem_ty))
-                        .collect::<Result<Vec<_>, Ros2IdlError>>()?;
+                        .collect::<Result<Vec<_>, ParseError>>()?;
 
                     Ok(Self::Array(elems))
                 }
             }
-            Type::Complex(_) => Err(Ros2IdlError::Parse(
+            Type::Complex(_) => Err(ParseError::Value(
                 "literals of complex types are not supported".to_owned(),
             )),
         }
@@ -514,4 +553,318 @@ fn strip_comment(s: &str) -> &str {
         }
     }
     s
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn valid_constant() {
+        assert_eq!(
+            Constant::parse("int32 CONST_NAME=42").unwrap(),
+            Constant {
+                ty: Type::BuiltIn(BuiltInType::Int32),
+                name: "CONST_NAME".to_owned(),
+                value: Literal::Int(42)
+            }
+        );
+
+        assert_eq!(
+            Constant::parse("string CONST_STR=\"hello\"").unwrap(),
+            Constant {
+                ty: Type::BuiltIn(BuiltInType::String(None)),
+                name: "CONST_STR".to_owned(),
+                value: Literal::String("hello".to_owned())
+            }
+        );
+
+        assert_eq!(
+            Constant::parse("float64 CONST_FLOAT=3.1").unwrap(),
+            Constant {
+                ty: Type::BuiltIn(BuiltInType::Float64),
+                name: "CONST_FLOAT".to_owned(),
+                value: Literal::Float(3.1)
+            }
+        );
+    }
+
+    #[test]
+    fn invalid_constant() {
+        assert!(Constant::parse("int32=42").is_err()); // missing name
+        assert!(Constant::parse("CONST_NAME=42").is_err()); // missing type
+        assert!(Constant::parse("int32 CONST_NAME").is_err()); // missing '=' and value
+        assert!(Constant::parse("int32 CONST_NAME=abc").is_err()); // invalid int value
+        assert!(Constant::parse("int32 CONST_NAME[]=42").is_err()); // array type not allowed
+        assert!(Constant::parse("int32 const_name=42").is_err()); // invalid name (not all-caps)
+        assert!(Constant::parse("int32 CONST__NAME=42").is_err()); // invalid name (consecutive underscores
+        assert!(Constant::parse("int32 _CONSTNAME=42").is_err()); // invalid name (doesn't start with letter)
+        assert!(Constant::parse("int32 CONSTNAME_=42").is_err()); // invalid name (ends with underscore)
+    }
+
+    #[test]
+    fn valid_field() {
+        assert_eq!(
+            Field::parse("int32 field_name").unwrap(),
+            Field {
+                ty: Type::BuiltIn(BuiltInType::Int32),
+                name: "field_name".to_owned(),
+                default: None
+            }
+        );
+
+        assert_eq!(
+            Field::parse("string<=10 name \"default\"").unwrap(),
+            Field {
+                name: "name".to_owned(),
+                ty: Type::BuiltIn(BuiltInType::String(Some(10))),
+                default: Some(Literal::String("default".to_owned()))
+            }
+        );
+
+        assert_eq!(
+            Field::parse("float64[3] position [0.0, 1.0, 2.0]").unwrap(),
+            Field {
+                name: "position".to_owned(),
+                ty: Type::Array {
+                    ty: Box::new(Type::BuiltIn(BuiltInType::Float64)),
+                    size: ArraySize::Fixed(3)
+                },
+                default: Some(Literal::Array(vec![
+                    Literal::Float(0.0),
+                    Literal::Float(1.0),
+                    Literal::Float(2.0)
+                ]))
+            }
+        );
+
+        assert_eq!(
+            Field::parse("geometry_msgs/Point[] points").unwrap(),
+            Field {
+                name: "points".to_owned(),
+                ty: Type::Array {
+                    ty: Box::new(Type::Complex(ComplexType::Absolute {
+                        package: "geometry_msgs".to_owned(),
+                        name: "Point".to_owned()
+                    })),
+                    size: ArraySize::Unbounded
+                },
+                default: None
+            }
+        );
+
+        assert_eq!(
+            Field::parse("bool enabled true").unwrap(),
+            Field {
+                ty: Type::BuiltIn(BuiltInType::Bool),
+                name: "enabled".to_owned(),
+                default: Some(Literal::Bool(true))
+            }
+        );
+    }
+
+    #[test]
+    fn invalid_field() {
+        assert!(Field::parse("int32").is_err()); // missing name
+        assert!(Field::parse("field_name").is_err()); // missing type
+        assert!(Field::parse("int32 field_name extra token").is_err()); // extra token
+        assert!(Field::parse("string<=abc name").is_err()); // invalid bounded string
+        assert!(Field::parse("float64[abc] position").is_err()); // invalid array size
+        assert!(Field::parse("geometry_msgs/ Point[] points").is_err()); // invalid complex type
+        assert!(Field::parse("bool enabled maybe").is_err()); // invalid bool literal
+    }
+
+    #[test]
+    fn strip_comment_works() {
+        assert_eq!(strip_comment("int32 field # comment"), "int32 field ");
+        assert_eq!(
+            strip_comment("string name \"value # not a comment\" # comment"),
+            "string name \"value # not a comment\" "
+        );
+        assert_eq!(
+            strip_comment("string name 'value # not a comment' # comment"),
+            "string name 'value # not a comment' "
+        );
+        assert_eq!(
+            strip_comment("string name \"value \\\" # still not a comment\" # comment"),
+            "string name \"value \\\" # still not a comment\" "
+        );
+        assert_eq!(
+            strip_comment("string name 'value \\' # still not a comment' # comment"),
+            "string name 'value \\' # still not a comment' "
+        );
+        assert_eq!(strip_comment("int32 field"), "int32 field");
+        assert_eq!(strip_comment("# full line comment"), "");
+        assert_eq!(strip_comment(""), "");
+    }
+
+    #[test]
+    fn valid_message_spec() {
+        let input = r#"
+# "Enum"-like constants for mode/state
+uint8 MODE_IDLE=0
+uint8 MODE_INIT=1
+uint8 MODE_RUN=2
+uint8 MODE_PAUSE=3
+uint8 MODE_ERROR=255
+
+# Bitmask-style flags
+uint32 FLAG_NONE=0
+uint32 FLAG_VERBOSE=1
+uint32 FLAG_RECORD=2
+uint32 FLAG_DEBUG=4
+uint32 FLAG_ALL=7  # FLAG_VERBOSE|FLAG_RECORD|FLAG_DEBUG
+
+# Misc constants of various types
+int32 MAX_RETRIES=5
+float32 DEFAULT_SCALE=1.5
+string DEFAULT_LABEL="calib_v1"
+
+# Header & basic identification
+std_msgs/Header header # standard ROS header
+uint8 mode 1 # default: MODE_INIT
+uint32 flags 0 # default bitmask
+
+# Scalar defaults & bounded string default
+bool enabled true # default: true
+float32 scale 1.5 # mirrors DEFAULT_SCALE
+string<=32 label "default_label" # bounded string with default
+
+# Free-form description (unbounded string, optional empty)
+string description
+
+# Times & durations
+builtin_interfaces/Time last_update
+builtin_interfaces/Duration timeout
+
+# Arrays & sequences
+# Fixed-size numeric arrays
+float32[9] K # 3x3 intrinsics (row-major)
+float32[9] R # 3x3 rectification matrix
+float32[12] P # 3x4 projection matrix
+
+# Unbounded arrays
+int32[] indices
+float64[] residuals
+
+# Upper-bounded sequence
+uint8[<=16] small_buffer  # capacity-limited byte buffer
+
+# Nested types & arrays of nested types
+geometry_msgs/Pose[] trajectory          # a path as poses
+geometry_msgs/Pose   goal_pose           # single nested message
+
+# Example of "message-like" content with scattered comments
+
+# Camera model parameters (assorted scalars with defaults)
+float32 fx 0.0
+float32 fy 0.0
+float32 cx 0.0
+float32 cy 0.0
+
+# Distortion coefficients (variable length)
+float64[] D
+
+# Optional tags (strings). Bounded to keep memory in check.
+string<=16 frame_id "map"
+string<=16[] child_frame_id ["base_link", "camera_link", "lidar_link"]
+
+float32 quality 0.0
+
+# Retry counters
+uint16 retry_count 0
+uint16 max_retry   5
+
+# Edge cases: blank lines, odd spacing, trailing comments, etc.
+
+# (blank line below)
+
+#    leading spaces before a field
+    bool    has_calibration   true    # default with extra spaces
+
+# weird spacing between type/name/default
+int32     status_code      0
+
+# comment after an unbounded array
+string[]  notes    # foobar
+    "#;
+
+        let spec = MessageSpecification::parse("test", input).unwrap();
+        assert_eq!(spec.fields.len(), 30);
+        assert_eq!(spec.constants.len(), 13);
+
+        // check first constant
+        assert_eq!(spec.constants[0].name, "MODE_IDLE");
+        assert_eq!(spec.constants[0].value, Literal::UInt(0));
+
+        // check float constant
+        assert_eq!(spec.constants[11].name, "DEFAULT_SCALE");
+        assert_eq!(spec.constants[11].value, Literal::Float(1.5));
+
+        // check string constant with quotes
+        assert_eq!(spec.constants[12].name, "DEFAULT_LABEL");
+        assert_eq!(
+            spec.constants[12].value,
+            Literal::String("calib_v1".to_owned())
+        );
+
+        // check first field
+        assert_eq!(spec.fields[0].name, "header");
+        assert_eq!(
+            spec.fields[0].ty,
+            Type::Complex(ComplexType::Absolute {
+                package: "std_msgs".to_owned(),
+                name: "Header".to_owned()
+            })
+        );
+
+        // check bounded string field with default
+        assert_eq!(spec.fields[5].name, "label");
+        assert_eq!(
+            spec.fields[5].ty,
+            Type::BuiltIn(BuiltInType::String(Some(32)))
+        );
+        assert_eq!(
+            spec.fields[5].default,
+            Some(Literal::String("default_label".to_owned()))
+        );
+
+        // check unbounded array field
+        assert_eq!(spec.fields[12].name, "indices");
+        assert_eq!(
+            spec.fields[12].ty,
+            Type::Array {
+                ty: Box::new(Type::BuiltIn(BuiltInType::Int32)),
+                size: ArraySize::Unbounded
+            }
+        );
+
+        // check fixed-size array field
+        assert_eq!(spec.fields[9].name, "K");
+        assert_eq!(
+            spec.fields[9].ty,
+            Type::Array {
+                ty: Box::new(Type::BuiltIn(BuiltInType::Float32)),
+                size: ArraySize::Fixed(9)
+            }
+        );
+
+        // check bounded string array field
+        assert_eq!(spec.fields[23].name, "child_frame_id");
+        assert_eq!(
+            spec.fields[23].ty,
+            Type::Array {
+                ty: Box::new(Type::BuiltIn(BuiltInType::String(Some(16)))),
+                size: ArraySize::Unbounded
+            }
+        );
+        assert_eq!(
+            spec.fields[23].default,
+            Some(Literal::Array(vec![
+                Literal::String("base_link".to_owned()),
+                Literal::String("camera_link".to_owned()),
+                Literal::String("lidar_link".to_owned()),
+            ]))
+        );
+    }
 }
