@@ -177,6 +177,8 @@ lint.unfixable = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+"*" = ["RUF012"] # TODO(emilk): consider enabling this
+
 "docs/snippets/all/*" = [
   # Missing required import: `from __future__ import annotations`
   "I002",
