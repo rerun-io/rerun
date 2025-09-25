@@ -336,7 +336,7 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming<re_protos::cloud::v1alpha1::GetChunksResponse>,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
     response.map(|resp| {
-        let resp = resp?;
+        let resp = resp.map_err(|e| StreamPartitionError::StreamingChunks(e.into()))?;
 
         let _span =
             tracing::trace_span!("get_chunks::batch_decode", num_chunks = resp.chunks.len())
@@ -366,7 +366,7 @@ pub fn fetch_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming<re_protos::cloud::v1alpha1::FetchChunksResponse>,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
     response.map(|resp| {
-        let resp = resp?;
+        let resp = resp.map_err(|e| StreamPartitionError::StreamingChunks(e.into()))?;
 
         let _span =
             tracing::trace_span!("get_chunks::batch_decode", num_chunks = resp.chunks.len())
