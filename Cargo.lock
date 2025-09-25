@@ -7635,7 +7635,6 @@ dependencies = [
  "rayon",
  "re_build_tools",
  "re_data_loader",
- "re_error",
  "re_grpc_client",
  "re_log",
  "re_log_encoding",
