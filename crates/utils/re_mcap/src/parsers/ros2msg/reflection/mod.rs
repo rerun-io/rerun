@@ -13,15 +13,6 @@ use crate::parsers::ros2msg::reflection::message_spec::MessageSpecification;
 pub mod deserialize;
 pub mod message_spec;
 
-#[derive(Error, Debug)]
-pub enum Ros2IdlError {
-    #[error("ROS2 message spec parse error: {0}")]
-    Parse(String),
-
-    #[error("{}", re_error::format(.0))]
-    Other(#[from] anyhow::Error),
-}
-
 /// Parse a schema name from a line starting with "MSG: ".
 fn parse_schema_name(line: &str) -> Option<&str> {
     line.trim().strip_prefix("MSG: ").map(str::trim)
