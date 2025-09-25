@@ -5,8 +5,8 @@ use crate::parsers::{
     MessageParser,
     ros2msg::{
         Ros2MessageParser,
-        idl::{MessageSchema, MessageSpec},
         rcl_interfaces::LogMessageParser,
+        reflection::MessageSchema,
         sensor_msgs::{
             BatteryStateMessageParser, CameraInfoMessageParser, CompressedImageMessageParser,
             FluidPressureMessageParser, IlluminanceMessageParser, ImageMessageParser,
@@ -100,7 +100,7 @@ impl MessageLayer for McapRos2Layer {
         } else {
             let schema = channel.schema.as_ref().unwrap();
             let schema_content = String::from_utf8_lossy(schema.data.as_ref());
-            if let Ok(message_spec) = MessageSchema::parse(schema.name.clone(), &schema_content) {
+            if let Ok(message_spec) = MessageSchema::parse(&schema.name, &schema_content) {
                 re_log::warn_once!(
                     "Message schema {:?} is currently not supported, but parsed spec: {message_spec:#?}",
                     schema.name
