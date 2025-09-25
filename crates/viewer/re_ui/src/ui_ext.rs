@@ -745,10 +745,8 @@ pub trait UiExt {
         if ui.is_rect_visible(rect) {
             let visuals = ui.style().interact_selectable(&response, selected);
 
-            let focused = response.hovered() || response.highlighted() || response.has_focus();
-
             // Draw background on interaction.
-            if selected || focused {
+            if selected || (response.hovered() || response.highlighted() || response.has_focus()) {
                 let rect = rect.expand(visuals.expansion);
 
                 ui.painter().rect(
