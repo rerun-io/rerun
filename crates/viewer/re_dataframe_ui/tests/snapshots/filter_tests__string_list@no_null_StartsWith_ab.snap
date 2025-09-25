@@ -5,7 +5,7 @@ expression: test_results
 TestResult {
     op: String(
         StringFilter {
-            operator: Contains,
+            operator: StartsWith,
             query: "ab",
         },
     ),
@@ -30,31 +30,26 @@ TestResult {
     [
       StringArray
     [
+      "hello_ab",
       "a",
+    ],
+      StringArray
+    [
       "b",
-    ],
-      StringArray
-    [
       "c",
-      "ab",
     ],
       StringArray
     [
+      "ab",
       "A B",
-      "aBc",
     ],
     ],
     filtered: ListArray
     [
       StringArray
     [
-      "c",
       "ab",
-    ],
-      StringArray
-    [
       "A B",
-      "aBc",
     ],
     ],
 }

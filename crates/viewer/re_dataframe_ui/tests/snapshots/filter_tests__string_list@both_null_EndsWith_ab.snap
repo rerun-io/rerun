@@ -5,7 +5,7 @@ expression: test_results
 TestResult {
     op: String(
         StringFilter {
-            operator: Contains,
+            operator: EndsWith,
             query: "ab",
         },
     ),
@@ -21,7 +21,7 @@ TestResult {
                 metadata: {},
             },
         ),
-        nullable: false,
+        nullable: true,
         dict_id: 0,
         dict_is_ordered: false,
         metadata: {},
@@ -30,31 +30,27 @@ TestResult {
     [
       StringArray
     [
+      "hello_ab",
       "a",
-      "b",
     ],
+      null,
       StringArray
     [
-      null,
       "ab",
-    ],
-      StringArray
-    [
       null,
-      "aBc",
     ],
     ],
     filtered: ListArray
     [
       StringArray
     [
-      null,
-      "ab",
+      "hello_ab",
+      "a",
     ],
       StringArray
     [
+      "ab",
       null,
-      "aBc",
     ],
     ],
 }

@@ -5,7 +5,7 @@ expression: test_results
 TestResult {
     op: String(
         StringFilter {
-            operator: Contains,
+            operator: starts_with,
             query: "ab",
         },
     ),
@@ -15,13 +15,13 @@ TestResult {
             Field {
                 name: "item",
                 data_type: Utf8,
-                nullable: false,
+                nullable: true,
                 dict_id: 0,
                 dict_is_ordered: false,
                 metadata: {},
             },
         ),
-        nullable: true,
+        nullable: false,
         dict_id: 0,
         dict_is_ordered: false,
         metadata: {},
@@ -30,22 +30,26 @@ TestResult {
     [
       StringArray
     [
+      "hello_ab",
       "a",
-      "b",
     ],
-      null,
       StringArray
     [
-      "A B",
-      "aBc",
+      "b",
+      null,
+    ],
+      StringArray
+    [
+      "ab",
+      null,
     ],
     ],
     filtered: ListArray
     [
       StringArray
     [
-      "A B",
-      "aBc",
+      "ab",
+      null,
     ],
     ],
 }

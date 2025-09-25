@@ -37,7 +37,7 @@ impl std::fmt::Display for StringOperator {
 }
 
 impl StringOperator {
-    const ALL: &'static [Self] = &[Self::Contains, Self::StartsWith, Self::EndsWith];
+    pub const ALL: &'static [Self] = &[Self::Contains, Self::StartsWith, Self::EndsWith];
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

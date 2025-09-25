@@ -139,15 +139,19 @@ impl TestColumn {
         // the primitive array stuff doesn't work for strings, so we go the manual way.
         let values = if nullability.inner {
             StringArray::from(vec![
+                Some("hello_ab"),
                 Some("a"),
                 Some("b"),
                 None,
                 Some("ab"),
                 None,
                 Some("aBc"),
+                Some("bla_AB"),
             ])
         } else {
-            StringArray::from(vec!["a", "b", "c", "ab", "A B", "aBc"])
+            StringArray::from(vec![
+                "hello_ab", "a", "b", "c", "ab", "A B", "aBc", "bla_AB",
+            ])
         };
         let offsets = OffsetBuffer::new(vec![0i32, 2, 4, 6].into());
         let strings_lists = ListArray::try_new(
@@ -589,13 +593,15 @@ async fn test_string_contains() {
 }
 
 #[tokio::test]
-async fn test_string_contains_list() {
-    for &nullability in Nullability::ALL {
-        filter_snapshot!(
-            FilterKind::String(StringFilter::new(StringOperator::Contains, "ab".to_owned())),
-            TestColumn::strings_lists(nullability),
-            format!("{nullability:?}_ab")
-        );
+async fn test_string_list() {
+    for op in StringOperator::ALL {
+        for &nullability in Nullability::ALL {
+            filter_snapshot!(
+                FilterKind::String(StringFilter::new(*op, "ab".to_owned())),
+                TestColumn::strings_lists(nullability),
+                format!("{nullability:?}_{op:?}_ab")
+            );
+        }
     }
 }
 
