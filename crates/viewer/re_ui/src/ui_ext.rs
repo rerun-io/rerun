@@ -691,9 +691,21 @@ pub trait UiExt {
         let button_padding = ui.spacing().button_padding;
         let total_extra = button_padding + button_padding;
 
-        let wrap_width = ui.available_width() - total_extra.x;
+        let available_rect = ui.available_rect_before_wrap();
+        let view_rect = egui::Rect::from_min_max(
+            available_rect.min,
+            egui::pos2(
+                available_rect.max.x.min(
+                    ui.clip_rect().max.x - ui.spacing().window_margin.rightf() - button_padding.x,
+                ),
+                available_rect.max.y,
+            ),
+        );
+
+        let wrap_width = view_rect.width() - total_extra.x;
 
         let mut text: egui::WidgetText = text.into();
+        let raw_text = text.text().to_owned();
         match style {
             LabelStyle::Normal => {}
             LabelStyle::Unnamed => {
@@ -702,16 +714,24 @@ pub trait UiExt {
             }
         }
 
-        let galley = text.into_galley(ui, None, wrap_width, egui::TextStyle::Button);
+        let galley = text.into_galley(
+            ui,
+            Some(egui::TextWrapMode::Truncate),
+            wrap_width,
+            egui::TextStyle::Button,
+        );
 
         let icon_width_plus_padding = tokens.small_icon_size.x + tokens.text_to_icon_padding();
 
         let mut desired_size =
-            total_extra + galley.size() + egui::vec2(icon_width_plus_padding, 0.0);
+            (total_extra + galley.size() + egui::vec2(icon_width_plus_padding * 3.0, 0.0))
+                .at_most(view_rect.size());
+
         desired_size.y = desired_size
             .y
             .at_least(ui.spacing().interact_size.y)
             .at_least(tokens.small_icon_size.y);
+
         let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
         response.widget_info(|| {
             egui::WidgetInfo::selected(
@@ -725,8 +745,10 @@ pub trait UiExt {
         if ui.is_rect_visible(rect) {
             let visuals = ui.style().interact_selectable(&response, selected);
 
+            let focused = response.hovered() || response.highlighted() || response.has_focus();
+
             // Draw background on interaction.
-            if selected || response.hovered() || response.highlighted() || response.has_focus() {
+            if selected || focused {
                 let rect = rect.expand(visuals.expansion);
 
                 ui.painter().rect(
@@ -777,8 +799,32 @@ pub trait UiExt {
                     text_color = text_color.gamma_multiply(0.5);
                 }
             }
+
             ui.painter()
                 .galley_with_override_text_color(text_pos, galley, text_color);
+
+            if ui.rect_contains_pointer(response.interact_rect) {
+                {
+                    let new_visuals = ui.visuals_mut();
+                    new_visuals.widgets.inactive.weak_bg_fill = visuals.bg_fill;
+                    new_visuals.widgets.hovered.weak_bg_fill =
+                        visuals.bg_fill.blend(new_visuals.widgets.hovered.bg_fill);
+                }
+
+                let copy_rect = egui::Rect::from_x_y_ranges(
+                    rect.max.x - tokens.small_icon_size.x..=rect.max.x,
+                    image_rect.y_range(),
+                );
+
+                let widget = ui
+                    .small_icon_button_widget(&icons::COPY, "Copy")
+                    .frame(true);
+
+                if ui.place(copy_rect, widget).clicked() {
+                    re_log::info!("Copied {raw_text:?}");
+                    ui.ctx().copy_text(raw_text);
+                }
+            }
         }
 
         response
