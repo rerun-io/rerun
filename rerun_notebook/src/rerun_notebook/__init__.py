@@ -7,7 +7,7 @@ import os
 import pathlib
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal
 from uuid import uuid4
 
 import anywidget
@@ -172,11 +172,11 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     ).tag(sync=True)
 
     _ready = False
-    _event_queue: ClassVar[list[_Event]] = []
+    _event_queue: list[_Event] = []
 
     _fallback_token = traitlets.Unicode(allow_none=True).tag(sync=True)
 
-    _raw_event_callbacks: ClassVar[list[Callable[[str], None]]] = []
+    _raw_event_callbacks: list[Callable[[str], None]] = []
 
     def __init__(
         self,
