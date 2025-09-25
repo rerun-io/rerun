@@ -501,6 +501,10 @@ mod tests {
                 "string_contains_empty",
             ),
             (
+                FilterKind::String(StringFilter::new(StringOperator::StartsWith, "query")),
+                "string_starts_with",
+            ),
+            (
                 FilterKind::Timestamp(TimestampFilter::after(
                     jiff::Timestamp::from_millisecond(100_000_000_000).unwrap(),
                 )),

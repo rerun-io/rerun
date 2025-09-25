@@ -16,7 +16,7 @@ use datafusion::logical_expr::{
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
-use super::{FilterUiAction, action_from_text_edit_response, basic_operation_ui};
+use super::{FilterUiAction, action_from_text_edit_response};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum StringOperator {
@@ -34,6 +34,10 @@ impl std::fmt::Display for StringOperator {
             Self::EndsWith => "ends with".fmt(f),
         }
     }
+}
+
+impl StringOperator {
+    const ALL: &'static [Self] = &[Self::Contains, Self::StartsWith, Self::EndsWith];
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -77,7 +81,29 @@ impl StringFilter {
     ) -> FilterUiAction {
         let operator_text = self.operator.to_string();
 
-        basic_operation_ui(ui, column_name, &operator_text);
+        ui.horizontal(|ui| {
+            ui.label(
+                SyntaxHighlightedBuilder::body_default(column_name).into_widget_text(ui.style()),
+            );
+
+            egui::ComboBox::new("string_op", "")
+                .selected_text(
+                    SyntaxHighlightedBuilder::keyword(&operator_text).into_widget_text(ui.style()),
+                )
+                .show_ui(ui, |ui| {
+                    for possible_op in crate::filters::StringOperator::ALL {
+                        if ui
+                            .button(
+                                SyntaxHighlightedBuilder::keyword(&possible_op.to_string())
+                                    .into_widget_text(ui.style()),
+                            )
+                            .clicked()
+                        {
+                            self.operator = *possible_op;
+                        }
+                    }
+                });
+        });
 
         let response = ui.text_edit_singleline(&mut self.query);
 
