@@ -457,10 +457,12 @@ fn show_notification(
                         let text = split_text.unwrap_or(text);
                         ui.label(egui::RichText::new(text));
 
-                        if mode == DisplayMode::Panel
-                            && let Some(details) = details
-                        {
-                            ui.collapsing_header("Details", false, |ui| ui.label(details));
+                        if let Some(details) = details {
+                            if mode == DisplayMode::Panel {
+                                ui.collapsing_header("Details", false, |ui| ui.label(details));
+                            } else {
+                                ui.weak("Open notification toast for more details");
+                            }
                         }
                     });
 
