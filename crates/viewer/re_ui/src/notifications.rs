@@ -454,12 +454,7 @@ fn show_notification(
                         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                         ui.set_width(270.0);
                         let (split_text, details) = text.split_once("<details>").unzip();
-                        let text = split_text
-                            .map(|text| match mode {
-                                DisplayMode::Panel => text.to_owned(),
-                                DisplayMode::Toast => format!("{text}…"),
-                            })
-                            .unwrap_or_else(|| text.clone());
+                        let text = split_text.unwrap_or(text);
                         ui.label(egui::RichText::new(text));
 
                         if mode == DisplayMode::Panel
