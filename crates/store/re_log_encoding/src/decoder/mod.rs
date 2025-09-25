@@ -513,15 +513,13 @@ mod tests {
         vec![
             LogMsg::SetStoreInfo(SetStoreInfo {
                 row_id: *RowId::new(),
-                info: StoreInfo {
-                    store_id: store_id.clone(),
-                    cloned_from: None,
-                    store_source: StoreSource::RustSdk {
+                info: StoreInfo::new(
+                    store_id.clone(),
+                    StoreSource::RustSdk {
                         rustc_version: String::new(),
                         llvm_version: String::new(),
                     },
-                    store_version: Some(CrateVersion::LOCAL),
-                },
+                ),
             }),
             LogMsg::ArrowMsg(store_id.clone(), arrow_msg),
             LogMsg::BlueprintActivationCommand(re_log_types::BlueprintActivationCommand {

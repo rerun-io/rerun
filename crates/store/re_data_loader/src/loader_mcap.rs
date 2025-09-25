@@ -238,12 +238,10 @@ pub fn load_mcap(
 pub fn store_info(store_id: StoreId) -> SetStoreInfo {
     SetStoreInfo {
         row_id: *RowId::new(),
-        info: StoreInfo {
+        info: StoreInfo::new(
             store_id,
-            cloned_from: None,
-            store_source: re_log_types::StoreSource::Other(MCAP_LOADER_NAME.to_owned()),
-            store_version: Some(re_build_info::CrateVersion::LOCAL),
-        },
+            re_log_types::StoreSource::Other(MCAP_LOADER_NAME.to_owned()),
+        ),
     }
 }
 
