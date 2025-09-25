@@ -1539,10 +1539,13 @@ fn initialize_time_ranges_ui(
 
     let mut time_range = Vec::new();
 
-    if let Some(times) = entity_db.time_histogram(time_ctrl.timeline().name()) {
+    let timeline = time_ctrl.timeline().name();
+
+    if let Some(times) = entity_db.time_histogram(timeline) {
         // NOTE: `times` can be empty if a GC wiped everything.
         if !times.is_empty() {
-            let timeline_axis = TimelineAxis::new(time_ctrl.time_type(), times);
+            let valid_time_ranges = time_ctrl.valid_time_ranges_for(*timeline);
+            let timeline_axis = TimelineAxis::new(time_ctrl.time_type(), times, &valid_time_ranges);
             time_view = time_view.or_else(|| Some(view_everything(&time_x_range, &timeline_axis)));
             time_range.extend(timeline_axis.ranges);
         }

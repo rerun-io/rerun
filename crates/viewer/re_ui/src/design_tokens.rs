@@ -191,6 +191,7 @@ pub struct DesignTokens {
 
     pub density_graph_selected: Color32,
     pub density_graph_unselected: Color32,
+    pub density_graph_outside_valid_ranges: Color32,
 
     // Spatial view colors:
     pub axis_color_x: Color32,
@@ -340,6 +341,7 @@ impl DesignTokens {
 
             density_graph_selected: get_color("density_graph_selected"),
             density_graph_unselected: get_color("density_graph_unselected"),
+            density_graph_outside_valid_ranges: get_color("density_graph_outside_valid_ranges"),
 
             axis_color_x: get_color("axis_color_x"),
             axis_color_y: get_color("axis_color_y"),

@@ -3,6 +3,7 @@
 
 use re_entity_db::TimeHistogram;
 use re_log_types::{AbsoluteTimeRange, TimeInt, TimeType};
+use vec1::Vec1;
 
 /// A piece-wise linear view of a single timeline.
 ///
@@ -10,18 +11,33 @@ use re_log_types::{AbsoluteTimeRange, TimeInt, TimeType};
 /// which we collapse in order to present a compressed view of the data.
 #[derive(Clone, Debug)]
 pub(crate) struct TimelineAxis {
-    pub ranges: vec1::Vec1<AbsoluteTimeRange>,
+    pub ranges: Vec1<AbsoluteTimeRange>,
 }
 
 impl TimelineAxis {
+    /// Determines all ranges that are in-range on the timeline and where there's gaps.
+    ///
+    /// Usually this is just everywhere where there's data, but this may be further cut down by
+    /// `valid_time_ranges` which allows to mark things being outside even if there's data available.
     #[inline]
-    pub fn new(time_type: TimeType, times: &TimeHistogram) -> Self {
+    pub fn new(
+        time_type: TimeType,
+        times: &TimeHistogram,
+        valid_time_ranges: &[AbsoluteTimeRange],
+    ) -> Self {
         re_tracing::profile_function!();
         assert!(!times.is_empty());
         let gap_threshold = gap_size_heuristic(time_type, times);
-        Self {
-            ranges: create_ranges(times, gap_threshold),
+        let mut ranges = create_ranges(times, gap_threshold);
+
+        // Chop further along valid ranges if needed. (most of the time everything is marked as valid)
+        if let Some(first_valid_range) = valid_time_ranges.first()
+            && first_valid_range != &AbsoluteTimeRange::EVERYTHING
+        {
+            ranges = cut_up_along_valid_ranges(&ranges, valid_time_ranges);
         }
+
+        Self { ranges }
     }
 
     /// Total uncollapsed time.
@@ -174,17 +190,57 @@ fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<Absolu
     ranges
 }
 
+fn cut_up_along_valid_ranges(
+    ranges: &[AbsoluteTimeRange],
+    valid_time_ranges: &[AbsoluteTimeRange],
+) -> Vec1<AbsoluteTimeRange> {
+    let mut new_ranges: Vec<AbsoluteTimeRange> = Vec::new();
+
+    // We expect very few valid ranges, so not worrying for now about optimizing this.
+    for source_range in ranges {
+        for valid_range in valid_time_ranges {
+            let Some(intersection_range) = source_range.intersection(*valid_range) else {
+                if source_range.max < valid_range.min {
+                    break;
+                }
+                continue;
+            };
+
+            // Extend or add.
+            // Since both `ranges` and `valid_time_ranges` are sorted by their min values
+            // and are known to be non-overlapping, we can just extend new ranges as they come in.
+            if let Some(last) = new_ranges.last_mut() {
+                if last.max >= intersection_range.min {
+                    *last = AbsoluteTimeRange::new(last.min, intersection_range.max);
+                } else {
+                    new_ranges.push(intersection_range);
+                }
+            } else {
+                new_ranges.push(intersection_range);
+            }
+        }
+    }
+
+    Vec1::try_from_vec(new_ranges).unwrap_or_else(|_| vec1::vec1![AbsoluteTimeRange::EMPTY])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use re_chunk_store::AbsoluteTimeRange;
+    use re_log_types::TimeInt;
 
     fn ranges(times: &[i64]) -> vec1::Vec1<AbsoluteTimeRange> {
         let mut time_histogram = TimeHistogram::default();
         for &time in times {
             time_histogram.increment(time, 1);
         }
-        TimelineAxis::new(TimeType::Sequence, &time_histogram).ranges
+        TimelineAxis::new(
+            TimeType::Sequence,
+            &time_histogram,
+            &[AbsoluteTimeRange::EVERYTHING],
+        )
+        .ranges
     }
 
     #[test]
@@ -220,6 +276,72 @@ mod tests {
                 100_000_000_000,
             ])
             .len()
+        );
+    }
+
+    #[test]
+    fn test_cut_up_along_valid_ranges() {
+        // single range that doesn't need cutting
+        let ranges = [AbsoluteTimeRange::new(
+            TimeInt::new_temporal(10),
+            TimeInt::new_temporal(20),
+        )];
+        let valid_ranges = [AbsoluteTimeRange::EVERYTHING];
+        let result = cut_up_along_valid_ranges(&ranges, &valid_ranges);
+        assert_eq!(result, ranges);
+
+        // cutting a range in the middle
+        let ranges = [AbsoluteTimeRange::new(
+            TimeInt::new_temporal(0),
+            TimeInt::new_temporal(100),
+        )];
+        let valid_ranges = [AbsoluteTimeRange::new(
+            TimeInt::new_temporal(20),
+            TimeInt::new_temporal(80),
+        )];
+        let result = cut_up_along_valid_ranges(&ranges, &valid_ranges);
+        assert_eq!(result, valid_ranges);
+
+        // multiple valid ranges creating multiple cuts
+        let ranges = [AbsoluteTimeRange::new(
+            TimeInt::new_temporal(0),
+            TimeInt::new_temporal(100),
+        )];
+        let valid_ranges = [
+            AbsoluteTimeRange::new(TimeInt::new_temporal(10), TimeInt::new_temporal(30)),
+            AbsoluteTimeRange::new(TimeInt::new_temporal(70), TimeInt::new_temporal(90)),
+        ];
+        let result = cut_up_along_valid_ranges(&ranges, &valid_ranges);
+        assert_eq!(result, valid_ranges);
+
+        // no intersection (valid range outside data range)
+        let ranges = [AbsoluteTimeRange::new(
+            TimeInt::new_temporal(50),
+            TimeInt::new_temporal(60),
+        )];
+        let valid_ranges = [AbsoluteTimeRange::new(
+            TimeInt::new_temporal(0),
+            TimeInt::new_temporal(10),
+        )];
+        let result = cut_up_along_valid_ranges(&ranges, &valid_ranges);
+        assert_eq!(result, [AbsoluteTimeRange::EMPTY]);
+
+        // multiple data & valid ranges.
+        let ranges = [
+            AbsoluteTimeRange::new(TimeInt::new_temporal(0), TimeInt::new_temporal(50)),
+            AbsoluteTimeRange::new(TimeInt::new_temporal(100), TimeInt::new_temporal(150)),
+        ];
+        let valid_ranges = [AbsoluteTimeRange::new(
+            TimeInt::new_temporal(25),
+            TimeInt::new_temporal(125),
+        )];
+        let result = cut_up_along_valid_ranges(&ranges, &valid_ranges);
+        assert_eq!(
+            result,
+            [
+                AbsoluteTimeRange::new(TimeInt::new_temporal(25), TimeInt::new_temporal(50)),
+                AbsoluteTimeRange::new(TimeInt::new_temporal(100), TimeInt::new_temporal(125))
+            ]
         );
     }
 }
