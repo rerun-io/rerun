@@ -723,8 +723,9 @@ pub trait UiExt {
 
         let icon_width_plus_padding = tokens.small_icon_size.x + tokens.text_to_icon_padding();
 
+        // 2 icons + padding, but we don't require copy button to get its own space.
         let mut desired_size =
-            (total_extra + galley.size() + egui::vec2(icon_width_plus_padding * 3.0, 0.0))
+            (total_extra + galley.size() + egui::vec2(icon_width_plus_padding * 2.0, 0.0))
                 .at_most(view_rect.size());
 
         desired_size.y = desired_size
@@ -784,8 +785,7 @@ pub trait UiExt {
             // Draw text next to the icon.
             let mut text_rect = rect;
             text_rect.min.x = image_rect.max.x + tokens.text_to_icon_padding();
-            let text_pos = ui
-                .layout()
+            let text_pos = egui::Align2([egui::Align::Min, ui.layout().vertical_align()])
                 .align_size_within_rect(galley.size(), text_rect)
                 .min;
 
