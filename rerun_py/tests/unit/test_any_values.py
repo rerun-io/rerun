@@ -36,6 +36,8 @@ def test_any_value_datatypes() -> None:
 
 
 def test_bad_any_value() -> None:
+    rr.set_strict_mode(False)
+
     class Foo:
         pass
 
@@ -151,6 +153,8 @@ def test_iterable_any_value() -> None:
 
 @pytest.mark.parametrize("container_type", [list, tuple, set, np.array])
 def test_empty_any_values(container_type: type[Any]) -> None:
+    rr.set_strict_mode(False)
+
     values = rr.AnyValues(**{
         f"int_array_{container_type.__name__}": container_type([]),
         f"float_array_{container_type.__name__}": container_type([]),
