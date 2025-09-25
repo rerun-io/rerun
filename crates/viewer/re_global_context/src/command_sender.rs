@@ -1,7 +1,7 @@
 use re_chunk::{EntityPath, Timeline};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::LogDataSource;
-use re_log_types::{AbsoluteTimeRangeF, AbsoluteTimeRange, StoreId};
+use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
 use crate::RecordingOrTable;

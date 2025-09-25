@@ -1117,7 +1117,8 @@ impl App {
                 }
 
                 re_redap_client::UiCommand::SetUrlFragment { store_id, fragment } => {
-                    command_sender.send_system(SystemCommand::SetUrlFragment { store_id, fragment });
+                    command_sender
+                        .send_system(SystemCommand::SetUrlFragment { store_id, fragment });
                 }
             })
         };
