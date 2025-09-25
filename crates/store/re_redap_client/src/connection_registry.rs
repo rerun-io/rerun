@@ -64,13 +64,13 @@ pub enum ClientConnectionError {
     #[error("server is expecting an unencrypted connection (try `rerun+http://` if you are sure)")]
     UnencryptedServer,
 
-    #[error("the server requires an authentication token, but none was provided: {0}")]
+    #[error("the server requires an authentication token, but none was provided<details>{0}")]
     UnauthenticatedMissingToken(TonicStatusError),
 
-    #[error("the server rejected the provided authentication token: {0}")]
+    #[error("the server rejected the provided authentication token<details>{0}")]
     UnauthenticatedBadToken(TonicStatusError),
 
-    #[error("failed to obtain server version: {0}")]
+    #[error("failed to obtain server version<details>{0}")]
     AuthCheckError(TonicStatusError),
 }
 
