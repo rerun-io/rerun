@@ -39,11 +39,11 @@ def test_instance_poses3d() -> None:
     scale_arrays = [None, [1.0, 2.0, 3.0], [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]]
 
     all_arrays = itertools.zip_longest(
-        VEC_3D_INPUT + [None],
+        [*VEC_3D_INPUT, None],
         rotation_axis_angle_arrays,
         quaternion_arrays,
         scale_arrays,
-        MAT_3X3_INPUT + [None],
+        [*MAT_3X3_INPUT, None],
     )
 
     for (
@@ -61,11 +61,11 @@ def test_instance_poses3d() -> None:
 
         print(
             f"rr.InstancePoses3D(\n"
-            f"    translations={translations!r}\n"  #
-            f"    rotation_axis_angles={rotation_axis_angles!r}\n"  #
-            f"    quaternions={quaternions!r}\n"  #
-            f"    scales={scales!r}\n"  #
-            f"    mat3x3={mat3x3!r}\n"  #
+            f"    translations={translations!r}\n"
+            f"    rotation_axis_angles={rotation_axis_angles!r}\n"
+            f"    quaternions={quaternions!r}\n"
+            f"    scales={scales!r}\n"
+            f"    mat3x3={mat3x3!r}\n"
             f")",
         )
         arch = rr.InstancePoses3D(

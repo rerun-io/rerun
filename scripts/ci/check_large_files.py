@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 
 # These files are allowed to be larger than our limit
 FILES_ALLOWED_TO_BE_LARGE = {
@@ -80,14 +81,14 @@ def main() -> None:
 
     result = check_large_files(not_lfs_files)
     if result != 0:
-        exit(result)
+        sys.exit(result)
 
     all_tracked_pngs = {f for f in all_tracked_files if f.endswith(".png")}
     not_lfs_pngs = all_tracked_pngs - lfs_files
 
     result = check_for_non_lfs_pngs(not_lfs_pngs)
     if result != 0:
-        exit(result)
+        sys.exit(result)
 
 
 if __name__ == "__main__":

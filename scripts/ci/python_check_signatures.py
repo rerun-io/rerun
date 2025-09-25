@@ -116,13 +116,12 @@ def parse_function_signature(node: Any) -> APIDef:
                 found_star = True
             elif param.star_count == 2:
                 kind = Parameter.VAR_KEYWORD  # **kwargs
+            elif param_name == "self":
+                kind = Parameter.POSITIONAL_ONLY
+            elif found_star:
+                kind = Parameter.KEYWORD_ONLY
             else:
-                if param_name == "self":
-                    kind = Parameter.POSITIONAL_ONLY
-                elif found_star:
-                    kind = Parameter.KEYWORD_ONLY
-                else:
-                    kind = Parameter.POSITIONAL_OR_KEYWORD
+                kind = Parameter.POSITIONAL_OR_KEYWORD
 
             params.append(Parameter(name=param_name, kind=kind, default=default))
         except Exception as e:

@@ -73,7 +73,7 @@ def start_process(args: list[str], *, wait: bool) -> Any:
             print(output_from_process(process))
             print()
             print(f"process exited with error code {returncode}")
-            exit(returncode)
+            sys.exit(returncode)
     return process
 
 
@@ -238,13 +238,7 @@ def run_install_requirements(examples: list[str]) -> None:
             args.extend(["-r", str(req)])
 
     print("Installing examples requirements…")
-    returncode = subprocess.Popen(
-        [
-            "pip",
-            "install",
-        ]
-        + args
-    ).wait()
+    returncode = subprocess.Popen(["pip", "install", *args]).wait()
     assert returncode == 0, f"process exited with error code {returncode}"
 
 

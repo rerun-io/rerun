@@ -93,7 +93,7 @@ def serve_assets(
 
     httpd = socketserver.TCPServer((bind_address, port), AssetHandler)
     bound_addr = httpd.server_address
-    print(f"Serving rerun notebook assets at http://{str(bound_addr[0])}:{str(bound_addr[1])}")
+    print(f"Serving rerun notebook assets at http://{bound_addr[0]!s}:{bound_addr[1]!s}")
 
     if background:
         import threading

@@ -44,12 +44,12 @@ strips_arrays: list[LineStrip3DArrayLike] = [
     [
         np.array([([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], dtype=np.float32),
         np.array([([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1), [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)],
-                 dtype=np.float32),  # noqa
+                 dtype=np.float32),
     ],
     [
         torch.tensor([([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], dtype=torch.float32),
         torch.tensor([([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1), [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)],
-                     dtype=torch.float32),  # noqa
+                     dtype=torch.float32),
     ],
     # NOTE: Not legal -- non-homogeneous.
     # np.array([
