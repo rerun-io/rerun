@@ -255,8 +255,10 @@ impl DensityGraph {
         let mut mesh = egui::Mesh::default();
         mesh.vertices.reserve(4 * self.buckets.len());
 
-        let mut segments_x_ranges = segments.iter().map(|s| s.x.clone());
-        let mut next_or_current_segment_range_x = segments_x_ranges.next();
+        let mut valid_data_x_ranges = segments
+            .iter()
+            .flat_map(|s| s.valid_subranges.iter().cloned());
+        let mut next_or_current_segment_range_x = valid_data_x_ranges.next();
 
         for (i, &density) in self.buckets.iter().enumerate() {
             // TODO(emilk): early-out if density is 0 for long stretches
@@ -268,7 +270,7 @@ impl DensityGraph {
                 .as_ref()
                 .is_some_and(|s| (*s.end() as f32) < x)
             {
-                next_or_current_segment_range_x = segments_x_ranges.next();
+                next_or_current_segment_range_x = valid_data_x_ranges.next();
             }
 
             let normalized_density = data_density_graph_painter.normalize_density(density);

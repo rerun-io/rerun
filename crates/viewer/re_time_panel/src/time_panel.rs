@@ -1532,7 +1532,7 @@ fn help_button(ui: &mut egui::Ui) {
 fn initialize_time_ranges_ui(
     entity_db: &re_entity_db::EntityDb,
     time_ctrl: &TimeControl,
-    time_x_range: Rangef,
+    x_range: Rangef,
     mut time_view: Option<TimeView>,
 ) -> TimeRangesUi {
     re_tracing::profile_function!();
@@ -1540,29 +1540,39 @@ fn initialize_time_ranges_ui(
     let mut time_range = Vec::new();
 
     let timeline = time_ctrl.timeline().name();
-
+    let valid_time_ranges = time_ctrl.valid_time_ranges_for(*timeline);
     if let Some(times) = entity_db.time_histogram(timeline) {
         // NOTE: `times` can be empty if a GC wiped everything.
         if !times.is_empty() {
-            let valid_time_ranges = time_ctrl.valid_time_ranges_for(*timeline);
-            let timeline_axis = TimelineAxis::new(time_ctrl.time_type(), times, &valid_time_ranges);
-            time_view = time_view.or_else(|| Some(view_everything(&time_x_range, &timeline_axis)));
+            let timeline_axis = TimelineAxis::new(time_ctrl.time_type(), times);
+            time_view = time_view.or_else(|| {
+                Some(view_everything(
+                    &x_range,
+                    &timeline_axis,
+                    &valid_time_ranges,
+                ))
+            });
             time_range.extend(timeline_axis.ranges);
         }
     }
 
     TimeRangesUi::new(
-        time_x_range,
+        x_range,
         time_view.unwrap_or(TimeView {
             min: TimeReal::from(0),
             time_spanned: 1.0,
         }),
         &time_range,
+        &valid_time_ranges,
     )
 }
 
-/// Find a nice view of everything.
-fn view_everything(x_range: &Rangef, timeline_axis: &TimelineAxis) -> TimeView {
+/// Find a nice view of everything in the valid marked range.
+fn view_everything(
+    x_range: &Rangef,
+    timeline_axis: &TimelineAxis,
+    valid_time_ranges: &[AbsoluteTimeRange],
+) -> TimeView {
     let gap_width = time_ranges_ui::gap_width(x_range, &timeline_axis.ranges) as f32;
     let num_gaps = timeline_axis.ranges.len().saturating_sub(1);
     let width = x_range.span();
@@ -1574,11 +1584,25 @@ fn view_everything(x_range: &Rangef, timeline_axis: &TimelineAxis) -> TimeView {
         1.0 // too narrow to fit everything anyway
     };
 
-    let min = timeline_axis.min();
-    let time_spanned = timeline_axis.sum_time_lengths() as f64 * factor as f64;
+    let valid_time_range_bounds = valid_time_ranges.iter().fold(
+        AbsoluteTimeRange {
+            min: TimeInt::MAX,
+            max: TimeInt::MIN,
+        },
+        |mut acc, r| {
+            acc.min = acc.min.min(r.min());
+            acc.max = acc.max.max(r.max());
+            acc
+        },
+    );
+
+    let min_data_time = timeline_axis.ranges.first().min;
+    let min_valid_data_time = min_data_time.max(valid_time_range_bounds.min);
+    let time_spanned =
+        timeline_axis.sum_time_lengths_within(valid_time_range_bounds) as f64 * factor as f64;
 
     TimeView {
-        min: min.into(),
+        min: min_valid_data_time.into(),
         time_spanned,
     }
 }
@@ -1685,8 +1709,16 @@ fn paint_time_ranges_gaps(
 
     let zig_zag_first_and_last_edges = true;
 
-    if let Some(segment) = time_ranges_ui.segments.first() {
-        let gap_edge = *segment.x.start() as f32;
+    // We segment along the valid time subranges which may facture linear segments into several parts.
+    let valid_time_ranges = time_ranges_ui
+        .segments
+        .iter()
+        .flat_map(|segment| segment.valid_subranges.iter())
+        .cloned()
+        .collect::<Vec<_>>();
+
+    if let Some(segment_subrange) = valid_time_ranges.first() {
+        let gap_edge = *segment_subrange.start() as f32;
 
         if zig_zag_first_and_last_edges {
             // Careful with subtracting a too large number here. Nvidia @ Windows was observed not drawing the rect correctly for -100_000.0
@@ -1703,12 +1735,12 @@ fn paint_time_ranges_gaps(
         }
     }
 
-    for (a, b) in time_ranges_ui.segments.iter().tuple_windows() {
-        paint_time_gap(*a.x.end() as f32, *b.x.start() as f32);
+    for (a, b) in valid_time_ranges.iter().tuple_windows() {
+        paint_time_gap(*a.end() as f32, *b.start() as f32);
     }
 
-    if let Some(segment) = time_ranges_ui.segments.last() {
-        let gap_edge = *segment.x.end() as f32;
+    if let Some(segment_subrange) = valid_time_ranges.last() {
+        let gap_edge = *segment_subrange.end() as f32;
         if zig_zag_first_and_last_edges {
             // Right side of last segment - paint as a very wide gap that we only see the left side of
             paint_time_gap(gap_edge, gap_edge + 100_000.0);
