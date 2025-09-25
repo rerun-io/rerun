@@ -569,6 +569,7 @@ impl TestContext {
                     store_id,
                     timeline: re_chunk::Timeline::new(timeline, timecell.typ()),
                     time: Some(timecell.as_i64().into()),
+                    pending: true,
                 });
         }
     }
@@ -617,13 +618,18 @@ impl TestContext {
                     store_id: rec_id,
                     timeline,
                     time,
+                    pending,
                 } => {
                     assert_eq!(
                         &rec_id,
                         self.store_hub.lock().active_recording().unwrap().store_id()
                     );
                     let mut time_ctrl = self.recording_config.time_ctrl.write();
-                    time_ctrl.set_timeline(timeline);
+                    if pending {
+                        time_ctrl.set_pending_timeline(timeline);
+                    } else {
+                        time_ctrl.set_timeline(timeline);
+                    }
                     if let Some(time) = time {
                         time_ctrl.set_time(time);
                     }

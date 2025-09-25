@@ -395,6 +395,30 @@ impl TimePanel {
     ) {
         re_tracing::profile_function!();
 
+        if time_ctrl.is_pending() {
+            ui.loading_screen_ui(|ui| {
+                ui.label(
+                    egui::RichText::from(format!(
+                        "Waiting for timeline: {}",
+                        time_ctrl.timeline().name()
+                    ))
+                    .heading()
+                    .strong(),
+                );
+                if ui
+                    .button(
+                        egui::RichText::new("Go to default timeline")
+                            .color(ui.style().visuals.weak_text_color()),
+                    )
+                    .clicked()
+                {
+                    time_ctrl.set_timeline(*time_ctrl.timeline());
+                }
+            });
+
+            return;
+        }
+
         //               |timeline            |
         // ------------------------------------
         // tree          |streams             |

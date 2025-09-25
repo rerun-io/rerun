@@ -784,22 +784,29 @@ pub trait UiExt {
         response
     }
 
+    fn loading_screen_ui<R>(&mut self, add_contents: impl FnOnce(&mut egui::Ui) -> R) -> R {
+        self.ui_mut().center("loading spinner", |ui| {
+            ui.vertical_centered(|ui| {
+                ui.spinner();
+                add_contents(ui)
+            })
+            .inner
+        })
+    }
+
     fn loading_screen(
         &mut self,
         header: impl Into<egui::RichText>,
         source: impl Into<egui::RichText>,
     ) {
-        self.ui_mut().center("loading spinner", |ui| {
-            ui.vertical_centered(|ui| {
-                ui.spinner();
-                ui.label(
-                    header
-                        .into()
-                        .heading()
-                        .color(ui.style().visuals.weak_text_color()),
-                );
-                ui.strong(source);
-            });
+        self.loading_screen_ui(|ui| {
+            ui.label(
+                header
+                    .into()
+                    .heading()
+                    .color(ui.style().visuals.weak_text_color()),
+            );
+            ui.strong(source);
         });
     }
 
