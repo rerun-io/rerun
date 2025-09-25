@@ -550,7 +550,7 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
                 for func_name in section.func_list:
                     if section.mod_path != "rerun":
                         mod_tail = section.mod_path.split(".")[1:]
-                        func_name = ".".join(mod_tail + [func_name])
+                        func_name = ".".join([*mod_tail, func_name])
                     func = rerun_pkg[func_name]
                     index_file.write(f"[`rerun.{func_name}()`][rerun.{func_name}] | {func.docstring.lines[0]}\n")
             if section.class_list:
@@ -560,7 +560,7 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
                 for class_name in section.class_list:
                     if section.mod_path != "rerun":
                         mod_tail = section.mod_path.split(".")[1:]
-                        class_name = ".".join(mod_tail + [class_name])
+                        class_name = ".".join([*mod_tail, class_name])
                     cls = rerun_pkg[class_name]
                     show_class = class_name
                     for maybe_strip in ["archetypes.", "components.", "datatypes."]:

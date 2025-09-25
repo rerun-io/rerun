@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, Union
 
 import rerun_bindings as bindings
 from rerun_bindings import (
-    FileSink as FileSink,
-    GrpcSink as GrpcSink,
+    FileSink,
+    GrpcSink,
 )
 from typing_extensions import deprecated
 

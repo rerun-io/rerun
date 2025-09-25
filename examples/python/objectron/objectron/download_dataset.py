@@ -35,8 +35,7 @@ def ensure_downloaded(src_url: str, dst_path: Path) -> None:
         with requests.get(src_url, stream=True) as req:
             req.raise_for_status()
             with open(dst_path, "wb") as f:
-                for chunk in req.iter_content(chunk_size=8192):
-                    f.write(chunk)
+                f.writelines(req.iter_content(chunk_size=8192))
 
 
 def find_path_if_downloaded(recording_name: str, local_dataset_dir: Path) -> Path | None:

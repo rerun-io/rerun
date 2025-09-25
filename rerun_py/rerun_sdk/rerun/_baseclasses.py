@@ -122,7 +122,7 @@ class Archetype(AsComponents):
 
     @classmethod
     def archetype(cls) -> str:
-        return ".".join(cls.__module__.rsplit(".", 1)[:-1] + [cls.__name__])
+        return ".".join([*cls.__module__.rsplit(".", 1)[:-1], cls.__name__])
 
     @classmethod
     def archetype_short_name(cls) -> str:

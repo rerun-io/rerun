@@ -40,7 +40,7 @@ def main() -> None:
         subprocess.Popen(["pixi", "run", "py-build", "--quiet"], env=build_env).wait()
         elapsed = time.time() - start_time
         print(f"rerun-sdk built in {elapsed:.1f} seconds")
-        print("")
+        print()
 
     examples = [
         # Trivial examples that don't require weird dependencies, or downloading data
@@ -61,7 +61,7 @@ def main() -> None:
         subprocess.run(args, check=True)
         elapsed = time.time() - start_time
         print(f"pip install in {elapsed:.1f} seconds")
-        print("")
+        print()
 
     for example, args in examples:
         print("----------------------------------------------------------")
@@ -89,7 +89,7 @@ def run_example(example: str, extra_args: list[str]) -> None:
     rerun_process = subprocess.Popen(cmd, env=env)
     time.sleep(0.5)  # Wait for rerun server to start to remove a logged warning
 
-    cmd = ["python", "-m", example, "--connect", "--url", f"rerun+http://127.0.0.1:{PORT}/proxy"] + extra_args
+    cmd = ["python", "-m", example, "--connect", "--url", f"rerun+http://127.0.0.1:{PORT}/proxy", *extra_args]
     python_process = subprocess.Popen(cmd, env=env)
 
     print("Waiting for python process to finish…")

@@ -194,8 +194,11 @@ fn add_entities_line_ui(
     let entity_path = &entity_data.entity_path;
     let name = &entity_data.label;
 
-    #[allow(clippy::unwrap_used)]
-    let add_info = entities_add_info.get(entity_path).unwrap();
+    let Some(add_info) = entities_add_info.get(entity_path) else {
+        // No add info implies that there can't be an add line ui, shouldn't get here.
+        debug_assert!(false, "No add info for entity path: {entity_path:?}");
+        return;
+    };
 
     let is_explicitly_excluded = entity_path_filter.is_explicitly_excluded(entity_path);
     let is_explicitly_included = entity_path_filter.is_explicitly_included(entity_path);

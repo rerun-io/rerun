@@ -15,7 +15,7 @@ def get_repo_root() -> str:
     if repo_root is not None:
         return repo_root
     else:
-        get_rev_parse = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True)
+        get_rev_parse = subprocess.run(["git", "rev-parse", "--show-toplevel"], check=False, capture_output=True)
         assert get_rev_parse.returncode == 0
         return get_rev_parse.stdout.decode("utf-8").strip()
 

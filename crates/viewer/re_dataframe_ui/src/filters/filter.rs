@@ -3,15 +3,15 @@ use std::collections::HashMap;
 use std::fmt::Formatter;
 use std::sync::Arc;
 
-use arrow::array::{Array as _, ArrayRef, AsArray as _, BooleanArray, ListArray, as_list_array};
-use arrow::compute::cast;
-use arrow::datatypes::{DataType, Field, TimeUnit};
+use arrow::array::{Array as _, ArrayRef, BooleanArray, ListArray, as_list_array};
+use arrow::datatypes::{DataType, Field};
+use datafusion::common::ExprSchema as _;
 use datafusion::common::{DFSchema, Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, ScalarFunctionArgs, ScalarUDF,
     ScalarUDFImpl, Signature, TypeSignature, Volatility,
 };
-use datafusion::prelude::{Column, Expr, array_to_string, col, lit, lower};
+use datafusion::prelude::{Column, Expr, array_to_string, col, contains, lit, lower};
 
 use re_types_core::datatypes::TimeInt;
 use re_types_core::{Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE, Loggable as _};
@@ -330,7 +330,7 @@ impl FilterOperation {
                     }
                 };
 
-                Ok(contains_patch(lower(operand), lower(lit(query_string))))
+                Ok(contains(lower(operand), lower(lit(query_string))))
             }
         }
     }
@@ -578,7 +578,7 @@ impl ScalarUDFImpl for FilterOperationUdf {
         }
     }
 
-    fn invoke_with_args(&self, args: ScalarFunctionArgs<'_>) -> DataFusionResult<ColumnarValue> {
+    fn invoke_with_args(&self, args: ScalarFunctionArgs) -> DataFusionResult<ColumnarValue> {
         let ColumnarValue::Array(input_array) = &args.args[0] else {
             return exec_err!("FilterOperation expected array inputs, not scalar values");
         };
@@ -606,15 +606,4 @@ impl ScalarUDFImpl for FilterOperationUdf {
 
         Ok(ColumnarValue::Array(Arc::new(results)))
     }
-}
-
-// TODO(ab): this is a workaround for https://github.com/apache/datafusion/pull/16046. Next time we
-// update datafusion, this should break compilation. Remove this function and replace
-// `contains_patch` by `datafusion::prelude::contains` in the method above.
-fn contains_patch(arg1: Expr, arg2: Expr) -> Expr {
-    // make sure we break compilation when we update datafusion
-    #[cfg(debug_assertions)]
-    let _ = datafusion::prelude::contains();
-
-    datafusion::functions::string::contains().call(<[_]>::into_vec(Box::new([arg1, arg2])))
 }

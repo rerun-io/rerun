@@ -17,10 +17,12 @@ mod icon_text;
 pub mod icons;
 pub mod list_item;
 mod markdown_utils;
+pub mod menu;
 pub mod modal;
 pub mod notifications;
 mod section_collapsing_header;
 pub mod syntax_highlighting;
+pub mod time;
 mod time_drag_value;
 mod ui_ext;
 mod ui_layout;
@@ -32,6 +34,7 @@ pub use self::{
     command_palette::{CommandPalette, CommandPaletteAction, CommandPaletteUrl},
     context_ext::ContextExt,
     design_tokens::{DesignTokens, TableStyle},
+    egui_ext::widget_ext::*,
     help::*,
     hot_reload_design_tokens::design_tokens_of,
     icon_text::*,
@@ -44,9 +47,6 @@ pub use self::{
     ui_ext::UiExt,
     ui_layout::UiLayout,
 };
-
-pub mod menu;
-pub mod time;
 
 // ---------------------------------------------------------------------------
 
