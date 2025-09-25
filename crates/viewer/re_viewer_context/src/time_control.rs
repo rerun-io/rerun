@@ -624,7 +624,23 @@ impl TimeControl {
                     entry.insert(Vec1::new(time_range));
                 }
                 std::collections::hash_map::Entry::Occupied(mut entry) => {
-                    entry.get_mut().push(time_range);
+                    let ranges = entry.get_mut();
+
+                    ranges.push(time_range);
+                    ranges.sort_by_key(|r| r.min);
+
+                    // Remove overlapping ranges by merging them
+                    let mut merged = Vec1::new(*ranges.first());
+                    for range in ranges.iter().skip(1) {
+                        let last = merged.last_mut();
+                        if last.max >= range.min {
+                            // Extend existing range instead of adding a new one.
+                            *last = AbsoluteTimeRange::new(last.min, last.max.max(range.max));
+                        } else {
+                            merged.push(*range);
+                        }
+                    }
+                    *ranges = merged;
                 }
             }
         } else {
@@ -633,6 +649,8 @@ impl TimeControl {
     }
 
     /// Returns the valid time ranges for a given timeline.
+    ///
+    /// Ranges are guaranteed to be non-overlapping and sorted by their min.
     ///
     /// If everything is valid, returns a single `AbsoluteTimeRange::EVERYTHING)`.
     pub fn valid_time_ranges_for(&self, timeline: TimelineName) -> Vec1<AbsoluteTimeRange> {
@@ -951,6 +969,59 @@ mod tests {
         assert_eq!(
             default_timeline([&custom_timeline0]),
             custom_timeline0.timeline
+        );
+    }
+
+    #[test]
+    fn test_valid_ranges() {
+        let mut time_control = TimeControl::default();
+        let timeline = TimelineName::new("test");
+
+        // Test default behavior - everything should be valid
+        assert_eq!(
+            time_control.valid_time_ranges_for(timeline),
+            vec1::vec1![AbsoluteTimeRange::EVERYTHING]
+        );
+
+        // Test adding a single range
+        let range1 = AbsoluteTimeRange::new(TimeInt::new_temporal(100), TimeInt::new_temporal(200));
+        time_control.mark_time_range_valid(Some(timeline), range1);
+        assert_eq!(
+            time_control.valid_time_ranges_for(timeline),
+            vec1::vec1![range1]
+        );
+
+        // Test adding a non-overlapping range (should remain separate)
+        let range2 = AbsoluteTimeRange::new(TimeInt::new_temporal(300), TimeInt::new_temporal(400));
+        time_control.mark_time_range_valid(Some(timeline), range2);
+        assert_eq!(
+            time_control.valid_time_ranges_for(timeline),
+            vec1::vec1![range1, range2]
+        );
+
+        // Test adding a range extending an existing range (should merge)
+        let range3 = AbsoluteTimeRange::new(TimeInt::new_temporal(150), TimeInt::new_temporal(250));
+        let range1_extended = AbsoluteTimeRange::new(range1.min, range3.max);
+        time_control.mark_time_range_valid(Some(timeline), range3);
+        assert_eq!(
+            time_control.valid_time_ranges_for(timeline),
+            vec1::vec1![range1_extended, range2]
+        );
+
+        // Test adding a range that connects two existing ranges
+        let range4 = AbsoluteTimeRange::new(TimeInt::new_temporal(150), TimeInt::new_temporal(300));
+        let new_combined_range = AbsoluteTimeRange::new(range1_extended.min, range2.max);
+        time_control.mark_time_range_valid(Some(timeline), range4);
+        assert_eq!(
+            time_control.valid_time_ranges_for(timeline),
+            vec1::vec1![new_combined_range]
+        );
+
+        // Clear everything. back to default behavior.
+        time_control.mark_time_range_valid(None, AbsoluteTimeRange::EVERYTHING);
+        assert_eq!(
+            time_control.valid_time_ranges_for(timeline),
+            vec1::vec1![AbsoluteTimeRange::EVERYTHING]
         );
     }
 }
