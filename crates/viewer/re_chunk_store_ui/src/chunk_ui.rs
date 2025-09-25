@@ -213,7 +213,7 @@ impl ChunkUi {
                 ui.push_id(field.name().clone(), |ui| {
                     ui.list_item_collapsible_noninteractive_label(field.name(), false, |ui| {
                         ui.list_item_collapsible_noninteractive_label("Data type", false, |ui| {
-                            ui.label(re_arrow_util::format_data_type(field.data_type()));
+                            ui.label(re_arrow_util::format_field_datatype(field));
                         });
 
                         ui.list_item_collapsible_noninteractive_label("Metadata", false, |ui| {
