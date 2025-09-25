@@ -11,9 +11,11 @@ use arrow::{
 use re_chunk::{Chunk, ChunkId};
 use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
 
-use crate::parsers::ros2msg::idl::{
-    ArraySize, ComplexType, MessageSchema, MessageSpec, PrimitiveType, Type,
-    deserializer::{Value, decode_bytes},
+use crate::parsers::ros2msg::reflection::{
+    MessageSchema,
+    deserialize::primitive_array::PrimitiveArray,
+    deserialize::{Value, decode_bytes},
+    message_spec::{ArraySize, BuiltInType, ComplexType, MessageSpecification, Type},
 };
 use crate::parsers::{MessageParser, ParserContext};
 use crate::{Error, LayerIdentifier, MessageLayer};
@@ -54,7 +56,6 @@ impl Ros2ReflectionMessageParser {
                 name.clone(),
                 FixedSizeListBuilder::with_capacity(builder, 1, num_rows),
             ));
-            re_log::trace!("Added Arrow builder for field: {}", field.name);
         }
 
         Self {
@@ -70,7 +71,7 @@ impl MessageParser for Ros2ReflectionMessageParser {
 
         let value = decode_bytes(&self.message_schema, msg.data.as_ref()).map_err(|err| {
             Ros2ReflectionError::InvalidMessage {
-                schema: self.message_schema.name.clone(),
+                schema: self.message_schema.spec.name.clone(),
                 channel: msg.channel.topic.clone(),
                 source: err,
             }
@@ -81,12 +82,9 @@ impl MessageParser for Ros2ReflectionMessageParser {
             // a field is missing from the message that we received.
             for (field_name, builder) in &mut self.fields {
                 if let Some(field_value) = message_fields.get(field_name) {
-                    re_log::trace!("Field {} found in message, appending value", field_name);
                     append_value(builder.values(), field_value, &self.message_schema)?;
                     builder.append(true);
-                    re_log::trace!("Field {}: Finished writing to builders", field_name);
                 } else {
-                    re_log::trace!("Field {} missing in message, appending null", field_name);
                     builder.append(false);
                 }
             }
@@ -116,7 +114,7 @@ impl MessageParser for Ros2ReflectionMessageParser {
                 .map(|(field_name, mut builder)| {
                     (
                         ComponentDescriptor::partial(field_name)
-                            .with_builtin_archetype(message_schema.name.clone()),
+                            .with_builtin_archetype(message_schema.spec.name.clone()),
                         builder.finish().into(),
                     )
                 })
@@ -142,6 +140,90 @@ fn downcast_err<'a, T: std::any::Any>(
     })
 }
 
+fn append_primitive_array(
+    builder: &mut dyn ArrayBuilder,
+    prim_array: &PrimitiveArray,
+    val: &Value,
+) -> Result<(), Ros2ReflectionError> {
+    match prim_array {
+        PrimitiveArray::Bool(vec) => {
+            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
+            let values_builder = downcast_err::<BooleanBuilder>(list_builder.values(), val)?;
+            values_builder.append_slice(vec);
+            list_builder.append(true);
+        }
+        PrimitiveArray::I8(vec) => {
+            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
+            let values_builder = downcast_err::<Int8Builder>(list_builder.values(), val)?;
+            values_builder.append_slice(vec);
+            list_builder.append(true);
+        }
+        PrimitiveArray::U8(vec) => {
+            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
+            let values_builder = downcast_err::<UInt8Builder>(list_builder.values(), val)?;
+            values_builder.append_slice(vec);
+            list_builder.append(true);
+        }
+        PrimitiveArray::I16(vec) => {
+            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
+            let values_builder = downcast_err::<Int16Builder>(list_builder.values(), val)?;
+            values_builder.append_slice(vec);
+            list_builder.append(true);
+        }
+        PrimitiveArray::U16(vec) => {
+            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
+            let values_builder = downcast_err::<UInt16Builder>(list_builder.values(), val)?;
+            values_builder.append_slice(vec);
+            list_builder.append(true);
+        }
+        PrimitiveArray::I32(vec) => {
+            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
+            let values_builder = downcast_err::<Int32Builder>(list_builder.values(), val)?;
+            values_builder.append_slice(vec);
+            list_builder.append(true);
+        }
+        PrimitiveArray::U32(vec) => {
+            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
+            let values_builder = downcast_err::<UInt32Builder>(list_builder.values(), val)?;
+            values_builder.append_slice(vec);
+            list_builder.append(true);
+        }
+        PrimitiveArray::I64(vec) => {
+            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
+            let values_builder = downcast_err::<Int64Builder>(list_builder.values(), val)?;
+            values_builder.append_slice(vec);
+            list_builder.append(true);
+        }
+        PrimitiveArray::U64(vec) => {
+            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
+            let values_builder = downcast_err::<UInt64Builder>(list_builder.values(), val)?;
+            values_builder.append_slice(vec);
+            list_builder.append(true);
+        }
+        PrimitiveArray::F32(vec) => {
+            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
+            let values_builder = downcast_err::<Float32Builder>(list_builder.values(), val)?;
+            values_builder.append_slice(vec);
+            list_builder.append(true);
+        }
+        PrimitiveArray::F64(vec) => {
+            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
+            let values_builder = downcast_err::<Float64Builder>(list_builder.values(), val)?;
+            values_builder.append_slice(vec);
+            list_builder.append(true);
+        }
+        PrimitiveArray::String(items) => {
+            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
+            let values_builder = downcast_err::<StringBuilder>(list_builder.values(), val)?;
+            for item in items {
+                values_builder.append_value(item);
+            }
+            list_builder.append(true);
+        }
+    }
+    Ok(())
+}
+
 fn append_value(
     builder: &mut dyn ArrayBuilder,
     val: &Value,
@@ -160,23 +242,14 @@ fn append_value(
         Value::F32(x) => downcast_err::<Float32Builder>(builder, val)?.append_value(*x),
         Value::F64(x) => downcast_err::<Float64Builder>(builder, val)?.append_value(*x),
         Value::String(x) => {
-            re_log::trace!("   - Append called on string with value: {:?}", x);
             downcast_err::<StringBuilder>(builder, val)?.append_value(x.clone());
         }
         Value::Message(message_fields) => {
-            re_log::trace!(
-                "   - Append called on message with fields: {:?}",
-                message_fields.keys().collect::<Vec<_>>()
-            );
             let struct_builder = downcast_err::<StructBuilder>(builder, val)?;
-            re_log::trace!(
-                "   - Retrieved StructBuilder with {} fields",
-                struct_builder.num_fields()
-            );
 
             // For nested messages, we need to find the matching MessageSpec from dependencies
             // Since we don't have type information here, we'll try to match by field names
-            let mut matching_spec: Option<&MessageSpec> = None;
+            let mut matching_spec: Option<&MessageSpecification> = None;
 
             // Try to find a MessageSpec that has the same field names as this message
             for spec in &schema.dependencies {
@@ -197,29 +270,11 @@ fn append_value(
                         struct_builder.field_builders_mut().get_mut(ith_arrow_field)
                     {
                         let field_name = &spec_field.name;
-                        re_log::trace!(
-                            "   - Processing field {} ({})",
-                            ith_arrow_field,
-                            field_name
-                        );
 
                         if let Some(field_value) = message_fields.get(field_name) {
-                            re_log::trace!(
-                                "   - Found field ({}) with val: {:?}",
-                                field_name,
-                                field_value
-                            );
                             append_value(field_builder, field_value, schema)?;
-                            re_log::trace!(
-                                "   - Written field ({}) with val: {:?}",
-                                field_name,
-                                field_value
-                            );
                         } else {
-                            re_log::trace!(
-                                "   - Field {} missing in message, skipping",
-                                field_name
-                            );
+                            //TODO(gijsd): Field is missing in the message, append null
                         }
                     }
                 }
@@ -244,15 +299,15 @@ fn append_value(
             struct_builder.append(true);
         }
         Value::Array(vec) | Value::Seq(vec) => {
-            re_log::trace!("Append called on a list with {} elements", vec.len());
             let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
 
-            re_log::trace!("Retrieved ListBuilder with values type");
             for val in vec {
                 append_value(list_builder.values(), val, schema)?;
             }
             list_builder.append(true);
-            re_log::trace!("Finished append on list with {} elements", vec.len());
+        }
+        Value::PrimitiveArray(prim_array) | Value::PrimitiveSeq(prim_array) => {
+            append_primitive_array(builder, prim_array, val)?;
         }
     }
 
@@ -260,8 +315,8 @@ fn append_value(
 }
 
 fn struct_builder_from_message_spec(
-    spec: &MessageSpec,
-    dependencies: &[MessageSpec],
+    spec: &MessageSpecification,
+    dependencies: &[MessageSpecification],
 ) -> StructBuilder {
     let fields = spec
         .fields
@@ -277,30 +332,28 @@ fn struct_builder_from_message_spec(
     let (fields, field_builders): (Vec<Field>, Vec<Box<dyn ArrayBuilder>>) =
         fields.into_iter().unzip();
 
-    re_log::trace!(
-        "Created StructBuilder for message {} with fields: {:?}",
-        spec.name,
-        fields.iter().map(|f| f.name()).collect::<Vec<_>>()
-    );
     StructBuilder::new(fields, field_builders)
 }
 
-fn arrow_builder_from_type(ty: &Type, dependencies: &[MessageSpec]) -> Box<dyn ArrayBuilder> {
+fn arrow_builder_from_type(
+    ty: &Type,
+    dependencies: &[MessageSpecification],
+) -> Box<dyn ArrayBuilder> {
     match ty {
-        Type::Primitive(p) => match p {
-            PrimitiveType::Bool => Box::new(BooleanBuilder::new()),
-            PrimitiveType::Byte | PrimitiveType::UInt8 => Box::new(UInt8Builder::new()),
-            PrimitiveType::Char | PrimitiveType::Int8 => Box::new(Int8Builder::new()),
-            PrimitiveType::Int16 => Box::new(Int16Builder::new()),
-            PrimitiveType::UInt16 => Box::new(UInt16Builder::new()),
-            PrimitiveType::Int32 => Box::new(Int32Builder::new()),
-            PrimitiveType::UInt32 => Box::new(UInt32Builder::new()),
-            PrimitiveType::Int64 => Box::new(Int64Builder::new()),
-            PrimitiveType::UInt64 => Box::new(UInt64Builder::new()),
-            PrimitiveType::Float32 => Box::new(Float32Builder::new()),
-            PrimitiveType::Float64 => Box::new(Float64Builder::new()),
+        Type::BuiltIn(p) => match p {
+            BuiltInType::Bool => Box::new(BooleanBuilder::new()),
+            BuiltInType::Byte | BuiltInType::UInt8 => Box::new(UInt8Builder::new()),
+            BuiltInType::Char | BuiltInType::Int8 => Box::new(Int8Builder::new()),
+            BuiltInType::Int16 => Box::new(Int16Builder::new()),
+            BuiltInType::UInt16 => Box::new(UInt16Builder::new()),
+            BuiltInType::Int32 => Box::new(Int32Builder::new()),
+            BuiltInType::UInt32 => Box::new(UInt32Builder::new()),
+            BuiltInType::Int64 => Box::new(Int64Builder::new()),
+            BuiltInType::UInt64 => Box::new(UInt64Builder::new()),
+            BuiltInType::Float32 => Box::new(Float32Builder::new()),
+            BuiltInType::Float64 => Box::new(Float64Builder::new()),
+            BuiltInType::String(_) | BuiltInType::WString(_) => Box::new(StringBuilder::new()),
         },
-        Type::String(_) => Box::new(StringBuilder::new()),
         Type::Complex(complex_type) => {
             // Look up the message spec in dependencies
             if let Some(spec) = resolve_complex_type(complex_type, dependencies) {
@@ -316,26 +369,26 @@ fn arrow_builder_from_type(ty: &Type, dependencies: &[MessageSpec]) -> Box<dyn A
     }
 }
 
-fn arrow_field_from_type(ty: &Type, name: &str, dependencies: &[MessageSpec]) -> Field {
+fn arrow_field_from_type(ty: &Type, name: &str, dependencies: &[MessageSpecification]) -> Field {
     Field::new(name, datatype_from_type(ty, dependencies), true)
 }
 
-fn datatype_from_type(ty: &Type, dependencies: &[MessageSpec]) -> DataType {
+fn datatype_from_type(ty: &Type, dependencies: &[MessageSpecification]) -> DataType {
     match ty {
-        Type::Primitive(p) => match p {
-            PrimitiveType::Bool => DataType::Boolean,
-            PrimitiveType::Byte | PrimitiveType::UInt8 => DataType::UInt8,
-            PrimitiveType::Char | PrimitiveType::Int8 => DataType::Int8,
-            PrimitiveType::Int16 => DataType::Int16,
-            PrimitiveType::UInt16 => DataType::UInt16,
-            PrimitiveType::Int32 => DataType::Int32,
-            PrimitiveType::UInt32 => DataType::UInt32,
-            PrimitiveType::Int64 => DataType::Int64,
-            PrimitiveType::UInt64 => DataType::UInt64,
-            PrimitiveType::Float32 => DataType::Float32,
-            PrimitiveType::Float64 => DataType::Float64,
+        Type::BuiltIn(p) => match p {
+            BuiltInType::Bool => DataType::Boolean,
+            BuiltInType::Byte | BuiltInType::UInt8 => DataType::UInt8,
+            BuiltInType::Char | BuiltInType::Int8 => DataType::Int8,
+            BuiltInType::Int16 => DataType::Int16,
+            BuiltInType::UInt16 => DataType::UInt16,
+            BuiltInType::Int32 => DataType::Int32,
+            BuiltInType::UInt32 => DataType::UInt32,
+            BuiltInType::Int64 => DataType::Int64,
+            BuiltInType::UInt64 => DataType::UInt64,
+            BuiltInType::Float32 => DataType::Float32,
+            BuiltInType::Float64 => DataType::Float64,
+            BuiltInType::String(_) | BuiltInType::WString(_) => DataType::Utf8, // No wstring in Arrow
         },
-        Type::String(_) => DataType::Utf8,
         Type::Complex(complex_type) => {
             if let Some(spec) = resolve_complex_type(complex_type, dependencies) {
                 let fields = spec
@@ -358,8 +411,8 @@ fn datatype_from_type(ty: &Type, dependencies: &[MessageSpec]) -> DataType {
 
 fn resolve_complex_type<'a>(
     complex_type: &ComplexType,
-    dependencies: &'a [MessageSpec],
-) -> Option<&'a MessageSpec> {
+    dependencies: &'a [MessageSpecification],
+) -> Option<&'a MessageSpecification> {
     dependencies.iter().find(|spec| match complex_type {
         ComplexType::Absolute { package, name } => {
             spec.name == format!("{package}/{name}") || spec.name == *name
@@ -397,10 +450,12 @@ impl MessageLayer for McapRos2ReflectionLayer {
             }
 
             let schema_content = String::from_utf8_lossy(schema.data.as_ref());
-            let message_schema = MessageSchema::parse(schema.name.clone(), &schema_content)
-                .map_err(|err| Error::InvalidSchema {
-                    schema: schema.name.clone(),
-                    source: err,
+            let message_schema =
+                MessageSchema::parse(&schema.name, &schema_content).map_err(|err| {
+                    Error::InvalidSchema {
+                        schema: schema.name.clone(),
+                        source: err,
+                    }
                 })?;
 
             let found = self
