@@ -5,7 +5,7 @@ use egui::{Atom, AtomLayout, Atoms, Frame, Margin, Sense};
 use re_log_types::TimestampFormat;
 use re_ui::{SyntaxHighlighting, UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
 
-use super::{ComparisonOperator, Filter, FilterOperation, TimestampFormatted};
+use super::{Filter, FilterKind, TimestampFormatted};
 use crate::TableBlueprint;
 
 /// Action to take based on the user interaction.
@@ -100,7 +100,7 @@ impl FilterState {
                 // give a chance to filters to clean themselves up before committing to the table
                 // blueprint
                 for filter in &mut self.filters {
-                    filter.operation.on_commit();
+                    filter.kind.on_commit();
                 }
                 table_blueprint.filters = self.filters.clone();
             }
@@ -194,7 +194,7 @@ impl Filter {
         let layout_job = SyntaxHighlightedBuilder::new()
             .with_body_default(&self.column_name)
             .with_keyword(" ")
-            .with(&TimestampFormatted::new(&self.operation, timestamp_format))
+            .with(&TimestampFormatted::new(&self.kind, timestamp_format))
             .into_job(ui.style());
 
         atoms.push_right(layout_job);
@@ -259,7 +259,7 @@ impl Filter {
             // so we switch to a lighter shade.
             ui.visuals_mut().text_edit_bg_color = Some(ui.visuals().widgets.inactive.bg_fill);
 
-            let action = self.operation.popup_ui(
+            let action = self.kind.popup_ui(
                 ui,
                 timestamp_format,
                 self.column_name.as_ref(),
@@ -313,74 +313,37 @@ impl Filter {
     }
 }
 
-impl SyntaxHighlighting for TimestampFormatted<'_, FilterOperation> {
+impl SyntaxHighlighting for TimestampFormatted<'_, FilterKind> {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
         builder.append_keyword(&self.inner.operator_text());
         builder.append_keyword(" ");
 
         match self.inner {
-            FilterOperation::NonNullableBoolean(boolean_filter) => {
+            FilterKind::NonNullableBoolean(boolean_filter) => {
                 builder.append_primitive(&boolean_filter.operand_text());
             }
 
-            FilterOperation::NullableBoolean(boolean_filter) => {
+            FilterKind::NullableBoolean(boolean_filter) => {
                 builder.append_primitive(&boolean_filter.operand_text());
             }
 
-            FilterOperation::IntCompares { value, operator: _ } => {
-                if let Some(value) = value {
-                    builder.append_primitive(&re_format::format_int(*value));
-                } else {
-                    builder.append_primitive("…");
-                }
+            FilterKind::Int(int_filter) => {
+                builder.append(int_filter);
             }
 
-            FilterOperation::FloatCompares { value, operator: _ } => {
-                if let Some(value) = value {
-                    builder.append_primitive(&re_format::format_f64(*value));
-                } else {
-                    builder.append_primitive("…");
-                }
+            FilterKind::Float(float_filter) => {
+                builder.append(float_filter);
             }
 
-            FilterOperation::StringContains(query) => {
+            FilterKind::StringContains(query) => {
                 builder.append_string_value(query);
             }
 
-            FilterOperation::Timestamp(timestamp_filter) => {
+            FilterKind::Timestamp(timestamp_filter) => {
                 builder.append(&self.convert(timestamp_filter));
             }
         }
     }
-}
-
-fn numerical_comparison_operator_ui(
-    ui: &mut egui::Ui,
-    column_name: &str,
-    operator_text: &str,
-    op: &mut ComparisonOperator,
-) {
-    ui.horizontal(|ui| {
-        ui.label(SyntaxHighlightedBuilder::body_default(column_name).into_widget_text(ui.style()));
-
-        egui::ComboBox::new("comp_op", "")
-            .selected_text(
-                SyntaxHighlightedBuilder::keyword(operator_text).into_widget_text(ui.style()),
-            )
-            .show_ui(ui, |ui| {
-                for possible_op in crate::filters::ComparisonOperator::ALL {
-                    if ui
-                        .button(
-                            SyntaxHighlightedBuilder::keyword(&possible_op.to_string())
-                                .into_widget_text(ui.style()),
-                        )
-                        .clicked()
-                    {
-                        *op = *possible_op;
-                    }
-                }
-            });
-    });
 }
 
 pub fn basic_operation_ui(ui: &mut egui::Ui, column_name: &str, operator_text: &str) {
@@ -392,7 +355,7 @@ pub fn basic_operation_ui(ui: &mut egui::Ui, column_name: &str, operator_text: &
     );
 }
 
-impl FilterOperation {
+impl FilterKind {
     /// Returns true if the filter must be committed.
     fn popup_ui(
         &mut self,
@@ -402,24 +365,6 @@ impl FilterOperation {
         popup_just_opened: bool,
     ) -> FilterUiAction {
         let mut action = FilterUiAction::None;
-
-        let mut process_text_edit_response = |ui: &egui::Ui, response: &egui::Response| {
-            if popup_just_opened {
-                response.request_focus();
-            }
-
-            if response.lost_focus() {
-                action = ui.input(|i| {
-                    if i.key_pressed(egui::Key::Enter) {
-                        FilterUiAction::CommitStateToBlueprint
-                    } else if i.key_pressed(egui::Key::Escape) {
-                        FilterUiAction::CancelStateEdit
-                    } else {
-                        FilterUiAction::None
-                    }
-                });
-            }
-        };
 
         let operator_text = self.operator_text();
 
@@ -438,36 +383,12 @@ impl FilterOperation {
                 boolean_filter.popup_ui(ui, column_name, &mut action);
             }
 
-            Self::IntCompares { operator, value } => {
-                numerical_comparison_operator_ui(ui, column_name, &operator_text, operator);
-
-                let mut value_str = value.map(|v| v.to_string()).unwrap_or_default();
-                let response = ui.text_edit_singleline(&mut value_str);
-                if response.changed() {
-                    if value_str.is_empty() {
-                        *value = None;
-                    } else if let Ok(parsed) = value_str.parse() {
-                        *value = Some(parsed);
-                    }
-                }
-
-                process_text_edit_response(ui, &response);
+            Self::Int(int_filter) => {
+                action = int_filter.popup_ui(ui, column_name, popup_just_opened);
             }
 
-            Self::FloatCompares { operator, value } => {
-                numerical_comparison_operator_ui(ui, column_name, &operator_text, operator);
-
-                let mut value_str = value.map(|v| v.to_string()).unwrap_or_default();
-                let response = ui.text_edit_singleline(&mut value_str);
-                if response.changed() {
-                    if value_str.is_empty() {
-                        *value = None;
-                    } else if let Ok(parsed) = value_str.parse() {
-                        *value = Some(parsed);
-                    }
-                }
-
-                process_text_edit_response(ui, &response);
+            Self::Float(float_filter) => {
+                action = float_filter.popup_ui(ui, column_name, popup_just_opened);
             }
 
             Self::StringContains(query) => {
@@ -475,7 +396,11 @@ impl FilterOperation {
 
                 let response = ui.text_edit_singleline(query);
 
-                process_text_edit_response(ui, &response);
+                if popup_just_opened {
+                    response.request_focus();
+                }
+
+                action = action_from_text_edit_response(ui, &response);
             }
 
             Self::Timestamp(timestamp_filter) => {
@@ -495,8 +420,8 @@ impl FilterOperation {
         match self {
             Self::NullableBoolean(_)
             | Self::NonNullableBoolean(_)
-            | Self::IntCompares { .. }
-            | Self::FloatCompares { .. }
+            | Self::Int(_)
+            | Self::Float(_)
             | Self::StringContains(_) => {}
 
             Self::Timestamp(timestamp_filter) => timestamp_filter.on_commit(),
@@ -506,9 +431,8 @@ impl FilterOperation {
     /// Display text of the operator.
     fn operator_text(&self) -> String {
         match self {
-            Self::IntCompares { operator, .. } | Self::FloatCompares { operator, .. } => {
-                operator.to_string()
-            }
+            Self::Int(int_filter) => int_filter.comparison_operator().to_string(),
+            Self::Float(float_filter) => float_filter.comparison_operator().to_string(),
             Self::StringContains(_) => "contains".to_owned(),
             Self::NonNullableBoolean(_) | Self::NullableBoolean(_) | Self::Timestamp(_) => {
                 "is".to_owned()
@@ -517,22 +441,42 @@ impl FilterOperation {
     }
 }
 
+/// Get a filter ui action from a text edit response.
+pub fn action_from_text_edit_response(ui: &egui::Ui, response: &egui::Response) -> FilterUiAction {
+    if response.lost_focus() {
+        ui.input(|i| {
+            if i.key_pressed(egui::Key::Enter) {
+                FilterUiAction::CommitStateToBlueprint
+            } else if i.key_pressed(egui::Key::Escape) {
+                FilterUiAction::CancelStateEdit
+            } else {
+                FilterUiAction::None
+            }
+        })
+    } else {
+        FilterUiAction::None
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::super::{
+        ComparisonOperator, FloatFilter, IntFilter, NonNullableBooleanFilter,
+        NullableBooleanFilter, TimestampFilter,
+    };
     use super::*;
-    use crate::filters::{NonNullableBooleanFilter, NullableBooleanFilter, TimestampFilter};
 
-    fn test_cases() -> Vec<(FilterOperation, &'static str)> {
+    fn test_cases() -> Vec<(FilterKind, &'static str)> {
         // Let's remember to update this test when adding new filter operations.
         #[cfg(debug_assertions)]
         let _: () = {
-            use FilterOperation::*;
+            use FilterKind::*;
             let _op = StringContains(String::new());
             match _op {
                 NonNullableBoolean(_)
                 | NullableBoolean(_)
-                | IntCompares { .. }
-                | FloatCompares { .. }
+                | Int(_)
+                | Float(_)
                 | StringContains(_)
                 | Timestamp(_) => {}
             }
@@ -540,69 +484,57 @@ mod tests {
 
         [
             (
-                FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
+                FilterKind::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
                 "boolean_equals_true",
             ),
             (
-                FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
+                FilterKind::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
                 "boolean_equals_false",
             ),
             (
-                FilterOperation::NullableBoolean(NullableBooleanFilter::IsTrue),
+                FilterKind::NullableBoolean(NullableBooleanFilter::IsTrue),
                 "nullable_boolean_equals_true",
             ),
             (
-                FilterOperation::NullableBoolean(NullableBooleanFilter::IsFalse),
+                FilterKind::NullableBoolean(NullableBooleanFilter::IsFalse),
                 "nullable_boolean_equals_false",
             ),
             (
-                FilterOperation::NullableBoolean(NullableBooleanFilter::IsNull),
+                FilterKind::NullableBoolean(NullableBooleanFilter::IsNull),
                 "nullable_boolean_equals_null",
             ),
             (
-                FilterOperation::IntCompares {
-                    operator: ComparisonOperator::Eq,
-                    value: Some(100),
-                },
+                FilterKind::Int(IntFilter::new(ComparisonOperator::Eq, Some(100))),
                 "int_compare",
             ),
             (
-                FilterOperation::IntCompares {
-                    operator: ComparisonOperator::Eq,
-                    value: None,
-                },
+                FilterKind::Int(IntFilter::new(ComparisonOperator::Eq, None)),
                 "int_compare_none",
             ),
             (
-                FilterOperation::FloatCompares {
-                    operator: ComparisonOperator::Ge,
-                    value: Some(10.5),
-                },
+                FilterKind::Float(FloatFilter::new(ComparisonOperator::Ge, Some(10.5))),
                 "float_compares",
             ),
             (
-                FilterOperation::FloatCompares {
-                    operator: ComparisonOperator::Ge,
-                    value: None,
-                },
+                FilterKind::Float(FloatFilter::new(ComparisonOperator::Ge, None)),
                 "float_compares_none",
             ),
             (
-                FilterOperation::StringContains("query".to_owned()),
+                FilterKind::StringContains("query".to_owned()),
                 "string_contains",
             ),
             (
-                FilterOperation::StringContains(String::new()),
+                FilterKind::StringContains(String::new()),
                 "string_contains_empty",
             ),
             (
-                FilterOperation::Timestamp(TimestampFilter::after(
+                FilterKind::Timestamp(TimestampFilter::after(
                     jiff::Timestamp::from_millisecond(100_000_000_000).unwrap(),
                 )),
                 "timestamp_after",
             ),
             (
-                FilterOperation::Timestamp(TimestampFilter::between(
+                FilterKind::Timestamp(TimestampFilter::between(
                     jiff::Timestamp::from_millisecond(100_000_000_000).unwrap(),
                     jiff::Timestamp::from_millisecond(110_000_000_000).unwrap(),
                 )),
@@ -675,24 +607,18 @@ mod tests {
         let filters = vec![
             Filter::new(
                 "some:column:name",
-                FilterOperation::StringContains("some query string".to_owned()),
+                FilterKind::StringContains("some query string".to_owned()),
             ),
             Filter::new(
                 "other:column:name",
-                FilterOperation::StringContains("hello".to_owned()),
+                FilterKind::StringContains("hello".to_owned()),
             ),
-            Filter::new(
-                "short:name",
-                FilterOperation::StringContains("world".to_owned()),
-            ),
+            Filter::new("short:name", FilterKind::StringContains("world".to_owned())),
             Filter::new(
                 "looooog:name",
-                FilterOperation::StringContains("some more querying text here".to_owned()),
+                FilterKind::StringContains("some more querying text here".to_owned()),
             ),
-            Filter::new(
-                "world",
-                FilterOperation::StringContains(":wave:".to_owned()),
-            ),
+            Filter::new("world", FilterKind::StringContains(":wave:".to_owned())),
         ];
 
         let mut filters = FilterState {

@@ -18,8 +18,8 @@ use datafusion::prelude::{DataFrame, SessionContext};
 use jiff::ToSpan as _;
 
 use re_dataframe_ui::{
-    ComparisonOperator, Filter, FilterOperation, NonNullableBooleanFilter, Nullability,
-    NullableBooleanFilter, TimestampFilter,
+    ComparisonOperator, Filter, FilterKind, FloatFilter, IntFilter, NonNullableBooleanFilter,
+    Nullability, NullableBooleanFilter, TimestampFilter,
 };
 use re_viewer_context::external::tokio;
 
@@ -361,7 +361,7 @@ impl TestSessionContext {
 #[derive(Debug)]
 #[expect(dead_code)] // debug is excluded from dead code analysis
 struct TestResult<'a> {
-    op: FilterOperation,
+    op: FilterKind,
     field: Field,
     unfiltered: ArrayRef,
     filtered: &'a ArrayRef,
@@ -408,28 +408,19 @@ async fn test_int_compares() {
 
     for op in ComparisonOperator::ALL {
         filter_snapshot!(
-            FilterOperation::IntCompares {
-                operator: *op,
-                value: Some(3),
-            },
+            FilterKind::Int(IntFilter::new(*op, Some(3))),
             ints.clone(),
             format!("{}_3", op.as_ascii())
         );
 
         filter_snapshot!(
-            FilterOperation::IntCompares {
-                operator: *op,
-                value: Some(4),
-            },
+            FilterKind::Int(IntFilter::new(*op, Some(4))),
             ints_nulls.clone(),
             format!("nulls_{}_4", op.as_ascii())
         );
 
         filter_snapshot!(
-            FilterOperation::IntCompares {
-                operator: *op,
-                value: None,
-            },
+            FilterKind::Int(IntFilter::new(*op, None)),
             ints_nulls.clone(),
             format!("nulls_{}_unspecified", op.as_ascii())
         );
@@ -442,10 +433,7 @@ async fn test_int_all_types() {
     macro_rules! test_int_all_types_impl {
         ($ty:tt) => {
             filter_snapshot!(
-                FilterOperation::IntCompares {
-                    operator: ComparisonOperator::Eq,
-                    value: Some(3),
-                },
+                FilterKind::Int(IntFilter::new(ComparisonOperator::Eq, Some(3))),
                 TestColumn::primitive::<$ty>(vec![1, 2, 3, 4, 5]),
                 format!("{:?}", $ty {})
             )
@@ -477,19 +465,13 @@ async fn test_int_lists() {
 
     for op in ComparisonOperator::ALL {
         filter_snapshot!(
-            FilterOperation::IntCompares {
-                operator: *op,
-                value: Some(2),
-            },
+            FilterKind::Int(IntFilter::new(*op, Some(2))),
             int_lists.clone(),
             format!("{}_2", op.as_ascii())
         );
 
         filter_snapshot!(
-            FilterOperation::IntCompares {
-                operator: *op,
-                value: Some(2),
-            },
+            FilterKind::Int(IntFilter::new(*op, Some(2))),
             int_lists_nulls.clone(),
             format!("nulls_{}_2", op.as_ascii())
         );
@@ -509,19 +491,13 @@ async fn test_float_compares() {
 
     for op in ComparisonOperator::ALL {
         filter_snapshot!(
-            FilterOperation::FloatCompares {
-                operator: *op,
-                value: Some(3.0),
-            },
+            FilterKind::Float(FloatFilter::new(*op, Some(3.0))),
             floats.clone(),
             format!("{}_3.0", op.as_ascii())
         );
 
         filter_snapshot!(
-            FilterOperation::FloatCompares {
-                operator: *op,
-                value: Some(4.0),
-            },
+            FilterKind::Float(FloatFilter::new(*op, Some(4.0))),
             floats_nulls.clone(),
             format!("nulls_{}_4", op.as_ascii())
         );
@@ -534,10 +510,7 @@ async fn test_float_all_types() {
     macro_rules! test_float_all_types_impl {
         ($ty:tt) => {
             filter_snapshot!(
-                FilterOperation::FloatCompares {
-                    operator: ComparisonOperator::Eq,
-                    value: Some(3.0),
-                },
+                FilterKind::Float(FloatFilter::new(ComparisonOperator::Eq, Some(3.0))),
                 TestColumn::primitive::<$ty>(vec![1.0, 2.0, 3.0, 4.0, 5.0]),
                 format!("{:?}", $ty {})
             )
@@ -563,19 +536,13 @@ async fn test_float_lists() {
 
     for op in ComparisonOperator::ALL {
         filter_snapshot!(
-            FilterOperation::FloatCompares {
-                operator: *op,
-                value: Some(2.0)
-            },
+            FilterKind::Float(FloatFilter::new(*op, Some(2.0))),
             float_lists.clone(),
             format!("{}_2.0", op.as_ascii())
         );
 
         filter_snapshot!(
-            FilterOperation::FloatCompares {
-                operator: *op,
-                value: Some(2.0)
-            },
+            FilterKind::Float(FloatFilter::new(*op, Some(2.0))),
             float_lists_nulls.clone(),
             format!("nulls_{}_2.0", op.as_ascii())
         );
@@ -585,37 +552,37 @@ async fn test_float_lists() {
 #[tokio::test]
 async fn test_string_contains() {
     filter_snapshot!(
-        FilterOperation::StringContains(String::new()),
+        FilterKind::StringContains(String::new()),
         TestColumn::strings(),
         "empty"
     );
 
     filter_snapshot!(
-        FilterOperation::StringContains("a".to_owned()),
+        FilterKind::StringContains("a".to_owned()),
         TestColumn::strings(),
         "a"
     );
 
     filter_snapshot!(
-        FilterOperation::StringContains("a".to_owned()),
+        FilterKind::StringContains("a".to_owned()),
         TestColumn::strings(),
         "ab"
     );
 
     filter_snapshot!(
-        FilterOperation::StringContains("A".to_owned()),
+        FilterKind::StringContains("A".to_owned()),
         TestColumn::strings(),
         "a_uppercase"
     );
 
     filter_snapshot!(
-        FilterOperation::StringContains(String::new()),
+        FilterKind::StringContains(String::new()),
         TestColumn::strings_nulls(),
         "nulls_empty"
     );
 
     filter_snapshot!(
-        FilterOperation::StringContains("a".to_owned()),
+        FilterKind::StringContains("a".to_owned()),
         TestColumn::strings_nulls(),
         "nulls_a"
     );
@@ -625,7 +592,7 @@ async fn test_string_contains() {
 async fn test_string_contains_list() {
     for &nullability in Nullability::ALL {
         filter_snapshot!(
-            FilterOperation::StringContains("ab".to_owned()),
+            FilterKind::StringContains("ab".to_owned()),
             TestColumn::strings_lists(nullability),
             format!("{nullability:?}_ab")
         );
@@ -636,25 +603,25 @@ async fn test_string_contains_list() {
 #[tokio::test]
 async fn test_non_nullable_boolean_equals() {
     filter_snapshot!(
-        FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
+        FilterKind::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
         TestColumn::bools(),
         "true"
     );
 
     filter_snapshot!(
-        FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
+        FilterKind::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
         TestColumn::bools(),
         "false"
     );
 
     filter_snapshot!(
-        FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
+        FilterKind::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
         TestColumn::bools_nulls(),
         "nulls_true"
     );
 
     filter_snapshot!(
-        FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
+        FilterKind::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
         TestColumn::bools_nulls(),
         "nulls_false"
     );
@@ -663,19 +630,19 @@ async fn test_non_nullable_boolean_equals() {
 #[tokio::test]
 async fn test_nullable_boolean_equals() {
     filter_snapshot!(
-        FilterOperation::NullableBoolean(NullableBooleanFilter::IsTrue),
+        FilterKind::NullableBoolean(NullableBooleanFilter::IsTrue),
         TestColumn::bools_nulls(),
         "nulls_true"
     );
 
     filter_snapshot!(
-        FilterOperation::NullableBoolean(NullableBooleanFilter::IsFalse),
+        FilterKind::NullableBoolean(NullableBooleanFilter::IsFalse),
         TestColumn::bools_nulls(),
         "nulls_false"
     );
 
     filter_snapshot!(
-        FilterOperation::NullableBoolean(NullableBooleanFilter::IsNull),
+        FilterKind::NullableBoolean(NullableBooleanFilter::IsNull),
         TestColumn::bools_nulls(),
         "nulls_null"
     );
@@ -685,7 +652,7 @@ async fn test_nullable_boolean_equals() {
 async fn test_boolean_equals_list_non_nullable() {
     for &nullability in Nullability::ALL {
         filter_snapshot!(
-            FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
+            FilterKind::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
             TestColumn::bool_lists(nullability),
             format!("{nullability:?}_true")
         );
@@ -698,7 +665,7 @@ async fn test_boolean_equals_list_nullable() {
     // NonNullableBooleanFilter is used in this case.
     for nullability in [Nullability::BOTH, Nullability::INNER, Nullability::OUTER] {
         filter_snapshot!(
-            FilterOperation::NullableBoolean(NullableBooleanFilter::IsNull),
+            FilterKind::NullableBoolean(NullableBooleanFilter::IsNull),
             TestColumn::bool_lists(nullability),
             format!("{nullability:?}")
         );
@@ -721,15 +688,15 @@ async fn test_timestamps() {
 
     let all_filters = [
         (
-            FilterOperation::Timestamp(TimestampFilter::after(some_date)),
+            FilterKind::Timestamp(TimestampFilter::after(some_date)),
             "after",
         ),
         (
-            FilterOperation::Timestamp(TimestampFilter::after(some_date + 1.seconds())),
+            FilterKind::Timestamp(TimestampFilter::after(some_date + 1.seconds())),
             "after_strict",
         ),
         (
-            FilterOperation::Timestamp(TimestampFilter::between(
+            FilterKind::Timestamp(TimestampFilter::between(
                 some_date - 168.hours(),
                 some_date - 2.hours(),
             )),
@@ -766,15 +733,15 @@ async fn test_timestamps_list() {
 
     let all_filters = [
         (
-            FilterOperation::Timestamp(TimestampFilter::after(some_date)),
+            FilterKind::Timestamp(TimestampFilter::after(some_date)),
             "after",
         ),
         (
-            FilterOperation::Timestamp(TimestampFilter::after(some_date + 1.seconds())),
+            FilterKind::Timestamp(TimestampFilter::after(some_date + 1.seconds())),
             "after_strict",
         ),
         (
-            FilterOperation::Timestamp(TimestampFilter::between(
+            FilterKind::Timestamp(TimestampFilter::between(
                 some_date - 168.hours(),
                 some_date - 2.hours(),
             )),
