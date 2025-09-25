@@ -3,8 +3,9 @@ use std::collections::HashMap;
 use std::fmt::Formatter;
 use std::sync::Arc;
 
-use arrow::array::{Array as _, ArrayRef, BooleanArray, ListArray, as_list_array};
-use arrow::datatypes::{DataType, Field};
+use arrow::array::{Array as _, ArrayRef, AsArray as _, BooleanArray, ListArray, as_list_array};
+use arrow::compute::cast;
+use arrow::datatypes::{DataType, Field, TimeUnit};
 use datafusion::common::ExprSchema as _;
 use datafusion::common::{DFSchema, Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
