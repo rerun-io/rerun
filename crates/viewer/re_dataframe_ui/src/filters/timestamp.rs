@@ -14,6 +14,7 @@
 //! - We always consider the physical timestamp to be UTC, even with the time zone is `None`.
 //! - We ignore the time zone hint and use instead our global [`TimestampFormat`] for display.
 
+use std::fmt::Formatter;
 use std::str::FromStr as _;
 
 use jiff::{RoundMode, Timestamp, TimestampRound, ToSpan as _};
@@ -40,8 +41,7 @@ enum TimestampFilterKind {
 /// A filter for [`arrow::datatypes::DataType::Timestamp`] columns.
 ///
 /// This represents both the filter itself, and the state of the corresponding UI.
-//TODO(ab): a nicer `Debug` implementation would make snapshot tests cleaner.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq)]
 pub struct TimestampFilter {
     /// The kind of temporal filter to use.
     kind: TimestampFilterKind,
@@ -53,6 +53,27 @@ pub struct TimestampFilter {
     /// The high bound of the filter (for [`TimestampFilterKind::Before`] and
     /// [`TimestampFilterKind::Between`]).
     high_bound_timestamp: EditableTimestamp,
+}
+
+// used for test snapshots, so we make it nice and concise
+impl std::fmt::Debug for TimestampFilter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let inner = match self.kind {
+            TimestampFilterKind::Today => "Today".to_owned(),
+            TimestampFilterKind::Yesterday => "Yesterday".to_owned(),
+            TimestampFilterKind::Last24Hours => "Last24Hours".to_owned(),
+            TimestampFilterKind::ThisWeek => "ThisWeek".to_owned(),
+            TimestampFilterKind::LastWeek => "LastWeek".to_owned(),
+            TimestampFilterKind::Before => format!("Before {:?}", self.high_bound_timestamp),
+            TimestampFilterKind::After => format!("After {:?}", self.low_bound_timestamp),
+            TimestampFilterKind::Between => format!(
+                "Between {:?} and {:?}",
+                self.low_bound_timestamp, self.high_bound_timestamp
+            ),
+        };
+
+        f.write_str(&format!("TimestampFilter({inner})"))
+    }
 }
 
 // constructors
@@ -325,7 +346,7 @@ impl TimestampFilter {
 }
 
 /// A timestamp that can be entered/edited by the user.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 struct EditableTimestamp {
     /// The timestamp as entered/edited by the user.
     ///
@@ -344,6 +365,16 @@ impl Default for EditableTimestamp {
         Self {
             timestamp_string: Some(String::new()),
             resolved_timestamp: jiff::Timestamp::from_str(""),
+        }
+    }
+}
+
+// used for test snapshots, so we make it nice and concise
+impl std::fmt::Debug for EditableTimestamp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self.resolved_formatted(TimestampFormat::utc()) {
+            Ok(s) => f.write_str(&s),
+            Err(err) => f.write_str(&format!("Err({err})")),
         }
     }
 }

@@ -4,35 +4,7 @@ expression: test_results
 ---
 TestResult {
     op: Timestamp(
-        TimestampFilter {
-            kind: After,
-            low_bound_timestamp: EditableTimestamp {
-                timestamp_string: None,
-                resolved_timestamp: Ok(
-                    2025-09-23T11:47:01Z,
-                ),
-            },
-            high_bound_timestamp: EditableTimestamp {
-                timestamp_string: Some(
-                    "",
-                ),
-                resolved_timestamp: Err(
-                    Error {
-                        kind: Adhoc(
-                            "failed to parse year in date \"\"",
-                        ),
-                        cause: Some(
-                            Error {
-                                kind: Adhoc(
-                                    "expected four digit year (or leading sign for six digit year), but found end of input",
-                                ),
-                                cause: None,
-                            },
-                        ),
-                    },
-                ),
-            },
-        },
+        TimestampFilter(After 2025-09-23 11:47:01Z),
     ),
     field: Field {
         name: "column",

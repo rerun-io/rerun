@@ -140,19 +140,9 @@ impl FilterState {
                     for (index, filter) in self.filters.iter_mut().enumerate() {
                         // egui uses this id to store the popup openness and size information,
                         // so we must invalidate if the filter at a given index changes its
-                        // name or nature.
-                        let filter_id = ui.make_persistent_id(
-                            egui::Id::new(index).with(&filter.column_name).with(
-                                match filter.operation {
-                                    FilterOperation::NonNullableBoolean(_) => "non_nullable_bool",
-                                    FilterOperation::NullableBoolean(_) => "nullable_bool",
-                                    FilterOperation::IntCompares { .. } => "int",
-                                    FilterOperation::FloatCompares { .. } => "float",
-                                    FilterOperation::StringContains(_) => "string",
-                                    FilterOperation::Timestamp(_) => "timestamp",
-                                },
-                            ),
-                        );
+                        // name.
+                        let filter_id =
+                            ui.make_persistent_id(egui::Id::new(index).with(&filter.column_name));
 
                         let result =
                             filter.ui(ui, timestamp_format, filter_id, Some(index) == active_index);
