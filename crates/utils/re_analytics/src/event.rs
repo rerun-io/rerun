@@ -401,6 +401,56 @@ impl Properties for OpenRecording {
 
 // -----------------------------------------------
 
+/// Sent when user switches between existing recordings.
+///
+/// Used in `re_viewer`.
+pub struct SwitchRecording {
+    /// The URL on which the web viewer is running.
+    ///
+    /// This will be used to populate `hashed_root_domain` property for all urls.
+    /// This will also populate `rerun_url` property if the url root domain is `rerun.io`.
+    pub url: Option<String>,
+
+    /// The environment in which the viewer is running.
+    pub app_env: &'static str,
+
+    /// The recording we're switching from (hashed if not official example).
+    pub previous_recording_id: Option<Id>,
+
+    /// The recording we're switching to (hashed if not official example).
+    pub new_recording_id: Id,
+
+    /// Total number of recordings currently loaded in the viewer.
+    pub total_recordings_loaded: usize,
+
+    /// How the switch was initiated.
+    pub switch_method: &'static str,
+}
+
+impl Event for SwitchRecording {
+    const NAME: &'static str = "switch_recording";
+}
+
+impl Properties for SwitchRecording {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            url,
+            app_env,
+            previous_recording_id,
+            new_recording_id,
+            total_recordings_loaded,
+            switch_method,
+        } = self;
+
+        add_sanitized_url_properties(event, url);
+        event.insert("app_env", app_env);
+        event.insert_opt("previous_recording_id", previous_recording_id);
+        event.insert("new_recording_id", new_recording_id);
+        event.insert("total_recordings_loaded", total_recordings_loaded as i64);
+        event.insert("switch_method", switch_method);
+    }
+}
+
 // -----------------------------------------------
 
 /// Sent the first time a `?` help button is clicked.
@@ -415,6 +465,76 @@ impl Event for HelpButtonFirstClicked {
 impl Properties for HelpButtonFirstClicked {
     fn serialize(self, _event: &mut AnalyticsEvent) {
         let Self {} = self;
+    }
+}
+
+// -----------------------------------------------
+
+/// Tracks how much timeline content was played back.
+///
+/// Emitted when playback stops for any reason.
+pub struct TimelineSecondsPlayed {
+    pub build_info: BuildInfo,
+
+    /// Name of the timeline (e.g. "log_time", "sim_time")
+    pub timeline_name: String,
+
+    /// Playback speed during this session (1.0 = normal, 2.0 = 2x speed)
+    pub playback_speed: f32,
+
+    /// Timeline duration advanced during playback (in seconds)
+    pub timeline_seconds_played: f64,
+
+    /// Real-world time elapsed during playback (in seconds)
+    pub wall_clock_seconds: f64,
+
+    /// Why playback stopped
+    pub stop_reason: PlaybackStopReason,
+
+    /// Which recording was being played (hashed if not official example)
+    pub recording_id: Id,
+}
+
+/// Reason why a playback session ended
+#[derive(Clone, Debug)]
+pub enum PlaybackStopReason {
+    /// User manually paused/stopped playback
+    UserStopped,
+    /// Playback speed changed (starts new session)
+    SpeedChanged,
+    /// Switched to different recording
+    RecordingSwitched,
+    /// Recording was closed
+    RecordingClosed,
+    /// App is exiting
+    AppExited,
+    /// Switched to different timeline
+    TimelineChanged,
+}
+
+impl Event for TimelineSecondsPlayed {
+    const NAME: &'static str = "timeline_seconds_played";
+}
+
+impl Properties for TimelineSecondsPlayed {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            build_info,
+            timeline_name,
+            playback_speed,
+            timeline_seconds_played,
+            wall_clock_seconds,
+            stop_reason,
+            recording_id,
+        } = self;
+
+        build_info.serialize(event);
+        event.insert("timeline_name", timeline_name);
+        event.insert("playback_speed", playback_speed);
+        event.insert("timeline_seconds_played", timeline_seconds_played);
+        event.insert("wall_clock_seconds", wall_clock_seconds);
+        event.insert("stop_reason", format!("{:?}", stop_reason));
+        event.insert("recording_id", recording_id);
     }
 }
 

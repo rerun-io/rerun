@@ -14,7 +14,7 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
-    HoverHighlight, Item, SystemCommand, SystemCommandSender as _, UiLayout, ViewId, ViewerContext,
+    HoverHighlight, Item, UiLayout, ViewId, ViewerContext,
 };
 
 use super::DataUi as _;
@@ -687,7 +687,7 @@ pub fn entity_db_button_ui(
     include_app_id: bool,
 ) {
     use re_byte_size::SizeBytes as _;
-    use re_viewer_context::{SystemCommand, SystemCommandSender as _};
+    use re_viewer_context::{ActivationSource, SystemCommand, SystemCommandSender as _};
 
     let app_id_prefix = if include_app_id {
         format!("{} - ", entity_db.application_id())
@@ -807,7 +807,10 @@ pub fn entity_db_button_ui(
         // for the blueprint.
         if store_id.is_recording() {
             ctx.command_sender()
-                .send_system(SystemCommand::ActivateRecordingOrTable(new_entry));
+                .send_system(SystemCommand::ActivateRecordingOrTable {
+                    entry: new_entry,
+                    source: ActivationSource::UiClick,
+                });
         }
     }
 
@@ -820,6 +823,7 @@ pub fn table_id_button_ui(
     table_id: &TableId,
     ui_layout: UiLayout,
 ) {
+    use re_viewer_context::{ActivationSource, SystemCommand, SystemCommandSender as _};
     let item = re_viewer_context::Item::TableId(table_id.clone());
 
     let mut item_content = list_item::LabelContent::new(table_id.as_str()).with_icon(&icons::TABLE);
@@ -862,9 +866,10 @@ pub fn table_id_button_ui(
 
     if response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::ActivateRecordingOrTable(
-                table_id.clone().into(),
-            ));
+            .send_system(SystemCommand::ActivateRecordingOrTable {
+                entry: table_id.clone().into(),
+                source: ActivationSource::TableClick,
+            });
     }
     ctx.handle_select_hover_drag_interactions(&response, item, false);
 }

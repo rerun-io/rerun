@@ -2,7 +2,7 @@ use crate::AppEnvironment;
 
 use re_analytics::{
     Config, Property,
-    event::{Id, Identify, OpenRecording, StoreInfo, ViewerRuntimeInformation, ViewerStarted},
+    event::{Id, Identify, OpenRecording, StoreInfo, SwitchRecording, ViewerRuntimeInformation, ViewerStarted},
 };
 
 pub fn identify(
@@ -168,4 +168,42 @@ pub fn open_recording(
         store_info,
         data_source,
     })
+}
+
+pub fn switch_recording(
+    app_env: &AppEnvironment,
+    previous_recording_id: Option<&re_log_types::StoreId>,
+    new_recording_id: &re_log_types::StoreId,
+    switch_method: &'static str,
+) -> SwitchRecording {
+    let previous_id = previous_recording_id.map(|store_id| {
+        let application_id = store_id.application_id();
+        let recording_id = store_id.recording_id();
+
+        if application_id.as_str().starts_with("rerun_example") {
+            Id::Official(recording_id.to_string())
+        } else {
+            Id::Hashed(Property::from(recording_id.as_str()).hashed())
+        }
+    });
+
+    let new_id = {
+        let application_id = new_recording_id.application_id();
+        let recording_id = new_recording_id.recording_id();
+
+        if application_id.as_str().starts_with("rerun_example") {
+            Id::Official(recording_id.to_string())
+        } else {
+            Id::Hashed(Property::from(recording_id.as_str()).hashed())
+        }
+    };
+
+    SwitchRecording {
+        url: app_env.url().cloned(),
+        app_env: app_env.name(),
+        previous_recording_id: previous_id,
+        new_recording_id: new_id,
+        total_recordings_loaded: 0, // Will be updated at call site
+        switch_method,
+    }
 }
