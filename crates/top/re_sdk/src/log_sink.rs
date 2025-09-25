@@ -593,3 +593,40 @@ impl LogSink for GrpcSink {
         self
     }
 }
+
+// ----------------------------------------------------------------------------
+
+trait Transformation: Send + Sync + 'static {
+    fn apply(&self, msg: LogMsg) -> Vec<LogMsg>;
+}
+
+/// A sink which can transform a `LogMsg` and forward the result to an underlying backing `LogSink`.
+pub struct TransformSink<S: LogSink, T: Transformation> {
+    sink: S,
+    transform: T,
+}
+
+impl<S: LogSink, T: Transformation> TransformSink<S, T> {
+    /// Create a new `TransformSink` with the given transform function.
+    #[inline]
+    pub fn new<F>(sink: S, transform: T) -> Self {
+        Self { sink, transform }
+    }
+}
+
+impl<S: LogSink, T: Transformation> LogSink for TransformSink<S, T> {
+    fn send(&self, msg: re_log_types::LogMsg) {
+        self.sink.send_all(self.transform.apply(msg))
+    }
+
+    fn flush_blocking(
+        &self,
+        timeout: std::time::Duration,
+    ) -> Result<(), crate::sink::SinkFlushError> {
+        self.sink.flush_blocking(timeout)
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
