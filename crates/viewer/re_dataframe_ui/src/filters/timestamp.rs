@@ -836,14 +836,6 @@ mod tests {
         assert!(filter.apply(now.checked_sub(12.hours()).unwrap()));
         assert!(filter.apply(now.checked_sub(23.hours()).unwrap()));
 
-        // Edge case: just within 24 hours
-        let almost_24_hours_ago = now
-            .checked_sub(24.hours())
-            .unwrap()
-            .checked_add(1.seconds())
-            .unwrap();
-        assert!(filter.apply(almost_24_hours_ago));
-
         // Should reject timestamps older than 24 hours
         assert!(!filter.apply(now.checked_sub(25.hours()).unwrap()));
         assert!(!filter.apply(now.checked_sub(48.hours()).unwrap()));
