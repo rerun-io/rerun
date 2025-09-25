@@ -12,7 +12,7 @@ expression: "format!(\"{:240}\", ChunkRedacted(chunk))"
 │ ┌──────────────────────────────────────────────┬────────────────────────────┬───────────────────────────────┬───────────────────────────────────────┬──────────────────────────────────────────┐ │
 │ │ rerun.controls.RowId                         ┆ frame_nr                   ┆ log_time                      ┆ my_index                              ┆ example.MyPoints:colors                  │ │
 │ │ ---                                          ┆ ---                        ┆ ---                           ┆ ---                                   ┆ ---                                      │ │
-│ │ type: FixedSizeBinary[16]                    ┆ type: i64                  ┆ type: Timestamp(ns)           ┆ type: List[nullable u64]              ┆ type: List[nullable u32]                 │ │
+│ │ type: FixedSizeBinary[16]                    ┆ type: nullable i64         ┆ type: nullable Timestamp(ns)  ┆ type: nullable List[nullable u64]     ┆ type: nullable List[nullable u32]        │ │
 │ │ ARROW:extension:metadata:                    ┆ rerun:index_name: frame_nr ┆ rerun:index_name: log_time    ┆ rerun:component: my_index             ┆ rerun:archetype: example.MyPoints        │ │
 │ │ {"namespace":"row"}                          ┆ rerun:is_sorted: true      ┆ rerun:is_sorted: true         ┆ rerun:component_type: example.MyIndex ┆ rerun:component: example.MyPoints:colors │ │
 │ │ ARROW:extension:name: rerun.datatypes.TUID   ┆ rerun:kind: index          ┆ rerun:kind: index             ┆ rerun:kind: data                      ┆ rerun:component_type: example.MyColor    │ │
