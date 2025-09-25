@@ -426,6 +426,7 @@ pub async fn stream_blueprint_and_partition_from_server(
             cloned_from: None,
             store_source: StoreSource::Unknown,
             store_version: None,
+            is_partial: false,
         };
 
         stream_partition_from_server(
@@ -458,13 +459,6 @@ pub async fn stream_blueprint_and_partition_from_server(
         re_log::debug!("No blueprint dataset found for {uri}");
     }
 
-    let store_info = StoreInfo {
-        store_id: recording_store_id,
-        cloned_from: None,
-        store_source: StoreSource::Unknown,
-        store_version: None,
-    };
-
     let re_uri::DatasetPartitionUri {
         origin: _,
         dataset_id,
@@ -472,6 +466,14 @@ pub async fn stream_blueprint_and_partition_from_server(
         time_range,
         fragment,
     } = uri;
+
+    let store_info = StoreInfo {
+        store_id: recording_store_id,
+        cloned_from: None,
+        store_source: StoreSource::Unknown,
+        store_version: None,
+        is_partial: time_range.is_some(),
+    };
 
     stream_partition_from_server(
         &mut client,

@@ -36,18 +36,18 @@ pub fn redap_uri_button(
 
     let uri = RedapUri::from_str(url_str)?;
 
-    let loaded_recording_id = ctx.storage_context.bundle.recordings().find_map(|db| {
+    let loaded_recording_info = ctx.storage_context.bundle.recordings().find_map(|db| {
         if db
             .data_source
             .as_ref()
             .is_some_and(|source| source.stripped_redap_uri().as_ref() == Some(&uri))
         {
-            Some(db.store_id().clone())
+            db.store_info().clone()
         } else {
             None
         }
     });
-    let is_loading = loaded_recording_id.is_none()
+    let is_loading = loaded_recording_info.is_none()
         && ctx
             .connected_receivers
             .sources()
@@ -96,20 +96,31 @@ pub fn redap_uri_button(
             .0
     };
 
-    if let Some(loaded_recording_id) = loaded_recording_id {
-        let response = link_with_copy(ui, Link::new("Switch to")).on_hover_ui(|ui| {
-            ui.label("This recording is already loaded. Click to switch to it.");
-        });
+    ui.horizontal(|ui| {
+        if let Some(loaded_recording_info) = loaded_recording_info {
+            if loaded_recording_info.is_partial {
+                let response = ui.add(Link::new("Open full")).on_hover_text(
+                    "Part of this recording is already loaded. Click to download the rest.",
+                );
+                handle_open_full_recording_link(ui, uri, &response);
+            }
 
-        if response.clicked() {
-            // Show it:
-            ctx.command_sender()
-                .send_system(SystemCommand::SetSelection(
-                    re_viewer_context::Item::StoreId(loaded_recording_id).into(),
-                ));
-        }
-    } else if is_loading {
-        ui.horizontal(|ui| {
+            let response = link_with_copy(ui, Link::new("Switch to")).on_hover_text(
+                if loaded_recording_info.is_partial {
+                    "Part of this recording is already loaded. Click to switch to it."
+                } else {
+                    "This recording is already loaded. Click to switch to it."
+                },
+            );
+            if response.clicked() {
+                // Show it:
+                ctx.command_sender()
+                    .send_system(SystemCommand::SetSelection(
+                        re_viewer_context::Item::StoreId(loaded_recording_info.store_id.clone())
+                            .into(),
+                    ));
+            }
+        } else if is_loading {
             ui.spinner();
 
             if ui
@@ -119,18 +130,22 @@ pub fn redap_uri_button(
             {
                 ctx.connected_receivers.remove_by_uri(&uri.to_string());
             }
-        });
-    } else {
-        let response = link_with_copy(ui, Link::new("Open")).on_hover_ui(|ui| {
-            ui.label(uri.to_string());
-        });
+        } else {
+            let response = link_with_copy(ui, Link::new("Open")).on_hover_ui(|ui| {
+                ui.label(uri.to_string());
+            });
 
-        if response.clicked_with_open_in_background() {
-            ui.ctx().open_url(egui::OpenUrl::new_tab(uri));
-        } else if response.clicked() {
-            ui.ctx().open_url(egui::OpenUrl::same_tab(uri));
+            handle_open_full_recording_link(ui, uri, &response);
         }
-    }
+    });
 
     Ok(())
+}
+
+fn handle_open_full_recording_link(ui: &Ui, uri: RedapUri, response: &egui::Response) {
+    if response.clicked_with_open_in_background() {
+        ui.ctx().open_url(egui::OpenUrl::new_tab(uri));
+    } else if response.clicked() {
+        ui.ctx().open_url(egui::OpenUrl::same_tab(uri));
+    }
 }
