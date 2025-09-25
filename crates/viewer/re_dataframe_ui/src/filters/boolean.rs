@@ -51,12 +51,7 @@ impl NonNullableBooleanFilter {
         self.as_bool().to_string()
     }
 
-    pub fn popup_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        column_name: &str,
-        action: &mut super::FilterUiAction,
-    ) {
+    pub fn popup_ui(&mut self, ui: &mut egui::Ui, column_name: &str) -> FilterUiAction {
         super::basic_operation_ui(ui, column_name, "is");
 
         let mut clicked = false;
@@ -70,7 +65,9 @@ impl NonNullableBooleanFilter {
             .clicked();
 
         if clicked {
-            *action = FilterUiAction::CommitStateToBlueprint;
+            FilterUiAction::CommitStateToBlueprint
+        } else {
+            FilterUiAction::None
         }
     }
 }
@@ -139,12 +136,7 @@ impl NullableBooleanFilter {
         }
     }
 
-    pub fn popup_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        column_name: &str,
-        action: &mut super::FilterUiAction,
-    ) {
+    pub fn popup_ui(&mut self, ui: &mut egui::Ui, column_name: &str) -> FilterUiAction {
         super::basic_operation_ui(ui, column_name, "is");
 
         let mut clicked = false;
@@ -160,7 +152,9 @@ impl NullableBooleanFilter {
             .clicked();
 
         if clicked {
-            *action = FilterUiAction::CommitStateToBlueprint;
+            FilterUiAction::CommitStateToBlueprint
+        } else {
+            FilterUiAction::None
         }
     }
 }

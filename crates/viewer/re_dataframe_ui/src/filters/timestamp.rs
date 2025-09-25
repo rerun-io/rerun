@@ -203,9 +203,8 @@ impl TimestampFilter {
         &mut self,
         ui: &mut egui::Ui,
         column_name: &str,
-        action: &mut FilterUiAction,
         timestamp_format: TimestampFormat,
-    ) {
+    ) -> FilterUiAction {
         super::basic_operation_ui(ui, column_name, "is");
 
         // Note on prefilling value for `Before`. Since `Before` generally uses the "high" boundary
@@ -266,10 +265,12 @@ impl TimestampFilter {
         let high_is_editable =
             self.kind == TimestampFilterKind::Between || self.kind == TimestampFilterKind::Before;
 
+        let mut action = FilterUiAction::None;
+
         // handle hitting enter/escape when editing a text field.
         let mut process_text_edit_response = |ui: &egui::Ui, response: &egui::Response| {
             if response.lost_focus() {
-                *action = action.merge(ui.input(|i| {
+                action = action.merge(ui.input(|i| {
                     if i.key_pressed(egui::Key::Enter) {
                         FilterUiAction::CommitStateToBlueprint
                     } else if i.key_pressed(egui::Key::Escape) {
@@ -337,6 +338,8 @@ impl TimestampFilter {
 
             process_text_edit_response(ui, &response);
         }
+
+        action
     }
 
     pub fn on_commit(&mut self) {

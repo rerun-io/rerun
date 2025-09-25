@@ -19,7 +19,7 @@ use jiff::ToSpan as _;
 
 use re_dataframe_ui::{
     ComparisonOperator, Filter, FilterKind, FloatFilter, IntFilter, NonNullableBooleanFilter,
-    Nullability, NullableBooleanFilter, TimestampFilter,
+    Nullability, NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter,
 };
 use re_viewer_context::external::tokio;
 
@@ -552,37 +552,37 @@ async fn test_float_lists() {
 #[tokio::test]
 async fn test_string_contains() {
     filter_snapshot!(
-        FilterKind::StringContains(String::new()),
+        FilterKind::String(StringFilter::new(StringOperator::Contains, String::new())),
         TestColumn::strings(),
         "empty"
     );
 
     filter_snapshot!(
-        FilterKind::StringContains("a".to_owned()),
+        FilterKind::String(StringFilter::new(StringOperator::Contains, "a".to_owned())),
         TestColumn::strings(),
         "a"
     );
 
     filter_snapshot!(
-        FilterKind::StringContains("a".to_owned()),
+        FilterKind::String(StringFilter::new(StringOperator::Contains, "a".to_owned())),
         TestColumn::strings(),
         "ab"
     );
 
     filter_snapshot!(
-        FilterKind::StringContains("A".to_owned()),
+        FilterKind::String(StringFilter::new(StringOperator::Contains, "A".to_owned())),
         TestColumn::strings(),
         "a_uppercase"
     );
 
     filter_snapshot!(
-        FilterKind::StringContains(String::new()),
+        FilterKind::String(StringFilter::new(StringOperator::Contains, String::new())),
         TestColumn::strings_nulls(),
         "nulls_empty"
     );
 
     filter_snapshot!(
-        FilterKind::StringContains("a".to_owned()),
+        FilterKind::String(StringFilter::new(StringOperator::Contains, "a".to_owned())),
         TestColumn::strings_nulls(),
         "nulls_a"
     );
@@ -592,7 +592,7 @@ async fn test_string_contains() {
 async fn test_string_contains_list() {
     for &nullability in Nullability::ALL {
         filter_snapshot!(
-            FilterKind::StringContains("ab".to_owned()),
+            FilterKind::String(StringFilter::new(StringOperator::Contains, "ab".to_owned())),
             TestColumn::strings_lists(nullability),
             format!("{nullability:?}_ab")
         );

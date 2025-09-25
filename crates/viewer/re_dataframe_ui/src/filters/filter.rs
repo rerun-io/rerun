@@ -12,13 +12,14 @@ use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, ScalarFunctionArgs, ScalarUDF,
     ScalarUDFImpl, Signature, TypeSignature, Volatility,
 };
-use datafusion::prelude::{Column, Expr, array_to_string, col, contains, lit, lower};
+use datafusion::prelude::{Column, Expr, col};
 
 use re_types_core::datatypes::TimeInt;
 use re_types_core::{Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE, Loggable as _};
 
 use super::{
-    FloatFilter, IntFilter, NonNullableBooleanFilter, NullableBooleanFilter, TimestampFilter,
+    FloatFilter, IntFilter, NonNullableBooleanFilter, NullableBooleanFilter, StringFilter,
+    TimestampFilter,
 };
 
 /// The nullability of a nested arrow datatype.
@@ -92,14 +93,14 @@ pub enum FilterError {
     #[error("column {0} was not found")]
     ColumnNotFound(Column),
 
-    #[error("invalid filter kind {0:?} for field {1}")]
-    InvalidFilterKind(Box<FilterKind>, Box<Field>),
-
     #[error("invalid non-nullable boolean filter {0:?} for field {1}")]
     InvalidNonNullableBooleanFilter(NonNullableBooleanFilter, Box<Field>),
 
     #[error("invalid nullable boolean filter {0:?} for field {1}")]
     InvalidNullableBooleanFilter(NullableBooleanFilter, Box<Field>),
+
+    #[error("invalid string filter {0:?} for field {1}")]
+    InvalidStringFilter(StringFilter, Box<Field>),
 }
 
 /// A filter applied to a table.
@@ -137,10 +138,7 @@ pub enum FilterKind {
     NonNullableBoolean(NonNullableBooleanFilter),
     Int(IntFilter),
     Float(FloatFilter),
-
-    //TODO(ab): parameterise that over multiple string ops, e.g. "contains", "starts with", etc.
-    StringContains(String),
-
+    String(StringFilter),
     Timestamp(TimestampFilter),
 }
 
@@ -194,9 +192,9 @@ impl FilterKind {
                 Some(Self::Float(Default::default()))
             }
 
-            DataType::Utf8 | DataType::Utf8View => Some(Self::StringContains(String::new())),
+            DataType::Utf8 | DataType::Utf8View => Some(Self::String(Default::default())),
 
-            DataType::Timestamp(_, _) => Some(Self::Timestamp(TimestampFilter::default())),
+            DataType::Timestamp(_, _) => Some(Self::Timestamp(Default::default())),
 
             _ => None,
         }
@@ -225,35 +223,7 @@ impl FilterKind {
                 Ok(udf.call(vec![col(column.clone())]))
             }
 
-            Self::StringContains(query_string) => {
-                if query_string.is_empty() {
-                    return Ok(lit(true));
-                }
-
-                let operand = match field.data_type() {
-                    DataType::Utf8 | DataType::Utf8View => col(column.clone()),
-
-                    DataType::List(field) | DataType::ListView(field)
-                        if field.data_type() == &DataType::Utf8
-                            || field.data_type() == &DataType::Utf8View =>
-                    {
-                        // For List[Utf8], we concatenate all the instances into a single logical
-                        // string, separated by a Record Separator (0x1E) character. This ensures
-                        // that the query string doesn't accidentally match a substring spanning
-                        // multiple instances.
-                        array_to_string(col(column.clone()), lit("\u{001E}"))
-                    }
-
-                    _ => {
-                        return Err(FilterError::InvalidFilterKind(
-                            self.clone().into(),
-                            field.clone().into(),
-                        ));
-                    }
-                };
-
-                Ok(contains(lower(operand), lower(lit(query_string))))
-            }
+            Self::String(string_filter) => string_filter.as_filter_expression(column, field),
         }
     }
 }
