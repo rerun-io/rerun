@@ -531,8 +531,11 @@ fn notification_age_label(ui: &mut egui::Ui, created_at: Timestamp) {
     ui.horizontal_top(|ui| {
         ui.set_min_width(30.0);
         ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
-            ui.label(egui::RichText::new(formatted).weak())
-                .on_hover_text(created_at.to_string());
+            ui.add(
+                egui::Label::new(egui::RichText::new(formatted).weak())
+                    .wrap_mode(egui::TextWrapMode::Extend),
+            )
+            .on_hover_text(created_at.to_string());
         });
     });
 }
