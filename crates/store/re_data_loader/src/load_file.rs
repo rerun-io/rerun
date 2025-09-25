@@ -101,9 +101,8 @@ pub(crate) fn prepare_store_info(
         row_id: *re_chunk::RowId::new(),
         info: re_log_types::StoreInfo {
             store_id: store_id.clone(),
-            cloned_from: None,
             store_source,
-            store_version: Some(re_build_info::CrateVersion::LOCAL),
+            ..Default::default()
         },
     })
 }

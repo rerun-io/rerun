@@ -2,7 +2,7 @@ use jiff::SignedDuration;
 use jiff::fmt::friendly::{FractionalUnit, SpanPrinter};
 
 use re_byte_size::SizeBytes as _;
-use re_chunk_store::ChunkStoreConfig;
+use re_chunk_store::ChunkStoreCompactionConfig;
 use re_entity_db::EntityDb;
 use re_log_types::StoreKind;
 use re_smart_channel::SmartChannelSource;
@@ -53,6 +53,7 @@ impl crate::DataUi for EntityDb {
                     cloned_from,
                     store_source,
                     store_version,
+                    cropping_range,
                 } = store_info;
 
                 if let Some(cloned_from) = cloned_from {
@@ -78,6 +79,15 @@ impl crate::DataUi for EntityDb {
                         "store version is undefined for this recording, this is a bug"
                     );
                 }
+
+                // TODO(#11315): In the future we will want to reduce this to a mere highlighting feature and no longer need this at the store level
+                // as all data will be pulled on-demand from a server.
+                ui.grid_left_hand_label("Partial store");
+                ui.monospace(format!("{:?}", cropping_range.is_some()))
+                .on_hover_text(
+                    "If true, only a subset of the recording is presented in the viewer.",
+                );
+                ui.end_row();
 
                 ui.grid_left_hand_label("Kind");
                 ui.label(store_id.kind().to_string());
@@ -130,12 +140,11 @@ impl crate::DataUi for EntityDb {
             }
 
             {
-                let &ChunkStoreConfig {
-                    enable_changelog: _,
+                let &ChunkStoreCompactionConfig {
                     chunk_max_bytes,
                     chunk_max_rows,
                     chunk_max_rows_if_unsorted,
-                } = self.storage_engine().store().config();
+                } = &self.storage_engine().store().config().compaction;
 
                 ui.grid_left_hand_label("Compaction");
                 ui.label(format!(
@@ -174,9 +183,9 @@ impl crate::DataUi for EntityDb {
                                                     re_format::format_uint(chunk_max_rows),
                                                     re_format::format_uint(chunk_max_rows_if_unsorted),
                                                     re_format::format_bytes(chunk_max_bytes as _),
-                                                    ChunkStoreConfig::ENV_CHUNK_MAX_ROWS,
-                                                    ChunkStoreConfig::ENV_CHUNK_MAX_ROWS_IF_UNSORTED,
-                                                    ChunkStoreConfig::ENV_CHUNK_MAX_BYTES,
+                                                    ChunkStoreCompactionConfig::ENV_CHUNK_MAX_ROWS,
+                                                    ChunkStoreCompactionConfig::ENV_CHUNK_MAX_ROWS_IF_UNSORTED,
+                                                    ChunkStoreCompactionConfig::ENV_CHUNK_MAX_BYTES,
                         )),
                     );
                 ui.end_row();

@@ -2,11 +2,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 
+use ahash::HashMap;
 use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
-use re_log_types::{EntityPath, StoreId, TimeInt, TimeType};
+use re_log_types::{EntityPath, StoreCroppingRange, StoreId, TimeInt, TimeType};
 use re_types_core::{ComponentDescriptor, ComponentType};
 
 use crate::{ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
@@ -22,6 +23,53 @@ pub struct ChunkStoreConfig {
     /// in some workloads, provided that the subscribers aren't needed (e.g. headless mode).
     pub enable_changelog: bool,
 
+    /// How incoming chunks will be compacted.
+    pub compaction: ChunkStoreCompactionConfig,
+
+    /// If present, will crop incoming chunks to the specified range for a single given timeline.
+    ///
+    /// Data for other timelines remains untouched.
+    /// Practically this affects only the index of a chunk and is not very effective at saving memory.
+    ///
+    /// This property is typically set via [`re_log_types::StoreInfo::cropping_range`].
+    pub cropping_range: Option<StoreCroppingRange>,
+}
+
+impl Default for ChunkStoreConfig {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+impl ChunkStoreConfig {
+    pub const DEFAULT: Self = Self {
+        enable_changelog: true,
+        compaction: ChunkStoreCompactionConfig::DEFAULT,
+        cropping_range: None,
+    };
+
+    /// [`Self::DEFAULT`], but with changelog disabled.
+    pub const CHANGELOG_DISABLED: Self = Self {
+        enable_changelog: false,
+        ..Self::DEFAULT
+    };
+
+    /// All features disabled.
+    pub const ALL_DISABLED: Self = Self {
+        enable_changelog: false,
+        compaction: ChunkStoreCompactionConfig::COMPACTION_DISABLED,
+        cropping_range: None,
+    };
+
+    /// [`Self::DEFAULT`], but with compaction entirely disabled.
+    pub const COMPACTION_DISABLED: Self = Self {
+        compaction: ChunkStoreCompactionConfig::COMPACTION_DISABLED,
+        ..Self::DEFAULT
+    };
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChunkStoreCompactionConfig {
     /// What is the threshold, in bytes, after which a [`Chunk`] cannot be compacted any further?
     ///
     /// This is a multi-dimensional trade-off:
@@ -40,7 +88,7 @@ pub struct ChunkStoreConfig {
     /// What is the threshold, in rows, after which a [`Chunk`] cannot be compacted any further?
     ///
     /// This specifically applies to time-sorted chunks.
-    /// See also [`ChunkStoreConfig::chunk_max_rows_if_unsorted`].
+    /// See also [`Self::chunk_max_rows_if_unsorted`].
     ///
     /// This is a multi-dimensional trade-off:
     /// * Larger chunks lead to less fixed overhead introduced by metadata, indices and such. Good.
@@ -58,7 +106,7 @@ pub struct ChunkStoreConfig {
     /// What is the threshold, in rows, after which a [`Chunk`] cannot be compacted any further?
     ///
     /// This specifically applies to _non_ time-sorted chunks.
-    /// See also [`ChunkStoreConfig::chunk_max_rows`].
+    /// See also [`Self::chunk_max_rows`].
     ///
     /// This is a multi-dimensional trade-off:
     /// * Larger chunks lead to less fixed overhead introduced by metadata, indices and such. Good.
@@ -84,18 +132,16 @@ pub struct ChunkStoreConfig {
     // Maybe at some point.
 }
 
-impl Default for ChunkStoreConfig {
+impl Default for ChunkStoreCompactionConfig {
     #[inline]
     fn default() -> Self {
         Self::DEFAULT
     }
 }
 
-impl ChunkStoreConfig {
+impl ChunkStoreCompactionConfig {
     /// Default configuration, applicable to most use cases, according to empirical testing.
     pub const DEFAULT: Self = Self {
-        enable_changelog: true,
-
         // This gives us 96 bytes per row (assuming a default limit of 4096 rows), which is enough to
         // fit a couple scalar columns, a RowId column, a handful of timeline columns, all the
         // necessary offsets, etc.
@@ -116,25 +162,7 @@ impl ChunkStoreConfig {
         chunk_max_bytes: 0,
         chunk_max_rows: 0,
         chunk_max_rows_if_unsorted: 0,
-        ..Self::DEFAULT
     };
-
-    /// [`Self::DEFAULT`], but with changelog disabled.
-    pub const CHANGELOG_DISABLED: Self = Self {
-        enable_changelog: false,
-        ..Self::DEFAULT
-    };
-
-    /// All features disabled.
-    pub const ALL_DISABLED: Self = Self {
-        enable_changelog: false,
-        chunk_max_bytes: 0,
-        chunk_max_rows: 0,
-        chunk_max_rows_if_unsorted: 0,
-    };
-
-    /// Environment variable to configure [`Self::enable_changelog`].
-    pub const ENV_STORE_ENABLE_CHANGELOG: &'static str = "RERUN_STORE_ENABLE_CHANGELOG";
 
     /// Environment variable to configure [`Self::chunk_max_bytes`].
     pub const ENV_CHUNK_MAX_BYTES: &'static str = "RERUN_CHUNK_MAX_BYTES";
@@ -159,18 +187,9 @@ impl ChunkStoreConfig {
     /// Returns a copy of `self`, overriding existing fields with values from the environment if
     /// they are present.
     ///
-    /// See [`Self::ENV_STORE_ENABLE_CHANGELOG`], [`Self::ENV_CHUNK_MAX_BYTES`], [`Self::ENV_CHUNK_MAX_ROWS`]
-    /// and [`Self::ENV_CHUNK_MAX_ROWS_IF_UNSORTED`].
+    /// See [`Self::ENV_CHUNK_MAX_BYTES`], [`Self::ENV_CHUNK_MAX_ROWS`] and [`Self::ENV_CHUNK_MAX_ROWS_IF_UNSORTED`].
     pub fn apply_env(&self) -> ChunkStoreResult<Self> {
         let mut new = self.clone();
-
-        if let Ok(s) = std::env::var(Self::ENV_STORE_ENABLE_CHANGELOG) {
-            new.enable_changelog = s.parse().map_err(|err| ChunkStoreError::ParseConfig {
-                name: Self::ENV_STORE_ENABLE_CHANGELOG,
-                value: s.clone(),
-                err: Box::new(err),
-            })?;
-        }
 
         if let Ok(s) = std::env::var(Self::ENV_CHUNK_MAX_BYTES) {
             new.chunk_max_bytes = s.parse().map_err(|err| ChunkStoreError::ParseConfig {
@@ -208,16 +227,14 @@ fn chunk_store_config() {
     // SAFETY: it's a test
     #[expect(unsafe_code)]
     unsafe {
-        std::env::set_var("RERUN_STORE_ENABLE_CHANGELOG", "false");
         std::env::set_var("RERUN_CHUNK_MAX_BYTES", "42");
         std::env::set_var("RERUN_CHUNK_MAX_ROWS", "666");
         std::env::set_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED", "999");
     };
 
-    let config = ChunkStoreConfig::from_env().unwrap();
+    let config = ChunkStoreCompactionConfig::from_env().unwrap();
 
-    let expected = ChunkStoreConfig {
-        enable_changelog: false,
+    let expected = ChunkStoreCompactionConfig {
         chunk_max_bytes: 42,
         chunk_max_rows: 666,
         chunk_max_rows_if_unsorted: 999,
@@ -391,7 +408,7 @@ impl ChunkStoreHandle {
 /// A complete chunk store: covers all timelines, all entities, everything.
 ///
 /// The chunk store _always_ works at the chunk level, whether it is for write & read queries or
-/// garbage collection. It is completely oblivious to individual rows.
+/// garbage collection. It is completely oblivious to individual rows other than for optionally cropping incoming data.
 ///
 /// Use the `Display` implementation for a detailed view of the internals.
 #[derive(Debug)]
@@ -422,6 +439,10 @@ pub struct ChunkStore {
     >,
 
     pub(crate) chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
+
+    /// For all cropped chunks (see [`ChunkStoreConfig::cropping_range`]),
+    /// this maps from their source chunk ID to the ID of the cropped chunk ID.
+    pub(crate) cropped_chunk_id_per_source_chunk_id: HashMap<ChunkId, ChunkId>,
 
     /// All [`ChunkId`]s currently in the store, indexed by the smallest [`RowId`] in each of them.
     ///
@@ -495,6 +516,7 @@ impl Clone for ChunkStore {
             type_registry: self.type_registry.clone(),
             per_column_metadata: self.per_column_metadata.clone(),
             chunks_per_chunk_id: self.chunks_per_chunk_id.clone(),
+            cropped_chunk_id_per_source_chunk_id: self.cropped_chunk_id_per_source_chunk_id.clone(),
             chunk_ids_per_min_row_id: self.chunk_ids_per_min_row_id.clone(),
             temporal_chunk_ids_per_entity_per_component: self
                 .temporal_chunk_ids_per_entity_per_component
@@ -519,6 +541,7 @@ impl std::fmt::Display for ChunkStore {
             type_registry: _,
             per_column_metadata: _,
             chunks_per_chunk_id,
+            cropped_chunk_id_per_source_chunk_id: _,
             chunk_ids_per_min_row_id: chunk_id_per_min_row_id,
             temporal_chunk_ids_per_entity_per_component: _,
             temporal_chunk_ids_per_entity: _,
@@ -581,6 +604,7 @@ impl ChunkStore {
             per_column_metadata: Default::default(),
             chunk_ids_per_min_row_id: Default::default(),
             chunks_per_chunk_id: Default::default(),
+            cropped_chunk_id_per_source_chunk_id: Default::default(),
             temporal_chunk_ids_per_entity_per_component: Default::default(),
             temporal_chunk_ids_per_entity: Default::default(),
             temporal_chunks_stats: Default::default(),
@@ -622,6 +646,14 @@ impl ChunkStore {
     #[inline]
     pub fn config(&self) -> &ChunkStoreConfig {
         &self.config
+    }
+
+    /// Sets the chunk cropping range that should be used from now on.
+    ///
+    /// Does *not* affect existing chunks, only newly incoming chunks.
+    #[inline]
+    pub fn set_cropping_range(&mut self, cropping_range: Option<StoreCroppingRange>) {
+        self.config.cropping_range = cropping_range;
     }
 
     /// Iterate over all chunks in the store, in ascending [`ChunkId`] order.

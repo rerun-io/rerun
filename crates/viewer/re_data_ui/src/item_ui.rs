@@ -718,8 +718,17 @@ pub fn entity_db_button_ui(
     }
     .unwrap_or("<unknown>".to_owned());
 
+    let cropping_postfix = if entity_db
+        .store_info()
+        .is_some_and(|store_info| store_info.cropping_range.is_some())
+    {
+        " (partial)"
+    } else {
+        ""
+    };
+
     let size = re_format::format_bytes(entity_db.total_size_bytes() as _);
-    let title = format!("{app_id_prefix}{recording_name} - {size}");
+    let title = format!("{app_id_prefix}{recording_name}{cropping_postfix} - {size}");
 
     let store_id = entity_db.store_id().clone();
     let item = re_viewer_context::Item::StoreId(store_id.clone());

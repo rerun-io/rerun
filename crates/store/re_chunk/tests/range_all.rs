@@ -1,0 +1,344 @@
+use std::borrow::Cow;
+
+use arrow::datatypes::DataType as ArrowDatatype;
+use nohash_hasher::IntMap;
+
+use re_chunk::{Chunk, RangeQuery, RowId, TimePoint, Timeline, TimelineName};
+use re_log_types::{
+    AbsoluteTimeRange,
+    example_components::{MyColor, MyLabel, MyPoint, MyPoints},
+};
+use re_types_core::{ComponentDescriptor, Loggable as _};
+
+// ---
+
+const ENTITY_PATH: &str = "my/entity";
+
+fn datatypes() -> IntMap<ComponentDescriptor, ArrowDatatype> {
+    [
+        (MyPoints::descriptor_points(), MyPoint::arrow_datatype()),
+        (MyPoints::descriptor_colors(), MyColor::arrow_datatype()),
+        (MyPoints::descriptor_labels(), MyLabel::arrow_datatype()),
+    ]
+    .into_iter()
+    .collect()
+}
+
+#[test]
+fn temporal_sorted() -> anyhow::Result<()> {
+    let row_id1 = RowId::new();
+    let row_id2 = RowId::new();
+    let row_id3 = RowId::new();
+
+    let timepoint1 = [
+        (Timeline::log_time(), 1000),
+        (Timeline::new_sequence("frame"), 1),
+    ];
+    let timepoint2 = [
+        (Timeline::log_time(), 1032),
+        (Timeline::new_sequence("frame"), 3),
+    ];
+    let timepoint3 = [
+        (Timeline::log_time(), 1064),
+        (Timeline::new_sequence("frame"), 5),
+    ];
+
+    let points1 = &[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)];
+    let points3 = &[
+        MyPoint::new(3.0, 3.0),
+        MyPoint::new(4.0, 4.0),
+        MyPoint::new(5.0, 5.0),
+    ];
+
+    let colors2 = &[MyColor::from_rgb(1, 1, 1)];
+
+    let labels2 = &[
+        MyLabel("a".into()),
+        MyLabel("b".into()),
+        MyLabel("c".into()),
+    ];
+
+    let chunk = Chunk::builder(ENTITY_PATH)
+        .with_component_batches(
+            row_id1,
+            timepoint1,
+            [(MyPoints::descriptor_points(), points1 as _)],
+        )
+        .with_component_batches(
+            row_id2,
+            timepoint2,
+            [
+                (MyPoints::descriptor_colors(), colors2 as _),
+                (MyPoints::descriptor_labels(), labels2 as _),
+            ],
+        )
+        .with_component_batches(
+            row_id3,
+            timepoint3,
+            [(MyPoints::descriptor_points(), points3 as _)],
+        )
+        .build()?;
+
+    {
+        let query =
+            RangeQuery::with_extras(TimelineName::new("frame"), AbsoluteTimeRange::EVERYTHING);
+
+        let expected = Cow::Borrowed(&chunk);
+        query_and_compare(&query, &chunk, expected);
+    }
+
+    {
+        let query =
+            RangeQuery::with_extras(TimelineName::log_time(), AbsoluteTimeRange::new(1020, 1050));
+
+        let expected = Cow::Owned(
+            Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
+                .with_sparse_component_batches(
+                    row_id2,
+                    timepoint2,
+                    [
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors2 as _)),
+                        (MyPoints::descriptor_labels(), Some(labels2 as _)),
+                    ],
+                )
+                .build_with_datatypes(&datatypes())?,
+        );
+        query_and_compare(&query, &chunk, expected);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn temporal_unsorted() -> anyhow::Result<()> {
+    let row_id1 = RowId::new();
+    let row_id2 = RowId::new();
+    let row_id3 = RowId::new();
+
+    let timepoint1 = [
+        (Timeline::log_time(), 1000),
+        (Timeline::new_sequence("frame"), 1),
+    ];
+    let timepoint2 = [
+        (Timeline::log_time(), 1032),
+        (Timeline::new_sequence("frame"), 3),
+    ];
+    let timepoint3 = [
+        (Timeline::log_time(), 1064),
+        (Timeline::new_sequence("frame"), 5),
+    ];
+
+    let points1 = &[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)];
+    let points3 = &[
+        MyPoint::new(3.0, 3.0),
+        MyPoint::new(4.0, 4.0),
+        MyPoint::new(5.0, 5.0),
+    ];
+
+    let colors2 = &[MyColor::from_rgb(1, 1, 1)];
+
+    let labels2 = &[
+        MyLabel("a".into()),
+        MyLabel("b".into()),
+        MyLabel("c".into()),
+    ];
+
+    let chunk = Chunk::builder(ENTITY_PATH)
+        .with_component_batches(
+            row_id2,
+            timepoint2,
+            [
+                (MyPoints::descriptor_colors(), colors2 as _),
+                (MyPoints::descriptor_labels(), labels2 as _),
+            ],
+        )
+        .with_component_batches(
+            row_id1,
+            timepoint1,
+            [(MyPoints::descriptor_points(), points1 as _)],
+        )
+        .with_component_batches(
+            row_id3,
+            timepoint3,
+            [(MyPoints::descriptor_points(), points3 as _)],
+        )
+        .build()?;
+
+    {
+        let query =
+            RangeQuery::with_extras(TimelineName::log_time(), AbsoluteTimeRange::EVERYTHING);
+        query_and_compare(&query, &chunk, Cow::Borrowed(&chunk));
+    }
+
+    {
+        let query =
+            RangeQuery::with_extras(TimelineName::log_time(), AbsoluteTimeRange::new(1020, 1050));
+
+        let expected = Cow::Owned(
+            Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
+                .with_sparse_component_batches(
+                    row_id2,
+                    timepoint2,
+                    [
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors2 as _)),
+                        (MyPoints::descriptor_labels(), Some(labels2 as _)),
+                    ],
+                )
+                .build_with_datatypes(&datatypes())?,
+        );
+        query_and_compare(&query, &chunk, expected);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn static_sorted() -> anyhow::Result<()> {
+    let row_id1 = RowId::new();
+    let row_id2 = RowId::new();
+    let row_id3 = RowId::new();
+
+    let timepoint = TimePoint::default();
+
+    let points1 = &[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)];
+    let points3 = &[
+        MyPoint::new(3.0, 3.0),
+        MyPoint::new(4.0, 4.0),
+        MyPoint::new(5.0, 5.0),
+    ];
+
+    let colors2 = &[MyColor::from_rgb(1, 1, 1)];
+
+    let labels2 = &[
+        MyLabel("a".into()),
+        MyLabel("b".into()),
+        MyLabel("c".into()),
+    ];
+
+    let chunk = Chunk::builder(ENTITY_PATH)
+        .with_component_batches(
+            row_id1,
+            timepoint.clone(),
+            [(MyPoints::descriptor_points(), points1 as _)],
+        )
+        .with_component_batches(
+            row_id2,
+            timepoint.clone(),
+            [
+                (MyPoints::descriptor_colors(), colors2 as _),
+                (MyPoints::descriptor_labels(), labels2 as _),
+            ],
+        )
+        .with_component_batches(
+            row_id3,
+            timepoint.clone(),
+            [(MyPoints::descriptor_points(), points3 as _)],
+        )
+        .build()?;
+
+    let queries = [
+        RangeQuery::with_extras(TimelineName::new("frame"), AbsoluteTimeRange::EVERYTHING),
+        RangeQuery::with_extras(TimelineName::log_time(), AbsoluteTimeRange::new(1020, 1050)),
+    ];
+    for query in queries {
+        query_and_compare(&query, &chunk, Cow::Borrowed(&chunk));
+    }
+
+    Ok(())
+}
+
+#[test]
+fn static_unsorted() -> anyhow::Result<()> {
+    let row_id1 = RowId::new();
+    let row_id2 = RowId::new();
+    let row_id3 = RowId::new();
+
+    let timepoint = TimePoint::default();
+
+    let points1 = &[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)];
+    let points3 = &[
+        MyPoint::new(3.0, 3.0),
+        MyPoint::new(4.0, 4.0),
+        MyPoint::new(5.0, 5.0),
+    ];
+
+    let colors2 = &[MyColor::from_rgb(1, 1, 1)];
+
+    let labels2 = &[
+        MyLabel("a".into()),
+        MyLabel("b".into()),
+        MyLabel("c".into()),
+    ];
+
+    let chunk = Chunk::builder(ENTITY_PATH)
+        .with_component_batches(
+            row_id3,
+            timepoint.clone(),
+            [(MyPoints::descriptor_points(), points3 as _)],
+        )
+        .with_component_batches(
+            row_id1,
+            timepoint.clone(),
+            [(MyPoints::descriptor_points(), points1 as _)],
+        )
+        .with_component_batches(
+            row_id2,
+            timepoint.clone(),
+            [
+                (MyPoints::descriptor_colors(), colors2 as _),
+                (MyPoints::descriptor_labels(), labels2 as _),
+            ],
+        )
+        .build()?;
+
+    let queries = [
+        RangeQuery::with_extras(TimelineName::new("frame"), AbsoluteTimeRange::EVERYTHING),
+        RangeQuery::with_extras(TimelineName::log_time(), AbsoluteTimeRange::new(1020, 1050)),
+    ];
+
+    for query in queries {
+        query_and_compare(&query, &chunk, Cow::Borrowed(&chunk));
+    }
+
+    Ok(())
+}
+
+// ---
+
+#[expect(clippy::needless_pass_by_value)] // We want a Cow here since its borrow state is part of what we're testing.
+fn query_and_compare(query: &RangeQuery, chunk: &Chunk, expected: Cow<'_, Chunk>) {
+    re_log::setup_logging();
+
+    let results = chunk.range_all_components(query);
+
+    eprintln!("Query: all @ {query:?}");
+    eprintln!("Data:\n{chunk}");
+    eprintln!("Expected:\n{expected}");
+    eprintln!("Results:\n{results}");
+
+    if matches!(expected, Cow::Borrowed(_)) {
+        assert!(
+            matches!(results, Cow::Borrowed(_)),
+            "expected unchanged, borrowed chunk",
+        );
+    } else {
+        assert!(
+            matches!(results, Cow::Owned(_)),
+            "expected new, owned chunk"
+        );
+    }
+
+    assert_eq!(
+        *expected,
+        *results,
+        "{}",
+        similar_asserts::SimpleDiff::from_str(
+            &format!("{results}"),
+            &format!("{expected}"),
+            "got",
+            "expected",
+        ),
+    );
+}

@@ -4,7 +4,7 @@ expression: "format!(\"{:240}\", store)"
 ---
 ChunkStore {
     id: StoreId(Recording, "test_app", "test_id")
-    config: ChunkStoreConfig { enable_changelog: true, chunk_max_bytes: 393216, chunk_max_rows: 4096, chunk_max_rows_if_unsorted: 1024 }
+    config: ChunkStoreConfig { enable_changelog: true, compaction: ChunkStoreCompactionConfig { chunk_max_bytes: 393216, chunk_max_rows: 4096, chunk_max_rows_if_unsorted: 1024 }, cropping_range: None }
     stats: {
         num_chunks: 1
         total_size_bytes: 1.1 KiB

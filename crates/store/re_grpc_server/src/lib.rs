@@ -1015,7 +1015,6 @@ mod tests {
     use super::*;
 
     use itertools::{Itertools as _, chain};
-    use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_encoding::Compression;
     use re_log_encoding::protobuf_conversions::{log_msg_from_proto, log_msg_to_proto};
@@ -1062,12 +1061,11 @@ mod tests {
             row_id: *RowId::new(),
             info: StoreInfo {
                 store_id: store_id.clone(),
-                cloned_from: None,
                 store_source: StoreSource::RustSdk {
                     rustc_version: String::new(),
                     llvm_version: String::new(),
                 },
-                store_version: Some(CrateVersion::LOCAL),
+                ..Default::default()
             },
         })
     }

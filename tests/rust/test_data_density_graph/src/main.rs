@@ -17,7 +17,7 @@ fn main() -> anyhow::Result<()> {
         .spawn_opts(&rerun::SpawnOptions {
             wait_for_bind: true,
             extra_env: {
-                use re_chunk_store::ChunkStoreConfig as C;
+                use re_chunk_store::ChunkStoreCompactionConfig as C;
                 vec![
                     (C::ENV_CHUNK_MAX_BYTES.into(), "0".into()),
                     (C::ENV_CHUNK_MAX_ROWS.into(), "0".into()),

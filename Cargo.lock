@@ -7932,7 +7932,6 @@ dependencies = [
  "crossbeam",
  "itertools 0.14.0",
  "parking_lot",
- "re_build_info",
  "re_byte_size",
  "re_chunk",
  "re_format",

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use re_log_types::{AbsoluteTimeRange, TimeInt, TimelineName};
 use re_types_core::ComponentDescriptor;
 
@@ -186,10 +188,13 @@ impl Chunk {
     ///
     /// An empty [`Chunk`] (i.e. 0 rows, but N columns) is returned if the `query` yields nothing.
     ///
-    /// Because the resulting chunk doesn't discard any column information, you can find extra relevant
-    /// information by inspecting the data, for examples timestamps on other timelines.
-    /// See [`Self::timeline_sliced`] and [`Self::component_sliced`] if you do want to filter this
+    /// Unless specified otherwise in the query's options, the resulting chunk doesn't discard any column information.
+    /// Therefore, you can find extra relevant information by inspecting the data, for examples timestamps on other timelines.
+    /// See [`RangeQueryOptions::keep_extra_timelines`], [`RangeQueryOptions::keep_extra_components`],
+    /// [`Self::timeline_sliced`] and [`Self::component_sliced`] if you do want to filter this
     /// extra data.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     //
     // TODO(apache/arrow-rs#5375): Since we don't have access to arrow's ListView yet, we must actually clone the
     // data if the chunk requires sorting.
@@ -208,7 +213,6 @@ impl Chunk {
 
         // Pre-slice the data if the caller allowed us: this will make further slicing
         // (e.g. the range query itself) much cheaper to compute.
-        use std::borrow::Cow;
         let chunk = if !keep_extra_timelines {
             Cow::Owned(self.timeline_sliced(*query.timeline()))
         } else {
@@ -266,6 +270,101 @@ impl Chunk {
             }
 
             chunk.row_sliced(start_index, end_index.saturating_sub(start_index))
+        }
+    }
+
+    /// Runs a [`RangeQuery`] filter on all components of a [`Chunk`].
+    ///
+    /// This behaves as a row-based filter: the result is a new [`Chunk`] that is vertically
+    /// sliced, sorted and filtered in order to only contain the row(s) relevant for the
+    /// specified `query`.
+    ///
+    /// The resulting [`Chunk`] is guaranteed to contain all the same columns has the queried
+    /// chunk: there is no horizontal slicing going on.
+    ///
+    /// An empty [`Chunk`] (i.e. 0 rows, but N columns) is returned if the `query` yields nothing.
+    ///
+    /// Unless specified otherwise in the query's options, the resulting chunk doesn't discard any column information.
+    /// Therefore, you can find extra relevant information by inspecting the data, for examples timestamps on other timelines.
+    /// See [`RangeQueryOptions::keep_extra_timelines`].
+    /// [`Self::timeline_sliced`] if you do want to filter this extra data.
+    ///
+    /// Returns an owned chunk only if any slicing on any timeline was required.
+    /// If the chunk was static or otherwise fully contained in the query's range, the returned chunk is `self`.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    pub fn range_all_components(&self, query: &RangeQuery) -> Cow<'_, Self> {
+        if self.is_empty() {
+            return Cow::Borrowed(self);
+        }
+
+        re_tracing::profile_function!(format!("{query:?}"));
+
+        let RangeQueryOptions {
+            keep_extra_timelines,
+            keep_extra_components: _, // We slice on all components, so we keep all of them.
+            include_extended_bounds,
+        } = query.options();
+
+        // Pre-slice the data if the caller allowed us: this will make further slicing
+        // (e.g. the range query itself) much cheaper to compute.
+        let chunk = if keep_extra_timelines
+            || self.timelines.len() == 1 && self.timelines.contains_key(query.timeline())
+        {
+            Cow::Borrowed(self)
+        } else {
+            Cow::Owned(self.timeline_sliced(*query.timeline()))
+        };
+
+        if chunk.is_static() {
+            // If a chunk is static there'snothing to do here.
+            // (unlike on range queries for a single component, there's nothing to filter out here)
+            chunk
+        } else {
+            // Is the chunk fully contained in the query's range?
+            if chunk
+                .timelines
+                .get(query.timeline())
+                .is_none_or(|time_column| query.range().contains_range(time_column.time_range))
+            {
+                return chunk;
+            }
+
+            let Some(is_sorted_by_time) = chunk
+                .timelines
+                .get(query.timeline())
+                .map(|time_column| time_column.is_sorted())
+            else {
+                return chunk;
+            };
+
+            let chunk = if is_sorted_by_time {
+                // Temporal, row-sorted, time-sorted chunk
+                chunk
+            } else {
+                // Temporal, unsorted chunk
+                Cow::Owned(chunk.sorted_by_timeline_if_unsorted(query.timeline()))
+            };
+
+            let Some(times) = chunk
+                .timelines
+                .get(query.timeline())
+                .map(|time_column| time_column.times_raw())
+            else {
+                return Cow::Owned(chunk.emptied());
+            };
+
+            let mut start_index =
+                times.partition_point(|&time| time < query.range().min().as_i64());
+            let mut end_index = times.partition_point(|&time| time <= query.range().max().as_i64());
+
+            // See `RangeQueryOptions::include_extended_bounds` for more information.
+            if include_extended_bounds {
+                start_index = start_index.saturating_sub(1);
+                end_index = usize::min(self.num_rows(), end_index.saturating_add(1));
+            }
+
+            Cow::Owned(chunk.row_sliced(start_index, end_index.saturating_sub(start_index)))
         }
     }
 }

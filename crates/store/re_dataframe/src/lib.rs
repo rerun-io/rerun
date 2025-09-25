@@ -8,8 +8,8 @@ pub use self::query::QueryHandle;
 
 #[doc(no_inline)]
 pub use self::external::re_chunk_store::{
-    ChunkStoreConfig, ChunkStoreHandle, Index, IndexRange, IndexValue, QueryExpression,
-    SparseFillStrategy, ViewContentsSelector,
+    ChunkStoreCompactionConfig, ChunkStoreConfig, ChunkStoreHandle, Index, IndexRange, IndexValue,
+    QueryExpression, SparseFillStrategy, ViewContentsSelector,
 };
 #[doc(no_inline)]
 pub use self::external::re_log_types::{

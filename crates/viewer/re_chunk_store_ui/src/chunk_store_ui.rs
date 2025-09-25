@@ -440,20 +440,34 @@ impl DatastoreUi {
                         .value_bool(chunk_store.config().enable_changelog),
                 );
 
+                let compaction_config = &chunk_store.config().compaction;
+
                 ui.list_item_flat_noninteractive(
                     list_item::PropertyContent::new("Chunk max byte").value_text(
-                        re_format::format_bytes(chunk_store.config().chunk_max_bytes as f64),
+                        re_format::format_bytes(compaction_config.chunk_max_bytes as f64),
                     ),
                 );
 
                 ui.list_item_flat_noninteractive(
                     list_item::PropertyContent::new("Chunk max rows")
-                        .value_uint(chunk_store.config().chunk_max_rows),
+                        .value_uint(compaction_config.chunk_max_rows),
                 );
 
                 ui.list_item_flat_noninteractive(
                     list_item::PropertyContent::new("Chunk max rows (unsorted)")
-                        .value_uint(chunk_store.config().chunk_max_rows_if_unsorted),
+                        .value_uint(compaction_config.chunk_max_rows_if_unsorted),
+                );
+
+                // If ranges are added over time the cropping range becomes a list that we don't keep
+                // track of right now.
+                // TODO(#11315): In the future we will want to reduce this to a mere highlighting feature and no longer need this at the store level
+                // as all data will be pulled on-demand from a server.
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Partial store")
+                        .value_bool(chunk_store.config().cropping_range.is_some()),
+                )
+                .on_hover_text(
+                    "If true, only a subset of the recording is presented in the viewer.",
                 );
             });
         });

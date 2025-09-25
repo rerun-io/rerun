@@ -344,6 +344,7 @@ impl ChunkStore {
                 type_registry: _,
                 per_column_metadata: _, // column metadata is additive only
                 chunks_per_chunk_id,
+                cropped_chunk_id_per_source_chunk_id,
                 chunk_ids_per_min_row_id,
                 temporal_chunk_ids_per_entity_per_component,
                 temporal_chunk_ids_per_entity,
@@ -430,6 +431,9 @@ impl ChunkStore {
                         }
                     }
                 }
+
+                cropped_chunk_id_per_source_chunk_id
+                    .retain(|_, cropped_chunk_id| !chunk_ids_dangling.contains(cropped_chunk_id));
 
                 diffs.extend(
                     chunk_ids_dangling
@@ -691,6 +695,9 @@ impl ChunkStore {
                 }
             }
         }
+
+        self.cropped_chunk_id_per_source_chunk_id
+            .retain(|_, cropped_chunk_id| !chunk_ids_removed.contains(cropped_chunk_id));
 
         {
             re_tracing::profile_scope!("last collect");

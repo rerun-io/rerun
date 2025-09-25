@@ -6,9 +6,10 @@ use itertools::Itertools as _;
 
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, EntityPath, RowId};
+use re_log_types::external::re_tuid::Tuid;
 
 use crate::{
-    ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreError,
+    ChunkStore, ChunkStoreChunkStats, ChunkStoreCompactionConfig, ChunkStoreDiff, ChunkStoreError,
     ChunkStoreEvent, ChunkStoreResult, ColumnMetadataState, store::ChunkIdSetPerTime,
 };
 
@@ -27,6 +28,11 @@ impl ChunkStore {
     /// * Trying to insert an unsorted chunk ([`Chunk::is_sorted`]) will fail with an error.
     /// * Inserting a duplicated [`ChunkId`] will result in a no-op.
     /// * Inserting an empty [`Chunk`] will result in a no-op.
+    ///
+    /// If the store has a cropping range, each incoming chunk will be range queried
+    /// to the specified cropping range on the specified timeline.
+    /// If a chunk that was previously cropped is inserted again,
+    /// the previous cropped chunk will first be removed from the store.
     pub fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ChunkStoreResult<Vec<ChunkStoreEvent>> {
         if chunk.components().is_empty() {
             // This can happen in 2 scenarios: A) a badly manually crafted chunk or B) an Indicator
@@ -42,24 +48,97 @@ impl ChunkStore {
             return Ok(vec![]);
         }
 
+        if !chunk.is_sorted() {
+            return Err(ChunkStoreError::UnsortedChunk);
+        }
+
+        re_tracing::profile_function!();
+
+        let mut diffs = Vec::new();
+
+        // If this chunk was previously cropped, remove it from the store.
+        // This is not just needed to keep memory usage down, but also to avoid row id collisions.
+        //
+        // Note that we do this before performing cropping which means that we might replace one cropped chunk with another.
+        // That's not perfectly accurate, since we want to keep the old cropping around, but good enough until we solve
+        // this in a better way https://github.com/rerun-io/rerun/issues/11315.
+        if let Some(cropped_chunk_id) = self
+            .cropped_chunk_id_per_source_chunk_id
+            .remove(&chunk.id())
+        {
+            re_log::debug!("Removing previously cropped chunk #{}", cropped_chunk_id);
+            diffs.extend(self.remove_chunk(cropped_chunk_id));
+        }
+
         if self.chunks_per_chunk_id.contains_key(&chunk.id()) {
             // We assume that chunk IDs are unique, and that reinserting a chunk has no effect.
             re_log::debug_once!(
                 "Chunk #{} was inserted more than once (this has no effect)",
                 chunk.id()
             );
-            return Ok(Vec::new());
+            return Ok(self.diffs_to_events_if_enabled(diffs));
         }
 
-        if !chunk.is_sorted() {
-            return Err(ChunkStoreError::UnsortedChunk);
-        }
+        // Crop chunk if requested.
+        // We do this via a range query on the cropping range.
+        //
+        // Note that this happens *after* we check whether the full chunk was already inserted.
+        // I.e. we don't perform cropping in that case as it would only add more duplicated data.
+        let cropped_chunk_arc;
+        let chunk = if let Some(cropping_range) = self.config.cropping_range {
+            let range_query = re_chunk::RangeQuery {
+                timeline: cropping_range.timeline,
+                range: cropping_range.range,
+                options: re_chunk::RangeQueryOptions {
+                    keep_extra_timelines: true,    // Don't change other timelines.
+                    keep_extra_components: true,   // Not applicable, as we query all components.
+                    include_extended_bounds: true, // Needed to make latest-at queries work as expected.
+                },
+            };
 
-        let Some(row_id_range) = chunk.row_id_range() else {
-            return Ok(Vec::new());
+            let cropped_chunk = chunk.range_all_components(&range_query);
+            if cropped_chunk.is_empty() {
+                return Ok(self.diffs_to_events_if_enabled(diffs));
+            }
+
+            match cropped_chunk {
+                std::borrow::Cow::Borrowed(_) => chunk,
+                std::borrow::Cow::Owned(new_chunk) => {
+                    // Give the new chunk a new unique chunk ID that's derived from its parent
+                    // and memorize where it came from.
+                    let source_chunk_id = chunk.id();
+                    let new_chunk_id = ChunkId::from_tuid(Tuid::from_nanos_and_inc(
+                        source_chunk_id.as_tuid().nanos_since_epoch(),
+                        re_log_types::hash::Hash64::hash((
+                            source_chunk_id.as_tuid().inc(),
+                            cropping_range,
+                        ))
+                        .hash64(),
+                    ));
+
+                    // Did we already insert this cropped chunk?
+                    if self.chunks_per_chunk_id.contains_key(&new_chunk_id) {
+                        re_log::debug_once!(
+                            "Cropped chunk #{} was inserted more than once (this has no effect)",
+                            new_chunk_id
+                        );
+                        return Ok(self.diffs_to_events_if_enabled(diffs));
+                    }
+
+                    self.cropped_chunk_id_per_source_chunk_id
+                        .insert(source_chunk_id, new_chunk_id);
+                    let new_chunk = new_chunk.with_id(new_chunk_id);
+                    cropped_chunk_arc = Arc::new(new_chunk);
+                    &cropped_chunk_arc
+                }
+            }
+        } else {
+            chunk
         };
 
-        re_tracing::profile_function!();
+        let Some(row_id_range) = chunk.row_id_range() else {
+            return Ok(self.diffs_to_events_if_enabled(diffs));
+        };
 
         self.insert_id += 1;
 
@@ -419,27 +498,30 @@ impl ChunkStore {
             }
         }
 
-        let events = if self.config.enable_changelog {
-            let events: Vec<_> = diffs
-                .into_iter()
-                .map(|diff| ChunkStoreEvent {
-                    store_id: self.id.clone(),
-                    store_generation: self.generation(),
-                    event_id: self
-                        .event_id
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                    diff,
-                })
-                .collect();
+        Ok(self.diffs_to_events_if_enabled(diffs))
+    }
 
-            Self::on_events(&events);
+    /// If the store has changelog enabled, convert the diffs to events and send them to the subscribers.
+    fn diffs_to_events_if_enabled(&self, diffs: Vec<ChunkStoreDiff>) -> Vec<ChunkStoreEvent> {
+        if !self.config.enable_changelog {
+            return Vec::new();
+        }
 
-            events
-        } else {
-            Vec::new()
-        };
+        let events: Vec<_> = diffs
+            .into_iter()
+            .map(|diff| ChunkStoreEvent {
+                store_id: self.id.clone(),
+                store_generation: self.generation(),
+                event_id: self
+                    .event_id
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                diff,
+            })
+            .collect();
 
-        Ok(events)
+        Self::on_events(&events);
+
+        events
     }
 
     /// Finds the most appropriate candidate for compaction.
@@ -459,12 +541,11 @@ impl ChunkStore {
             // Make sure to early exit if the newly added Chunk is already beyond the compaction thresholds
             // on its own.
 
-            let ChunkStoreConfig {
-                enable_changelog: _,
+            let ChunkStoreCompactionConfig {
                 chunk_max_bytes,
                 chunk_max_rows,
                 chunk_max_rows_if_unsorted,
-            } = self.config;
+            } = self.config.compaction;
 
             let total_bytes = <Chunk as SizeBytes>::total_size_bytes(chunk);
             let is_below_bytes_threshold = total_bytes <= chunk_max_bytes;
@@ -484,12 +565,11 @@ impl ChunkStore {
         let mut candidates_below_threshold: HashMap<ChunkId, bool> = HashMap::default();
         let mut check_if_chunk_below_threshold =
             |store: &Self, candidate_chunk_id: ChunkId| -> bool {
-                let ChunkStoreConfig {
-                    enable_changelog: _,
+                let ChunkStoreCompactionConfig {
                     chunk_max_bytes,
                     chunk_max_rows,
                     chunk_max_rows_if_unsorted,
-                } = store.config;
+                } = store.config.compaction;
 
                 *candidates_below_threshold
                     .entry(candidate_chunk_id)
@@ -613,6 +693,7 @@ impl ChunkStore {
             type_registry: _,
             per_column_metadata,
             chunks_per_chunk_id,
+            cropped_chunk_id_per_source_chunk_id,
             chunk_ids_per_min_row_id,
             temporal_chunk_ids_per_entity_per_component,
             temporal_chunk_ids_per_entity,
@@ -686,7 +767,16 @@ impl ChunkStore {
             .collect_vec();
 
         let dropped_temporal_chunks = dropped_temporal_chunks
-            .filter_map(|chunk_id| chunks_per_chunk_id.remove(&chunk_id))
+            .filter_map(|chunk_id| {
+                let chunk = chunks_per_chunk_id.remove(&chunk_id);
+
+                // Remove from map of cropped chunk IDs.
+                // Only need to do this for temporal chunks, as static chunks are never cropped.
+                cropped_chunk_id_per_source_chunk_id
+                    .retain(|_, cropped_chunk_id| *cropped_chunk_id != chunk_id);
+
+                chunk
+            })
             .inspect(|chunk| {
                 *temporal_chunks_stats -= ChunkStoreChunkStats::from_chunk(chunk);
             });
@@ -724,7 +814,7 @@ mod tests {
     };
     use similar_asserts::assert_eq;
 
-    use crate::ChunkStoreDiffKind;
+    use crate::{ChunkStoreDiffKind, store::ChunkStoreConfig};
 
     use super::*;
 
@@ -1173,9 +1263,12 @@ mod tests {
                 re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
                 ChunkStoreConfig {
                     enable_changelog: false,
-                    chunk_max_bytes: u64::MAX,
-                    chunk_max_rows: u64::MAX,
-                    chunk_max_rows_if_unsorted: u64::MAX,
+                    compaction: ChunkStoreCompactionConfig {
+                        chunk_max_bytes: u64::MAX,
+                        chunk_max_rows: u64::MAX,
+                        chunk_max_rows_if_unsorted: u64::MAX,
+                    },
+                    ..Default::default()
                 },
             );
 
@@ -1202,9 +1295,12 @@ mod tests {
                 re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
                 ChunkStoreConfig {
                     enable_changelog: false,
-                    chunk_max_bytes: u64::MAX,
-                    chunk_max_rows: u64::MAX,
-                    chunk_max_rows_if_unsorted: u64::MAX,
+                    compaction: ChunkStoreCompactionConfig {
+                        chunk_max_bytes: u64::MAX,
+                        chunk_max_rows: u64::MAX,
+                        chunk_max_rows_if_unsorted: u64::MAX,
+                    },
+                    ..Default::default()
                 },
             );
 
