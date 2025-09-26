@@ -66,7 +66,7 @@ enum State {
     Message(crate::codec::file::MessageHeader),
 
     /// Stop reading
-    Done,
+    Aborted,
 }
 
 impl StreamDecoder {
@@ -120,11 +120,12 @@ impl StreamDecoder {
                     let (version, options) = match options_from_bytes(header) {
                         Ok(ok) => ok,
                         Err(err) => {
+                            // We expected a header, but didn't find one!
                             if is_first_header {
                                 return Err(err);
                             } else {
                                 re_log::error!("Trailing bytes in rrd stream: {header:?} ({err})");
-                                self.state = State::Done;
+                                self.state = State::Aborted;
                                 return Ok(None);
                             }
                         }
@@ -199,7 +200,7 @@ impl StreamDecoder {
                     }
                 }
             }
-            State::Done => {
+            State::Aborted => {
                 return Ok(None);
             }
         }
