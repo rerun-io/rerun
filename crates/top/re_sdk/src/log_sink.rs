@@ -595,18 +595,32 @@ impl LogSink for GrpcSink {
 }
 
 // ----------------------------------------------------------------------------
+//
+// TODO:
+// * Move to own file.
+// * Better names.
 
-trait Transformation: Send + Sync + 'static {
+pub trait PipelineTransform: Send + Sync + 'static {
     fn apply(&self, msg: LogMsg) -> Vec<LogMsg>;
+
+    fn to_sink<S: LogSink>(self, sink: S) -> Pipeline<S, Self>
+    where
+        Self: Sized,
+    {
+        Pipeline {
+            sink,
+            transform: self,
+        }
+    }
 }
 
 /// A sink which can transform a `LogMsg` and forward the result to an underlying backing `LogSink`.
-pub struct TransformSink<S: LogSink, T: Transformation> {
+pub struct Pipeline<S: LogSink, T: PipelineTransform> {
     sink: S,
     transform: T,
 }
 
-impl<S: LogSink, T: Transformation> TransformSink<S, T> {
+impl<S: LogSink, T: PipelineTransform> Pipeline<S, T> {
     /// Create a new `TransformSink` with the given transform function.
     #[inline]
     pub fn new<F>(sink: S, transform: T) -> Self {
@@ -614,7 +628,7 @@ impl<S: LogSink, T: Transformation> TransformSink<S, T> {
     }
 }
 
-impl<S: LogSink, T: Transformation> LogSink for TransformSink<S, T> {
+impl<S: LogSink, T: PipelineTransform> LogSink for Pipeline<S, T> {
     fn send(&self, msg: re_log_types::LogMsg) {
         self.sink.send_all(self.transform.apply(msg))
     }
