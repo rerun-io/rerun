@@ -734,11 +734,22 @@ pub trait UiExt {
             .at_least(ui.spacing().interact_size.y)
             .at_least(tokens.small_icon_size.y);
 
-        let show_copy_button = ui.is_enabled()
-            && ui.rect_contains_pointer(egui::Rect::from_x_y_ranges(
-                ui.clip_rect().x_range(),
-                view_rect.y_range().expand(ui.spacing().item_spacing.y),
-            ));
+        let show_copy_button = {
+            let enough_space = view_rect.width() > desired_size.x + icon_width_plus_padding;
+
+            let long_enough_text = raw_text.chars().count() > 4;
+
+            let id = ui.next_auto_id();
+            let contains_pointer = ui.ctx().read_response(id).is_some_and(|last_response| {
+                ui.rect_contains_pointer(
+                    last_response
+                        .interact_rect
+                        .expand2(ui.spacing().item_spacing),
+                )
+            });
+
+            ui.is_enabled() && (enough_space || long_enough_text) && contains_pointer
+        };
 
         if show_copy_button {
             desired_size.x = (desired_size.x + icon_width_plus_padding).at_most(view_rect.width());
@@ -819,27 +830,29 @@ pub trait UiExt {
                     tokens.small_icon_size,
                 );
 
-                let copy_response = ui.allocate_rect(copy_rect, egui::Sense::click());
-
-                let copy_visuals = ui.style().interact(&copy_response);
-                let color = if copy_response.hovered() {
-                    copy_visuals.weak_bg_fill
-                } else {
-                    visuals.weak_bg_fill
-                };
-
-                ui.painter().rect_filled(
-                    copy_rect.expand(copy_visuals.expansion),
-                    visuals.corner_radius,
-                    color,
+                let shape_idx = ui.painter().add(egui::Shape::Noop);
+                let copy_response = ui.place(
+                    copy_rect,
+                    ui.small_icon_button_widget(&icons::COPY, "Copy")
+                        .frame(false),
                 );
 
-                let icon_tint = copy_visuals.fg_stroke.color;
-                icons::COPY
-                    .as_image()
-                    .tint(icon_tint)
-                    .alt_text("Copy")
-                    .paint_at(ui, copy_rect);
+                let copy_visuals = ui.style().interact(&copy_response);
+
+                let color = if !copy_response.contains_pointer() {
+                    visuals.weak_bg_fill
+                } else {
+                    copy_visuals.weak_bg_fill
+                };
+
+                ui.painter().set(
+                    shape_idx,
+                    egui::Shape::rect_filled(
+                        copy_response.rect.expand(copy_visuals.expansion),
+                        visuals.corner_radius,
+                        color,
+                    ),
+                );
 
                 if copy_response.clicked() {
                     re_log::info!("Copied {raw_text:?}");
