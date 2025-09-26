@@ -36,7 +36,7 @@ default = [
 ]
 
 ## Support the `rerun auth` command
-auth = ["dep:re_viewer", "re_auth/cli"]
+auth = ["re_auth/cli"]
 
 ## Enable anonymized telemetry using our analytics SDK.
 analytics = [
@@ -105,6 +105,7 @@ perf_telemetry = [
 ## Add support for the [`run()`] function, which acts like a main-function for a CLI,
 ## acting the same as [the `rerun` binary](https://crates.io/crates/rerun-cli).
 run = [
+  "auth",
   "clap",
   "dep:re_chunk_store",
   "dep:re_crash_handler",
@@ -113,7 +114,6 @@ run = [
   "re_log_encoding/encoder",
   "sdk",
   "unindent",
-  "auth",
 ]
 
 ## Embed the Rerun SDK & built-in types and re-export all of their public symbols.

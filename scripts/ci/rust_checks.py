@@ -262,6 +262,7 @@ def denied_sdk_deps(results: list[Result]) -> None:
     # They are ordered from "big to small" to make sure the bigger leaks are caught & reported first.
     # (e.g. `re_viewer` depends on `rfd` which is also disallowed, but if re_viewer is leaking, only report `re_viewer`)
     disallowed_dependencies = [
+        "eframe",
         "re_viewer",
         "wgpu",
         "egui",
@@ -272,27 +273,28 @@ def denied_sdk_deps(results: list[Result]) -> None:
         "wayland-sys",  # Linux windowing.
     ]
 
-    def check_sdk_tree_with_default_features(tree_output: str) -> str | None:
+    def check_sdk_tree_with_default_features(tree_output: str, features: str) -> str | None:
         for disallowed_dependency in disallowed_dependencies:
             if disallowed_dependency in tree_output:
                 return (
-                    f"{disallowed_dependency} showed up in the SDK's dependency tree when building with default features. "
-                    "This dependency should only ever show up if the `run` feature is enabled. "
+                    f"{disallowed_dependency} showed up in the SDK's dependency tree when building with features={features}"
+                    "This dependency should only ever show up if the `native_viewer` feature is enabled. "
                     f"Full dependency tree:\n{tree_output}"
                 )
 
         return None
 
-    for target in deny_targets:
-        result = run_cargo(
-            "tree",
-            # -f '{lib}' is used here because otherwise cargo tree would print links to repositories of patched crates
-            # which would cause false positives e.g. when checking for egui.
-            f"-p rerun --target {target} -f '{{lib}}'",
-            output_checks=check_sdk_tree_with_default_features,
-        )
-        result.command = f"Check dependencies in `{result.command}`"
-        results.append(result)
+    for features in ["default", "default,auth,oss_server,perf_telemetry,web_viewer"]:
+        for target in deny_targets:
+            result = run_cargo(
+                "tree",
+                # -f '{lib}' is used here because otherwise cargo tree would print links to repositories of patched crates
+                # which would cause false positives e.g. when checking for egui.
+                f"-p rerun --target {target} -f '{{lib}}' -F {features}",
+                output_checks=lambda output: check_sdk_tree_with_default_features(output, features),
+            )
+            result.command = f"Check dependencies in `{result.command}`"
+            results.append(result)
 
 
 def wasm(results: list[Result]) -> None:
