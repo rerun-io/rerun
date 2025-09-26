@@ -7,7 +7,12 @@ As of Rerun 0.15, the state of the [blueprint](../../reference/viewer/blueprint.
 Rerun SDK.
 
 In the initial 0.15 release, the APIs are still somewhat limited and only available in the Python SDK.
-Future releases will add support for the full scope of blueprint. See issues: [#5519](https://github.com/rerun-io/rerun/issues/5519), [#5520](https://github.com/rerun-io/rerun/issues/5520), [#5521](https://github.com/rerun-io/rerun/issues/5521).
+Future releases will add support for the full scope of blueprint. See issues: [#5520](https://github.com/rerun-io/rerun/issues/5520), [#5521](https://github.com/rerun-io/rerun/issues/5521).
+
+<!--
+    TODO(#5520)
+    TODO(#5521)
+-->
 
 ## Blueprint API overview
 

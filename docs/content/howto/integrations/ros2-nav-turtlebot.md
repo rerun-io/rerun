@@ -12,6 +12,8 @@ that subscribes to some common ROS topics and logs them to Rerun.
 For information on future plans to enable more native ROS support
 see [#1537](https://github.com/rerun-io/rerun/issues/1537)
 
+<!-- TODO(#1537) -->
+
 The following is primarily intended for existing ROS 2 users. It will not spend much time
 covering how to use ROS 2 itself. If you are a Rerun user that is curious about ROS,
 please consult the [ROS 2 Documentation](https://docs.ros.org/en/humble/index.html) instead.
@@ -109,16 +111,16 @@ the environment.
 
 If you are familiar with the turtlebot nav example and rviz, this view will likely be familiar:
 
--   `map/box` is a placeholder for the map. (This will eventually be a map: [#1531](https://github.com/rerun-io/rerun/issues/1531).)
+-   `map/box` is a placeholder for the map. (This will eventually be a map: [#1531](https://github.com/rerun-io/rerun/issues/1531).) <!-- TODO(#1531) -->
 -   `map/robot` is a transform representing the robot pose logged as a rigid [transform3d](../../reference/types/archetypes/transform3d.md).
 -   `map/robot/urdf` contains the `URDF` logged as a [mesh](../../reference/types/archetypes/mesh3d.md).
 -   `map/robot/scan` contains a `LaserScan` msg logged as a [linestrip3d](../../reference/types/archetypes/line_strips3d.md). (This will eventually be a
-    native type: [#1534](https://github.com/rerun-io/rerun/issues/1534).)
+    native type: [#1534](https://github.com/rerun-io/rerun/issues/1534).) <!-- TODO(#1534) -->
 -   `map/robot/camera` contains a `CameraInfo` msg logged as a [pinhole](../../reference/types/archetypes/pinhole.md) transform.
 -   `map/robot/camera/img` contains an `Image` msg logged as an [image](../../reference/types/archetypes/image.md).
 -   `map/robot/camera/points` contains a `PointCloud2` msg logged as a [point3d](../../reference/types/archetypes/points3d.md).
 -   `map/points` contains a second copy of `PointCloud2` with a different transform. (This is a workaround until Rerun
-    has support for ROS-style fixed frames [#1522](https://github.com/rerun-io/rerun/issues/1522).)
+    has support for ROS-style fixed frames [#1522](https://github.com/rerun-io/rerun/issues/1522).) <!-- TODO(#1522) -->
 -   `odometry/vel` is a plot of the linear velocity of the robot logged as a [scalar](../../reference/types/archetypes/scalars.md).
 -   `odometry/ang_vel` is a plot of the angular velocity of the robot logged as a [scalar](../../reference/types/archetypes/scalars.md).
 
@@ -331,7 +333,7 @@ def points_callback(self, points: PointCloud2) -> None:
 ### LaserScan to rr.LineStrips3D
 
 Rerun does not yet have native support for a `LaserScan` style primitive so we need
-to do a bit of additional transformation logic (see: [#1534](https://github.com/rerun-io/rerun/issues/1534).)
+to do a bit of additional transformation logic (see: [#1534](https://github.com/rerun-io/rerun/issues/1534).) <!-- TODO(#1534) -->
 
 First, we convert the scan into a point-cloud using the `laser_geometry` package.
 After converting to a point-cloud, we extract the pts just as above with `PointCloud2`.
@@ -428,7 +430,7 @@ Back in `rerun_urdf.log_scene` all the code is doing is recursively walking thro
 the trimesh scene graph. For each node, it extracts the transform to the parent,
 which it logs via `rr.Transform3D` before then using `rr.Mesh3D` to send the vertices,
 indices, and normals from the trimesh geometry. This code is almost entirely
-URDF-independent and is a good candidate for a future Python API ([#1536](https://github.com/rerun-io/rerun/issues/1536).)
+URDF-independent and is a good candidate for a future Python API ([#1536](https://github.com/rerun-io/rerun/issues/1536).) <!-- TODO(#1536) -->
 
 ```python
 node_data = scene.graph.get(frame_to=node, frame_from=parent)

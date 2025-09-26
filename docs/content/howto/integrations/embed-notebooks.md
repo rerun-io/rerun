@@ -15,6 +15,7 @@ Rerun has been tested with:
 -   [Google Colab](https://colab.research.google.com/)
 
 To begin, install the `rerun-sdk` package with the `notebook` extra:
+
 ```sh
 pip install rerun-sdk[notebook]
 ```
@@ -63,6 +64,8 @@ This is similar to calling `rr.connect_grpc()` or `rr.serve()` in that it config
 Note that the call to `rr.notebook_show()` drains the recording of its data. This means that any subsequent calls to `rr.notebook_show()`
 will not result in the same data being displayed, because it has already been removed from the recording.
 Support for this is tracked in [#6612](https://github.com/rerun-io/rerun/issues/6612).
+
+<!-- TODO(#6612) -->
 
 If you wish to start a new recording, you can call `rr.init()` again.
 
@@ -214,3 +217,5 @@ If you encounter the issue, you can try to use the `save()` API to save the data
 
 We are actively working on improving the notebook experience and welcome any feedback or suggestions.
 The ongoing roadmap is being tracked in [GitHub issue #1815](https://github.com/rerun-io/rerun/issues/1815).
+
+<!-- TODO(#1815) -->

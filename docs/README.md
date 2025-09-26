@@ -24,6 +24,10 @@ Do not push directly to the `docs-latest` branch! To update the docs, either [cr
 
 ## Special syntax
 
+### Issue Links
+
+Make sure to include a comment in the format `<-- TODO(#<value>) -->` so that our automation can detect the underlying issue has been resolved.
+
 ### Frontmatter
 
 YAML frontmatter at the top of the Markdown file is used for metadata:

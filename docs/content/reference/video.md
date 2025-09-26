@@ -5,10 +5,10 @@ order: 400
 
 A stream of images (like those produced by a camera) can be logged to Rerun in several different ways:
 
-* Uncompressed, as many [`Image`](../reference/types/archetypes/image.md)s
-* Compressed as many [`EncodedImage`](../reference/types/archetypes/encoded_image.md)s, using e.g. JPEG.
-* Compressed as a single [`AssetVideo`](../reference/types/archetypes/asset_video.md), using e.g. MP4.
-* Compressed as a series of encoded video samples using [`VideoStream`](../reference/types/archetypes/video_stream.md), using e.g. H.264 encoded frames.
+-   Uncompressed, as many [`Image`](../reference/types/archetypes/image.md)s
+-   Compressed as many [`EncodedImage`](../reference/types/archetypes/encoded_image.md)s, using e.g. JPEG.
+-   Compressed as a single [`AssetVideo`](../reference/types/archetypes/asset_video.md), using e.g. MP4.
+-   Compressed as a series of encoded video samples using [`VideoStream`](../reference/types/archetypes/video_stream.md), using e.g. H.264 encoded frames.
 
 These alternatives range on a scale of "simple, lossless, and big" to "complex, lossy, and small".
 
@@ -21,8 +21,9 @@ This is also very simple to do, and the Python logging SDK has built-in support 
 
 Finally, for the best compression ratio, you can encode the images as an encoded video.
 There are two options to choose from:
-* Raw video frames [`VideoStream`](../reference/types/archetypes/video_stream.md)
-* Video files using [`AssetVideo`](../reference/types/archetypes/asset_video.md)
+
+-   Raw video frames [`VideoStream`](../reference/types/archetypes/video_stream.md)
+-   Video files using [`AssetVideo`](../reference/types/archetypes/asset_video.md)
 
 ⚠️ Do not use compressed video if you need accurate pixel replication:
 this is not only due to the obvious detail loss on encoding,
@@ -44,20 +45,12 @@ video asset file to be in Viewer memory before decoding can begin.
 Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/latest/examples/python/camera_video_stream) example to learn how to stream live video to Rerun.
 
 Current limitations of `VideoStream`:
-* [#9815](https://github.com/rerun-io/rerun/issues/9815): Decoding on native is generally slower than decoding in the browser right now.
-  This can cause increased latency and in some cases may even stop video playback.
-* [#10184](https://github.com/rerun-io/rerun/issues/10184), [#10186](https://github.com/rerun-io/rerun/issues/10186): [`VideoStream`](../reference/types/archetypes/video_stream.md) only supports H.264 & H.265 at this point.
-* [#10090](https://github.com/rerun-io/rerun/issues/10090): B-frames are not yet supported for [`VideoStream`](../reference/types/archetypes/video_stream.md).
-* [#10422](https://github.com/rerun-io/rerun/issues/10422): [`VideoFrameReference`](../reference/types/archetypes/video_frame_reference.md) does not yet work with [`VideoStream`](../reference/types/archetypes/video_stream.md).
 
-<!--
-Discoverable for scripts/zombie_todos.py:
-TODO(#9815): fix above if ticket is outdated.
-TODO(#10184): fix above if ticket is outdated.
-TODO(#10186): fix above if ticket is outdated.
-TODO(#10090): fix above if ticket is outdated.
-TODO(#10422): fix above if ticket is outdated.
--->
+-   [#9815](https://github.com/rerun-io/rerun/issues/9815): Decoding on native is generally slower than decoding in the browser right now.
+    This can cause increased latency and in some cases may even stop video playback. <!-- TODO(#9815) -->
+-   [#10184](https://github.com/rerun-io/rerun/issues/10184), [#10186](https://github.com/rerun-io/rerun/issues/10186): [`VideoStream`](../reference/types/archetypes/video_stream.md) only supports H.264 & H.265 at this point. <!-- TODO(#10184,10186) -->
+-   [#10090](https://github.com/rerun-io/rerun/issues/10090): B-frames are not yet supported for [`VideoStream`](../reference/types/archetypes/video_stream.md).<!-- TODO(#10090) -->
+-   [#10422](https://github.com/rerun-io/rerun/issues/10422): [`VideoFrameReference`](../reference/types/archetypes/video_frame_reference.md) does not yet work with [`VideoStream`](../reference/types/archetypes/video_stream.md). <!-- TODO(#10422) -->
 
 ### Export MP4 from RRD (remuxing)
 
@@ -65,7 +58,6 @@ Sample data from [`VideoStream`](../reference/types/archetypes/video_stream.md) 
 and remuxed to mp4 without re-encoding the video as demonstrated in [this sample](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/archetypes/video_stream_query_and_mux.py#speculative-link).
 
 Check the [doc page on retrieving data](../howto/dataframe-api.md) to learn more about dataframe queries in general.
-
 
 ## Video files
 
@@ -77,12 +69,7 @@ To ease this, the SDK's `read_frame_timestamps_nanos` utility allows to read out
 
 snippet: archetypes/video_auto_frames
 
-[#7354](https://github.com/rerun-io/rerun/issues/7354): Currently, only MP4 files are supported.
-
-<!--
-Discoverable for scripts/zombie_todos.py:
-TODO(#7354): fix above if ticket is outdated.
--->
+[#7354](https://github.com/rerun-io/rerun/issues/7354): Currently, only MP4 files are supported. <!-- TODO(#7354) -->
 
 ## Codec support in detail
 
@@ -92,10 +79,10 @@ Codec support varies in the web & native viewer:
 
 |            | Browser | Native |
 | ---------- | ------- | ------ |
-| AV1        | ✅       | 🟧      |
-| H.264/avc  | ✅       | ✅      |
-| H.265/hevc | 🟧       | ✅      |
-| VP9        | ✅       | ❌      |
+| AV1        | ✅      | 🟧     |
+| H.264/avc  | ✅      | ✅     |
+| H.265/hevc | 🟧      | ✅     |
+| VP9        | ✅      | ❌     |
 
 <!--
 for web codecs see https://www.w3.org/TR/webcodecs-codec-registry/#video-codec-registry
@@ -118,8 +105,9 @@ In cases where encoding time matters, we recommend H.264/avc.
 AV1 is supported out of the box using a software decoder paired with gpu based image conversion.
 
 Current limitations:
-* [#7755](https://github.com/rerun-io/rerun/issues/7755): AV1 is supported on all native builds exception on Linux ARM.
-* [#10184](https://github.com/rerun-io/rerun/issues/10184): AV1 is not yet supported for the `VideoStream` archetype.
+
+-   [#7755](https://github.com/rerun-io/rerun/issues/7755): AV1 is supported on all native builds exception on Linux ARM.
+-   [#10184](https://github.com/rerun-io/rerun/issues/10184): AV1 is not yet supported for the `VideoStream` archetype.
 
 <!--
 Discoverable for scripts/zombie_todos.py:
@@ -136,9 +124,11 @@ By default rerun will look for a system installed `FFmpeg` installation in `PATH
 but you can specify a custom path in the viewer's settings.
 
 If you select a video that failed to play due to missing or incompatible `FFmpeg` binaries it will offer a download link to a build of `FFmpeg` for your platform.
+
 <!-- TODO(#8004): there should be a download button that updates the path in the settings -->
 
 ### Web viewer
+
 Video playback in the Rerun Web Viewer is done using the browser's own video decoder, so the exact supported codecs depend on your browser.
 
 Overall, we recommend using Chrome or another Chromium-based browser, as it seems to have the best video support as of writing.
@@ -155,28 +145,30 @@ We tested the following codecs in more detail:
 
 |            | Linux Firefox | Linux Chrome[^1] | macOS Firefox | macOS Chrome | macOS Safari | Windows Firefox | Windows Chrome[^2] |
 | ---------- | ------------- | ---------------- | ------------- | ------------ | ------------ | --------------- | ------------------ |
-| AV1        | ✅             | ✅                | ✅             | ✅            | 🚧[^3]        | ✅               | ✅                  |
-| H.264/avc  | ✅             | ✅                | ✅             | ✅            | ✅            | ✅               | ✅                  |
-| H.265/hevc | ❌             | ❌                | ❌             | ✅            | 🚧[^4]        | ❌               | 🚧[^5]              |
+| AV1        | ✅            | ✅               | ✅            | ✅           | 🚧[^3]       | ✅              | ✅                 |
+| H.264/avc  | ✅            | ✅               | ✅            | ✅           | ✅           | ✅              | ✅                 |
+| H.265/hevc | ❌            | ❌               | ❌            | ✅           | 🚧[^4]       | ❌              | 🚧[^5]             |
 
 [^1]: Any Chromium-based browser should work, but we don't test all of them.
-[^2]: Chrome on Windows has been observed to stutter on playback. It can be mitigated by [using software decoding](https://rerun.io/docs/getting-started/troubleshooting#video-stuttering), but this may lead to high memory usage. See [#7595](https://github.com/rerun-io/rerun/issues/7595).
+[^2]: Chrome on Windows has been observed to stutter on playback. It can be mitigated by [using software decoding](https://rerun.io/docs/getting-started/troubleshooting#video-stuttering), but this may lead to high memory usage. See [#7595](https://github.com/rerun-io/rerun/issues/7595). <!-- TODO(#7595) -->
 [^3]: Safari/WebKit does not support AV1 decoding except on [Apple Silicon devices with hardware support](https://webkit.org/blog/14445/webkit-features-in-safari-17-0/).
 [^4]: Safari/WebKit has been observed suttering when playing `hvc1` but working fine with `hevc1`. Despite support being advertised Safari 16.5 has been observed not support H.265 decoding.
 [^5]: Only supported if hardware encoding is available. Therefore always affected by Windows stuttering issues, see above.
 
 Beyond this, for best compatibility we recommend:
-* prefer YUV over RGB & monochrome formats
-* don't use more than 8bit per color channel
-* keep resolutions at 8k & lower (see also [#3782](https://github.com/rerun-io/rerun/issues/3782))
+
+-   prefer YUV over RGB & monochrome formats
+-   don't use more than 8bit per color channel
+-   keep resolutions at 8k & lower (see also [#3782](https://github.com/rerun-io/rerun/issues/3782)) <!-- TODO(#3782) -->
 
 ## Other limitations
+
 There are still some limitations to encoded Video in Rerun which will be addressed in the future:
 
-* [#7594](https://github.com/rerun-io/rerun/issues/7594): HDR video is not supported
-* [#5181](https://github.com/rerun-io/rerun/issues/5181): There is no audio support
-* There is no video encoder in the Rerun SDK, so you need to create the video stream or file yourself.
-  Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/latest/examples/python/camera_video_stream) example to learn how to encode video using [`pyAV`](https://github.com/PyAV-Org/PyAV).
+-   [#7594](https://github.com/rerun-io/rerun/issues/7594): HDR video is not supported
+-   [#5181](https://github.com/rerun-io/rerun/issues/5181): There is no audio support
+-   There is no video encoder in the Rerun SDK, so you need to create the video stream or file yourself.
+    Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/latest/examples/python/camera_video_stream) example to learn how to encode video using [`pyAV`](https://github.com/PyAV-Org/PyAV).
 
 <!--
 Discoverable for scripts/zombie_todos.py:
@@ -184,6 +176,6 @@ TODO(#7594): fix above if ticket is outdated.
 TODO(#5181): fix above if ticket is outdated.
 -->
 
-
 ## Links
-* [Web video codec guide, by Mozilla](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs)
+
+-   [Web video codec guide, by Mozilla](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs)

@@ -79,6 +79,7 @@ transforms that can be logged:
 In the future, Rerun will be adding support for additional types of transforms.
 
 -   [#349: Log 2D -> 2D transformations in the transform hierarchy](https://github.com/rerun-io/rerun/issues/349)
+<!-- TODO(#349) -->
 
 ## Examples
 
@@ -117,3 +118,5 @@ You can also use this `log_view_coordinates` for pinhole entities, but it is enc
 WARNING: unlike in 3D views where `rr.ViewCoordinates` only impacts how the rendered scene is oriented, applying `rr.ViewCoordinates` to a pinhole-camera will actually influence the projection transform chain. Under the hood this value inserts a hidden transform that re-orients the axis of projection. Different world-content will be projected into your camera with different orientations depending on how you choose this value. See for instance the `open_photogrammetry_format` example.
 
 For 2D spaces and other entities the view coordinates currently do nothing ([#1387](https://github.com/rerun-io/rerun/issues/1387)).
+
+<!-- TODO(#1387) -->
