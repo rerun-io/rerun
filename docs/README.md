@@ -1,6 +1,7 @@
 This is the high-level documentation for Rerun that is hosted at https://www.rerun.io/docs
 
 ## Other documentation
+
 API-level documentation is built from source-code. Python lives at [rerun_py](https://github.com/rerun-io/rerun/tree/main/rerun_py) and Rust in the individual [crates](https://github.com/rerun-io/rerun/tree/main/crates).
 
 ## Contributions
@@ -24,9 +25,13 @@ Do not push directly to the `docs-latest` branch! To update the docs, either [cr
 
 ## Special syntax
 
-### Issue Links
+### Issue links
 
-Make sure to include a comment in the format `<-- TODO(#<value>) -->` so that our automation can detect the underlying issue has been resolved.
+<!-- NOLINT_START -->
+
+Make sure to include a comment in the format `<!-- TODO(#<value>) -->` so that our automation can detect the underlying issue has been resolved.
+
+<!-- NOLINT_END -->
 
 ### Frontmatter
 
@@ -40,20 +45,21 @@ order: 6
 ```
 
 The available attributes are:
-| name       | type    | required | description                                         |
+| name | type | required | description |
 | ---------- | ------- | -------- | --------------------------------------------------- |
-| title      | string  | yes      | navigation item title                               |
-| order      | number  | yes      | used to sort navigation items                       |
-| redirect   | string  | no       | redirect to the given url                           |
-| hidden     | boolean | no       | don't show the item in navigation                   |
-| expand     | boolean | no       | expand the sub-items in navigation by default       |
-| ogImageUrl | string  | no       | url to an image to show as the open-graph thumbnail |
+| title | string | yes | navigation item title |
+| order | number | yes | used to sort navigation items |
+| redirect | string | no | redirect to the given url |
+| hidden | boolean | no | don't show the item in navigation |
+| expand | boolean | no | expand the sub-items in navigation by default |
+| ogImageUrl | string | no | url to an image to show as the open-graph thumbnail |
 
 ### Snippets
 
 Snippets are small, self-contained code examples.
 
 To ensure all the code blocks in our documentation contain valid code, we give each one a name, and move it into `snippets/all`:
+
 ```
 /docs
   /snippets
@@ -63,6 +69,7 @@ To ensure all the code blocks in our documentation contain valid code, we give e
 ```
 
 Each snippet can and should be written in all our supported languages:
+
 ```
 /docs
   /snippets
@@ -74,6 +81,7 @@ Each snippet can and should be written in all our supported languages:
 ```
 
 Once the snippet is in `snippet/all`, it may be referenced in a documentation Markdown file using this syntax:
+
 ```
 snippet: my-example
 ```
@@ -87,14 +95,37 @@ Add the attribute to any `<picture>` element like so:
 
 ```html
 <picture data-inline-viewer="snippets/segmentation_image_simple">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1200w.png">
-  <img src="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/full.png">
+    <source
+        media="(max-width: 480px)"
+        srcset="
+            https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/480w.png
+        "
+    />
+    <source
+        media="(max-width: 768px)"
+        srcset="
+            https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/768w.png
+        "
+    />
+    <source
+        media="(max-width: 1024px)"
+        srcset="
+            https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1024w.png
+        "
+    />
+    <source
+        media="(max-width: 1200px)"
+        srcset="
+            https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1200w.png
+        "
+    />
+    <img
+        src="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/full.png"
+    />
 </picture>
 ```
 
 The value should be:
-- `examples/{NAME}` for examples
-- `snippets/{NAME}` for snippets
+
+-   `examples/{NAME}` for examples
+-   `snippets/{NAME}` for snippets

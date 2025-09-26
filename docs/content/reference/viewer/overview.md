@@ -35,7 +35,7 @@ The top bar contains operating system controls and generic information.
 In the menu you find application wide options and actions.
 Use the buttons at the top right corner to hide/show parts of the viewer.
 
-## Command Palette
+## Command palette
 
 The command palette is a powerful tool to reach arbitrary actions from anywhere via a simple text search.
 You reach it with `cmd/ctrl + P` or via the menu.

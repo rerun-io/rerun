@@ -19,6 +19,7 @@ class SeriesVisible(datatypes.Bool, ComponentMixin):
     **Component**: Like [`components.Visible`][rerun.components.Visible], but for time series.
 
     TODO(#10632): This is a temporary workaround. Right now we can't use [`components.Visible`][rerun.components.Visible] since it would conflict with the entity-wide visibility state.
+     <!-- TODO(#10632) -->
     """
 
     _BATCH_TYPE = None

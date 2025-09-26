@@ -48,7 +48,7 @@ Current limitations of `VideoStream`:
 
 -   [#9815](https://github.com/rerun-io/rerun/issues/9815): Decoding on native is generally slower than decoding in the browser right now.
     This can cause increased latency and in some cases may even stop video playback. <!-- TODO(#9815) -->
--   [#10184](https://github.com/rerun-io/rerun/issues/10184), [#10186](https://github.com/rerun-io/rerun/issues/10186): [`VideoStream`](../reference/types/archetypes/video_stream.md) only supports H.264 & H.265 at this point. <!-- TODO(#10184,10186) -->
+-   [#10184](https://github.com/rerun-io/rerun/issues/10184), [#10186](https://github.com/rerun-io/rerun/issues/10186): [`VideoStream`](../reference/types/archetypes/video_stream.md) only supports H.264 & H.265 at this point. <!-- TODO(#10184) TODO(#10186) -->
 -   [#10090](https://github.com/rerun-io/rerun/issues/10090): B-frames are not yet supported for [`VideoStream`](../reference/types/archetypes/video_stream.md).<!-- TODO(#10090) -->
 -   [#10422](https://github.com/rerun-io/rerun/issues/10422): [`VideoFrameReference`](../reference/types/archetypes/video_frame_reference.md) does not yet work with [`VideoStream`](../reference/types/archetypes/video_stream.md). <!-- TODO(#10422) -->
 

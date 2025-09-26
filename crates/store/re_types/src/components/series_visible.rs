@@ -22,6 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Like [`components::Visible`][crate::components::Visible], but for time series.
 ///
 /// TODO(#10632): This is a temporary workaround. Right now we can't use [`components::Visible`][crate::components::Visible] since it would conflict with the entity-wide visibility state.
+///  <!-- TODO(#10632) -->
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct SeriesVisible(pub crate::datatypes::Bool);
