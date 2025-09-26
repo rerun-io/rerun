@@ -10,19 +10,19 @@ pub fn redap_entry_kind(
     ui: &mut egui::Ui,
     _component_descriptor: &ComponentDescriptor,
     _row_id: Option<RowId>,
-    data: &dyn arrow::array::Array,
+    array: &dyn arrow::array::Array,
 ) -> Result<(), Box<dyn Error>> {
-    if data.len() != 1 {
+    if array.len() != 1 {
         return Err("component batches are not supported".into());
     }
 
-    let value = data
+    let value = array
         .as_any()
         .downcast_ref::<arrow::array::Int32Array>()
         .ok_or_else(|| {
             format!(
                 "unsupported arrow datatype: {}",
-                re_arrow_util::format_data_type(data.data_type())
+                re_arrow_util::format_data_type(array.data_type())
             )
         })?
         .value(0);

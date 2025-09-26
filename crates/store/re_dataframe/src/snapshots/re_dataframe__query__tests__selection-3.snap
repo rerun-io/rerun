@@ -6,7 +6,7 @@ expression: DisplayRB(dataframe)
 │ /this/that:example.MyPoints: ┆ /this/that:example.MyPoints: ┆ /non_existing_entity:example ┆ /this/that:MyPoints:AFieldTh ┆ /this/that:AFieldThatDoesntE ┆ /this/that:AArchetypeNameTha │
 │ points                       ┆ points                       ┆ .MyPoints:points             ┆ atDoesntExist                ┆ xist                         ┆ tDoesNotExist:positions      │
 │ ---                          ┆ ---                          ┆ ---                          ┆ ---                          ┆ ---                          ┆ ---                          │
-│ type: List[nullable          ┆ type: List[nullable          ┆ type: null                   ┆ type: null                   ┆ type: null                   ┆ type: null                   │
+│ type: nullable List[nullable ┆ type: nullable List[nullable ┆ type: nullable null          ┆ type: nullable null          ┆ type: nullable null          ┆ type: nullable null          │
 │ Struct[2]]                   ┆ Struct[2]]                   ┆ component:                   ┆ component: MyPoints:AFieldTh ┆ component:                   ┆ component: AArchetypeNameTha │
 │ archetype: example.MyPoints  ┆ archetype: example.MyPoints  ┆ example.MyPoints:points      ┆ atDoesntExist                ┆ AFieldThatDoesntExist        ┆ tDoesNotExist:positions      │
 │ component:                   ┆ component:                   ┆ entity_path:                 ┆ entity_path: /this/that      ┆ entity_path: /this/that      ┆ entity_path: /this/that      │
