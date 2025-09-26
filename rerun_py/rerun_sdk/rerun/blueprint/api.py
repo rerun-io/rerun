@@ -472,6 +472,7 @@ class Blueprint:
         - [BlueprintPanel][rerun.blueprint.BlueprintPanel]
         - [SelectionPanel][rerun.blueprint.SelectionPanel]
         - [TimePanel][rerun.blueprint.TimePanel]
+        - [TopPanel][rerun.blueprint.TopPanel]
 
         It is an error to provide more than one of instance of any of the panel types.
 

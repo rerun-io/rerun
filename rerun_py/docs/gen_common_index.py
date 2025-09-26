@@ -149,11 +149,7 @@ SECTION_TABLE: Final[list[Section]] = [
     ),
     Section(
         title="Custom Data",
-        class_list=[
-            "AnyValues",
-            "AnyBatchValue",
-            "ComponentDescriptor",
-        ],
+        class_list=["AnyValues", "AnyBatchValue", "ComponentDescriptor", "DynamicArchetype"],
     ),
     ################################################################################
     # These are tables but don't need their own pages since they refer to types that
@@ -307,6 +303,7 @@ SECTION_TABLE: Final[list[Section]] = [
         mod_path="rerun.blueprint",
         class_list=[
             "Blueprint",
+            "BlueprintLike",
             "BlueprintPart",
             "Container",
             "ContainerLike",
@@ -325,6 +322,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "BlueprintPanel",
             "SelectionPanel",
             "TimePanel",
+            "TopPanel",
         ],
     ),
     Section(
