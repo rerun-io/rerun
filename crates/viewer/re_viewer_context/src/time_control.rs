@@ -313,14 +313,25 @@ impl TimeControl {
                     state.current.time = loop_range.min; // loop!
                 }
 
-                // Generally, confine cursor to either the valid range or the loop range.
-                // (you can still scrub outside, just not play!)
-                let time_cursor_confines = loop_range.unwrap_or(full_valid_range.into());
-                state.current.time = state
-                    .current
-                    .time
-                    .max(time_cursor_confines.min)
-                    .min(time_cursor_confines.max);
+                // Confine cursor to valid ranges.
+                {
+                    let valid_ranges = self
+                        .valid_time_ranges
+                        .get(self.timeline.name())
+                        .cloned()
+                        .unwrap_or_else(|| Vec1::new(AbsoluteTimeRange::EVERYTHING));
+
+                    // The valid range index that the time cursor is either contained in or just behind.
+                    let next_valid_range_idx =
+                        valid_ranges.partition_point(|range| range.max() < state.current.time);
+                    let clamp_range = valid_ranges
+                        .get(next_valid_range_idx)
+                        .unwrap_or_else(|| valid_ranges.last());
+                    state.current.time = state
+                        .current
+                        .time
+                        .clamp(clamp_range.min().into(), clamp_range.max().into());
+                }
 
                 NeedsRepaint::Yes
             }
