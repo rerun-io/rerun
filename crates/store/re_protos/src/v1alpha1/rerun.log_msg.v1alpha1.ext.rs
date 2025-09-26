@@ -253,6 +253,7 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreInfo> for re_log_types::StoreInfo {
             cloned_from: None,
             store_source,
             store_version,
+            is_partial: false,
         })
     }
 }

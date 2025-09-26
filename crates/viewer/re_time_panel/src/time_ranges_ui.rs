@@ -45,6 +45,12 @@ pub struct Segment {
     /// when we are very zoomed in.
     pub x: RangeInclusive<f64>,
 
+    /// Within the range of [`Self::x`], all ranges of valid data.
+    ///
+    /// Guaranteed to fully contained in [`Self::x`].
+    /// For the common case of all data being marked as valid, this contains only [`Self::x`].
+    pub valid_subranges: smallvec::SmallVec<[RangeInclusive<f64>; 1]>,
+
     /// Matches [`Self::x`] (linear transform).
     pub time: AbsoluteTimeRangeF,
 
@@ -70,6 +76,8 @@ pub struct TimeRangesUi {
     ///
     /// Before the first and after the last we extrapolate.
     /// Between the segments we interpolate.
+    ///
+    /// Data within each segment, stretches of data may or may not be valid.
     pub segments: Vec<Segment>,
 
     /// x distance per time unit inside the segments,
@@ -94,10 +102,15 @@ impl Default for TimeRangesUi {
 }
 
 impl TimeRangesUi {
-    pub fn new(x_range: Rangef, time_view: TimeView, time_ranges: &[AbsoluteTimeRange]) -> Self {
+    pub fn new(
+        time_x_range: Rangef,
+        time_view: TimeView,
+        time_ranges: &[AbsoluteTimeRange],
+        valid_time_ranges: &[AbsoluteTimeRange],
+    ) -> Self {
         re_tracing::profile_function!();
 
-        debug_assert!(x_range.min < x_range.max);
+        debug_assert!(time_x_range.min < time_x_range.max);
 
         //        <------- time_view ------>
         //        <-------- x_range ------->
@@ -105,8 +118,8 @@ impl TimeRangesUi {
         //    [segment] [long segment]
         //             ^ gap
 
-        let gap_width_in_ui = gap_width(&x_range, time_ranges);
-        let x_range = (x_range.min as f64)..=(x_range.max as f64);
+        let gap_width_in_ui = gap_width(&time_x_range, time_ranges);
+        let x_range = (time_x_range.min as f64)..=(time_x_range.max as f64);
         let width_in_ui = *x_range.end() - *x_range.start();
         let points_per_time = width_in_ui / time_view.time_spanned;
         let points_per_time = if points_per_time > 0.0 && points_per_time.is_finite() {
@@ -135,28 +148,70 @@ impl TimeRangesUi {
         );
         let expansion_in_ui = points_per_time * expansion_in_time.as_f64();
 
+        // Common case: all time ranges are marked as valid times.
+        let all_times_marked_valid = valid_time_ranges == [AbsoluteTimeRange::EVERYTHING];
+
         let mut left = 0.0; // we will translate things left/right later to align x_range with time_view
         let segments = time_ranges
             .iter()
             .map(|&tight_time_range| {
                 let range_width = tight_time_range.abs_length() as f64 * points_per_time;
                 let right = left + range_width;
-                let x_range = left..=right;
+                let x_range_unexpanded = left..=right;
                 left = right + gap_width_in_ui;
 
                 // expand each span outwards a bit to make selection of outer data points easier.
                 // Also gives zero-width segments some width!
-                let x_range =
-                    (*x_range.start() - expansion_in_ui)..=(*x_range.end() + expansion_in_ui);
+                let x_range = (*x_range_unexpanded.start() - expansion_in_ui)
+                    ..=(*x_range_unexpanded.end() + expansion_in_ui);
 
                 let time_range = AbsoluteTimeRangeF::new(
                     tight_time_range.min() - expansion_in_time,
                     tight_time_range.max() + expansion_in_time,
                 );
 
+                // We expect very few valid ranges, so not shouldn't need to worry about optimizing this.
+                let valid_subranges = if all_times_marked_valid {
+                    smallvec::smallvec![x_range.clone()]
+                } else {
+                    let mut valid_subranges = smallvec::SmallVec::new();
+                    for valid_range in valid_time_ranges {
+                        if let Some(valid_time_subrange) =
+                            tight_time_range.intersection(*valid_range)
+                        {
+                            let range_width =
+                                valid_time_subrange.abs_length() as f64 * points_per_time;
+                            let time_offset = (valid_time_subrange.min() - tight_time_range.min())
+                                .as_f64()
+                                * points_per_time;
+                            let mut valid_range_start = x_range_unexpanded.start() + time_offset;
+                            let mut valid_range_end = valid_range_start + range_width;
+
+                            // Snap the subranges to the expanded x_range iff we're exactly on the border
+                            // of the segment's time range.
+                            // Expanding subranges _within_ the segment doesn't make sense as this
+                            // may lead to overlapping subranges.
+                            // TODO(andreas): This leads to slight visual artifacts when zooming out on a subdivided segment.
+                            // The problem is surprisingly tricky to fix as we'd
+                            if valid_time_subrange.min() == tight_time_range.min() {
+                                valid_range_start = *x_range.start();
+                            }
+                            if valid_time_subrange.max() == tight_time_range.max() {
+                                valid_range_end = *x_range.end();
+                            }
+
+                            valid_subranges.push(valid_range_start..=valid_range_end);
+                        } else if tight_time_range.max < valid_range.min {
+                            break;
+                        }
+                    }
+                    valid_subranges
+                };
+
                 Segment {
                     x: x_range,
                     time: time_range,
+                    valid_subranges,
                     tight_time: tight_time_range,
                 }
             })
@@ -174,6 +229,11 @@ impl TimeRangesUi {
             let x_translate = *x_range.start() - time_start_x;
             for segment in &mut slf.segments {
                 segment.x = (*segment.x.start() + x_translate)..=(*segment.x.end() + x_translate);
+
+                for valid_range in &mut segment.valid_subranges {
+                    *valid_range =
+                        (*valid_range.start() + x_translate)..=(*valid_range.end() + x_translate);
+                }
             }
         }
 
@@ -192,9 +252,10 @@ impl TimeRangesUi {
         slf
     }
 
-    /// Clamp the time to the valid ranges.
+    /// Clamp the time to range within we have any data.
     ///
     /// Used when user is dragging the time handle.
+    /// This may still contain data outside of the range a store marks as valid.
     pub fn clamp_time(&self, mut time: TimeReal) -> TimeReal {
         if let (Some(first), Some(last)) = (self.segments.first(), self.segments.last()) {
             time = time.clamp(
@@ -367,6 +428,8 @@ fn test_time_ranges_ui() {
             AbsoluteTimeRange::new(1, 5),
             AbsoluteTimeRange::new(10, 100),
         ],
+        // Everything is valid.
+        &[AbsoluteTimeRange::EVERYTHING],
     );
 
     let pixel_precision = 0.5;
@@ -408,6 +471,8 @@ fn test_time_ranges_ui_2() {
             AbsoluteTimeRange::new(10, 20),
             AbsoluteTimeRange::new(30, 40),
         ],
+        // Everything is valid.
+        &[AbsoluteTimeRange::EVERYTHING],
     );
 
     let pixel_precision = 0.5;
