@@ -41,6 +41,26 @@ impl<T: Send> Sender<T> {
         })
     }
 
+    /// Sends an empty message that will execute the given function once it is received on the other end.
+    ///
+    /// This can be used to make sure that an operation happens once all previous messages have been received.
+    pub fn execute_on_receive(
+        &self,
+        f: impl FnOnce() + Send + 'static,
+    ) -> Result<(), SendError<()>> {
+        self.send_at(
+            Instant::now(),
+            Arc::clone(&self.source),
+            SmartMessagePayload::Flush {
+                on_flush_done: Box::new(f),
+            },
+        )
+        .map_err(|SendError(msg)| match msg {
+            SmartMessagePayload::Msg(_) | SmartMessagePayload::Quit(_) => unreachable!(),
+            SmartMessagePayload::Flush { .. } => SendError(()),
+        })
+    }
+
     /// Forwards a message as-is.
     pub fn send_at(
         &self,
