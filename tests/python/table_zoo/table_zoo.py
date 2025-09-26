@@ -44,7 +44,7 @@ def _build_record_batch() -> tuple[str, pa.RecordBatch]:
         "TABLE",
         "Query",
     ]
-    string_nullable = ["Foo", None, "BAR", "baZ", None, "QuX", "RUST", None, "Sdk", "API"]
+    string_nullable = ["Foo", None, "BAR", "baz", None, "QuX", "RUST", None, "Sdk", "API"]
     string_list_nullable = [
         ["the BAR"],
         [],
@@ -268,16 +268,6 @@ def _build_record_batch() -> tuple[str, pa.RecordBatch]:
     return "table_zoo", record_batch
 
 
-def _default_viewer_addr(host: str, port: int) -> str:
-    # Keep the legacy default path with /proxy
-    return f"rerun+http://{host}:{port}/proxy"
-
-
-def _default_catalog_addr(host: str, port: int) -> str:
-    # Catalog server typically listens without /proxy
-    return f"rerun+http://{host}:{port}"
-
-
 def _get_cache_dir() -> Path:
     """Return an OS-appropriate cache directory for storing Lance tables."""
     p = Path(user_cache_dir(appname="rerun", appauthor=False))
@@ -313,7 +303,7 @@ def _write_recordbatch_to_lance(reader: pa.RecordBatchReader, path: Path | str) 
 
 def _run_viewer_mode(host: str, port: int) -> None:
     name, batch = _build_record_batch()
-    addr = _default_viewer_addr(host, port)
+    addr = f"rerun+http://{host}:{port}/proxy"
     client = rr.experimental.ViewerClient(addr=addr)
     client.send_table(name, batch)
 
@@ -330,25 +320,18 @@ def _run_register_mode(host: str, port: int, cache_dir: Path | None) -> None:
     # Place table under cache_root; last component is table name
     uri = _write_recordbatch_to_lance(reader, cache_root / name)
 
-    # Register with local redap server
-    catalog_addr = _default_catalog_addr(host, port)
-    c = CatalogClient(catalog_addr)
+    c = CatalogClient(f"rerun+http://{host}:{port}")
 
-    # Ensure idempotency: if a table with the same name exists in the catalog, delete it first.
     try:
         entry = c.get_table_entry(name=name)
+        entry.delete()
     except Exception:
-        entry = None
-    else:
-        try:
-            entry.delete()
-        except Exception:
-            pass
+        pass
 
     c.register_table(name, uri)
 
 
-def main(argv: list[str] | None = None) -> int:
+def main() -> int:
     parser = argparse.ArgumentParser(
         description="Generate a table with diverse datatypes and either send to Viewer or register on server."
     )
@@ -373,7 +356,7 @@ def main(argv: list[str] | None = None) -> int:
         help=f"Optional cache directory to store Lance table when registering. Defaults to: {default_cache_dir}",
     )
 
-    args = parser.parse_args(argv)
+    args = parser.parse_args()
 
     if args.register_to_server:
         # Default port for catalog server if not specified
