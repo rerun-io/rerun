@@ -80,40 +80,40 @@ impl std::error::Error for TonicStatusError {
 
 #[derive(thiserror::Error, Debug)]
 pub enum StreamEntryError {
-    #[error("Failed reading entry<details>{0}")]
+    #[error("Failed reading entry\nDetails:{0}")]
     Read(TonicStatusError),
 
-    #[error("Failed finding entry<details>{0}")]
+    #[error("Failed finding entry\nDetails:{0}")]
     Find(TonicStatusError),
 
-    #[error("Failed deleting entry<details>{0}")]
+    #[error("Failed deleting entry\nDetails:{0}")]
     Delete(TonicStatusError),
 
-    #[error("Failed updating entry<details>{0}")]
+    #[error("Failed updating entry\nDetails:{0}")]
     Update(TonicStatusError),
 
-    #[error("Failed creating entry<details>{0}")]
+    #[error("Failed creating entry\nDetails:{0}")]
     Create(TonicStatusError),
 
-    #[error("Failed reading entry's partitions<details>{0}")]
+    #[error("Failed reading entry's partitions\nDetails:{0}")]
     ReadPartitions(TonicStatusError),
 
-    #[error("Failed registering data source with entry<details>{0}")]
+    #[error("Failed registering data source with entry\nDetails:{0}")]
     RegisterData(TonicStatusError),
 
-    #[error("Failed registering table<details>{0}")]
+    #[error("Failed registering table\nDetails:{0}")]
     RegisterTable(TonicStatusError),
 
-    #[error("Error while doing maintenance on entry<details>{0}")]
+    #[error("Error while doing maintenance on entry\nDetails:{0}")]
     Maintenance(TonicStatusError),
 
-    #[error("Invalid entry id<details>{0}")]
+    #[error("Invalid entry id\nDetails:{0}")]
     InvalidId(TonicStatusError),
 }
 
 #[derive(thiserror::Error, Debug)]
 pub enum StreamPartitionError {
-    #[error("Failed streaming partition chunks<details>{0}")]
+    #[error("Failed streaming partition chunks\nDetails:{0}")]
     StreamingChunks(TonicStatusError),
 }
 
