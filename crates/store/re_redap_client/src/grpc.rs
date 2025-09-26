@@ -438,7 +438,7 @@ pub async fn stream_blueprint_and_partition_from_server(
             blueprint_partition,
             None,
             re_uri::Fragment::default(),
-            on_ui_cmd.as_deref(),
+            None, // Don't send UI commands for blueprint.
             on_msg.as_deref(),
         )
         .await?;
@@ -483,7 +483,7 @@ pub async fn stream_blueprint_and_partition_from_server(
         partition_id.into(),
         time_range,
         fragment,
-        on_ui_cmd.as_deref(),
+        on_ui_cmd,
         on_msg.as_deref(),
     )
     .await?;
@@ -501,7 +501,7 @@ async fn stream_partition_from_server(
     partition_id: PartitionId,
     time_range: Option<TimeSelection>,
     fragment: re_uri::Fragment,
-    on_ui_cmd: Option<&(dyn Fn(UiCommand) + Send + Sync)>,
+    on_ui_cmd: Option<Box<dyn Fn(UiCommand) + Send + Sync>>,
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), StreamError> {
     let static_chunk_stream = {
@@ -563,22 +563,6 @@ async fn stream_partition_from_server(
 
     let store_id = store_info.store_id.clone();
 
-    if let Some(on_ui_cmd) = on_ui_cmd {
-        if let Some(time_range) = time_range {
-            on_ui_cmd(UiCommand::SetLoopSelection {
-                recording_id: store_id.clone(),
-                timeline: time_range.timeline,
-                time_range: time_range.into(),
-            });
-        }
-        if !fragment.is_empty() {
-            on_ui_cmd(UiCommand::SetUrlFragment {
-                recording_id: store_id.clone(),
-                fragment,
-            });
-        }
-    }
-
     if tx
         .send(LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *re_chunk::RowId::new(),
@@ -588,6 +572,33 @@ async fn stream_partition_from_server(
     {
         re_log::debug!("Receiver disconnected");
         return Ok(());
+    }
+
+    if let Some(on_ui_cmd) = on_ui_cmd {
+        // These commands only make sense to execute, once the store info has been set as they all reference
+        // the store id.
+        let store_id = store_id.clone();
+        if tx
+            .execute_on_receive(move || {
+                if let Some(time_range) = time_range {
+                    on_ui_cmd(UiCommand::SetLoopSelection {
+                        recording_id: store_id.clone(),
+                        timeline: time_range.timeline,
+                        time_range: time_range.into(),
+                    });
+                }
+                if !fragment.is_empty() {
+                    on_ui_cmd(UiCommand::SetUrlFragment {
+                        recording_id: store_id.clone(),
+                        fragment,
+                    });
+                }
+            })
+            .is_err()
+        {
+            re_log::debug!("Receiver disconnected");
+            return Ok(());
+        }
     }
 
     // TODO(#10229): this looks to be converting back and forth?
