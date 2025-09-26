@@ -16,7 +16,7 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import lancedb
+import lancedb  # type: ignore[missing-imports]
 import pyarrow as pa
 import rerun as rr
 from platformdirs import user_cache_dir
