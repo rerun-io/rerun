@@ -3,8 +3,8 @@ use crate::AppEnvironment;
 use re_analytics::{
     Config, Property,
     event::{
-        Id, Identify, OpenRecording, StoreInfo, SwitchRecording, ViewerRuntimeInformation,
-        ViewerStarted,
+        Id, Identify, OpenRecording, PlaybackSession, PlaybackSessionType, PlaybackStopReason,
+        StoreInfo, SwitchRecording, ViewerRuntimeInformation, ViewerStarted,
     },
 };
 
@@ -209,5 +209,38 @@ pub fn switch_recording(
         previous_recording_id: previous_id,
         new_recording_id: new_id,
         switch_method,
+    }
+}
+
+pub fn playback_session(
+    build_info: re_build_info::BuildInfo,
+    timeline_name: String,
+    wall_clock_seconds: f64,
+    session_type: PlaybackSessionType,
+    total_time_traveled: f64,
+    covered_time_distance: f64,
+    time_unit: String,
+    end_reason: PlaybackStopReason,
+    recording_id: &re_log_types::StoreId,
+) -> PlaybackSession {
+    let application_id = recording_id.application_id();
+    let recording_id_str = recording_id.recording_id();
+
+    let recording_id_processed = if application_id.as_str().starts_with("rerun_example") {
+        Id::Official(recording_id_str.to_string())
+    } else {
+        Id::Hashed(Property::from(recording_id_str.as_str()).hashed())
+    };
+
+    PlaybackSession {
+        build_info,
+        timeline_name,
+        wall_clock_seconds,
+        session_type,
+        total_time_traveled,
+        covered_time_distance,
+        time_unit,
+        end_reason,
+        recording_id: recording_id_processed,
     }
 }

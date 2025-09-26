@@ -539,6 +539,80 @@ impl Properties for TimelineSecondsPlayed {
 
 // -----------------------------------------------
 
+/// Tracks user interaction with timeline viewing, including playback and scrubbing behavior.
+///
+/// Emitted when a viewing session ends (playback stops, scrubbing session ends, etc).
+pub struct PlaybackSession {
+    pub build_info: BuildInfo,
+
+    /// Name of the timeline (e.g. "log_time", "sim_time")
+    pub timeline_name: String,
+
+    /// Time spent in this viewing session (in seconds)
+    pub wall_clock_seconds: f64,
+
+    /// Type of viewing behavior in this session
+    pub session_type: PlaybackSessionType,
+
+    /// Total timeline distance traveled (sum of all movements, including backwards)
+    pub total_time_traveled: f64,
+
+    /// Covered timeline distance (max - min of time range visited)
+    pub covered_time_distance: f64,
+
+    /// Unit of the timeline measurements ("seconds" or "frames")
+    pub time_unit: String,
+
+    /// Why the session ended
+    pub end_reason: PlaybackStopReason,
+
+    /// Which recording was being viewed (hashed if not official example)
+    pub recording_id: Id,
+}
+
+/// Type of playback/viewing session
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum PlaybackSessionType {
+    /// Continuous playback at a consistent speed
+    Playback,
+    /// User manually scrubbing through the timeline
+    Scrubbing,
+    /// Mixed session with both playback and scrubbing
+    Mixed,
+}
+
+impl Event for PlaybackSession {
+    const NAME: &'static str = "playback_session";
+}
+
+impl Properties for PlaybackSession {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            build_info,
+            timeline_name,
+            wall_clock_seconds,
+            session_type,
+            total_time_traveled,
+            covered_time_distance,
+            time_unit,
+            end_reason,
+            recording_id,
+        } = self;
+
+        build_info.serialize(event);
+        event.insert("timeline_name", timeline_name);
+        event.insert("wall_clock_seconds", wall_clock_seconds);
+        event.insert("session_type", format!("{:?}", session_type));
+        event.insert("total_time_traveled", total_time_traveled);
+        event.insert("covered_time_distance", covered_time_distance);
+        event.insert("time_unit", time_unit);
+        event.insert("end_reason", format!("{:?}", end_reason));
+        event.insert("recording_id", recording_id);
+    }
+}
+
+// -----------------------------------------------
+
 /// The user opened the settings screen.
 pub struct SettingsOpened {}
 

@@ -148,6 +148,10 @@ pub struct App {
     /// * we want the user to have full control over the runtime,
     ///   and not expect that a global runtime exists.
     async_runtime: AsyncRuntimeHandle,
+
+    /// Tracks playback sessions for analytics
+    #[cfg(feature = "analytics")]
+    playback_session_tracker: crate::playback_session_tracker::PlaybackSessionTracker,
 }
 
 impl App {
@@ -396,6 +400,8 @@ impl App {
 
             connection_registry,
             async_runtime: tokio_runtime,
+            #[cfg(feature = "analytics")]
+            playback_session_tracker: crate::playback_session_tracker::PlaybackSessionTracker::new(),
         }
     }
 
@@ -688,6 +694,14 @@ impl App {
                                     re_viewer_context::ActivationSource::Api => "api",
                                 };
 
+                                // End any active playback session on the previous recording
+                                self.playback_session_tracker.end_session(
+                                    previous_id,
+                                    store_hub.entity_db_mut(previous_id),
+                                    re_analytics::event::PlaybackStopReason::RecordingSwitched,
+                                    self.build_info.clone(),
+                                );
+
                                 let event = crate::viewer_analytics::event::switch_recording(
                                     &self.app_env,
                                     Some(previous_id),
@@ -739,10 +753,28 @@ impl App {
                     }
                 }
 
+                // End any active playback session before removing the recording
+                #[cfg(feature = "analytics")]
+                if let RecordingOrTable::Recording { store_id } = &entry {
+                    self.playback_session_tracker.end_session(
+                        store_id,
+                        store_hub.entity_db_mut(store_id),
+                        re_analytics::event::PlaybackStopReason::RecordingClosed,
+                        self.build_info.clone(),
+                    );
+                }
+
                 store_hub.remove(&entry);
             }
 
             SystemCommand::CloseAllEntries => {
+                // End all active playback sessions
+                #[cfg(feature = "analytics")]
+                self.playback_session_tracker.end_all_sessions(
+                    re_analytics::event::PlaybackStopReason::RecordingClosed,
+                    self.build_info.clone(),
+                );
+
                 self.state.navigation.push_start_mode();
                 store_hub.clear_entries();
 
@@ -1714,6 +1746,10 @@ impl App {
 
         let times_per_timeline = entity_db.times_per_timeline();
 
+        // Track playback state changes for analytics
+        #[cfg(feature = "analytics")]
+        let prev_play_state = time_ctrl.play_state();
+
         match command {
             TimeControlCommand::TogglePlayPause => {
                 time_ctrl.toggle_play_pause(times_per_timeline);
@@ -1729,6 +1765,61 @@ impl App {
             }
             TimeControlCommand::Restart => {
                 time_ctrl.restart(times_per_timeline);
+            }
+        }
+
+        // Track playback sessions for analytics
+        #[cfg(feature = "analytics")]
+        {
+            let current_play_state = time_ctrl.play_state();
+            let timeline = *time_ctrl.timeline();
+            let current_time = time_ctrl.time().unwrap_or(re_log_types::TimeReal::MIN);
+            let store_id = entity_db.store_id();
+
+            match (prev_play_state, current_play_state, command) {
+                // Starting playback
+                (PlayState::Paused, PlayState::Playing, _) |
+                (PlayState::Paused, PlayState::Following, _) |
+                (_, PlayState::Playing, TimeControlCommand::Restart) => {
+                    self.playback_session_tracker.on_playback_interaction(
+                        store_id,
+                        timeline,
+                        current_time,
+                        re_analytics::event::PlaybackSessionType::Playback,
+                    );
+                }
+                // Stopping playback
+                (PlayState::Playing, PlayState::Paused, _) |
+                (PlayState::Following, PlayState::Paused, _) => {
+                    self.playback_session_tracker.end_session(
+                        store_id,
+                        entity_db,
+                        re_analytics::event::PlaybackStopReason::UserStopped,
+                        self.build_info.clone(),
+                    );
+                }
+                // Scrubbing (stepping)
+                (_, PlayState::Paused, TimeControlCommand::StepBack) |
+                (_, PlayState::Paused, TimeControlCommand::StepForward) => {
+                    self.playback_session_tracker.on_playback_interaction(
+                        store_id,
+                        timeline,
+                        current_time,
+                        re_analytics::event::PlaybackSessionType::Scrubbing,
+                    );
+                }
+                // Timeline or state changes during playback
+                (PlayState::Playing, PlayState::Playing, _) |
+                (PlayState::Following, PlayState::Following, _) => {
+                    // Continue existing session with updated position
+                    self.playback_session_tracker.on_playback_interaction(
+                        store_id,
+                        timeline,
+                        current_time,
+                        re_analytics::event::PlaybackSessionType::Playback,
+                    );
+                }
+                _ => {}
             }
         }
     }
@@ -2584,6 +2675,17 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))] // no full-app screenshotting on web
             self.screenshotter.save(&self.egui_ctx, image);
         }
+    }
+}
+
+impl Drop for App {
+    fn drop(&mut self) {
+        // End all active playback sessions when the app shuts down
+        #[cfg(feature = "analytics")]
+        self.playback_session_tracker.end_all_sessions(
+            re_analytics::event::PlaybackStopReason::AppExited,
+            self.build_info.clone(),
+        );
     }
 }
 
