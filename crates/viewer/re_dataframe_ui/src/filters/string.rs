@@ -12,13 +12,13 @@ use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, Expr, ScalarFunctionArgs,
     ScalarUDF, ScalarUDFImpl, Signature, TypeSignature, Volatility, col, lit, not,
 };
-
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use strum::VariantArray as _;
 
 use super::{FilterUiAction, action_from_text_edit_response};
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum::VariantArray)]
 pub enum StringOperator {
     #[default]
     Contains,
@@ -36,15 +36,6 @@ impl std::fmt::Display for StringOperator {
             Self::EndsWith => "ends with".fmt(f),
         }
     }
-}
-
-impl StringOperator {
-    pub const ALL: &'static [Self] = &[
-        Self::Contains,
-        Self::DoesNotContain,
-        Self::StartsWith,
-        Self::EndsWith,
-    ];
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -108,7 +99,7 @@ impl StringFilter {
                     SyntaxHighlightedBuilder::keyword(&operator_text).into_widget_text(ui.style()),
                 )
                 .show_ui(ui, |ui| {
-                    for possible_op in crate::filters::StringOperator::ALL {
+                    for possible_op in crate::filters::StringOperator::VARIANTS {
                         if ui
                             .button(
                                 SyntaxHighlightedBuilder::keyword(&possible_op.to_string())

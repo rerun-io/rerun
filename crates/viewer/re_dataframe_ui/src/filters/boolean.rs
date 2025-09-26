@@ -52,7 +52,7 @@ impl NonNullableBooleanFilter {
     }
 
     pub fn popup_ui(&mut self, ui: &mut egui::Ui, column_name: &str) -> FilterUiAction {
-        super::basic_operation_ui(ui, column_name, "is");
+        popup_header_ui(ui, column_name);
 
         let mut clicked = false;
 
@@ -137,7 +137,7 @@ impl NullableBooleanFilter {
     }
 
     pub fn popup_ui(&mut self, ui: &mut egui::Ui, column_name: &str) -> FilterUiAction {
-        super::basic_operation_ui(ui, column_name, "is");
+        popup_header_ui(ui, column_name);
 
         let mut clicked = false;
 
@@ -161,4 +161,12 @@ impl NullableBooleanFilter {
 
 fn primitive_widget_text(ui: &egui::Ui, s: &str) -> egui::WidgetText {
     SyntaxHighlightedBuilder::primitive(s).into_widget_text(ui.style())
+}
+
+fn popup_header_ui(ui: &mut egui::Ui, column_name: &str) {
+    ui.label(
+        SyntaxHighlightedBuilder::body_default(column_name)
+            .with_keyword(" is")
+            .into_widget_text(ui.style()),
+    );
 }

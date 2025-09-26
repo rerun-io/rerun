@@ -16,6 +16,7 @@ use arrow::record_batch::RecordBatch;
 use datafusion::catalog::MemTable;
 use datafusion::prelude::{DataFrame, SessionContext};
 use jiff::ToSpan as _;
+use strum::VariantArray as _;
 
 use re_dataframe_ui::{
     ComparisonOperator, Filter, FilterKind, FloatFilter, IntFilter, NonNullableBooleanFilter,
@@ -410,7 +411,7 @@ async fn test_int_compares() {
     let ints_nulls =
         TestColumn::primitive_nulls::<Int64Type>(vec![Some(1), Some(2), None, Some(4), Some(5)]);
 
-    for op in ComparisonOperator::ALL {
+    for op in ComparisonOperator::VARIANTS {
         filter_snapshot!(
             FilterKind::Int(IntFilter::new(*op, Some(3))),
             ints.clone(),
@@ -467,7 +468,7 @@ async fn test_int_lists() {
     let int_lists = TestColumn::primitive_lists::<Int64Type>(&data, Nullability::NONE);
     let int_lists_nulls = TestColumn::primitive_lists::<Int64Type>(&data, Nullability::BOTH);
 
-    for op in ComparisonOperator::ALL {
+    for op in ComparisonOperator::VARIANTS {
         filter_snapshot!(
             FilterKind::Int(IntFilter::new(*op, Some(2))),
             int_lists.clone(),
@@ -493,7 +494,7 @@ async fn test_float_compares() {
         Some(5.0),
     ]);
 
-    for op in ComparisonOperator::ALL {
+    for op in ComparisonOperator::VARIANTS {
         filter_snapshot!(
             FilterKind::Float(FloatFilter::new(*op, Some(3.0))),
             floats.clone(),
@@ -538,7 +539,7 @@ async fn test_float_lists() {
     let float_lists = TestColumn::primitive_lists::<Float64Type>(&data, Nullability::NONE);
     let float_lists_nulls = TestColumn::primitive_lists::<Float64Type>(&data, Nullability::BOTH);
 
-    for op in ComparisonOperator::ALL {
+    for op in ComparisonOperator::VARIANTS {
         filter_snapshot!(
             FilterKind::Float(FloatFilter::new(*op, Some(2.0))),
             float_lists.clone(),
@@ -642,7 +643,7 @@ async fn test_string_contains() {
 
 #[tokio::test]
 async fn test_string_list() {
-    for op in StringOperator::ALL {
+    for op in StringOperator::VARIANTS {
         for &nullability in Nullability::ALL {
             filter_snapshot!(
                 FilterKind::String(StringFilter::new(*op, "ab".to_owned())),
