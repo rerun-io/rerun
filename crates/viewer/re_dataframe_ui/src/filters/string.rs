@@ -12,7 +12,7 @@ use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, Expr, ScalarFunctionArgs,
     ScalarUDF, ScalarUDFImpl, Signature, TypeSignature, Volatility, col, lit,
 };
-
+use datafusion::prelude::not;
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
@@ -22,6 +22,7 @@ use super::{FilterUiAction, action_from_text_edit_response};
 pub enum StringOperator {
     #[default]
     Contains,
+    DoesNotContain,
     StartsWith,
     EndsWith,
 }
@@ -30,6 +31,7 @@ impl std::fmt::Display for StringOperator {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Contains => "contains".fmt(f),
+            Self::DoesNotContain => "does not contain".fmt(f),
             Self::StartsWith => "starts with".fmt(f),
             Self::EndsWith => "ends with".fmt(f),
         }
@@ -37,7 +39,12 @@ impl std::fmt::Display for StringOperator {
 }
 
 impl StringOperator {
-    pub const ALL: &'static [Self] = &[Self::Contains, Self::StartsWith, Self::EndsWith];
+    pub const ALL: &'static [Self] = &[
+        Self::Contains,
+        Self::DoesNotContain,
+        Self::StartsWith,
+        Self::EndsWith,
+    ];
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -70,7 +77,15 @@ impl StringFilter {
         }
 
         let udf = ScalarUDF::new_from_impl(StringFilterUdf::new(self));
-        udf.call(vec![col(column.clone())])
+        let expr = udf.call(vec![col(column.clone())]);
+
+        let apply_any_or_null_semantics = self.operator() == StringOperator::DoesNotContain;
+
+        if apply_any_or_null_semantics {
+            not(expr.clone()).or(expr.is_null())
+        } else {
+            expr
+        }
     }
 
     pub fn popup_ui(
@@ -201,7 +216,8 @@ impl StringFilterUdf {
         };
 
         match self.operator {
-            StringOperator::Contains => {
+            // Note: reverse ALL-or-none semantics is applied outside of the UDF
+            StringOperator::Contains | StringOperator::DoesNotContain => {
                 Ok(arrow::compute::contains(haystack_array, needle.as_ref())?)
             }
             StringOperator::StartsWith => Ok(arrow::compute::starts_with(
