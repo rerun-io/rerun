@@ -1,4 +1,4 @@
-//! Log arbitrary data.
+//! Log arbitrary archetype data.
 
 use std::sync::Arc;
 
