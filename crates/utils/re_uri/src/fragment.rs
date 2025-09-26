@@ -97,13 +97,7 @@ impl Fragment {
     ///
     /// Returns `Fragment::default()` if parsing fails.
     pub fn parse_forgiving(fragment: &str) -> Self {
-        match fragment.parse() {
-            Ok(fragment) => fragment,
-            Err(err) => {
-                // Just return the default if parsing failed.
-                Self::default()
-            }
-        }
+        fragment.parse().unwrap_or_default()
     }
 
     /// True if this fragment doesn't contain any information.
