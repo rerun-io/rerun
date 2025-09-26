@@ -3,8 +3,11 @@ source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
 expression: test_results
 ---
 TestResult {
-    op: StringContains(
-        "ab",
+    op: String(
+        StringFilter {
+            operator: EndsWith,
+            query: "ab",
+        },
     ),
     field: Field {
         name: "column",
@@ -27,31 +30,31 @@ TestResult {
     [
       StringArray
     [
+      "hello_ab",
       "a",
+    ],
+      StringArray
+    [
       "b",
+      null,
     ],
       StringArray
     [
-      null,
       "ab",
-    ],
-      StringArray
-    [
       null,
-      "aBc",
     ],
     ],
     filtered: ListArray
     [
       StringArray
     [
-      null,
-      "ab",
+      "hello_ab",
+      "a",
     ],
       StringArray
     [
+      "ab",
       null,
-      "aBc",
     ],
     ],
 }

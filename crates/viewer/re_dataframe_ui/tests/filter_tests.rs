@@ -19,7 +19,7 @@ use jiff::ToSpan as _;
 
 use re_dataframe_ui::{
     ComparisonOperator, Filter, FilterKind, FloatFilter, IntFilter, NonNullableBooleanFilter,
-    Nullability, NullableBooleanFilter, TimestampFilter,
+    Nullability, NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter,
 };
 use re_viewer_context::external::tokio;
 
@@ -139,15 +139,19 @@ impl TestColumn {
         // the primitive array stuff doesn't work for strings, so we go the manual way.
         let values = if nullability.inner {
             StringArray::from(vec![
+                Some("hello_ab"),
                 Some("a"),
                 Some("b"),
                 None,
                 Some("ab"),
                 None,
                 Some("aBc"),
+                Some("bla_AB"),
             ])
         } else {
-            StringArray::from(vec!["a", "b", "c", "ab", "A B", "aBc"])
+            StringArray::from(vec![
+                "hello_ab", "a", "b", "c", "ab", "A B", "aBc", "bla_AB",
+            ])
         };
         let offsets = OffsetBuffer::new(vec![0i32, 2, 4, 6].into());
         let strings_lists = ListArray::try_new(
@@ -552,50 +556,82 @@ async fn test_float_lists() {
 #[tokio::test]
 async fn test_string_contains() {
     filter_snapshot!(
-        FilterKind::StringContains(String::new()),
+        FilterKind::String(StringFilter::new(StringOperator::Contains, String::new())),
         TestColumn::strings(),
         "empty"
     );
 
     filter_snapshot!(
-        FilterKind::StringContains("a".to_owned()),
+        FilterKind::String(StringFilter::new(StringOperator::Contains, "a".to_owned())),
         TestColumn::strings(),
         "a"
     );
 
     filter_snapshot!(
-        FilterKind::StringContains("a".to_owned()),
+        FilterKind::String(StringFilter::new(StringOperator::Contains, "a".to_owned())),
         TestColumn::strings(),
         "ab"
     );
 
     filter_snapshot!(
-        FilterKind::StringContains("A".to_owned()),
+        FilterKind::String(StringFilter::new(StringOperator::Contains, "A".to_owned())),
         TestColumn::strings(),
         "a_uppercase"
     );
 
     filter_snapshot!(
-        FilterKind::StringContains(String::new()),
+        FilterKind::String(StringFilter::new(StringOperator::Contains, String::new())),
         TestColumn::strings_nulls(),
         "nulls_empty"
     );
 
     filter_snapshot!(
-        FilterKind::StringContains("a".to_owned()),
+        FilterKind::String(StringFilter::new(StringOperator::Contains, "a".to_owned())),
         TestColumn::strings_nulls(),
         "nulls_a"
+    );
+
+    filter_snapshot!(
+        FilterKind::String(StringFilter::new(
+            StringOperator::StartsWith,
+            "b".to_owned()
+        )),
+        TestColumn::strings(),
+        "starts_with_b"
+    );
+
+    filter_snapshot!(
+        FilterKind::String(StringFilter::new(
+            StringOperator::StartsWith,
+            "b".to_owned()
+        )),
+        TestColumn::strings_nulls(),
+        "nulls_starts_with_b"
+    );
+
+    filter_snapshot!(
+        FilterKind::String(StringFilter::new(StringOperator::EndsWith, "c".to_owned())),
+        TestColumn::strings(),
+        "ends_with_c"
+    );
+
+    filter_snapshot!(
+        FilterKind::String(StringFilter::new(StringOperator::EndsWith, "c".to_owned())),
+        TestColumn::strings_nulls(),
+        "nulls_ends_with_c"
     );
 }
 
 #[tokio::test]
-async fn test_string_contains_list() {
-    for &nullability in Nullability::ALL {
-        filter_snapshot!(
-            FilterKind::StringContains("ab".to_owned()),
-            TestColumn::strings_lists(nullability),
-            format!("{nullability:?}_ab")
-        );
+async fn test_string_list() {
+    for op in StringOperator::ALL {
+        for &nullability in Nullability::ALL {
+            filter_snapshot!(
+                FilterKind::String(StringFilter::new(*op, "ab".to_owned())),
+                TestColumn::strings_lists(nullability),
+                format!("{nullability:?}_{op:?}_ab")
+            );
+        }
     }
 }
 

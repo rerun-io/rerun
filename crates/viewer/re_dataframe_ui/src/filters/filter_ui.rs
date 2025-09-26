@@ -315,6 +315,7 @@ impl Filter {
 
 impl SyntaxHighlighting for TimestampFormatted<'_, FilterKind> {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        //TODO(ab): this is weird. this entire impl should be delegated to inner structs
         builder.append_keyword(&self.inner.operator_text());
         builder.append_keyword(" ");
 
@@ -335,8 +336,8 @@ impl SyntaxHighlighting for TimestampFormatted<'_, FilterKind> {
                 builder.append(float_filter);
             }
 
-            FilterKind::StringContains(query) => {
-                builder.append_string_value(query);
+            FilterKind::String(string_filter) => {
+                builder.append(string_filter);
             }
 
             FilterKind::Timestamp(timestamp_filter) => {
@@ -364,51 +365,22 @@ impl FilterKind {
         column_name: &str,
         popup_just_opened: bool,
     ) -> FilterUiAction {
-        let mut action = FilterUiAction::None;
-
-        let operator_text = self.operator_text();
-
         // Reduce the default width unnecessarily expands the popup width (queries as usually vers
         // small).
         ui.spacing_mut().text_edit_width = 150.0;
 
-        // TODO(ab): this is getting unwieldy. All arms should have an independent inner struct,
-        // which all handle their own UI.
         match self {
-            Self::NonNullableBoolean(boolean_filter) => {
-                boolean_filter.popup_ui(ui, column_name, &mut action);
+            Self::NonNullableBoolean(boolean_filter) => boolean_filter.popup_ui(ui, column_name),
+            Self::NullableBoolean(boolean_filter) => boolean_filter.popup_ui(ui, column_name),
+            Self::Int(int_filter) => int_filter.popup_ui(ui, column_name, popup_just_opened),
+            Self::Float(float_filter) => float_filter.popup_ui(ui, column_name, popup_just_opened),
+            Self::String(string_filter) => {
+                string_filter.popup_ui(ui, column_name, popup_just_opened)
             }
-
-            Self::NullableBoolean(boolean_filter) => {
-                boolean_filter.popup_ui(ui, column_name, &mut action);
-            }
-
-            Self::Int(int_filter) => {
-                action = int_filter.popup_ui(ui, column_name, popup_just_opened);
-            }
-
-            Self::Float(float_filter) => {
-                action = float_filter.popup_ui(ui, column_name, popup_just_opened);
-            }
-
-            Self::StringContains(query) => {
-                basic_operation_ui(ui, column_name, &operator_text);
-
-                let response = ui.text_edit_singleline(query);
-
-                if popup_just_opened {
-                    response.request_focus();
-                }
-
-                action = action_from_text_edit_response(ui, &response);
-            }
-
             Self::Timestamp(timestamp_filter) => {
-                timestamp_filter.popup_ui(ui, column_name, &mut action, timestamp_format);
+                timestamp_filter.popup_ui(ui, column_name, timestamp_format)
             }
         }
-
-        action
     }
 
     /// Given a chance to the underlying filter struct to update/clean itself upon committing the
@@ -422,7 +394,7 @@ impl FilterKind {
             | Self::NonNullableBoolean(_)
             | Self::Int(_)
             | Self::Float(_)
-            | Self::StringContains(_) => {}
+            | Self::String(_) => {}
 
             Self::Timestamp(timestamp_filter) => timestamp_filter.on_commit(),
         }
@@ -433,7 +405,7 @@ impl FilterKind {
         match self {
             Self::Int(int_filter) => int_filter.comparison_operator().to_string(),
             Self::Float(float_filter) => float_filter.comparison_operator().to_string(),
-            Self::StringContains(_) => "contains".to_owned(),
+            Self::String(string_filter) => string_filter.operator().to_string(),
             Self::NonNullableBoolean(_) | Self::NullableBoolean(_) | Self::Timestamp(_) => {
                 "is".to_owned()
             }
@@ -462,22 +434,23 @@ pub fn action_from_text_edit_response(ui: &egui::Ui, response: &egui::Response) 
 mod tests {
     use super::super::{
         ComparisonOperator, FloatFilter, IntFilter, NonNullableBooleanFilter,
-        NullableBooleanFilter, TimestampFilter,
+        NullableBooleanFilter, StringFilter, TimestampFilter,
     };
     use super::*;
+    use crate::filters::StringOperator;
 
     fn test_cases() -> Vec<(FilterKind, &'static str)> {
         // Let's remember to update this test when adding new filter operations.
         #[cfg(debug_assertions)]
         let _: () = {
             use FilterKind::*;
-            let _op = StringContains(String::new());
+            let _op = String(Default::default());
             match _op {
                 NonNullableBoolean(_)
                 | NullableBoolean(_)
                 | Int(_)
                 | Float(_)
-                | StringContains(_)
+                | String(_)
                 | Timestamp(_) => {}
             }
         };
@@ -520,12 +493,16 @@ mod tests {
                 "float_compares_none",
             ),
             (
-                FilterKind::StringContains("query".to_owned()),
+                FilterKind::String(StringFilter::new(StringOperator::Contains, "query")),
                 "string_contains",
             ),
             (
-                FilterKind::StringContains(String::new()),
+                FilterKind::String(StringFilter::new(StringOperator::Contains, "")),
                 "string_contains_empty",
+            ),
+            (
+                FilterKind::String(StringFilter::new(StringOperator::StartsWith, "query")),
+                "string_starts_with",
             ),
             (
                 FilterKind::Timestamp(TimestampFilter::after(
@@ -607,18 +584,39 @@ mod tests {
         let filters = vec![
             Filter::new(
                 "some:column:name",
-                FilterKind::StringContains("some query string".to_owned()),
+                FilterKind::String(StringFilter::new(
+                    StringOperator::Contains,
+                    "some query string".to_owned(),
+                )),
             ),
             Filter::new(
                 "other:column:name",
-                FilterKind::StringContains("hello".to_owned()),
+                FilterKind::String(StringFilter::new(
+                    StringOperator::Contains,
+                    "hello".to_owned(),
+                )),
             ),
-            Filter::new("short:name", FilterKind::StringContains("world".to_owned())),
+            Filter::new(
+                "short:name",
+                FilterKind::String(StringFilter::new(
+                    StringOperator::Contains,
+                    "world".to_owned(),
+                )),
+            ),
             Filter::new(
                 "looooog:name",
-                FilterKind::StringContains("some more querying text here".to_owned()),
+                FilterKind::String(StringFilter::new(
+                    StringOperator::Contains,
+                    "some more querying text here".to_owned(),
+                )),
             ),
-            Filter::new("world", FilterKind::StringContains(":wave:".to_owned())),
+            Filter::new(
+                "world",
+                FilterKind::String(StringFilter::new(
+                    StringOperator::Contains,
+                    ":wave:".to_owned(),
+                )),
+            ),
         ];
 
         let mut filters = FilterState {
