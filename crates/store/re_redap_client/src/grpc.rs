@@ -562,7 +562,10 @@ async fn stream_partition_from_server(
 
     let store_id = store_info.store_id.clone();
 
-    if let Some(on_ui_cmd) = on_ui_cmd {
+    // Send UI commands for recording (as opposed to blueprint) stores.
+    if let Some(on_ui_cmd) = on_ui_cmd
+        && store_info.store_id.is_recording()
+    {
         if let Some(time_range) = time_range {
             on_ui_cmd(UiCommand::AddValidTimeRange {
                 store_id: store_id.clone(),
