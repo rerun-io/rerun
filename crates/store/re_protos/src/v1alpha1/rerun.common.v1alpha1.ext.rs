@@ -1,10 +1,7 @@
-use std::hash::Hasher;
-
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
 
 use re_log_types::{RecordingId, StoreKind, TableId, external::re_types_core::ComponentDescriptor};
 
-use crate::v1alpha1::rerun_common_v1alpha1::TaskId;
 use crate::{TypeConversionError, invalid_field, missing_field};
 
 // --- Arrow ---
@@ -651,16 +648,6 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
             component: component.into(),
             component_type: component_type.map(Into::into),
         })
-    }
-}
-
-// ---
-
-impl Eq for TaskId {}
-
-impl std::hash::Hash for TaskId {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.as_str().hash(state)
     }
 }
 

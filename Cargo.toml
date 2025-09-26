@@ -278,9 +278,9 @@ num-derive = "0.4"
 num-traits = "0.2"
 numpy = "0.24"
 objc2-app-kit = "0.3"
-opentelemetry = { version = "0.30", features = ["metrics"] }
-opentelemetry-appender-tracing = "0.30"
-opentelemetry-otlp = "0.30"
+opentelemetry = { version = "0.31", features = ["metrics"] }
+opentelemetry-appender-tracing = "0.31"
+opentelemetry-otlp = "0.31"
 opentelemetry_sdk = { version = "0.30", features = ["rt-tokio"] }
 ordered-float = "4.3.0"
 parking_lot = "0.12.3"
@@ -296,10 +296,10 @@ prettyplease = "0.2"
 proc-macro2 = { version = "1.0", default-features = false }
 profiling = { version = "1.0.12", default-features = false }
 prometheus-client = "0.24"
-prost = "0.13.3"
-prost-build = "0.13.3"
-prost-types = "0.13.3"
-prost-reflect = "0.15.3"
+prost = "0.14.1"
+prost-build = "0.14.1"
+prost-reflect = "0.16.1"
+prost-types = "0.14.1"
 puffin = "0.19.1"
 puffin_http = "0.16"
 pyo3 = "0.24.1"
@@ -348,10 +348,11 @@ tokio = { version = "1.44.2", default-features = false }
 tokio-stream = "0.1.16"
 tokio-util = { version = "0.7.12", default-features = false }
 toml = { version = "0.8.10", default-features = false }
-tonic = { version = "0.13.1", default-features = false }
-tonic-build = { version = "0.13.1", default-features = false }
-tonic-web = "0.13.1"
-tonic-web-wasm-client = "0.7.1"
+tonic = { version = "0.14.2", default-features = false }
+tonic-prost = { version = "0.14.2", default-features = false }
+tonic-prost-build = { version = "0.14.2", default-features = false }
+tonic-web = "0.14.2"
+tonic-web-wasm-client = "0.8.0"
 tower = "0.5"
 tower-http = "0.6"
 tower-service = "0.3"
