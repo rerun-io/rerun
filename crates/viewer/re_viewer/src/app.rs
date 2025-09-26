@@ -661,10 +661,42 @@ impl App {
                 store_hub.close_app(&app_id);
             }
 
-            SystemCommand::ActivateRecordingOrTable { entry, source: _ } => {
+            SystemCommand::ActivateRecordingOrTable { entry, source } => {
+                // Get the previous recording before switching for analytics
+                let previous_recording_id = store_hub.active_store_id().cloned();
+
                 match &entry {
                     RecordingOrTable::Recording { store_id } => {
                         store_hub.set_active_recording_id(store_id.clone());
+
+                        // Analytics: only when switching between recordings
+                        #[cfg(feature = "analytics")]
+                        if let (Some(analytics), Some(previous_id)) = (
+                            re_analytics::Analytics::global_or_init(),
+                            previous_recording_id.as_ref(),
+                        ) {
+                            // Only log if we're actually switching to a different recording
+                            if previous_id != store_id {
+                                let switch_method = match source {
+                                    re_viewer_context::ActivationSource::UiClick => "ui_click",
+                                    re_viewer_context::ActivationSource::TableClick => "table_click",
+                                    re_viewer_context::ActivationSource::Hotkey(_) => "hotkey",
+                                    re_viewer_context::ActivationSource::Url => "url",
+                                    re_viewer_context::ActivationSource::FileOpen => "file_open",
+                                    re_viewer_context::ActivationSource::CliArgument => "cli_argument",
+                                    re_viewer_context::ActivationSource::Auto => "auto",
+                                    re_viewer_context::ActivationSource::Api => "api",
+                                };
+
+                                let event = crate::viewer_analytics::event::switch_recording(
+                                    &self.app_env,
+                                    Some(previous_id),
+                                    store_id,
+                                    switch_method,
+                                );
+                                analytics.record(event);
+                            }
+                        }
                     }
                     RecordingOrTable::Table { .. } => {}
                 }
@@ -879,7 +911,13 @@ impl App {
                             self.state
                                 .navigation
                                 .replace(DisplayMode::LocalRecordings(store_id.clone()));
-                            store_hub.set_active_recording_id(store_id.clone());
+                            self.command_sender
+                                .send_system(SystemCommand::ActivateRecordingOrTable {
+                                    entry: re_viewer_context::RecordingOrTable::Recording {
+                                        store_id: store_id.clone(),
+                                    },
+                                    source: re_viewer_context::ActivationSource::UiClick,
+                                });
                         }
 
                         Item::AppId(_)
@@ -1003,7 +1041,7 @@ impl App {
                         let store_id = entity_db.store_id().clone();
                         debug_assert!(store_id.is_recording()); // `find_recording_store_by_source` should have filtered for recordings rather than blueprints.
                         drop(all_sources);
-                        self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
+                        self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id, re_viewer_context::ActivationSource::Url);
                     }
                     return;
                 }
@@ -1049,7 +1087,7 @@ impl App {
                         // `go_to_dataset_data` may override the selection again, but this is important regardless,
                         // since `go_to_dataset_data` does not change the active recording.
                         drop(all_sources);
-                        self.make_store_active_and_highlight(store_hub, egui_ctx, &uri.store_id());
+                        self.make_store_active_and_highlight(store_hub, egui_ctx, &uri.store_id(), re_viewer_context::ActivationSource::Url);
                     }
 
                     // Note that applying the fragment changes the per-recording settings like the active time cursor.
@@ -2027,7 +2065,7 @@ impl App {
                         match store_id.kind() {
                             StoreKind::Recording => {
                                 re_log::trace!("Opening a new recording: '{store_id:?}'");
-                                self.make_store_active_and_highlight(store_hub, egui_ctx, store_id);
+                                self.make_store_active_and_highlight(store_hub, egui_ctx, store_id, re_viewer_context::ActivationSource::Auto);
                             }
                             StoreKind::Blueprint => {
                                 // We wait with activating blueprints until they are fully loaded,
@@ -2149,16 +2187,17 @@ impl App {
         if let Some(entity_db) = store_hub.find_recording_store_by_source(new_source) {
             let store_id = entity_db.store_id().clone();
             debug_assert!(store_id.is_recording()); // `find_recording_store_by_source` should have filtered for recordings rather than blueprints.
-            self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
+            self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id, re_viewer_context::ActivationSource::FileOpen);
         }
     }
 
     /// Makes the given store active and request user attention if Rerun in the background.
     fn make_store_active_and_highlight(
         &self,
-        store_hub: &mut StoreHub,
+        _store_hub: &mut StoreHub,
         egui_ctx: &egui::Context,
         store_id: &StoreId,
+        activation_source: re_viewer_context::ActivationSource,
     ) {
         if store_id.is_blueprint() {
             re_log::warn!(
@@ -2167,7 +2206,14 @@ impl App {
             return;
         }
 
-        store_hub.set_active_recording_id(store_id.clone());
+        // Use the system command to properly trigger analytics
+        self.command_sender
+            .send_system(SystemCommand::ActivateRecordingOrTable {
+                entry: re_viewer_context::RecordingOrTable::Recording {
+                    store_id: store_id.clone(),
+                },
+                source: activation_source,
+            });
 
         // Also select the new recording:
         self.command_sender.send_system(SystemCommand::SetSelection(
