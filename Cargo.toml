@@ -280,9 +280,9 @@ num-derive = "0.4"
 num-traits = "0.2"
 numpy = "0.24"
 objc2-app-kit = "0.3"
-opentelemetry = { version = "0.30", features = ["metrics"] }
-opentelemetry-appender-tracing = "0.30"
-opentelemetry-otlp = "0.30"
+opentelemetry = { version = "0.31", features = ["metrics"] }
+opentelemetry-appender-tracing = "0.31"
+opentelemetry-otlp = "0.31"
 opentelemetry_sdk = { version = "0.30", features = ["rt-tokio"] }
 ordered-float = "4.3.0"
 parking_lot = "0.12.3"
