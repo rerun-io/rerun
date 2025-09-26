@@ -16,7 +16,7 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import lancedb  # type: ignore[missing-imports]
+import lancedb
 import pyarrow as pa
 import rerun as rr
 from platformdirs import user_cache_dir
@@ -308,13 +308,13 @@ def _run_viewer_mode(host: str, port: int) -> None:
     client.send_table(name, batch)
 
 
-def _run_register_mode(host: str, port: int, cache_dir: Path | None) -> None:
+def _run_register_mode(host: str, port: int, cache_dir: Path) -> None:
     name, batch = _build_record_batch()
 
     # Build a RecordBatchReader for Lance writing
     reader = pa.RecordBatchReader.from_batches(batch.schema, [batch])
 
-    cache_root = cache_dir or (_get_cache_dir() / "lancedb")
+    cache_root = cache_dir
     cache_root.mkdir(parents=True, exist_ok=True)
 
     # Place table under cache_root; last component is table name
@@ -362,7 +362,7 @@ def main() -> int:
         # Default port for catalog server if not specified
         port = args.port if args.port is not None else 51234
         try:
-            _run_register_mode(args.host, port, args.cache_dir)
+            _run_register_mode(args.host, port, args.cache_dir or default_cache_dir)
         except Exception as e:
             print(f"Error in register-to-server mode: {e}", file=sys.stderr)
             return 1
