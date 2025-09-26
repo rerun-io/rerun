@@ -261,7 +261,7 @@ impl LogDataSource {
 
                 spawn_future(async move {
                     if let Err(err) = stream_partition.await {
-                        re_log::warn!("Error while streaming: {}", &err);
+                        re_log::warn!("Error while streaming: {}", re_error::format_ref(&err));
                     }
                 });
                 Ok(rx)

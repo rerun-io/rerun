@@ -101,6 +101,7 @@ impl egui::Widget for Link {
 pub struct Notification {
     level: NotificationLevel,
     text: String,
+
     /// if set this notifications will have a collapsable details section.
     details: Option<String>,
     link: Option<Link>,
