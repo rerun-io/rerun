@@ -24,7 +24,7 @@ pub enum UiCommand {
     AddValidTimeRange {
         store_id: StoreId,
 
-        /// If `None`, signals that all timelines are valid entirely.
+        /// If `None`, signals that all timelines are entirely valid.
         timeline: Option<TimelineName>,
         time_range: AbsoluteTimeRange,
     },
