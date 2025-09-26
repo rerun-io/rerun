@@ -414,6 +414,7 @@ impl FilterKindUdf {
         // 1) Convert the list array to a bool array (with same offsets and nulls)
         // 2) Apply the ANY (or, in the future, another) semantics to "merge" each row's instances
         //    into the final bool.
+        // TODO(ab): duplicated code with the other UDF, pliz unify.
         cast_list_array
             .iter()
             .map(|maybe_row| {

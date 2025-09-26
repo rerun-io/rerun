@@ -555,6 +555,7 @@ async fn test_float_lists() {
 
 #[tokio::test]
 async fn test_string_contains() {
+    //TODO
     filter_snapshot!(
         FilterKind::String(StringFilter::new(StringOperator::Contains, String::new())),
         TestColumn::strings(),
@@ -589,6 +590,36 @@ async fn test_string_contains() {
         FilterKind::String(StringFilter::new(StringOperator::Contains, "a".to_owned())),
         TestColumn::strings_nulls(),
         "nulls_a"
+    );
+
+    filter_snapshot!(
+        FilterKind::String(StringFilter::new(
+            StringOperator::StartsWith,
+            "b".to_owned()
+        )),
+        TestColumn::strings(),
+        "starts_with_b"
+    );
+
+    filter_snapshot!(
+        FilterKind::String(StringFilter::new(
+            StringOperator::StartsWith,
+            "b".to_owned()
+        )),
+        TestColumn::strings_nulls(),
+        "nulls_starts_with_b"
+    );
+
+    filter_snapshot!(
+        FilterKind::String(StringFilter::new(StringOperator::EndsWith, "c".to_owned())),
+        TestColumn::strings(),
+        "ends_with_c"
+    );
+
+    filter_snapshot!(
+        FilterKind::String(StringFilter::new(StringOperator::EndsWith, "c".to_owned())),
+        TestColumn::strings_nulls(),
+        "nulls_ends_with_c"
     );
 }
 
