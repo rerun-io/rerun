@@ -8,6 +8,29 @@ use crate::RecordingOrTable;
 
 // ----------------------------------------------------------------------------
 
+/// How a recording was activated.
+#[derive(Clone, Debug)]
+pub enum ActivationSource {
+    /// User clicked in the UI
+    UiClick,
+    /// Keyboard shortcut
+    Hotkey(String),
+    /// Via URL parameter or fragment
+    Url,
+    /// File was opened by the viewer (either drag + drop, or File > Open)
+    FileOpen,
+    /// CLI argument, e.g. `rerun dna.rrd`
+    CliArgument,
+    /// Clicked from table view
+    TableClick,
+    /// Auto-activation (first recording, only available recording, etc.)
+    Auto,
+    /// Programmatic activation
+    Api,
+}
+
+// ----------------------------------------------------------------------------
+
 /// Commands used by internal system components
 // TODO(jleibs): Is there a better crate for this?
 #[derive(strum_macros::IntoStaticStr)]
@@ -56,7 +79,10 @@ pub enum SystemCommand {
     ClearActiveBlueprintAndEnableHeuristics,
 
     /// Switch to this [`RecordingOrTable`].
-    ActivateRecordingOrTable(RecordingOrTable),
+    ActivateRecordingOrTable {
+        entry: RecordingOrTable,
+        source: ActivationSource,
+    },
 
     /// Close an [`RecordingOrTable`] and free its memory.
     CloseRecordingOrTable(RecordingOrTable),

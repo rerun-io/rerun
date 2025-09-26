@@ -15,7 +15,7 @@ pub use self::{
     app_options::AppOptions,
     blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, ViewId},
     command_sender::{
-        CommandReceiver, CommandSender, SystemCommand, SystemCommandSender, command_channel,
+        ActivationSource, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender, command_channel,
     },
     contents::{Contents, ContentsName, blueprint_id_to_tile_id},
     file_dialog::santitize_file_name,
