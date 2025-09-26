@@ -18,7 +18,12 @@ pub fn viewer_harness() -> Harness<'static, App> {
                 MainThreadToken::i_promise_i_am_only_using_this_for_a_test(),
                 build_info!(),
                 AppEnvironment::Test,
-                StartupOptions::default(),
+                StartupOptions {
+                    // Don't show the welcome / example screen in tests.
+                    // See also: https://github.com/rerun-io/rerun/issues/10989
+                    hide_welcome_screen: true,
+                    ..Default::default()
+                },
                 cc,
                 None,
                 AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
