@@ -28,6 +28,7 @@ import re
 import subprocess
 import sys
 import time
+from functools import partial
 from glob import glob
 from typing import Callable
 
@@ -291,7 +292,7 @@ def denied_sdk_deps(results: list[Result]) -> None:
                 # -f '{lib}' is used here because otherwise cargo tree would print links to repositories of patched crates
                 # which would cause false positives e.g. when checking for egui.
                 f"-p rerun --target {target} -f '{{lib}}' -F {features}",
-                output_checks=lambda output: check_sdk_tree_with_default_features(output, features),
+                output_checks=partial(check_sdk_tree_with_default_features, features=features),
             )
             result.command = f"Check dependencies in `{result.command}`"
             results.append(result)
