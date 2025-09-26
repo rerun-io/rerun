@@ -18,7 +18,11 @@ pub fn viewer_harness() -> Harness<'static, App> {
                 MainThreadToken::i_promise_i_am_only_using_this_for_a_test(),
                 build_info!(),
                 AppEnvironment::Test,
-                StartupOptions::default(),
+                StartupOptions {
+                    // Don't calculate memory limit in tests.
+                    memory_limit: re_memory::MemoryLimit::UNLIMITED,
+                    ..Default::default()
+                },
                 cc,
                 None,
                 AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
