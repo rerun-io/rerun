@@ -113,7 +113,29 @@ impl StartupOptions {
         #[cfg(not(target_arch = "wasm32"))]
         {
             // TODO(RR-1878): Would be great to grab this from the dataplatform when available.
-            url::Url::parse("https://rerun.io/viewer").ok()
+            let version = re_build_info::build_info!().version;
+
+            // We generally put `dev` when we're on a version that hasn't been released yet.
+            // Therefore, go one version back!
+            let (major, minor, patch) = if version.is_dev() {
+                if version.patch == 0 {
+                    // There might be a patched version of the latest minor/major, but we don't know that unfortunately.
+                    if version.minor == 0 {
+                        (version.major - 1, 0, 0)
+                    } else {
+                        (version.major, version.minor - 1, 0)
+                    }
+                } else {
+                    (version.major, version.minor, version.patch - 1)
+                }
+            } else {
+                (version.major, version.minor, version.patch)
+            };
+
+            url::Url::parse(&format!(
+                "https://rerun.io/viewer/version/{major}.{minor}.{patch}"
+            ))
+            .ok()
         }
     }
 }
