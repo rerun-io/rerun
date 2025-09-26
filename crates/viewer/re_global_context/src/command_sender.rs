@@ -17,9 +17,9 @@ pub enum ActivationSource {
     Hotkey(String),
     /// Via URL parameter or fragment
     Url,
-    /// File was dropped into the viewer
-    FileDrop,
-    /// CLI argument
+    /// File was opened by the viewer (either drag + drop, or File > Open)
+    FileOpen,
+    /// CLI argument, e.g. `rerun dna.rrd`
     CliArgument,
     /// Clicked from table view
     TableClick,

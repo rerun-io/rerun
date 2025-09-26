@@ -346,6 +346,8 @@ pub struct OpenRecording {
 
     pub store_info: Option<StoreInfo>,
 
+    pub total_open_recordings: usize,
+
     /// How data is being loaded into the viewer.
     pub data_source: Option<&'static str>,
 }
@@ -360,6 +362,7 @@ impl Properties for OpenRecording {
             url,
             app_env,
             store_info,
+            total_open_recordings,
             data_source,
         } = self;
 
@@ -384,6 +387,7 @@ impl Properties for OpenRecording {
             event.insert("recording_id", recording_id);
             event.insert("store_source", store_source);
             event.insert("store_version", store_version);
+            event.insert("total_open_recordings", total_open_recordings as i64);
             event.insert_opt("rust_version", rust_version);
             event.insert_opt("llvm_version", llvm_version);
             event.insert_opt("python_version", python_version);
@@ -420,9 +424,6 @@ pub struct SwitchRecording {
     /// The recording we're switching to (hashed if not official example).
     pub new_recording_id: Id,
 
-    /// Total number of recordings currently loaded in the viewer.
-    pub total_recordings_loaded: usize,
-
     /// How the switch was initiated.
     pub switch_method: &'static str,
 }
@@ -438,7 +439,6 @@ impl Properties for SwitchRecording {
             app_env,
             previous_recording_id,
             new_recording_id,
-            total_recordings_loaded,
             switch_method,
         } = self;
 
@@ -446,7 +446,6 @@ impl Properties for SwitchRecording {
         event.insert("app_env", app_env);
         event.insert_opt("previous_recording_id", previous_recording_id);
         event.insert("new_recording_id", new_recording_id);
-        event.insert("total_recordings_loaded", total_recordings_loaded as i64);
         event.insert("switch_method", switch_method);
     }
 }

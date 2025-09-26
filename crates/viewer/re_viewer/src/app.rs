@@ -661,7 +661,7 @@ impl App {
                 store_hub.close_app(&app_id);
             }
 
-            SystemCommand::ActivateRecordingOrTable(entry) => {
+            SystemCommand::ActivateRecordingOrTable { entry, source: _ } => {
                 match &entry {
                     RecordingOrTable::Recording { store_id } => {
                         store_hub.set_active_recording_id(store_id.clone());
@@ -2112,14 +2112,19 @@ impl App {
 
             // Do analytics/events after ingesting the new message,
             // because `entity_db.store_info` needs to be set.
+            let num_recordings = store_hub.store_bundle().recordings().count();
             let entity_db = store_hub.entity_db_mut(store_id);
             if msg_will_add_new_store && entity_db.store_kind() == StoreKind::Recording {
                 #[cfg(feature = "analytics")]
-                if let Some(analytics) = re_analytics::Analytics::global_or_init()
-                    && let Some(event) =
-                        crate::viewer_analytics::event::open_recording(&self.app_env, entity_db)
-                {
-                    analytics.record(event);
+                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+                    // Calculate count before any further borrows
+                    if let Some(event) = crate::viewer_analytics::event::open_recording(
+                        &self.app_env,
+                        entity_db,
+                        num_recordings,
+                    ) {
+                        analytics.record(event);
+                    }
                 }
 
                 if let Some(event_dispatcher) = self.event_dispatcher.as_ref() {

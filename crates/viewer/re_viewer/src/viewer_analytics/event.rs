@@ -2,7 +2,10 @@ use crate::AppEnvironment;
 
 use re_analytics::{
     Config, Property,
-    event::{Id, Identify, OpenRecording, StoreInfo, SwitchRecording, ViewerRuntimeInformation, ViewerStarted},
+    event::{
+        Id, Identify, OpenRecording, StoreInfo, SwitchRecording, ViewerRuntimeInformation,
+        ViewerStarted,
+    },
 };
 
 pub fn identify(
@@ -64,6 +67,7 @@ pub fn viewer_started(
 pub fn open_recording(
     app_env: &AppEnvironment,
     entity_db: &re_entity_db::EntityDb,
+    total_open_recordings: usize,
 ) -> Option<OpenRecording> {
     let store_info = entity_db.store_info().map(|store_info| {
         let re_log_types::StoreInfo {
@@ -166,6 +170,7 @@ pub fn open_recording(
         url: app_env.url().cloned(),
         app_env: app_env.name(),
         store_info,
+        total_open_recordings,
         data_source,
     })
 }
@@ -203,7 +208,6 @@ pub fn switch_recording(
         app_env: app_env.name(),
         previous_recording_id: previous_id,
         new_recording_id: new_id,
-        total_recordings_loaded: 0, // Will be updated at call site
         switch_method,
     }
 }
