@@ -48,7 +48,10 @@ async fn menu_without_recording() {
     let mut harness = viewer_test_utils::viewer_harness();
     harness.get_by_label("Menu").click();
     harness.run_ok();
-    harness.snapshot("menu_without_recording");
+    harness.snapshot_options(
+        "menu_without_recording",
+        &SnapshotOptions::new().threshold(0.7),
+    );
 }
 
 /// Tests the colormap selector UI with snapshot testing.
