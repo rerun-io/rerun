@@ -1,0 +1,12 @@
+[project]
+name = "table_zoo"
+version = "0.1.0"
+readme = "README.md"
+dependencies = ["pyarrow", "lancedb", "platformdirs", "rerun-sdk"]
+
+[project.scripts]
+table_zoo = "table_zoo:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
