@@ -19,9 +19,8 @@ pub(crate) fn decode_to_app(
     app_id_injector: &mut impl ApplicationIdInjector,
     data: &mut impl std::io::Read,
 ) -> Result<(u64, Option<LogMsg>), DecodeError> {
-    let mut read_bytes = 0u64;
     let header = MessageHeader::decode(data)?;
-    read_bytes += std::mem::size_of::<MessageHeader>() as u64 + header.len;
+    let read_bytes = std::mem::size_of::<MessageHeader>() as u64 + header.len;
 
     let mut buf = vec![0; header.len as usize];
     data.read_exact(&mut buf[..])?;
@@ -39,9 +38,8 @@ pub(crate) fn decode_to_app(
 pub(crate) fn decode_to_transport(
     data: &mut impl std::io::Read,
 ) -> Result<(u64, Option<re_protos::log_msg::v1alpha1::log_msg::Msg>), DecodeError> {
-    let mut read_bytes = 0u64;
     let header = MessageHeader::decode(data)?;
-    read_bytes += std::mem::size_of::<MessageHeader>() as u64 + header.len;
+    let read_bytes = std::mem::size_of::<MessageHeader>() as u64 + header.len;
 
     let mut buf = vec![0; header.len as usize];
     data.read_exact(&mut buf[..])?;

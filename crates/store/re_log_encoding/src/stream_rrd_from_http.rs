@@ -75,11 +75,14 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
         move |part| match part {
             Ok(part) => match part {
                 ehttp::streaming::Part::Response(ehttp::PartialResponse {
+                    url,
                     ok,
                     status,
                     status_text,
-                    ..
+                    headers,
                 }) => {
+                    re_log::trace!("{url} status: {status} - {status_text}");
+                    re_log::trace!("{url} headers: {headers:#?}");
                     if ok {
                         re_log::debug!("Decoding .rrd file from {url:?}…");
                         ControlFlow::Continue(())
