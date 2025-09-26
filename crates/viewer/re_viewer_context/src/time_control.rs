@@ -250,7 +250,7 @@ impl TimeControl {
     ) -> TimeControlResponse {
         self.select_a_valid_timeline(times_per_timeline);
 
-        let Some(full_range) = self.full_range(times_per_timeline) else {
+        let Some(full_valid_range) = self.full_valid_range(times_per_timeline) else {
             return TimeControlResponse::no_repaint(); // we have no data on this timeline yet, so bail
         };
 
@@ -262,9 +262,9 @@ impl TimeControl {
                 // never interacted with before, in which case we don't even have a time state yet.
                 let state = self.states.entry(*self.timeline.name()).or_insert_with(|| {
                     TimeStateEntry::new(if self.following {
-                        full_range.max()
+                        full_valid_range.max()
                     } else {
-                        full_range.min()
+                        full_valid_range.min()
                     })
                 });
 
@@ -277,11 +277,11 @@ impl TimeControl {
                 let state = self
                     .states
                     .entry(*self.timeline.name())
-                    .or_insert_with(|| TimeStateEntry::new(full_range.min()));
+                    .or_insert_with(|| TimeStateEntry::new(full_valid_range.min()));
 
-                if self.looping == Looping::Off && full_range.max() <= state.current.time {
+                if self.looping == Looping::Off && full_valid_range.max() <= state.current.time {
                     // We've reached the end of the data
-                    state.current.time = full_range.max().into();
+                    state.current.time = full_valid_range.max().into();
 
                     if more_data_is_coming {
                         // then let's wait for it without pausing!
@@ -295,12 +295,8 @@ impl TimeControl {
                 let loop_range = match self.looping {
                     Looping::Off => None,
                     Looping::Selection => state.current.loop_selection,
-                    Looping::All => Some(full_range.into()),
+                    Looping::All => Some(full_valid_range.into()),
                 };
-
-                if let Some(loop_range) = loop_range {
-                    state.current.time = state.current.time.max(loop_range.min);
-                }
 
                 match self.timeline.typ() {
                     TimeType::Sequence => {
@@ -317,16 +313,25 @@ impl TimeControl {
                     state.current.time = loop_range.min; // loop!
                 }
 
+                // Generally, confine cursor to either the valid range or the loop range.
+                // (you can still scrub outside, just not play!)
+                let time_cursor_confines = loop_range.unwrap_or(full_valid_range.into());
+                state.current.time = state
+                    .current
+                    .time
+                    .max(time_cursor_confines.min)
+                    .min(time_cursor_confines.max);
+
                 NeedsRepaint::Yes
             }
             PlayState::Following => {
                 // Set the time to the max:
                 match self.states.entry(*self.timeline.name()) {
                     std::collections::btree_map::Entry::Vacant(entry) => {
-                        entry.insert(TimeStateEntry::new(full_range.max()));
+                        entry.insert(TimeStateEntry::new(full_valid_range.max()));
                     }
                     std::collections::btree_map::Entry::Occupied(mut entry) => {
-                        entry.get_mut().current.time = full_range.max().into();
+                        entry.get_mut().current.time = full_valid_range.max().into();
                     }
                 }
                 NeedsRepaint::No // no need for request_repaint - we already repaint when new data arrives
@@ -747,11 +752,17 @@ impl TimeControl {
         }
     }
 
-    /// The full range of times for the current timeline
-    pub fn full_range(&self, times_per_timeline: &TimesPerTimeline) -> Option<AbsoluteTimeRange> {
-        times_per_timeline
-            .get(self.timeline().name())
-            .map(|stats| range(&stats.per_time))
+    /// The full range of times for the current timeline, skipping times outside of the valid data ranges
+    /// at the start and end.
+    fn full_valid_range(&self, times_per_timeline: &TimesPerTimeline) -> Option<AbsoluteTimeRange> {
+        times_per_timeline.get(self.timeline().name()).map(|stats| {
+            let data_range = range(&stats.per_time);
+            let max_valid_range_for = self.max_valid_range_for(*self.timeline().name());
+            AbsoluteTimeRange::new(
+                data_range.min.max(max_valid_range_for.min),
+                data_range.max.min(max_valid_range_for.max),
+            )
+        })
     }
 
     /// The selected slice of time that is called the "loop selection".
