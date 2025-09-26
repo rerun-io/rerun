@@ -555,7 +555,6 @@ async fn test_float_lists() {
 
 #[tokio::test]
 async fn test_string_contains() {
-    //TODO
     filter_snapshot!(
         FilterKind::String(StringFilter::new(StringOperator::Contains, String::new())),
         TestColumn::strings(),
