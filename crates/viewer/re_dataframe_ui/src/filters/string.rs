@@ -10,9 +10,9 @@ use arrow::datatypes::{DataType, Field};
 use datafusion::common::{Column, Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, Expr, ScalarFunctionArgs,
-    ScalarUDF, ScalarUDFImpl, Signature, TypeSignature, Volatility, col, lit,
+    ScalarUDF, ScalarUDFImpl, Signature, TypeSignature, Volatility, col, lit, not,
 };
-use datafusion::prelude::not;
+
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
