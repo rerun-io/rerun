@@ -322,6 +322,12 @@ impl eframe::App for ExampleApp {
                             ..Default::default()
                         })
                         .show_inside(ui, left_panel_top_section_ui);
+                    ui.selectable_label_with_icon(
+                        &icons::ADD,
+                        "foo/bar/baz",
+                        false,
+                        re_ui::LabelStyle::Normal,
+                    );
 
                     egui::ScrollArea::both()
                         .auto_shrink([false; 2])
