@@ -387,7 +387,9 @@ impl Toasts {
                 })
                 .response;
 
-            if !response.hovered() {
+            if !response.hovered()
+                && !egui_ctx.rect_contains_pointer(response.layer_id, response.interact_rect)
+            {
                 notification.toast_ttl = notification.toast_ttl.saturating_sub(dt);
             }
 
@@ -458,11 +460,7 @@ fn show_notification(
                         ui.label(egui::RichText::new(text));
 
                         if let Some(details) = details {
-                            if mode == DisplayMode::Panel {
-                                ui.collapsing_header("Details", false, |ui| ui.label(details));
-                            } else {
-                                ui.weak("Open notification toast for more details");
-                            }
+                            ui.collapsing_header("Details", false, |ui| ui.label(details));
                         }
                     });
 
