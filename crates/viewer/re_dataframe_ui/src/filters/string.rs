@@ -79,6 +79,8 @@ impl StringFilter {
         let udf = ScalarUDF::new_from_impl(StringFilterUdf::new(self));
         let expr = udf.call(vec![col(column.clone())]);
 
+        // The udf treats `DoesNotContains` in the same way as `Contains`, so we must apply an
+        // outer `NOT` (or null) operation. This way, both operators yield complementary results.
         let apply_any_or_null_semantics = self.operator() == StringOperator::DoesNotContain;
 
         if apply_any_or_null_semantics {
@@ -216,7 +218,7 @@ impl StringFilterUdf {
         };
 
         match self.operator {
-            // Note: reverse ALL-or-none semantics is applied outside of the UDF
+            // Note: reverse ALL-or-none semantics is applied at the expression level.
             StringOperator::Contains | StringOperator::DoesNotContain => {
                 Ok(arrow::compute::contains(haystack_array, needle.as_ref())?)
             }
