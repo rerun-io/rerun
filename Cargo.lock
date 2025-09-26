@@ -8785,7 +8785,6 @@ dependencies = [
 name = "re_uri"
 version = "0.26.0-alpha.1+dev"
 dependencies = [
- "re_log",
  "re_log_types",
  "re_tuid",
  "serde",
