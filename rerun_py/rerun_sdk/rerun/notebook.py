@@ -6,8 +6,7 @@ import os
 from typing import TYPE_CHECKING, Callable, Literal
 
 import pyarrow
-import pyarrow.ipc as ipc
-from pyarrow import RecordBatch
+from pyarrow import RecordBatch, ipc
 
 from .error_utils import deprecated_param
 from .time import to_nanos, to_nanos_since_epoch
@@ -24,7 +23,7 @@ from rerun import bindings
 from rerun.error_utils import RerunMissingDependencyError
 
 from .event import (
-    ViewerEvent as ViewerEvent,
+    ViewerEvent,
     _viewer_event_from_json_str,
 )
 from .recording_stream import RecordingStream, get_data_recording

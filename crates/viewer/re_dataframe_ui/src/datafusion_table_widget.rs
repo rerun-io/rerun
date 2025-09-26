@@ -21,7 +21,7 @@ use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQueryResult};
 use crate::display_record_batch::DisplayColumn;
-use crate::filters::{Filter, FilterOperation, FilterState};
+use crate::filters::{Filter, FilterKind, FilterState};
 use crate::header_tooltip::column_header_tooltip_ui;
 use crate::table_blueprint::{
     ColumnBlueprint, EntryLinksSpec, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
@@ -383,7 +383,11 @@ impl<'a> DataFusionTableWidget<'a> {
             title_ui(ui, Some(&mut table_config), title, url, should_show_spinner);
         }
 
-        filter_state.filter_bar_ui(ui, &mut new_blueprint);
+        filter_state.filter_bar_ui(
+            ui,
+            viewer_ctx.app_options().timestamp_format,
+            &mut new_blueprint,
+        );
 
         apply_table_style_fixes(ui.style_mut());
 
@@ -701,7 +705,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                     #[expect(clippy::collapsible_if)]
                                     if column.blueprint.variant_ui.is_none()
                                         && let Some(filter_op) =
-                                            FilterOperation::default_for_column(column_field)
+                                            FilterKind::default_for_column(column_field)
                                     {
                                         if ui
                                             .icon_and_text_menu_item(

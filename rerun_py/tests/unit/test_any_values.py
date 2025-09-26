@@ -39,6 +39,7 @@ def test_bad_any_value() -> None:
     class Foo:
         pass
 
+    rr.set_strict_mode(False)
     with pytest.warns(RerunWarning) as warnings:
         values = rr.AnyValues(bad_data=[Foo()])
 
@@ -76,6 +77,7 @@ def test_bad_any_value() -> None:
 
 
 def test_none_any_value() -> None:
+    rr.set_strict_mode(False)
     with pytest.warns(RerunWarning) as warnings:
         running_warning_count = 0
 
@@ -162,6 +164,7 @@ def test_empty_any_values(container_type: type[Any]) -> None:
         f"str_array_{container_type.__name__}": container_type(["str"]),
     })
 
+    rr.set_strict_mode(False)
     with pytest.warns(RerunWarning) as warnings:
         batches = list(values.as_component_batches())
         assert len(batches) == 0
@@ -189,6 +192,7 @@ def test_any_values_numpy() -> None:
 
 
 def test_any_values_with_field() -> None:
+    rr.set_strict_mode(False)
     with pytest.warns(DeprecationWarning, match="`rr.AnyValues.with_field` using a component descriptor is deprecated"):
         values = rr.AnyValues().with_component_from_data(
             descriptor=rr.ComponentDescriptor("value"),

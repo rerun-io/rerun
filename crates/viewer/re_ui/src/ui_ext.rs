@@ -784,22 +784,29 @@ pub trait UiExt {
         response
     }
 
+    fn loading_screen_ui<R>(&mut self, add_contents: impl FnOnce(&mut egui::Ui) -> R) -> R {
+        self.ui_mut().center("loading spinner", |ui| {
+            ui.vertical_centered(|ui| {
+                ui.spinner();
+                add_contents(ui)
+            })
+            .inner
+        })
+    }
+
     fn loading_screen(
         &mut self,
         header: impl Into<egui::RichText>,
         source: impl Into<egui::RichText>,
     ) {
-        self.ui_mut().center("loading spinner", |ui| {
-            ui.vertical_centered(|ui| {
-                ui.spinner();
-                ui.label(
-                    header
-                        .into()
-                        .heading()
-                        .color(ui.style().visuals.weak_text_color()),
-                );
-                ui.strong(source);
-            });
+        self.loading_screen_ui(|ui| {
+            ui.label(
+                header
+                    .into()
+                    .heading()
+                    .color(ui.style().visuals.weak_text_color()),
+            );
+            ui.strong(source);
         });
     }
 
@@ -1308,6 +1315,18 @@ pub trait UiExt {
                 .fit_to_exact_size(tokens.small_icon_size),
             text,
         ))
+    }
+
+    /// Set the current style for a text field that has invalid content.
+    fn style_invalid_field(&mut self) {
+        let ui = self.ui_mut();
+        ui.visuals_mut().selection.stroke.color = ui.visuals().error_fg_color;
+        ui.visuals_mut().widgets.active.bg_stroke =
+            egui::Stroke::new(1.0, ui.visuals().error_fg_color);
+        ui.visuals_mut().widgets.hovered.bg_stroke =
+            egui::Stroke::new(1.0, ui.visuals().error_fg_color);
+        ui.visuals_mut().widgets.inactive.bg_stroke =
+            egui::Stroke::new(1.0, ui.visuals().error_fg_color);
     }
 }
 

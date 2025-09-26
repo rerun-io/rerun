@@ -10,7 +10,7 @@ use arrow::{
 use comfy_table::{Cell, Row, Table, presets};
 use itertools::{Either, Itertools as _};
 
-use re_arrow_util::{ArrowArrayDowncastRef as _, format_data_type};
+use re_arrow_util::{ArrowArrayDowncastRef as _, format_field_datatype};
 use re_tuid::Tuid;
 use re_types_core::Loggable as _;
 
@@ -390,7 +390,7 @@ fn format_dataframe_without_metadata(
                         } else {
                             field.name()
                         },
-                        format_data_type(field.data_type()),
+                        format_field_datatype(field),
                     ))
                 } else {
                     Cell::new(format!(
@@ -400,7 +400,7 @@ fn format_dataframe_without_metadata(
                         } else {
                             field.name()
                         },
-                        format_data_type(field.data_type()),
+                        format_field_datatype(field),
                         DisplayMetadata {
                             prefix: "",
                             metadata: field.metadata().clone().into_iter().collect(),

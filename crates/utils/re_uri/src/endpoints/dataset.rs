@@ -67,7 +67,7 @@ impl DatasetPartitionUri {
                     time_range = Some(value.parse::<TimeSelection>()?);
                 }
                 _ => {
-                    re_log::warn_once!("Unknown query parameter: {key}={value}");
+                    // We ignore unknown query keys that may be from urls from prior/newer versions.
                 }
             }
         }

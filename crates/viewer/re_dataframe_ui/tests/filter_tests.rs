@@ -1,3 +1,4 @@
+use std::str::FromStr as _;
 use std::sync::Arc;
 
 use arrow::array::{
@@ -5,21 +6,25 @@ use arrow::array::{
     StringArray,
 };
 use arrow::buffer::{NullBuffer, OffsetBuffer};
+use arrow::compute::cast;
 use arrow::datatypes::{
     ArrowPrimitiveType, DataType, Field, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type,
-    Int64Type, Schema, UInt8Type, UInt16Type, UInt32Type, UInt64Type,
+    Int64Type, Schema, TimeUnit, TimestampNanosecondType, UInt8Type, UInt16Type, UInt32Type,
+    UInt64Type,
 };
 use arrow::record_batch::RecordBatch;
 use datafusion::catalog::MemTable;
 use datafusion::prelude::{DataFrame, SessionContext};
+use jiff::ToSpan as _;
 
 use re_dataframe_ui::{
-    ComparisonOperator, Filter, FilterOperation, NonNullableBooleanFilter, Nullability,
-    NullableBooleanFilter,
+    ComparisonOperator, Filter, FilterKind, FloatFilter, IntFilter, NonNullableBooleanFilter,
+    Nullability, NullableBooleanFilter, TimestampFilter,
 };
 use re_viewer_context::external::tokio;
 
 const COLUMN_NAME: &str = "column";
+const SOME_TIMESTAMP: &str = "2025-09-23T11:47Z";
 
 /// A single column of test data, with convenient constructors.
 #[derive(Debug, Clone)]
@@ -199,6 +204,95 @@ impl TestColumn {
 
         Self::new(bool_lists, nullability.outer)
     }
+
+    fn timestamps(unit: TimeUnit) -> Self {
+        let some_date = jiff::Timestamp::from_str(SOME_TIMESTAMP).expect("valid");
+
+        let nano_column = Self::primitive::<TimestampNanosecondType>(vec![
+            timestamp_to_nanos(some_date),
+            timestamp_to_nanos(some_date - 1.hours()),
+            timestamp_to_nanos(some_date - 24.hours()),
+            timestamp_to_nanos(some_date - 8760.hours()),
+            timestamp_to_nanos(some_date + 1.hours()),
+            timestamp_to_nanos(some_date + 24.hours()),
+            timestamp_to_nanos(some_date + 8760.hours()),
+        ]);
+
+        convert_timestamp_column(nano_column, unit)
+    }
+
+    fn timestamps_nulls(unit: TimeUnit) -> Self {
+        let some_date = jiff::Timestamp::from_str(SOME_TIMESTAMP).expect("valid");
+
+        let nano_column = Self::primitive_nulls::<TimestampNanosecondType>(vec![
+            Some(timestamp_to_nanos(some_date)),
+            Some(timestamp_to_nanos(some_date - 1.hours())),
+            Some(timestamp_to_nanos(some_date - 24.hours())),
+            Some(timestamp_to_nanos(some_date - 8760.hours())),
+            None,
+            Some(timestamp_to_nanos(some_date + 1.hours())),
+            Some(timestamp_to_nanos(some_date + 24.hours())),
+            None,
+            Some(timestamp_to_nanos(some_date + 8760.hours())),
+        ]);
+
+        convert_timestamp_column(nano_column, unit)
+    }
+
+    fn timestamps_lists(unit: TimeUnit, nullability: Nullability) -> Self {
+        let some_date = jiff::Timestamp::from_str(SOME_TIMESTAMP).expect("valid");
+
+        let nano_column = Self::primitive_lists::<TimestampNanosecondType>(
+            &[
+                vec![],
+                vec![timestamp_to_nanos(some_date)],
+                vec![
+                    timestamp_to_nanos(some_date - 1.hours()),
+                    timestamp_to_nanos(some_date - 24.hours()),
+                ],
+                vec![
+                    timestamp_to_nanos(some_date),
+                    timestamp_to_nanos(some_date - 168.hours()),
+                    timestamp_to_nanos(some_date - 8760.hours()),
+                ],
+                vec![
+                    timestamp_to_nanos(some_date + 1.hours()),
+                    timestamp_to_nanos(some_date + 24.hours()),
+                ],
+                vec![
+                    timestamp_to_nanos(some_date),
+                    timestamp_to_nanos(some_date + 168.hours()),
+                    timestamp_to_nanos(some_date + 8760.hours()),
+                ],
+                vec![
+                    timestamp_to_nanos(some_date),
+                    timestamp_to_nanos(some_date - 8760.hours()),
+                    timestamp_to_nanos(some_date + 8760.hours()),
+                ],
+            ],
+            nullability,
+        );
+
+        convert_timestamp_column(nano_column, unit)
+    }
+}
+
+fn timestamp_to_nanos(ts: jiff::Timestamp) -> i64 {
+    ts.as_nanosecond()
+        .try_into()
+        .expect("timestamp is too large")
+}
+
+fn convert_timestamp_column(nano_column: TestColumn, unit: TimeUnit) -> TestColumn {
+    if unit == TimeUnit::Nanosecond {
+        nano_column
+    } else {
+        TestColumn::new(
+            cast(nano_column.array.as_ref(), &DataType::Timestamp(unit, None))
+                .expect("timestamp column cast failed"),
+            nano_column.field.is_nullable(),
+        )
+    }
 }
 
 /// A temporary session context populated with a "test" dataframe and constructed from a bunch
@@ -267,7 +361,7 @@ impl TestSessionContext {
 #[derive(Debug)]
 #[expect(dead_code)] // debug is excluded from dead code analysis
 struct TestResult<'a> {
-    op: FilterOperation,
+    op: FilterKind,
     field: Field,
     unfiltered: ArrayRef,
     filtered: &'a ArrayRef,
@@ -314,28 +408,19 @@ async fn test_int_compares() {
 
     for op in ComparisonOperator::ALL {
         filter_snapshot!(
-            FilterOperation::IntCompares {
-                operator: *op,
-                value: Some(3),
-            },
+            FilterKind::Int(IntFilter::new(*op, Some(3))),
             ints.clone(),
             format!("{}_3", op.as_ascii())
         );
 
         filter_snapshot!(
-            FilterOperation::IntCompares {
-                operator: *op,
-                value: Some(4),
-            },
+            FilterKind::Int(IntFilter::new(*op, Some(4))),
             ints_nulls.clone(),
             format!("nulls_{}_4", op.as_ascii())
         );
 
         filter_snapshot!(
-            FilterOperation::IntCompares {
-                operator: *op,
-                value: None,
-            },
+            FilterKind::Int(IntFilter::new(*op, None)),
             ints_nulls.clone(),
             format!("nulls_{}_unspecified", op.as_ascii())
         );
@@ -348,10 +433,7 @@ async fn test_int_all_types() {
     macro_rules! test_int_all_types_impl {
         ($ty:tt) => {
             filter_snapshot!(
-                FilterOperation::IntCompares {
-                    operator: ComparisonOperator::Eq,
-                    value: Some(3),
-                },
+                FilterKind::Int(IntFilter::new(ComparisonOperator::Eq, Some(3))),
                 TestColumn::primitive::<$ty>(vec![1, 2, 3, 4, 5]),
                 format!("{:?}", $ty {})
             )
@@ -383,19 +465,13 @@ async fn test_int_lists() {
 
     for op in ComparisonOperator::ALL {
         filter_snapshot!(
-            FilterOperation::IntCompares {
-                operator: *op,
-                value: Some(2),
-            },
+            FilterKind::Int(IntFilter::new(*op, Some(2))),
             int_lists.clone(),
             format!("{}_2", op.as_ascii())
         );
 
         filter_snapshot!(
-            FilterOperation::IntCompares {
-                operator: *op,
-                value: Some(2),
-            },
+            FilterKind::Int(IntFilter::new(*op, Some(2))),
             int_lists_nulls.clone(),
             format!("nulls_{}_2", op.as_ascii())
         );
@@ -415,19 +491,13 @@ async fn test_float_compares() {
 
     for op in ComparisonOperator::ALL {
         filter_snapshot!(
-            FilterOperation::FloatCompares {
-                operator: *op,
-                value: Some(3.0),
-            },
+            FilterKind::Float(FloatFilter::new(*op, Some(3.0))),
             floats.clone(),
             format!("{}_3.0", op.as_ascii())
         );
 
         filter_snapshot!(
-            FilterOperation::FloatCompares {
-                operator: *op,
-                value: Some(4.0),
-            },
+            FilterKind::Float(FloatFilter::new(*op, Some(4.0))),
             floats_nulls.clone(),
             format!("nulls_{}_4", op.as_ascii())
         );
@@ -440,10 +510,7 @@ async fn test_float_all_types() {
     macro_rules! test_float_all_types_impl {
         ($ty:tt) => {
             filter_snapshot!(
-                FilterOperation::FloatCompares {
-                    operator: ComparisonOperator::Eq,
-                    value: Some(3.0),
-                },
+                FilterKind::Float(FloatFilter::new(ComparisonOperator::Eq, Some(3.0))),
                 TestColumn::primitive::<$ty>(vec![1.0, 2.0, 3.0, 4.0, 5.0]),
                 format!("{:?}", $ty {})
             )
@@ -469,19 +536,13 @@ async fn test_float_lists() {
 
     for op in ComparisonOperator::ALL {
         filter_snapshot!(
-            FilterOperation::FloatCompares {
-                operator: *op,
-                value: Some(2.0)
-            },
+            FilterKind::Float(FloatFilter::new(*op, Some(2.0))),
             float_lists.clone(),
             format!("{}_2.0", op.as_ascii())
         );
 
         filter_snapshot!(
-            FilterOperation::FloatCompares {
-                operator: *op,
-                value: Some(2.0)
-            },
+            FilterKind::Float(FloatFilter::new(*op, Some(2.0))),
             float_lists_nulls.clone(),
             format!("nulls_{}_2.0", op.as_ascii())
         );
@@ -491,37 +552,37 @@ async fn test_float_lists() {
 #[tokio::test]
 async fn test_string_contains() {
     filter_snapshot!(
-        FilterOperation::StringContains(String::new()),
+        FilterKind::StringContains(String::new()),
         TestColumn::strings(),
         "empty"
     );
 
     filter_snapshot!(
-        FilterOperation::StringContains("a".to_owned()),
+        FilterKind::StringContains("a".to_owned()),
         TestColumn::strings(),
         "a"
     );
 
     filter_snapshot!(
-        FilterOperation::StringContains("a".to_owned()),
+        FilterKind::StringContains("a".to_owned()),
         TestColumn::strings(),
         "ab"
     );
 
     filter_snapshot!(
-        FilterOperation::StringContains("A".to_owned()),
+        FilterKind::StringContains("A".to_owned()),
         TestColumn::strings(),
         "a_uppercase"
     );
 
     filter_snapshot!(
-        FilterOperation::StringContains(String::new()),
+        FilterKind::StringContains(String::new()),
         TestColumn::strings_nulls(),
         "nulls_empty"
     );
 
     filter_snapshot!(
-        FilterOperation::StringContains("a".to_owned()),
+        FilterKind::StringContains("a".to_owned()),
         TestColumn::strings_nulls(),
         "nulls_a"
     );
@@ -531,7 +592,7 @@ async fn test_string_contains() {
 async fn test_string_contains_list() {
     for &nullability in Nullability::ALL {
         filter_snapshot!(
-            FilterOperation::StringContains("ab".to_owned()),
+            FilterKind::StringContains("ab".to_owned()),
             TestColumn::strings_lists(nullability),
             format!("{nullability:?}_ab")
         );
@@ -542,25 +603,25 @@ async fn test_string_contains_list() {
 #[tokio::test]
 async fn test_non_nullable_boolean_equals() {
     filter_snapshot!(
-        FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
+        FilterKind::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
         TestColumn::bools(),
         "true"
     );
 
     filter_snapshot!(
-        FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
+        FilterKind::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
         TestColumn::bools(),
         "false"
     );
 
     filter_snapshot!(
-        FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
+        FilterKind::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
         TestColumn::bools_nulls(),
         "nulls_true"
     );
 
     filter_snapshot!(
-        FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
+        FilterKind::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
         TestColumn::bools_nulls(),
         "nulls_false"
     );
@@ -569,19 +630,19 @@ async fn test_non_nullable_boolean_equals() {
 #[tokio::test]
 async fn test_nullable_boolean_equals() {
     filter_snapshot!(
-        FilterOperation::NullableBoolean(NullableBooleanFilter::IsTrue),
+        FilterKind::NullableBoolean(NullableBooleanFilter::IsTrue),
         TestColumn::bools_nulls(),
         "nulls_true"
     );
 
     filter_snapshot!(
-        FilterOperation::NullableBoolean(NullableBooleanFilter::IsFalse),
+        FilterKind::NullableBoolean(NullableBooleanFilter::IsFalse),
         TestColumn::bools_nulls(),
         "nulls_false"
     );
 
     filter_snapshot!(
-        FilterOperation::NullableBoolean(NullableBooleanFilter::IsNull),
+        FilterKind::NullableBoolean(NullableBooleanFilter::IsNull),
         TestColumn::bools_nulls(),
         "nulls_null"
     );
@@ -591,7 +652,7 @@ async fn test_nullable_boolean_equals() {
 async fn test_boolean_equals_list_non_nullable() {
     for &nullability in Nullability::ALL {
         filter_snapshot!(
-            FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
+            FilterKind::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
             TestColumn::bool_lists(nullability),
             format!("{nullability:?}_true")
         );
@@ -604,9 +665,97 @@ async fn test_boolean_equals_list_nullable() {
     // NonNullableBooleanFilter is used in this case.
     for nullability in [Nullability::BOTH, Nullability::INNER, Nullability::OUTER] {
         filter_snapshot!(
-            FilterOperation::NullableBoolean(NullableBooleanFilter::IsNull),
+            FilterKind::NullableBoolean(NullableBooleanFilter::IsNull),
             TestColumn::bool_lists(nullability),
             format!("{nullability:?}")
         );
+    }
+}
+
+const ALL_TIME_UNITS: &[TimeUnit] = &[
+    TimeUnit::Second,
+    TimeUnit::Millisecond,
+    TimeUnit::Microsecond,
+    TimeUnit::Nanosecond,
+];
+
+#[tokio::test]
+async fn test_timestamps() {
+    // Note: this test intends to cover all column datatypes. It does not intend to cover all kinds
+    // of timestamp filtering, which is already covered by unit tests.
+
+    let some_date = jiff::Timestamp::from_str(SOME_TIMESTAMP).expect("valid");
+
+    let all_filters = [
+        (
+            FilterKind::Timestamp(TimestampFilter::after(some_date)),
+            "after",
+        ),
+        (
+            FilterKind::Timestamp(TimestampFilter::after(some_date + 1.seconds())),
+            "after_strict",
+        ),
+        (
+            FilterKind::Timestamp(TimestampFilter::between(
+                some_date - 168.hours(),
+                some_date - 2.hours(),
+            )),
+            "between",
+        ),
+    ];
+
+    for time_unit in ALL_TIME_UNITS {
+        for (filter, case) in &all_filters {
+            for nullable in [true, false] {
+                filter_snapshot!(
+                    filter.clone(),
+                    if nullable {
+                        TestColumn::timestamps_nulls(*time_unit)
+                    } else {
+                        TestColumn::timestamps(*time_unit)
+                    },
+                    format!(
+                        "{case}_{time_unit:?}{}",
+                        if nullable { "_nulls" } else { "" }
+                    )
+                );
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_timestamps_list() {
+    // Note: this test intends to cover all column datatypes. It does not intend to cover all kinds
+    // of timestamp filtering, which is already covered by unit tests.
+
+    let some_date = jiff::Timestamp::from_str(SOME_TIMESTAMP).expect("valid");
+
+    let all_filters = [
+        (
+            FilterKind::Timestamp(TimestampFilter::after(some_date)),
+            "after",
+        ),
+        (
+            FilterKind::Timestamp(TimestampFilter::after(some_date + 1.seconds())),
+            "after_strict",
+        ),
+        (
+            FilterKind::Timestamp(TimestampFilter::between(
+                some_date - 168.hours(),
+                some_date - 2.hours(),
+            )),
+            "between",
+        ),
+    ];
+
+    for (filter, case) in &all_filters {
+        for &nullability in Nullability::ALL {
+            filter_snapshot!(
+                filter.clone(),
+                TestColumn::timestamps_lists(TimeUnit::Nanosecond, nullability),
+                format!("{case}_{nullability:?}")
+            );
+        }
     }
 }

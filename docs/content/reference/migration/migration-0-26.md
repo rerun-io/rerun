@@ -9,3 +9,9 @@ Use the new `timeout_sec` argument instead.
 For non-blocking, use `timeout_sec=0`.
 Mostly you can just call `.flush()` with no arguments.
 That will block until all writes either finishes or an error occurs (e.g. the gRPC connection is severed).
+
+## Python DataFusion interface: update to 49.0.0
+The DataFusion FFI that we rely on for user defined functions and
+table providers requires users to upgrade their `datafusion-python`
+version to 49.0.0. This only impacts customers who use the
+DataFusion tables provided through the `CatalogClient`.

@@ -166,7 +166,8 @@ def test_annotation_context_component(ctx: Sequence[ClassDescriptionMapElem]) ->
 
 ANNOTATION_ARCH_INPUTS: Sequence[ClassDescriptionArrayLike] = [
     ClassDescription(info=(1, "label1", [1, 2, 3])),
-] + ANNOTATION_CONTEXT_INPUTS
+    *ANNOTATION_CONTEXT_INPUTS,
+]
 
 
 @pytest.mark.parametrize("ctx", ANNOTATION_ARCH_INPUTS)

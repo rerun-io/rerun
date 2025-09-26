@@ -106,6 +106,7 @@ pub enum PlayState {
 enum ActiveTimeline {
     Auto(Timeline),
     UserEdited(Timeline),
+    Pending(Timeline),
 }
 
 impl std::ops::Deref for ActiveTimeline {
@@ -114,7 +115,7 @@ impl std::ops::Deref for ActiveTimeline {
     #[inline]
     fn deref(&self) -> &Self::Target {
         match self {
-            Self::Auto(t) | Self::UserEdited(t) => t,
+            Self::Auto(t) | Self::UserEdited(t) | Self::Pending(t) => t,
         }
     }
 }
@@ -578,10 +579,25 @@ impl TimeControl {
             false
         }
 
-        // If the timeline is auto refresh it every frame, otherwise only pick a new one if invalid.
-        if matches!(self.timeline, ActiveTimeline::Auto(_))
-            || !is_timeline_valid(self.timeline(), times_per_timeline)
-        {
+        let reset_timeline = match &self.timeline {
+            // If the timeline is auto refresh it every frame.
+            ActiveTimeline::Auto(_) => true,
+            // If it's user edited, refresh it if it's invalid.
+            ActiveTimeline::UserEdited(timeline) => {
+                !is_timeline_valid(timeline, times_per_timeline)
+            }
+            // If it's pending never automatically refresh it.
+            ActiveTimeline::Pending(timeline) => {
+                // If the pending timeline is valid, it shouldn't be pending anymore.
+                if is_timeline_valid(timeline, times_per_timeline) {
+                    self.set_timeline(*timeline);
+                }
+
+                false
+            }
+        };
+
+        if reset_timeline {
             self.timeline =
                 ActiveTimeline::Auto(default_timeline(times_per_timeline.timelines_with_stats()));
         }
@@ -600,6 +616,10 @@ impl TimeControl {
 
     pub fn set_timeline(&mut self, timeline: Timeline) {
         self.timeline = ActiveTimeline::UserEdited(timeline);
+    }
+
+    pub fn set_pending_timeline(&mut self, timeline: Timeline) {
+        self.timeline = ActiveTimeline::Pending(timeline);
     }
 
     /// Mark up a time range as valid.
@@ -760,6 +780,11 @@ impl TimeControl {
         } else {
             false
         }
+    }
+
+    /// Is the active timeline pending?
+    pub fn is_pending(&self) -> bool {
+        matches!(self.timeline, ActiveTimeline::Pending(_))
     }
 
     pub fn set_timeline_and_time(&mut self, timeline: Timeline, time: impl Into<TimeReal>) {

@@ -30,11 +30,8 @@ CACHE_DIR: Final = EXAMPLE_DIR / "cache"
 
 IMAGE_NAME_TO_URL: Final = {
     "sitting_wooden_figure": "https://storage.googleapis.com/rerun-example-datasets/stable_diffusion/sitting_wooden_figure.jpg",
-    # noqa: E501 line too long
     "old_man": "https://github.com/Stability-AI/stablediffusion/raw/main/assets/stable-samples/depth2img/old_man.png",
-    # noqa: E501 line too long
     "fantasy": "https://github.com/Stability-AI/stablediffusion/raw/main/assets/stable-samples/depth2img/depth2fantasy.jpeg",
-    # noqa: E501 line too long
 }
 IMAGE_NAMES: Final = list(IMAGE_NAME_TO_URL.keys())
 
@@ -52,8 +49,7 @@ def get_downloaded_path(dataset_dir: Path, image_name: str) -> str:
     with requests.get(image_url, stream=True) as req:
         req.raise_for_status()
         with open(destination_path, "wb") as f:
-            for chunk in req.iter_content(chunk_size=8192):
-                f.write(chunk)
+            f.writelines(req.iter_content(chunk_size=8192))
     return str(destination_path)
 
 

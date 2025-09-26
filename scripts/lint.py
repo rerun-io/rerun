@@ -265,12 +265,12 @@ def lint_line(
 
     # Deref impls should be marked #[inline] or #[inline(always)].
     if "fn deref(&self)" in line or "fn deref_mut(&mut self)" in line:
-        if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
+        if prev_line_stripped not in {"#[inline]", "#[inline(always)]"}:
             return "Deref/DerefMut impls should be marked #[inline]"
 
     # Deref impls should be marked #[inline] or #[inline(always)].
     if "fn as_ref(&self)" in line or "fn borrow(&self)" in line:
-        if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
+        if prev_line_stripped not in {"#[inline]", "#[inline(always)]"}:
             return "as_ref/borrow implementations should be marked #[inline]"
 
     if any(
@@ -1145,8 +1145,7 @@ def lint_crate_docs() -> int:
         crate = cargo_toml.parent
         crate_name = crate.name
 
-        if crate_name in listed_crates:
-            del listed_crates[crate_name]
+        listed_crates.pop(crate_name, None)
 
         if not re.search(r"\b" + crate_name + r"\b", architecture_md):
             print(f"{architecture_md_file}: missing documentation for crate {crate.name}")

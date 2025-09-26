@@ -911,11 +911,16 @@ impl App {
                 store_id,
                 timeline,
                 time,
+                pending,
             } => {
                 if let Some(rec_cfg) = self.recording_config_mut(store_hub, &store_id) {
                     let mut time_ctrl = rec_cfg.time_ctrl.write();
 
-                    time_ctrl.set_timeline(timeline);
+                    if pending {
+                        time_ctrl.set_pending_timeline(timeline);
+                    } else {
+                        time_ctrl.set_timeline(timeline);
+                    }
 
                     if let Some(time) = time {
                         time_ctrl.set_time(time);
@@ -1168,6 +1173,7 @@ impl App {
                     store_id,
                     timeline: re_chunk::Timeline::new(timeline, timecell.typ()),
                     time: Some(timecell.as_i64().into()),
+                    pending: true,
                 });
         }
     }
