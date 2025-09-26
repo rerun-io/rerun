@@ -97,9 +97,11 @@ impl From<TimePanelSource> for re_log_types::StoreKind {
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct TimePanel {
+    #[serde(skip)]
     data_density_graph_painter: data_density_graph::DataDensityGraphPainter,
 
     /// Width of the entity name columns previous frame.
+    #[serde(skip)]
     prev_col_width: f32,
 
     /// The right side of the entity name column; updated during its painting.
@@ -111,6 +113,7 @@ pub struct TimePanel {
     time_ranges_ui: TimeRangesUi,
 
     /// Ui elements for controlling time.
+    #[serde(skip)]
     time_control_ui: TimeControlUi,
 
     /// Which source is the time panel controlling?
@@ -138,6 +141,7 @@ pub struct TimePanel {
     ///
     /// IMPORTANT: Always make sure that the item will be drawn this or next frame when setting this
     /// to `Some`, so that this flag is immediately consumed.
+    #[serde(skip)]
     scroll_to_me_item: Option<Item>,
 
     /// If the timestamp is being edited, the current value.
