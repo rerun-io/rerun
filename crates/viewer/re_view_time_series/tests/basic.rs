@@ -22,7 +22,11 @@ pub fn test_clear_series_points_and_line() {
 }
 
 fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
-    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+    let num_allowed_broken_pixels = if two_series_per_entity { 5 } else { 2 };
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>()
+        .set_snapshot_options(
+            SnapshotOptions::new().failed_pixel_count_threshold(num_allowed_broken_pixels),
+        );
 
     // TODO(#10512): Potentially fix up this after we have "markers".
     // There are some intricacies involved with this test. `SeriesLines` and
@@ -86,8 +90,7 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
     }
 
     let view_id = setup_blueprint(&mut test_context);
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
+    test_context.run_view_ui_and_save_snapshot(
         view_id,
         &format!(
             "clear_series_points_and_line{}",
@@ -98,7 +101,6 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
             }
         ),
         egui::vec2(300.0, 300.0),
-        if two_series_per_entity { 5 } else { 2 },
     );
 }
 
@@ -134,7 +136,11 @@ fn test_line_properties() {
 }
 
 fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) {
-    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+    let num_allowed_broken_pixels = if multiple_scalars { 5 } else { 0 };
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>()
+        .set_snapshot_options(
+            SnapshotOptions::new().failed_pixel_count_threshold(num_allowed_broken_pixels),
+        );
 
     let properties_static = if multiple_properties {
         re_types::archetypes::SeriesLines::new()
@@ -189,13 +195,7 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
     if multiple_scalars {
         name += "_two_series_per_entity";
     }
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
-        view_id,
-        &name,
-        egui::vec2(300.0, 300.0),
-        if multiple_scalars { 5 } else { 0 },
-    );
+    test_context.run_view_ui_and_save_snapshot(view_id, &name, egui::vec2(300.0, 300.0));
 }
 
 /// Test the per series visibility setting
@@ -225,13 +225,7 @@ fn test_per_series_visibility() {
         }
 
         let view_id = setup_blueprint(&mut test_context);
-        run_view_ui_and_save_snapshot(
-            &mut test_context,
-            view_id,
-            name,
-            egui::vec2(300.0, 300.0),
-            0,
-        );
+        test_context.run_view_ui_and_save_snapshot(view_id, name, egui::vec2(300.0, 300.0));
     }
 }
 
@@ -257,7 +251,8 @@ fn test_point_properties() {
 }
 
 fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool) {
-    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>()
+        .set_snapshot_options(SnapshotOptions::new().failed_pixel_count_threshold(5));
 
     let static_props = if multiple_properties {
         re_types::archetypes::SeriesPoints::new()
@@ -322,13 +317,7 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
     if multiple_scalars {
         name += "_two_series_per_entity";
     }
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
-        view_id,
-        &name,
-        egui::vec2(300.0, 300.0),
-        5, // Allow 5 broken pixels
-    );
+    test_context.run_view_ui_and_save_snapshot(view_id, &name, egui::vec2(300.0, 300.0));
 }
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
@@ -339,26 +328,6 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     })
 }
 
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    name: &str,
-    size: egui::Vec2,
-    num_allowed_broken_pixels: usize,
-) {
-    let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
-        .build_ui(|ui| {
-            test_context.run_with_single_view(ui, view_id);
-        });
-
-    harness.snapshot_options(
-        name,
-        &SnapshotOptions::new().failed_pixel_count_threshold(num_allowed_broken_pixels),
-    );
-}
-
 #[test]
 fn test_bootstrapped_secondaries() {
     for partial_range in [false, true] {
@@ -367,7 +336,8 @@ fn test_bootstrapped_secondaries() {
 }
 
 fn test_bootstrapped_secondaries_impl(partial_range: bool) {
-    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>()
+        .set_snapshot_options(SnapshotOptions::new().failed_pixel_count_threshold(2));
 
     fn with_scalar(builder: ChunkBuilder, value: i64) -> ChunkBuilder {
         builder.with_archetype(
@@ -431,11 +401,5 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool) {
     } else {
         "bootstrapped_secondaries_full"
     };
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
-        view_id,
-        name,
-        egui::vec2(300.0, 300.0),
-        2,
-    );
+    test_context.run_view_ui_and_save_snapshot(view_id, name, egui::vec2(300.0, 300.0));
 }
