@@ -673,11 +673,25 @@ impl TimeControl {
     /// Ranges are guaranteed to be non-overlapping and sorted by their min.
     ///
     /// If everything is valid, returns a single `AbsoluteTimeRange::EVERYTHING)`.
+    ///
+    /// See also [`Self.mark_time_range_valid`].
     pub fn valid_time_ranges_for(&self, timeline: TimelineName) -> Vec1<AbsoluteTimeRange> {
         self.valid_time_ranges
             .get(&timeline)
             .cloned()
             .unwrap_or_else(|| Vec1::new(AbsoluteTimeRange::EVERYTHING))
+    }
+
+    /// The maximum extent of the valid time ranges into the past and future.
+    ///
+    /// There may be gaps in validity of this range.
+    ///
+    /// See also [`Self.mark_time_range_valid`].
+    pub fn max_valid_range_for(&self, timeline: TimelineName) -> AbsoluteTimeRange {
+        self.valid_time_ranges
+            .get(&timeline)
+            .map(|ranges| AbsoluteTimeRange::new(ranges.first().min, ranges.last().max))
+            .unwrap_or(AbsoluteTimeRange::EVERYTHING)
     }
 
     /// The current time.

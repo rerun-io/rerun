@@ -1573,7 +1573,7 @@ fn initialize_time_ranges_ui(
                 Some(view_everything(
                     &x_range,
                     &timeline_axis,
-                    &valid_time_ranges,
+                    time_ctrl.max_valid_range_for(*timeline),
                 ))
             });
             time_range.extend(timeline_axis.ranges);
@@ -1595,7 +1595,7 @@ fn initialize_time_ranges_ui(
 fn view_everything(
     x_range: &Rangef,
     timeline_axis: &TimelineAxis,
-    valid_time_ranges: &[AbsoluteTimeRange],
+    max_valid_time_range: AbsoluteTimeRange,
 ) -> TimeView {
     let gap_width = time_ranges_ui::gap_width(x_range, &timeline_axis.ranges) as f32;
     let num_gaps = timeline_axis.ranges.len().saturating_sub(1);
@@ -1608,22 +1608,10 @@ fn view_everything(
         1.0 // too narrow to fit everything anyway
     };
 
-    let valid_time_range_bounds = valid_time_ranges.iter().fold(
-        AbsoluteTimeRange {
-            min: TimeInt::MAX,
-            max: TimeInt::MIN,
-        },
-        |mut acc, r| {
-            acc.min = acc.min.min(r.min());
-            acc.max = acc.max.max(r.max());
-            acc
-        },
-    );
-
     let min_data_time = timeline_axis.ranges.first().min;
-    let min_valid_data_time = min_data_time.max(valid_time_range_bounds.min);
+    let min_valid_data_time = min_data_time.max(max_valid_time_range.min);
     let time_spanned =
-        timeline_axis.sum_time_lengths_within(valid_time_range_bounds) as f64 * factor as f64;
+        timeline_axis.sum_time_lengths_within(max_valid_time_range) as f64 * factor as f64;
 
     TimeView {
         min: min_valid_data_time.into(),
