@@ -79,12 +79,54 @@ impl std::error::Error for TonicStatusError {
 }
 
 #[derive(thiserror::Error, Debug)]
+pub enum StreamEntryError {
+    #[error("Failed reading entry\nDetails:{0}")]
+    Read(TonicStatusError),
+
+    #[error("Failed finding entry\nDetails:{0}")]
+    Find(TonicStatusError),
+
+    #[error("Failed deleting entry\nDetails:{0}")]
+    Delete(TonicStatusError),
+
+    #[error("Failed updating entry\nDetails:{0}")]
+    Update(TonicStatusError),
+
+    #[error("Failed creating entry\nDetails:{0}")]
+    Create(TonicStatusError),
+
+    #[error("Failed reading entry's partitions\nDetails:{0}")]
+    ReadPartitions(TonicStatusError),
+
+    #[error("Failed registering data source with entry\nDetails:{0}")]
+    RegisterData(TonicStatusError),
+
+    #[error("Failed registering table\nDetails:{0}")]
+    RegisterTable(TonicStatusError),
+
+    #[error("Error while doing maintenance on entry\nDetails:{0}")]
+    Maintenance(TonicStatusError),
+
+    #[error("Invalid entry id\nDetails:{0}")]
+    InvalidId(TonicStatusError),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum StreamPartitionError {
+    #[error("Failed streaming partition chunks\nDetails:{0}")]
+    StreamingChunks(TonicStatusError),
+}
+
+#[derive(thiserror::Error, Debug)]
 pub enum StreamError {
     #[error(transparent)]
     ClientConnectionError(#[from] ClientConnectionError),
 
     #[error(transparent)]
-    TonicStatus(#[from] TonicStatusError),
+    EntryError(#[from] StreamEntryError),
+
+    #[error(transparent)]
+    PartitionError(#[from] StreamPartitionError),
 
     #[error(transparent)]
     Tokio(#[from] tokio::task::JoinError),
@@ -115,12 +157,6 @@ const _: () = assert!(
     std::mem::size_of::<StreamError>() <= 80,
     "Error type is too large. Try to reduce its size by boxing some of its variants.",
 );
-
-impl From<tonic::Status> for StreamError {
-    fn from(value: tonic::Status) -> Self {
-        Self::TonicStatus(value.into())
-    }
-}
 
 // TODO(ab, andreas): This should be replaced by the use of `AsyncRuntimeHandle`. However, this
 // requires:

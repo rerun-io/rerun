@@ -33,7 +33,7 @@ use re_protos::{
     missing_field,
 };
 
-use crate::StreamError;
+use crate::{StreamEntryError, StreamError};
 
 /// Expose an ergonomic API over the gRPC redap client.
 ///
@@ -81,7 +81,8 @@ where
             .find_entries(FindEntriesRequest {
                 filter: Some(filter),
             })
-            .await?
+            .await
+            .map_err(|err| StreamEntryError::Find(err.into()))?
             .into_inner()
             .entries;
 
@@ -97,7 +98,8 @@ where
             .delete_entry(DeleteEntryRequest {
                 id: Some(entry_id.into()),
             })
-            .await?;
+            .await
+            .map_err(|err| StreamEntryError::Delete(err.into()))?;
 
         Ok(())
     }
@@ -117,7 +119,8 @@ where
                 }
                 .into(),
             ))
-            .await?
+            .await
+            .map_err(|err| StreamEntryError::Update(err.into()))?
             .into_inner()
             .try_into()?;
 
@@ -136,7 +139,8 @@ where
                 name: Some(name),
                 id: entry_id.map(Into::into),
             })
-            .await?
+            .await
+            .map_err(|err| StreamEntryError::Create(err.into()))?
             .into_inner()
             .try_into()?;
 
@@ -151,9 +155,12 @@ where
         let response: ReadDatasetEntryResponse = self
             .inner()
             .read_dataset_entry(
-                tonic::Request::new(ReadDatasetEntryRequest {}).with_entry_id(entry_id)?,
+                tonic::Request::new(ReadDatasetEntryRequest {})
+                    .with_entry_id(entry_id)
+                    .map_err(|err| StreamEntryError::InvalidId(err.into()))?,
             )
-            .await?
+            .await
+            .map_err(|err| StreamEntryError::Read(err.into()))?
             .into_inner()
             .try_into()?;
 
@@ -175,7 +182,8 @@ where
                 }
                 .into(),
             ))
-            .await?
+            .await
+            .map_err(|err| StreamEntryError::Update(err.into()))?
             .into_inner()
             .try_into()?;
 
@@ -189,7 +197,8 @@ where
             .read_table_entry(ReadTableEntryRequest {
                 id: Some(entry_id.into()),
             })
-            .await?
+            .await
+            .map_err(|err| StreamEntryError::Read(err.into()))?
             .into_inner()
             .try_into()?;
 
@@ -210,15 +219,20 @@ where
                 tonic::Request::new(ScanPartitionTableRequest {
                     columns: vec![COLUMN_NAME.to_owned()],
                 })
-                .with_entry_id(entry_id)?,
+                .with_entry_id(entry_id)
+                .map_err(|err| StreamEntryError::InvalidId(err.into()))?,
             )
-            .await?
+            .await
+            .map_err(|err| StreamEntryError::ReadPartitions(err.into()))?
             .into_inner();
 
         let mut partition_ids = Vec::new();
 
         while let Some(resp) = stream.next().await {
-            let record_batch = resp?.data()?.decode()?;
+            let record_batch = resp
+                .map_err(|err| StreamEntryError::ReadPartitions(err.into()))?
+                .data()?
+                .decode()?;
 
             let partition_id_col = record_batch
                 .column_by_name(COLUMN_NAME)
@@ -252,12 +266,14 @@ where
             data_sources,
             on_duplicate,
         })
-        .with_entry_id(dataset_id)?;
+        .with_entry_id(dataset_id)
+        .map_err(|err| StreamEntryError::InvalidId(err.into()))?;
 
         let response = self
             .inner()
             .register_with_dataset(req.map(Into::into))
-            .await?
+            .await
+            .map_err(|err| StreamEntryError::RegisterData(err.into()))?
             .into_inner()
             .data
             .ok_or_else(|| missing_field!(RegisterWithDatasetResponse, "data"))?
@@ -346,7 +362,8 @@ where
         let response: RegisterTableResponse = self
             .inner()
             .register_table(tonic::Request::new(request.into()))
-            .await?
+            .await
+            .map_err(|err| StreamEntryError::RegisterTable(err.into()))?
             .into_inner()
             .try_into()?;
 
@@ -375,7 +392,8 @@ where
                 }
                 .into(),
             ))
-            .await?;
+            .await
+            .map_err(|err| StreamEntryError::Maintenance(err.into()))?;
 
         Ok(())
     }
@@ -385,7 +403,8 @@ where
             .do_global_maintenance(tonic::Request::new(
                 re_protos::cloud::v1alpha1::DoGlobalMaintenanceRequest {},
             ))
-            .await?;
+            .await
+            .map_err(|err| StreamEntryError::Maintenance(err.into()))?;
 
         Ok(())
     }
