@@ -5,7 +5,7 @@
 //!
 //! ## Special cased text
 //! - If a notifications text contains `"\nDetails:"` the section after that
-//!   will be displayed inside a collapsable details header.
+//!   will be displayed inside a collapsible details header.
 
 use std::time::Duration;
 
@@ -102,7 +102,7 @@ pub struct Notification {
     level: NotificationLevel,
     text: String,
 
-    /// if set this notifications will have a collapsable details section.
+    /// if set this notifications will have a collapsible details section.
     details: Option<String>,
     link: Option<Link>,
 
@@ -216,7 +216,7 @@ impl NotificationUi {
     ///
     /// ## Special cased text
     /// - If a notifications text contains `"\nDetails:"` the section after that
-    ///   will be displayed inside a collapsable details header.
+    ///   will be displayed inside a collapsible details header.
     pub fn add_log(&mut self, message: re_log::LogMsg) {
         let re_log::LogMsg { level, target, msg } = message;
 
