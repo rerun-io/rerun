@@ -216,7 +216,12 @@ fn last_part_of_item_heading(
     };
 
     let mut response = if with_icon {
-        ui.selectable_label_with_icon(icon, label, true, re_ui::LabelStyle::Normal)
+        ui.selectable_label_with_icon(
+            icon,
+            label,
+            ctx.is_selected_or_loading(item),
+            re_ui::LabelStyle::Normal,
+        )
     } else {
         ui.add(egui::Button::new(label).truncate())
     };

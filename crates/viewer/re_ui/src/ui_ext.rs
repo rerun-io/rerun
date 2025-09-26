@@ -692,17 +692,21 @@ pub trait UiExt {
         let total_extra = button_padding + button_padding;
 
         let available_rect = ui.available_rect_before_wrap();
+
         let view_rect = egui::Rect::from_min_max(
             available_rect.min,
             egui::pos2(
-                available_rect.max.x.min(
-                    ui.clip_rect().max.x - ui.spacing().window_margin.rightf() - button_padding.x,
-                ),
+                available_rect
+                    .max
+                    .x
+                    .min(ui.clip_rect().max.x - ui.spacing().window_margin.rightf()),
                 available_rect.max.y,
             ),
         );
 
-        let wrap_width = view_rect.width() - total_extra.x;
+        let icon_width_plus_padding = tokens.small_icon_size.x + tokens.text_to_icon_padding();
+
+        let wrap_width = view_rect.width() - icon_width_plus_padding - total_extra.x;
 
         let mut text: egui::WidgetText = text.into();
         let raw_text = text.text().to_owned();
@@ -721,17 +725,24 @@ pub trait UiExt {
             egui::TextStyle::Button,
         );
 
-        let icon_width_plus_padding = tokens.small_icon_size.x + tokens.text_to_icon_padding();
-
-        // 2 icons + padding, but we don't require copy button to get its own space.
+        // 1 icons + padding.
         let mut desired_size =
-            (total_extra + galley.size() + egui::vec2(icon_width_plus_padding * 2.0, 0.0))
-                .at_most(view_rect.size());
+            total_extra + galley.size() + egui::vec2(icon_width_plus_padding, 0.0);
 
         desired_size.y = desired_size
             .y
             .at_least(ui.spacing().interact_size.y)
             .at_least(tokens.small_icon_size.y);
+
+        let show_copy_button = ui.is_enabled()
+            && ui.rect_contains_pointer(egui::Rect::from_x_y_ranges(
+                ui.clip_rect().x_range(),
+                view_rect.y_range().expand(ui.spacing().item_spacing.y),
+            ));
+
+        if show_copy_button {
+            desired_size.x = (desired_size.x + icon_width_plus_padding).at_most(view_rect.width());
+        }
 
         let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
         response.widget_info(|| {
@@ -801,24 +812,36 @@ pub trait UiExt {
             ui.painter()
                 .galley_with_override_text_color(text_pos, galley, text_color);
 
-            if ui.rect_contains_pointer(response.interact_rect) {
-                {
-                    let new_visuals = ui.visuals_mut();
-                    new_visuals.widgets.inactive.weak_bg_fill = visuals.bg_fill;
-                    new_visuals.widgets.hovered.weak_bg_fill =
-                        visuals.bg_fill.blend(new_visuals.widgets.hovered.bg_fill);
-                }
+            let copy_rect = egui::Rect::from_min_size(
+                egui::pos2(rect.max.x - tokens.small_icon_size.x, image_rect.min.y)
+                    .round_to_pixels(ui.pixels_per_point()),
+                tokens.small_icon_size,
+            );
 
-                let copy_rect = egui::Rect::from_x_y_ranges(
-                    rect.max.x - tokens.small_icon_size.x..=rect.max.x,
-                    image_rect.y_range(),
+            let copy_response = ui.allocate_rect(copy_rect, egui::Sense::click());
+
+            if show_copy_button {
+                let copy_visuals = ui.style().interact(&copy_response);
+                let color = if copy_response.hovered() {
+                    copy_visuals.weak_bg_fill
+                } else {
+                    visuals.weak_bg_fill
+                };
+
+                ui.painter().rect_filled(
+                    copy_rect.expand(copy_visuals.expansion),
+                    visuals.corner_radius,
+                    color,
                 );
 
-                let widget = ui
-                    .small_icon_button_widget(&icons::COPY, "Copy")
-                    .frame(true);
+                let icon_tint = copy_visuals.fg_stroke.color;
+                icons::COPY
+                    .as_image()
+                    .tint(icon_tint)
+                    .alt_text("Copy")
+                    .paint_at(ui, copy_rect);
 
-                if ui.place(copy_rect, widget).clicked() {
+                if copy_response.clicked() {
                     re_log::info!("Copied {raw_text:?}");
                     ui.ctx().copy_text(raw_text);
                 }
