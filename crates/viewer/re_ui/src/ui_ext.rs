@@ -735,9 +735,12 @@ pub trait UiExt {
             .at_least(tokens.small_icon_size.y);
 
         let show_copy_button = {
+            /// The text character length at which the copy button will
+            /// always be there. (unless the ui is disabled)
+            const MIN_COPY_LEN: usize = 5;
             let enough_space = view_rect.width() > desired_size.x + icon_width_plus_padding;
 
-            let long_enough_text = raw_text.chars().count() > 4;
+            let long_enough_text = raw_text.chars().count() >= MIN_COPY_LEN;
 
             let id = ui.next_auto_id();
             let contains_pointer = ui.ctx().read_response(id).is_some_and(|last_response| {
