@@ -1,9 +1,7 @@
-use arrow::datatypes::Schema;
-use arrow::pyarrow::FromPyArrow as _;
-use arrow::record_batch::RecordBatch;
+use arrow::{datatypes::Schema, pyarrow::FromPyArrow as _, record_batch::RecordBatch};
 use comfy_table::Table;
 use pyo3::{Bound, PyAny, PyResult, pyclass, pymethods};
-use re_arrow_util::format_data_type;
+
 use re_format_arrow::{RecordBatchFormatOpts, format_record_batch_opts};
 
 #[pyclass(name = "RerunHtmlTable")]
@@ -64,7 +62,7 @@ impl PyRerunHtmlTable {
                 format!(
                     "<th><strong>{}</strong><br>{}</th>",
                     field.name(),
-                    format_data_type(field.data_type())
+                    re_arrow_util::format_field_datatype(field)
                 )
             })
             .collect::<Vec<String>>();

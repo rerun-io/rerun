@@ -3,28 +3,31 @@ source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
 expression: test_results
 ---
 TestResult {
-    op: BooleanEquals(
-        Some(
-            false,
-        ),
+    op: String(
+        StringFilter {
+            operator: StartsWith,
+            query: "b",
+        },
     ),
     field: Field {
         name: "column",
-        data_type: Boolean,
+        data_type: Utf8,
         nullable: true,
         dict_id: 0,
         dict_is_ordered: false,
         metadata: {},
     },
-    unfiltered: BooleanArray
+    unfiltered: StringArray
     [
-      true,
-      true,
+      "a",
+      "b",
       null,
-      false,
+      "ab",
+      "A B",
+      "aBc",
     ],
-    filtered: BooleanArray
+    filtered: StringArray
     [
-      false,
+      "b",
     ],
 }

@@ -11,6 +11,15 @@ pub fn format_data_type(data_type: &DataType) -> String {
     DisplayDatatype(data_type).to_string()
 }
 
+/// Format the datatype of a field (column) with optional nullability
+pub fn format_field_datatype(field: &Field) -> String {
+    if field.is_nullable() {
+        format!("nullable {}", format_data_type(field.data_type()))
+    } else {
+        format_data_type(field.data_type())
+    }
+}
+
 #[repr(transparent)]
 struct DisplayTimeUnit(TimeUnit);
 

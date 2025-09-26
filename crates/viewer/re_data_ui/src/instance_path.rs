@@ -276,11 +276,12 @@ fn component_list_ui(
                             component_type.data_ui_recording(ctx, ui, UiLayout::Tooltip);
                         }
 
-                        if let Some(data) = unit.component_batch_raw(component_descr) {
+                        if let Some(array) = unit.component_batch_raw(component_descr) {
                             re_ui::list_item::list_item_scope(ui, component_descr, |ui| {
                                 ui.list_item_flat_noninteractive(
                                     re_ui::list_item::PropertyContent::new("Data type").value_text(
-                                        re_arrow_util::format_data_type(data.data_type()),
+                                        // TODO(#11071): use re_arrow_ui to format the datatype here
+                                        re_arrow_util::format_data_type(array.data_type()),
                                     ),
                                 );
                             });

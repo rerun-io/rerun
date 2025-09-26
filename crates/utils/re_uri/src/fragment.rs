@@ -53,15 +53,12 @@ impl std::str::FromStr for Fragment {
         let mut when = None;
 
         for part in split_on_unescaped_ampersand(fragment) {
+            // If there isn't an equals in this part we skip it as it doesn't contain any data.
             if let Some((key, value)) = split_at_first_unescaped_equals(part) {
                 match key {
                     "selection" => match value.parse() {
                         Ok(path) => {
-                            if selection.is_some() {
-                                re_log::warn_once!(
-                                    "Multiple paths set in uri #fragment {fragment:?}. Ignoring all but last."
-                                );
-                            }
+                            // If there were selection fragments before this we override them.
                             selection = Some(path);
                         }
                         Err(err) => {
@@ -73,11 +70,7 @@ impl std::str::FromStr for Fragment {
                             let timeline = TimelineName::from(timeline);
                             match time.parse::<TimeCell>() {
                                 Ok(time_cell) => {
-                                    if when.is_some() {
-                                        re_log::warn_once!(
-                                            "Multiple times set in uri #fragment {fragment:?}. Ignoring all but last."
-                                        );
-                                    }
+                                    // If there were when fragments before this we ignore them.
                                     when = Some((timeline, time_cell));
                                 }
                                 Err(err) => {
@@ -92,8 +85,6 @@ impl std::str::FromStr for Fragment {
                         ));
                     }
                 }
-            } else {
-                re_log::warn_once!("Contained a part {part:?} without any equal sign in it");
             }
         }
 
@@ -102,15 +93,11 @@ impl std::str::FromStr for Fragment {
 }
 
 impl Fragment {
-    /// Parse fragment, excluding hash
+    /// Parse fragment, excluding hash.
+    ///
+    /// Returns `Fragment::default()` if parsing fails.
     pub fn parse_forgiving(fragment: &str) -> Self {
-        match fragment.parse() {
-            Ok(fragment) => fragment,
-            Err(err) => {
-                re_log::warn_once!("Failed to parse #fragment {fragment:?}: {err}");
-                Self::default()
-            }
-        }
+        fragment.parse().unwrap_or_default()
     }
 
     /// True if this fragment doesn't contain any information.
