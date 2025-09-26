@@ -812,15 +812,15 @@ pub trait UiExt {
             ui.painter()
                 .galley_with_override_text_color(text_pos, galley, text_color);
 
-            let copy_rect = egui::Rect::from_min_size(
-                egui::pos2(rect.max.x - tokens.small_icon_size.x, image_rect.min.y)
-                    .round_to_pixels(ui.pixels_per_point()),
-                tokens.small_icon_size,
-            );
-
-            let copy_response = ui.allocate_rect(copy_rect, egui::Sense::click());
-
             if show_copy_button {
+                let copy_rect = egui::Rect::from_min_size(
+                    egui::pos2(rect.max.x - tokens.small_icon_size.x, image_rect.min.y)
+                        .round_to_pixels(ui.pixels_per_point()),
+                    tokens.small_icon_size,
+                );
+
+                let copy_response = ui.allocate_rect(copy_rect, egui::Sense::click());
+
                 let copy_visuals = ui.style().interact(&copy_response);
                 let color = if copy_response.hovered() {
                     copy_visuals.weak_bg_fill
