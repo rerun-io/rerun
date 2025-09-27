@@ -7,10 +7,6 @@ use arrow::array::{
     TimestampSecondArray, UInt64Array,
 };
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
-use datafusion::execution::{SessionState, TaskContext};
-use datafusion::physical_expr::Partitioning;
-use datafusion::physical_plan::repartition::RepartitionExec;
-use datafusion::physical_plan::{ExecutionPlan, ExecutionPlanProperties};
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
 use re_chunk_store::Chunk;
@@ -47,7 +43,6 @@ use re_protos::{
     common::v1alpha1::ext::IfDuplicateBehavior,
 };
 use tokio_stream::StreamExt as _;
-use tonic::service::LayerExt;
 use tonic::{Code, Status};
 
 use crate::store::{Dataset, InMemoryStore, Table};
@@ -342,7 +337,7 @@ impl RerunCloudService for RerunCloudHandler {
             .and_then(|filter| filter.entry_kind)
             .map(EntryKind::try_from)
             .transpose()
-            .map_err(|err| Status::invalid_argument("find_entries: invalid entry kind {err}"))?;
+            .map_err(|err| Status::invalid_argument(format!("find_entries: invalid entry kind {err}")))?;
 
         let entries = match kind {
             Some(EntryKind::Dataset) => self.find_datasets(entry_id, name).await?,

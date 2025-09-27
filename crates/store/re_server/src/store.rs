@@ -1,21 +1,17 @@
 use arrow::array::{
     ArrayRef, Int32Array, RecordBatchOptions, StringArray, TimestampNanosecondArray,
 };
-use arrow::datatypes::{DataType, Field, SchemaRef, TimeUnit};
+use arrow::datatypes::{DataType, Field, TimeUnit};
 use arrow::{array::RecordBatch, datatypes::Schema};
-use datafusion::catalog::memory::MemorySourceConfig;
-use datafusion::catalog::{Session, TableProvider};
-use datafusion::datasource::{MemTable, TableType};
+use datafusion::catalog::TableProvider;
+use datafusion::datasource::MemTable;
 use datafusion::error::DataFusionError;
-use datafusion::logical_expr::Expr;
-use datafusion::physical_plan::ExecutionPlan;
-use datafusion::physical_plan::memory::MemoryStream;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use jiff::Timestamp;
 use lance::datafusion::LanceTableProvider;
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::external::re_tuid::Tuid;
-use re_log_types::external::re_types_core::{ComponentBatch, Loggable, SerializationResult};
+use re_log_types::external::re_types_core::{ComponentBatch as _, Loggable as _};
 use re_log_types::{EntryId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::ScanPartitionTableResponse,
@@ -25,15 +21,12 @@ use re_protos::{
     },
     common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
 };
-use std::any::Any;
-use std::arch::aarch64::vaba_s8;
 use std::sync::Arc;
 use std::{
     collections::{BTreeSet, HashMap, hash_map::Entry},
     fs::File,
     path::Path,
 };
-use tonic::async_trait;
 
 const ENTRIES_TABLE_NAME: &str = "__entries";
 
