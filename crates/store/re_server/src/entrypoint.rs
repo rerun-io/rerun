@@ -51,10 +51,12 @@ impl Args {
             }
 
             for table in &self.tables {
-                builder = builder.with_directory_as_table(
-                    table,
-                    re_protos::common::v1alpha1::ext::IfDuplicateBehavior::Error,
-                ).await?;
+                builder = builder
+                    .with_directory_as_table(
+                        table,
+                        re_protos::common::v1alpha1::ext::IfDuplicateBehavior::Error,
+                    )
+                    .await?;
             }
 
             RerunCloudServiceServer::new(builder.build())

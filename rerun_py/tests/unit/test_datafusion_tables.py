@@ -306,17 +306,27 @@ def test_query_view_from_schema(server_instance: ServerInstance) -> None:
 
 def test_query_lance_table(server_instance: ServerInstance) -> None:
     expected_table_name = "simple_datatypes"
+    entries_table_name = "__entries"
 
     client = server_instance.client
-    assert client.table_names() == [expected_table_name]
+    assert expected_table_name in client.table_names()
+    assert entries_table_name in client.table_names()
 
     entries = client.table_entries()
-    assert len(entries) == 1
+    assert len(entries) == 2
+
+    # No guarantee on order here
+    if entries[0].name == expected_table_name:
+        assert entries[1].name == entries_table_name
+    else:
+        assert entries[0].name == entries_table_name
+        assert entries[1].name == expected_table_name
+
     assert entries[0].kind == EntryKind.TABLE
-    assert entries[0].name == expected_table_name
+    assert entries[1].kind == EntryKind.TABLE
 
     # TODO: Uncomment once implemented
-    # tables = client.get_tables()
+    # tables = client.tables()
     # table = client.get_table(name=expected_table_name)
     # entry = client.get_table_entry(name=expected_table_name)
 
