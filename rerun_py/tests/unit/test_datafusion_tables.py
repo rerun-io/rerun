@@ -25,7 +25,10 @@ CATALOG_URL = f"rerun+http://{HOST}:{PORT}"
 DATASET_NAME = "dataset"
 
 DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "rrd" / "dataset"
-TABLE_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "table" / "lance" / "simple_datatypes"
+TABLE_FILEPATH = (
+    pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "table" / "lance" / "simple_datatypes"
+)
+
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_windows_tzdata() -> None:
@@ -303,6 +306,7 @@ def test_query_view_from_schema(server_instance: ServerInstance) -> None:
                 index=local_index_column, contents={entry.entity_path: entry.component}
             ).df()
             assert contents.count() > 0
+
 
 def test_query_lance_table(server_instance: ServerInstance) -> None:
     expected_table_name = "simple_datatypes"
