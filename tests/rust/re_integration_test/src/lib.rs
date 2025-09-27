@@ -21,6 +21,7 @@ impl TestServer {
             addr: "127.0.0.1".to_owned(),
             port,
             datasets: vec![],
+            tables: vec![],
         };
         let server_handle = args
             .create_server_handle()

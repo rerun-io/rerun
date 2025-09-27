@@ -12,6 +12,7 @@ import pyarrow as pa
 import pytest
 from datafusion import col, functions as f
 from rerun.catalog import CatalogClient
+from rerun_bindings import EntryKind
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -24,6 +25,9 @@ CATALOG_URL = f"rerun+http://{HOST}:{PORT}"
 DATASET_NAME = "dataset"
 
 DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "rrd" / "dataset"
+TABLE_FILEPATH = (
+    pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "table" / "lance" / "simple_datatypes"
+)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -112,6 +116,7 @@ class ServerInstance:
 @pytest.fixture(scope="module")
 def server_instance() -> Generator[ServerInstance, None, None]:
     assert DATASET_FILEPATH.is_dir()
+    assert TABLE_FILEPATH.is_dir()
 
     env = os.environ.copy()
     if "RUST_LOG" not in env:
@@ -119,7 +124,7 @@ def server_instance() -> Generator[ServerInstance, None, None]:
         env["RUST_LOG"] = "warning"
 
     # TODO(#11173): pick a free port
-    cmd = ["python", "-m", "rerun", "server", "--dataset", str(DATASET_FILEPATH)]
+    cmd = ["python", "-m", "rerun", "server", "--dataset", str(DATASET_FILEPATH), "--table", str(TABLE_FILEPATH)]
     server_process = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     try:
@@ -301,3 +306,35 @@ def test_query_view_from_schema(server_instance: ServerInstance) -> None:
                 index=local_index_column, contents={entry.entity_path: entry.component}
             ).df()
             assert contents.count() > 0
+
+
+def test_query_lance_table(server_instance: ServerInstance) -> None:
+    expected_table_name = "simple_datatypes"
+    entries_table_name = "__entries"
+
+    client = server_instance.client
+    assert expected_table_name in client.table_names()
+    assert entries_table_name in client.table_names()
+
+    entries = client.table_entries()
+    assert len(entries) == 2
+
+    # No guarantee on order here
+    if entries[0].name == expected_table_name:
+        assert entries[1].name == entries_table_name
+    else:
+        assert entries[0].name == entries_table_name
+        assert entries[1].name == expected_table_name
+
+    assert entries[0].kind == EntryKind.TABLE
+    assert entries[1].kind == EntryKind.TABLE
+
+    tables = client.tables()
+    assert tables.collect()[0].num_rows == 1
+
+    table = client.get_table(name=expected_table_name)
+    assert table.collect()[0].num_rows > 0
+
+    entry = client.get_table_entry(name=expected_table_name)
+    assert entry.name == expected_table_name
+    assert entry.kind == EntryKind.TABLE
