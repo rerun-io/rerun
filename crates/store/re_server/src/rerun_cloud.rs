@@ -337,7 +337,9 @@ impl RerunCloudService for RerunCloudHandler {
             .and_then(|filter| filter.entry_kind)
             .map(EntryKind::try_from)
             .transpose()
-            .map_err(|err| Status::invalid_argument(format!("find_entries: invalid entry kind {err}")))?;
+            .map_err(|err| {
+                Status::invalid_argument(format!("find_entries: invalid entry kind {err}"))
+            })?;
 
         let entries = match kind {
             Some(EntryKind::Dataset) => self.find_datasets(entry_id, name).await?,
@@ -1124,9 +1126,7 @@ impl RerunCloudService for RerunCloudHandler {
     ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::GetTableSchemaResponse>, Status> {
         let store = self.store.read().await;
         let Some(entry_id) = request.into_inner().table_id else {
-            return Err(Status::not_found(format!(
-                "Table ID not specified in request"
-            )));
+            return Err(Status::not_found("Table ID not specified in request"));
         };
         let entry_id = entry_id.try_into()?;
 
@@ -1155,9 +1155,7 @@ impl RerunCloudService for RerunCloudHandler {
     ) -> Result<tonic::Response<Self::ScanTableStream>, Status> {
         let store = self.store.read().await;
         let Some(entry_id) = request.into_inner().table_id else {
-            return Err(Status::not_found(format!(
-                "Table ID not specified in request"
-            )));
+            return Err(Status::not_found("Table ID not specified in request"));
         };
         let entry_id = entry_id.try_into()?;
 

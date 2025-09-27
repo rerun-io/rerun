@@ -280,7 +280,8 @@ impl Default for InMemoryStore {
             datasets: HashMap::default(),
             id_by_name: HashMap::default(),
         };
-        ret.update_entries_table().unwrap();
+        ret.update_entries_table()
+            .expect("update_entries_table should never fail on initialization.");
         ret
     }
 }
