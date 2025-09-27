@@ -355,7 +355,7 @@ impl InMemoryStore {
 
         let table = lance::Dataset::open(path)
             .await
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
+            .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?;
         let provider = Arc::new(LanceTableProvider::new(Arc::new(table), false, false));
 
         let entry_id = EntryId::new();
