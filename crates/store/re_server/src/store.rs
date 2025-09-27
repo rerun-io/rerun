@@ -21,7 +21,7 @@ use re_protos::{
     cloud::v1alpha1::ScanPartitionTableResponse,
     cloud::v1alpha1::{
         EntryKind,
-        ext::{DatasetEntry, EntryDetails},
+        ext::{DatasetEntry, EntryDetails, TableEntry},
     },
     common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
 };
@@ -256,6 +256,20 @@ impl Table {
 
     pub fn provider(&self) -> &Arc<dyn TableProvider> {
         &self.provider
+    }
+
+    pub fn as_table_entry(&self) -> TableEntry {
+        TableEntry {
+            details: EntryDetails {
+                id: self.id,
+                name: self.name.clone(),
+                kind: EntryKind::Table,
+                created_at: self.created_at,
+                updated_at: self.updated_at,
+            },
+
+            provider_details: Default::default(),
+        }
     }
 }
 

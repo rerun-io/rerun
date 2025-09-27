@@ -325,8 +325,12 @@ def test_query_lance_table(server_instance: ServerInstance) -> None:
     assert entries[0].kind == EntryKind.TABLE
     assert entries[1].kind == EntryKind.TABLE
 
-    # TODO: Uncomment once implemented
-    # tables = client.tables()
-    # table = client.get_table(name=expected_table_name)
-    # entry = client.get_table_entry(name=expected_table_name)
+    tables = client.tables()
+    assert tables.collect()[0].num_rows == 1
 
+    table = client.get_table(name=expected_table_name)
+    assert table.collect()[0].num_rows > 0
+
+    entry = client.get_table_entry(name=expected_table_name)
+    assert entry.name == expected_table_name
+    assert entry.kind == EntryKind.TABLE

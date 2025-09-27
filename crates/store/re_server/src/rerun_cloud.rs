@@ -9,8 +9,8 @@ use arrow::array::{
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use datafusion::execution::{SessionState, TaskContext};
 use datafusion::physical_expr::Partitioning;
-use datafusion::physical_plan::ExecutionPlan;
 use datafusion::physical_plan::repartition::RepartitionExec;
+use datafusion::physical_plan::{ExecutionPlan, ExecutionPlanProperties};
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
 use re_chunk_store::Chunk;
@@ -29,7 +29,9 @@ use re_protos::headers::RerunHeadersExtractorExt as _;
 use re_protos::{cloud::v1alpha1::RegisterWithDatasetResponse, common::v1alpha1::ext::PartitionId};
 use re_protos::{
     cloud::v1alpha1::ext,
-    cloud::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse},
+    cloud::v1alpha1::ext::{
+        CreateDatasetEntryResponse, ReadDatasetEntryResponse, ReadTableEntryResponse,
+    },
 };
 use re_protos::{
     cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
@@ -438,13 +440,28 @@ impl RerunCloudService for RerunCloudHandler {
 
     async fn read_table_entry(
         &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::ReadTableEntryRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::ReadTableEntryRequest>,
     ) -> std::result::Result<
         tonic::Response<re_protos::cloud::v1alpha1::ReadTableEntryResponse>,
         tonic::Status,
     > {
-        Err(tonic::Status::unimplemented(
-            "read_table_entry not implemented",
+        let store = self.store.read().await;
+
+        let id = request
+            .into_inner()
+            .id
+            .ok_or(Status::invalid_argument("No table entry ID provided"))?
+            .try_into()?;
+
+        let table = store.table(id).ok_or_else(|| {
+            tonic::Status::not_found(format!("table with entry ID '{id}' not found"))
+        })?;
+
+        Ok(tonic::Response::new(
+            ReadTableEntryResponse {
+                table_entry: table.as_table_entry(),
+            }
+            .into(),
         ))
     }
 
@@ -1152,25 +1169,6 @@ impl RerunCloudService for RerunCloudHandler {
         let table = store
             .table(entry_id)
             .ok_or_else(|| Status::not_found(format!("Entry with ID {entry_id} not found")))?;
-        // let lance_table = lance::Dataset::open(table.url())
-        //     .await
-        //     .map_err(|err| tonic::Status::from_error(Box::new(err)))?;
-        //
-        // let stream = lance_table
-        //     .scan()
-        //     .try_into_stream()
-        //     .await
-        //     .map_err(|err| tonic::Status::from_error(Box::new(err)))?;
-        //
-        // let resp_stream = stream.map(|batch| {
-        //     batch
-        //         .map_err(|err| tonic::Status::from_error(Box::new(err)))?
-        //         .encode()
-        //         .map(|batch| ScanTableResponse {
-        //             dataframe_part: Some(batch),
-        //         })
-        //         .map_err(|err| tonic::Status::internal(format!("Error encoding chunk: {err:#}")))
-        // });
 
         let ctx = SessionContext::default();
         let plan = table
@@ -1179,16 +1177,7 @@ impl RerunCloudService for RerunCloudHandler {
             .await
             .map_err(|err| Status::internal(format!("failed to scan table: {err:#}")))?;
 
-        let single_partition = RepartitionExec::try_new(plan, Partitioning::UnknownPartitioning(1))
-            .map_err(|err| Status::internal(format!("failed to scan table: {err:#}")))?;
-
-        // let resp_stream = single_partition.execute(0, ctx.task_ctx())
-        //     .map_err(|err| Status::internal(format!("failed to scan table: {err:#}")))?
-        //     .map(|maybe_rb| maybe_rb.and_then(|rb| rb.encode()).map(|rb| ScanTableResponse {
-        //         dataframe_part: Some(rb)
-        //     }));
-
-        let stream = single_partition
+        let stream = plan
             .execute(0, ctx.task_ctx())
             .map_err(|err| tonic::Status::from_error(Box::new(err)))?;
 
