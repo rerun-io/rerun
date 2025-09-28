@@ -9371,6 +9371,7 @@ version = "0.26.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
+ "chrono",
  "clap",
  "datafusion",
  "futures",
@@ -13206,7 +13207,7 @@ dependencies = [
  "naga",
  "ndk-sys",
  "objc",
- "ordered-float 4.6.0",
+ "ordered-float 5.0.0",
  "parking_lot",
  "portable-atomic",
  "portable-atomic-util",

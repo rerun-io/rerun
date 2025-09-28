@@ -13,6 +13,8 @@ use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::external::re_types_core::{ComponentBatch as _, Loggable as _};
 use re_log_types::{EntryId, StoreKind};
+use re_protos::cloud::v1alpha1::SystemTableKind;
+use re_protos::cloud::v1alpha1::ext::{ProviderDetails, SystemTable};
 use re_protos::{
     cloud::v1alpha1::ScanPartitionTableResponse,
     cloud::v1alpha1::{
@@ -230,6 +232,8 @@ pub struct Table {
 
     created_at: jiff::Timestamp,
     updated_at: jiff::Timestamp,
+
+    system_table: Option<SystemTable>,
 }
 
 impl Table {
@@ -252,6 +256,11 @@ impl Table {
     }
 
     pub fn as_table_entry(&self) -> TableEntry {
+        let provider_details = match &self.system_table {
+            Some(s) => s.try_as_any().expect("system_table should always be valid"),
+            None => Default::default(),
+        };
+
         TableEntry {
             details: EntryDetails {
                 id: self.id,
@@ -261,7 +270,7 @@ impl Table {
                 updated_at: self.updated_at,
             },
 
-            provider_details: Default::default(),
+            provider_details,
         }
     }
 }
@@ -397,6 +406,7 @@ impl InMemoryStore {
                 provider,
                 created_at: jiff::Timestamp::now(),
                 updated_at: jiff::Timestamp::now(),
+                system_table: None,
             },
         );
 
@@ -421,6 +431,9 @@ impl InMemoryStore {
                     .map(|t| t.created_at)
                     .unwrap_or(Timestamp::now()),
                 updated_at: Timestamp::now(),
+                system_table: Some(SystemTable {
+                    kind: SystemTableKind::Entries,
+                }),
             },
         );
 

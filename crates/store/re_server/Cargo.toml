@@ -40,6 +40,7 @@ re_protos.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
+chrono = { workspace = true, features = ["serde"]}
 datafusion.workspace = true
 futures.workspace = true
 itertools.workspace = true

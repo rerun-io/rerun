@@ -44,9 +44,10 @@ ignored = [
   "re_renderer_examples",
 
   # used for specific targets or features
-  "wayland-sys",
+  "chrono", # remove once https://github.com/lancedb/lance/pull/4833 closes
   "home",
   "profiling",
+  "wayland-sys",
 ]
 
 [workspace.dependencies]
@@ -208,7 +209,7 @@ cargo-run-wasm = "0.3.2"
 cdr-encoding = "0.10.2"
 cfg_aliases = "0.2"
 cfg-if = "1.0"
-chrono = { version = "0.4.39", default-features = false, features = ["serde"] } # Needed for datafusion, see `re_datafusion`'s Cargo.toml
+chrono = { version = "0.4.39", default-features = false } # Needed for datafusion, see `re_datafusion`'s Cargo.toml
 clang-format = "0.3"
 clap = "4.0"
 clean-path = "0.2"
