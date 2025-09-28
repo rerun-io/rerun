@@ -14,7 +14,7 @@ use re_log_types::external::re_tuid::Tuid;
 use re_log_types::external::re_types_core::{ComponentBatch as _, Loggable as _};
 use re_log_types::{EntryId, StoreKind};
 use re_protos::cloud::v1alpha1::SystemTableKind;
-use re_protos::cloud::v1alpha1::ext::{ProviderDetails, SystemTable};
+use re_protos::cloud::v1alpha1::ext::{ProviderDetails as _, SystemTable};
 use re_protos::{
     cloud::v1alpha1::ScanPartitionTableResponse,
     cloud::v1alpha1::{
