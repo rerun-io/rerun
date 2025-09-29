@@ -2,7 +2,10 @@ use crate::AppEnvironment;
 
 use re_analytics::{
     Config, Property,
-    event::{Id, Identify, OpenRecording, StoreInfo, ViewerRuntimeInformation, ViewerStarted},
+    event::{
+        Id, Identify, OpenRecording, PlaybackSession, PlaybackSessionType, PlaybackStopReason,
+        StoreInfo, SwitchRecording, ViewerRuntimeInformation, ViewerStarted,
+    },
 };
 
 pub fn identify(
@@ -64,6 +67,7 @@ pub fn viewer_started(
 pub fn open_recording(
     app_env: &AppEnvironment,
     entity_db: &re_entity_db::EntityDb,
+    total_open_recordings: usize,
 ) -> Option<OpenRecording> {
     let store_info = entity_db.store_info().map(|store_info| {
         let re_log_types::StoreInfo {
@@ -167,6 +171,77 @@ pub fn open_recording(
         url: app_env.url().cloned(),
         app_env: app_env.name(),
         store_info,
+        total_open_recordings,
         data_source,
     })
+}
+
+pub fn switch_recording(
+    app_env: &AppEnvironment,
+    previous_recording_id: Option<&re_log_types::StoreId>,
+    new_recording_id: &re_log_types::StoreId,
+    switch_method: &'static str,
+) -> SwitchRecording {
+    let previous_id = previous_recording_id.map(|store_id| {
+        let application_id = store_id.application_id();
+        let recording_id = store_id.recording_id();
+
+        if application_id.as_str().starts_with("rerun_example") {
+            Id::Official(recording_id.to_string())
+        } else {
+            Id::Hashed(Property::from(recording_id.as_str()).hashed())
+        }
+    });
+
+    let new_id = {
+        let application_id = new_recording_id.application_id();
+        let recording_id = new_recording_id.recording_id();
+
+        if application_id.as_str().starts_with("rerun_example") {
+            Id::Official(recording_id.to_string())
+        } else {
+            Id::Hashed(Property::from(recording_id.as_str()).hashed())
+        }
+    };
+
+    SwitchRecording {
+        url: app_env.url().cloned(),
+        app_env: app_env.name(),
+        previous_recording_id: previous_id,
+        new_recording_id: new_id,
+        switch_method,
+    }
+}
+
+pub fn playback_session(
+    build_info: re_build_info::BuildInfo,
+    timeline_name: String,
+    wall_clock_seconds: f64,
+    session_type: PlaybackSessionType,
+    total_time_traveled: f64,
+    covered_time_distance: f64,
+    time_unit: String,
+    end_reason: PlaybackStopReason,
+    recording_id: &re_log_types::StoreId,
+) -> PlaybackSession {
+    let application_id = recording_id.application_id();
+    let recording_id_str = recording_id.recording_id();
+
+    let recording_id_processed = if application_id.as_str().starts_with("rerun_example") {
+        Id::Official(recording_id_str.to_string())
+    } else {
+        Id::Hashed(Property::from(recording_id_str.as_str()).hashed())
+    };
+
+    PlaybackSession {
+        build_info,
+        timeline_name,
+        wall_clock_seconds,
+        session_type,
+        total_time_traveled,
+        covered_time_distance,
+        time_unit,
+        end_reason,
+        recording_id: recording_id_processed,
+    }
 }

@@ -650,7 +650,7 @@ impl TestContext {
 
                 // not implemented
                 SystemCommand::ActivateApp(_)
-                | SystemCommand::ActivateRecordingOrTable(_)
+                | SystemCommand::ActivateRecordingOrTable { .. }
                 | SystemCommand::CloseApp(_)
                 | SystemCommand::CloseRecordingOrTable(_)
                 | SystemCommand::LoadDataSource(_)
