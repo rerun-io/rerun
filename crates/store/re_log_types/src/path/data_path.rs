@@ -1,4 +1,4 @@
-use re_types_core::ComponentDescriptor;
+use re_types_core::ComponentIdentifier;
 
 use crate::{EntityPath, Instance};
 
@@ -17,7 +17,7 @@ use crate::{EntityPath, Instance};
 pub struct DataPath {
     pub entity_path: EntityPath,
     pub instance: Option<Instance>,
-    pub component_descriptor: Option<ComponentDescriptor>,
+    pub component: Option<ComponentIdentifier>,
 }
 
 impl std::fmt::Display for DataPath {
@@ -28,8 +28,9 @@ impl std::fmt::Display for DataPath {
         {
             write!(f, "[#{instance}]")?;
         }
-        if let Some(component_descriptor) = &self.component_descriptor {
-            component_descriptor.format_descriptor(f)?;
+        if let Some(component) = &self.component {
+            f.write_str(":")?;
+            component.fmt(f)?;
         }
         Ok(())
     }

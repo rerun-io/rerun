@@ -15,16 +15,26 @@ impl DataUi for ComponentPath {
     ) {
         let Self {
             entity_path,
-            component_descriptor,
+            component,
         } = self;
 
         let engine = db.storage_engine();
 
+        let Some(component_descriptor) = engine
+            .store()
+            .entity_component_descriptor(entity_path, *component)
+        else {
+            ui.label(format!(
+                "Entity {entity_path:?} has no component {component:?}"
+            ));
+            return;
+        };
+
         let results = engine
             .cache()
-            .latest_at(query, entity_path, [component_descriptor]);
+            .latest_at(query, entity_path, [&component_descriptor]);
 
-        if let Some(unit) = results.components.get(component_descriptor) {
+        if let Some(unit) = results.components.get(&component_descriptor) {
             crate::ComponentPathLatestAtResults {
                 component_path: self.clone(),
                 unit,
@@ -34,12 +44,12 @@ impl DataUi for ComponentPath {
             if engine.store().entity_has_component_on_timeline(
                 &query.timeline(),
                 entity_path,
-                component_descriptor,
+                &component_descriptor,
             ) {
                 ui.label("<unset>");
             } else {
                 ui.label(format!(
-                    "Entity {entity_path:?} has no component {component_descriptor:?}"
+                    "Entity {entity_path:?} has no component {component:?}"
                 ));
             }
         } else {

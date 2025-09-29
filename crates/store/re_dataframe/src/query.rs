@@ -345,12 +345,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         let query =
                             re_chunk::LatestAtQuery::new(TimelineName::new(""), TimeInt::STATIC);
 
+                        // TODO: Can we just remove that parameter?
                         let component_descriptor = store
-                            .entity_component_descriptor(
-                                &descr.entity_path,
-                                descr.archetype,
-                                descr.component,
-                            )
+                            .entity_component_descriptor(&descr.entity_path, descr.component)
                             .into_iter()
                             .next()?;
 
@@ -1066,12 +1063,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     let query =
                         re_chunk::LatestAtQuery::new(state.filtered_index, *cur_index_value);
 
+                    // TODO: Can we just remove that parameter?
                     let component_descriptor = store
-                        .entity_component_descriptor(
-                            &descr.entity_path,
-                            descr.archetype,
-                            descr.component,
-                        )
+                        .entity_component_descriptor(&descr.entity_path, descr.component)
                         .into_iter()
                         .next()?;
 

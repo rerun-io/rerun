@@ -639,7 +639,7 @@ fn show_row_ids_tooltip(
     } = item;
 
     if let Some(component_descr) = component_descr.as_ref() {
-        ComponentPath::new(entity_path.clone(), component_descr.clone())
+        ComponentPath::new(entity_path.clone(), component_descr.component)
             .data_ui(ctx, ui, ui_layout, &query, db);
     } else {
         re_entity_db::InstancePath::entity_all(entity_path.clone())
