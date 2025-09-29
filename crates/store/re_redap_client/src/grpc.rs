@@ -8,14 +8,11 @@ use re_protos::cloud::v1alpha1::GetChunksRequest;
 use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::common::v1alpha1::ext::PartitionId;
-use re_uri::{DatasetPartitionUri, Origin, TimeSelection};
+use re_uri::{Origin, TimeSelection};
 
 use tokio_stream::{Stream, StreamExt as _};
 
-use crate::{
-    ConnectionClient, ConnectionRegistryHandle, MAX_DECODING_MESSAGE_SIZE, StreamError,
-    StreamPartitionError, spawn_future,
-};
+use crate::{ConnectionClient, MAX_DECODING_MESSAGE_SIZE, StreamError, StreamPartitionError};
 
 /// UI commands issued when streaming in datasets.
 ///
@@ -33,55 +30,6 @@ pub enum UiCommand {
         store_id: StoreId,
         fragment: re_uri::Fragment,
     },
-}
-
-/// Stream an rrd file or metadata catalog over gRPC from a Rerun Data Platform server.
-///
-/// `on_msg` can be used to wake up the UI thread on Wasm.
-pub fn stream_dataset_from_redap(
-    connection_registry: &ConnectionRegistryHandle,
-    uri: DatasetPartitionUri,
-    on_ui_cmd: Option<Box<dyn Fn(UiCommand) + Send + Sync>>,
-    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> re_smart_channel::Receiver<LogMsg> {
-    re_log::debug!("Loading {uri}…");
-
-    let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::RedapGrpcStream {
-            uri: uri.clone(),
-            select_when_loaded: true,
-        },
-        re_smart_channel::SmartChannelSource::RedapGrpcStream {
-            uri: uri.clone(),
-            select_when_loaded: true,
-        },
-    );
-
-    async fn stream_partition(
-        connection_registry: ConnectionRegistryHandle,
-        tx: re_smart_channel::Sender<LogMsg>,
-        uri: DatasetPartitionUri,
-        on_ui_cmd: Option<Box<dyn Fn(UiCommand) + Send + Sync>>,
-        on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-    ) -> Result<(), StreamError> {
-        let client = connection_registry.client(uri.origin.clone()).await?;
-
-        stream_blueprint_and_partition_from_server(client, tx, uri.clone(), on_ui_cmd, on_msg).await
-    }
-
-    let connection_registry = connection_registry.clone();
-    spawn_future(async move {
-        if let Err(err) =
-            stream_partition(connection_registry, tx, uri.clone(), on_ui_cmd, on_msg).await
-        {
-            re_log::error!(
-                "Error while streaming {uri}: {}",
-                re_error::format_ref(&err)
-            );
-        }
-    });
-
-    rx
 }
 
 // TODO(ab): do not publish this out of this crate (for now it is still being used by rerun_py
@@ -568,9 +516,20 @@ async fn stream_partition_from_server(
 
     let store_id = store_info.store_id.clone();
 
+    if tx
+        .send(LogMsg::SetStoreInfo(SetStoreInfo {
+            row_id: *re_chunk::RowId::new(),
+            info: store_info,
+        }))
+        .is_err()
+    {
+        re_log::debug!("Receiver disconnected");
+        return Ok(());
+    }
+
     // Send UI commands for recording (as opposed to blueprint) stores.
     if let Some(on_ui_cmd) = on_ui_cmd
-        && store_info.store_id.is_recording()
+        && store_id.is_recording()
     {
         if let Some(time_range) = time_range {
             on_ui_cmd(UiCommand::AddValidTimeRange {
@@ -592,17 +551,6 @@ async fn stream_partition_from_server(
                 fragment,
             });
         }
-    }
-
-    if tx
-        .send(LogMsg::SetStoreInfo(SetStoreInfo {
-            row_id: *re_chunk::RowId::new(),
-            info: store_info,
-        }))
-        .is_err()
-    {
-        re_log::debug!("Receiver disconnected");
-        return Ok(());
     }
 
     // TODO(#10229): this looks to be converting back and forth?

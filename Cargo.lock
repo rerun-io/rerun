@@ -8357,7 +8357,6 @@ dependencies = [
  "re_arrow_util",
  "re_auth",
  "re_chunk",
- "re_error",
  "re_log",
  "re_log_encoding",
  "re_log_types",
@@ -8374,7 +8373,6 @@ dependencies = [
  "tower",
  "tracing",
  "url",
- "wasm-bindgen-futures",
 ]
 
 [[package]]
