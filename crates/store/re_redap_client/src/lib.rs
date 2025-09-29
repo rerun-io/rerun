@@ -13,7 +13,6 @@ pub use self::{
         ConnectionError, RedapClient, UiCommand, channel,
         fetch_chunks_response_to_chunk_and_partition_id,
         get_chunks_response_to_chunk_and_partition_id, stream_blueprint_and_partition_from_server,
-        stream_dataset_from_redap,
     },
 };
 
@@ -157,25 +156,3 @@ const _: () = assert!(
     std::mem::size_of::<StreamError>() <= 80,
     "Error type is too large. Try to reduce its size by boxing some of its variants.",
 );
-
-// TODO(ab, andreas): This should be replaced by the use of `AsyncRuntimeHandle`. However, this
-// requires:
-// - `AsyncRuntimeHandle` to be moved lower in the crate hierarchy to be available here (unsure
-//   where).
-// - Make sure that all callers of `DataSource::stream` have access to an `AsyncRuntimeHandle`
-//   (maybe it should be in `GlobalContext`?).
-#[cfg(target_arch = "wasm32")]
-fn spawn_future<F>(future: F)
-where
-    F: std::future::Future<Output = ()> + 'static,
-{
-    wasm_bindgen_futures::spawn_local(future);
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn spawn_future<F>(future: F)
-where
-    F: std::future::Future<Output = ()> + 'static + Send,
-{
-    tokio::spawn(future);
-}
