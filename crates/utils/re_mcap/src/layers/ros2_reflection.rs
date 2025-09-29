@@ -23,6 +23,7 @@ use crate::parsers::{MessageParser, ParserContext};
 use crate::{Error, LayerIdentifier, MessageLayer};
 
 struct Ros2ReflectionMessageParser {
+    num_rows: usize,
     message_schema: MessageSchema,
     fields: Vec<(String, FixedSizeListBuilder<Box<dyn ArrayBuilder>>)>,
 }
@@ -55,6 +56,7 @@ impl Ros2ReflectionMessageParser {
         }
 
         Self {
+            num_rows,
             message_schema,
             fields,
         }
@@ -97,11 +99,36 @@ impl MessageParser for Ros2ReflectionMessageParser {
         let timelines = ctx.build_timelines();
 
         let Self {
+            num_rows,
             message_schema,
             fields,
         } = *self;
 
         let archetype_name = message_schema.spec.name.clone().replace('/', ".");
+
+        if fields.is_empty() {
+            // Create a list array with `num_rows` entries, where each entry is an empty list
+            let empty_list = arrow::array::ListArray::new_null(
+                std::sync::Arc::new(Field::new("empty", DataType::Null, true)),
+                num_rows,
+            );
+
+            let chunk = Chunk::from_auto_row_ids(
+                ChunkId::new(),
+                entity_path,
+                timelines,
+                std::iter::once((
+                    ComponentDescriptor::partial("empty")
+                        .with_builtin_archetype(archetype_name.clone()),
+                    empty_list,
+                ))
+                .collect(),
+            )
+            .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
+
+            return Ok(vec![chunk]);
+        }
+
         let message_chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
             entity_path,
