@@ -1,8 +1,8 @@
 use re_auth::client::AuthDecorator;
-use re_chunk::{Chunk, TimelineName};
+use re_chunk::Chunk;
 use re_log_types::{
-    AbsoluteTimeRange, BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId,
-    StoreInfo, StoreKind, StoreSource,
+    AbsoluteTimeRange, BlueprintActivationCommand, DataSourceMessage, DataSourceUiCommand, EntryId,
+    LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
 };
 use re_protos::cloud::v1alpha1::GetChunksRequest;
 use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
@@ -13,24 +13,6 @@ use re_uri::{Origin, TimeSelection};
 use tokio_stream::{Stream, StreamExt as _};
 
 use crate::{ConnectionClient, MAX_DECODING_MESSAGE_SIZE, StreamError, StreamPartitionError};
-
-/// UI commands issued when streaming in datasets.
-///
-/// If you're not in a ui context you can safely ignore these.
-pub enum UiCommand {
-    AddValidTimeRange {
-        store_id: StoreId,
-
-        /// If `None`, signals that all timelines are entirely valid.
-        timeline: Option<TimelineName>,
-        time_range: AbsoluteTimeRange,
-    },
-
-    SetUrlFragment {
-        store_id: StoreId,
-        fragment: re_uri::Fragment,
-    },
-}
 
 // TODO(ab): do not publish this out of this crate (for now it is still being used by rerun_py
 // the viewer grpc connection). Ideally we'd only publish `ClientConnectionError`.
@@ -352,9 +334,8 @@ pub fn fetch_chunks_response_to_chunk_and_partition_id(
 /// with the server's version.
 pub async fn stream_blueprint_and_partition_from_server(
     mut client: ConnectionClient,
-    tx: re_smart_channel::Sender<LogMsg>,
+    tx: re_smart_channel::Sender<DataSourceMessage>,
     uri: re_uri::DatasetPartitionUri,
-    on_ui_cmd: Option<Box<dyn Fn(UiCommand) + Send + Sync>>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     re_log::debug!("Loading {uri}…");
@@ -390,19 +371,19 @@ pub async fn stream_blueprint_and_partition_from_server(
             blueprint_partition,
             None,
             re_uri::Fragment::default(),
-            on_ui_cmd.as_deref(),
             on_msg.as_deref(),
         )
         .await?;
 
         if tx
-            .send(LogMsg::BlueprintActivationCommand(
-                BlueprintActivationCommand {
+            .send(
+                LogMsg::BlueprintActivationCommand(BlueprintActivationCommand {
                     blueprint_id: blueprint_store_id,
                     make_active: false,
                     make_default: true,
-                },
-            ))
+                })
+                .into(),
+            )
             .is_err()
         {
             re_log::debug!("Receiver disconnected");
@@ -436,7 +417,6 @@ pub async fn stream_blueprint_and_partition_from_server(
         partition_id.into(),
         time_range,
         fragment,
-        on_ui_cmd.as_deref(),
         on_msg.as_deref(),
     )
     .await?;
@@ -449,12 +429,11 @@ pub async fn stream_blueprint_and_partition_from_server(
 async fn stream_partition_from_server(
     client: &mut ConnectionClient,
     store_info: StoreInfo,
-    tx: &re_smart_channel::Sender<LogMsg>,
+    tx: &re_smart_channel::Sender<DataSourceMessage>,
     dataset_id: EntryId,
     partition_id: PartitionId,
     time_range: Option<TimeSelection>,
     fragment: re_uri::Fragment,
-    on_ui_cmd: Option<&(dyn Fn(UiCommand) + Send + Sync)>,
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), StreamError> {
     let static_chunk_stream = {
@@ -517,10 +496,13 @@ async fn stream_partition_from_server(
     let store_id = store_info.store_id.clone();
 
     if tx
-        .send(LogMsg::SetStoreInfo(SetStoreInfo {
-            row_id: *re_chunk::RowId::new(),
-            info: store_info,
-        }))
+        .send(
+            LogMsg::SetStoreInfo(SetStoreInfo {
+                row_id: *re_chunk::RowId::new(),
+                info: store_info,
+            })
+            .into(),
+        )
         .is_err()
     {
         re_log::debug!("Receiver disconnected");
@@ -528,28 +510,41 @@ async fn stream_partition_from_server(
     }
 
     // Send UI commands for recording (as opposed to blueprint) stores.
-    if let Some(on_ui_cmd) = on_ui_cmd
-        && store_id.is_recording()
-    {
-        if let Some(time_range) = time_range {
-            on_ui_cmd(UiCommand::AddValidTimeRange {
+    if store_id.is_recording() {
+        let valid_range_msg = if let Some(time_range) = time_range {
+            DataSourceUiCommand::AddValidTimeRange {
                 store_id: store_id.clone(),
                 timeline: Some(*time_range.timeline.name()),
                 time_range: time_range.into(),
-            });
+            }
         } else {
-            on_ui_cmd(UiCommand::AddValidTimeRange {
+            DataSourceUiCommand::AddValidTimeRange {
                 store_id: store_id.clone(),
                 timeline: None,
                 time_range: AbsoluteTimeRange::EVERYTHING,
-            });
+            }
+        };
+
+        if tx.send(valid_range_msg.into()).is_err() {
+            re_log::debug!("Receiver disconnected");
+            return Ok(());
         }
 
+        #[expect(clippy::collapsible_if)]
         if !fragment.is_empty() {
-            on_ui_cmd(UiCommand::SetUrlFragment {
-                store_id: store_id.clone(),
-                fragment,
-            });
+            if tx
+                .send(
+                    DataSourceUiCommand::SetUrlFragment {
+                        store_id: store_id.clone(),
+                        fragment: fragment.to_string(),
+                    }
+                    .into(),
+                )
+                .is_err()
+            {
+                re_log::debug!("Receiver disconnected");
+                return Ok(());
+            }
         }
     }
 
@@ -566,7 +561,7 @@ async fn stream_partition_from_server(
             let (chunk, _partition_id) = chunk;
 
             if tx
-                .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?))
+                .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?).into())
                 .is_err()
             {
                 re_log::debug!("Receiver disconnected");

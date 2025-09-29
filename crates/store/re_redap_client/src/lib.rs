@@ -10,8 +10,7 @@ pub use self::{
         ClientConnectionError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
     },
     grpc::{
-        ConnectionError, RedapClient, UiCommand, channel,
-        fetch_chunks_response_to_chunk_and_partition_id,
+        ConnectionError, RedapClient, channel, fetch_chunks_response_to_chunk_and_partition_id,
         get_chunks_response_to_chunk_and_partition_id, stream_blueprint_and_partition_from_server,
     },
 };
