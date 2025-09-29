@@ -325,7 +325,7 @@ impl LayerRegistry {
             .register_file_layer::<McapSchemaLayer>()
             .register_file_layer::<McapStatisticLayer>()
             // message layers (priority order):
-            // .register_message_layer::<McapRos2Layer>()
+            .register_message_layer::<McapRos2Layer>()
             .register_message_layer::<McapRos2ReflectionLayer>()
             .register_message_layer::<McapProtobufLayer>();
 

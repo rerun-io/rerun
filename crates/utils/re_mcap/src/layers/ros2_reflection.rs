@@ -1,12 +1,14 @@
-use std::collections::HashSet;
-
 use arrow::{
     array::{
-        ArrayBuilder, BinaryBuilder, BooleanBuilder, FixedSizeListBuilder, Float32Builder,
-        Float64Builder, Int8Builder, Int16Builder, Int32Builder, Int64Builder, ListBuilder,
-        StringBuilder, StructBuilder, UInt8Builder, UInt16Builder, UInt32Builder, UInt64Builder,
+        ArrayBuilder, ArrowPrimitiveType, BinaryBuilder, BooleanBuilder, FixedSizeListBuilder,
+        Float32Builder, Float64Builder, Int8Builder, Int16Builder, Int32Builder, Int64Builder,
+        ListBuilder, PrimitiveBuilder, StringBuilder, StructBuilder, UInt8Builder, UInt16Builder,
+        UInt32Builder, UInt64Builder,
     },
-    datatypes::{DataType, Field, Fields},
+    datatypes::{
+        DataType, Field, Fields, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type,
+        Int64Type, UInt8Type, UInt16Type, UInt32Type, UInt64Type,
+    },
 };
 use re_chunk::{Chunk, ChunkId};
 use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
@@ -27,21 +29,15 @@ struct Ros2ReflectionMessageParser {
 
 #[derive(Debug, thiserror::Error)]
 pub enum Ros2ReflectionError {
-    #[error("invalid message on channel {channel} for schema {schema}: {source}")]
+    #[error("Invalid message on channel {channel} for schema {schema}: {source}")]
     InvalidMessage {
         schema: String,
         channel: String,
         source: anyhow::Error,
     },
 
-    #[error("expected type {expected_type}, but found value {value:?}")]
-    UnexpectedValue {
-        expected_type: &'static str,
-        value: String,
-    },
-
-    #[error("type {0} is not supported yet")]
-    UnsupportedType(&'static str),
+    #[error("Failed to downcast builder to expected type: {0}")]
+    Downcast(&'static str),
 }
 
 impl Ros2ReflectionMessageParser {
@@ -105,6 +101,7 @@ impl MessageParser for Ros2ReflectionMessageParser {
             fields,
         } = *self;
 
+        let archetype_name = message_schema.spec.name.clone().replace('/', ".");
         let message_chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
             entity_path,
@@ -114,7 +111,7 @@ impl MessageParser for Ros2ReflectionMessageParser {
                 .map(|(field_name, mut builder)| {
                     (
                         ComponentDescriptor::partial(field_name)
-                            .with_builtin_archetype(message_schema.spec.name.clone()),
+                            .with_builtin_archetype(archetype_name.clone()),
                         builder.finish().into(),
                     )
                 })
@@ -126,102 +123,63 @@ impl MessageParser for Ros2ReflectionMessageParser {
     }
 }
 
-fn downcast_err<'a, T: std::any::Any>(
-    builder: &'a mut dyn ArrayBuilder,
-    _val: &Value,
-) -> Result<&'a mut T, Ros2ReflectionError> {
-    let builder_type_name = std::any::type_name_of_val(builder).to_owned();
+fn downcast_err<T: std::any::Any>(
+    builder: &mut dyn ArrayBuilder,
+) -> Result<&mut T, Ros2ReflectionError> {
     builder.as_any_mut().downcast_mut::<T>().ok_or_else(|| {
         let type_name = std::any::type_name::<T>();
-        Ros2ReflectionError::UnexpectedValue {
-            expected_type: type_name.strip_suffix("Builder").unwrap_or(type_name),
-            value: builder_type_name,
-        }
+        Ros2ReflectionError::Downcast(type_name.strip_suffix("Builder").unwrap_or(type_name))
     })
+}
+
+fn append_slice_to_list<T>(
+    builder: &mut dyn ArrayBuilder,
+    vec: &[T::Native],
+) -> Result<(), Ros2ReflectionError>
+where
+    T: ArrowPrimitiveType,
+    PrimitiveBuilder<T>: 'static,
+{
+    let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder)?;
+    let values_builder = downcast_err::<PrimitiveBuilder<T>>(list_builder.values())?;
+    values_builder.append_slice(vec);
+    list_builder.append(true);
+    Ok(())
 }
 
 fn append_primitive_array(
     builder: &mut dyn ArrayBuilder,
     prim_array: &PrimitiveArray,
-    val: &Value,
 ) -> Result<(), Ros2ReflectionError> {
     match prim_array {
         PrimitiveArray::Bool(vec) => {
-            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
-            let values_builder = downcast_err::<BooleanBuilder>(list_builder.values(), val)?;
+            // `Bool` is a special case since Arrow doesn't have a primitive boolean array
+            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder)?;
+            let values_builder = downcast_err::<BooleanBuilder>(list_builder.values())?;
             values_builder.append_slice(vec);
             list_builder.append(true);
+            Ok(())
         }
-        PrimitiveArray::I8(vec) => {
-            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
-            let values_builder = downcast_err::<Int8Builder>(list_builder.values(), val)?;
-            values_builder.append_slice(vec);
-            list_builder.append(true);
-        }
-        PrimitiveArray::U8(vec) => {
-            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
-            let values_builder = downcast_err::<UInt8Builder>(list_builder.values(), val)?;
-            values_builder.append_slice(vec);
-            list_builder.append(true);
-        }
-        PrimitiveArray::I16(vec) => {
-            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
-            let values_builder = downcast_err::<Int16Builder>(list_builder.values(), val)?;
-            values_builder.append_slice(vec);
-            list_builder.append(true);
-        }
-        PrimitiveArray::U16(vec) => {
-            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
-            let values_builder = downcast_err::<UInt16Builder>(list_builder.values(), val)?;
-            values_builder.append_slice(vec);
-            list_builder.append(true);
-        }
-        PrimitiveArray::I32(vec) => {
-            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
-            let values_builder = downcast_err::<Int32Builder>(list_builder.values(), val)?;
-            values_builder.append_slice(vec);
-            list_builder.append(true);
-        }
-        PrimitiveArray::U32(vec) => {
-            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
-            let values_builder = downcast_err::<UInt32Builder>(list_builder.values(), val)?;
-            values_builder.append_slice(vec);
-            list_builder.append(true);
-        }
-        PrimitiveArray::I64(vec) => {
-            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
-            let values_builder = downcast_err::<Int64Builder>(list_builder.values(), val)?;
-            values_builder.append_slice(vec);
-            list_builder.append(true);
-        }
-        PrimitiveArray::U64(vec) => {
-            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
-            let values_builder = downcast_err::<UInt64Builder>(list_builder.values(), val)?;
-            values_builder.append_slice(vec);
-            list_builder.append(true);
-        }
-        PrimitiveArray::F32(vec) => {
-            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
-            let values_builder = downcast_err::<Float32Builder>(list_builder.values(), val)?;
-            values_builder.append_slice(vec);
-            list_builder.append(true);
-        }
-        PrimitiveArray::F64(vec) => {
-            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
-            let values_builder = downcast_err::<Float64Builder>(list_builder.values(), val)?;
-            values_builder.append_slice(vec);
-            list_builder.append(true);
-        }
+        PrimitiveArray::I8(vec) => append_slice_to_list::<Int8Type>(builder, vec),
+        PrimitiveArray::U8(vec) => append_slice_to_list::<UInt8Type>(builder, vec),
+        PrimitiveArray::I16(vec) => append_slice_to_list::<Int16Type>(builder, vec),
+        PrimitiveArray::U16(vec) => append_slice_to_list::<UInt16Type>(builder, vec),
+        PrimitiveArray::I32(vec) => append_slice_to_list::<Int32Type>(builder, vec),
+        PrimitiveArray::U32(vec) => append_slice_to_list::<UInt32Type>(builder, vec),
+        PrimitiveArray::I64(vec) => append_slice_to_list::<Int64Type>(builder, vec),
+        PrimitiveArray::U64(vec) => append_slice_to_list::<UInt64Type>(builder, vec),
+        PrimitiveArray::F32(vec) => append_slice_to_list::<Float32Type>(builder, vec),
+        PrimitiveArray::F64(vec) => append_slice_to_list::<Float64Type>(builder, vec),
         PrimitiveArray::String(items) => {
-            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
-            let values_builder = downcast_err::<StringBuilder>(list_builder.values(), val)?;
+            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder)?;
+            let values_builder = downcast_err::<StringBuilder>(list_builder.values())?;
             for item in items {
                 values_builder.append_value(item);
             }
             list_builder.append(true);
+            Ok(())
         }
     }
-    Ok(())
 }
 
 fn append_value(
@@ -230,76 +188,53 @@ fn append_value(
     schema: &MessageSchema,
 ) -> Result<(), Ros2ReflectionError> {
     match val {
-        Value::Bool(x) => downcast_err::<BooleanBuilder>(builder, val)?.append_value(*x),
-        Value::I8(x) => downcast_err::<Int8Builder>(builder, val)?.append_value(*x),
-        Value::U8(x) => downcast_err::<UInt8Builder>(builder, val)?.append_value(*x),
-        Value::I16(x) => downcast_err::<Int16Builder>(builder, val)?.append_value(*x),
-        Value::U16(x) => downcast_err::<UInt16Builder>(builder, val)?.append_value(*x),
-        Value::I32(x) => downcast_err::<Int32Builder>(builder, val)?.append_value(*x),
-        Value::U32(x) => downcast_err::<UInt32Builder>(builder, val)?.append_value(*x),
-        Value::I64(x) => downcast_err::<Int64Builder>(builder, val)?.append_value(*x),
-        Value::U64(x) => downcast_err::<UInt64Builder>(builder, val)?.append_value(*x),
-        Value::F32(x) => downcast_err::<Float32Builder>(builder, val)?.append_value(*x),
-        Value::F64(x) => downcast_err::<Float64Builder>(builder, val)?.append_value(*x),
+        Value::Bool(x) => downcast_err::<BooleanBuilder>(builder)?.append_value(*x),
+        Value::I8(x) => downcast_err::<Int8Builder>(builder)?.append_value(*x),
+        Value::U8(x) => downcast_err::<UInt8Builder>(builder)?.append_value(*x),
+        Value::I16(x) => downcast_err::<Int16Builder>(builder)?.append_value(*x),
+        Value::U16(x) => downcast_err::<UInt16Builder>(builder)?.append_value(*x),
+        Value::I32(x) => downcast_err::<Int32Builder>(builder)?.append_value(*x),
+        Value::U32(x) => downcast_err::<UInt32Builder>(builder)?.append_value(*x),
+        Value::I64(x) => downcast_err::<Int64Builder>(builder)?.append_value(*x),
+        Value::U64(x) => downcast_err::<UInt64Builder>(builder)?.append_value(*x),
+        Value::F32(x) => downcast_err::<Float32Builder>(builder)?.append_value(*x),
+        Value::F64(x) => downcast_err::<Float64Builder>(builder)?.append_value(*x),
         Value::String(x) => {
-            downcast_err::<StringBuilder>(builder, val)?.append_value(x.clone());
+            downcast_err::<StringBuilder>(builder)?.append_value(x.clone());
         }
         Value::Message(message_fields) => {
-            let struct_builder = downcast_err::<StructBuilder>(builder, val)?;
+            let struct_builder = downcast_err::<StructBuilder>(builder)?;
 
-            // For nested messages, we need to find the matching MessageSpec from dependencies
+            // For nested messages, we need to find the matching specification from dependencies
             // Since we don't have type information here, we'll try to match by field names
-            let mut matching_spec: Option<&MessageSpecification> = None;
-
-            // Try to find a MessageSpec that has the same field names as this message
-            for spec in &schema.dependencies {
-                let spec_field_names: HashSet<&String> =
-                    spec.fields.iter().map(|f| &f.name).collect();
-                let message_field_names: HashSet<&String> = message_fields.keys().collect();
-
-                if spec_field_names == message_field_names {
-                    matching_spec = Some(spec);
-                    break;
-                }
-            }
+            let matching_spec = find_matching_message_spec(schema, message_fields);
 
             if let Some(spec) = matching_spec {
-                // Use the spec field order to iterate through struct builder fields
-                for (ith_arrow_field, spec_field) in spec.fields.iter().enumerate() {
-                    if let Some(field_builder) =
-                        struct_builder.field_builders_mut().get_mut(ith_arrow_field)
-                    {
-                        let field_name = &spec_field.name;
-
-                        if let Some(field_value) = message_fields.get(field_name) {
+                // Use the specification field order to iterate through struct builder fields
+                for (i, spec_field) in spec.fields.iter().enumerate() {
+                    if let Some(field_builder) = struct_builder.field_builders_mut().get_mut(i) {
+                        if let Some(field_value) = message_fields.get(&spec_field.name) {
                             append_value(field_builder, field_value, schema)?;
                         } else {
                             //TODO(gijsd): Field is missing in the message, append null
+                            re_log::warn_once!(
+                                "Field {} is missing in the message, appending null",
+                                spec_field.name
+                            );
                         }
                     }
                 }
             } else {
-                re_log::warn!(
-                    "Could not find matching MessageSpec for nested message with fields: {:?}",
+                re_log::warn_once!(
+                    "Could not find matching message specification for nested message with fields: {:?}",
                     message_fields.keys().collect::<Vec<_>>()
                 );
-                // Fallback: use the order from message_fields.keys() - not ideal but better than crashing
-                let message_field_names: Vec<&String> = message_fields.keys().collect();
-                for (ith_arrow_field, field_builder) in
-                    struct_builder.field_builders_mut().iter_mut().enumerate()
-                {
-                    if let Some(&field_name) = message_field_names.get(ith_arrow_field) {
-                        if let Some(field_value) = message_fields.get(field_name) {
-                            append_value(field_builder, field_value, schema)?;
-                        }
-                    }
-                }
             }
 
             struct_builder.append(true);
         }
         Value::Array(vec) | Value::Seq(vec) => {
-            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
+            let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder)?;
 
             for val in vec {
                 append_value(list_builder.values(), val, schema)?;
@@ -307,11 +242,24 @@ fn append_value(
             list_builder.append(true);
         }
         Value::PrimitiveArray(prim_array) | Value::PrimitiveSeq(prim_array) => {
-            append_primitive_array(builder, prim_array, val)?;
+            append_primitive_array(builder, prim_array)?;
         }
     }
 
     Ok(())
+}
+
+fn find_matching_message_spec<'a>(
+    schema: &'a MessageSchema,
+    message_fields: &'a std::collections::BTreeMap<String, Value>,
+) -> Option<&'a MessageSpecification> {
+    schema.dependencies.iter().find(|spec| {
+        spec.fields.len() == message_fields.len()
+            && spec
+                .fields
+                .iter()
+                .all(|f| message_fields.contains_key(&f.name))
+    })
 }
 
 fn struct_builder_from_message_spec(
@@ -425,9 +373,8 @@ fn resolve_complex_type<'a>(
 
 /// Provides reflection-based conversion of ROS2-encoded MCAP messages.
 ///
-/// This layer uses the IDL deserializer to provide dynamic parsing of ROS2 messages
-/// without requiring pre-compiled message definitions. It results in a direct Arrow
-/// representation of the message fields, similar to the protobuf layer.
+/// This layer dynamically parses ROS2 messages at runtime, allowing for
+/// a direct arrow representation of the messages fields, similar to the protobuf layer.
 #[derive(Debug, Default)]
 pub struct McapRos2ReflectionLayer {
     schemas_per_topic: ahash::HashMap<String, MessageSchema>,
@@ -476,7 +423,15 @@ impl MessageLayer for McapRos2ReflectionLayer {
             return false;
         }
 
-        self.schemas_per_topic.contains_key(&channel.topic)
+        // Only support channels if the semantic layer doesn't support them
+        // First check if we have parsed the schema successfully
+        if !self.schemas_per_topic.contains_key(&channel.topic) {
+            return false;
+        }
+
+        // Check if the semantic layer would handle this message type
+        let semantic_layer = super::McapRos2Layer::new();
+        !semantic_layer.supports_schema(&schema.name)
     }
 
     fn message_parser(

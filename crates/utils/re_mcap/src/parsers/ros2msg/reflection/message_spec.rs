@@ -17,10 +17,6 @@ pub enum ParseError {
     /// Cross-entry checks: duplicates, bounds exceeded, defaults not allowed, naming rules
     #[error("validation error: {0}")]
     Validate(String),
-
-    /// Deliberately unsupported features
-    #[error("unsupported: {0}")]
-    Unsupported(String),
 }
 
 /// A parsed ROS 2 message specification, including fields and constants.
@@ -327,21 +323,31 @@ impl Type {
                 "uint32" => Ok(Self::BuiltIn(BuiltInType::UInt32)),
                 "uint64" => Ok(Self::BuiltIn(BuiltInType::UInt64)),
                 "string" => Ok(Self::BuiltIn(BuiltInType::String(None))),
-                s if s.starts_with("string<=") => Self::parse_bounded_string(s), // e.g. `string<=10`
-                s if s.starts_with("wstring<=") => Err(ParseError::Unsupported(
-                    "wstring types are not supported yet".to_owned(),
-                )), // TODO(gijsd): Support utf16 strings.
+                "wstring" => Ok(Self::BuiltIn(BuiltInType::WString(None))),
+                s if s.starts_with("string<=") => {
+                    // e.g. `string<=10`
+                    Ok(Self::BuiltIn(BuiltInType::String(Some(
+                        Self::parse_bounded_string_length(s, "string<=")?,
+                    ))))
+                }
+                s if s.starts_with("wstring<=") => {
+                    // e.g. `wstring<=10`
+                    Ok(Self::BuiltIn(BuiltInType::WString(Some(
+                        Self::parse_bounded_string_length(s, "wstring<=")?,
+                    ))))
+                }
                 s => ComplexType::parse(s).map(Type::Complex),
             }
         }
     }
 
-    fn parse_bounded_string(s: &str) -> Result<Self, ParseError> {
-        if let Some(len_str) = s.strip_prefix("string<=") {
+    fn parse_bounded_string_length(s: &str, prefix: &str) -> Result<usize, ParseError> {
+        if let Some(len_str) = s.strip_prefix(prefix) {
             let len = len_str.parse::<usize>().map_err(|e| {
                 ParseError::Type(format!("failed to parse bounded string length: {e}"))
             })?;
-            Ok(Self::BuiltIn(BuiltInType::String(Some(len))))
+
+            Ok(len)
         } else {
             Err(ParseError::Type(format!(
                 "invalid string type specifier: `{s}`"
@@ -475,7 +481,7 @@ impl Literal {
                 Float32 | Float64 => s.parse::<f64>().map(Self::Float).map_err(|e| {
                     ParseError::Value(format!("failed to parse float literal `{s}`: {e}"))
                 }),
-                String(_) => {
+                String(_) | WString(_) => {
                     let s = if (s.starts_with('"') && s.ends_with('"'))
                         || (s.starts_with('\'') && s.ends_with('\''))
                     {
@@ -487,9 +493,6 @@ impl Literal {
                     };
                     Ok(Self::String(s.to_owned()))
                 }
-                WString(_) => Err(ParseError::Unsupported(
-                    "wstring literals are not supported yet".to_owned(),
-                )), // TODO(gijsd): Support utf16 strings.
             },
             Type::Array {
                 ty: elem_ty,
