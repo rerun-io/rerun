@@ -1225,20 +1225,30 @@ fn assert_receive_into_entity_db(
 
                 match msg.payload {
                     SmartMessagePayload::Msg(msg) => {
-                        if let DataSourceMessage::LogMsg(msg) = msg {
-                            let mut_db = match msg.store_id().kind() {
-                                re_log_types::StoreKind::Recording => {
-                                    rec.get_or_insert_with(|| {
-                                        re_entity_db::EntityDb::new(msg.store_id().clone())
-                                    })
-                                }
-                                re_log_types::StoreKind::Blueprint => bp.get_or_insert_with(|| {
-                                    re_entity_db::EntityDb::new(msg.store_id().clone())
-                                }),
-                            };
+                        match msg {
+                            DataSourceMessage::LogMsg(msg) => {
+                                let mut_db =
+                                    match msg.store_id().kind() {
+                                        re_log_types::StoreKind::Recording => rec
+                                            .get_or_insert_with(|| {
+                                                re_entity_db::EntityDb::new(msg.store_id().clone())
+                                            }),
+                                        re_log_types::StoreKind::Blueprint => bp
+                                            .get_or_insert_with(|| {
+                                                re_entity_db::EntityDb::new(msg.store_id().clone())
+                                            }),
+                                    };
 
-                            mut_db.add(&msg)?;
+                                mut_db.add(&msg)?;
+                            }
+
+                            DataSourceMessage::UiCommand(ui_command) => {
+                                re_log::error!(
+                                    "Received a UI command which can't be stored in a entity_db: {ui_command:?}"
+                                );
+                            }
                         }
+
                         num_messages += 1;
                     }
 
