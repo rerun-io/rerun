@@ -44,7 +44,7 @@ ignored = [
   "re_renderer_examples",
 
   # used for specific targets or features
-  "chrono",      # TODO(https://github.com/rerun-io/rerun/issues/11368)
+  "chrono",      # TODO(#11368)
   "home",
   "profiling",
   "wayland-sys",
