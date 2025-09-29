@@ -20,7 +20,7 @@ pub fn top_panel(
 ) {
     re_tracing::profile_function!();
 
-    let style_like_web = app.is_screenshotting();
+    let style_like_web = app.is_screenshotting() || app.app_env().is_test();
     let top_bar_style = ui.ctx().top_bar_style(frame, style_like_web);
     let top_panel_frame = ui.tokens().top_panel_frame();
 
