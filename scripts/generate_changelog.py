@@ -58,6 +58,9 @@ def get_rerun_org_members() -> set[str]:
 
     try:
         # Use gh CLI to fetch organization members
+        # Note: only PUBLIC members will be fetched!
+        # You can see which members are public and private at https://github.com/orgs/rerun-io/people
+        # That's also where members can change themselves from Private to Public.
         result = subprocess.run(
             ["gh", "api", f"/orgs/{OWNER}/members", "--paginate", "--jq", ".[].login"],
             capture_output=True,
