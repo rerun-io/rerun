@@ -42,6 +42,9 @@ pub enum PathParseError {
     #[error("Found trailing hash (#)")]
     TrailingHash,
 
+    #[error("Found trailing at (@)")]
+    TrailingAt,
+
     // Escaping:
     #[error("Unknown escape sequence: \\{0}")]
     UnknownEscapeSequence(char),
@@ -94,7 +97,19 @@ impl std::str::FromStr for DataPath {
                 return Err(PathParseError::TrailingColon);
             }
 
-            let component_type_delimiter = &component_descriptor_tokens
+            let archetype_delimiter = component_descriptor_tokens
+                .iter()
+                .position(|&token| token == "@");
+            let archetype = if let Some(archetype_delimeter) = archetype_delimiter {
+                if let Some(archetype) = component_descriptor_tokens.get(archetype_delimeter + 1) {
+                    Some(archetype.to_owned())
+                } else {
+                    return Err(PathParseError::TrailingAt);
+                }
+            } else {
+                None
+            };
+            let component_type_delimiter = component_descriptor_tokens
                 .iter()
                 .position(|&token| token == "#");
             let component_type = if let Some(component_type_delimiter) = component_type_delimiter {
@@ -109,8 +124,9 @@ impl std::str::FromStr for DataPath {
                 None
             };
 
-            let component_tokens_end =
-                component_type_delimiter.unwrap_or(component_descriptor_tokens.len());
+            let component_tokens_end = archetype_delimiter
+                .or(component_type_delimiter)
+                .unwrap_or(component_descriptor_tokens.len());
             if component_descriptor_tokens.get(component_tokens_end - 1) == Some(&":") {
                 return Err(PathParseError::TrailingColon);
             }
@@ -119,7 +135,7 @@ impl std::str::FromStr for DataPath {
 
             component_descriptor = Some(ComponentDescriptor {
                 component: field.into(),
-                archetype: None,
+                archetype: archetype.map(Into::into),
                 component_type: component_type.map(Into::into),
             });
 
@@ -316,7 +332,7 @@ fn tokenize_entity_path(path: &str) -> Vec<&str> {
 
 /// `"/foo/bar[#42]:Points3D:Color#colors"` -> `["/", "foo", "/", "bar", "[", "#", "42:", "]", ":", "Points3D", ":", "Color", "#", "colors"]`
 fn tokenize_data_path(path: &str) -> Vec<&str> {
-    tokenize_by(path, b"/[]:#")
+    tokenize_by(path, b"/[]:#@")
 }
 
 pub fn tokenize_by<'s>(path: &'s str, special_chars: &[u8]) -> Vec<&'s str> {

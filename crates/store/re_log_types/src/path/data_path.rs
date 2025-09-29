@@ -29,7 +29,7 @@ impl std::fmt::Display for DataPath {
             write!(f, "[#{instance}]")?;
         }
         if let Some(component_descriptor) = &self.component_descriptor {
-            write!(f, ":{component_descriptor:?}")?;
+            component_descriptor.format_descriptor(f)?;
         }
         Ok(())
     }
