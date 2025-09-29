@@ -620,6 +620,24 @@ async fn test_string_contains() {
         TestColumn::strings_nulls(),
         "nulls_ends_with_c"
     );
+
+    filter_snapshot!(
+        FilterKind::String(StringFilter::new(
+            StringOperator::DoesNotContain,
+            "b".to_owned()
+        )),
+        TestColumn::strings(),
+        "does_not_contain_b"
+    );
+
+    filter_snapshot!(
+        FilterKind::String(StringFilter::new(
+            StringOperator::DoesNotContain,
+            "b".to_owned()
+        )),
+        TestColumn::strings_nulls(),
+        "nulls_does_not_contain_b"
+    );
 }
 
 #[tokio::test]
