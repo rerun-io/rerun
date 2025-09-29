@@ -24,7 +24,7 @@ static GLOBAL: AccountingAllocator<std::alloc::System> =
     AccountingAllocator::new(std::alloc::System);
 
 struct Channel {
-    log_tx: re_smart_channel::Sender<re_log_types::LogMsg>,
+    log_tx: re_smart_channel::Sender<re_log_types::DataSourceMessage>,
     table_tx: crossbeam::channel::Sender<re_log_types::TableMsg>,
 }
 
@@ -311,7 +311,7 @@ impl WebHandle {
                         use re_log_encoding::stream_rrd_from_http::HttpMessage;
                         match msg {
                             HttpMessage::LogMsg(msg) => {
-                                if tx.send(msg).is_ok() {
+                                if tx.send(msg.into()).is_ok() {
                                     ControlFlow::Continue(())
                                 } else {
                                     re_log::info_once!("Failed to dispatch log message to viewer.");

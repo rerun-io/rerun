@@ -6,7 +6,7 @@ use egui::{Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{AbsoluteTimeRangeF, LogMsg, StoreId, TableId};
+use re_log_types::{AbsoluteTimeRangeF, DataSourceMessage, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
 use re_smart_channel::ReceiveSet;
@@ -168,7 +168,7 @@ impl AppState {
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
         view_class_registry: &ViewClassRegistry,
-        rx_log: &ReceiveSet<LogMsg>,
+        rx_log: &ReceiveSet<DataSourceMessage>,
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
         event_dispatcher: Option<&crate::event::ViewerEventDispatcher>,
@@ -775,7 +775,7 @@ fn table_ui(
 fn move_time(
     ctx: &ViewerContext<'_>,
     recording: &EntityDb,
-    rx: &ReceiveSet<LogMsg>,
+    rx: &ReceiveSet<DataSourceMessage>,
     events: Option<&ViewerEventDispatcher>,
 ) {
     let dt = ctx.egui_ctx().input(|i| i.stable_dt);
