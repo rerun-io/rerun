@@ -113,7 +113,9 @@ impl StartupOptions {
         #[cfg(not(target_arch = "wasm32"))]
         {
             // TODO(RR-1878): Would be great to grab this from the dataplatform when available.
-            url::Url::parse("https://rerun.io/viewer").ok()
+            let version = re_build_info::build_info!().version.latest_stable();
+
+            url::Url::parse(&format!("https://rerun.io/viewer/version/{version}")).ok()
         }
     }
 }
