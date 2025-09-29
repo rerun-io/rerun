@@ -10,7 +10,7 @@ permissions:
 
 defaults:
   run:
-    shell: bash -euo pipefail
+    shell: bash -euo pipefail {0}
 
 # The lack of `concurrency` is intentional.
 # We want this job to run on every commit, even if multiple are merged in a row.

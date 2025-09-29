@@ -19,7 +19,7 @@ concurrency:
 
 defaults:
   run:
-    shell: bash -euo pipefail
+    shell: bash -euo pipefail {0}
 
 permissions:
   # required for updating the release
