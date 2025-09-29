@@ -12,9 +12,10 @@ use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, Expr, ScalarFunctionArgs,
     ScalarUDF, ScalarUDFImpl, Signature, TypeSignature, Volatility, col, lit, not,
 };
+use strum::VariantArray as _;
+
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
-use strum::VariantArray as _;
 
 use super::{FilterUiAction, action_from_text_edit_response};
 
