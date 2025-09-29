@@ -11,6 +11,9 @@
 //!
 //! The `warn_once` etc macros are for when you want to suppress repeated
 //! logging of the exact same message.
+//!
+//! In the viewer these logs, if >= info, become notifications. See
+//! `re_ui::notifications` for more information.
 
 mod channel_logger;
 mod result_extensions;

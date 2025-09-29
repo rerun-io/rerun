@@ -257,13 +257,7 @@ impl<R: std::io::Read> Decoder<R> {
 
         let (version, options) = options_from_bytes(&data)?;
 
-        Ok(Self {
-            version,
-            options,
-            read: Reader::Raw(read),
-            size_bytes: FileHeader::SIZE as _,
-            app_id_cache: CachingApplicationIdInjector::default(),
-        })
+        Ok(Self::new_with_options(options, version, read))
     }
 
     pub fn new_with_options(options: EncodingOptions, version: CrateVersion, read: R) -> Self {
@@ -394,20 +388,20 @@ impl<R: std::io::Read> Decoder<R> {
             },
         };
 
-        let Some(msg) = msg else {
+        if let Some(msg) = msg {
+            Some(Ok(msg))
+        } else {
             // we might have a concatenated stream, so we peek beyond end of file marker to see
             if self.peek_file_header() {
                 re_log::debug!(
                     "Reached end of stream, but it seems we have a concatenated file, continuing"
                 );
-                return self.next_impl(decoder);
+                self.next_impl(decoder)
+            } else {
+                re_log::trace!("Reached end of stream, iterator complete");
+                None
             }
-
-            re_log::trace!("Reached end of stream, iterator complete");
-            return None;
-        };
-
-        Some(Ok(msg))
+        }
     }
 
     /// Peeks ahead in search of additional `FileHeader`s in the stream.
@@ -424,11 +418,14 @@ impl<R: std::io::Read> Decoder<R> {
                 }
 
                 let mut read = std::io::Cursor::new(read.buffer());
-                if FileHeader::decode(&mut read).is_err() {
-                    return false;
+                match FileHeader::decode(&mut read) {
+                    Ok(_) => true,
+                    Err(DecodeError::Read { .. }) => false,
+                    Err(err) => {
+                        re_log::warn_once!("Error when expecting rrd header: {err}");
+                        false
+                    }
                 }
-
-                true
             }
         }
     }
