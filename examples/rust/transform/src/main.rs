@@ -1,14 +1,15 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{Array, Float32Array, Float64Array, ListArray, StructArray},
+    array::{Array, Float32Array, Float64Array, ListArray, StringArray, StructArray},
     datatypes::{DataType, Field},
 };
 use rerun::{
-    ComponentDescriptor, DynamicArchetype, RecordingStream, Scalars, TextDocument, TimeCell,
+    ComponentDescriptor, ComponentIdentifier, DynamicArchetype, EntityPath, RecordingStream,
+    Scalars, SeriesLines, SeriesPoints, TextDocument, TimeCell,
     dataframe::{EntityPathFilter, ResolvedEntityPathFilter},
-    external::re_log,
-    log::{Chunk, ChunkId, LogMsg},
+    external::{nohash_hasher::IntMap, re_log},
+    log::{Chunk, ChunkComponents, ChunkId, LogMsg},
     sink::{GrpcSink, PipelineTransform},
 };
 
@@ -79,12 +80,152 @@ impl PipelineTransform for PerChunkPiplineTransform {
     }
 }
 
-fn main() -> anyhow::Result<()> {
-    re_log::setup_logging();
+type ComponentBatchFunc = Box<
+    dyn Fn(Arc<dyn Array>, &EntityPath) -> Vec<(EntityPath, ComponentDescriptor, Arc<dyn Array>)>
+        + Send
+        + Sync,
+>;
 
-    use clap::Parser as _;
-    let args = Args::parse();
+pub struct ComponentBatchTransform {
+    /// The entity path to apply the transformation to.
+    pub filter: ResolvedEntityPathFilter,
 
+    /// The component that we want to select.
+    pub component: ComponentIdentifier,
+
+    /// A closure that outputs a list of chunks
+    pub func: ComponentBatchFunc,
+}
+
+pub struct ComponentBatchPipelineTransform {
+    transforms: Vec<ComponentBatchTransform>,
+}
+
+impl ComponentBatchTransform {
+    pub fn new<F>(
+        entity_path_filter: EntityPathFilter,
+        component: impl Into<ComponentIdentifier>,
+        func: F,
+    ) -> Self
+    where
+        F: Fn(
+                Arc<dyn Array>,
+                &EntityPath,
+            ) -> Vec<(EntityPath, ComponentDescriptor, Arc<dyn Array>)>
+            + Send
+            + Sync
+            + 'static,
+    {
+        Self {
+            filter: entity_path_filter.resolve_without_substitutions(),
+            component: component.into(),
+            func: Box::new(func),
+        }
+    }
+}
+
+fn apply_to_chunk(transform: &ComponentBatchTransform, chunk: &Chunk) -> Vec<Chunk> {
+    let found = chunk
+        .components()
+        .iter()
+        .find(|(descr, _array)| descr.component == transform.component);
+
+    // TODO: This means we drop chunks that belong to the same entity but don't have the component.
+    let Some((_component_descr, outer_array)) = found else {
+        return Default::default();
+    };
+
+    let inner_array = outer_array.values();
+
+    // TODO:
+    // * unwrap array
+    // * Guarantee that there is only one component descr
+    let mut builders = IntMap::default();
+    let results = (transform.func)(inner_array.clone(), chunk.entity_path());
+    for (entity_path, component_descr, new_array) in results {
+        let components = builders
+            .entry(entity_path)
+            .or_insert_with(ChunkComponents::default);
+
+        if components.contains_component(&component_descr) {
+            re_log::warn_once!(
+                "Replacing duplicated component {}",
+                component_descr.component
+            );
+        }
+
+        components.insert(
+            component_descr,
+            ListArray::new(
+                Field::new_list_field(new_array.data_type().clone(), true).into(),
+                outer_array.offsets().clone(),
+                // TODO: box from the start
+                new_array.into(),
+                outer_array.nulls().cloned(),
+            ),
+        );
+    }
+
+    builders
+        .into_iter()
+        .filter_map(|(entity_path, components)| {
+            Chunk::from_auto_row_ids(
+                ChunkId::new(),
+                entity_path.clone(),
+                chunk.timelines().clone(),
+                components,
+            )
+            .inspect_err(|err| {
+                re_log::error_once!("Failed to build chunk at entity path '{entity_path}': {err}")
+            })
+            .ok()
+        })
+        .collect()
+}
+
+impl PipelineTransform for ComponentBatchPipelineTransform {
+    fn apply(&self, msg: LogMsg) -> Vec<LogMsg> {
+        match &msg {
+            LogMsg::SetStoreInfo(_) | LogMsg::BlueprintActivationCommand(_) => {
+                vec![msg]
+            }
+            LogMsg::ArrowMsg(store_id, arrow_msg) => match Chunk::from_arrow_msg(arrow_msg) {
+                Ok(chunk) => {
+                    let mut relevant = self
+                        .transforms
+                        .iter()
+                        .filter(|transform| transform.filter.matches(chunk.entity_path()))
+                        .peekable();
+                    if relevant.peek().is_some() {
+                        relevant
+                            .flat_map(|transform| apply_to_chunk(transform, &chunk))
+                            .filter_map(|transformed| match transformed.to_arrow_msg() {
+                                Ok(arrow_msg) => {
+                                    Some(LogMsg::ArrowMsg(store_id.clone(), arrow_msg))
+                                }
+                                Err(err) => {
+                                    re_log::error_once!(
+                                        "failed to create log message from chunk: {err}"
+                                    );
+                                    None
+                                }
+                            })
+                            .collect()
+                    } else {
+                        vec![msg]
+                    }
+                }
+
+                Err(err) => {
+                    re_log::error_once!("Failed to convert arrow message to chunk: {err}");
+                    vec![msg]
+                }
+            },
+        }
+    }
+}
+
+fn per_chunk_pipeline() -> anyhow::Result<impl PipelineTransform> {
     let instruction_transform = PerChunkTransform {
         filter: "/instructions"
             .parse::<EntityPathFilter>()?
@@ -167,10 +308,99 @@ fn main() -> anyhow::Result<()> {
         }),
     };
 
-    let transform = PerChunkPiplineTransform {
+    Ok(PerChunkPiplineTransform {
         transforms: vec![instruction_transform, destructure_transform],
-    }
-    .to_sink(GrpcSink::default());
+    })
+}
+
+fn per_column_pipline() -> anyhow::Result<impl PipelineTransform> {
+    // Takes an existing component that has the right backing data and apply a new component descriptor too it.
+    // TODO: For these simple cases, we could have premade constructors that hide the closure. This could also lead to more efficient Python mappings.
+    let instruction_transform = ComponentBatchTransform::new(
+        "/instructions".parse()?,
+        "com.Example.Instruction:text",
+        |array, entity_path| vec![(entity_path.clone(), TextDocument::descriptor_text(), array)],
+    );
+
+    // Extracts two fields from a struct, and adds them to new sub-entities as scalars.
+    let destructure_transform = ComponentBatchTransform::new(
+        "/nested".parse()?,
+        "com.Example.Nested:payload",
+        |array, entity_path| {
+            let struct_array = array.as_any().downcast_ref::<StructArray>().unwrap();
+
+            let child_a_array = struct_array.column_by_name("a").unwrap();
+            let child_a_array = arrow::compute::cast(child_a_array, &DataType::Float64).unwrap();
+
+            let child_b_array = struct_array.column_by_name("b").unwrap();
+
+            vec![
+                (
+                    entity_path.join(&EntityPath::parse_forgiving("a")),
+                    Scalars::descriptor_scalars(),
+                    child_a_array,
+                ),
+                (
+                    entity_path.join(&EntityPath::parse_forgiving("b")),
+                    Scalars::descriptor_scalars(),
+                    child_b_array.clone(),
+                ),
+            ]
+        },
+    );
+
+    let flag_transform = ComponentBatchTransform::new(
+        "/flag".parse()?,
+        "com.Example.Flag:flag",
+        |array, entity_path| {
+            let flag_array = array.as_any().downcast_ref::<StringArray>().unwrap();
+
+            let scalar_array: Float64Array = flag_array
+                .iter()
+                .map(|s| {
+                    s.map(|v| match v {
+                        "ACTIVE" => 1.0,
+                        "INACTIVE" => 2.0,
+                        _ => f64::NAN,
+                        // _ => 0.0,
+                    })
+                })
+                .collect();
+
+            vec![
+                (
+                    entity_path.clone(),
+                    Scalars::descriptor_scalars(),
+                    Arc::new(scalar_array),
+                ),
+                // TODO: Very sad that we need to log this multiple times. We need static chunks without timelines.
+                (
+                    entity_path.clone(),
+                    SeriesPoints::descriptor_marker_sizes(),
+                    Arc::new(Float32Array::from(vec![5.0; 10])),
+                ),
+                (
+                    entity_path.clone(),
+                    SeriesLines::descriptor_widths(),
+                    Arc::new(Float32Array::from(vec![3.0; 10])),
+                ),
+            ]
+        },
+    );
+
+    Ok(ComponentBatchPipelineTransform {
+        transforms: vec![instruction_transform, destructure_transform, flag_transform],
+    })
+}
+
+fn main() -> anyhow::Result<()> {
+    re_log::setup_logging();
+
+    use clap::Parser as _;
+    let args = Args::parse();
+
+    // let transform = per_chunk_pipeline()?.to_sink(GrpcSink::default());
+    let transform = per_column_pipline()?.to_sink(GrpcSink::default());
 
     let (rec, _serve_guard) = args.rerun.init("rerun_example_transform")?;
     // TODO: There should be a way to do this in one go.
@@ -186,6 +416,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     if args.filepaths.is_empty() {
         log_instructions(rec)?;
         log_structs_with_scalars(rec)?;
+        log_flag(rec)?;
         return Ok(());
     }
 
@@ -207,6 +438,21 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn log_flag(rec: &RecordingStream) -> anyhow::Result<()> {
+    let flags = ["ACTIVE", "ACTIVE", "INACTIVE", "UNKNOWN"];
+    for x in 0..10i64 {
+        let flag = StringArray::from(vec![flags[x as usize % flags.len()]]);
+        rec.set_time("tick", TimeCell::from_sequence(x));
+        rec.log(
+            "flag",
+            &DynamicArchetype::new("com.Example.Flag")
+                .with_component_from_data("flag", Arc::new(flag)),
+        )?
+    }
+
+    Ok(())
+}
+
 fn log_instructions(rec: &RecordingStream) -> anyhow::Result<()> {
     rec.set_time("tick", TimeCell::from_sequence(1));
     rec.log(
@@ -223,7 +469,7 @@ fn log_instructions(rec: &RecordingStream) -> anyhow::Result<()> {
 }
 
 fn log_structs_with_scalars(rec: &RecordingStream) -> anyhow::Result<()> {
-    for x in 0..10 {
+    for x in 0..10i64 {
         let a = Float32Array::from(vec![1.0 * x as f32, 2.0 + x as f32, 3.0 + x as f32]);
         let b = Float64Array::from(vec![5.0 * x as f64, 6.0 + x as f64, 7.0 + x as f64]);
 
