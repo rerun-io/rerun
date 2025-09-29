@@ -662,6 +662,8 @@ impl TimeControl {
                 std::collections::hash_map::Entry::Occupied(mut entry) => {
                     let ranges = entry.get_mut();
 
+                    // TODO(andreas): Could do this more efficiently by using binary search to insert and then merging more intelligently.
+                    // But we don't expect a lot of ranges, so let's keep it simple.
                     ranges.push(time_range);
                     ranges.sort_by_key(|r| r.min);
 

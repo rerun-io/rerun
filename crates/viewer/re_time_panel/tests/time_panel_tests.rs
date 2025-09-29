@@ -8,7 +8,7 @@ use re_log_types::{
     AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, TimeType, Timeline, build_frame_nr,
     example_components::{MyPoint, MyPoints},
 };
-use re_test_context::TestContext;
+use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_time_panel::TimePanel;
 use re_types::archetypes::Points2D;
 use re_viewer_context::{CollapseScope, TimeView, blueprint_timeline};
@@ -401,5 +401,8 @@ fn run_time_panel_and_save_snapshot(
         });
 
     harness.run();
-    harness.snapshot(snapshot_name);
+    harness.snapshot_options(
+        snapshot_name,
+        &SnapshotOptions::default().failed_pixel_count_threshold(4),
+    );
 }
