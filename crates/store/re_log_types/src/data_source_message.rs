@@ -39,11 +39,11 @@ pub enum DataSourceUiCommand {
         time_range: AbsoluteTimeRange,
     },
 
-    /// Navigate to time/entities/anchors/etc. that are set in a [`re_uri::Fragment`].
+    /// Navigate to time/entities/anchors/etc. that are set in a `re_uri::Fragment`.
     SetUrlFragment {
         store_id: StoreId,
 
-        /// Uri fragment, see [`re_uri::Fragment`] on how to parse it.
+        /// Uri fragment, see `re_uri::Fragment` on how to parse it.
         // Not using `re_uri::Fragment` to avoid further dependency entanglement.
         fragment: String, //re_uri::Fragment,
     },
