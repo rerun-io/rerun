@@ -189,7 +189,7 @@ jobs:
 
           echo "PR does not exist, creating…"
 
-          cat <<EOF > pr-body.txt
+          cat <<'EOF' > pr-body.txt
           ### Next steps
           - Test the release
           - For alpha releases:
