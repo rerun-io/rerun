@@ -509,73 +509,84 @@ impl InMemoryStore {
     }
 }
 
-macro_rules! generate_entries_table {
-    ($fn_name:ident, $field_name:ident, $entry_kind:expr) => {
-        pub fn $fn_name(&self) -> Result<RecordBatch, Error> {
-            let (id, name, entry_kind, created_at, updated_at): (
-                Vec<Tuid>,
-                Vec<String>,
-                Vec<i32>,
-                Vec<i64>,
-                Vec<i64>,
-            ) = self
-                .$field_name
-                .iter()
-                .map(|(key, value)| {
-                    (
-                        key.id,
-                        value.name.clone(),
-                        $entry_kind as i32,
-                        value.created_at.as_nanosecond() as i64,
-                        value.updated_at.as_nanosecond() as i64,
-                    )
-                })
-                .multiunzip();
-
-            let id_arr = id
-                .to_arrow()
-                .map_err(|err| DataFusionError::External(Box::new(err)))?;
-            let name_arr = Arc::new(StringArray::from(name)) as ArrayRef;
-            let kind_arr = Arc::new(Int32Array::from(entry_kind)) as ArrayRef;
-            let created_at_arr = Arc::new(TimestampNanosecondArray::from(created_at)) as ArrayRef;
-            let updated_at_arr = Arc::new(TimestampNanosecondArray::from(updated_at)) as ArrayRef;
-
-            let schema = Arc::new(Schema::new_with_metadata(
-                vec![
-                    Field::new("id", Tuid::arrow_datatype(), false),
-                    Field::new("name", DataType::Utf8, false),
-                    Field::new("entry_kind", DataType::Int32, false),
-                    Field::new(
-                        "created_at",
-                        DataType::Timestamp(TimeUnit::Nanosecond, None),
-                        false,
-                    ),
-                    Field::new(
-                        "updated_at",
-                        DataType::Timestamp(TimeUnit::Nanosecond, None),
-                        false,
-                    ),
-                ],
-                HashMap::new(),
-            ));
-
-            let num_rows = id_arr.len();
-            let rb = RecordBatch::try_new_with_options(
-                schema,
-                vec![id_arr, name_arr, kind_arr, created_at_arr, updated_at_arr],
-                &RecordBatchOptions::default().with_row_count(Some(num_rows)),
+fn generate_entries_table(entries: &[EntryDetails]) -> Result<RecordBatch, Error> {
+    #[allow(clippy::type_complexity)]
+    let (id, name, entry_kind, created_at, updated_at): (
+        Vec<Tuid>,
+        Vec<String>,
+        Vec<i32>,
+        Vec<i64>,
+        Vec<i64>,
+    ) = entries
+        .iter()
+        .map(|entry| {
+            (
+                entry.id.id,
+                entry.name.clone(),
+                entry.kind as i32,
+                entry.created_at.as_nanosecond() as i64,
+                entry.updated_at.as_nanosecond() as i64,
             )
-            .map_err(DataFusionError::from)?;
+        })
+        .multiunzip();
 
-            Ok(rb)
-        }
-    };
+    let id_arr = id
+        .to_arrow()
+        .map_err(|err| DataFusionError::External(Box::new(err)))?;
+    let name_arr = Arc::new(StringArray::from(name)) as ArrayRef;
+    let kind_arr = Arc::new(Int32Array::from(entry_kind)) as ArrayRef;
+    let created_at_arr = Arc::new(TimestampNanosecondArray::from(created_at)) as ArrayRef;
+    let updated_at_arr = Arc::new(TimestampNanosecondArray::from(updated_at)) as ArrayRef;
+
+    let schema = Arc::new(Schema::new_with_metadata(
+        vec![
+            Field::new("id", Tuid::arrow_datatype(), false),
+            Field::new("name", DataType::Utf8, false),
+            Field::new("entry_kind", DataType::Int32, false),
+            Field::new(
+                "created_at",
+                DataType::Timestamp(TimeUnit::Nanosecond, None),
+                false,
+            ),
+            Field::new(
+                "updated_at",
+                DataType::Timestamp(TimeUnit::Nanosecond, None),
+                false,
+            ),
+        ],
+        HashMap::new(),
+    ));
+
+    let num_rows = id_arr.len();
+    let rb = RecordBatch::try_new_with_options(
+        schema,
+        vec![id_arr, name_arr, kind_arr, created_at_arr, updated_at_arr],
+        &RecordBatchOptions::default().with_row_count(Some(num_rows)),
+    )
+    .map_err(DataFusionError::from)?;
+
+    Ok(rb)
 }
 
 // Generate both functions
 impl InMemoryStore {
-    generate_entries_table!(dataset_entries_table, datasets, EntryKind::Dataset);
-    generate_entries_table!(table_entries_table, tables, EntryKind::Table);
+    fn dataset_entries_table(&self) -> Result<RecordBatch, Error> {
+        let details = self
+            .datasets
+            .values()
+            .map(|dataset| dataset.as_entry_details())
+            .collect::<Vec<_>>();
+        generate_entries_table(&details)
+    }
+
+    fn table_entries_table(&self) -> Result<RecordBatch, Error> {
+        let details = self
+            .tables
+            .values()
+            .map(|dataset| dataset.as_entry_details())
+            .collect::<Vec<_>>();
+        generate_entries_table(&details)
+    }
 
     pub fn entries_table(&self) -> Result<MemTable, Error> {
         let dataset_rb = self.dataset_entries_table()?;
