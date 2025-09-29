@@ -15,9 +15,9 @@ use re_chunk::{
     ChunkComponents, ChunkError, ChunkId, PendingRow, RowId, TimeColumn,
 };
 use re_log_types::{
-    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
-    RecordingId, StoreId, StoreInfo, StoreKind, StoreSource, TimeCell, TimeInt, TimePoint,
-    Timeline, TimelineName,
+    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, DataSourceMessage,
+    EntityPath, LogMsg, RecordingId, StoreId, StoreInfo, StoreKind, StoreSource, TimeCell, TimeInt,
+    TimePoint, Timeline, TimelineName,
 };
 use re_types::archetypes::RecordingInfo;
 use re_types::components::Timestamp;
@@ -1488,7 +1488,15 @@ impl RecordingStream {
                 let this = self.clone_weak();
                 move || {
                     while let Some(msg) = rx.recv().ok().and_then(|msg| msg.into_data()) {
-                        this.record_msg(msg);
+                        match msg {
+                            DataSourceMessage::LogMsg(log_msg) => this.record_msg(log_msg),
+                            DataSourceMessage::UiCommand(ui_cmd) => {
+                                re_log::debug!(
+                                    "Ignoring unexpected ui command from file {:?}",
+                                    ui_cmd
+                                );
+                            }
+                        }
                     }
                 }
             })

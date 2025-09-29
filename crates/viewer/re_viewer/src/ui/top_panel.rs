@@ -271,7 +271,7 @@ fn multi_pass_warning_dot_ui(ui: &mut egui::Ui) {
     );
 }
 
-fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>) {
+fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::DataSourceMessage>) {
     let sources = rx
         .sources()
         .into_iter()
