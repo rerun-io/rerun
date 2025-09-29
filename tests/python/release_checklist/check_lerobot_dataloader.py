@@ -2,37 +2,34 @@ from __future__ import annotations
 
 import os
 from argparse import Namespace
-from uuid import uuid4
 
 import rerun as rr
 
 README = """\
 # LeRobot dataloader check
 
-This will load an entire LeRobot dataset -- simply make sure that it does 🙃
+This will load a small LeRobot dataset -- simply make sure that it does.
 
-The LeRobot dataset loader works by creating a new _recording_ (⚠)️ for each episode in the dataset.
-I.e., you should see a bunch of recordings below this readme (3, to be exact).
+The LeRobot dataset loader works by creating a new _recording_ for each episode in the dataset.
+I.e., you should see exactly 3 recordings, corresponding to episode 0, 1 and 2.
 """
 
 
-def log_readme() -> None:
-    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
-
-
 def run(args: Namespace) -> None:
-    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
+    rec = rr.script_setup(args, f"{os.path.basename(__file__)}", "episode_0")
+
+    dataset_path = os.path.dirname(__file__) + "/../../../tests/assets/lerobot/apple_storage"
+    rec.log_file_from_path(dataset_path)
 
     # NOTE: This dataloader works by creating a new recording for each episode.
     # Those recordings all share the same application_id though, which means they also share
-    # the same blueprint: we cannot log a readme, or all the recordings would show an empty readme.
-    # log_readme()
-    print(README)
+    # the same blueprint. So we log the readme to each recording.
+    for i in range(3):
+        rec = rr.script_setup(args, f"{os.path.basename(__file__)}", f"episode_{i}")
+        rec.set_time("frame_index", sequence=0)
+        rec.log("/readme", rr.TextDocument(README), static=True)
 
-    dataset_path = os.path.dirname(__file__) + "/../../../tests/assets/lerobot/apple_storage"
-    rr.log_file_from_path(dataset_path)
-
-    rr.send_blueprint(rr.blueprint.Blueprint(auto_layout=True, auto_views=True), make_active=True, make_default=True)
+    rec.send_blueprint(rr.blueprint.Blueprint(auto_layout=True, auto_views=True), make_active=True, make_default=True)
 
 
 if __name__ == "__main__":
