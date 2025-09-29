@@ -691,9 +691,26 @@ pub trait UiExt {
         let button_padding = ui.spacing().button_padding;
         let total_extra = button_padding + button_padding;
 
-        let wrap_width = ui.available_width() - total_extra.x;
+        let available_rect = ui.available_rect_before_wrap();
+
+        let view_rect = egui::Rect::from_min_max(
+            available_rect.min,
+            egui::pos2(
+                available_rect
+                    .max
+                    .x
+                    .min(ui.clip_rect().max.x - ui.spacing().window_margin.rightf()),
+                available_rect.max.y,
+            ),
+        )
+        .round_to_pixels(ui.pixels_per_point());
+
+        let icon_width_plus_padding = tokens.small_icon_size.x + tokens.text_to_icon_padding();
+
+        let wrap_width = view_rect.width() - icon_width_plus_padding - total_extra.x;
 
         let mut text: egui::WidgetText = text.into();
+        let raw_text = text.text().to_owned();
         match style {
             LabelStyle::Normal => {}
             LabelStyle::Unnamed => {
@@ -702,16 +719,46 @@ pub trait UiExt {
             }
         }
 
-        let galley = text.into_galley(ui, None, wrap_width, egui::TextStyle::Button);
+        let galley = text.into_galley(
+            ui,
+            Some(egui::TextWrapMode::Truncate),
+            wrap_width,
+            egui::TextStyle::Button,
+        );
 
-        let icon_width_plus_padding = tokens.small_icon_size.x + tokens.text_to_icon_padding();
-
+        // 1 icons + padding.
         let mut desired_size =
             total_extra + galley.size() + egui::vec2(icon_width_plus_padding, 0.0);
+
         desired_size.y = desired_size
             .y
             .at_least(ui.spacing().interact_size.y)
             .at_least(tokens.small_icon_size.y);
+
+        let show_copy_button = {
+            /// The text character length at which the copy button will
+            /// always be there. (unless the ui is disabled)
+            const MIN_COPY_LEN: usize = 5;
+            let enough_space = view_rect.width() > desired_size.x + icon_width_plus_padding;
+
+            let long_enough_text = raw_text.chars().count() >= MIN_COPY_LEN;
+
+            let id = ui.next_auto_id();
+            let contains_pointer = ui.ctx().read_response(id).is_some_and(|last_response| {
+                ui.rect_contains_pointer(
+                    last_response
+                        .interact_rect
+                        .expand2(ui.spacing().item_spacing),
+                )
+            });
+
+            ui.is_enabled() && (enough_space || long_enough_text) && contains_pointer
+        };
+
+        if show_copy_button {
+            desired_size.x = (desired_size.x + icon_width_plus_padding).at_most(view_rect.width());
+        }
+
         let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
         response.widget_info(|| {
             egui::WidgetInfo::selected(
@@ -726,7 +773,7 @@ pub trait UiExt {
             let visuals = ui.style().interact_selectable(&response, selected);
 
             // Draw background on interaction.
-            if selected || response.hovered() || response.highlighted() || response.has_focus() {
+            if selected || (response.hovered() || response.highlighted() || response.has_focus()) {
                 let rect = rect.expand(visuals.expansion);
 
                 ui.painter().rect(
@@ -764,8 +811,7 @@ pub trait UiExt {
             // Draw text next to the icon.
             let mut text_rect = rect;
             text_rect.min.x = image_rect.max.x + tokens.text_to_icon_padding();
-            let text_pos = ui
-                .layout()
+            let text_pos = egui::Align2([egui::Align::Min, ui.layout().vertical_align()])
                 .align_size_within_rect(galley.size(), text_rect)
                 .min;
 
@@ -777,8 +823,46 @@ pub trait UiExt {
                     text_color = text_color.gamma_multiply(0.5);
                 }
             }
+
             ui.painter()
                 .galley_with_override_text_color(text_pos, galley, text_color);
+
+            if show_copy_button {
+                let copy_rect = egui::Rect::from_min_size(
+                    egui::pos2(rect.max.x - tokens.small_icon_size.x, image_rect.min.y)
+                        .round_to_pixels(ui.pixels_per_point()),
+                    tokens.small_icon_size,
+                );
+
+                let shape_idx = ui.painter().add(egui::Shape::Noop);
+                let copy_response = ui.place(
+                    copy_rect,
+                    ui.small_icon_button_widget(&icons::COPY, "Copy")
+                        .frame(false),
+                );
+
+                let copy_visuals = ui.style().interact(&copy_response);
+
+                let color = if !copy_response.contains_pointer() {
+                    visuals.weak_bg_fill
+                } else {
+                    copy_visuals.weak_bg_fill
+                };
+
+                ui.painter().set(
+                    shape_idx,
+                    egui::Shape::rect_filled(
+                        copy_response.rect.expand(copy_visuals.expansion),
+                        visuals.corner_radius,
+                        color,
+                    ),
+                );
+
+                if copy_response.clicked() {
+                    re_log::info!("Copied {raw_text:?}");
+                    ui.ctx().copy_text(raw_text);
+                }
+            }
         }
 
         response

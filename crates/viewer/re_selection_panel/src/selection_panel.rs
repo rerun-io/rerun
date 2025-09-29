@@ -1144,6 +1144,52 @@ mod tests {
         harness.snapshot("selection_panel_recording");
     }
 
+    /// Snapshot test for the selection panel when a recording is selected
+    /// and hovering on app id.
+    #[test]
+    fn selection_panel_recording_hover_app_id_snapshot() {
+        let mut test_context = get_test_context();
+
+        // Select recording:
+        let recording_id = test_context.active_store_id();
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::StoreId(recording_id));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering()
+            .with_size([600.0, 400.0])
+            .build_ui(|ui| {
+                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                    SelectionPanel::default().contents(
+                        viewer_ctx,
+                        &viewport_blueprint,
+                        &mut ViewStates::default(),
+                        ui,
+                    );
+                });
+                test_context.handle_system_commands();
+            });
+
+        let raw_input = harness.input_mut();
+        raw_input
+            .events
+            .push(egui::Event::PointerMoved(egui::Pos2 { x: 120.0, y: 80.0 }));
+
+        harness.run();
+
+        harness.snapshot_options(
+            "selection_panel_recording_hover_app_id",
+            &SnapshotOptions::new().failed_pixel_count_threshold(4),
+        );
+    }
+
     /// Snapshot test for the selection panel when a static component is selected.
     #[test]
     fn selection_panel_static_component_snapshot() {
