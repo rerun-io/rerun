@@ -1915,7 +1915,7 @@ impl App {
         }
     }
 
-    fn receive_messages(&self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
+    fn receive_messages(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         re_tracing::profile_function!();
 
         // TODO(grtlr): Should we bring back analytics for this too?
@@ -1990,6 +1990,10 @@ impl App {
                 break; // don't block the main thread for too long
             }
         }
+
+        // Run pending system commands in case any of the messages resulted in additional commands.
+        // This avoid further frame delays on these commands.
+        self.run_pending_system_commands(store_hub, egui_ctx);
     }
 
     fn receive_log_msg(

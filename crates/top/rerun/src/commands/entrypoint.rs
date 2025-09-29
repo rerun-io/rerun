@@ -1243,7 +1243,7 @@ fn assert_receive_into_entity_db(
                             }
 
                             DataSourceMessage::UiCommand(ui_command) => {
-                                re_log::error!(
+                                anyhow::bail!(
                                     "Received a UI command which can't be stored in a entity_db: {ui_command:?}"
                                 );
                             }
