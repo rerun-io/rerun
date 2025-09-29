@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
@@ -124,7 +125,7 @@ def check() -> None:
 
     if bad:
         print("Please run `scripts/ci/thumbnails.py update`.")
-        exit(1)
+        sys.exit(1)
 
 
 def main() -> None:

@@ -140,7 +140,7 @@ def build_snippets() -> None:
     ]
 
     for name in SNIPPET_URLS.keys():
-        run(cmd + [name], cwd=RERUN_DIR)
+        run([*cmd, name], cwd=RERUN_DIR)
 
 
 def collect_snippets() -> Iterable[Example]:

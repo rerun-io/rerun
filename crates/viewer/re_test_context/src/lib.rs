@@ -14,12 +14,10 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
 use re_global_context::{AppOptions, DisplayMode, Item, SystemCommandSender as _};
 use re_log_types::{
-    ApplicationId, EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind,
-    StoreSource, Timeline, external::re_tuid::Tuid,
+    EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind, Timeline,
+    external::re_tuid::Tuid,
 };
-use re_types::{
-    Component as _, ComponentDescriptor, archetypes::RecordingInfo, external::uuid::Uuid,
-};
+use re_types::{Component as _, ComponentDescriptor, archetypes::RecordingInfo};
 use re_types_core::reflection::Reflection;
 use re_ui::Help;
 
@@ -91,19 +89,14 @@ impl TestContext {
     pub fn new() -> Self {
         re_log::setup_logging();
 
-        let application_id = ApplicationId::from("test_app");
-        let recording_store_id =
-            StoreId::from_uuid(StoreKind::Recording, application_id.clone(), Uuid::nil());
+        let store_info = StoreInfo::testing();
+        let application_id = store_info.application_id().clone();
+        let recording_store_id = store_info.store_id.clone();
         let mut recording_store = EntityDb::new(recording_store_id.clone());
 
         recording_store.set_store_info(SetStoreInfo {
             row_id: Tuid::new(),
-            info: StoreInfo {
-                store_id: recording_store.store_id().clone(),
-                cloned_from: None,
-                store_source: StoreSource::Other("test".into()),
-                store_version: None,
-            },
+            info: store_info,
         });
         {
             // Set RecordingInfo:
@@ -153,7 +146,7 @@ impl TestContext {
                 .unwrap();
         }
 
-        let blueprint_id = StoreId::random(StoreKind::Blueprint, application_id.clone());
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, application_id);
         let blueprint_store = EntityDb::new(blueprint_id.clone());
 
         let mut store_hub = StoreHub::test_hub();
@@ -576,6 +569,7 @@ impl TestContext {
                     store_id,
                     timeline: re_chunk::Timeline::new(timeline, timecell.typ()),
                     time: Some(timecell.as_i64().into()),
+                    pending: true,
                 });
         }
     }
@@ -624,13 +618,18 @@ impl TestContext {
                     store_id: rec_id,
                     timeline,
                     time,
+                    pending,
                 } => {
                     assert_eq!(
                         &rec_id,
                         self.store_hub.lock().active_recording().unwrap().store_id()
                     );
                     let mut time_ctrl = self.recording_config.time_ctrl.write();
-                    time_ctrl.set_timeline(timeline);
+                    if pending {
+                        time_ctrl.set_pending_timeline(timeline);
+                    } else {
+                        time_ctrl.set_timeline(timeline);
+                    }
                     if let Some(time) = time {
                         time_ctrl.set_time(time);
                     }

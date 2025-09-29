@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import sys
 import textwrap
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -432,7 +433,7 @@ def lint(glob_pattern: str) -> None:
             print("The following invalid markdown files were found:\n")
             for error in errors:
                 print(error)
-            exit(1)
+            sys.exit(1)
         print("No problems found")
 
 

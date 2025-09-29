@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 
 PIXI_VERSION = "0.41.4"
 CARGO_VERSION = "1.88.0"
@@ -55,9 +56,9 @@ def main() -> int:
     )
 
     if success:
-        exit(0)
+        sys.exit(0)
     else:
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

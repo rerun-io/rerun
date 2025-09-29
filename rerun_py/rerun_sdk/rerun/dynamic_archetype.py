@@ -80,7 +80,7 @@ class DynamicArchetype(AsComponents):
         archetype:
             All values in this class will be grouped under this archetype.
         drop_untyped_nones:
-            If True, any components that are None will be dropped unless they
+            If True, any components that are either None or empty will be dropped unless they
             have been previously logged with a type.
         components:
             The components to be logged.
@@ -216,7 +216,7 @@ class DynamicArchetype(AsComponents):
         archetype:
             All values in this class will be grouped under this archetype.
         drop_untyped_nones:
-            If True, any components that are None will be dropped unless they
+            If True, any components that are either None or empty will be dropped unless they
             have been previously logged with a type.
         components:
             The components to be logged.

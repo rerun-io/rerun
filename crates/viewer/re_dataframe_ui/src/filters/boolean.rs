@@ -36,11 +36,11 @@ impl NonNullableBooleanFilter {
             DataType::List(field) | DataType::ListView(field)
                 if field.data_type() == &DataType::Boolean =>
             {
-                // `ANY` semantics""
+                // `ANY` semantics
                 Ok(array_has(col(column.clone()), lit(self.as_bool())))
             }
 
-            _ => Err(FilterError::InvalidNonNullableBooleanFilterOperation(
+            _ => Err(FilterError::InvalidNonNullableBooleanFilter(
                 self.clone(),
                 field.clone().into(),
             )),
@@ -51,12 +51,7 @@ impl NonNullableBooleanFilter {
         self.as_bool().to_string()
     }
 
-    pub fn popup_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        column_name: &str,
-        action: &mut super::FilterUiAction,
-    ) {
+    pub fn popup_ui(&mut self, ui: &mut egui::Ui, column_name: &str) -> FilterUiAction {
         super::basic_operation_ui(ui, column_name, "is");
 
         let mut clicked = false;
@@ -70,7 +65,9 @@ impl NonNullableBooleanFilter {
             .clicked();
 
         if clicked {
-            *action = FilterUiAction::CommitStateToBlueprint;
+            FilterUiAction::CommitStateToBlueprint
+        } else {
+            FilterUiAction::None
         }
     }
 }
@@ -124,7 +121,7 @@ impl NullableBooleanFilter {
                 }
             }
 
-            _ => Err(FilterError::InvalidNullableBooleanFilterOperation(
+            _ => Err(FilterError::InvalidNullableBooleanFilter(
                 self.clone(),
                 field.clone().into(),
             )),
@@ -139,12 +136,7 @@ impl NullableBooleanFilter {
         }
     }
 
-    pub fn popup_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        column_name: &str,
-        action: &mut super::FilterUiAction,
-    ) {
+    pub fn popup_ui(&mut self, ui: &mut egui::Ui, column_name: &str) -> FilterUiAction {
         super::basic_operation_ui(ui, column_name, "is");
 
         let mut clicked = false;
@@ -160,7 +152,9 @@ impl NullableBooleanFilter {
             .clicked();
 
         if clicked {
-            *action = FilterUiAction::CommitStateToBlueprint;
+            FilterUiAction::CommitStateToBlueprint
+        } else {
+            FilterUiAction::None
         }
     }
 }
