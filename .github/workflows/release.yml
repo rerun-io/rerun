@@ -402,6 +402,7 @@ jobs:
           GitHub release draft: [$version](https://github.com/rerun-io/rerun/releases/tag/$version)
 
           Add a description, changelog, and a nice header video/picture, then click 'Publish release'.
+          EOF
 
           gh pr comment $pr_number --body-file comment-body.txt
 
