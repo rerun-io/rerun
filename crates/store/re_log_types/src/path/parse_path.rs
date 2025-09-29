@@ -100,8 +100,8 @@ impl std::str::FromStr for DataPath {
             let archetype_delimiter = component_descriptor_tokens
                 .iter()
                 .position(|&token| token == "@");
-            let archetype = if let Some(archetype_delimeter) = archetype_delimiter {
-                if let Some(archetype) = component_descriptor_tokens.get(archetype_delimeter + 1) {
+            let archetype = if let Some(archetype_delimiter) = archetype_delimiter {
+                if let Some(archetype) = component_descriptor_tokens.get(archetype_delimiter + 1) {
                     Some(archetype.to_owned())
                 } else {
                     return Err(PathParseError::TrailingAt);
