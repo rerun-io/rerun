@@ -3,6 +3,7 @@
 
 use re_entity_db::TimeHistogram;
 use re_log_types::{AbsoluteTimeRange, TimeInt, TimeType};
+use vec1::Vec1;
 
 /// A piece-wise linear view of a single timeline.
 ///
@@ -10,7 +11,7 @@ use re_log_types::{AbsoluteTimeRange, TimeInt, TimeType};
 /// which we collapse in order to present a compressed view of the data.
 #[derive(Clone, Debug)]
 pub(crate) struct TimelineAxis {
-    pub ranges: vec1::Vec1<AbsoluteTimeRange>,
+    pub ranges: Vec1<AbsoluteTimeRange>,
 }
 
 impl TimelineAxis {
@@ -19,20 +20,19 @@ impl TimelineAxis {
         re_tracing::profile_function!();
         assert!(!times.is_empty());
         let gap_threshold = gap_size_heuristic(time_type, times);
+
         Self {
             ranges: create_ranges(times, gap_threshold),
         }
     }
 
-    /// Total uncollapsed time.
+    /// Total uncollapsed time within a certain bound.
     #[inline]
-    pub fn sum_time_lengths(&self) -> u64 {
-        self.ranges.iter().map(|t| t.abs_length()).sum()
-    }
-
-    #[inline]
-    pub fn min(&self) -> TimeInt {
-        self.ranges.first().min()
+    pub fn sum_time_lengths_within(&self, bound: AbsoluteTimeRange) -> u64 {
+        self.ranges
+            .iter()
+            .map(|t| t.intersection(bound).map_or(0, |t| t.abs_length()))
+            .sum()
     }
 }
 

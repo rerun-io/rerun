@@ -1,8 +1,8 @@
 use re_auth::client::AuthDecorator;
-use re_chunk::Chunk;
+use re_chunk::{Chunk, TimelineName};
 use re_log_types::{
-    BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind,
-    StoreSource,
+    AbsoluteTimeRange, BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId,
+    StoreInfo, StoreKind, StoreSource,
 };
 use re_protos::cloud::v1alpha1::GetChunksRequest;
 use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
@@ -21,13 +21,16 @@ use crate::{
 ///
 /// If you're not in a ui context you can safely ignore these.
 pub enum UiCommand {
-    SetLoopSelection {
-        recording_id: re_log_types::StoreId,
-        timeline: re_log_types::Timeline,
-        time_range: re_log_types::AbsoluteTimeRangeF,
+    AddValidTimeRange {
+        store_id: StoreId,
+
+        /// If `None`, signals that all timelines are entirely valid.
+        timeline: Option<TimelineName>,
+        time_range: AbsoluteTimeRange,
     },
+
     SetUrlFragment {
-        recording_id: re_log_types::StoreId,
+        store_id: StoreId,
         fragment: re_uri::Fragment,
     },
 }
@@ -428,6 +431,7 @@ pub async fn stream_blueprint_and_partition_from_server(
             cloned_from: None,
             store_source: StoreSource::Unknown,
             store_version: None,
+            is_partial: false,
         };
 
         stream_partition_from_server(
@@ -460,13 +464,6 @@ pub async fn stream_blueprint_and_partition_from_server(
         re_log::debug!("No blueprint dataset found for {uri}");
     }
 
-    let store_info = StoreInfo {
-        store_id: recording_store_id,
-        cloned_from: None,
-        store_source: StoreSource::Unknown,
-        store_version: None,
-    };
-
     let re_uri::DatasetPartitionUri {
         origin: _,
         dataset_id,
@@ -474,6 +471,14 @@ pub async fn stream_blueprint_and_partition_from_server(
         time_range,
         fragment,
     } = uri;
+
+    let store_info = StoreInfo {
+        store_id: recording_store_id,
+        cloned_from: None,
+        store_source: StoreSource::Unknown,
+        store_version: None,
+        is_partial: time_range.is_some(),
+    };
 
     stream_partition_from_server(
         &mut client,
@@ -563,17 +568,27 @@ async fn stream_partition_from_server(
 
     let store_id = store_info.store_id.clone();
 
-    if let Some(on_ui_cmd) = on_ui_cmd {
+    // Send UI commands for recording (as opposed to blueprint) stores.
+    if let Some(on_ui_cmd) = on_ui_cmd
+        && store_info.store_id.is_recording()
+    {
         if let Some(time_range) = time_range {
-            on_ui_cmd(UiCommand::SetLoopSelection {
-                recording_id: store_id.clone(),
-                timeline: time_range.timeline,
+            on_ui_cmd(UiCommand::AddValidTimeRange {
+                store_id: store_id.clone(),
+                timeline: Some(*time_range.timeline.name()),
                 time_range: time_range.into(),
             });
+        } else {
+            on_ui_cmd(UiCommand::AddValidTimeRange {
+                store_id: store_id.clone(),
+                timeline: None,
+                time_range: AbsoluteTimeRange::EVERYTHING,
+            });
         }
+
         if !fragment.is_empty() {
             on_ui_cmd(UiCommand::SetUrlFragment {
-                recording_id: store_id.clone(),
+                store_id: store_id.clone(),
                 fragment,
             });
         }

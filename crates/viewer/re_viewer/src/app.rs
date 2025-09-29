@@ -741,6 +741,17 @@ impl App {
                     return;
                 }
 
+                // Suppress loading screen if we're loading a recording that's already loaded, even if only partially.
+                if let DisplayMode::Loading(source) = &display_mode
+                    && let Some(re_uri::RedapUri::DatasetData(dataset_uri)) = source.redap_uri()
+                    && store_hub
+                        .store_bundle()
+                        .entity_dbs()
+                        .any(|db| db.store_id() == &dataset_uri.store_id())
+                {
+                    return;
+                }
+
                 if matches!(display_mode, DisplayMode::Loading(_)) {
                     self.state
                         .selection_state
@@ -940,6 +951,21 @@ impl App {
                 }
             }
 
+            SystemCommand::AddValidTimeRange {
+                store_id,
+                timeline,
+                time_range,
+            } => {
+                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &store_id) {
+                    let mut time_ctrl = rec_cfg.time_ctrl.write();
+                    time_ctrl.mark_time_range_valid(timeline, time_range);
+                } else {
+                    re_log::debug!(
+                        "SystemCommand::AddValidTimeRange ignored: unknown store ID '{store_id:?}'"
+                    );
+                }
+            }
+
             SystemCommand::SetFocus(item) => {
                 self.state.focused_item = Some(item);
             }
@@ -1083,22 +1109,22 @@ impl App {
         let on_ui_cmd = {
             let command_sender = self.command_sender.clone();
             Box::new(move |cmd| match cmd {
-                re_redap_client::UiCommand::SetLoopSelection {
-                    recording_id,
+                re_redap_client::UiCommand::AddValidTimeRange {
+                    store_id,
                     timeline,
                     time_range,
-                } => command_sender.send_system(SystemCommand::SetLoopSelection {
-                    store_id: recording_id,
-                    timeline,
-                    time_range,
-                }),
-                re_redap_client::UiCommand::SetUrlFragment {
-                    recording_id,
-                    fragment,
-                } => command_sender.send_system(SystemCommand::SetUrlFragment {
-                    store_id: recording_id,
-                    fragment,
-                }),
+                } => {
+                    command_sender.send_system(SystemCommand::AddValidTimeRange {
+                        store_id,
+                        timeline,
+                        time_range,
+                    });
+                }
+
+                re_redap_client::UiCommand::SetUrlFragment { store_id, fragment } => {
+                    command_sender
+                        .send_system(SystemCommand::SetUrlFragment { store_id, fragment });
+                }
             })
         };
 

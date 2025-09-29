@@ -53,6 +53,7 @@ impl crate::DataUi for EntityDb {
                     cloned_from,
                     store_source,
                     store_version,
+                    is_partial,
                 } = store_info;
 
                 if let Some(cloned_from) = cloned_from {
@@ -78,6 +79,15 @@ impl crate::DataUi for EntityDb {
                         "store version is undefined for this recording, this is a bug"
                     );
                 }
+
+                // TODO(#11315): In the future we will want to reduce this to a mere highlighting feature and no longer need this at the store level
+                // as all data will be pulled on-demand from a server.
+                ui.grid_left_hand_label("Partial store");
+                ui.monospace(format!("{is_partial:?}"))
+                .on_hover_text(
+                    "If true, only a subset of the recording is presented in the viewer.",
+                );
+                ui.end_row();
 
                 ui.grid_left_hand_label("Kind");
                 ui.label(store_id.kind().to_string());

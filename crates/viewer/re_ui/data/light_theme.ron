@@ -223,6 +223,9 @@
     "density_graph_unselected": {
       "color": "{Gray.300}"
     },
+    "density_graph_outside_valid_ranges": {
+      "color": "{Gray.700}"
+    },
 
     "axis_color_x": {
       "color": "{Red.550}"
