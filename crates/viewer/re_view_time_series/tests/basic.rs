@@ -24,7 +24,7 @@ pub fn test_clear_series_points_and_line() {
 fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
     let num_allowed_broken_pixels = if two_series_per_entity { 5 } else { 2 };
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>()
-        .set_snapshot_options(
+        .with_snapshot_options(
             SnapshotOptions::new().failed_pixel_count_threshold(num_allowed_broken_pixels),
         );
 
@@ -138,7 +138,7 @@ fn test_line_properties() {
 fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) {
     let num_allowed_broken_pixels = if multiple_scalars { 5 } else { 0 };
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>()
-        .set_snapshot_options(
+        .with_snapshot_options(
             SnapshotOptions::new().failed_pixel_count_threshold(num_allowed_broken_pixels),
         );
 
@@ -252,7 +252,7 @@ fn test_point_properties() {
 
 fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool) {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>()
-        .set_snapshot_options(SnapshotOptions::new().failed_pixel_count_threshold(5));
+        .with_snapshot_options(SnapshotOptions::new().failed_pixel_count_threshold(5));
 
     let static_props = if multiple_properties {
         re_types::archetypes::SeriesPoints::new()
@@ -337,7 +337,7 @@ fn test_bootstrapped_secondaries() {
 
 fn test_bootstrapped_secondaries_impl(partial_range: bool) {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>()
-        .set_snapshot_options(SnapshotOptions::new().failed_pixel_count_threshold(2));
+        .with_snapshot_options(SnapshotOptions::new().failed_pixel_count_threshold(2));
 
     fn with_scalar(builder: ChunkBuilder, value: i64) -> ChunkBuilder {
         builder.with_archetype(

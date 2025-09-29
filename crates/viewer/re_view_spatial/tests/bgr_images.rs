@@ -22,7 +22,7 @@ fn convert_pixels_to<T: From<u8> + Copy>(u8s: &[u8]) -> Vec<T> {
 
 fn run_bgr_test<T: ImageChannelType>(image: &[T], size: [u32; 2], color_model: ColorModel) {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>()
-        .set_snapshot_options(
+        .with_snapshot_options(
             SnapshotOptions::new().failed_pixel_count_threshold(OsThreshold::new(2)),
         );
     test_context.log_entity("bgr_image", |builder| {

@@ -14,7 +14,7 @@ use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 #[test]
 pub fn test_blueprint_overrides_and_defaults_with_time_series() {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>()
-        .set_snapshot_options(SnapshotOptions::new().threshold(1.0));
+        .with_snapshot_options(SnapshotOptions::new().threshold(1.0));
 
     for i in 0..32 {
         let timepoint = TimePoint::from([(test_context.active_timeline(), i)]);

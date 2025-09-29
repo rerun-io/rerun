@@ -79,7 +79,7 @@ pub struct TestContext {
 
     egui_render_state: Mutex<Option<egui_wgpu::RenderState>>,
     called_setup_kittest_for_rendering: AtomicBool,
-    pub snapshot_options: egui_kittest::SnapshotOptions,
+    pub snapshot_options: Arc<egui_kittest::SnapshotOptions>,
 }
 
 impl Default for TestContext {
@@ -201,7 +201,7 @@ impl TestContext {
             // Created lazily since each egui_kittest harness needs a new one.
             egui_render_state: Mutex::new(None),
             called_setup_kittest_for_rendering: AtomicBool::new(false),
-            snapshot_options: egui_kittest::SnapshotOptions::new(),
+            snapshot_options: Arc::new(egui_kittest::SnapshotOptions::new()),
 
             store_hub: Mutex::new(store_hub),
         }
@@ -220,8 +220,11 @@ impl TestContext {
         test_context
     }
 
-    pub fn set_snapshot_options(mut self, snapshot_options: egui_kittest::SnapshotOptions) -> Self {
-        self.snapshot_options = snapshot_options;
+    pub fn with_snapshot_options(
+        mut self,
+        snapshot_options: egui_kittest::SnapshotOptions,
+    ) -> Self {
+        self.snapshot_options = Arc::new(snapshot_options);
         self
     }
 }

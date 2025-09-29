@@ -4,7 +4,7 @@ mod test_view;
 
 use ahash::HashMap;
 
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_context::TestContext;
 use re_viewer_context::{Contents, ViewId, ViewerContext, VisitorControlFlow};
 
 use re_viewport_blueprint::{DataQueryPropertyResolver, ViewBlueprint, ViewportBlueprint};
@@ -180,18 +180,14 @@ impl TestContextExt for TestContext {
         snapshot_name: &str,
         size: egui::Vec2,
     ) {
-        let mut snapshot_options = SnapshotOptions::new();
-        std::mem::swap(&mut snapshot_options, &mut self.snapshot_options);
-        {
-            let mut harness = self
-                .setup_kittest_for_rendering()
-                .with_size(size)
-                .build_ui(|ui| {
-                    self.run_with_single_view(ui, view_id);
-                });
-            harness.run();
-            harness.snapshot_options(snapshot_name, &snapshot_options);
-        }
-        std::mem::swap(&mut snapshot_options, &mut self.snapshot_options);
+        let snapshot_options = self.snapshot_options.clone();
+        let mut harness = self
+            .setup_kittest_for_rendering()
+            .with_size(size)
+            .build_ui(|ui| {
+                self.run_with_single_view(ui, view_id);
+            });
+        harness.run();
+        harness.snapshot_options(snapshot_name, &snapshot_options);
     }
 }
