@@ -4,7 +4,7 @@ expression: test_results
 ---
 TestResult {
     op: NullableBoolean(
-        IsNull,
+        NullableBooleanFilter(IsNull),
     ),
     field: Field {
         name: "column",
@@ -18,7 +18,7 @@ TestResult {
                 metadata: {},
             },
         ),
-        nullable: true,
+        nullable: false,
         dict_id: 0,
         dict_is_ordered: false,
         metadata: {},
@@ -29,7 +29,10 @@ TestResult {
     [
       true,
     ],
-      null,
+      BooleanArray
+    [
+      false,
+    ],
       BooleanArray
     [
       null,
@@ -48,7 +51,6 @@ TestResult {
     ],
     filtered: ListArray
     [
-      null,
       BooleanArray
     [
       null,

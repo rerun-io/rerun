@@ -317,10 +317,13 @@ impl SyntaxHighlighting for TimestampFormatted<'_, FilterKind> {
     //TODO(ab): these implementation details should be dispatched to the respective sub-structs.
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
         let operator_text = match self.inner {
+            FilterKind::NonNullableBoolean(_) => "is".to_owned(),
+            FilterKind::NullableBoolean(nullable_boolean_filter) => {
+                nullable_boolean_filter.operator().to_string()
+            }
             FilterKind::Int(int_filter) => int_filter.comparison_operator().to_string(),
             FilterKind::Float(float_filter) => float_filter.comparison_operator().to_string(),
             FilterKind::String(string_filter) => string_filter.operator().to_string(),
-            FilterKind::NonNullableBoolean(_) | FilterKind::NullableBoolean(_) => "is".to_owned(),
             FilterKind::Timestamp(timestamp_filter) => timestamp_filter.operator().to_string(),
         };
 
@@ -453,15 +456,19 @@ mod tests {
                 "boolean_equals_false",
             ),
             (
-                FilterKind::NullableBoolean(NullableBooleanFilter::IsTrue),
+                FilterKind::NullableBoolean(NullableBooleanFilter::new_is_true()),
                 "nullable_boolean_equals_true",
             ),
             (
-                FilterKind::NullableBoolean(NullableBooleanFilter::IsFalse),
+                FilterKind::NullableBoolean(NullableBooleanFilter::new_is_true().with_is_not()),
+                "nullable_boolean_not_equals_true",
+            ),
+            (
+                FilterKind::NullableBoolean(NullableBooleanFilter::new_is_false()),
                 "nullable_boolean_equals_false",
             ),
             (
-                FilterKind::NullableBoolean(NullableBooleanFilter::IsNull),
+                FilterKind::NullableBoolean(NullableBooleanFilter::new_is_null()),
                 "nullable_boolean_equals_null",
             ),
             (
