@@ -31,7 +31,7 @@ impl ContextMenuAction for CollapseExpandAllAction {
 
     /// Do we have a context menu for this item?
     fn supports_item(&self, ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
-        // TODO(ab): in an ideal world, we'd check the fully expended/collapsed state of the item to
+        // TODO(ab): in an ideal world, we'd check the fully expanded/collapsed state of the item to
         // avoid showing a command that wouldn't have an effect but that's lots of added complexity.
         match item {
             Item::AppId(_)
