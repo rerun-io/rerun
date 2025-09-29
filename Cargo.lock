@@ -8647,6 +8647,7 @@ dependencies = [
  "re_viewer_context",
  "serde",
  "static_assertions",
+ "strum",
  "thiserror 1.0.69",
  "tokio",
 ]

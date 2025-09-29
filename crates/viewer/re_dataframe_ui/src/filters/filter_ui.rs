@@ -314,9 +314,18 @@ impl Filter {
 }
 
 impl SyntaxHighlighting for TimestampFormatted<'_, FilterKind> {
+    //TODO(ab): these implementation details should be dispatched to the respective sub-structs.
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        let operator_text = match self.inner {
+            FilterKind::Int(int_filter) => int_filter.comparison_operator().to_string(),
+            FilterKind::Float(float_filter) => float_filter.comparison_operator().to_string(),
+            FilterKind::String(string_filter) => string_filter.operator().to_string(),
+            FilterKind::NonNullableBoolean(_) | FilterKind::NullableBoolean(_) => "is".to_owned(),
+            FilterKind::Timestamp(timestamp_filter) => timestamp_filter.operator().to_string(),
+        };
+
         //TODO(ab): this is weird. this entire impl should be delegated to inner structs
-        builder.append_keyword(&self.inner.operator_text());
+        builder.append_keyword(&operator_text);
         builder.append_keyword(" ");
 
         match self.inner {
@@ -345,15 +354,6 @@ impl SyntaxHighlighting for TimestampFormatted<'_, FilterKind> {
             }
         }
     }
-}
-
-pub fn basic_operation_ui(ui: &mut egui::Ui, column_name: &str, operator_text: &str) {
-    ui.label(
-        SyntaxHighlightedBuilder::body_default(column_name)
-            .with_keyword(" ")
-            .with_keyword(operator_text)
-            .into_widget_text(ui.style()),
-    );
 }
 
 impl FilterKind {
@@ -397,18 +397,6 @@ impl FilterKind {
             | Self::String(_) => {}
 
             Self::Timestamp(timestamp_filter) => timestamp_filter.on_commit(),
-        }
-    }
-
-    /// Display text of the operator.
-    fn operator_text(&self) -> String {
-        match self {
-            Self::Int(int_filter) => int_filter.comparison_operator().to_string(),
-            Self::Float(float_filter) => float_filter.comparison_operator().to_string(),
-            Self::String(string_filter) => string_filter.operator().to_string(),
-            Self::NonNullableBoolean(_) | Self::NullableBoolean(_) | Self::Timestamp(_) => {
-                "is".to_owned()
-            }
         }
     }
 }
@@ -509,6 +497,15 @@ mod tests {
                     jiff::Timestamp::from_millisecond(100_000_000_000).unwrap(),
                 )),
                 "timestamp_after",
+            ),
+            (
+                FilterKind::Timestamp(
+                    TimestampFilter::after(
+                        jiff::Timestamp::from_millisecond(100_000_000_000).unwrap(),
+                    )
+                    .with_is_not(),
+                ),
+                "timestamp_not_after",
             ),
             (
                 FilterKind::Timestamp(TimestampFilter::between(
