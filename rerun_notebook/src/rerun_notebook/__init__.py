@@ -176,6 +176,8 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
 
     _fallback_token = traitlets.Unicode(allow_none=True).tag(sync=True)
 
+    _version = traitlets.Unicode(allow_none=True).tag(sync=True)
+
     _raw_event_callbacks: list[Callable[[str], None]] = []
 
     def __init__(
@@ -193,6 +195,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         self._width = width
         self._height = height
         self._url = url
+        self._version = __version__
 
         if panel_states:
             self.update_panel_states(panel_states)

@@ -101,6 +101,12 @@ export interface WebViewerOptions {
    * enclosing notebook environment, it should be used to set the fallback token.
    */
   fallback_token?: string;
+
+  /** The url that's used when sharing web viewer urls.
+   *
+   * If not set, the viewer will use the current base url.
+   */
+  viewer_base_url?: string;
 }
 
 // `AppOptions` and `WebViewerOptions` must be compatible
@@ -112,8 +118,6 @@ export interface WebViewerOptions {
  * @private
  */
 export interface AppOptions extends WebViewerOptions {
-  /** The url that's used when sharing web viewer urls */
-  viewer_url?: string;
   url?: string;
   manifest_url?: string;
   video_decoder?: VideoDecoder;

@@ -661,7 +661,7 @@ impl From<PanelState> for re_types::blueprint::components::PanelState {
 // Keep in sync with the `AppOptions` interface in `rerun_js/web-viewer/index.ts`.
 #[derive(Clone, Default, Deserialize)]
 pub struct AppOptions {
-    viewer_url: Option<String>,
+    viewer_base_url: Option<String>,
     url: Option<StringOrStringArray>,
     manifest_url: Option<String>,
     render_backend: Option<String>,
@@ -720,7 +720,7 @@ fn create_app(
     };
 
     let AppOptions {
-        viewer_url,
+        viewer_base_url,
         url,
         manifest_url,
         render_backend,
@@ -784,7 +784,7 @@ fn create_app(
         panel_state_overrides: panel_state_overrides.unwrap_or_default().into(),
 
         enable_history,
-        viewer_url,
+        viewer_base_url,
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
 

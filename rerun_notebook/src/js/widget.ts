@@ -22,6 +22,8 @@ interface WidgetModel {
   _panel_states?: PanelStates;
 
   _fallback_token?: string;
+
+  _version?: string;
 }
 
 type Opt<T> = T | null | undefined;
@@ -49,6 +51,17 @@ function _resize(el: HTMLElement, width: number | string, height: number | strin
   }
 }
 
+// Never use the default URL in notebooks since that's never a standalone viewer.
+// (we also can't assume anything about hosting here as we may run in a local notebook or on collab etc.)
+function get_viewer_base_url(model: AnyModel<WidgetModel>) {
+  const viewer_version = model.get("_version");
+  if (viewer_version && !viewer_version.includes("+dev")) {
+    return `https://rerun.io/viewer/version/${viewer_version}`;
+  } else {
+    return "https://rerun.io/viewer";
+  }
+}
+
 class ViewerWidget {
   viewer: WebViewer = new WebViewer();
   url: Opt<string> = null;
@@ -72,6 +85,7 @@ class ViewerWidget {
 
     model.on("msg:custom", this.on_custom_message);
 
+    this.options.viewer_base_url = get_viewer_base_url(model);
     this.options.fallback_token = model.get("_fallback_token");
 
     (this.viewer as any)._on_raw_event((event: string) => model.send(event));

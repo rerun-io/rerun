@@ -80,8 +80,10 @@ pub struct StartupOptions {
     pub enable_history: bool,
 
     /// The base viewer url that's used when sharing a link in this viewer.
+    ///
+    /// If not set, the viewer will use the current base url.
     #[cfg(target_arch = "wasm32")]
-    pub viewer_url: Option<String>,
+    pub viewer_base_url: Option<String>,
 }
 
 impl StartupOptions {
@@ -104,7 +106,7 @@ impl StartupOptions {
     pub fn web_viewer_base_url(&self) -> Option<url::Url> {
         #[cfg(target_arch = "wasm32")]
         {
-            self.viewer_url
+            self.viewer_base_url
                 .as_ref()
                 .and_then(|url| url.parse().ok())
                 .or_else(|| crate::web_tools::current_base_url().ok())
@@ -156,7 +158,7 @@ impl Default for StartupOptions {
             enable_history: false,
 
             #[cfg(target_arch = "wasm32")]
-            viewer_url: None,
+            viewer_base_url: None,
         }
     }
 }
