@@ -89,6 +89,11 @@ pub struct TimestampFilter {
 // used for test snapshots, so we make it nice and concise
 impl std::fmt::Debug for TimestampFilter {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let op_str = match self.operator {
+            TimestampOperator::Is => "",
+            TimestampOperator::IsNot => "not ",
+        };
+
         let inner = match self.kind {
             TimestampFilterKind::Today => "Today".to_owned(),
             TimestampFilterKind::Yesterday => "Yesterday".to_owned(),
@@ -103,7 +108,7 @@ impl std::fmt::Debug for TimestampFilter {
             ),
         };
 
-        f.write_str(&format!("TimestampFilter({inner})"))
+        f.write_str(&format!("TimestampFilter({op_str}{inner})"))
     }
 }
 

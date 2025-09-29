@@ -747,6 +747,10 @@ async fn test_timestamps() {
             "after",
         ),
         (
+            FilterKind::Timestamp(TimestampFilter::after(some_date).with_is_not()),
+            "not_after",
+        ),
+        (
             FilterKind::Timestamp(TimestampFilter::after(some_date + 1.seconds())),
             "after_strict",
         ),
@@ -790,6 +794,10 @@ async fn test_timestamps_list() {
         (
             FilterKind::Timestamp(TimestampFilter::after(some_date)),
             "after",
+        ),
+        (
+            FilterKind::Timestamp(TimestampFilter::after(some_date).with_is_not()),
+            "not_after",
         ),
         (
             FilterKind::Timestamp(TimestampFilter::after(some_date + 1.seconds())),
