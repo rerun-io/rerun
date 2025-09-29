@@ -413,6 +413,11 @@ impl InMemoryStore {
         self.update_entries_table()
     }
 
+    /// Update the table of entries. This method must be called after
+    /// any changes to either the registered datasets or tables. We
+    /// can remove this restriction if we change the store to be an
+    /// `Arc<Mutex<_>>` and then have an ac-hoc table generation.
+    /// TODO(https://github.com/rerun-io/rerun/issues/11369)
     fn update_entries_table(&mut self) -> Result<(), Error> {
         let entries_table_id = *self
             .id_by_name

@@ -9,3 +9,5 @@ pixi.lock linguist-generated=true
 tests/assets/video/*.h264 filter=lfs diff=lfs merge=lfs -text
 tests/assets/video/*.mp4 filter=lfs diff=lfs merge=lfs -text
 examples/assets/example.rrd filter=lfs diff=lfs merge=lfs -text
+tests/assets/table/* filter=lfs diff=lfs merge=lfs -text
+tests/assets/table/** filter=lfs diff=lfs merge=lfs -text
