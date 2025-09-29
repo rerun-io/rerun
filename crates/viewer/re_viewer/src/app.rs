@@ -1981,7 +1981,7 @@ impl App {
                 }
 
                 DataSourceMessage::UiCommand(ui_command) => {
-                    self.receive_data_sourceui_command(ui_command, &channel_source);
+                    self.receive_data_source_ui_command(ui_command, &channel_source);
                 }
             }
 
@@ -2159,7 +2159,7 @@ impl App {
         }
     }
 
-    fn receive_data_sourceui_command(
+    fn receive_data_source_ui_command(
         &self,
         ui_command: re_log_types::DataSourceUiCommand,
         channel_source: &SmartChannelSource,
