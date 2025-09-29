@@ -47,7 +47,7 @@ env:
 
 defaults:
   run:
-    shell: bash
+    shell: bash -euo pipefail
 
 permissions:
   contents: "read"
@@ -182,7 +182,7 @@ jobs:
           max_attempts: 2
           retry_wait_seconds: 30
           timeout_minutes: 60
-          shell: bash
+          shell: bash -euo pipefail
           command: cd rerun_py/tests && pixi run -e wheel-test-min pytest -c ../pyproject.toml
 
       - name: Run e2e test

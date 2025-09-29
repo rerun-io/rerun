@@ -25,7 +25,7 @@ on:
 
 defaults:
   run:
-    shell: bash
+    shell: bash -euo pipefail
 
 permissions:
   contents: "write"

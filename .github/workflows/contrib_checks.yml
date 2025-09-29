@@ -36,7 +36,7 @@ env:
 
 defaults:
   run:
-    shell: bash
+    shell: bash -euo pipefail
 
 permissions:
   contents: "read"
@@ -70,7 +70,7 @@ jobs:
           environments: py-docs
 
       - name: Build via mkdocs
-        shell: bash
+        shell: bash -euo pipefail
         run: |
           pixi run -e py-docs mkdocs build --strict -f rerun_py/mkdocs.yml
 

@@ -36,7 +36,7 @@ env:
 
 defaults:
   run:
-    shell: bash
+    shell: bash -euo pipefail
 
 permissions:
   contents: "read"

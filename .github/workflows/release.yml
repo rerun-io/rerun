@@ -18,7 +18,7 @@ concurrency:
 
 defaults:
   run:
-    shell: bash
+    shell: bash -euo pipefail
 
 # wants to push commits and create a PR
 permissions: write-all
