@@ -210,6 +210,7 @@ def main() -> None:
     enhancement = []
     examples = []
     log_api = []
+    oss_server = []
     mcap = []
     misc = []
     performance = []
@@ -304,6 +305,8 @@ def main() -> None:
                     web.append(summary)
                 elif "🧢 MCAP" in labels:
                     mcap.append(summary)
+                elif "OSS-server" in labels:
+                    oss_server.append(summary)
                 elif "enhancement" in labels:
                     enhancement.append(summary)
                 elif "🚜 refactor" in labels:
@@ -343,6 +346,7 @@ def main() -> None:
     print_section("🦀 Rust API", rust)
     print_section("🪳 Bug fixes", bugs)
     print_section("🌁 Viewer improvements", viewer)
+    print_section("🗄️ OSS server", oss_server)
     print_section("🚀 Performance improvements", performance)
     print_section("🧑‍🏫 Examples", examples)
     print_section("📚 Docs", docs)
