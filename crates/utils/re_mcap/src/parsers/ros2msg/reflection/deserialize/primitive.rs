@@ -14,9 +14,11 @@ macro_rules! impl_primitive_visitor {
     ($t:ty, $m:ident) => {
         impl Visitor<'_> for PrimitiveVisitor<$t> {
             type Value = $t;
+
             fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 write!(f, stringify!($t))
             }
+
             fn $m<E>(self, v: $t) -> Result<$t, E> {
                 Ok(v)
             }

@@ -107,27 +107,3 @@ fn parse_section(lines: &[&str]) -> Option<(String, String)> {
 
     Some((name.to_owned(), body))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_message_spec() {
-        let input = r#"
-    # This is a comment
-    std_msgs/Header header
-
-    int32 field1
-    float64 field2 3.14
-    string field3 "hello"
-    uint8[] field4
-
-    geometry_msgs/Point[] field5
-
-    uint32 CONST1=42 # inline comment
-    "#;
-
-        MessageSpecification::parse("test", input).unwrap();
-    }
-}

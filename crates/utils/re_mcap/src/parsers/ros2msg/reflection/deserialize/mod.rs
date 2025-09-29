@@ -330,6 +330,7 @@ impl<'a, R: TypeResolver> SequenceSeed<'a, R> {
 
 impl<'de, R: TypeResolver> DeserializeSeed<'de> for SequenceSeed<'_, R> {
     type Value = Vec<Value>;
+
     fn deserialize<D>(self, de: D) -> Result<Self::Value, D::Error>
     where
         D: de::Deserializer<'de>,

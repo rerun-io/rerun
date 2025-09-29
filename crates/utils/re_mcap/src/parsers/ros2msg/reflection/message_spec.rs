@@ -343,8 +343,8 @@ impl Type {
 
     fn parse_bounded_string_length(s: &str, prefix: &str) -> Result<usize, ParseError> {
         if let Some(len_str) = s.strip_prefix(prefix) {
-            let len = len_str.parse::<usize>().map_err(|e| {
-                ParseError::Type(format!("failed to parse bounded string length: {e}"))
+            let len = len_str.parse::<usize>().map_err(|err| {
+                ParseError::Type(format!("failed to parse bounded string length: {err}"))
             })?;
 
             Ok(len)
@@ -422,8 +422,8 @@ impl ArraySize {
         } else if let Ok(size) = array_part.parse::<usize>() {
             Self::Fixed(size)
         } else if let Some(n) = array_part.strip_prefix("<=") {
-            let size = n.parse::<usize>().map_err(|e| {
-                ParseError::Value(format!("Failed to parse bounded array size: {e}"))
+            let size = n.parse::<usize>().map_err(|err| {
+                ParseError::Value(format!("Failed to parse bounded array size: {err}"))
             })?;
             Self::Bounded(size)
         } else {
@@ -466,20 +466,20 @@ impl Literal {
                 },
                 // Char is a signed 8-bit integer representing an ASCII character.
                 Char | Int8 | Int16 | Int32 | Int64 => {
-                    s.parse::<i64>().map(Self::Int).map_err(|e| {
-                        ParseError::Value(format!("failed to parse integer literal `{s}`: {e}"))
+                    s.parse::<i64>().map(Self::Int).map_err(|err| {
+                        ParseError::Value(format!("failed to parse integer literal `{s}`: {err}"))
                     })
                 }
                 // Byte is an unsigned 8-bit integer.
                 Byte | UInt8 | UInt16 | UInt32 | UInt64 => {
-                    s.parse::<u64>().map(Self::UInt).map_err(|e| {
+                    s.parse::<u64>().map(Self::UInt).map_err(|err| {
                         ParseError::Value(format!(
-                            "failed to parse unsigned integer literal `{s}`: {e}"
+                            "failed to parse unsigned integer literal `{s}`: {err}"
                         ))
                     })
                 }
-                Float32 | Float64 => s.parse::<f64>().map(Self::Float).map_err(|e| {
-                    ParseError::Value(format!("failed to parse float literal `{s}`: {e}"))
+                Float32 | Float64 => s.parse::<f64>().map(Self::Float).map_err(|err| {
+                    ParseError::Value(format!("failed to parse float literal `{s}`: {err}"))
                 }),
                 String(_) | WString(_) => {
                     let s = if (s.starts_with('"') && s.ends_with('"'))
