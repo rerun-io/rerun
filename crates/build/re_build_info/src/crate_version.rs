@@ -79,6 +79,58 @@ impl PartialOrd for CrateVersion {
 
 impl CrateVersion {
     pub const LOCAL: Self = Self::parse(env!("CARGO_PKG_VERSION"));
+
+    /// If this version is stable returns it, otherwise returns the version prior to that.
+    ///
+    /// Doesn't have knowledge of release patched versions, so the returned version will be conservative,
+    /// and not contain any patched versions.
+    /// Similarly, it doesn't know whether a version release was skipped.
+    /// ```
+    /// # use re_build_info::CrateVersion;
+    /// assert_eq!(CrateVersion::parse("0.19.1").latest_stable(), CrateVersion::parse("0.19.1"));
+    /// assert_eq!(CrateVersion::parse("0.19.1-rc.1").latest_stable(), CrateVersion::parse("0.19.1"));
+    /// assert_eq!(CrateVersion::parse("0.19.1-alpha.1+dev").latest_stable(), CrateVersion::parse("0.19.0"));
+    /// assert_eq!(CrateVersion::parse("0.19.0-alpha.1+dev").latest_stable(), CrateVersion::parse("0.18.0"));
+    /// assert_eq!(CrateVersion::parse("2.0.0-alpha.1+dev").latest_stable(), CrateVersion::parse("1.0.0"));
+    /// ```
+    pub fn latest_stable(self) -> Self {
+        // If it is a dev version, walk one version back.
+        // Otherwise, just cut off the `meta` suffix (alpha/rc/etc.).
+        if self.is_dev() {
+            if self.patch == 0 {
+                // There might be a patched version of the latest minor/major, but we don't know that unfortunately.
+                if self.minor == 0 {
+                    Self {
+                        major: self.major - 1,
+                        minor: 0,
+                        patch: 0,
+                        meta: None,
+                    }
+                } else {
+                    Self {
+                        major: self.major,
+                        minor: self.minor - 1,
+                        patch: 0,
+                        meta: None,
+                    }
+                }
+            } else {
+                Self {
+                    major: self.major,
+                    minor: self.minor,
+                    patch: self.patch - 1,
+                    meta: None,
+                }
+            }
+        } else {
+            Self {
+                major: self.major,
+                minor: self.minor,
+                patch: self.patch,
+                meta: None,
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
