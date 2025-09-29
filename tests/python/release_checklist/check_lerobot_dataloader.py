@@ -16,16 +16,19 @@ I.e., you should see exactly 3 recordings, corresponding to episode 0, 1 and 2.
 
 
 def run(args: Namespace) -> None:
-    rec = rr.script_setup(args, f"{os.path.basename(__file__)}", "episode_0")
+    # NOTE: The LeRobot dataloader works by creating a new recording for each episode.
+    # That means the `recording_id` needs to be set to "episode_0", otherwise the LeRobot dataloader
+    # will create a new recording for episode 0, instead of merging it into the existing recording.
+    # If you don't set it, you'll end up with 4 recordings, an empty one and the 3 episodes.
+    rec = rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id="episode_0")
 
     dataset_path = os.path.dirname(__file__) + "/../../../tests/assets/lerobot/apple_storage"
     rec.log_file_from_path(dataset_path)
 
     # NOTE: This dataloader works by creating a new recording for each episode.
-    # Those recordings all share the same application_id though, which means they also share
-    # the same blueprint. So we log the readme to each recording.
+    # So that means we need to log the README to each recording.
     for i in range(3):
-        rec = rr.script_setup(args, f"{os.path.basename(__file__)}", f"episode_{i}")
+        rec = rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=f"episode_{i}")
         rec.set_time("frame_index", sequence=0)
         rec.log("/readme", rr.TextDocument(README), static=True)
 
