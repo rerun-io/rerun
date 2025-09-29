@@ -702,7 +702,8 @@ pub trait UiExt {
                     .min(ui.clip_rect().max.x - ui.spacing().window_margin.rightf()),
                 available_rect.max.y,
             ),
-        );
+        )
+        .round_to_pixels(ui.pixels_per_point());
 
         let icon_width_plus_padding = tokens.small_icon_size.x + tokens.text_to_icon_padding();
 
