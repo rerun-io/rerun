@@ -88,14 +88,13 @@ impl CrateVersion {
     /// ```
     /// # use re_build_info::CrateVersion;
     /// assert_eq!(CrateVersion::parse("0.19.1").latest_stable(), CrateVersion::parse("0.19.1"));
-    /// assert_eq!(CrateVersion::parse("0.19.1-rc.1").latest_stable(), CrateVersion::parse("0.19.1"));
+    /// assert_eq!(CrateVersion::parse("0.19.1-rc.1").latest_stable(), CrateVersion::parse("0.19.1-rc.1"));
     /// assert_eq!(CrateVersion::parse("0.19.1-alpha.1+dev").latest_stable(), CrateVersion::parse("0.19.0"));
     /// assert_eq!(CrateVersion::parse("0.19.0-alpha.1+dev").latest_stable(), CrateVersion::parse("0.18.0"));
     /// assert_eq!(CrateVersion::parse("2.0.0-alpha.1+dev").latest_stable(), CrateVersion::parse("1.0.0"));
     /// ```
     pub fn latest_stable(self) -> Self {
         // If it is a dev version, walk one version back.
-        // Otherwise, just cut off the `meta` suffix (alpha/rc/etc.).
         if self.is_dev() {
             if self.patch == 0 {
                 // There might be a patched version of the latest minor/major, but we don't know that unfortunately.
@@ -123,12 +122,7 @@ impl CrateVersion {
                 }
             }
         } else {
-            Self {
-                major: self.major,
-                minor: self.minor,
-                patch: self.patch,
-                meta: None,
-            }
+            self
         }
     }
 }
