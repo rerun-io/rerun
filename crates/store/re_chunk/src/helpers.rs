@@ -4,7 +4,7 @@ use arrow::array::Array as _;
 use arrow::array::ArrayRef as ArrowArrayRef;
 
 use re_log_types::{TimeInt, TimelineName};
-use re_types_core::{Component, ComponentDescriptor};
+use re_types_core::{Component, ComponentIdentifier};
 
 use crate::{Chunk, ChunkResult, RowId};
 
@@ -19,10 +19,10 @@ impl Chunk {
     #[inline]
     pub fn component_batch_raw(
         &self,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
         row_index: usize,
     ) -> Option<ChunkResult<ArrowArrayRef>> {
-        let list_array = self.components.get(component_descr)?;
+        let list_array = self.components.get_array(component)?;
         if list_array.len() > row_index {
             list_array
                 .is_valid(row_index)
@@ -42,10 +42,10 @@ impl Chunk {
     #[inline]
     pub fn component_batch<C: Component>(
         &self,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
         row_index: usize,
     ) -> Option<ChunkResult<Vec<C>>> {
-        let res = self.component_batch_raw(component_descr, row_index)?;
+        let res = self.component_batch_raw(component, row_index)?;
 
         let array = match res {
             Ok(array) => array,
@@ -64,11 +64,11 @@ impl Chunk {
     #[inline]
     pub fn component_instance_raw(
         &self,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
         row_index: usize,
         instance_index: usize,
     ) -> Option<ChunkResult<ArrowArrayRef>> {
-        let res = self.component_batch_raw(component_descr, row_index)?;
+        let res = self.component_batch_raw(component, row_index)?;
 
         let array = match res {
             Ok(array) => array,
@@ -93,11 +93,11 @@ impl Chunk {
     #[inline]
     pub fn component_instance<C: Component>(
         &self,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
         row_index: usize,
         instance_index: usize,
     ) -> Option<ChunkResult<C>> {
-        let res = self.component_instance_raw(component_descr, row_index, instance_index)?;
+        let res = self.component_instance_raw(component, row_index, instance_index)?;
 
         let array = match res {
             Ok(array) => array,
@@ -119,10 +119,10 @@ impl Chunk {
     #[inline]
     pub fn component_mono_raw(
         &self,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
         row_index: usize,
     ) -> Option<ChunkResult<ArrowArrayRef>> {
-        let res = self.component_batch_raw(component_descr, row_index)?;
+        let res = self.component_batch_raw(component, row_index)?;
 
         let array = match res {
             Ok(array) => array,
@@ -147,10 +147,10 @@ impl Chunk {
     #[inline]
     pub fn component_mono<C: Component>(
         &self,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
         row_index: usize,
     ) -> Option<ChunkResult<C>> {
-        let res = self.component_mono_raw(component_descr, row_index)?;
+        let res = self.component_mono_raw(component, row_index)?;
 
         let array = match res {
             Ok(array) => array,
@@ -240,12 +240,12 @@ impl UnitChunkShared {
 
     /// Returns the number of instances of the single row within for a given component.
     #[inline]
-    pub fn num_instances(&self, component_descr: &ComponentDescriptor) -> u64 {
+    pub fn num_instances(&self, component: ComponentIdentifier) -> u64 {
         debug_assert!(self.num_rows() == 1);
         self.components
-            .iter()
-            .filter(|&(descr, _list_array)| descr == component_descr)
-            .map(|(_descr, list_array)| {
+            .values()
+            .filter(|&(component_desc, _)| component_desc.component == component)
+            .map(|(_desc, list_array)| {
                 let array = list_array.value(0);
                 array.nulls().map_or_else(
                     || array.len(),
@@ -264,12 +264,9 @@ impl UnitChunkShared {
 
     /// Returns the raw data for the specified component.
     #[inline]
-    pub fn component_batch_raw(
-        &self,
-        component_descr: &ComponentDescriptor,
-    ) -> Option<ArrowArrayRef> {
+    pub fn component_batch_raw(&self, component: ComponentIdentifier) -> Option<ArrowArrayRef> {
         debug_assert!(self.num_rows() == 1);
-        let list_array = self.components.get(component_descr)?;
+        let list_array = self.components.get_array(component)?;
         list_array.is_valid(0).then(|| list_array.value(0))
     }
 
@@ -280,10 +277,9 @@ impl UnitChunkShared {
     #[inline]
     pub fn component_batch<C: Component>(
         &self,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Option<ChunkResult<Vec<C>>> {
-        debug_assert_eq!(Some(C::name()), component_descr.component_type);
-        let data = C::from_arrow(&*self.component_batch_raw(component_descr)?);
+        let data = C::from_arrow(&*self.component_batch_raw(component)?);
         Some(data.map_err(Into::into))
     }
 
@@ -295,10 +291,10 @@ impl UnitChunkShared {
     #[inline]
     pub fn component_instance_raw(
         &self,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
         instance_index: usize,
     ) -> Option<ChunkResult<ArrowArrayRef>> {
-        let array = self.component_batch_raw(component_descr)?;
+        let array = self.component_batch_raw(component)?;
         if array.len() > instance_index {
             Some(Ok(array.slice(instance_index, 1)))
         } else {
@@ -317,11 +313,10 @@ impl UnitChunkShared {
     #[inline]
     pub fn component_instance<C: Component>(
         &self,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
         instance_index: usize,
     ) -> Option<ChunkResult<C>> {
-        debug_assert_eq!(Some(C::name()), component_descr.component_type);
-        let res = self.component_instance_raw(component_descr, instance_index)?;
+        let res = self.component_instance_raw(component, instance_index)?;
 
         let array = match res {
             Ok(array) => array,
@@ -342,9 +337,9 @@ impl UnitChunkShared {
     #[inline]
     pub fn component_mono_raw(
         &self,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Option<ChunkResult<ArrowArrayRef>> {
-        let array = self.component_batch_raw(component_descr)?;
+        let array = self.component_batch_raw(component)?;
         if array.len() == 1 {
             Some(Ok(array.slice(0, 1)))
         } else {
@@ -363,10 +358,9 @@ impl UnitChunkShared {
     #[inline]
     pub fn component_mono<C: Component>(
         &self,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Option<ChunkResult<C>> {
-        debug_assert_eq!(Some(C::name()), component_descr.component_type);
-        let res = self.component_mono_raw(component_descr)?;
+        let res = self.component_mono_raw(component)?;
 
         let array = match res {
             Ok(array) => array,

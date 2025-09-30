@@ -18,7 +18,7 @@ use re_log_types::{
     AbsoluteTimeRange, EntityPath, NonMinI64, TimeInt, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{
-    ArchetypeName, ComponentDescriptor, ComponentType, DeserializationError, Loggable as _,
+    ComponentDescriptor, ComponentIdentifier, ComponentType, DeserializationError, Loggable as _,
     SerializationError, SerializedComponentColumn,
 };
 
@@ -72,7 +72,7 @@ pub type ChunkResult<T> = Result<T, ChunkError>;
 // ---
 
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct ChunkComponents(pub IntMap<ComponentDescriptor, ArrowListArray>);
+pub struct ChunkComponents(pub IntMap<ComponentIdentifier, (ComponentDescriptor, ArrowListArray)>);
 
 impl ChunkComponents {
     /// Returns all list arrays for the given component type.
@@ -83,7 +83,7 @@ impl ChunkComponents {
         &self,
         component_type: ComponentType,
     ) -> impl Iterator<Item = &ArrowListArray> {
-        self.0.iter().filter_map(move |(desc, array)| {
+        self.0.values().filter_map(move |(desc, array)| {
             (desc.component_type == Some(component_type)).then_some(array)
         })
     }
@@ -97,33 +97,56 @@ impl ChunkComponents {
     /// Useful for tests.
     pub fn ensure_similar(left: &Self, right: &Self) -> anyhow::Result<()> {
         anyhow::ensure!(left.len() == right.len());
-        for (descr, left_array) in left.iter() {
-            let Some(right_array) = right.get(descr) else {
-                anyhow::bail!("rhs is missing {descr:?}");
+        for (component, (left_desc, left_array)) in left.iter() {
+            let Some((right_desc, right_array)) = right.get(*component) else {
+                anyhow::bail!("rhs is missing {component:?}");
             };
+            anyhow::ensure!(left_desc == right_desc);
+
             let left_array = widen_binary_arrays(left_array);
             let right_array = widen_binary_arrays(right_array);
             re_arrow_util::ensure_similar(&left_array.to_data(), &right_array.to_data())
-                .with_context(|| format!("Component {descr:?}"))?;
+                .with_context(|| format!("Component {component:?}"))?;
         }
         Ok(())
     }
 
     /// Whether any of the components in this chunk has the given name.
-    pub fn contains_component(&self, component_descr: &ComponentDescriptor) -> bool {
-        self.0.contains_key(component_descr)
+    #[inline]
+    pub fn contains_component(&self, component: ComponentIdentifier) -> bool {
+        self.0.contains_key(&component)
     }
 
-    /// Whether any of the components in this chunk is tagged with the given archetype name.
-    pub fn has_component_with_archetype(&self, archetype_name: ArchetypeName) -> bool {
-        self.0
-            .keys()
-            .any(|desc| desc.archetype == Some(archetype_name))
+    /// Lists all the component descriptors in this chunk.
+    #[inline]
+    pub fn component_descriptors(&self) -> impl Iterator<Item = &ComponentDescriptor> + '_ {
+        self.0.values().map(|(desc, _)| desc)
+    }
+
+    /// Returns the array for a given component if any.
+    #[inline]
+    pub fn get_array(&self, component: ComponentIdentifier) -> Option<&ArrowListArray> {
+        self.0.get(&component).map(|(_, array)| array)
+    }
+
+    /// Returns the descriptor for a given component if any.
+    #[inline]
+    pub fn get_descriptor(&self, component: ComponentIdentifier) -> Option<&ComponentDescriptor> {
+        self.0.get(&component).map(|(desc, _)| desc)
+    }
+
+    /// Returns the descriptor and array for a given component if any.
+    #[inline]
+    pub fn get(
+        &self,
+        component: ComponentIdentifier,
+    ) -> Option<&(ComponentDescriptor, ArrowListArray)> {
+        self.0.get(&component)
     }
 }
 
 impl std::ops::Deref for ChunkComponents {
-    type Target = IntMap<ComponentDescriptor, ArrowListArray>;
+    type Target = IntMap<ComponentIdentifier, (ComponentDescriptor, ArrowListArray)>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -144,7 +167,7 @@ impl FromIterator<(ComponentDescriptor, ArrowListArray)> for ChunkComponents {
         let mut this = Self::default();
         {
             for (component_desc, list_array) in iter {
-                this.insert(component_desc, list_array);
+                this.insert(component_desc.component, (component_desc, list_array));
             }
         }
         this
@@ -157,7 +180,10 @@ impl FromIterator<SerializedComponentColumn> for ChunkComponents {
         let mut this = Self::default();
         {
             for serialized in iter {
-                this.insert(serialized.descriptor, serialized.list_array);
+                this.insert(
+                    serialized.descriptor.component,
+                    (serialized.descriptor, serialized.list_array),
+                );
             }
         }
         this
@@ -198,7 +224,7 @@ pub struct Chunk {
     /// Empty if this is a static chunk.
     pub(crate) timelines: IntMap<TimelineName, TimeColumn>,
 
-    /// A sparse `ListArray` for each component.
+    /// A sparse `ListArray` & a [`ComponentDescriptor`] for each component.
     ///
     /// Each `ListArray` must be the same length as `row_ids`.
     ///
@@ -289,23 +315,19 @@ impl Chunk {
             anyhow::ensure!(components.len() == rhs.components.len());
 
             // Copied from `rerun.archetypes.RecordingInfo`.
-            let recording_time_descriptor = ComponentDescriptor {
-                archetype: Some("rerun.archetypes.RecordingInfo".into()),
-                component: "RecordingInfo:start_time".into(),
-                component_type: Some("rerun.components.Timestamp".into()),
-            };
+            let recording_time_component: ComponentIdentifier = "RecordingInfo:start_time".into();
 
             // Filter out the recording time component from both lhs and rhs.
             let lhs_components = components
                 .iter()
-                .filter(|&(desc, _list_array)| desc != &recording_time_descriptor)
-                .map(|(desc, list_array)| (desc.clone(), list_array.clone()))
+                .filter(|&(component, _list_array)| component != &recording_time_component)
+                .map(|(component, list_array)| (*component, list_array.clone()))
                 .collect::<IntMap<_, _>>();
             let rhs_components = rhs
                 .components
                 .iter()
-                .filter(|&(desc, _list_array)| desc != &recording_time_descriptor)
-                .map(|(desc, list_array)| (desc.clone(), list_array.clone()))
+                .filter(|&(component, _list_array)| component != &recording_time_component)
+                .map(|(component, list_array)| (*component, list_array.clone()))
                 .collect::<IntMap<_, _>>();
 
             anyhow::ensure!(lhs_components == rhs_components);
@@ -327,23 +349,12 @@ impl Chunk {
             components,
         } = self;
 
-        let my_components: IntMap<_, _> = components
-            .iter()
-            .map(|(descr, list_array)| (descr.clone(), list_array))
-            .collect();
-
-        let other_components: IntMap<_, _> = other
-            .components
-            .iter()
-            .map(|(descr, list_array)| (descr.clone(), list_array))
-            .collect();
-
         *id == other.id
             && *entity_path == other.entity_path
             && *is_sorted == other.is_sorted
             && row_ids == &other.row_ids
             && *timelines == other.timelines
-            && my_components == other_components
+            && components.0 == other.components.0
     }
 }
 
@@ -414,7 +425,7 @@ impl Chunk {
     #[inline]
     pub fn time_range_per_component(
         &self,
-    ) -> IntMap<TimelineName, IntMap<ComponentDescriptor, AbsoluteTimeRange>> {
+    ) -> IntMap<TimelineName, IntMap<ComponentIdentifier, AbsoluteTimeRange>> {
         re_tracing::profile_function!();
 
         self.timelines
@@ -428,6 +439,11 @@ impl Chunk {
             .collect()
     }
 
+    #[inline]
+    pub fn component_descriptors(&self) -> impl Iterator<Item = &ComponentDescriptor> + '_ {
+        self.components.component_descriptors()
+    }
+
     /// The cumulative number of events in this chunk.
     ///
     /// I.e. how many _component batches_ ("cells") were logged in total?
@@ -438,7 +454,7 @@ impl Chunk {
         // Reminder: component columns are sparse, we must take a look at the validity bitmaps.
         self.components
             .values()
-            .map(|list_array| {
+            .map(|(_, list_array)| {
                 list_array.nulls().map_or_else(
                     || list_array.len() as u64,
                     |validity| validity.len() as u64 - validity.null_count() as u64,
@@ -503,7 +519,7 @@ impl Chunk {
         // Raw, potentially duplicated counts (because timestamps aren't necessarily unique).
         let mut counts_raw = vec![0u64; self.num_rows()];
         {
-            self.components.values().for_each(|list_array| {
+            self.components.values().for_each(|(_, list_array)| {
                 if let Some(validity) = list_array.nulls() {
                     validity
                         .iter()
@@ -553,7 +569,7 @@ impl Chunk {
         let result_unordered =
             self.components
                 .values()
-                .fold(HashMap::default(), |acc, list_array| {
+                .fold(HashMap::default(), |acc, (_, list_array)| {
                     if let Some(validity) = list_array.nulls() {
                         time_column.times().zip(validity.iter()).fold(
                             acc,
@@ -581,12 +597,9 @@ impl Chunk {
     //
     // TODO(cmc): This needs to be stored in chunk metadata and transported across IPC.
     #[inline]
-    pub fn num_events_for_component(
-        &self,
-        component_descriptor: &ComponentDescriptor,
-    ) -> Option<u64> {
+    pub fn num_events_for_component(&self, component: ComponentIdentifier) -> Option<u64> {
         // Reminder: component columns are sparse, we must check validity bitmap.
-        self.components.get(component_descriptor).map(|list_array| {
+        self.components.get_array(component).map(|list_array| {
             list_array.nulls().map_or_else(
                 || list_array.len() as u64,
                 |validity| validity.len() as u64 - validity.null_count() as u64,
@@ -602,7 +615,7 @@ impl Chunk {
     /// This is crucial for indexing and queries to work properly.
     //
     // TODO(cmc): This needs to be stored in chunk metadata and transported across IPC.
-    pub fn row_id_range_per_component(&self) -> IntMap<ComponentDescriptor, (RowId, RowId)> {
+    pub fn row_id_range_per_component(&self) -> IntMap<ComponentIdentifier, (RowId, RowId)> {
         re_tracing::profile_function!();
 
         let row_ids = self.row_ids().collect_vec();
@@ -610,7 +623,7 @@ impl Chunk {
         if self.is_sorted() {
             self.components
                 .iter()
-                .filter_map(|(component_desc, list_array)| {
+                .filter_map(|(component, (_desc, list_array))| {
                     let mut row_id_min = None;
                     let mut row_id_max = None;
 
@@ -625,13 +638,13 @@ impl Chunk {
                         }
                     }
 
-                    Some((component_desc.clone(), (row_id_min?, row_id_max?)))
+                    Some((*component, (row_id_min?, row_id_max?)))
                 })
                 .collect()
         } else {
             self.components
                 .iter()
-                .filter_map(|(component_desc, list_array)| {
+                .filter_map(|(component, (_desc, list_array))| {
                     let mut row_id_min = Some(RowId::MAX);
                     let mut row_id_max = Some(RowId::ZERO);
 
@@ -646,7 +659,7 @@ impl Chunk {
                         }
                     }
 
-                    Some((component_desc.clone(), (row_id_min?, row_id_max?)))
+                    Some((*component, (row_id_min?, row_id_max?)))
                 })
                 .collect()
         }
@@ -766,7 +779,7 @@ impl Chunk {
         let count = components
             .iter()
             .next()
-            .map_or(0, |(_, list_array)| list_array.len());
+            .map_or(0, |(_, (_desc, list_array))| list_array.len());
 
         let row_ids = std::iter::from_fn({
             let tuid: re_tuid::Tuid = *id;
@@ -828,7 +841,8 @@ impl Chunk {
         component_desc: ComponentDescriptor,
         list_array: ArrowListArray,
     ) -> ChunkResult<()> {
-        self.components.insert(component_desc, list_array);
+        self.components
+            .insert(component_desc.component, (component_desc, list_array));
         self.sanity_check()
     }
 
@@ -1165,13 +1179,13 @@ impl Chunk {
     /// Returns an iterator over the [`RowId`]s of a [`Chunk`], for a given component.
     ///
     /// This is different than [`Self::row_ids`]: it will only yield `RowId`s for rows at which
-    /// there is data for the specified `component_descriptor`.
+    /// there is data for the specified `component`.
     #[inline]
     pub fn component_row_ids(
         &self,
-        component_descriptor: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> impl Iterator<Item = RowId> + '_ + use<'_> {
-        let Some(list_array) = self.components.get(component_descriptor) else {
+        let Some(list_array) = self.components.get_array(component) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -1226,8 +1240,8 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn component_descriptors(&self) -> impl Iterator<Item = ComponentDescriptor> + '_ {
-        self.components.keys().cloned()
+    pub fn components_identifiers(&self) -> impl Iterator<Item = ComponentIdentifier> + '_ {
+        self.components.keys().copied()
     }
 
     #[inline]
@@ -1317,11 +1331,11 @@ impl TimeColumn {
     pub fn time_range_per_component(
         &self,
         components: &ChunkComponents,
-    ) -> IntMap<ComponentDescriptor, AbsoluteTimeRange> {
+    ) -> IntMap<ComponentIdentifier, AbsoluteTimeRange> {
         let times = self.times_raw();
         components
             .iter()
-            .filter_map(|(component_desc, list_array)| {
+            .filter_map(|(component, (_desc, list_array))| {
                 if let Some(validity) = list_array.nulls() {
                     // Potentially sparse
 
@@ -1331,7 +1345,7 @@ impl TimeColumn {
 
                     let is_dense = validity.null_count() == 0;
                     if is_dense {
-                        return Some((component_desc.clone(), self.time_range));
+                        return Some((*component, self.time_range));
                     }
 
                     let mut time_min = TimeInt::MAX;
@@ -1350,14 +1364,11 @@ impl TimeColumn {
                         }
                     }
 
-                    Some((
-                        component_desc.clone(),
-                        AbsoluteTimeRange::new(time_min, time_max),
-                    ))
+                    Some((*component, AbsoluteTimeRange::new(time_min, time_max)))
                 } else {
                     // Dense
 
-                    Some((component_desc.clone(), self.time_range))
+                    Some((*component, self.time_range))
                 }
             })
             .collect()
@@ -1487,10 +1498,15 @@ impl Chunk {
 
         // Components
 
-        for (component_desc, list_array) in components.iter() {
-            if let Some(c) = component_desc.component_type {
-                c.sanity_check();
+        for (component, (desc, list_array)) in components.iter() {
+            if desc.component != *component {
+                return Err(ChunkError::Malformed {
+                    reason: format!(
+                        "Component key & descriptor mismatch. Descriptor: {desc:?}. Key: {component:?}",
+                    ),
+                });
             }
+
             // Ensure that each cell is a list (we don't support mono-components yet).
             if let arrow::datatypes::DataType::List(_field) = list_array.data_type() {
                 // We don't check `field.is_nullable()` here because we support both.
@@ -1508,7 +1524,7 @@ impl Chunk {
                 return Err(ChunkError::Malformed {
                     reason: format!(
                         "All component batches in a chunk must have the same number of rows, matching the number of row IDs. \
-                             Found {} row IDs but {} rows for component batch {component_desc}",
+                             Found {} row IDs but {} rows for component batch {component}",
                         row_ids.len(),
                         list_array.len(),
                     ),
@@ -1522,7 +1538,7 @@ impl Chunk {
                 return Err(ChunkError::Malformed {
                     reason: format!(
                         "All component batches in a chunk must contain at least one non-null entry.\
-                             Found a completely empty column for {component_desc}",
+                             Found a completely empty column for {component}",
                     ),
                 });
             }

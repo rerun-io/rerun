@@ -71,25 +71,31 @@ impl Chunk {
                 .collect()
         };
 
-        let lhs_per_desc: IntMap<_, _> = cl
+        let lhs_per_component: IntMap<_, _> = cl
             .components
             .iter()
-            .map(|(component_desc, list_array)| (component_desc.clone(), list_array))
+            .map(|(component, list_array)| (*component, list_array))
             .collect();
-        let rhs_per_desc: IntMap<_, _> = cr
+        let rhs_per_component: IntMap<_, _> = cr
             .components
             .iter()
-            .map(|(component_desc, list_array)| (component_desc.clone(), list_array))
+            .map(|(component, list_array)| (*component, list_array))
             .collect();
 
         // First pass: concat right onto left.
-        let mut components = ChunkComponents({
+        let mut components: ChunkComponents = {
             re_tracing::profile_scope!("components (r2l)");
-            lhs_per_desc
-                .iter()
-                .filter_map(|(component_desc, &lhs_list_array)| {
-                    re_tracing::profile_scope!(component_desc.to_string());
-                    if let Some(&rhs_list_array) = rhs_per_desc.get(component_desc) {
+            lhs_per_component
+                .values()
+                .filter_map(|(lhs_component_desc, lhs_list_array)| {
+                    re_tracing::profile_scope!(lhs_component_desc.to_string());
+                    if let Some(&(rhs_component_desc, rhs_list_array)) =
+                        rhs_per_component.get(&lhs_component_desc.component)
+                    {
+                        if lhs_component_desc != rhs_component_desc {
+                            re_log::warn_once!("lhs and rhs have different component descriptors for the same component: {lhs_component_desc} != {rhs_component_desc}");
+                        }
+
                         re_tracing::profile_scope!(format!(
                             "concat (lhs={} rhs={})",
                             re_format::format_uint(lhs_list_array.values().len()),
@@ -100,11 +106,11 @@ impl Chunk {
                             re_arrow_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
                         let list_array = list_array.downcast_array_ref::<ArrowListArray>()?.clone();
 
-                        Some((component_desc.clone(), list_array))
+                        Some((lhs_component_desc.clone(), list_array))
                     } else {
                         re_tracing::profile_scope!("pad");
                         Some((
-                            component_desc.clone(),
+                            lhs_component_desc.clone(),
                             re_arrow_util::pad_list_array_back(
                                 lhs_list_array,
                                 self.num_rows() + rhs.num_rows(),
@@ -113,22 +119,28 @@ impl Chunk {
                     }
                 })
                 .collect()
-        });
+        };
 
         // Second pass: concat left onto right, where necessary.
         {
             re_tracing::profile_scope!("components (l2r)");
-            let rhs = rhs_per_desc
-                .iter()
-                .filter_map(|(component_desc, &rhs_list_array)| {
-                    if components.contains_key(component_desc) {
+            let rhs = rhs_per_component
+                .values()
+                .filter_map(|(rhs_component_desc, rhs_list_array)| {
+                    if components.contains_key(&rhs_component_desc.component) {
                         // Already did that one during the first pass.
                         return None;
                     }
 
-                    re_tracing::profile_scope!(component_desc.to_string());
+                    re_tracing::profile_scope!(rhs_component_desc.component.to_string());
 
-                    if let Some(&lhs_list_array) = lhs_per_desc.get(component_desc) {
+                    if let Some(&(lhs_component_desc, lhs_list_array)) =
+                        lhs_per_component.get(&rhs_component_desc.component)
+                    {
+                        if lhs_component_desc != rhs_component_desc {
+                            re_log::warn_once!("lhs and rhs have different component descriptors for the same component: {lhs_component_desc} != {rhs_component_desc}");
+                        }
+
                         re_tracing::profile_scope!(format!(
                             "concat (lhs={} rhs={})",
                             re_format::format_uint(lhs_list_array.values().len()),
@@ -139,14 +151,17 @@ impl Chunk {
                             re_arrow_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
                         let list_array = list_array.downcast_array_ref::<ArrowListArray>()?.clone();
 
-                        Some((component_desc.clone(), list_array))
+                        Some((rhs_component_desc.component, (rhs_component_desc.clone(), list_array)))
                     } else {
                         re_tracing::profile_scope!("pad");
                         Some((
-                            component_desc.clone(),
-                            re_arrow_util::pad_list_array_front(
-                                rhs_list_array,
-                                self.num_rows() + rhs.num_rows(),
+                            rhs_component_desc.component,
+                            (
+                                rhs_component_desc.clone(),
+                                re_arrow_util::pad_list_array_front(
+                                    rhs_list_array,
+                                    self.num_rows() + rhs.num_rows(),
+                                ),
                             ),
                         ))
                     }
@@ -217,12 +232,15 @@ impl Chunk {
 
     /// Returns `true` if both chunks share the same datatypes for the components that
     /// _they have in common_.
+    ///
+    /// Ignores potential differences in component descriptors.
     #[inline]
     pub fn same_datatypes(&self, rhs: &Self) -> bool {
         self.components
-            .iter()
-            .all(|(component_desc, lhs_list_array)| {
-                if let Some(rhs_list_array) = rhs.components.get(component_desc) {
+            .values()
+            .all(|(lhs_component_desc, lhs_list_array)| {
+                if let Some(rhs_list_array) = rhs.components.get_array(lhs_component_desc.component)
+                {
                     lhs_list_array.data_type() == rhs_list_array.data_type()
                 } else {
                     true
