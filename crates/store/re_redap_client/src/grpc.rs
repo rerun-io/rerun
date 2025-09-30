@@ -122,18 +122,22 @@ pub(crate) async fn client(
 pub type RedapClientInner =
     re_perf_telemetry::external::tower_http::propagate_header::PropagateHeader<
         re_perf_telemetry::external::tower_http::propagate_header::PropagateHeader<
-            re_perf_telemetry::external::tower_http::trace::Trace<
-                tonic::service::interceptor::InterceptedService<
-                    tonic::service::interceptor::InterceptedService<
-                        tonic::transport::Channel,
-                        re_auth::client::AuthDecorator,
+            re_perf_telemetry::external::tower_http::propagate_header::PropagateHeader<
+                re_perf_telemetry::external::tower_http::propagate_header::PropagateHeader<
+                    re_perf_telemetry::external::tower_http::trace::Trace<
+                        tonic::service::interceptor::InterceptedService<
+                            tonic::service::interceptor::InterceptedService<
+                                tonic::transport::Channel,
+                                re_auth::client::AuthDecorator,
+                            >,
+                            re_perf_telemetry::TracingInjectorInterceptor,
+                        >,
+                        re_perf_telemetry::external::tower_http::classify::SharedClassifier<
+                            re_perf_telemetry::external::tower_http::classify::GrpcErrorsAsFailures,
+                        >,
+                        re_perf_telemetry::GrpcMakeSpan,
                     >,
-                    re_perf_telemetry::TracingInjectorInterceptor,
                 >,
-                re_perf_telemetry::external::tower_http::classify::SharedClassifier<
-                    re_perf_telemetry::external::tower_http::classify::GrpcErrorsAsFailures,
-                >,
-                re_perf_telemetry::GrpcMakeSpan,
             >,
         >,
     >;

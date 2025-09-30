@@ -1,5 +1,26 @@
-// See `re_protos::headers`.
+// -- Headers --
+
+// See also `re_protos::headers`.
+
+use opentelemetry::trace::TraceContextExt;
+
 const RERUN_HTTP_HEADER_ENTRY_ID: &str = "x-rerun-entry-id";
+
+// TODO: let's focus on the edges for now: i.e. only the client/SDK and frontend
+// TODO: make sure all of this shit works on web, im very confused right now. clearly it does not
+// right now, and that sucks.
+// TODO: why dont we do the entry name too then?
+// TODO: no matter how we inject the client/server version, we really cannot have middleboxes
+// override that value on each bop, can we? actually maybe we can and that's perfect that way?
+
+// TODO: or maybe: SDK_VERSION & FRONTEND_VERSION? i dunno
+
+// TODO: these headers should happen even without re_perf_telemetry... and so does their
+// propagation
+
+const RERUN_HTTP_HEADER_CLIENT_VERSION: &str = "x-rerun-client-version";
+
+const RERUN_HTTP_HEADER_SERVER_VERSION: &str = "x-rerun-server-version";
 
 // --- Telemetry middlewares ---
 
@@ -51,6 +72,15 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
                     .map(|data| data.sub)
             });
 
+        let client_version = request
+            .headers()
+            .get(RERUN_HTTP_HEADER_CLIENT_VERSION)
+            .and_then(|v| v.to_str().ok().map(ToOwned::to_owned));
+        let server_version = request
+            .headers()
+            .get(RERUN_HTTP_HEADER_SERVER_VERSION)
+            .and_then(|v| v.to_str().ok().map(ToOwned::to_owned));
+
         let dataset_id = request
             .headers()
             .get(RERUN_HTTP_HEADER_ENTRY_ID)
@@ -68,7 +98,9 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
             otel.name = %endpoint,
             url,
             method = %request.method(),
-            version = ?request.version(),
+            http_version = ?request.version(),
+            client_version,
+            server_version,
             headers = ?safe_headers,
             email,
             dataset_id,
@@ -78,6 +110,8 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
             span.id(),
             SpanMetadata {
                 endpoint,
+                client_version,
+                server_version,
                 email,
                 dataset_id,
                 first_chunk_returned: false,
@@ -112,6 +146,20 @@ struct SpanMetadata {
     /// Which gRPC endpoint? Extracted from h2 headers.
     endpoint: String,
 
+    /// The semantic version advertised by the gRPC client.
+    ///
+    /// Extracted from h2 headers, see [`RERUN_HTTP_HEADER_CLIENT_VERSION`].
+    //
+    // TODO: more infor
+    client_version: Option<String>,
+
+    /// The semantic version advertised by the gRPC server.
+    ///
+    /// Extracted from h2 headers, see [`RERUN_HTTP_HEADER_SERVER_VERSION`].
+    //
+    // TODO: more infor
+    server_version: Option<String>,
+
     /// What email, if any? Extracted from h2 auth headers.
     email: Option<String>,
 
@@ -134,6 +182,8 @@ impl Default for SpanMetadata {
     fn default() -> Self {
         Self {
             endpoint: "undefined".to_owned(),
+            client_version: None,
+            server_version: None,
             email: None,
             dataset_id: None,
             first_chunk_returned: false,
@@ -261,6 +311,8 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
 
         let SpanMetadata {
             endpoint,
+            client_version,
+            server_version,
             email,
             dataset_id,
             first_chunk_returned: _,
@@ -271,21 +323,25 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
             let grpc_status = format!("{grpc_code:?}"); // NOTE: The debug repr is the enum variant name (e.g. DeadlineExceeded).
             let http_status = response.status().as_str().to_owned();
 
+            let client_version = client_version.as_deref().unwrap_or("undefined");
+            let server_version = server_version.as_deref().unwrap_or("undefined");
             let email = email.as_deref().unwrap_or("undefined");
             let dataset_id = dataset_id.as_deref().unwrap_or("undefined");
 
             // NOTE: repeat all these attributes so services such as CloudWatch, which don't really
             // support OTLP, can actually see them.
             if grpc_status == "Ok" {
-                tracing::info!(%endpoint, %grpc_status, %http_status, %email, %dataset_id, ?latency, "grpc_on_response");
+                tracing::info!(%endpoint, %grpc_status, %http_status, %client_version, %server_version, %email, %dataset_id, ?latency, "grpc_on_response");
             } else {
-                tracing::error!(%endpoint, %grpc_status, %http_status, %email, %dataset_id, ?latency, "grpc_on_response");
+                tracing::error!(%endpoint, %grpc_status, %http_status, %client_version, %server_version, %email, %dataset_id, ?latency, "grpc_on_response");
             }
 
             self.histogram.record(
                 latency.as_secs_f64() * 1000.0,
                 &[
                     opentelemetry::KeyValue::new("endpoint", endpoint),
+                    opentelemetry::KeyValue::new("client_version", client_version.to_owned()),
+                    opentelemetry::KeyValue::new("server_version", server_version.to_owned()),
                     opentelemetry::KeyValue::new("grpc_status", grpc_status),
                     opentelemetry::KeyValue::new("http_status", http_status),
                     opentelemetry::KeyValue::new("email", email.to_owned()),
@@ -358,6 +414,8 @@ impl<B> tower_http::trace::OnBodyChunk<B> for GrpcOnFirstBodyChunk {
 
         let SpanMetadata {
             endpoint,
+            client_version,
+            server_version,
             email,
             dataset_id,
             first_chunk_returned,
@@ -365,17 +423,21 @@ impl<B> tower_http::trace::OnBodyChunk<B> for GrpcOnFirstBodyChunk {
         } = span_metadata.clone();
 
         if !first_chunk_returned {
+            let client_version = client_version.as_deref().unwrap_or("undefined");
+            let server_version = server_version.as_deref().unwrap_or("undefined");
             let email = email.as_deref().unwrap_or("undefined");
             let dataset_id = dataset_id.as_deref().unwrap_or("undefined");
 
             // NOTE: repeat all these attributes so services such as CloudWatch, which don't really
             // support OTLP, can actually see them.
-            tracing::debug!(%endpoint, %email, %dataset_id, ?latency, "grpc_on_first_body_chunk");
+            tracing::debug!(%endpoint, %client_version, %server_version, %email, %dataset_id, ?latency, "grpc_on_first_body_chunk");
 
             self.histogram.record(
                 latency.as_secs_f64() * 1000.0,
                 &[
                     opentelemetry::KeyValue::new("endpoint", endpoint),
+                    opentelemetry::KeyValue::new("client_version", client_version.to_owned()),
+                    opentelemetry::KeyValue::new("server_version", server_version.to_owned()),
                     opentelemetry::KeyValue::new("email", email.to_owned()),
                     opentelemetry::KeyValue::new("dataset_id", dataset_id.to_owned()),
                 ],
@@ -428,6 +490,8 @@ impl tower_http::trace::OnEos for GrpcOnEos {
 
         let SpanMetadata {
             endpoint,
+            client_version,
+            server_version,
             email,
             dataset_id,
             first_chunk_returned: _,
@@ -458,15 +522,17 @@ impl tower_http::trace::OnEos for GrpcOnEos {
         };
         let grpc_status = format!("{grpc_code:?}"); // NOTE: The debug repr is the enum variant name (e.g. DeadlineExceeded).
 
+        let client_version = client_version.as_deref().unwrap_or("undefined");
+        let server_version = server_version.as_deref().unwrap_or("undefined");
         let email = email.as_deref().unwrap_or("undefined");
         let dataset_id = dataset_id.as_deref().unwrap_or("undefined");
 
         // NOTE: repeat all these attributes so services such as CloudWatch, which don't really
         // support OTLP, can actually see them.
         if grpc_status == "Ok" {
-            tracing::info!(%endpoint, %grpc_status, %email, %dataset_id, ?duration, "grpc_on_eos");
+            tracing::info!(%endpoint, %grpc_status, %client_version, %server_version, %email, %dataset_id, ?duration, "grpc_on_eos");
         } else {
-            tracing::error!(%endpoint, %grpc_status, %email, %dataset_id, ?duration, "grpc_on_eos");
+            tracing::error!(%endpoint, %grpc_status, %client_version, %server_version, %email, %dataset_id, ?duration, "grpc_on_eos");
         }
 
         self.counter.add(
@@ -474,6 +540,8 @@ impl tower_http::trace::OnEos for GrpcOnEos {
             &[
                 opentelemetry::KeyValue::new("endpoint", endpoint),
                 opentelemetry::KeyValue::new("grpc_status", grpc_status),
+                opentelemetry::KeyValue::new("client_version", client_version.to_owned()),
+                opentelemetry::KeyValue::new("server_version", server_version.to_owned()),
                 opentelemetry::KeyValue::new("email", email.to_owned()),
                 opentelemetry::KeyValue::new("dataset_id", dataset_id.to_owned()),
             ],
@@ -496,7 +564,13 @@ pub type ServerTelemetryLayer = tower::layer::util::Stack<
             tower_http::propagate_header::PropagateHeaderLayer,
             tower::layer::util::Stack<
                 tower_http::propagate_header::PropagateHeaderLayer,
-                tower::layer::util::Identity,
+                tower::layer::util::Stack<
+                    tower_http::propagate_header::PropagateHeaderLayer,
+                    tower::layer::util::Stack<
+                        tower_http::propagate_header::PropagateHeaderLayer,
+                        tower::layer::util::Identity,
+                    >,
+                >,
             >,
         >,
     >,
@@ -507,7 +581,14 @@ pub type ServerTelemetryLayer = tower::layer::util::Stack<
 /// * Logs all gRPC responses (status, latency, etc).
 /// * Measures all gRPC responses (status, latency, etc).
 pub fn new_server_telemetry_layer() -> ServerTelemetryLayer {
+    // TODO: propagation layers do not belong here. they're not telemetry.
     use tower_http::propagate_header::PropagateHeaderLayer;
+    let client_version_propagation_layer = PropagateHeaderLayer::new(
+        http::HeaderName::from_static(RERUN_HTTP_HEADER_CLIENT_VERSION),
+    );
+    let server_version_propagation_layer = PropagateHeaderLayer::new(
+        http::HeaderName::from_static(RERUN_HTTP_HEADER_SERVER_VERSION),
+    );
     let dataset_id_propagation_layer =
         PropagateHeaderLayer::new(http::HeaderName::from_static(RERUN_HTTP_HEADER_ENTRY_ID));
     let request_id_propagation_layer =
@@ -521,6 +602,8 @@ pub fn new_server_telemetry_layer() -> ServerTelemetryLayer {
         .on_eos(GrpcOnEos::new());
 
     tower::ServiceBuilder::new()
+        .layer(client_version_propagation_layer)
+        .layer(server_version_propagation_layer)
         .layer(dataset_id_propagation_layer)
         .layer(request_id_propagation_layer)
         .layer(trace_layer)
@@ -528,6 +611,7 @@ pub fn new_server_telemetry_layer() -> ServerTelemetryLayer {
         .into_inner()
 }
 
+// TODO: can we somehow merge multiple propagates?
 pub type ClientTelemetryLayer = tower::layer::util::Stack<
     tonic::service::interceptor::InterceptorLayer<TracingInjectorInterceptor>,
     tower::layer::util::Stack<
@@ -536,7 +620,13 @@ pub type ClientTelemetryLayer = tower::layer::util::Stack<
             tower_http::propagate_header::PropagateHeaderLayer,
             tower::layer::util::Stack<
                 tower_http::propagate_header::PropagateHeaderLayer,
-                tower::layer::util::Identity,
+                tower::layer::util::Stack<
+                    tower_http::propagate_header::PropagateHeaderLayer,
+                    tower::layer::util::Stack<
+                        tower_http::propagate_header::PropagateHeaderLayer,
+                        tower::layer::util::Identity,
+                    >,
+                >,
             >,
         >,
     >,
@@ -551,6 +641,13 @@ pub type ClientTelemetryLayer = tower::layer::util::Stack<
 // we ultimately can add all the same things that we have on the server as we need them.
 pub fn new_client_telemetry_layer() -> ClientTelemetryLayer {
     use tower_http::propagate_header::PropagateHeaderLayer;
+    let client_version_propagation_layer = PropagateHeaderLayer::new(
+        http::HeaderName::from_static(RERUN_HTTP_HEADER_CLIENT_VERSION),
+    );
+    // TODO: realistically this one prob doesnt make sense in that context, right?
+    let server_version_propagation_layer = PropagateHeaderLayer::new(
+        http::HeaderName::from_static(RERUN_HTTP_HEADER_SERVER_VERSION),
+    );
     let dataset_id_propagation_layer =
         PropagateHeaderLayer::new(http::HeaderName::from_static(RERUN_HTTP_HEADER_ENTRY_ID));
     let request_id_propagation_layer =
@@ -560,6 +657,8 @@ pub fn new_client_telemetry_layer() -> ClientTelemetryLayer {
         tower_http::trace::TraceLayer::new_for_grpc().make_span_with(GrpcMakeSpan::new());
 
     tower::ServiceBuilder::new()
+        .layer(client_version_propagation_layer)
+        .layer(server_version_propagation_layer)
         .layer(dataset_id_propagation_layer)
         .layer(request_id_propagation_layer)
         .layer(trace_layer)
@@ -607,6 +706,28 @@ impl tonic::service::Interceptor for TracingInjectorInterceptor {
         use tracing_opentelemetry::OpenTelemetrySpanExt as _;
         let cx = tracing::Span::current().context();
 
+        // TODO: why am I doing this here? why not in makespan or something?
+        // nah, that's nuts -- we should really just set this stuff up in the most barebones
+        // middleware possible (interceptor?)
+        // TODO: reminder that the crate name is absolutely useless tho (always
+        // re_perf_telemetry)... grabbing the OTEL_VALUE is probably the cleanest solution here.
+        {
+            const CLIENT_VERSION: &str =
+                concat!(env!("CARGO_CRATE_NAME"), "/", env!("CARGO_PKG_VERSION"));
+            dbg!(CLIENT_VERSION);
+
+            req.metadata_mut().insert(
+                RERUN_HTTP_HEADER_CLIENT_VERSION,
+                CLIENT_VERSION.parse().expect("cannot fail"),
+            );
+
+            if let Some(span_metadata) =
+                SpanMetadata::get_opt(tracing::Span::current().id().as_ref())
+            {
+                dbg!(span_metadata);
+            }
+        }
+
         // Inject the opentelemetry-formatted trace information into the headers.
         opentelemetry::global::get_text_map_propagator(|propagator| {
             propagator.inject_context(&cx, &mut MetadataMap(req.metadata_mut()));
@@ -635,7 +756,7 @@ impl TracingExtractorInterceptor {
 }
 
 impl tonic::service::Interceptor for TracingExtractorInterceptor {
-    fn call(&mut self, req: tonic::Request<()>) -> Result<tonic::Request<()>, tonic::Status> {
+    fn call(&mut self, mut req: tonic::Request<()>) -> Result<tonic::Request<()>, tonic::Status> {
         struct MetadataMap<'a>(&'a tonic::metadata::MetadataMap);
 
         impl opentelemetry::propagation::Extractor for MetadataMap<'_> {
@@ -662,6 +783,24 @@ impl tonic::service::Interceptor for TracingExtractorInterceptor {
         // Convert the trace information back into `tracing` and inject it into the current span (if any).
         use tracing_opentelemetry::OpenTelemetrySpanExt as _;
         tracing::Span::current().set_parent(parent_ctx);
+
+        // TODO: where is it going though...?
+        {
+            const SERVER_VERSION: &str =
+                concat!(env!("CARGO_CRATE_NAME"), "/", env!("CARGO_PKG_VERSION"));
+            dbg!(SERVER_VERSION);
+
+            req.metadata_mut().insert(
+                RERUN_HTTP_HEADER_CLIENT_VERSION,
+                SERVER_VERSION.parse().expect("cannot fail"),
+            );
+
+            if let Some(span_metadata) =
+                SpanMetadata::get_opt(tracing::Span::current().id().as_ref())
+            {
+                dbg!(span_metadata);
+            }
+        }
 
         Ok(req)
     }

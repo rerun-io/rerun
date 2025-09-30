@@ -126,3 +126,11 @@ impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
         Ok(Some(entry_name))
     }
 }
+
+// ---
+
+// TODO: should I provide some layers here...? probably, right? it's basically not that much
+// different from our auth interceptor which lives in its own crate, i guess.
+
+// TODO: should i provide a fork of HeaderPropagationLayer here, that actually supports multiple
+// layers at once? it sure would be nice.
