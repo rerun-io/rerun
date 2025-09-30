@@ -348,3 +348,37 @@ def test_dataset_schema_comparison_self_consistent(server_instance: ServerInstan
 
     assert len(set_diff) == 0, f"Schema iterator is not self-consistent: {set_diff}"
     assert schema_0 == schema_1, "Schema is not self-consistent"
+
+def test_datafusion_catalog_get_tables(server_instance: ServerInstance) -> None:
+    ctx = server_instance.client.ctx
+
+    # Verify we have the catalog provider and schema provider
+    catalog_provider = ctx.catalog("datafusion")
+    assert catalog_provider is not None
+
+    schema_provider = catalog_provider.schema("public")
+    assert schema_provider is not None
+
+    # Note: as of DataFusion 50.0.0 this is not a DataFrame
+    # but rather a python object that describes the table.
+    table = schema_provider.table("simple_datatypes")
+    assert table is not None
+
+    # Get by table name since it should be in the default catalog/schema
+    df = ctx.table("simple_datatypes")
+    rb = df.collect()[0]
+    assert rb.num_rows > 0
+
+    # Get table by fully qualified name
+    df = ctx.table("datafusion.public.simple_datatypes")
+    rb = df.collect()[0]
+    assert rb.num_rows > 0
+
+    # Verify SQL parsing for catalog provider works as expected
+    df = ctx.sql("SELECT * FROM simple_datatypes")
+    rb = df.collect()[0]
+    assert rb.num_rows > 0
+
+    df = ctx.sql("SELECT * FROM datafusion.public.simple_datatypes")
+    rb = df.collect()[0]
+    assert rb.num_rows > 0
