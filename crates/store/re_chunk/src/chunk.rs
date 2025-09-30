@@ -1247,7 +1247,7 @@ impl std::fmt::Display for Chunk {
             re_log::error_once!("couldn't display Chunk: {err}");
             std::fmt::Error
         })?;
-        re_format_arrow::format_record_batch_with_width(&batch, f.width()).fmt(f)
+        re_format_arrow::format_record_batch_with_width(&batch, f.width(), f.sign_minus()).fmt(f)
     }
 }
 
