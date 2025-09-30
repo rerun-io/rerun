@@ -267,7 +267,7 @@ itertools = "0.14"
 jiff = { version = "0.2.3", features = ["js"] }
 js-sys = "0.3"
 jsonwebtoken = { version = "9", default-features = false }
-lance = { version = "0.36.0", default-features = false } # When you update this, also update the list of features in `datafusion`!
+lance = { version = "0.36.0", default-features = false } # When you update this, also update the list of features enabled for `datafusion` (~50 lines up)
 libc = "0.2"
 linked-hash-map = { version = "0.5", default-features = false }
 log = "0.4"
