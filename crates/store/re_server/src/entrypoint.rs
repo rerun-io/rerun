@@ -24,13 +24,13 @@ pub struct Args {
 
     /// Load a directory of RRD as dataset (can be specified multiple times).
     /// You can specify only a path or provide a name such as
-    /// -d my_dataset=./path/to/files
+    /// `-d my_dataset=./path/to/files`
     #[clap(long = "dataset", short = 'd')]
     pub datasets: Vec<NamedPath>,
 
     /// Load a lance file as a table (can be specified multiple times).
     /// You can specify only a path or provide a name such as
-    /// -t my_table=./path/to/table
+    /// `-t my_table=./path/to/table`
     #[clap(long = "table", short = 't')]
     pub tables: Vec<NamedPath>,
 }
