@@ -221,10 +221,18 @@ convert_case = "0.6"
 criterion = "0.5"
 cros-codecs = "0.0.6"
 crossbeam = "0.8"
-datafusion = { version = "49.0.2", default-features = true, features = [
-  # NOTE: we enable the same features everywhere (including the default ones!),
+datafusion = { version = "49.0.2", default-features = false, features = [
+  # NOTE: we enable the same features everywhere
   # because otherwise we will recompile datafusion all the time based on our current compile target.
+  # The features here are the same as in https://github.com/rerun-io/lance/blob/main/Cargo.toml
+  # This is very hacky, and I don't like it.
+  "crypto_expressions",
+  "datetime_expressions",
+  "encoding_expressions",
   "nested_expressions",
+  "regex_expressions",
+  "string_expressions",
+  "unicode_expressions",
 ] }
 datafusion-ffi = "49.0.2"
 directories = "6"
