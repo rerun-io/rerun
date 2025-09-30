@@ -5,7 +5,7 @@ use crate::{EntityPath, Instance};
 /// A general path to some data.
 ///
 /// This always starts with an [`EntityPath`], followed by an optional instance index,
-/// followed by an optional [`ComponentDescriptor`].
+/// followed by an optional [`ComponentIdentifier`].
 ///
 /// For instance:
 ///

@@ -2,7 +2,7 @@ use re_types_core::ComponentIdentifier;
 
 use crate::path::EntityPath;
 
-/// A [`EntityPath`] plus a [`ComponentDescriptor`].
+/// A [`EntityPath`] plus a [`ComponentIdentifier`].
 ///
 /// Example: `camera/left/points:Points3D:color`
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

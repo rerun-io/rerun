@@ -39,12 +39,6 @@ pub enum PathParseError {
     #[error("Found trailing colon (:)")]
     TrailingColon,
 
-    #[error("Found trailing hash (#)")]
-    TrailingHash,
-
-    #[error("Found trailing at (@)")]
-    TrailingAt,
-
     // Escaping:
     #[error("Unknown escape sequence: \\{0}")]
     UnknownEscapeSequence(char),
@@ -92,18 +86,24 @@ impl std::str::FromStr for DataPath {
 
         // Parse `:Points3D:Color#colors` suffix:
         if let Some(first_colon) = tokens.iter().position(|&token| token == ":") {
-            let component_tokens = &tokens[first_colon + 1..];
+            if let Some(component_tokens) = tokens.get(first_colon + 1..)
+                && !component_tokens.is_empty()
+            {
+                let component_tokens_end = component_tokens.len();
+                if let Some(component_tokens_end) = component_tokens.len().checked_sub(1)
+                    && component_tokens.get(component_tokens_end) == Some(&":")
+                {
+                    return Err(PathParseError::TrailingColon);
+                }
 
-            let component_tokens_end = component_tokens.len();
-            if component_tokens.get(component_tokens_end - 1) == Some(&":") {
+                let field = join(&component_tokens[0..component_tokens_end]);
+
+                component = Some(field.into());
+
+                tokens.truncate(first_colon);
+            } else {
                 return Err(PathParseError::TrailingColon);
             }
-
-            let field = join(&component_tokens[0..component_tokens_end]);
-
-            component = Some(field.into());
-
-            tokens.truncate(first_colon);
         }
 
         // Parse `[#1234]` suffix:
@@ -294,7 +294,7 @@ fn tokenize_entity_path(path: &str) -> Vec<&str> {
 
 /// `"/foo/bar[#42]:Points3D:Color#colors"` -> `["/", "foo", "/", "bar", "[", "#", "42:", "]", ":", "Points3D", ":", "Color", "#", "colors"]`
 fn tokenize_data_path(path: &str) -> Vec<&str> {
-    tokenize_by(path, b"/[]:#@")
+    tokenize_by(path, b"/[]:#")
 }
 
 pub fn tokenize_by<'s>(path: &'s str, special_chars: &[u8]) -> Vec<&'s str> {
@@ -333,7 +333,10 @@ pub fn tokenize_by<'s>(path: &'s str, special_chars: &[u8]) -> Vec<&'s str> {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr as _;
+    use std::{
+        fmt::{Debug, Display},
+        str::FromStr,
+    };
 
     use re_types_core::ComponentIdentifier;
 
@@ -402,119 +405,119 @@ mod tests {
         assert_eq!(parse("hallådär"), Ok(entity_path_vec!("hallådär")));
     }
 
-    #[test]
-    fn test_parse_component_path() {
-        assert_eq!(
-            ComponentPath::from_str("world/points:colors"),
-            Ok(ComponentPath {
-                entity_path: EntityPath::from("world/points"),
-                component: ComponentIdentifier::new("colors"),
-            })
-        );
-        assert_eq!(
-            ComponentPath::from_str("world/points:colors"),
-            Ok(ComponentPath {
-                entity_path: EntityPath::from("world/points"),
-                component: ComponentIdentifier::new("colors"),
-            })
-        );
-        assert_eq!(
-            ComponentPath::from_str("world/points:My.Custom.Archetype:colors"),
-            Ok(ComponentPath {
-                entity_path: EntityPath::from("world/points"),
-                component: ComponentIdentifier::new("My.Custom.Archetype:colors")
-            })
-        );
-        assert_eq!(
-            ComponentPath::from_str("world/points:Points3D:colors"),
-            Ok(ComponentPath {
-                entity_path: EntityPath::from("world/points"),
-                component: ComponentIdentifier::new("Points3D:colors")
-            })
-        );
-        assert_eq!(
-            ComponentPath::from_str("world/points:My.Custom.Archetype:colors"),
-            Ok(ComponentPath {
-                entity_path: EntityPath::from("world/points"),
-                component: ComponentIdentifier::new("My.Custom.Archetype:colors")
-            })
-        );
-        assert_eq!(
-            ComponentPath::from_str("world/points:Points3D:colors"),
-            Ok(ComponentPath {
-                entity_path: EntityPath::from("world/points"),
-                component: ComponentIdentifier::new("Points3D:colors")
-            })
-        );
+    #[track_caller]
+    fn test_parse_ok<T: FromStr<Err = PathParseError> + Display + PartialEq + Debug>(
+        src: &str,
+        expected: &T,
+    ) {
+        let parsed = src.parse::<T>().expect("Parsing failed");
+
+        assert_eq!(parsed, *expected, "Unexpected parsed result");
+
+        let formatted = parsed.to_string();
 
         assert_eq!(
-            ComponentPath::from_str("world/points:"),
-            Err(PathParseError::TrailingColon)
+            src, formatted,
+            "Source string is not the same as formatted string"
         );
+
+        let re_parsed = formatted
+            .parse::<T>()
+            .expect("Parsing after formatting failed");
+
         assert_eq!(
-            ComponentPath::from_str("world/points"),
-            Err(PathParseError::MissingComponentIdentifier)
+            re_parsed, *expected,
+            "Unexpected parsed result after parsing formatted"
         );
-        assert_eq!(
-            ComponentPath::from_str("world/points[#42]:rerun.components.Color"),
-            Err(PathParseError::UnexpectedInstance(Instance(42)))
+    }
+
+    #[track_caller]
+    fn test_parse_err<T: FromStr<Err = PathParseError> + Debug + PartialEq>(
+        src: &str,
+        expected: PathParseError,
+    ) {
+        assert_eq!(src.parse::<T>(), Err(expected));
+    }
+
+    #[test]
+    fn test_parse_component_path() {
+        #[track_caller]
+        fn parse_ok(src: &str, entity_path: &str, component: &str) {
+            test_parse_ok(
+                src,
+                &ComponentPath {
+                    entity_path: EntityPath::from(entity_path),
+                    component: ComponentIdentifier::from(component),
+                },
+            );
+        }
+
+        #[track_caller]
+        fn parse_err(src: &str, expected: PathParseError) {
+            test_parse_err::<ComponentPath>(src, expected);
+        }
+
+        parse_ok("/world/points:colors", "/world/points", "colors");
+
+        parse_ok(
+            "/world/points:My.Custom.Archetype.colors",
+            "/world/points",
+            "My.Custom.Archetype.colors",
         );
-        assert_eq!(
-            ComponentPath::from_str("world/points:Points3D:"),
-            Err(PathParseError::TrailingColon)
+
+        parse_ok(
+            "/world/points:Points3D:colors",
+            "/world/points",
+            "Points3D:colors",
         );
-        assert_eq!(
-            ComponentPath::from_str("world/points:Points3D:my.custom.color#"),
-            Err(PathParseError::TrailingHash)
+        parse_ok(
+            "/world/points:My.Custom.Archetype.colors:colors",
+            "/world/points",
+            "My.Custom.Archetype.colors:colors",
         );
-        assert_eq!(
-            ComponentPath::from_str("world/points:Points3D:#colors"),
-            Err(PathParseError::TrailingColon)
+
+        parse_err("/world/points:", PathParseError::TrailingColon);
+        parse_err("/world/points", PathParseError::MissingComponentIdentifier);
+        parse_err(
+            "/world/points[#42]:rerun.components.Color",
+            PathParseError::UnexpectedInstance(Instance(42)),
         );
+        parse_err("/world/points:Points3D:", PathParseError::TrailingColon);
     }
 
     #[test]
     fn test_parse_data_path() {
-        assert_eq!(
-            DataPath::from_str("world/points[#42]:colors"),
-            Ok(DataPath {
-                entity_path: EntityPath::from("world/points"),
-                instance: Some(Instance(42)),
-                component: Some(ComponentIdentifier::new("colors")),
-            })
+        #[track_caller]
+        fn parse_ok(src: &str, entity_path: &str, instance: Option<u64>, component: Option<&str>) {
+            test_parse_ok(
+                src,
+                &DataPath {
+                    entity_path: EntityPath::from(entity_path),
+                    instance: instance.map(Instance),
+                    component: component.map(ComponentIdentifier::from),
+                },
+            );
+        }
+        parse_ok(
+            "/world/points[#42]:colors",
+            "/world/points",
+            Some(42),
+            Some("colors"),
         );
-        assert_eq!(
-            DataPath::from_str("world/points:colors"),
-            Ok(DataPath {
-                entity_path: EntityPath::from("world/points"),
-                instance: None,
-                component: Some(ComponentIdentifier::new("colors")),
-            })
+        parse_ok(
+            "/world/points:colors",
+            "/world/points",
+            None,
+            Some("colors"),
         );
-        assert_eq!(
-            DataPath::from_str("world/points:Points3D:colors"),
-            Ok(DataPath {
-                entity_path: EntityPath::from("world/points"),
-                instance: None,
-                component: Some(ComponentIdentifier::new("Points3D:colors")),
-            })
+        parse_ok(
+            "/world/points:Points3D:colors",
+            "/world/points",
+            None,
+            Some("Points3D:colors"),
         );
-        assert_eq!(
-            DataPath::from_str("world/points[#42]"),
-            Ok(DataPath {
-                entity_path: EntityPath::from("world/points"),
-                instance: Some(Instance(42)),
-                component: None,
-            })
-        );
-        assert_eq!(
-            DataPath::from_str("world/points"),
-            Ok(DataPath {
-                entity_path: EntityPath::from("world/points"),
-                instance: None,
-                component: None,
-            })
-        );
+        parse_ok("/world/points[#42]", "/world/points", Some(42), None);
+        parse_ok("/world/points", "/world/points", None, None);
 
         // Check that we catch invalid characters in identifiers/names:
         assert!(matches!(
