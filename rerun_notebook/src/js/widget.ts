@@ -26,11 +26,7 @@ interface WidgetModel {
 
 type Opt<T> = T | null | undefined;
 
-function _resize(
-  el: HTMLElement,
-  width: number | string,
-  height: number | string,
-) {
+function _resize(el: HTMLElement, width: number | string, height: number | string) {
   const style = el.style;
 
   if (typeof width === "string" && width === "auto") {
@@ -58,8 +54,8 @@ class ViewerWidget {
   url: Opt<string> = null;
   panel_states: Opt<PanelStates> = null;
   options: AppOptions = {
-    hide_welcome_screen: true,
     notebook: true,
+    hide_welcome_screen: true,
     width: "100%",
     height: "100%",
   };
@@ -72,12 +68,8 @@ class ViewerWidget {
     this.panel_states = model.get("_panel_states");
     model.on("change:_panel_states", this.on_change_panel_states);
 
-    model.on("change:_width", (_, width) =>
-      this.on_resize(el, width, model.get("_height")),
-    );
-    model.on("change:_height", (_, height) =>
-      this.on_resize(el, model.get("_width"), height),
-    );
+    model.on("change:_width", (_, width) => this.on_resize(el, width, model.get("_height")));
+    model.on("change:_height", (_, height) => this.on_resize(el, model.get("_width"), height));
 
     model.on("msg:custom", this.on_custom_message);
 
@@ -100,13 +92,9 @@ class ViewerWidget {
     this.viewer.stop();
   }
 
-  on_resize(
-    parent: HTMLElement,
-    width: number | string,
-    height: number | string,
-  ) {
-    _resize(parent, width, height);
-  }
+  on_resize(parent: HTMLElement, width: number | string, height: number | string) {
+    _resize(parent, width, height)
+  };
 
   on_change_panel_states = (
     _: unknown,
@@ -129,40 +117,38 @@ class ViewerWidget {
       }
       case "table": {
         if (!this.channel)
-          throw new Error("on_custom_message called before channel init");
+          throw new Error("on_custom_message called before channel init")
         this.channel.send_table(new Uint8Array(buffers[0].buffer));
         break;
       }
       case "time_ctrl": {
-        this.set_time_ctrl(
-          msg.timeline ?? null,
-          msg.time ?? null,
-          msg.play ?? false,
-        );
+        this.set_time_ctrl(msg.timeline ?? null, msg.time ?? null, msg.play ?? false);
         break;
       }
       case "recording_id": {
-        this.set_recording_id(msg.recording_id ?? null);
+        this.set_recording_id(msg.recording_id ?? null)
         break;
       }
       case "open_url": {
-        this.viewer.open(msg.url);
+        this.viewer.open(msg.url)
         break;
       }
       case "close_url": {
-        this.viewer.close(msg.url);
+        this.viewer.close(msg.url)
         break;
       }
       default: {
         console.error("received unknown message type", msg, buffers);
-        throw new Error(
-          `unknown message type ${msg}, check console for more details`,
-        );
+        throw new Error(`unknown message type ${msg}, check console for more details`);
       }
     }
   };
 
-  set_time_ctrl(timeline: string | null, time: number | null, play: boolean) {
+  set_time_ctrl(
+    timeline: string | null,
+    time: number | null,
+    play: boolean,
+  ) {
     let recording_id = this.viewer.get_active_recording_id();
     if (recording_id === null) {
       return;
@@ -187,7 +173,7 @@ class ViewerWidget {
     if (time !== null) {
       this.viewer.set_current_time(recording_id, timeline, time);
     }
-  }
+  };
 
   set_recording_id(recording_id: string | null) {
     if (recording_id === null) {
@@ -195,8 +181,10 @@ class ViewerWidget {
     }
 
     this.viewer.set_active_recording_id(recording_id);
-  }
+  };
 }
+
+
 
 const render: Render<WidgetModel> = ({ model, el }) => {
   el.classList.add("rerun_notebook");
@@ -222,5 +210,6 @@ function error_boundary<Fn extends (...args: any[]) => any>(f: Fn): Fn {
 
   return wrapper as any;
 }
+
 
 export default { render: error_boundary(render) };
