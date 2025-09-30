@@ -531,6 +531,7 @@ fn static_unsorted() -> anyhow::Result<()> {
 
 // ---
 
+// TODO(andread): This doesn't have to take a full descriptor, but all our access methods are using descriptors right now.
 fn query_and_compare(
     (component_desc, query): (ComponentDescriptor, &LatestAtQuery),
     chunk: &Chunk,
@@ -538,7 +539,7 @@ fn query_and_compare(
 ) {
     re_log::setup_logging();
 
-    let results = chunk.latest_at(query, &component_desc);
+    let results = chunk.latest_at(query, component_desc.component);
 
     eprintln!("Query: {component_desc} @ {query:?}");
     eprintln!("Data:\n{chunk}");

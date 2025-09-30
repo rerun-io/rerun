@@ -82,14 +82,14 @@ impl Chunk {
             re_tracing::profile_scope!("components");
 
             let mut components = components
-                .iter()
-                .map(|(component_desc, list_array)| {
+                .values()
+                .map(|(desc, list_array)| {
                     let list_array = ArrowListArray::from(list_array.clone());
                     let ComponentDescriptor {
-                        archetype: archetype_name,
+                        archetype,
                         component,
                         component_type,
-                    } = *component_desc;
+                    } = *desc;
 
                     if let Some(c) = component_type {
                         c.sanity_check();
@@ -99,7 +99,7 @@ impl Chunk {
                         store_datatype: list_array.data_type().clone(),
                         entity_path: entity_path.clone(),
 
-                        archetype: archetype_name,
+                        archetype,
                         component,
                         component_type,
 
@@ -206,10 +206,14 @@ impl Chunk {
                     component_type: schema.component_type,
                 };
 
-                if components.insert(component_desc, column.clone()).is_some() {
+                if components
+                    .insert(schema.component, (component_desc, column.clone()))
+                    .is_some()
+                {
                     return Err(ChunkError::Malformed {
                         reason: format!(
-                            "component column '{schema:?}' was specified more than once"
+                            "component column '{:?}' was specified more than once",
+                            schema.component,
                         ),
                     });
                 }
