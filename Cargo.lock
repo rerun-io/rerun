@@ -7151,10 +7151,7 @@ dependencies = [
  "opentelemetry 0.30.0",
  "percent-encoding",
  "rand 0.9.1",
- "serde_json",
  "thiserror 2.0.12",
- "tokio",
- "tokio-stream",
 ]
 
 [[package]]
@@ -7170,6 +7167,8 @@ dependencies = [
  "percent-encoding",
  "rand 0.9.1",
  "thiserror 2.0.12",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
@@ -9123,7 +9122,7 @@ dependencies = [
  "opentelemetry 0.31.0",
  "opentelemetry-appender-tracing",
  "opentelemetry-otlp",
- "opentelemetry_sdk 0.30.0",
+ "opentelemetry_sdk 0.31.0",
  "parking_lot",
  "prometheus-client",
  "re_memory",

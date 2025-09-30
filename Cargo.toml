@@ -283,7 +283,7 @@ objc2-app-kit = "0.3"
 opentelemetry = { version = "0.31", features = ["metrics"] }
 opentelemetry-appender-tracing = "0.31"
 opentelemetry-otlp = "0.31"
-opentelemetry_sdk = { version = "0.30", features = ["rt-tokio"] }
+opentelemetry_sdk = { version = "0.31", features = ["rt-tokio"] }
 ordered-float = "4.3.0"
 parking_lot = "0.12.3"
 parquet = { version = "55.1", default-features = false }
