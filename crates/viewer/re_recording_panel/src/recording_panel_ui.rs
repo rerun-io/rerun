@@ -406,6 +406,11 @@ fn dataset_entry_ui(
             ctx.command_sender()
                 .send_system(SystemCommand::CopyViewerUrl(url));
         }
+
+        if ui.button("Copy dataset name").clicked() {
+            re_log::info!("Copied {name:?} to clipboard");
+            ui.ctx().copy_text(name.clone());
+        }
     });
 
     if item_response.clicked() {
@@ -570,13 +575,13 @@ fn receiver_ui(
     receiver: &SmartChannelSource,
     show_hierarchal: bool,
 ) {
-    let Some(string) = receiver.loading_name() else {
+    let Some(name) = receiver.loading_name() else {
         return;
     };
 
     let selected = ctx.is_selected_or_loading(&Item::DataSource(receiver.clone()));
 
-    let label_content = re_ui::list_item::LabelContent::new(string)
+    let label_content = re_ui::list_item::LabelContent::new(&name)
         .with_icon_fn(|ui, rect, _| {
             ui.put(rect, egui::Spinner::new());
         })
@@ -590,13 +595,31 @@ fn receiver_ui(
             }
         });
 
-    if show_hierarchal {
+    let response = if show_hierarchal {
         ui.list_item()
             .selected(selected)
-            .show_hierarchical(ui, label_content);
+            .show_hierarchical(ui, label_content)
     } else {
         ui.list_item()
             .selected(selected)
-            .show_flat(ui, label_content);
-    }
+            .show_flat(ui, label_content)
+    };
+
+    response.context_menu(|ui| {
+        let url = ViewerOpenUrl::from_data_source(receiver).and_then(|url| url.sharable_url(None));
+        if ui
+            .add_enabled(url.is_ok(), egui::Button::new("Copy link to partition"))
+            .on_disabled_hover_text("Can't copy a link to this partition")
+            .clicked()
+            && let Ok(url) = url
+        {
+            ctx.command_sender()
+                .send_system(SystemCommand::CopyViewerUrl(url));
+        }
+
+        if ui.button("Copy partition name").clicked() {
+            re_log::info!("Copied {name:?} to clipboard");
+            ui.ctx().copy_text(name);
+        }
+    });
 }

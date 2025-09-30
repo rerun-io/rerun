@@ -804,6 +804,11 @@ pub fn entity_db_button_ui(
             ctx.command_sender()
                 .send_system(SystemCommand::CopyViewerUrl(url));
         }
+
+        if ui.button("Copy partition name").clicked() {
+            re_log::info!("Copied {recording_name:?} to clipboard");
+            ui.ctx().copy_text(recording_name);
+        }
     });
 
     if response.clicked() {
