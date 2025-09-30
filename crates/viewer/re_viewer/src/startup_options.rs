@@ -81,8 +81,9 @@ pub struct StartupOptions {
 
     /// The base viewer url that's used when sharing a link in this viewer.
     ///
-    /// If not set, the viewer will use the url of the page it is embedded in.
-    #[cfg(target_arch = "wasm32")]
+    /// If not set:
+    /// * notebooks & native: use rerun.io/viewer with the the crate's last known stable version
+    /// * web viewers: use the url of the page it is embedded in
     pub viewer_base_url: Option<String>,
 }
 
@@ -104,20 +105,28 @@ impl StartupOptions {
     /// The url to use for the web viewer when sharing links.
     #[allow(clippy::unused_self)] // Only used on web.
     pub fn web_viewer_base_url(&self) -> Option<url::Url> {
-        #[cfg(target_arch = "wasm32")]
-        {
-            self.viewer_base_url
-                .as_ref()
-                .and_then(|url| url.parse().ok())
-                .or_else(|| crate::web_tools::current_base_url().ok())
-        }
+        // TODO(RR-1878): Would be great to grab this from the dataplatform when available.
 
-        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(url) = &self.viewer_base_url
+            && let Ok(url) = url.parse::<url::Url>()
         {
-            // TODO(RR-1878): Would be great to grab this from the dataplatform when available.
+            Some(url)
+        } else if self.is_in_notebook || cfg!(not(target_arch = "wasm32")) {
+            // Notebooks behave like native viewers here because just like on native,
+            // there's no useful base url in the address bar to use.
             let version = re_build_info::build_info!().version.latest_stable();
 
             url::Url::parse(&format!("https://rerun.io/viewer/version/{version}")).ok()
+        } else {
+            #[cfg(target_arch = "wasm32")]
+            {
+                crate::web_tools::current_base_url().ok()
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                None
+            }
         }
     }
 }
@@ -157,7 +166,6 @@ impl Default for StartupOptions {
             #[cfg(target_arch = "wasm32")]
             enable_history: false,
 
-            #[cfg(target_arch = "wasm32")]
             viewer_base_url: None,
         }
     }
