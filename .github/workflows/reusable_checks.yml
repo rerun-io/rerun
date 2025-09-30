@@ -72,7 +72,6 @@ jobs:
   # NOTE: We don't want spurious failures caused by issues being closed, so this does not run on CI,
   # at least for the time being.
   # - name: Check for zombie TODOs
-  #   shell: bash --no-profile --norc -euo pipefail {0}
   #   run: |
   #     pixi run ./scripts/zombie_todos.py --token ${{ secrets.GITHUB_TOKEN }}
 

@@ -70,7 +70,6 @@ jobs:
           environments: py-docs
 
       - name: Build via mkdocs
-        shell: bash --no-profile --norc -euo pipefail {0}
         run: |
           pixi run -e py-docs mkdocs build --strict -f rerun_py/mkdocs.yml
 
