@@ -116,7 +116,7 @@ impl<'a> ExpandedRows<'a> {
         total_lines % 2 == 1
     }
 
-    /// Return by how many additional lines this row is expended.
+    /// Return by how many additional lines this row is expanded.
     pub(crate) fn additional_lines_for_row(&self, row_nr: u64) -> u64 {
         self.cache.expanded_rows.get(&row_nr).copied().unwrap_or(0)
     }
@@ -127,7 +127,7 @@ impl<'a> ExpandedRows<'a> {
     pub(crate) fn set_additional_lines_for_row(&mut self, row_nr: u64, additional_lines: u64) {
         // Note: don't delete the entry when set to 0, this breaks animation.
 
-        // If this is the first time this row is expended, we must seed the corresponding animation
+        // If this is the first time this row is expanded, we must seed the corresponding animation
         // cache.
         if !self.cache.expanded_rows.contains_key(&row_nr) {
             self.egui_ctx.animate_value_with_time(
