@@ -18,7 +18,7 @@ DEFAULT_HEIGHT = 712
 DEFAULT_TIMEOUT = 2000
 
 
-def render_html_template(base64_data: str, app_url: str, timeout_ms: int, width: int, height: int) -> str:
+def render_html_template(*, base64_data: str, app_url: str, timeout_ms: int, width: int, height: int) -> str:
     # Use a random presentation ID to avoid collisions when multiple recordings are shown in the same notebook.
     presentation_id = "_" + uuid.uuid4().hex
 
