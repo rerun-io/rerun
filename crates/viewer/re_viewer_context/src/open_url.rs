@@ -989,7 +989,7 @@ mod tests {
             selection: Some(re_log_types::DataPath {
                 entity_path: EntityPath::from_single_string("test/entity"),
                 instance: None,
-                component_descriptor: None,
+                component: None,
             }),
             when: Some((
                 re_chunk::TimelineName::new("test"),
