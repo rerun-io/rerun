@@ -338,7 +338,8 @@ impl ChunkStore {
                     .map(move |(descr, _, datatype)| (entity_path, descr, datatype))
             })
             .filter_map(|(entity_path, component_descr, datatype)| {
-                let metadata = self.lookup_column_metadata(entity_path, component_descr)?;
+                let metadata =
+                    self.lookup_column_metadata(entity_path, component_descr.component)?;
 
                 Some(((entity_path, component_descr), (metadata, datatype)))
             })
@@ -442,7 +443,7 @@ impl ChunkStore {
             is_static,
             is_tombstone,
             is_semantically_empty,
-        }) = self.lookup_column_metadata(&selector.entity_path, component_descr)
+        }) = self.lookup_column_metadata(&selector.entity_path, component_descr.component)
         {
             result.is_static = is_static;
             result.is_tombstone = is_tombstone;

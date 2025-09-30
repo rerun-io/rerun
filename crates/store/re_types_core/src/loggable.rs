@@ -2,7 +2,7 @@ use nohash_hasher::IntSet;
 
 use re_byte_size::SizeBytes;
 
-use crate::{ComponentDescriptor, DeserializationResult, SerializationResult};
+use crate::{ComponentIdentifier, DeserializationResult, SerializationResult};
 
 #[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
 use crate::{Archetype, ComponentBatch};
@@ -93,10 +93,9 @@ pub trait Component: Loggable {
 
 // ---
 
-pub type UnorderedComponentDescriptorSet = IntSet<ComponentDescriptor>;
+pub type UnorderedComponentSet = IntSet<ComponentIdentifier>;
 
-// TODO(#10460): Can we replace this with `BTreeSet<ComponentIdentifier>` here?
-pub type ComponentDescriptorSet = std::collections::BTreeSet<ComponentDescriptor>;
+pub type ComponentSet = std::collections::BTreeSet<ComponentIdentifier>;
 
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Position2D`.
