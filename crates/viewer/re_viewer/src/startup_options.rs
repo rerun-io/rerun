@@ -82,7 +82,7 @@ pub struct StartupOptions {
     /// The base viewer url that's used when sharing a link in this viewer.
     ///
     /// If not set:
-    /// * notebooks & native: use rerun.io/viewer with the the crate's last known stable version
+    /// * notebooks & native: use rerun.io/viewer with the crate's last known stable version
     /// * web viewers: use the url of the page it is embedded in
     pub viewer_base_url: Option<String>,
 }
