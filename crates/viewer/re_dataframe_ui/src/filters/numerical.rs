@@ -7,7 +7,7 @@ use arrow::datatypes::DataType;
 use datafusion::common::{Column, Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, Expr, ScalarFunctionArgs,
-    ScalarUDF, ScalarUDFImpl, Signature, TypeSignature, Volatility, col, lit,
+    ScalarUDF, ScalarUDFImpl, Signature, TypeSignature, Volatility, col, lit, not,
 };
 use strum::VariantArray as _;
 
@@ -57,8 +57,9 @@ impl ComparisonOperator {
         T: PartialOrd + PartialEq + Copy,
     {
         match self {
-            Self::Eq => left == right,
-            Self::Ne => left != right,
+            // Consistent with other column types, we handle `Ne` as an outer-NOT on `Eq`, so the
+            // `NOT` is applied in the `as_filter_expression` functions.
+            Self::Eq | Self::Ne => left == right,
             Self::Lt => left < right,
             Self::Le => left <= right,
             Self::Gt => left > right,
@@ -144,8 +145,17 @@ impl IntFilter {
         };
 
         let udf = ScalarUDF::new_from_impl(IntFilterUdf::new(self.operator, rhs_value));
+        let expr = udf.call(vec![col(column.clone())]);
 
-        udf.call(vec![col(column.clone())])
+        // Consistent with other column types, we treat `Ne` as an outer-NOT, so we applies it here
+        // while the UDF handles `Ne` and `Eq` in the same way (see `ComparisonOperator::apply`).
+        let apply_should_invert_expression_semantics = self.operator == ComparisonOperator::Ne;
+
+        if apply_should_invert_expression_semantics {
+            not(expr.clone()).or(expr.is_null())
+        } else {
+            expr
+        }
     }
 }
 
@@ -227,7 +237,17 @@ impl FloatFilter {
 
         let udf = ScalarUDF::new_from_impl(FloatFilterUdf::new(self.operator, rhs_value));
 
-        udf.call(vec![col(column.clone())])
+        let expr = udf.call(vec![col(column.clone())]);
+
+        // Consistent with other column types, we treat `Ne` as an outer-NOT, so we applies it here
+        // while the UDF handles `Ne` and `Eq` in the same way (see `ComparisonOperator::apply`).
+        let apply_should_invert_expression_semantics = self.operator == ComparisonOperator::Ne;
+
+        if apply_should_invert_expression_semantics {
+            not(expr.clone()).or(expr.is_null())
+        } else {
+            expr
+        }
     }
 }
 
