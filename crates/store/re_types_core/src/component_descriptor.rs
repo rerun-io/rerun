@@ -85,22 +85,6 @@ impl ComponentDescriptor {
         self.sanity_check();
         self.component.as_str()
     }
-
-    /// Formats the descriptor with archetype and display name.
-    pub fn format_descriptor(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(":")?;
-        f.write_str(self.display_name())?;
-        if let Some(archetype) = self.archetype {
-            f.write_str("@")?;
-            f.write_str(&archetype)?;
-        }
-        if let Some(ty) = self.component_type {
-            f.write_str("#")?;
-            f.write_str(&ty)?;
-        }
-
-        Ok(())
-    }
 }
 
 impl re_byte_size::SizeBytes for ComponentDescriptor {
