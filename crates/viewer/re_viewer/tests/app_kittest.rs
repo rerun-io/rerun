@@ -48,6 +48,8 @@ async fn menu_without_recording() {
     let mut harness = viewer_test_utils::viewer_harness();
     harness.get_by_label("Menu").click();
     harness.run_ok();
+    // Mask the shortcut for quitting, it's platform-dependent.
+    harness.mask(harness.get_by_label_contains("Quit").rect());
     harness.snapshot_options(
         "menu_without_recording",
         &SnapshotOptions::new().failed_pixel_count_threshold(2),
