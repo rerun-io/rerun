@@ -23,7 +23,7 @@ blueprint.spawn("my_app", 1234)
 
 After:
 ```py
-rr.ImageFormat(width, height, pixel_format="YUV420"
+rr.ImageFormat(width, height, pixel_format="YUV420")
 
 blueprint.spawn("my_app", port=1234)
 ```
