@@ -107,24 +107,26 @@ export interface WebViewerOptions {
 // otherwise we need to restructure how we pass options to the viewer
 
 /**
- * The public interface is @see {WebViewerOptions}
+ * The public interface is @see {WebViewerOptions}. This adds a few additional, internal options.
  *
  * @private
  */
 export interface AppOptions extends WebViewerOptions {
-  /** The url that's used when sharing web viewer urls */
-  viewer_url?: string;
+  /** The url that's used when sharing web viewer urls
+   *
+   * If not set, the viewer will use the url of the page it is embedded in.
+   */
+  viewer_base_url?: string;
+
+  /** Whether the viewer is running in a notebook. */
+  notebook?: boolean;
+
   url?: string;
-  manifest_url?: string;
-  video_decoder?: VideoDecoder;
-  render_backend?: Backend;
-  hide_welcome_screen?: boolean;
   panel_state_overrides?: Partial<{
     [K in Panel]: PanelState;
   }>;
   on_viewer_event?: (event_json: string) => void;
   fullscreen?: FullscreenOptions;
-  enable_history?: boolean;
 }
 
 // Types are based on `crates/viewer/re_viewer/src/event.rs`.
