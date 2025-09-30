@@ -1,5 +1,5 @@
-use re_protos::cloud::v1alpha1::EntryFilter;
 use re_protos::cloud::v1alpha1::ext::DataSource;
+use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_redap_client::ConnectionClient;
 use re_sdk::time::TimeType;
@@ -22,12 +22,10 @@ pub async fn load_test_data(mut client: ConnectionClient) -> Result<(), Box<dyn 
         path
     };
 
-    assert!(
-        client
-            .find_entries(EntryFilter::default())
-            .await?
-            .is_empty()
-    );
+    let entries_table = client.find_entries(EntryFilter::default()).await?;
+    assert_eq!(entries_table.len(), 1);
+    assert_eq!(entries_table[0].name, "__entries");
+    assert_eq!(entries_table[0].kind, EntryKind::Table);
 
     let dataset_name = "my_dataset";
 

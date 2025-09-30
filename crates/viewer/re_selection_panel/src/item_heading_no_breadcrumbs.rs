@@ -71,7 +71,7 @@ fn item_heading_no_breadcrumbs(
             // Break up into entity path and component descriptor:
             let ComponentPath {
                 entity_path,
-                component_descriptor,
+                component,
             } = component_path;
 
             item_heading_no_breadcrumbs(ctx, viewport, ui, &Item::from(entity_path.clone()));
@@ -83,11 +83,7 @@ fn item_heading_no_breadcrumbs(
             } else {
                 &icons::COMPONENT_TEMPORAL
             };
-            icon_and_title(
-                ui,
-                component_icon,
-                component_descriptor.syntax_highlighted(ui.style()),
-            );
+            icon_and_title(ui, component_icon, component.syntax_highlighted(ui.style()));
         }
         Item::DataResult(view_id, instance_path) => {
             // Break up into view and instance path:

@@ -58,6 +58,9 @@ def get_rerun_org_members() -> set[str]:
 
     try:
         # Use gh CLI to fetch organization members
+        # Note: only PUBLIC members will be fetched!
+        # You can see which members are public and private at https://github.com/orgs/rerun-io/people
+        # That's also where members can change themselves from Private to Public.
         result = subprocess.run(
             ["gh", "api", f"/orgs/{OWNER}/members", "--paginate", "--jq", ".[].login"],
             capture_output=True,
@@ -210,6 +213,7 @@ def main() -> None:
     enhancement = []
     examples = []
     log_api = []
+    oss_server = []
     mcap = []
     misc = []
     performance = []
@@ -304,6 +308,8 @@ def main() -> None:
                     web.append(summary)
                 elif "🧢 MCAP" in labels:
                     mcap.append(summary)
+                elif "OSS-server" in labels:
+                    oss_server.append(summary)
                 elif "enhancement" in labels:
                     enhancement.append(summary)
                 elif "🚜 refactor" in labels:
@@ -343,6 +349,7 @@ def main() -> None:
     print_section("🦀 Rust API", rust)
     print_section("🪳 Bug fixes", bugs)
     print_section("🌁 Viewer improvements", viewer)
+    print_section("🗄️ OSS server", oss_server)
     print_section("🚀 Performance improvements", performance)
     print_section("🧑‍🏫 Examples", examples)
     print_section("📚 Docs", docs)

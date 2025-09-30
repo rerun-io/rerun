@@ -79,14 +79,14 @@ impl Item {
             Self::ComponentPath(component_path) => Some(DataPath {
                 entity_path: component_path.entity_path.clone(),
                 instance: None,
-                component_descriptor: Some(component_path.component_descriptor.clone()),
+                component: Some(component_path.component),
             }),
 
             Self::InstancePath(instance_path) | Self::DataResult(_, instance_path) => {
                 Some(DataPath {
                     entity_path: instance_path.entity_path.clone(),
                     instance: Some(instance_path.instance),
-                    component_descriptor: None,
+                    component: None,
                 })
             }
         }
@@ -138,10 +138,10 @@ impl std::str::FromStr for Item {
         let DataPath {
             entity_path,
             instance,
-            component_descriptor,
+            component,
         } = DataPath::from_str(s)?;
 
-        match (instance, component_descriptor) {
+        match (instance, component) {
             (Some(instance), Some(_component_descriptor)) => {
                 // TODO(emilk): support selecting a specific component of a specific instance.
                 Err(re_log_types::PathParseError::UnexpectedInstance(instance))
@@ -150,9 +150,9 @@ impl std::str::FromStr for Item {
                 entity_path,
                 instance,
             ))),
-            (None, Some(component_descriptor)) => Ok(Self::ComponentPath(ComponentPath {
+            (None, Some(component)) => Ok(Self::ComponentPath(ComponentPath {
                 entity_path,
-                component_descriptor,
+                component,
             })),
             (None, None) => Ok(Self::InstancePath(InstancePath::entity_all(entity_path))),
         }

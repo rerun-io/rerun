@@ -182,6 +182,7 @@ examples = [
   "shared_recording",
   "spawn_viewer",
   "stdio",
+  "table_zoo",
   "template",
   "viewer_callbacks",
 ]

@@ -44,9 +44,10 @@ ignored = [
   "re_renderer_examples",
 
   # used for specific targets or features
-  "wayland-sys",
+  "chrono",      # TODO(#11368)
   "home",
   "profiling",
+  "wayland-sys",
 ]
 
 [workspace.dependencies]
@@ -256,6 +257,7 @@ itertools = "0.14"
 jiff = { version = "0.2.3", features = ["js"] }
 js-sys = "0.3"
 jsonwebtoken = { version = "9", default-features = false }
+lance = { version = "0.36.0", default-features = false }
 libc = "0.2"
 linked-hash-map = { version = "0.5", default-features = false }
 log = "0.4"

@@ -158,7 +158,7 @@
     },
 
     "floating_color": {
-      "color": "{Gray.250}"
+      "color": "{Gray.200}"
     },
     "faint_bg_color": {
       "color": "{Gray.150}"
@@ -223,6 +223,9 @@
     },
     "density_graph_unselected": {
       "color": "{Gray.700}"
+    },
+    "density_graph_outside_valid_ranges": {
+      "color": "{Gray.300}"
     },
 
     "axis_color_x": {

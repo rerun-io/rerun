@@ -545,14 +545,11 @@ impl TestContext {
             let re_log_types::DataPath {
                 entity_path,
                 instance,
-                component_descriptor,
+                component,
             } = selection;
 
-            let item = if let Some(component_descriptor) = component_descriptor {
-                Item::from(re_log_types::ComponentPath::new(
-                    entity_path,
-                    component_descriptor,
-                ))
+            let item = if let Some(component) = component {
+                Item::from(re_log_types::ComponentPath::new(entity_path, component))
             } else if let Some(instance) = instance {
                 Item::from(InstancePath::instance(entity_path, instance))
             } else {
@@ -633,6 +630,19 @@ impl TestContext {
                     if let Some(time) = time {
                         time_ctrl.set_time(time);
                     }
+                }
+
+                SystemCommand::AddValidTimeRange {
+                    store_id: rec_id,
+                    timeline,
+                    time_range,
+                } => {
+                    assert_eq!(
+                        &rec_id,
+                        self.store_hub.lock().active_recording().unwrap().store_id()
+                    );
+                    let mut time_ctrl = self.recording_config.time_ctrl.write();
+                    time_ctrl.mark_time_range_valid(timeline, time_range);
                 }
 
                 // not implemented

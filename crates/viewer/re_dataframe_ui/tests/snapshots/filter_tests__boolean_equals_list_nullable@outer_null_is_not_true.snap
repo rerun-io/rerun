@@ -4,7 +4,7 @@ expression: test_results
 ---
 TestResult {
     op: NullableBoolean(
-        IsNull,
+        NullableBooleanFilter(not IsTrue),
     ),
     field: Field {
         name: "column",
@@ -49,5 +49,10 @@ TestResult {
     filtered: ListArray
     [
       null,
+      BooleanArray
+    [
+      false,
+      false,
+    ],
     ],
 }

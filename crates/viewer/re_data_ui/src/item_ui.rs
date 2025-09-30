@@ -718,8 +718,17 @@ pub fn entity_db_button_ui(
     }
     .unwrap_or("<unknown>".to_owned());
 
+    let partial_postfix = if entity_db
+        .store_info()
+        .is_some_and(|store_info| store_info.is_partial)
+    {
+        " (partial)"
+    } else {
+        ""
+    };
+
     let size = re_format::format_bytes(entity_db.total_size_bytes() as _);
-    let title = format!("{app_id_prefix}{recording_name} - {size}");
+    let title = format!("{app_id_prefix}{recording_name}{partial_postfix} - {size}");
 
     let store_id = entity_db.store_id().clone();
     let item = re_viewer_context::Item::StoreId(store_id.clone());
@@ -788,12 +797,21 @@ pub fn entity_db_button_ui(
                 .and_then(|url| url.sharable_url(None));
         if ui
             .add_enabled(url.is_ok(), egui::Button::new("Copy link to partition"))
-            .on_disabled_hover_text("Can't copy a link to this partition")
+            .on_disabled_hover_text(if let Err(err) = url.as_ref() {
+                format!("Can't copy a link to this partition: {err}")
+            } else {
+                "Can't copy a link to this partition".to_owned()
+            })
             .clicked()
             && let Ok(url) = url
         {
             ctx.command_sender()
                 .send_system(SystemCommand::CopyViewerUrl(url));
+        }
+
+        if ui.button("Copy partition name").clicked() {
+            re_log::info!("Copied {recording_name:?} to clipboard");
+            ui.ctx().copy_text(recording_name);
         }
     });
 

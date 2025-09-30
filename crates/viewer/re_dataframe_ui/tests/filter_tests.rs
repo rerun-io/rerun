@@ -16,6 +16,7 @@ use arrow::record_batch::RecordBatch;
 use datafusion::catalog::MemTable;
 use datafusion::prelude::{DataFrame, SessionContext};
 use jiff::ToSpan as _;
+use strum::VariantArray as _;
 
 use re_dataframe_ui::{
     ComparisonOperator, Filter, FilterKind, FloatFilter, IntFilter, NonNullableBooleanFilter,
@@ -410,7 +411,7 @@ async fn test_int_compares() {
     let ints_nulls =
         TestColumn::primitive_nulls::<Int64Type>(vec![Some(1), Some(2), None, Some(4), Some(5)]);
 
-    for op in ComparisonOperator::ALL {
+    for op in ComparisonOperator::VARIANTS {
         filter_snapshot!(
             FilterKind::Int(IntFilter::new(*op, Some(3))),
             ints.clone(),
@@ -467,7 +468,7 @@ async fn test_int_lists() {
     let int_lists = TestColumn::primitive_lists::<Int64Type>(&data, Nullability::NONE);
     let int_lists_nulls = TestColumn::primitive_lists::<Int64Type>(&data, Nullability::BOTH);
 
-    for op in ComparisonOperator::ALL {
+    for op in ComparisonOperator::VARIANTS {
         filter_snapshot!(
             FilterKind::Int(IntFilter::new(*op, Some(2))),
             int_lists.clone(),
@@ -493,7 +494,7 @@ async fn test_float_compares() {
         Some(5.0),
     ]);
 
-    for op in ComparisonOperator::ALL {
+    for op in ComparisonOperator::VARIANTS {
         filter_snapshot!(
             FilterKind::Float(FloatFilter::new(*op, Some(3.0))),
             floats.clone(),
@@ -538,7 +539,7 @@ async fn test_float_lists() {
     let float_lists = TestColumn::primitive_lists::<Float64Type>(&data, Nullability::NONE);
     let float_lists_nulls = TestColumn::primitive_lists::<Float64Type>(&data, Nullability::BOTH);
 
-    for op in ComparisonOperator::ALL {
+    for op in ComparisonOperator::VARIANTS {
         filter_snapshot!(
             FilterKind::Float(FloatFilter::new(*op, Some(2.0))),
             float_lists.clone(),
@@ -620,11 +621,29 @@ async fn test_string_contains() {
         TestColumn::strings_nulls(),
         "nulls_ends_with_c"
     );
+
+    filter_snapshot!(
+        FilterKind::String(StringFilter::new(
+            StringOperator::DoesNotContain,
+            "b".to_owned()
+        )),
+        TestColumn::strings(),
+        "does_not_contain_b"
+    );
+
+    filter_snapshot!(
+        FilterKind::String(StringFilter::new(
+            StringOperator::DoesNotContain,
+            "b".to_owned()
+        )),
+        TestColumn::strings_nulls(),
+        "nulls_does_not_contain_b"
+    );
 }
 
 #[tokio::test]
 async fn test_string_list() {
-    for op in StringOperator::ALL {
+    for op in StringOperator::VARIANTS {
         for &nullability in Nullability::ALL {
             filter_snapshot!(
                 FilterKind::String(StringFilter::new(*op, "ab".to_owned())),
@@ -666,21 +685,33 @@ async fn test_non_nullable_boolean_equals() {
 #[tokio::test]
 async fn test_nullable_boolean_equals() {
     filter_snapshot!(
-        FilterKind::NullableBoolean(NullableBooleanFilter::IsTrue),
+        FilterKind::NullableBoolean(NullableBooleanFilter::new_is_true()),
         TestColumn::bools_nulls(),
         "nulls_true"
     );
 
     filter_snapshot!(
-        FilterKind::NullableBoolean(NullableBooleanFilter::IsFalse),
+        FilterKind::NullableBoolean(NullableBooleanFilter::new_is_false()),
         TestColumn::bools_nulls(),
         "nulls_false"
     );
 
     filter_snapshot!(
-        FilterKind::NullableBoolean(NullableBooleanFilter::IsNull),
+        FilterKind::NullableBoolean(NullableBooleanFilter::new_is_null()),
         TestColumn::bools_nulls(),
         "nulls_null"
+    );
+
+    filter_snapshot!(
+        FilterKind::NullableBoolean(NullableBooleanFilter::new_is_true().with_is_not()),
+        TestColumn::bools_nulls(),
+        "nulls_is_not_true"
+    );
+
+    filter_snapshot!(
+        FilterKind::NullableBoolean(NullableBooleanFilter::new_is_null().with_is_not()),
+        TestColumn::bools_nulls(),
+        "nulls_is_not_null"
     );
 }
 
@@ -697,14 +728,31 @@ async fn test_boolean_equals_list_non_nullable() {
 
 #[tokio::test]
 async fn test_boolean_equals_list_nullable() {
+    let filters = [
+        (
+            FilterKind::NullableBoolean(NullableBooleanFilter::new_is_true()),
+            "is_true",
+        ),
+        (
+            FilterKind::NullableBoolean(NullableBooleanFilter::new_is_true().with_is_not()),
+            "is_not_true",
+        ),
+        (
+            FilterKind::NullableBoolean(NullableBooleanFilter::new_is_null()),
+            "is_null",
+        ),
+    ];
+
     // Note: NullableBooleanFilter doesn't support Nullability::NONE, but that's ok because
     // NonNullableBooleanFilter is used in this case.
-    for nullability in [Nullability::BOTH, Nullability::INNER, Nullability::OUTER] {
-        filter_snapshot!(
-            FilterKind::NullableBoolean(NullableBooleanFilter::IsNull),
-            TestColumn::bool_lists(nullability),
-            format!("{nullability:?}")
-        );
+    for (filter, filter_str) in filters {
+        for nullability in [Nullability::BOTH, Nullability::INNER, Nullability::OUTER] {
+            filter_snapshot!(
+                filter.clone(),
+                TestColumn::bool_lists(nullability),
+                format!("{nullability:?}_{filter_str}")
+            );
+        }
     }
 }
 
@@ -726,6 +774,10 @@ async fn test_timestamps() {
         (
             FilterKind::Timestamp(TimestampFilter::after(some_date)),
             "after",
+        ),
+        (
+            FilterKind::Timestamp(TimestampFilter::after(some_date).with_is_not()),
+            "not_after",
         ),
         (
             FilterKind::Timestamp(TimestampFilter::after(some_date + 1.seconds())),
@@ -771,6 +823,10 @@ async fn test_timestamps_list() {
         (
             FilterKind::Timestamp(TimestampFilter::after(some_date)),
             "after",
+        ),
+        (
+            FilterKind::Timestamp(TimestampFilter::after(some_date).with_is_not()),
+            "not_after",
         ),
         (
             FilterKind::Timestamp(TimestampFilter::after(some_date + 1.seconds())),

@@ -284,7 +284,7 @@ impl EntityOrComponentData<'_> {
                 component_descriptor,
             } => Item::ComponentPath(ComponentPath::new(
                 entity_data.entity_path.clone(),
-                component_descriptor.clone(),
+                component_descriptor.component,
             )),
         }
     }
