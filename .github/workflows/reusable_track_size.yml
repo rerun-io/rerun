@@ -15,7 +15,7 @@ on:
 
 defaults:
   run:
-    shell: bash -euo pipefail {0}
+    shell: bash --no-profile --norc -euo pipefail {0}
 
 permissions:
   contents: write
