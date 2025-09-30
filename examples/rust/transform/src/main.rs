@@ -2,20 +2,18 @@ use std::{collections::HashMap, sync::Arc};
 
 use arrow::{
     array::{
-        Array, FixedSizeListBuilder, Float32Array, Float32Builder, Float64Array, Float64Builder,
-        ListArray, ListBuilder, StringArray, StringBuilder, StructArray, StructBuilder,
+        Array, Float32Array, Float32Builder, Float64Array, Float64Builder, ListArray, ListBuilder,
+        StringArray, StringBuilder, StructArray, StructBuilder,
     },
     datatypes::{DataType, Field},
+    ipc::ListArgs,
 };
 use rerun::{
     ComponentDescriptor, ComponentIdentifier, DynamicArchetype, EntityPath, RecordingStream,
-    Scalars, SeriesLines, SeriesPoints, StoreId, TextDocument, TimeCell, TimeColumn, Timeline,
+    Scalars, SerializedComponentColumn, SeriesLines, SeriesPoints, TextDocument, TimeCell,
+    TimeColumn,
     dataframe::{EntityPathFilter, ResolvedEntityPathFilter, TimelineName},
-    external::{
-        nohash_hasher::IntMap,
-        re_format_arrow::{self, RecordBatchFormatOpts},
-        re_log,
-    },
+    external::re_log,
     log::{Chunk, ChunkComponents, ChunkId, LogMsg},
     sink::{GrpcSink, PipelineTransform},
 };
@@ -87,44 +85,55 @@ impl PipelineTransform for PerChunkPiplineTransform {
     }
 }
 
+fn extract_field(list_array: ListArray, column_name: &str) -> ListArray {
+    let (_, offsets, values, nulls) = list_array.into_parts();
+    let struct_array = values.as_any().downcast_ref::<StructArray>().unwrap();
+    let column = struct_array.column_by_name(column_name).unwrap();
+    ListArray::new(
+        Arc::new(Field::new_list_field(column.data_type().clone(), true)),
+        offsets,
+        column.clone(),
+        nulls,
+    )
+}
+
+fn cast_component_batch(list_array: ListArray, to_inner_type: &DataType) -> ListArray {
+    let (field, offsets, ref array, nulls) = list_array.into_parts();
+    let res = arrow::compute::cast(array, to_inner_type).unwrap();
+    ListArray::new(
+        Arc::new(Field::new_list_field(res.data_type().clone(), true)),
+        offsets,
+        res,
+        nulls,
+    )
+}
+
 // TODO: This looks like a weird love-child between `SerializedComponentColumn` and `ComponentColumnDescriptor`.
 struct TransformedColumn {
     entity_path: EntityPath,
-    component_descr: ComponentDescriptor,
-    // TODO: This is currently still expecting the inner column.
-    component_data: Arc<dyn Array>,
+    column: SerializedComponentColumn,
     is_static: bool,
 }
 
 impl TransformedColumn {
-    pub fn new(
-        entity_path: EntityPath,
-        component_descr: ComponentDescriptor,
-        array: Arc<dyn Array>,
-    ) -> Self {
+    pub fn new(entity_path: EntityPath, column: SerializedComponentColumn) -> Self {
         Self {
             entity_path,
-            component_descr,
-            component_data: array,
+            column,
             is_static: false,
         }
     }
-    pub fn new_static(
-        entity_path: EntityPath,
-        component_descr: ComponentDescriptor,
-        array: Arc<dyn Array>,
-    ) -> Self {
+    pub fn new_static(entity_path: EntityPath, column: SerializedComponentColumn) -> Self {
         Self {
             entity_path,
-            component_descr,
-            component_data: array,
+            column,
             is_static: true,
         }
     }
 }
 
 type ComponentBatchFunc =
-    Box<dyn Fn(Arc<dyn Array>, &EntityPath) -> Vec<TransformedColumn> + Send + Sync>;
+    Box<dyn Fn(ListArray, &EntityPath) -> Vec<TransformedColumn> + Send + Sync>;
 
 pub struct ComponentBatchTransform {
     /// The entity path to apply the transformation to.
@@ -148,7 +157,7 @@ impl ComponentBatchTransform {
         func: F,
     ) -> Self
     where
-        F: Fn(Arc<dyn Array>, &EntityPath) -> Vec<TransformedColumn> + Send + Sync + 'static,
+        F: Fn(ListArray, &EntityPath) -> Vec<TransformedColumn> + Send + Sync + 'static,
     {
         Self {
             filter: entity_path_filter.resolve_without_substitutions(),
@@ -165,38 +174,28 @@ fn apply_to_chunk(transform: &ComponentBatchTransform, chunk: &Chunk) -> Vec<Chu
         .find(|(descr, _array)| descr.component == transform.component);
 
     // TODO: This means we drop chunks that belong to the same entity but don't have the component.
-    let Some((_component_descr, outer_array)) = found else {
+    let Some((_component_descr, list_array)) = found else {
         return Default::default();
     };
-
-    let inner_array = outer_array.values();
 
     // TODO:
     // * unwrap array
     // * Guarantee that there is only one component descr
     let mut builders = HashMap::new(); // TODO: Use ahash
-    let results = (transform.func)(inner_array.clone(), chunk.entity_path());
-    for column in results {
+    let results = (transform.func)(list_array.clone(), chunk.entity_path());
+    for transformed in results {
         let components = builders
-            .entry((column.entity_path, column.is_static))
+            .entry((transformed.entity_path, transformed.is_static))
             .or_insert_with(ChunkComponents::default);
 
-        if components.contains_component(&column.component_descr) {
+        if components.contains_component(&transformed.column.descriptor) {
             re_log::warn_once!(
                 "Replacing duplicated component {}",
-                column.component_descr.component
+                transformed.column.descriptor.component
             );
         }
 
-        components.insert(
-            column.component_descr,
-            ListArray::new(
-                Field::new_list_field(column.component_data.data_type().clone(), true).into(),
-                outer_array.offsets().clone(),
-                column.component_data,
-                outer_array.nulls().cloned(),
-            ),
-        );
+        components.insert(transformed.column.descriptor, transformed.column.list_array);
     }
 
     builders
@@ -262,105 +261,17 @@ impl PipelineTransform for ComponentBatchPipelineTransform {
     }
 }
 
-fn per_chunk_pipeline() -> anyhow::Result<impl PipelineTransform> {
-    let instruction_transform = PerChunkTransform {
-        filter: "/instructions"
-            .parse::<EntityPathFilter>()?
-            .resolve_without_substitutions(), // TODO: call the right thing here.
-        func: Box::new(|chunk: &rerun::log::Chunk| {
-            let mut components = chunk.components().clone();
-
-            let maybe_array = components
-                .get(&ComponentDescriptor {
-                    archetype: Some("com.Example.Instruction".into()),
-                    component: "com.Example.Instruction:text".into(),
-                    component_type: None,
-                })
-                .cloned();
-            if let Some(array) = maybe_array {
-                components.insert(TextDocument::descriptor_text(), array);
-            }
-
-            let mut new_chunk = chunk.clone().components_removed().with_id(ChunkId::new());
-            for (component_descr, array) in components.iter() {
-                new_chunk
-                    .add_component(component_descr.clone(), array.clone())
-                    .unwrap();
-            }
-            vec![new_chunk]
-        }),
-    };
-
-    let destructure_transform = PerChunkTransform {
-        filter: "/nested"
-            .parse::<EntityPathFilter>()?
-            .resolve_without_substitutions(), // TODO: call the right thing here.
-        func: Box::new(|chunk: &rerun::log::Chunk| {
-            let mut components = chunk.components().clone();
-
-            let maybe_array = components
-                .get(&ComponentDescriptor {
-                    archetype: Some("com.Example.Nested".into()),
-                    component: "com.Example.Nested:payload".into(),
-                    component_type: None,
-                })
-                .cloned();
-
-            if let Some(list_struct_array) = maybe_array {
-                let list_array = list_struct_array
-                    .as_any()
-                    .downcast_ref::<ListArray>()
-                    .unwrap();
-
-                let struct_array = list_array
-                    .values()
-                    .as_any()
-                    .downcast_ref::<StructArray>()
-                    .unwrap();
-
-                let child_b_array = struct_array.column_by_name("b").unwrap();
-
-                let field = Arc::new(Field::new_list_field(
-                    child_b_array.data_type().clone(),
-                    true,
-                ));
-
-                let new_list_array = ListArray::new(
-                    field,
-                    list_array.offsets().clone(), // Use ListArray's offsets
-                    child_b_array.clone(),        // Values from field "b"
-                    list_array.nulls().cloned(),  // Preserve null mask
-                );
-
-                components.insert(Scalars::descriptor_scalars(), new_list_array);
-            }
-
-            let mut new_chunk = chunk.clone().components_removed().with_id(ChunkId::new());
-            for (component_descr, array) in components.iter() {
-                new_chunk
-                    .add_component(component_descr.clone(), array.clone())
-                    .unwrap();
-            }
-            vec![new_chunk]
-        }),
-    };
-
-    Ok(PerChunkPiplineTransform {
-        transforms: vec![instruction_transform, destructure_transform],
-    })
-}
-
 fn per_column_pipline() -> anyhow::Result<impl PipelineTransform> {
-    // Takes an existing component that has the right backing data and apply a new component descriptor too it.
-    // TODO: For these simple cases, we could have premade constructors that hide the closure. This could also lead to more efficient Python mappings.
     let instruction_transform = ComponentBatchTransform::new(
         "/instructions".parse()?,
         "com.Example.Instruction:text",
         |array, entity_path| {
             vec![TransformedColumn {
                 entity_path: entity_path.clone(),
-                component_descr: TextDocument::descriptor_text(),
-                component_data: array,
+                column: SerializedComponentColumn {
+                    descriptor: TextDocument::descriptor_text(),
+                    list_array: array,
+                },
                 is_static: false,
             }]
         },
@@ -370,23 +281,25 @@ fn per_column_pipline() -> anyhow::Result<impl PipelineTransform> {
         "/nested".parse().unwrap(),
         "com.Example.Nested:payload",
         |array, entity_path| {
-            let struct_array = array.as_any().downcast_ref::<StructArray>().unwrap();
+            let list_array_a = extract_field(array.clone(), "a");
+            let list_array_a = cast_component_batch(list_array_a, &DataType::Float64);
 
-            let child_a_array = struct_array.column_by_name("a").unwrap();
-            let child_a_array = arrow::compute::cast(child_a_array, &DataType::Float64).unwrap();
-
-            let child_b_array = struct_array.column_by_name("b").unwrap();
+            let list_array_b = extract_field(array, "b");
 
             vec![
                 TransformedColumn::new(
                     entity_path.join(&EntityPath::parse_forgiving("a")),
-                    Scalars::descriptor_scalars(),
-                    child_a_array,
+                    SerializedComponentColumn {
+                        descriptor: Scalars::descriptor_scalars(),
+                        list_array: list_array_a,
+                    },
                 ),
                 TransformedColumn::new(
                     entity_path.join(&EntityPath::parse_forgiving("b")),
-                    Scalars::descriptor_scalars(),
-                    child_b_array.clone(),
+                    SerializedComponentColumn {
+                        descriptor: Scalars::descriptor_scalars(),
+                        list_array: list_array_b,
+                    },
                 ),
             ]
         },
@@ -395,8 +308,9 @@ fn per_column_pipline() -> anyhow::Result<impl PipelineTransform> {
     let flag_transform = ComponentBatchTransform::new(
         "/flag".parse()?,
         "com.Example.Flag:flag",
-        |array, entity_path| {
-            let flag_array = array.as_any().downcast_ref::<StringArray>().unwrap();
+        |list_array, entity_path| {
+            let (_, offsets, values, nulls) = list_array.into_parts();
+            let flag_array = values.as_any().downcast_ref::<StringArray>().unwrap();
 
             let scalar_array: Float64Array = flag_array
                 .iter()
@@ -404,29 +318,45 @@ fn per_column_pipline() -> anyhow::Result<impl PipelineTransform> {
                     s.map(|v| match v {
                         "ACTIVE" => 1.0,
                         "INACTIVE" => 2.0,
-                        _ => f64::NAN,
-                        // _ => 0.0,
+                        _ => 0.0,
                     })
                 })
                 .collect();
 
+            let list_array = ListArray::new(
+                Arc::new(Field::new_list_field(
+                    scalar_array.data_type().clone(),
+                    true,
+                )),
+                offsets,
+                Arc::new(scalar_array),
+                nulls,
+            );
+
+            let series_points = SeriesPoints::new()
+                .with_marker_sizes([5.0])
+                .columns_of_unit_batches()
+                .unwrap()
+                .next()
+                .unwrap();
+
+            let series_lines = SeriesLines::new()
+                .with_widths([3.0])
+                .columns_of_unit_batches()
+                .unwrap()
+                .next()
+                .unwrap();
+
             vec![
                 TransformedColumn::new(
                     entity_path.clone(),
-                    Scalars::descriptor_scalars(),
-                    Arc::new(scalar_array),
+                    SerializedComponentColumn {
+                        list_array,
+                        descriptor: Scalars::descriptor_scalars(),
+                    },
                 ),
-                TransformedColumn::new_static(
-                    entity_path.clone(),
-                    SeriesPoints::descriptor_marker_sizes(),
-                    // TODO: get rid of the 10 here
-                    Arc::new(Float32Array::from(vec![5.0; 10])),
-                ),
-                TransformedColumn::new_static(
-                    entity_path.clone(),
-                    SeriesLines::descriptor_widths(),
-                    Arc::new(Float32Array::from(vec![3.0; 10])),
-                ),
+                TransformedColumn::new_static(entity_path.clone(), series_points),
+                TransformedColumn::new_static(entity_path.clone(), series_lines),
             ]
         },
     );
@@ -694,7 +624,11 @@ fn nullability_chunk() -> Chunk {
 #[cfg(test)]
 mod test {
     use super::*;
-    use rerun::external::re_format_arrow::RecordBatchFormatOpts;
+    use arrow::array::{FixedSizeListBuilder, Int32Builder};
+    use rerun::{
+        StoreId,
+        external::re_format_arrow::{self, RecordBatchFormatOpts},
+    };
 
     const FORMAT_OPTS: RecordBatchFormatOpts = RecordBatchFormatOpts {
         transposed: false,
@@ -717,17 +651,16 @@ mod test {
         let destructure_transform = ComponentBatchTransform::new(
             "nullability".parse().unwrap(),
             "structs",
-            |array, entity_path| {
-                let struct_array = array.as_any().downcast_ref::<StructArray>().unwrap();
-
-                let child_a_array = struct_array.column_by_name("a").unwrap();
-                let child_a_array =
-                    arrow::compute::cast(child_a_array, &DataType::Float64).unwrap();
+            |list_array, entity_path| {
+                let list_array = extract_field(list_array, "a");
+                let list_array = cast_component_batch(list_array, &DataType::Float64);
 
                 vec![TransformedColumn::new(
                     entity_path.join(&EntityPath::parse_forgiving("a")),
-                    Scalars::descriptor_scalars(),
-                    child_a_array,
+                    SerializedComponentColumn {
+                        list_array,
+                        descriptor: Scalars::descriptor_scalars(),
+                    },
                 )]
             },
         );
@@ -756,15 +689,15 @@ mod test {
         let destructure_transform = ComponentBatchTransform::new(
             "nullability".parse().unwrap(),
             "structs",
-            |array, entity_path| {
-                let struct_array = array.as_any().downcast_ref::<StructArray>().unwrap();
-
-                let child_b_array = struct_array.column_by_name("b").unwrap();
+            |list_array, entity_path| {
+                let list_array = extract_field(list_array, "b");
 
                 vec![TransformedColumn::new(
                     entity_path.join(&EntityPath::parse_forgiving("b")),
-                    Scalars::descriptor_scalars(),
-                    child_b_array.clone(),
+                    SerializedComponentColumn {
+                        list_array,
+                        descriptor: Scalars::descriptor_scalars(),
+                    },
                 )]
             },
         );
@@ -790,24 +723,49 @@ mod test {
         let arrow_msg = nullability_chunk().to_arrow_msg().unwrap();
         let msg = LogMsg::ArrowMsg(StoreId::empty_recording(), arrow_msg);
 
-        let destructure_transform = ComponentBatchTransform::new(
+        let count_transform = ComponentBatchTransform::new(
             "nullability".parse().unwrap(),
             "strings",
-            |array, entity_path| {
-                let struct_array = array.as_any().downcast_ref::<StructArray>().unwrap();
+            |list_array, entity_path| {
+                // We keep the original `list_array` around for better comparability.
+                let original_list_array = list_array.clone();
+                let mut builder = ListBuilder::new(Int32Builder::new());
 
-                let child_b_array = struct_array.column_by_name("b").unwrap();
+                for maybe_array in list_array.iter() {
+                    match maybe_array {
+                        None => builder.append_null(),
+                        Some(component_batch_array) => {
+                            builder
+                                .values()
+                                .append_value(component_batch_array.len() as i32);
+                            builder.append(true);
+                        }
+                    }
+                }
 
-                vec![TransformedColumn::new(
-                    entity_path.join(&EntityPath::parse_forgiving("b")),
-                    Scalars::descriptor_scalars(),
-                    child_b_array.clone(),
-                )]
+                let list_array = builder.finish();
+
+                vec![
+                    TransformedColumn::new(
+                        entity_path.join(&EntityPath::parse_forgiving("b_count")),
+                        SerializedComponentColumn {
+                            list_array,
+                            descriptor: ComponentDescriptor::partial("counts"),
+                        },
+                    ),
+                    TransformedColumn::new(
+                        entity_path.join(&EntityPath::parse_forgiving("b_count")),
+                        SerializedComponentColumn {
+                            list_array: original_list_array,
+                            descriptor: ComponentDescriptor::partial("original"),
+                        },
+                    ),
+                ]
             },
         );
 
         let pipeline = ComponentBatchPipelineTransform {
-            transforms: vec![destructure_transform],
+            transforms: vec![count_transform],
         };
 
         let mut res = pipeline.apply(msg);
