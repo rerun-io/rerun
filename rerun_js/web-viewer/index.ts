@@ -4,7 +4,9 @@ import type { WebHandle, wasm_bindgen } from "./re_viewer";
 let get_wasm_bindgen: (() => typeof wasm_bindgen) | null = null;
 let _wasm_module: WebAssembly.Module | null = null;
 
-async function fetch_viewer_js(base_url?: string): Promise<(() => typeof wasm_bindgen)> {
+async function fetch_viewer_js(
+  base_url?: string,
+): Promise<() => typeof wasm_bindgen> {
   // @ts-ignore
   return (await import("./re_viewer")).default;
 }
@@ -12,7 +14,7 @@ async function fetch_viewer_js(base_url?: string): Promise<(() => typeof wasm_bi
 async function fetch_viewer_wasm(base_url?: string): Promise<Response> {
   //!<INLINE-MARKER-OPEN>
   if (base_url) {
-    return fetch(new URL("./re_viewer_bg.wasm", base_url))
+    return fetch(new URL("./re_viewer_bg.wasm", base_url));
   } else {
     return fetch(new URL("./re_viewer_bg.wasm", import.meta.url));
   }
@@ -107,24 +109,26 @@ export interface WebViewerOptions {
 // otherwise we need to restructure how we pass options to the viewer
 
 /**
- * The public interface is @see {WebViewerOptions}
+ * The public interface is @see {WebViewerOptions}. This adds a few additional, internal options.
  *
  * @private
  */
 export interface AppOptions extends WebViewerOptions {
-  /** The url that's used when sharing web viewer urls */
-  viewer_url?: string;
+  /** The url that's used when sharing web viewer urls
+   *
+   * If not set, the viewer will use the url of the page it is embedded in.
+   */
+  viewer_base_url?: string;
+
+  /** Whether the viewer is running in a notebook. */
+  notebook?: boolean;
+
   url?: string;
-  manifest_url?: string;
-  video_decoder?: VideoDecoder;
-  render_backend?: Backend;
-  hide_welcome_screen?: boolean;
   panel_state_overrides?: Partial<{
     [K in Panel]: PanelState;
   }>;
   on_viewer_event?: (event_json: string) => void;
   fullscreen?: FullscreenOptions;
-  enable_history?: boolean;
 }
 
 // Types are based on `crates/viewer/re_viewer/src/event.rs`.
@@ -146,7 +150,7 @@ export type ViewerEventBase = {
   application_id: string;
   recording_id: string;
   partition_id?: string;
-}
+};
 
 /**
  * Fired when the timeline starts playing.
@@ -160,7 +164,7 @@ export type PlayEvent = ViewerEventBase & {
  */
 export type PauseEvent = ViewerEventBase & {
   type: "pause";
-}
+};
 
 /**
  * Fired when the timepoint changes.
@@ -168,7 +172,7 @@ export type PauseEvent = ViewerEventBase & {
 export type TimeUpdateEvent = ViewerEventBase & {
   type: "time_update";
   time: number;
-}
+};
 
 /**
  * Fired when a different timeline is selected.
@@ -177,7 +181,7 @@ export type TimelineChangeEvent = ViewerEventBase & {
   type: "timeline_change";
   timeline: string;
   time: number;
-}
+};
 
 /**
  * Fired when the selection changes.
@@ -189,7 +193,7 @@ export type TimelineChangeEvent = ViewerEventBase & {
 export type SelectionChangeEvent = ViewerEventBase & {
   type: "selection_change";
   items: SelectionChangeItem[];
-}
+};
 
 /**
  * Fired when a new recording is opened in the Viewer.
@@ -217,15 +221,14 @@ export type RecordingOpenEvent = ViewerEventBase & {
    * Uses semver format.
    */
   version?: string;
-}
+};
 
 // A bit of TypeScript metaprogramming to automatically produce a
 // mapping of event names to event payloads given the above type
 // definitions.
 
 // Yield the event with type `K`.
-type _GetViewerEvent<K> =
-  Extract<ViewerEvent, { type: K }>;
+type _GetViewerEvent<K> = Extract<ViewerEvent, { type: K }>;
 
 // `ViewerEvent` is a union of all events, so its `type` field
 // is a union of all `type` fields.
@@ -233,8 +236,8 @@ type _ViewerEventNames = ViewerEvent["type"];
 
 // For every event, get its payload type.
 type ViewerEventMap = {
-  [K in _ViewerEventNames]: _GetViewerEvent<K>
-}
+  [K in _ViewerEventNames]: _GetViewerEvent<K>;
+};
 
 /**
  * Selected an entity, or an instance of an entity.
@@ -282,16 +285,16 @@ export interface WebViewerEvents extends ViewerEventMap {
 // https://www.typescriptlang.org/docs/handbook/2/mapped-types.html#key-remapping-via-as
 export type EventsWithValue = {
   [K in keyof WebViewerEvents as WebViewerEvents[K] extends void
-  ? never
-  : K]: WebViewerEvents[K] extends any[]
-  ? WebViewerEvents[K]
-  : [WebViewerEvents[K]];
+    ? never
+    : K]: WebViewerEvents[K] extends any[]
+    ? WebViewerEvents[K]
+    : [WebViewerEvents[K]];
 };
 
 export type EventsWithoutValue = {
   [K in keyof WebViewerEvents as WebViewerEvents[K] extends void
-  ? K
-  : never]: WebViewerEvents[K];
+    ? K
+    : never]: WebViewerEvents[K];
 };
 
 function delay(ms: number) {
@@ -375,9 +378,9 @@ export class WebViewer {
 
     const fullscreen = this.#allow_fullscreen
       ? {
-        get_state: () => this.#fullscreen,
-        on_toggle: () => this.toggle_fullscreen(),
-      }
+          get_state: () => this.#fullscreen,
+          on_toggle: () => this.toggle_fullscreen(),
+        }
       : undefined;
 
     const on_viewer_event = (event_json: string) => {
@@ -388,11 +391,8 @@ export class WebViewer {
 
       // for JS users, we dispatch the parsed event
       let event: ViewerEvent = JSON.parse(event_json);
-      this.#dispatch_event(
-        event.type as any,
-        event,
-      );
-    }
+      this.#dispatch_event(event.type as any, event);
+    };
 
     this.#handle = new WebHandle_class({
       ...options,
@@ -673,7 +673,7 @@ export class WebViewer {
         this.stop();
         throw e;
       }
-    }
+    };
 
     const on_close = () => {
       if (!this.#handle) {
@@ -785,7 +785,8 @@ export class WebViewer {
   set_playing(recording_id: string, value: boolean) {
     if (!this.#handle) {
       throw new Error(
-        `attempted to set play state to ${value ? "playing" : "paused"
+        `attempted to set play state to ${
+          value ? "playing" : "paused"
         } in a stopped web viewer`,
       );
     }
@@ -913,7 +914,7 @@ export class WebViewer {
     }
   }
 
-  #minimize = () => { };
+  #minimize = () => {};
 
   #maximize = () => {
     _minimize_current_fullscreen_viewer?.();
@@ -1011,7 +1012,7 @@ export class LogChannel {
 
   send_table(table_bytes: Uint8Array) {
     if (!this.ready) return;
-    this.#on_send_table(table_bytes)
+    this.#on_send_table(table_bytes);
   }
 
   /**
