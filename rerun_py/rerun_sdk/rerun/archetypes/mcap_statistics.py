@@ -40,6 +40,7 @@ class McapStatistics(Archetype):
 
     def __init__(
         self: Any,
+        *,
         message_count: datatypes.UInt64Like,
         schema_count: datatypes.UInt64Like,
         channel_count: datatypes.UInt64Like,
@@ -48,7 +49,6 @@ class McapStatistics(Archetype):
         chunk_count: datatypes.UInt64Like,
         message_start_time: datatypes.TimeIntLike,
         message_end_time: datatypes.TimeIntLike,
-        *,
         channel_message_counts: components.ChannelMessageCountsLike | None = None,
     ) -> None:
         """
