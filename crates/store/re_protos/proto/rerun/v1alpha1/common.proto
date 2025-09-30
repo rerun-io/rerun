@@ -256,6 +256,9 @@ message BuildInfo {
   //
   // Empty if unknown.
   optional string build_time = 9;
+
+  /// True if this is a debug build.
+  optional bool is_debug_build = 10;
 }
 
 // Mirrors `re_build_info::CrateVersion`.
