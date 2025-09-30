@@ -2466,7 +2466,7 @@ fn compute_init_parameters(obj: &Object, objects: &Objects) -> Vec<String> {
             .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
             .collect_vec();
 
-        if 4 < required.len() {
+        if 2 < required.len() {
             // There's a lot of required arguments.
             // Using positional arguments would make usage hard to read.
             // better for force kw-args for ALL arguments:
