@@ -1,14 +1,21 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use arrow::{
-    array::{Array, Float32Array, Float64Array, ListArray, StringArray, StructArray},
+    array::{
+        Array, FixedSizeListBuilder, Float32Array, Float32Builder, Float64Array, Float64Builder,
+        ListArray, ListBuilder, StringArray, StringBuilder, StructArray, StructBuilder,
+    },
     datatypes::{DataType, Field},
 };
 use rerun::{
     ComponentDescriptor, ComponentIdentifier, DynamicArchetype, EntityPath, RecordingStream,
-    Scalars, SeriesLines, SeriesPoints, TextDocument, TimeCell,
-    dataframe::{EntityPathFilter, ResolvedEntityPathFilter},
-    external::{nohash_hasher::IntMap, re_log},
+    Scalars, SeriesLines, SeriesPoints, StoreId, TextDocument, TimeCell, TimeColumn, Timeline,
+    dataframe::{EntityPathFilter, ResolvedEntityPathFilter, TimelineName},
+    external::{
+        nohash_hasher::IntMap,
+        re_format_arrow::{self, RecordBatchFormatOpts},
+        re_log,
+    },
     log::{Chunk, ChunkComponents, ChunkId, LogMsg},
     sink::{GrpcSink, PipelineTransform},
 };
@@ -80,11 +87,44 @@ impl PipelineTransform for PerChunkPiplineTransform {
     }
 }
 
-type ComponentBatchFunc = Box<
-    dyn Fn(Arc<dyn Array>, &EntityPath) -> Vec<(EntityPath, ComponentDescriptor, Arc<dyn Array>)>
-        + Send
-        + Sync,
->;
+// TODO: This looks like a weird love-child between `SerializedComponentColumn` and `ComponentColumnDescriptor`.
+struct TransformedColumn {
+    entity_path: EntityPath,
+    component_descr: ComponentDescriptor,
+    // TODO: This is currently still expecting the inner column.
+    component_data: Arc<dyn Array>,
+    is_static: bool,
+}
+
+impl TransformedColumn {
+    pub fn new(
+        entity_path: EntityPath,
+        component_descr: ComponentDescriptor,
+        array: Arc<dyn Array>,
+    ) -> Self {
+        Self {
+            entity_path,
+            component_descr,
+            component_data: array,
+            is_static: false,
+        }
+    }
+    pub fn new_static(
+        entity_path: EntityPath,
+        component_descr: ComponentDescriptor,
+        array: Arc<dyn Array>,
+    ) -> Self {
+        Self {
+            entity_path,
+            component_descr,
+            component_data: array,
+            is_static: true,
+        }
+    }
+}
+
+type ComponentBatchFunc =
+    Box<dyn Fn(Arc<dyn Array>, &EntityPath) -> Vec<TransformedColumn> + Send + Sync>;
 
 pub struct ComponentBatchTransform {
     /// The entity path to apply the transformation to.
@@ -108,13 +148,7 @@ impl ComponentBatchTransform {
         func: F,
     ) -> Self
     where
-        F: Fn(
-                Arc<dyn Array>,
-                &EntityPath,
-            ) -> Vec<(EntityPath, ComponentDescriptor, Arc<dyn Array>)>
-            + Send
-            + Sync
-            + 'static,
+        F: Fn(Arc<dyn Array>, &EntityPath) -> Vec<TransformedColumn> + Send + Sync + 'static,
     {
         Self {
             filter: entity_path_filter.resolve_without_substitutions(),
@@ -140,27 +174,26 @@ fn apply_to_chunk(transform: &ComponentBatchTransform, chunk: &Chunk) -> Vec<Chu
     // TODO:
     // * unwrap array
     // * Guarantee that there is only one component descr
-    let mut builders = IntMap::default();
+    let mut builders = HashMap::new(); // TODO: Use ahash
     let results = (transform.func)(inner_array.clone(), chunk.entity_path());
-    for (entity_path, component_descr, new_array) in results {
+    for column in results {
         let components = builders
-            .entry(entity_path)
+            .entry((column.entity_path, column.is_static))
             .or_insert_with(ChunkComponents::default);
 
-        if components.contains_component(&component_descr) {
+        if components.contains_component(&column.component_descr) {
             re_log::warn_once!(
                 "Replacing duplicated component {}",
-                component_descr.component
+                column.component_descr.component
             );
         }
 
         components.insert(
-            component_descr,
+            column.component_descr,
             ListArray::new(
-                Field::new_list_field(new_array.data_type().clone(), true).into(),
+                Field::new_list_field(column.component_data.data_type().clone(), true).into(),
                 outer_array.offsets().clone(),
-                // TODO: box from the start
-                new_array.into(),
+                column.component_data,
                 outer_array.nulls().cloned(),
             ),
         );
@@ -168,17 +201,21 @@ fn apply_to_chunk(transform: &ComponentBatchTransform, chunk: &Chunk) -> Vec<Chu
 
     builders
         .into_iter()
-        .filter_map(|(entity_path, components)| {
-            Chunk::from_auto_row_ids(
-                ChunkId::new(),
-                entity_path.clone(),
-                chunk.timelines().clone(),
-                components,
-            )
-            .inspect_err(|err| {
-                re_log::error_once!("Failed to build chunk at entity path '{entity_path}': {err}")
-            })
-            .ok()
+        .filter_map(|((entity_path, is_static), components)| {
+            let timelines = if is_static {
+                Default::default()
+            } else {
+                chunk.timelines().clone()
+            };
+
+            // TODO: In case of static, should we use sparse rows instead?
+            Chunk::from_auto_row_ids(ChunkId::new(), entity_path.clone(), timelines, components)
+                .inspect_err(|err| {
+                    re_log::error_once!(
+                        "Failed to build chunk at entity path '{entity_path}': {err}"
+                    )
+                })
+                .ok()
         })
         .collect()
 }
@@ -313,19 +350,14 @@ fn per_chunk_pipeline() -> anyhow::Result<impl PipelineTransform> {
     })
 }
 
-fn per_column_pipline() -> anyhow::Result<impl PipelineTransform> {
-    // Takes an existing component that has the right backing data and apply a new component descriptor too it.
-    // TODO: For these simple cases, we could have premade constructors that hide the closure. This could also lead to more efficient Python mappings.
-    let instruction_transform = ComponentBatchTransform::new(
-        "/instructions".parse()?,
-        "com.Example.Instruction:text",
-        |array, entity_path| vec![(entity_path.clone(), TextDocument::descriptor_text(), array)],
-    );
-
-    // Extracts two fields from a struct, and adds them to new sub-entities as scalars.
-    let destructure_transform = ComponentBatchTransform::new(
-        "/nested".parse()?,
-        "com.Example.Nested:payload",
+// Extracts two fields from a struct, and adds them to new sub-entities as scalars.
+fn destructure_transform(
+    entity_path_filter: EntityPathFilter,
+    component: impl Into<ComponentIdentifier>,
+) -> ComponentBatchTransform {
+    ComponentBatchTransform::new(
+        entity_path_filter,
+        component.into(),
         |array, entity_path| {
             let struct_array = array.as_any().downcast_ref::<StructArray>().unwrap();
 
@@ -335,20 +367,39 @@ fn per_column_pipline() -> anyhow::Result<impl PipelineTransform> {
             let child_b_array = struct_array.column_by_name("b").unwrap();
 
             vec![
-                (
+                TransformedColumn::new(
                     entity_path.join(&EntityPath::parse_forgiving("a")),
                     Scalars::descriptor_scalars(),
                     child_a_array,
                 ),
-                (
+                TransformedColumn::new(
                     entity_path.join(&EntityPath::parse_forgiving("b")),
                     Scalars::descriptor_scalars(),
                     child_b_array.clone(),
                 ),
             ]
         },
+    )
+}
+
+fn per_column_pipline() -> anyhow::Result<impl PipelineTransform> {
+    // Takes an existing component that has the right backing data and apply a new component descriptor too it.
+    // TODO: For these simple cases, we could have premade constructors that hide the closure. This could also lead to more efficient Python mappings.
+    let instruction_transform = ComponentBatchTransform::new(
+        "/instructions".parse()?,
+        "com.Example.Instruction:text",
+        |array, entity_path| {
+            vec![TransformedColumn {
+                entity_path: entity_path.clone(),
+                component_descr: TextDocument::descriptor_text(),
+                component_data: array,
+                is_static: false,
+            }]
+        },
     );
 
+    let destructure_transform =
+        destructure_transform("/nested".parse().unwrap(), "com.Example.Nested:payload");
     let flag_transform = ComponentBatchTransform::new(
         "/flag".parse()?,
         "com.Example.Flag:flag",
@@ -368,18 +419,18 @@ fn per_column_pipline() -> anyhow::Result<impl PipelineTransform> {
                 .collect();
 
             vec![
-                (
+                TransformedColumn::new(
                     entity_path.clone(),
                     Scalars::descriptor_scalars(),
                     Arc::new(scalar_array),
                 ),
-                // TODO: Very sad that we need to log this multiple times. We need static chunks without timelines.
-                (
+                TransformedColumn::new_static(
                     entity_path.clone(),
                     SeriesPoints::descriptor_marker_sizes(),
+                    // TODO: get rid of the 10 here
                     Arc::new(Float32Array::from(vec![5.0; 10])),
                 ),
-                (
+                TransformedColumn::new_static(
                     entity_path.clone(),
                     SeriesLines::descriptor_widths(),
                     Arc::new(Float32Array::from(vec![3.0; 10])),
@@ -417,6 +468,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
         log_instructions(rec)?;
         log_structs_with_scalars(rec)?;
         log_flag(rec)?;
+        log_columns_with_nullability(rec)?;
         return Ok(());
     }
 
@@ -492,4 +544,174 @@ fn log_structs_with_scalars(rec: &RecordingStream) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn log_columns_with_nullability(rec: &RecordingStream) -> anyhow::Result<()> {
+    let chunk = nullability_chunk();
+    rec.send_chunk(chunk);
+    Ok(())
+}
+
+/// Creates a chunk that contains all sorts of validity, nullability, and empty lists.
+// ┌──────────────┬──────────┐
+// │ [{a:0,b:0}]  │ ["zero"] │
+// ├──────────────┼──────────┤
+// │[{a:1,b:null}]│ ["one"]  │
+// ├──────────────┼──────────┤
+// │      []      │    []    │
+// ├──────────────┼──────────┤
+// │     null     │["three"] │
+// ├──────────────┼──────────┤
+// │ [{a:4,b:4}]  │   null   │
+// ├──────────────┼──────────┤
+// │    [null]    │ ["five"] │
+// └──────────────┴──────────┘
+fn nullability_chunk() -> Chunk {
+    let mut struct_column_builder = ListBuilder::new(StructBuilder::new(
+        [
+            Arc::new(Field::new("a", DataType::Float32, true)),
+            Arc::new(Field::new("b", DataType::Float64, true)),
+        ],
+        vec![
+            Box::new(Float32Builder::new()),
+            Box::new(Float64Builder::new()),
+        ],
+    ));
+    let mut string_column_builder = ListBuilder::new(StringBuilder::new());
+
+    // row 0
+    struct_column_builder
+        .values()
+        .field_builder::<Float32Builder>(0)
+        .unwrap()
+        .append_value(0.0);
+    struct_column_builder
+        .values()
+        .field_builder::<Float64Builder>(1)
+        .unwrap()
+        .append_value(0.0);
+    struct_column_builder.values().append(true);
+    struct_column_builder.append(true);
+
+    string_column_builder.values().append_value("zero");
+    string_column_builder.append(true);
+
+    // row 1
+    struct_column_builder
+        .values()
+        .field_builder::<Float32Builder>(0)
+        .unwrap()
+        .append_value(1.0);
+    struct_column_builder
+        .values()
+        .field_builder::<Float64Builder>(1)
+        .unwrap()
+        .append_null();
+    struct_column_builder.values().append(true);
+    struct_column_builder.append(true);
+
+    string_column_builder.values().append_value("one");
+    string_column_builder.append(true);
+
+    // row 2
+    struct_column_builder.append(true); // empty list
+
+    string_column_builder.append(true); // empty list
+
+    // row 3
+    struct_column_builder.append(false); // null
+
+    string_column_builder.values().append_value("three");
+    string_column_builder.append(true);
+
+    // row 4
+    struct_column_builder
+        .values()
+        .field_builder::<Float32Builder>(0)
+        .unwrap()
+        .append_value(4.0);
+    struct_column_builder
+        .values()
+        .field_builder::<Float64Builder>(1)
+        .unwrap()
+        .append_value(4.0);
+    struct_column_builder.values().append(true);
+    struct_column_builder.append(true);
+
+    string_column_builder.append(false); // null
+
+    // row 5
+    struct_column_builder
+        .values()
+        .field_builder::<Float32Builder>(0)
+        .unwrap()
+        .append_null(); // placeholder for null struct
+    struct_column_builder
+        .values()
+        .field_builder::<Float64Builder>(1)
+        .unwrap()
+        .append_null(); // placeholder for null struct
+    struct_column_builder.values().append(false); // null struct element
+    struct_column_builder.append(true);
+
+    string_column_builder.values().append_value("five");
+    string_column_builder.append(true);
+
+    let struct_column = struct_column_builder.finish();
+    let string_column = string_column_builder.finish();
+
+    let components = [
+        (ComponentDescriptor::partial("structs"), struct_column),
+        (ComponentDescriptor::partial("strings"), string_column),
+    ]
+    .into_iter();
+
+    let time_column = TimeColumn::new_sequence("tick", [0, 1, 2, 3, 4, 5]);
+
+    let chunk = Chunk::from_auto_row_ids(
+        ChunkId::new(),
+        "nullability".into(),
+        [(TimelineName::new("tick"), time_column)]
+            .into_iter()
+            .collect(),
+        components.collect(),
+    )
+    .unwrap();
+
+    chunk
+}
+
+const FORMAT_OPTS: RecordBatchFormatOpts = RecordBatchFormatOpts {
+    transposed: false,
+    width: Some(240usize),
+    include_metadata: false,
+    include_column_metadata: true,
+    trim_field_names: true,
+    trim_metadata_keys: true,
+    trim_metadata_values: true,
+    redact_non_deterministic: true,
+};
+
+#[test]
+fn test_destructure() {
+    let chunk = nullability_chunk();
+    println!("{chunk}");
+    let arrow_msg = nullability_chunk().to_arrow_msg().unwrap();
+    let msg = LogMsg::ArrowMsg(StoreId::empty_recording(), arrow_msg);
+
+    let pipeline = ComponentBatchPipelineTransform {
+        transforms: vec![destructure_transform(
+            "nullability".parse().unwrap(),
+            "structs",
+        )],
+    };
+
+    let mut res = pipeline.apply(msg);
+    assert_eq!(res.len(), 2);
+
+    let transformed_batch = res[0].arrow_record_batch_mut().unwrap();
+    insta::assert_snapshot!(re_format_arrow::format_record_batch_opts(
+        transformed_batch,
+        &FORMAT_OPTS,
+    ))
 }

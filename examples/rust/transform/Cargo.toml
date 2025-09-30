@@ -15,3 +15,6 @@ rerun = { path = "../../../crates/top/rerun", features = [
 anyhow = "1.0"
 arrow.workspace = true
 clap = { version = "4.0", features = ["derive"] }
+
+[dev-dependencies]
+insta.workspace = true

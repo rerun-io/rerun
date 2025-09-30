@@ -11250,6 +11250,7 @@ dependencies = [
  "anyhow",
  "arrow",
  "clap",
+ "insta",
  "rerun",
 ]
 
