@@ -224,7 +224,7 @@ crossbeam = "0.8"
 datafusion = { version = "49.0.2", default-features = false, features = [
   # NOTE: we enable the same features everywhere
   # because otherwise we will recompile datafusion all the time based on our current compile target.
-  # The features here are the same as in https://github.com/rerun-io/lance/blob/main/Cargo.toml
+  # The features here are the same as in https://github.com/lancedb/lance/blob/v0.36.0/Cargo.toml#L99-L107
   # This is very hacky, and I don't like it.
   "crypto_expressions",
   "datetime_expressions",
@@ -267,7 +267,7 @@ itertools = "0.14"
 jiff = { version = "0.2.3", features = ["js"] }
 js-sys = "0.3"
 jsonwebtoken = { version = "9", default-features = false }
-lance = { version = "0.36.0", default-features = false }
+lance = { version = "0.36.0", default-features = false } # When you update this, also update the list of features in `datafusion`!
 libc = "0.2"
 linked-hash-map = { version = "0.5", default-features = false }
 log = "0.4"
