@@ -23,7 +23,7 @@ use re_viewer_context::{
 
 use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQueryResult};
 use crate::display_record_batch::DisplayColumn;
-use crate::filters::{Filter, FilterKind, FilterState};
+use crate::filters::{ColumnFilter, FilterKind, FilterState};
 use crate::header_tooltip::column_header_tooltip_ui;
 use crate::table_blueprint::{
     ColumnBlueprint, EntryLinksSpec, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
@@ -725,7 +725,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                             )
                                             .clicked()
                                         {
-                                            self.filter_state.push_new_filter(Filter::new(
+                                            self.filter_state.push_new_filter(ColumnFilter::new(
                                                 column_physical_name.clone(),
                                                 filter_op,
                                             ));

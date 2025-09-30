@@ -19,7 +19,7 @@ use jiff::ToSpan as _;
 use strum::VariantArray as _;
 
 use re_dataframe_ui::{
-    ComparisonOperator, Filter, FilterKind, FloatFilter, IntFilter, NonNullableBooleanFilter,
+    ColumnFilter, ComparisonOperator, FilterKind, FloatFilter, IntFilter, NonNullableBooleanFilter,
     Nullability, NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter,
 };
 use re_viewer_context::external::tokio;
@@ -340,7 +340,7 @@ impl TestSessionContext {
             .expect("test table not found")
     }
 
-    async fn to_filtered_record_batch(&self, filter: &Filter) -> RecordBatch {
+    async fn to_filtered_record_batch(&self, filter: &ColumnFilter) -> RecordBatch {
         let df = self.df().await;
 
         let schema = df.schema();
@@ -375,7 +375,7 @@ struct TestResult<'a> {
 //note: this is a macro so insta is exposed to the actual test function
 macro_rules! filter_snapshot {
     ($filter_op:expr, $test_column:expr, $case:expr) => {
-        let filter = Filter::new(COLUMN_NAME, $filter_op.clone());
+        let filter = ColumnFilter::new(COLUMN_NAME, $filter_op.clone());
         let initial_field = $test_column.field.clone();
         let initial_column = $test_column.array.clone();
 

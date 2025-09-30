@@ -93,18 +93,18 @@ pub enum FilterError {
     InvalidStringFilter(StringFilter, Box<Field>),
 }
 
-/// A filter applied to a table.
+/// A filter applied to a table's column.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Filter {
+pub struct ColumnFilter {
     pub column_name: String,
-    pub kind: FilterKind,
+    pub filter: Box<dyn Filter>,
 }
 
-impl Filter {
-    pub fn new(column_name: impl Into<String>, kind: FilterKind) -> Self {
+impl ColumnFilter {
+    pub fn new(column_name: impl Into<String>, filter: impl Filter) -> Self {
         Self {
             column_name: column_name.into(),
-            kind,
+            filter: Box::new(filter),
         }
     }
 
@@ -117,100 +117,105 @@ impl Filter {
             return Err(FilterError::ColumnNotFound(column));
         };
 
-        self.kind.as_filter_expression(&column, field)
+        self.filter.as_filter_expression(&column, field)
     }
 }
 
-/// The UI state for a filter kind.
-#[derive(Debug, Clone, PartialEq)]
-pub enum FilterKind {
-    NullableBoolean(NullableBooleanFilter),
-    NonNullableBoolean(NonNullableBooleanFilter),
-    Int(IntFilter),
-    Float(FloatFilter),
-    String(StringFilter),
-    Timestamp(TimestampFilter),
+//TODO: docstrings
+pub trait Filter {
+    fn as_filter_expression(&self, column: &Column, field: &Field) -> Result<Expr, FilterError>;
 }
 
-impl FilterKind {
-    /// Create a filter suitable for this column datatype (if any).
-    pub fn default_for_column(field: &Field) -> Option<Self> {
-        let nullability = Nullability::from_field(field);
-        match field.data_type() {
-            DataType::List(inner_field) | DataType::ListView(inner_field) => {
-                // Note: we do not support double-nested types
-                Self::default_for_primitive_datatype(
-                    inner_field.data_type(),
-                    field.metadata(),
-                    nullability,
-                )
-            }
-
-            //TODO(ab): support other nested types
-            _ => Self::default_for_primitive_datatype(
-                field.data_type(),
-                field.metadata(),
-                nullability,
-            ),
-        }
-    }
-
-    fn default_for_primitive_datatype(
-        data_type: &DataType,
-        metadata: &HashMap<String, String>,
-        nullability: Nullability,
-    ) -> Option<Self> {
-        match data_type {
-            DataType::Boolean => {
-                if nullability.is_either() {
-                    Some(Self::NullableBoolean(Default::default()))
-                } else {
-                    Some(Self::NonNullableBoolean(Default::default()))
-                }
-            }
-
-            DataType::Int64
-                if metadata.get(FIELD_METADATA_KEY_COMPONENT_TYPE)
-                    == Some(&re_types::components::Timestamp::name().to_string()) =>
-            {
-                Some(Self::Timestamp(TimestampFilter::default()))
-            }
-
-            data_type if data_type.is_integer() => Some(Self::Int(Default::default())),
-
-            DataType::Float16 | DataType::Float32 | DataType::Float64 => {
-                Some(Self::Float(Default::default()))
-            }
-
-            data_type if is_supported_string_datatype(data_type) => {
-                Some(Self::String(Default::default()))
-            }
-
-            DataType::Timestamp(_, _) => Some(Self::Timestamp(Default::default())),
-
-            _ => None,
-        }
-    }
-
-    /// Convert to an [`Expr`].
-    ///
-    /// The expression is used for filtering and should thus evaluate to a boolean.
-    pub fn as_filter_expression(
-        &self,
-        column: &Column,
-        field: &Field,
-    ) -> Result<Expr, FilterError> {
-        match self {
-            Self::NullableBoolean(boolean_filter) => {
-                boolean_filter.as_filter_expression(column, field)
-            }
-            Self::NonNullableBoolean(boolean_filter) => {
-                boolean_filter.as_filter_expression(column, field)
-            }
-            Self::Int(int_filter) => Ok(int_filter.as_filter_expression(column)),
-            Self::Float(float_filter) => Ok(float_filter.as_filter_expression(column)),
-            Self::String(string_filter) => Ok(string_filter.as_filter_expression(column)),
-            Self::Timestamp(timestamp_filter) => Ok(timestamp_filter.as_filter_expression(column)),
-        }
-    }
-}
+// /// The UI state for a filter kind.
+// #[derive(Debug, Clone, PartialEq)]
+// pub enum FilterKind {
+//     NullableBoolean(NullableBooleanFilter),
+//     NonNullableBoolean(NonNullableBooleanFilter),
+//     Int(IntFilter),
+//     Float(FloatFilter),
+//     String(StringFilter),
+//     Timestamp(TimestampFilter),
+// }
+//
+// impl FilterKind {
+//     /// Create a filter suitable for this column datatype (if any).
+//     pub fn default_for_column(field: &Field) -> Option<Self> {
+//         let nullability = Nullability::from_field(field);
+//         match field.data_type() {
+//             DataType::List(inner_field) | DataType::ListView(inner_field) => {
+//                 // Note: we do not support double-nested types
+//                 Self::default_for_primitive_datatype(
+//                     inner_field.data_type(),
+//                     field.metadata(),
+//                     nullability,
+//                 )
+//             }
+//
+//             //TODO(ab): support other nested types
+//             _ => Self::default_for_primitive_datatype(
+//                 field.data_type(),
+//                 field.metadata(),
+//                 nullability,
+//             ),
+//         }
+//     }
+//
+//     fn default_for_primitive_datatype(
+//         data_type: &DataType,
+//         metadata: &HashMap<String, String>,
+//         nullability: Nullability,
+//     ) -> Option<Self> {
+//         match data_type {
+//             DataType::Boolean => {
+//                 if nullability.is_either() {
+//                     Some(Self::NullableBoolean(Default::default()))
+//                 } else {
+//                     Some(Self::NonNullableBoolean(Default::default()))
+//                 }
+//             }
+//
+//             DataType::Int64
+//                 if metadata.get(FIELD_METADATA_KEY_COMPONENT_TYPE)
+//                     == Some(&re_types::components::Timestamp::name().to_string()) =>
+//             {
+//                 Some(Self::Timestamp(TimestampFilter::default()))
+//             }
+//
+//             data_type if data_type.is_integer() => Some(Self::Int(Default::default())),
+//
+//             DataType::Float16 | DataType::Float32 | DataType::Float64 => {
+//                 Some(Self::Float(Default::default()))
+//             }
+//
+//             data_type if is_supported_string_datatype(data_type) => {
+//                 Some(Self::String(Default::default()))
+//             }
+//
+//             DataType::Timestamp(_, _) => Some(Self::Timestamp(Default::default())),
+//
+//             _ => None,
+//         }
+//     }
+//
+//     /// Convert to an [`Expr`].
+//     ///
+//     /// The expression is used for filtering and should thus evaluate to a boolean.
+//     pub fn as_filter_expression(
+//         &self,
+//         column: &Column,
+//         field: &Field,
+//     ) -> Result<Expr, FilterError> {
+//         match self {
+//             Self::NullableBoolean(boolean_filter) => {
+//                 boolean_filter.as_filter_expression(column, field)
+//             }
+//             Self::NonNullableBoolean(boolean_filter) => {
+//                 boolean_filter.as_filter_expression(column, field)
+//             }
+//             Self::Int(int_filter) => Ok(int_filter.as_filter_expression(column)),
+//             Self::Float(float_filter) => Ok(float_filter.as_filter_expression(column)),
+//             Self::String(string_filter) => Ok(string_filter.as_filter_expression(column)),
+//             Self::Timestamp(timestamp_filter) => Ok(timestamp_filter.as_filter_expression(column)),
+//         }
+//     }
+// }

@@ -5,7 +5,7 @@ use egui::{Atom, AtomLayout, Atoms, Frame, Margin, Sense};
 use re_log_types::TimestampFormat;
 use re_ui::{SyntaxHighlighting, UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
 
-use super::{Filter, FilterKind, TimestampFormatted};
+use super::{ColumnFilter, FilterKind, TimestampFormatted};
 use crate::TableBlueprint;
 
 /// Action to take based on the user interaction.
@@ -41,7 +41,7 @@ impl FilterUiAction {
 /// to indicate when this content should be committed to the blueprint.
 #[derive(Clone, Debug)]
 pub struct FilterState {
-    pub filters: Vec<Filter>,
+    pub column_filters: Vec<ColumnFilter>,
     pub active_filter: Option<usize>,
 }
 
@@ -56,7 +56,7 @@ impl FilterState {
     ) -> Self {
         ctx.data_mut(|data| {
             data.get_temp_mut_or_insert_with(persisted_id, || Self {
-                filters: table_blueprint.filters.clone(),
+                column_filters: table_blueprint.column_filters.clone(),
                 active_filter: None,
             })
             .clone()
@@ -73,9 +73,9 @@ impl FilterState {
     }
 
     /// Add a new filter to the filter bar.
-    pub fn push_new_filter(&mut self, filter: Filter) {
-        self.filters.push(filter);
-        self.active_filter = Some(self.filters.len() - 1);
+    pub fn push_new_filter(&mut self, filter: ColumnFilter) {
+        self.column_filters.push(filter);
+        self.active_filter = Some(self.column_filters.len() - 1);
     }
 
     /// Display the filter bar UI.
@@ -99,14 +99,14 @@ impl FilterState {
             FilterUiAction::CommitStateToBlueprint => {
                 // give a chance to filters to clean themselves up before committing to the table
                 // blueprint
-                for filter in &mut self.filters {
+                for filter in &mut self.column_filters {
                     filter.kind.on_commit();
                 }
-                table_blueprint.filters = self.filters.clone();
+                table_blueprint.column_filters = self.column_filters.clone();
             }
 
             FilterUiAction::CancelStateEdit => {
-                self.filters = table_blueprint.filters.clone();
+                self.column_filters = table_blueprint.column_filters.clone();
                 self.active_filter = None;
             }
         }
@@ -118,7 +118,7 @@ impl FilterState {
         ui: &mut egui::Ui,
         timestamp_format: TimestampFormat,
     ) -> FilterUiAction {
-        if self.filters.is_empty() {
+        if self.column_filters.is_empty() {
             return Default::default();
         }
 
@@ -137,7 +137,7 @@ impl FilterState {
                 let mut remove_idx = None;
 
                 ui.horizontal_wrapped(|ui| {
-                    for (index, filter) in self.filters.iter_mut().enumerate() {
+                    for (index, filter) in self.column_filters.iter_mut().enumerate() {
                         // egui uses this id to store the popup openness and size information,
                         // so we must invalidate if the filter at a given index changes its
                         // name.
@@ -156,7 +156,7 @@ impl FilterState {
 
                     if let Some(remove_idx) = remove_idx {
                         self.active_filter = None;
-                        self.filters.remove(remove_idx);
+                        self.column_filters.remove(remove_idx);
                         should_commit = true;
                     }
                 });
@@ -172,7 +172,7 @@ struct DisplayFilterUiResult {
     should_delete_filter: bool,
 }
 
-impl Filter {
+impl ColumnFilter {
     pub fn close_button_id() -> egui::Id {
         egui::Id::new("filter_close_button")
     }
@@ -535,7 +535,10 @@ mod tests {
                     re_ui::apply_style_and_install_loaders(ui.ctx());
 
                     let mut filter_state = FilterState {
-                        filters: vec![Filter::new("column:name".to_owned(), filter_op.clone())],
+                        column_filters: vec![ColumnFilter::new(
+                            "column:name".to_owned(),
+                            filter_op.clone(),
+                        )],
                         active_filter: None,
                     };
 
@@ -586,35 +589,35 @@ mod tests {
     #[test]
     fn test_filter_wrapping() {
         let filters = vec![
-            Filter::new(
+            ColumnFilter::new(
                 "some:column:name",
                 FilterKind::String(StringFilter::new(
                     StringOperator::Contains,
                     "some query string".to_owned(),
                 )),
             ),
-            Filter::new(
+            ColumnFilter::new(
                 "other:column:name",
                 FilterKind::String(StringFilter::new(
                     StringOperator::Contains,
                     "hello".to_owned(),
                 )),
             ),
-            Filter::new(
+            ColumnFilter::new(
                 "short:name",
                 FilterKind::String(StringFilter::new(
                     StringOperator::Contains,
                     "world".to_owned(),
                 )),
             ),
-            Filter::new(
+            ColumnFilter::new(
                 "looooog:name",
                 FilterKind::String(StringFilter::new(
                     StringOperator::Contains,
                     "some more querying text here".to_owned(),
                 )),
             ),
-            Filter::new(
+            ColumnFilter::new(
                 "world",
                 FilterKind::String(StringFilter::new(
                     StringOperator::Contains,
@@ -624,7 +627,7 @@ mod tests {
         ];
 
         let mut filters = FilterState {
-            filters,
+            column_filters: filters,
             active_filter: None,
         };
 

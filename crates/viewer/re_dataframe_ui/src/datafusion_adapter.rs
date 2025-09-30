@@ -12,7 +12,7 @@ use re_sorbet::{BatchType, SorbetBatch};
 use re_viewer_context::AsyncRuntimeHandle;
 
 use crate::RequestedObject;
-use crate::filters::Filter;
+use crate::filters::ColumnFilter;
 use crate::table_blueprint::{EntryLinksSpec, PartitionLinksSpec, SortBy, TableBlueprint};
 
 /// Make sure we escape column names correctly for datafusion.
@@ -38,7 +38,7 @@ struct DataFusionQueryData {
     pub partition_links: Option<PartitionLinksSpec>,
     pub entry_links: Option<EntryLinksSpec>,
     pub prefilter: Option<datafusion::prelude::Expr>,
-    pub filters: Vec<Filter>,
+    pub column_filters: Vec<ColumnFilter>,
 }
 
 impl From<&TableBlueprint> for DataFusionQueryData {
@@ -48,7 +48,7 @@ impl From<&TableBlueprint> for DataFusionQueryData {
             partition_links,
             entry_links,
             prefilter,
-            filters,
+            column_filters,
         } = value;
 
         Self {
@@ -56,7 +56,7 @@ impl From<&TableBlueprint> for DataFusionQueryData {
             partition_links: partition_links.clone(),
             entry_links: entry_links.clone(),
             prefilter: prefilter.clone(),
-            filters: filters.clone(),
+            column_filters: column_filters.clone(),
         }
     }
 }
@@ -108,7 +108,7 @@ impl DataFusionQuery {
             partition_links,
             entry_links,
             prefilter,
-            filters,
+            column_filters,
         } = &self.query_data;
 
         //
@@ -164,7 +164,7 @@ impl DataFusionQuery {
 
         let schema = dataframe.schema();
 
-        let filter_exprs = filters
+        let filter_exprs = column_filters
             .iter()
             .filter_map(|filter| {
                 filter
