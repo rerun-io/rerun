@@ -163,9 +163,9 @@ impl FilterKind {
         match data_type {
             DataType::Boolean => {
                 if nullability.is_either() {
-                    Some(Self::NullableBoolean(NullableBooleanFilter::IsTrue))
+                    Some(Self::NullableBoolean(Default::default()))
                 } else {
-                    Some(Self::NonNullableBoolean(NonNullableBooleanFilter::IsTrue))
+                    Some(Self::NonNullableBoolean(Default::default()))
                 }
             }
 

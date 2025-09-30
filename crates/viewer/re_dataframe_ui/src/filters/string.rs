@@ -100,7 +100,7 @@ impl StringFilter {
                     SyntaxHighlightedBuilder::keyword(&operator_text).into_widget_text(ui.style()),
                 )
                 .show_ui(ui, |ui| {
-                    for possible_op in crate::filters::StringOperator::VARIANTS {
+                    for possible_op in StringOperator::VARIANTS {
                         if ui
                             .button(
                                 SyntaxHighlightedBuilder::keyword(&possible_op.to_string())

@@ -685,21 +685,33 @@ async fn test_non_nullable_boolean_equals() {
 #[tokio::test]
 async fn test_nullable_boolean_equals() {
     filter_snapshot!(
-        FilterKind::NullableBoolean(NullableBooleanFilter::IsTrue),
+        FilterKind::NullableBoolean(NullableBooleanFilter::new_is_true()),
         TestColumn::bools_nulls(),
         "nulls_true"
     );
 
     filter_snapshot!(
-        FilterKind::NullableBoolean(NullableBooleanFilter::IsFalse),
+        FilterKind::NullableBoolean(NullableBooleanFilter::new_is_false()),
         TestColumn::bools_nulls(),
         "nulls_false"
     );
 
     filter_snapshot!(
-        FilterKind::NullableBoolean(NullableBooleanFilter::IsNull),
+        FilterKind::NullableBoolean(NullableBooleanFilter::new_is_null()),
         TestColumn::bools_nulls(),
         "nulls_null"
+    );
+
+    filter_snapshot!(
+        FilterKind::NullableBoolean(NullableBooleanFilter::new_is_true().with_is_not()),
+        TestColumn::bools_nulls(),
+        "nulls_is_not_true"
+    );
+
+    filter_snapshot!(
+        FilterKind::NullableBoolean(NullableBooleanFilter::new_is_null().with_is_not()),
+        TestColumn::bools_nulls(),
+        "nulls_is_not_null"
     );
 }
 
@@ -716,14 +728,31 @@ async fn test_boolean_equals_list_non_nullable() {
 
 #[tokio::test]
 async fn test_boolean_equals_list_nullable() {
+    let filters = [
+        (
+            FilterKind::NullableBoolean(NullableBooleanFilter::new_is_true()),
+            "is_true",
+        ),
+        (
+            FilterKind::NullableBoolean(NullableBooleanFilter::new_is_true().with_is_not()),
+            "is_not_true",
+        ),
+        (
+            FilterKind::NullableBoolean(NullableBooleanFilter::new_is_null()),
+            "is_null",
+        ),
+    ];
+
     // Note: NullableBooleanFilter doesn't support Nullability::NONE, but that's ok because
     // NonNullableBooleanFilter is used in this case.
-    for nullability in [Nullability::BOTH, Nullability::INNER, Nullability::OUTER] {
-        filter_snapshot!(
-            FilterKind::NullableBoolean(NullableBooleanFilter::IsNull),
-            TestColumn::bool_lists(nullability),
-            format!("{nullability:?}")
-        );
+    for (filter, filter_str) in filters {
+        for nullability in [Nullability::BOTH, Nullability::INNER, Nullability::OUTER] {
+            filter_snapshot!(
+                filter.clone(),
+                TestColumn::bool_lists(nullability),
+                format!("{nullability:?}_{filter_str}")
+            );
+        }
     }
 }
 
