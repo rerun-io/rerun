@@ -7,7 +7,7 @@ use re_log_types::TimestampFormat;
 ///
 /// Note: this can't be moved to `re_log_types` along with `TimestampFormat`, because then we cannot
 /// implement traits for it.
-pub struct TimestampFormatted<'a, T> {
+pub struct TimestampFormatted<'a, T: ?Sized> {
     pub inner: &'a T,
     pub timestamp_format: TimestampFormat,
 }

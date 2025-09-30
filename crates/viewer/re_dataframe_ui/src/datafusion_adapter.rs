@@ -11,9 +11,8 @@ use re_log_types::Timestamp;
 use re_sorbet::{BatchType, SorbetBatch};
 use re_viewer_context::AsyncRuntimeHandle;
 
-use crate::RequestedObject;
-use crate::filters::ColumnFilter;
 use crate::table_blueprint::{EntryLinksSpec, PartitionLinksSpec, SortBy, TableBlueprint};
+use crate::{ColumnFilter, RequestedObject};
 
 /// Make sure we escape column names correctly for datafusion.
 ///
@@ -162,13 +161,11 @@ impl DataFusionQuery {
         // Filters
         //
 
-        let schema = dataframe.schema();
-
         let filter_exprs = column_filters
             .iter()
             .filter_map(|filter| {
                 filter
-                    .as_filter_expression(schema)
+                    .as_filter_expression()
                     .inspect_err(|err| {
                         // TODO(ab): error handling will need to be improved once we introduce non-
                         // UI means of setting up filters.

@@ -3,9 +3,9 @@ use std::mem;
 use egui::{Atom, AtomLayout, Atoms, Frame, Margin, Sense};
 
 use re_log_types::TimestampFormat;
-use re_ui::{SyntaxHighlighting, UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
+use re_ui::{UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
 
-use super::{ColumnFilter, FilterKind, TimestampFormatted};
+use super::{ColumnFilter, FilterTrait as _, TimestampFormatted};
 use crate::TableBlueprint;
 
 /// Action to take based on the user interaction.
@@ -100,7 +100,7 @@ impl FilterState {
                 // give a chance to filters to clean themselves up before committing to the table
                 // blueprint
                 for filter in &mut self.column_filters {
-                    filter.kind.on_commit();
+                    filter.filter.on_commit();
                 }
                 table_blueprint.column_filters = self.column_filters.clone();
             }
@@ -142,7 +142,7 @@ impl FilterState {
                         // so we must invalidate if the filter at a given index changes its
                         // name.
                         let filter_id =
-                            ui.make_persistent_id(egui::Id::new(index).with(&filter.column_name));
+                            ui.make_persistent_id(egui::Id::new(index).with(filter.field.name()));
 
                         let result =
                             filter.ui(ui, timestamp_format, filter_id, Some(index) == active_index);
@@ -192,9 +192,9 @@ impl ColumnFilter {
         let mut atoms = Atoms::default();
 
         let layout_job = SyntaxHighlightedBuilder::new()
-            .with_body_default(&self.column_name)
+            .with_body_default(self.field.name())
             .with_keyword(" ")
-            .with(&TimestampFormatted::new(&self.kind, timestamp_format))
+            .with(&TimestampFormatted::new(&self.filter, timestamp_format))
             .into_job(ui.style());
 
         atoms.push_right(layout_job);
@@ -259,12 +259,9 @@ impl ColumnFilter {
             // so we switch to a lighter shade.
             ui.visuals_mut().text_edit_bg_color = Some(ui.visuals().widgets.inactive.bg_fill);
 
-            let action = self.kind.popup_ui(
-                ui,
-                timestamp_format,
-                self.column_name.as_ref(),
-                popup_was_closed,
-            );
+            let action =
+                self.filter
+                    .popup_ui(ui, timestamp_format, self.field.name(), popup_was_closed);
 
             // Ensure we close the popup if the popup ui decided on an action.
             if action != FilterUiAction::None {
@@ -313,97 +310,6 @@ impl ColumnFilter {
     }
 }
 
-impl SyntaxHighlighting for TimestampFormatted<'_, FilterKind> {
-    //TODO(ab): these implementation details should be dispatched to the respective sub-structs.
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        let operator_text = match self.inner {
-            FilterKind::NonNullableBoolean(_) => "is".to_owned(),
-            FilterKind::NullableBoolean(nullable_boolean_filter) => {
-                nullable_boolean_filter.operator().to_string()
-            }
-            FilterKind::Int(int_filter) => int_filter.comparison_operator().to_string(),
-            FilterKind::Float(float_filter) => float_filter.comparison_operator().to_string(),
-            FilterKind::String(string_filter) => string_filter.operator().to_string(),
-            FilterKind::Timestamp(timestamp_filter) => timestamp_filter.operator().to_string(),
-        };
-
-        //TODO(ab): this is weird. this entire impl should be delegated to inner structs
-        builder.append_keyword(&operator_text);
-        builder.append_keyword(" ");
-
-        match self.inner {
-            FilterKind::NonNullableBoolean(boolean_filter) => {
-                builder.append_primitive(&boolean_filter.operand_text());
-            }
-
-            FilterKind::NullableBoolean(boolean_filter) => {
-                builder.append_primitive(&boolean_filter.operand_text());
-            }
-
-            FilterKind::Int(int_filter) => {
-                builder.append(int_filter);
-            }
-
-            FilterKind::Float(float_filter) => {
-                builder.append(float_filter);
-            }
-
-            FilterKind::String(string_filter) => {
-                builder.append(string_filter);
-            }
-
-            FilterKind::Timestamp(timestamp_filter) => {
-                builder.append(&self.convert(timestamp_filter));
-            }
-        }
-    }
-}
-
-impl FilterKind {
-    /// Returns true if the filter must be committed.
-    fn popup_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        timestamp_format: TimestampFormat,
-        column_name: &str,
-        popup_just_opened: bool,
-    ) -> FilterUiAction {
-        // Reduce the default width unnecessarily expands the popup width (queries as usually vers
-        // small).
-        ui.spacing_mut().text_edit_width = 150.0;
-
-        match self {
-            Self::NonNullableBoolean(boolean_filter) => boolean_filter.popup_ui(ui, column_name),
-            Self::NullableBoolean(boolean_filter) => boolean_filter.popup_ui(ui, column_name),
-            Self::Int(int_filter) => int_filter.popup_ui(ui, column_name, popup_just_opened),
-            Self::Float(float_filter) => float_filter.popup_ui(ui, column_name, popup_just_opened),
-            Self::String(string_filter) => {
-                string_filter.popup_ui(ui, column_name, popup_just_opened)
-            }
-            Self::Timestamp(timestamp_filter) => {
-                timestamp_filter.popup_ui(ui, column_name, timestamp_format)
-            }
-        }
-    }
-
-    /// Given a chance to the underlying filter struct to update/clean itself upon committing the
-    /// filter state to the table blueprint.
-    ///
-    /// This is used e.g. by the timestamp filter to normalize the user entry to the proper
-    /// representation of the parsed timestamp.
-    fn on_commit(&mut self) {
-        match self {
-            Self::NullableBoolean(_)
-            | Self::NonNullableBoolean(_)
-            | Self::Int(_)
-            | Self::Float(_)
-            | Self::String(_) => {}
-
-            Self::Timestamp(timestamp_filter) => timestamp_filter.on_commit(),
-        }
-    }
-}
-
 /// Get a filter ui action from a text edit response.
 pub fn action_from_text_edit_response(ui: &egui::Ui, response: &egui::Response) -> FilterUiAction {
     if response.lost_focus() {
@@ -423,102 +329,87 @@ pub fn action_from_text_edit_response(ui: &egui::Ui, response: &egui::Response) 
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::super::{
         ComparisonOperator, FloatFilter, IntFilter, NonNullableBooleanFilter,
-        NullableBooleanFilter, StringFilter, TimestampFilter,
+        NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter,
     };
     use super::*;
-    use crate::filters::StringOperator;
+    use crate::filters::Filter;
+    use arrow::datatypes::{DataType, Field, FieldRef};
 
-    fn test_cases() -> Vec<(FilterKind, &'static str)> {
-        // Let's remember to update this test when adding new filter operations.
-        #[cfg(debug_assertions)]
-        let _: () = {
-            use FilterKind::*;
-            let _op = String(Default::default());
-            match _op {
-                NonNullableBoolean(_)
-                | NullableBoolean(_)
-                | Int(_)
-                | Float(_)
-                | String(_)
-                | Timestamp(_) => {}
-            }
-        };
-
+    fn test_cases() -> Vec<(Filter, &'static str)> {
         [
             (
-                FilterKind::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
+                NonNullableBooleanFilter::IsTrue.into(),
                 "boolean_equals_true",
             ),
             (
-                FilterKind::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
+                NonNullableBooleanFilter::IsFalse.into(),
                 "boolean_equals_false",
             ),
             (
-                FilterKind::NullableBoolean(NullableBooleanFilter::new_is_true()),
+                NullableBooleanFilter::new_is_true().into(),
                 "nullable_boolean_equals_true",
             ),
             (
-                FilterKind::NullableBoolean(NullableBooleanFilter::new_is_true().with_is_not()),
+                NullableBooleanFilter::new_is_true().with_is_not().into(),
                 "nullable_boolean_not_equals_true",
             ),
             (
-                FilterKind::NullableBoolean(NullableBooleanFilter::new_is_false()),
+                NullableBooleanFilter::new_is_false().into(),
                 "nullable_boolean_equals_false",
             ),
             (
-                FilterKind::NullableBoolean(NullableBooleanFilter::new_is_null()),
+                NullableBooleanFilter::new_is_null().into(),
                 "nullable_boolean_equals_null",
             ),
             (
-                FilterKind::Int(IntFilter::new(ComparisonOperator::Eq, Some(100))),
+                IntFilter::new(ComparisonOperator::Eq, Some(100)).into(),
                 "int_compare",
             ),
             (
-                FilterKind::Int(IntFilter::new(ComparisonOperator::Eq, None)),
+                IntFilter::new(ComparisonOperator::Eq, None).into(),
                 "int_compare_none",
             ),
             (
-                FilterKind::Float(FloatFilter::new(ComparisonOperator::Ge, Some(10.5))),
+                FloatFilter::new(ComparisonOperator::Ge, Some(10.5)).into(),
                 "float_compares",
             ),
             (
-                FilterKind::Float(FloatFilter::new(ComparisonOperator::Ge, None)),
+                FloatFilter::new(ComparisonOperator::Ge, None).into(),
                 "float_compares_none",
             ),
             (
-                FilterKind::String(StringFilter::new(StringOperator::Contains, "query")),
+                StringFilter::new(StringOperator::Contains, "query").into(),
                 "string_contains",
             ),
             (
-                FilterKind::String(StringFilter::new(StringOperator::Contains, "")),
+                StringFilter::new(StringOperator::Contains, "").into(),
                 "string_contains_empty",
             ),
             (
-                FilterKind::String(StringFilter::new(StringOperator::StartsWith, "query")),
+                StringFilter::new(StringOperator::StartsWith, "query").into(),
                 "string_starts_with",
             ),
             (
-                FilterKind::Timestamp(TimestampFilter::after(
-                    jiff::Timestamp::from_millisecond(100_000_000_000).unwrap(),
-                )),
+                TimestampFilter::after(jiff::Timestamp::from_millisecond(100_000_000_000).unwrap())
+                    .into(),
                 "timestamp_after",
             ),
             (
-                FilterKind::Timestamp(
-                    TimestampFilter::after(
-                        jiff::Timestamp::from_millisecond(100_000_000_000).unwrap(),
-                    )
-                    .with_is_not(),
-                ),
+                TimestampFilter::after(jiff::Timestamp::from_millisecond(100_000_000_000).unwrap())
+                    .with_is_not()
+                    .into(),
                 "timestamp_not_after",
             ),
             (
-                FilterKind::Timestamp(TimestampFilter::between(
+                TimestampFilter::between(
                     jiff::Timestamp::from_millisecond(100_000_000_000).unwrap(),
                     jiff::Timestamp::from_millisecond(110_000_000_000).unwrap(),
-                )),
+                )
+                .into(),
                 "timestamp_between",
             ),
         ]
@@ -526,9 +417,14 @@ mod tests {
         .collect()
     }
 
+    fn dummy_field(name: &str) -> FieldRef {
+        // the actual data type is irrelevant for these tests
+        Arc::new(Field::new(name, DataType::Int64, false))
+    }
+
     #[test]
     fn test_filter_ui() {
-        for (filter_op, test_name) in test_cases() {
+        for (filter, test_name) in test_cases() {
             let mut harness = egui_kittest::Harness::builder()
                 .with_size(egui::Vec2::new(800.0, 80.0))
                 .build_ui(|ui| {
@@ -536,8 +432,8 @@ mod tests {
 
                     let mut filter_state = FilterState {
                         column_filters: vec![ColumnFilter::new(
-                            "column:name".to_owned(),
-                            filter_op.clone(),
+                            dummy_field("column:name"),
+                            filter.clone(),
                         )],
                         active_filter: None,
                     };
@@ -590,39 +486,27 @@ mod tests {
     fn test_filter_wrapping() {
         let filters = vec![
             ColumnFilter::new(
-                "some:column:name",
-                FilterKind::String(StringFilter::new(
-                    StringOperator::Contains,
-                    "some query string".to_owned(),
-                )),
+                dummy_field("some:column:name"),
+                StringFilter::new(StringOperator::Contains, "some query string".to_owned()),
             ),
             ColumnFilter::new(
-                "other:column:name",
-                FilterKind::String(StringFilter::new(
-                    StringOperator::Contains,
-                    "hello".to_owned(),
-                )),
+                dummy_field("other:column:name"),
+                StringFilter::new(StringOperator::Contains, "hello".to_owned()),
             ),
             ColumnFilter::new(
-                "short:name",
-                FilterKind::String(StringFilter::new(
-                    StringOperator::Contains,
-                    "world".to_owned(),
-                )),
+                dummy_field("short:name"),
+                StringFilter::new(StringOperator::Contains, "world".to_owned()),
             ),
             ColumnFilter::new(
-                "looooog:name",
-                FilterKind::String(StringFilter::new(
+                dummy_field("looooog:name"),
+                StringFilter::new(
                     StringOperator::Contains,
                     "some more querying text here".to_owned(),
-                )),
+                ),
             ),
             ColumnFilter::new(
-                "world",
-                FilterKind::String(StringFilter::new(
-                    StringOperator::Contains,
-                    ":wave:".to_owned(),
-                )),
+                dummy_field("world"),
+                StringFilter::new(StringOperator::Contains, ":wave:".to_owned()),
             ),
         ];
 

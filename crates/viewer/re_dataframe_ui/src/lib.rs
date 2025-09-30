@@ -21,6 +21,6 @@ pub use self::{
 
 // for testing purposes
 pub use self::filters::{
-    ColumnFilter, ComparisonOperator, FilterKind, FloatFilter, IntFilter, NonNullableBooleanFilter,
+    ColumnFilter, ComparisonOperator, Filter, FloatFilter, IntFilter, NonNullableBooleanFilter,
     Nullability, NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter,
 };
