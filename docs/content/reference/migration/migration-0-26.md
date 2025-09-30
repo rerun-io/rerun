@@ -10,6 +10,17 @@ For non-blocking, use `timeout_sec=0`.
 Mostly you can just call `.flush()` with no arguments.
 That will block until all writes either finishes or an error occurs (e.g. the gRPC connection is severed).
 
+## Python SDK: `ImageFormat` now uses kw-args for all optional ars
+Before:
+```py
+rr.ImageFormat(width, height, "YUV420"),
+```
+
+After:
+```py
+rr.ImageFormat(width, height, pixel_format="YUV420")
+```
+
 ## Python DataFusion interface: update to 49.0.0
 The DataFusion FFI that we rely on for user defined functions and
 table providers requires users to upgrade their `datafusion-python`
