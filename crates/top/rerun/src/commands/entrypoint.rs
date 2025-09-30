@@ -984,9 +984,7 @@ fn native_startup_options_from_args(args: &Args) -> anyhow::Result<re_viewer::St
         force_wgpu_backend: args.renderer.clone(),
         video_decoder_hw_acceleration,
 
-        on_event: None,
-
-        panel_state_overrides: Default::default(),
+        ..Default::default()
     })
 }
 
