@@ -47,6 +47,15 @@ fn get_table_refs(client: &ConnectionClient) -> DataFusionResult<Vec<TableRefere
     })
 }
 
+pub fn get_all_catalog_names(client: &ConnectionClient) -> DataFusionResult<Vec<String>> {
+    let catalog_names = get_table_refs(client)?
+        .into_iter()
+        .filter_map(|reference| reference.catalog().map(|c| c.to_owned()))
+        .collect::<HashSet<String>>();
+
+    Ok(catalog_names.into_iter().collect())
+}
+
 impl GrpcCatalogProvider {
     pub fn new(name: Option<&str>, client: ConnectionClient) -> Self {
         let name = if let Some(inner_name) = name
