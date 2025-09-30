@@ -255,9 +255,8 @@ def test_tables_to_arrow_reader(server_instance: ServerInstance) -> None:
     for partition_batch in dataset.partition_table().to_arrow_reader():
         assert partition_batch.num_rows > 0
 
-    # TODO(tsaucer) Once OSS server supports table entries, uncomment this test
-    # for table_entry in client.table_entries()[0].to_arrow_reader():
-    #     assert table_entry.num_rows > 0
+    for table_entry in server_instance.client.table_entries()[0].to_arrow_reader():
+        assert table_entry.num_rows > 0
 
 
 def test_url_generation(server_instance: ServerInstance) -> None:
