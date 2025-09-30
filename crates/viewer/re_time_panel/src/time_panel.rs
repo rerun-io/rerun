@@ -1877,10 +1877,10 @@ fn copy_timeline_properties_context_menu(
                 copy_command.is_ok() && has_fragment,
                 egui::Button::new("Copy link to timestamp"),
             )
-            .on_disabled_hover_text(if copy_command.is_err() {
-                "Can't share links to the current recording"
+            .on_disabled_hover_text(if let Err(err) = copy_command.as_ref() {
+                format!("Can't share links to the current recording: {err}")
             } else {
-                "The current recording doesn't support time stamp links"
+                "The current recording doesn't support time stamp links".to_owned()
             })
             .clicked()
             && let Ok(copy_command) = copy_command

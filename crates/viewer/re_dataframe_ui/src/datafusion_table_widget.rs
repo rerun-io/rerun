@@ -17,7 +17,9 @@ use re_log_types::{EntryId, TimelineName, Timestamp};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, icons};
-use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
+use re_viewer_context::{
+    AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, ViewerContext,
+};
 
 use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQueryResult};
 use crate::display_record_batch::DisplayColumn;
@@ -380,7 +382,14 @@ impl<'a> DataFusionTableWidget<'a> {
         );
 
         if let Some(title) = title {
-            title_ui(ui, Some(&mut table_config), title, url, should_show_spinner);
+            title_ui(
+                ui,
+                viewer_ctx,
+                Some(&mut table_config),
+                title,
+                url,
+                should_show_spinner,
+            );
         }
 
         filter_state.filter_bar_ui(
@@ -565,6 +574,7 @@ fn id_from_session_context_and_table(
 
 fn title_ui(
     ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
     table_config: Option<&mut TableConfig>,
     title: &str,
     url: Option<&str>,
@@ -588,7 +598,8 @@ fn title_ui(
                             .on_hover_text(url)
                             .clicked()
                     {
-                        ui.ctx().copy_text(url.into());
+                        ctx.command_sender()
+                            .send_system(SystemCommand::CopyViewerUrl(url.to_owned()));
                     }
 
                     if should_show_spinner {
