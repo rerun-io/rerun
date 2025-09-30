@@ -367,6 +367,13 @@ def test_datafusion_catalog_get_tables(server_instance: ServerInstance) -> None:
     table = schema_provider.table("simple_datatypes")
     assert table is not None
 
+    schema_provider = catalog_provider.schema("second_schema")
+    assert schema_provider.table("second_table") is not None
+
+    catalog_provider = ctx.catalog("alternate_catalog")
+    schema_provider = catalog_provider.schema("third_schema")
+    assert schema_provider.table("third_table") is not None
+
     # Get by table name since it should be in the default catalog/schema
     df = ctx.table("simple_datatypes")
     rb = df.collect()[0]
