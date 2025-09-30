@@ -31,7 +31,7 @@ pub enum PathParseError {
     UnexpectedInstance(Instance),
 
     #[error("Found an unexpected trailing component descriptor: {0:?}")]
-    UnexpectedComponent(Box<ComponentIdentifier>),
+    UnexpectedComponent(ComponentIdentifier),
 
     #[error("Missing component")]
     MissingComponentIdentifier,
@@ -84,14 +84,16 @@ impl std::str::FromStr for DataPath {
         let mut component = None;
         let mut instance = None;
 
-        // Parse `:Points3D:Color#colors` suffix:
+        // Parse `:Points3D:Color` suffix:
         if let Some(first_colon) = tokens.iter().position(|&token| token == ":") {
-            if let Some(component_tokens) = tokens.get(first_colon + 1..)
-                && !component_tokens.is_empty()
-            {
+            if let Some(component_tokens) = tokens.get(first_colon + 1..) {
                 let component_tokens_end = component_tokens.len();
-                if let Some(component_tokens_end) = component_tokens.len().checked_sub(1)
-                    && component_tokens.get(component_tokens_end) == Some(&":")
+                if component_tokens
+                    .len()
+                    .checked_sub(1)
+                    .is_none_or(|component_tokens_end| {
+                        component_tokens.get(component_tokens_end) == Some(&":")
+                    })
                 {
                     return Err(PathParseError::TrailingColon);
                 }
@@ -163,7 +165,7 @@ impl EntityPath {
             return Err(PathParseError::UnexpectedInstance(instance));
         }
         if let Some(component) = component {
-            return Err(PathParseError::UnexpectedComponent(component.into()));
+            return Err(PathParseError::UnexpectedComponent(component));
         }
 
         Ok(entity_path)

@@ -104,7 +104,7 @@ impl FromStr for InstancePath {
         } = DataPath::from_str(s)?;
 
         if let Some(component) = component {
-            return Err(PathParseError::UnexpectedComponent(component.into()));
+            return Err(PathParseError::UnexpectedComponent(component));
         }
 
         let instance = instance.unwrap_or(Instance::ALL);
