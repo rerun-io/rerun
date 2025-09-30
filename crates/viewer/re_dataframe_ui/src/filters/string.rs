@@ -73,9 +73,10 @@ impl StringFilter {
 
         // The udf treats `DoesNotContains` in the same way as `Contains`, so we must apply an
         // outer `NOT` (or null) operation. This way, both operators yield complementary results.
-        let apply_any_or_null_semantics = self.operator() == StringOperator::DoesNotContain;
+        let apply_should_invert_expression_semantics =
+            self.operator() == StringOperator::DoesNotContain;
 
-        if apply_any_or_null_semantics {
+        if apply_should_invert_expression_semantics {
             not(expr.clone()).or(expr.is_null())
         } else {
             expr

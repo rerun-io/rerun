@@ -149,9 +149,9 @@ impl IntFilter {
 
         // Consistent with other column types, we treat `Ne` as an outer-NOT, so we applies it here
         // while the UDF handles `Ne` and `Eq` in the same way (see `ComparisonOperator::apply`).
-        let apply_any_or_null_semantics = self.operator == ComparisonOperator::Ne;
+        let apply_should_invert_expression_semantics = self.operator == ComparisonOperator::Ne;
 
-        if apply_any_or_null_semantics {
+        if apply_should_invert_expression_semantics {
             not(expr.clone()).or(expr.is_null())
         } else {
             expr
@@ -241,9 +241,9 @@ impl FloatFilter {
 
         // Consistent with other column types, we treat `Ne` as an outer-NOT, so we applies it here
         // while the UDF handles `Ne` and `Eq` in the same way (see `ComparisonOperator::apply`).
-        let apply_any_or_null_semantics = self.operator == ComparisonOperator::Ne;
+        let apply_should_invert_expression_semantics = self.operator == ComparisonOperator::Ne;
 
-        if apply_any_or_null_semantics {
+        if apply_should_invert_expression_semantics {
             not(expr.clone()).or(expr.is_null())
         } else {
             expr
