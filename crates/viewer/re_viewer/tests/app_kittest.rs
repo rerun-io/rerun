@@ -50,7 +50,7 @@ async fn menu_without_recording() {
     harness.run_ok();
     harness.snapshot_options(
         "menu_without_recording",
-        &SnapshotOptions::new().threshold(2.0),
+        &SnapshotOptions::new().failed_pixel_count_threshold(2.0),
     );
 }
 
