@@ -24,7 +24,7 @@ impl DataUi for ComponentPath {
             .store()
             .entity_component_descriptor(entity_path, *component)
         else {
-            ui.label(format!(
+            ui.warning_label(format!(
                 "Entity {entity_path:?} has no component {component:?}"
             ));
             return;
@@ -48,7 +48,7 @@ impl DataUi for ComponentPath {
             ) {
                 ui.label("<unset>");
             } else {
-                ui.label(format!(
+                ui.warning_label(format!(
                     "Entity {entity_path:?} has no component {component:?}"
                 ));
             }
