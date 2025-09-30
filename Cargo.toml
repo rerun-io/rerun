@@ -221,7 +221,9 @@ convert_case = "0.6"
 criterion = "0.5"
 cros-codecs = "0.0.6"
 crossbeam = "0.8"
-datafusion = { version = "49.0.2", default-features = false, features = [
+datafusion = { version = "49.0.2", default-features = true, features = [
+  # NOTE: we enable the same features everywhere (including the default ones!),
+  # because otherwise we will recompile datafusion all the time based on our current compile target.
   "nested_expressions",
 ] }
 datafusion-ffi = "49.0.2"
