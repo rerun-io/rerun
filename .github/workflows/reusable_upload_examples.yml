@@ -32,7 +32,7 @@ concurrency:
 
 defaults:
   run:
-    shell: bash --no-profile --norc -euo pipefail {0}
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "read"
