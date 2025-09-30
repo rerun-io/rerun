@@ -359,7 +359,7 @@ tower = "0.5"
 tower-http = "0.6"
 tower-service = "0.3"
 tracing = "0.1.40"
-tracing-opentelemetry = "0.31.0"
+tracing-opentelemetry = "0.32.0"
 tracing-subscriber = { version = "0.3.18", features = [
   "tracing-log",
   "fmt",
