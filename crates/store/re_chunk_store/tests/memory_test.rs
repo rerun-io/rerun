@@ -107,9 +107,9 @@ fn scalar_memory_overhead() {
             let timepoint = TimePoint::default().with(Timeline::log_time(), i as i64);
             let scalars = Scalar::to_arrow([Scalar::from(i as f64)]).unwrap();
 
-            let row = PendingRow::new(
+            let row = PendingRow::from_iter(
                 timepoint,
-                std::iter::once((archetypes::Scalars::descriptor_scalars(), scalars)).collect(),
+                std::iter::once((archetypes::Scalars::descriptor_scalars(), scalars)),
             );
 
             batcher.push_row(entity_path.clone(), row);

@@ -23,15 +23,17 @@ fn query_latest_component<C: re_types_core::Component>(
     re_tracing::profile_function!();
 
     let ((data_time, row_id), unit) = store
-        .latest_at_relevant_chunks(query, entity_path, component_descr)
+        .latest_at_relevant_chunks(query, entity_path, component_descr.component)
         .into_iter()
         .filter_map(|chunk| {
-            let unit = chunk.latest_at(query, component_descr).into_unit()?;
+            let unit = chunk
+                .latest_at(query, component_descr.component)
+                .into_unit()?;
             unit.index(&query.timeline()).map(|index| (index, unit))
         })
         .max_by_key(|(index, _unit)| *index)?;
 
-    unit.component_mono(component_descr)?
+    unit.component_mono(component_descr.component)?
         .ok()
         .map(|values| (data_time, row_id, values))
 }
@@ -332,7 +334,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_frame_nr, frame39),
             &entity_path,
-            &MyIndex::partial_descriptor(),
+            MyIndex::partial_descriptor().component,
         );
         assert!(chunks.is_empty());
     }
@@ -342,7 +344,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_log_time, now_minus_1s_nanos),
             &entity_path,
-            &MyIndex::partial_descriptor(),
+            MyIndex::partial_descriptor().component,
         );
         assert!(chunks.is_empty());
     }
@@ -352,7 +354,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_frame_nr, frame40),
             &EntityPath::from("does/not/exist"),
-            &MyIndex::partial_descriptor(),
+            MyIndex::partial_descriptor().component,
         );
         assert!(chunks.is_empty());
     }
@@ -362,7 +364,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_wrong_name, frame40),
             &EntityPath::from("does/not/exist"),
-            &MyIndex::partial_descriptor(),
+            MyIndex::partial_descriptor().component,
         );
         assert!(chunks.is_empty());
     }
