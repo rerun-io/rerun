@@ -75,7 +75,10 @@ impl App {
 
         UICommand::SaveBlueprint.menu_button_ui(ui, &self.command_sender);
 
-        UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
+        let has_recording = _store_context.is_some_and(|ctx| !ctx.recording.is_empty());
+        ui.add_enabled_ui(has_recording, |ui| {
+            UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
+        });
 
         ui.add_space(SPACING);
 
