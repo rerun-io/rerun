@@ -49,7 +49,9 @@ fn get_table_refs(client: &ConnectionClient) -> DataFusionResult<Vec<TableRefere
 
 impl GrpcCatalogProvider {
     pub fn new(name: Option<&str>, client: ConnectionClient) -> Self {
-        let name = if let Some(inner_name) = name && inner_name == DEFAULT_CATALOG_NAME {
+        let name = if let Some(inner_name) = name
+            && inner_name == DEFAULT_CATALOG_NAME
+        {
             None
         } else {
             name
