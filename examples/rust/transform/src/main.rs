@@ -350,14 +350,25 @@ fn per_chunk_pipeline() -> anyhow::Result<impl PipelineTransform> {
     })
 }
 
-// Extracts two fields from a struct, and adds them to new sub-entities as scalars.
-fn destructure_transform(
-    entity_path_filter: EntityPathFilter,
-    component: impl Into<ComponentIdentifier>,
-) -> ComponentBatchTransform {
-    ComponentBatchTransform::new(
-        entity_path_filter,
-        component.into(),
+fn per_column_pipline() -> anyhow::Result<impl PipelineTransform> {
+    // Takes an existing component that has the right backing data and apply a new component descriptor too it.
+    // TODO: For these simple cases, we could have premade constructors that hide the closure. This could also lead to more efficient Python mappings.
+    let instruction_transform = ComponentBatchTransform::new(
+        "/instructions".parse()?,
+        "com.Example.Instruction:text",
+        |array, entity_path| {
+            vec![TransformedColumn {
+                entity_path: entity_path.clone(),
+                component_descr: TextDocument::descriptor_text(),
+                component_data: array,
+                is_static: false,
+            }]
+        },
+    );
+
+    let destructure_transform = ComponentBatchTransform::new(
+        "/nested".parse().unwrap(),
+        "com.Example.Nested:payload",
         |array, entity_path| {
             let struct_array = array.as_any().downcast_ref::<StructArray>().unwrap();
 
@@ -379,27 +390,8 @@ fn destructure_transform(
                 ),
             ]
         },
-    )
-}
-
-fn per_column_pipline() -> anyhow::Result<impl PipelineTransform> {
-    // Takes an existing component that has the right backing data and apply a new component descriptor too it.
-    // TODO: For these simple cases, we could have premade constructors that hide the closure. This could also lead to more efficient Python mappings.
-    let instruction_transform = ComponentBatchTransform::new(
-        "/instructions".parse()?,
-        "com.Example.Instruction:text",
-        |array, entity_path| {
-            vec![TransformedColumn {
-                entity_path: entity_path.clone(),
-                component_descr: TextDocument::descriptor_text(),
-                component_data: array,
-                is_static: false,
-            }]
-        },
     );
 
-    let destructure_transform =
-        destructure_transform("/nested".parse().unwrap(), "com.Example.Nested:payload");
     let flag_transform = ComponentBatchTransform::new(
         "/flag".parse()?,
         "com.Example.Flag:flag",
@@ -553,19 +545,21 @@ fn log_columns_with_nullability(rec: &RecordingStream) -> anyhow::Result<()> {
 }
 
 /// Creates a chunk that contains all sorts of validity, nullability, and empty lists.
-// ┌──────────────┬──────────┐
-// │ [{a:0,b:0}]  │ ["zero"] │
-// ├──────────────┼──────────┤
-// │[{a:1,b:null}]│ ["one"]  │
-// ├──────────────┼──────────┤
-// │      []      │    []    │
-// ├──────────────┼──────────┤
-// │     null     │["three"] │
-// ├──────────────┼──────────┤
-// │ [{a:4,b:4}]  │   null   │
-// ├──────────────┼──────────┤
-// │    [null]    │ ["five"] │
-// └──────────────┴──────────┘
+// ┌──────────────┬───────────┐
+// │ [{a:0,b:0}]  │ ["zero"]  │
+// ├──────────────┼───────────┤
+// │[{a:1,b:null}]│["one","1"]│
+// ├──────────────┼───────────┤
+// │      []      │    []     │
+// ├──────────────┼───────────┤
+// │     null     │ ["three"] │
+// ├──────────────┼───────────┤
+// │ [{a:4,b:4}]  │   null    │
+// ├──────────────┼───────────┤
+// │    [null]    │ ["five"]  │
+// ├──────────────┼───────────┤
+// │ [{a:6,b:6}]  │  [null]   │
+// └──────────────┴───────────┘
 fn nullability_chunk() -> Chunk {
     let mut struct_column_builder = ListBuilder::new(StructBuilder::new(
         [
@@ -611,6 +605,7 @@ fn nullability_chunk() -> Chunk {
     struct_column_builder.append(true);
 
     string_column_builder.values().append_value("one");
+    string_column_builder.values().append_value("1");
     string_column_builder.append(true);
 
     // row 2
@@ -657,6 +652,23 @@ fn nullability_chunk() -> Chunk {
     string_column_builder.values().append_value("five");
     string_column_builder.append(true);
 
+    // row 6
+    struct_column_builder
+        .values()
+        .field_builder::<Float32Builder>(0)
+        .unwrap()
+        .append_value(6.0);
+    struct_column_builder
+        .values()
+        .field_builder::<Float64Builder>(1)
+        .unwrap()
+        .append_value(6.0);
+    struct_column_builder.values().append(true);
+    struct_column_builder.append(true);
+
+    string_column_builder.values().append_null();
+    string_column_builder.append(true);
+
     let struct_column = struct_column_builder.finish();
     let string_column = string_column_builder.finish();
 
@@ -666,9 +678,9 @@ fn nullability_chunk() -> Chunk {
     ]
     .into_iter();
 
-    let time_column = TimeColumn::new_sequence("tick", [0, 1, 2, 3, 4, 5]);
+    let time_column = TimeColumn::new_sequence("tick", [0, 1, 2, 3, 4, 5, 6]);
 
-    let chunk = Chunk::from_auto_row_ids(
+    Chunk::from_auto_row_ids(
         ChunkId::new(),
         "nullability".into(),
         [(TimelineName::new("tick"), time_column)]
@@ -676,42 +688,135 @@ fn nullability_chunk() -> Chunk {
             .collect(),
         components.collect(),
     )
-    .unwrap();
-
-    chunk
+    .unwrap()
 }
 
-const FORMAT_OPTS: RecordBatchFormatOpts = RecordBatchFormatOpts {
-    transposed: false,
-    width: Some(240usize),
-    include_metadata: false,
-    include_column_metadata: true,
-    trim_field_names: true,
-    trim_metadata_keys: true,
-    trim_metadata_values: true,
-    redact_non_deterministic: true,
-};
+#[cfg(test)]
+mod test {
+    use super::*;
+    use rerun::external::re_format_arrow::RecordBatchFormatOpts;
 
-#[test]
-fn test_destructure() {
-    let chunk = nullability_chunk();
-    println!("{chunk}");
-    let arrow_msg = nullability_chunk().to_arrow_msg().unwrap();
-    let msg = LogMsg::ArrowMsg(StoreId::empty_recording(), arrow_msg);
-
-    let pipeline = ComponentBatchPipelineTransform {
-        transforms: vec![destructure_transform(
-            "nullability".parse().unwrap(),
-            "structs",
-        )],
+    const FORMAT_OPTS: RecordBatchFormatOpts = RecordBatchFormatOpts {
+        transposed: false,
+        width: Some(240usize),
+        include_metadata: true,
+        include_column_metadata: true,
+        trim_field_names: true,
+        trim_metadata_keys: true,
+        trim_metadata_values: true,
+        redact_non_deterministic: true,
     };
 
-    let mut res = pipeline.apply(msg);
-    assert_eq!(res.len(), 2);
+    #[test]
+    fn test_destructure_cast() {
+        let chunk = nullability_chunk();
+        println!("{chunk}");
+        let arrow_msg = nullability_chunk().to_arrow_msg().unwrap();
+        let msg = LogMsg::ArrowMsg(StoreId::empty_recording(), arrow_msg);
 
-    let transformed_batch = res[0].arrow_record_batch_mut().unwrap();
-    insta::assert_snapshot!(re_format_arrow::format_record_batch_opts(
-        transformed_batch,
-        &FORMAT_OPTS,
-    ))
+        let destructure_transform = ComponentBatchTransform::new(
+            "nullability".parse().unwrap(),
+            "structs",
+            |array, entity_path| {
+                let struct_array = array.as_any().downcast_ref::<StructArray>().unwrap();
+
+                let child_a_array = struct_array.column_by_name("a").unwrap();
+                let child_a_array =
+                    arrow::compute::cast(child_a_array, &DataType::Float64).unwrap();
+
+                vec![TransformedColumn::new(
+                    entity_path.join(&EntityPath::parse_forgiving("a")),
+                    Scalars::descriptor_scalars(),
+                    child_a_array,
+                )]
+            },
+        );
+
+        let pipeline = ComponentBatchPipelineTransform {
+            transforms: vec![destructure_transform],
+        };
+
+        let mut res = pipeline.apply(msg.clone());
+        assert_eq!(res.len(), 1);
+
+        let transformed_batch = res[0].arrow_record_batch_mut().unwrap();
+        insta::assert_snapshot!(
+            "destructure_cast",
+            re_format_arrow::format_record_batch_opts(transformed_batch, &FORMAT_OPTS,)
+        );
+    }
+
+    #[test]
+    fn test_destructure() {
+        let chunk = nullability_chunk();
+        println!("{chunk}");
+        let arrow_msg = nullability_chunk().to_arrow_msg().unwrap();
+        let msg = LogMsg::ArrowMsg(StoreId::empty_recording(), arrow_msg);
+
+        let destructure_transform = ComponentBatchTransform::new(
+            "nullability".parse().unwrap(),
+            "structs",
+            |array, entity_path| {
+                let struct_array = array.as_any().downcast_ref::<StructArray>().unwrap();
+
+                let child_b_array = struct_array.column_by_name("b").unwrap();
+
+                vec![TransformedColumn::new(
+                    entity_path.join(&EntityPath::parse_forgiving("b")),
+                    Scalars::descriptor_scalars(),
+                    child_b_array.clone(),
+                )]
+            },
+        );
+
+        let pipeline = ComponentBatchPipelineTransform {
+            transforms: vec![destructure_transform],
+        };
+
+        let mut res = pipeline.apply(msg);
+        assert_eq!(res.len(), 1);
+
+        let transformed_batch = res[0].arrow_record_batch_mut().unwrap();
+        insta::assert_snapshot!(
+            "destructure_only",
+            re_format_arrow::format_record_batch_opts(transformed_batch, &FORMAT_OPTS,)
+        )
+    }
+
+    #[test]
+    fn test_inner_count() {
+        let chunk = nullability_chunk();
+        println!("{chunk}");
+        let arrow_msg = nullability_chunk().to_arrow_msg().unwrap();
+        let msg = LogMsg::ArrowMsg(StoreId::empty_recording(), arrow_msg);
+
+        let destructure_transform = ComponentBatchTransform::new(
+            "nullability".parse().unwrap(),
+            "strings",
+            |array, entity_path| {
+                let struct_array = array.as_any().downcast_ref::<StructArray>().unwrap();
+
+                let child_b_array = struct_array.column_by_name("b").unwrap();
+
+                vec![TransformedColumn::new(
+                    entity_path.join(&EntityPath::parse_forgiving("b")),
+                    Scalars::descriptor_scalars(),
+                    child_b_array.clone(),
+                )]
+            },
+        );
+
+        let pipeline = ComponentBatchPipelineTransform {
+            transforms: vec![destructure_transform],
+        };
+
+        let mut res = pipeline.apply(msg);
+        assert_eq!(res.len(), 1);
+
+        let transformed_batch = res[0].arrow_record_batch_mut().unwrap();
+        insta::assert_snapshot!(
+            "inner_count",
+            re_format_arrow::format_record_batch_opts(transformed_batch, &FORMAT_OPTS,)
+        )
+    }
 }
