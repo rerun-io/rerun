@@ -661,7 +661,11 @@ impl tonic::service::Interceptor for TracingExtractorInterceptor {
 
         // Convert the trace information back into `tracing` and inject it into the current span (if any).
         use tracing_opentelemetry::OpenTelemetrySpanExt as _;
-        tracing::Span::current().set_parent(parent_ctx);
+        tracing::Span::current()
+            .set_parent(parent_ctx)
+            .map_err(|err| {
+                tonic::Status::internal(format!("Failed to set tracing span parent: {err}"))
+            })?;
 
         Ok(req)
     }
