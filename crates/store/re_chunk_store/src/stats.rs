@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
 use re_byte_size::SizeBytes;
-use re_chunk::{Chunk, EntityPath, TimelineName};
-use re_types_core::ComponentDescriptor;
+use re_chunk::{Chunk, ComponentIdentifier, EntityPath, TimelineName};
 
 use crate::ChunkStore;
 
@@ -270,17 +269,15 @@ impl ChunkStore {
     pub fn num_static_events_for_component(
         &self,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> u64 {
         re_tracing::profile_function!();
 
         self.static_chunk_ids_per_entity
             .get(entity_path)
-            .and_then(|static_chunks_per_component| {
-                static_chunks_per_component.get(component_descr)
-            })
+            .and_then(|static_chunks_per_component| static_chunks_per_component.get(&component))
             .and_then(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
-            .and_then(|chunk| chunk.num_events_for_component(component_descr))
+            .and_then(|chunk| chunk.num_events_for_component(component))
             .unwrap_or(0)
     }
 
@@ -291,7 +288,7 @@ impl ChunkStore {
         &self,
         timeline: &TimelineName,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> u64 {
         re_tracing::profile_function!();
 
@@ -301,7 +298,7 @@ impl ChunkStore {
                 temporal_chunk_ids_per_timeline.get(timeline)
             })
             .and_then(|temporal_chunk_ids_per_component| {
-                temporal_chunk_ids_per_component.get(component_descr)
+                temporal_chunk_ids_per_component.get(&component)
             })
             .map_or(0, |chunk_id_sets| {
                 chunk_id_sets
@@ -309,7 +306,7 @@ impl ChunkStore {
                     .values()
                     .flat_map(|chunk_ids| chunk_ids.iter())
                     .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
-                    .filter_map(|chunk| chunk.num_events_for_component(component_descr))
+                    .filter_map(|chunk| chunk.num_events_for_component(component))
                     .sum()
             })
     }
@@ -320,16 +317,12 @@ impl ChunkStore {
     pub fn num_temporal_events_for_component_on_all_timelines(
         &self,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> u64 {
         self.timelines()
             .keys()
             .map(|timeline| {
-                self.num_temporal_events_for_component_on_timeline(
-                    timeline,
-                    entity_path,
-                    component_descr,
-                )
+                self.num_temporal_events_for_component_on_timeline(timeline, entity_path, component)
             })
             .sum()
     }

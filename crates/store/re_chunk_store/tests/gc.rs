@@ -28,15 +28,17 @@ fn query_latest_array(
     re_tracing::profile_function!();
 
     let ((data_time, row_id), unit) = store
-        .latest_at_relevant_chunks(query, entity_path, component_descr)
+        .latest_at_relevant_chunks(query, entity_path, component_descr.component)
         .into_iter()
         .filter_map(|chunk| {
-            let chunk = chunk.latest_at(query, component_descr).into_unit()?;
+            let chunk = chunk
+                .latest_at(query, component_descr.component)
+                .into_unit()?;
             chunk.index(&query.timeline()).map(|index| (index, chunk))
         })
         .max_by_key(|(index, _chunk)| *index)?;
 
-    unit.component_batch_raw(component_descr)
+    unit.component_batch_raw(component_descr.component)
         .map(|array| (data_time, row_id, array))
 }
 
