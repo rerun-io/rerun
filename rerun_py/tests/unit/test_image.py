@@ -4,11 +4,12 @@ from typing import Any
 
 import numpy as np
 import pytest
-import rerun as rr
 import torch
 from rerun.archetypes.image import Image
 from rerun.datatypes.tensor_data import TensorData
 from rerun.error_utils import RerunWarning
+
+import rerun as rr
 
 rng = np.random.default_rng(12345)
 RANDOM_IMAGE_SOURCE = rng.uniform(0.0, 1.0, (10, 20, 3))

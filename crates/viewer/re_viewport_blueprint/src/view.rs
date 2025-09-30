@@ -14,7 +14,7 @@ use re_types::{
 };
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    ContentsName, QueryRange, RecommendedView, StoreContext, SystemCommand,
+    BlueprintContext as _, ContentsName, QueryRange, RecommendedView, StoreContext, SystemCommand,
     SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewContext, ViewId, ViewState,
     ViewStates, ViewerContext,
 };

@@ -10,8 +10,16 @@ from .._baseclasses import AsComponents, ComponentBatchLike, DescribedComponentB
 from .._spawn import _spawn_viewer
 from ..datatypes import BoolLike, EntityPathLike, Float32ArrayLike, Utf8ArrayLike, Utf8Like
 from ..recording_stream import RecordingStream
-from .archetypes import ContainerBlueprint, PanelBlueprint, ViewBlueprint, ViewContents, ViewportBlueprint
+from .archetypes import (
+    ContainerBlueprint,
+    PanelBlueprint,
+    TimePanelBlueprint,
+    ViewBlueprint,
+    ViewContents,
+    ViewportBlueprint,
+)
 from .components import PanelState, PanelStateLike
+from .time import to_nanos, to_nanos_since_epoch
 
 if TYPE_CHECKING:
     from ..memory import MemoryRecording
@@ -421,7 +429,16 @@ class SelectionPanel(Panel):
 class TimePanel(Panel):
     """The state of the time panel."""
 
-    def __init__(self, *, expanded: bool | None = None, state: PanelStateLike | None = None) -> None:
+    def __init__(
+            self,
+            *,
+            expanded: bool | None = None,
+            state: PanelStateLike | None = None,
+            timeline: Utf8Like | None = None,
+            sequence_cursor: int | None = None,
+            duration_cursor: int | float | timedelta | np.timedelta64 | None = None,
+            timestamp_cursor: int | float | datetime | np.datetime64 | None = None,
+        ) -> None:
         """
         Construct a new time panel.
 
@@ -434,9 +451,34 @@ class TimePanel(Panel):
 
             Expanded fully shows the panel, collapsed shows a simplified panel,
             hidden fully hides the panel.
+        timeline:
+            What timeline the timepanel should display.
 
         """
+        if sum(x is not None for x in (sequence, duration, timestamp)) > 1:
+            raise ValueError(
+                f"At most one of `sequence`, `duration`, and `timestamp` must be set",
+            )
+
         super().__init__(blueprint_path="time_panel", expanded=expanded, state=state)
+        self.timeline = timeline
+
+        if sequence_cursor is not None:
+            self.time = sequence
+        elif duration_cursor is not None:
+            self.time = to_nanos(duration)
+        elif timestamp_cursor is not None:
+            self.time = to_nanos_since_epoch(timestamp)
+
+    def _log_to_stream(self, stream: RecordingStream) -> None:
+        """Internal method to convert to an archetype and log to the stream."""
+        arch = TimePanelBlueprint(
+            state=self.state,
+            timeline=self.timeline,
+            time = self.time,
+        )
+
+        stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
 
 
 ContainerLike = Union[Container, View]

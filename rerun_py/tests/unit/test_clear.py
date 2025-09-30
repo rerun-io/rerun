@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import numpy as np
-import rerun as rr
 from rerun.components import ClearIsRecursive, ClearIsRecursiveBatch
+
+import rerun as rr
 
 
 def test_clear() -> None:

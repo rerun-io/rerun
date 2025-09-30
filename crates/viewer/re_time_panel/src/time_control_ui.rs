@@ -6,6 +6,8 @@ use re_ui::{UICommand, UICommandSender as _, UiExt as _, list_item};
 
 use re_viewer_context::{Looping, PlayState, TimeControl, ViewerContext};
 
+use crate::time_panel::TimeControlExt;
+
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 pub struct TimeControlUi;
 
@@ -13,11 +15,14 @@ impl TimeControlUi {
     #[allow(clippy::unused_self)]
     pub fn timeline_selector_ui(
         &self,
-        time_control: &mut TimeControl,
+        ctx: &ViewerContext<'_>,
+        time_control: &mut impl TimeControlExt,
         times_per_timeline: &TimesPerTimeline,
         ui: &mut egui::Ui,
     ) {
-        time_control.select_a_valid_timeline(times_per_timeline);
+        time_control
+            .get_mut()
+            .select_a_valid_timeline(times_per_timeline);
 
         ui.scope(|ui| {
             ui.spacing_mut().button_padding += egui::Vec2::new(2.0, 0.0);
@@ -26,13 +31,13 @@ impl TimeControlUi {
             ui.visuals_mut().widgets.open.expansion = 0.0;
 
             let response = egui::ComboBox::from_id_salt("timeline")
-                .selected_text(time_control.timeline().name().as_str())
+                .selected_text(time_control.get().timeline().name().as_str())
                 .show_ui(ui, |ui| {
                     for timeline_stats in times_per_timeline.timelines_with_stats() {
                         let timeline = &timeline_stats.timeline;
                         if ui
                             .selectable_label(
-                                timeline == time_control.timeline(),
+                                timeline == time_control.get().timeline(),
                                 (
                                     timeline.name().as_str(),
                                     egui::Atom::grow(),
@@ -46,7 +51,7 @@ impl TimeControlUi {
                             )
                             .clicked()
                         {
-                            time_control.set_timeline(*timeline);
+                            time_control.set_timeline(ctx, *timeline);
                         }
                     }
                 })
@@ -93,7 +98,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                 .at_pointer_fixed()
                 .show(|ui| {
                     if ui.button("Copy timeline name").clicked() {
-                        let timeline = format!("{}", time_control.timeline().name());
+                        let timeline = format!("{}", time_control.get().timeline().name());
                         re_log::info!("Copied timeline: {}", timeline);
                         ui.ctx().copy_text(timeline);
                     }
@@ -103,8 +108,8 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
 
     #[allow(clippy::unused_self)]
     pub fn fps_ui(&self, time_control: &mut TimeControl, ui: &mut egui::Ui) {
-        if time_control.time_type() == TimeType::Sequence
-            && let Some(mut fps) = time_control.fps()
+        if time_control.get().time_type() == TimeType::Sequence
+            && let Some(mut fps) = time_control.get().fps()
         {
             ui.scope(|ui| {
                 ui.spacing_mut().interact_size -= egui::Vec2::new(0., 4.);
@@ -124,16 +129,16 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
     pub fn play_pause_ui(
         &self,
         ctx: &ViewerContext<'_>,
-        time_control: &mut TimeControl,
+        time_control: &mut impl TimeControlExt,
         ui: &mut egui::Ui,
     ) {
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 5.0; // from figma
-            self.play_button_ui(ctx, time_control, ui);
-            self.follow_button_ui(ctx, time_control, ui);
-            self.pause_button_ui(ctx, time_control, ui);
+            self.play_button_ui(ctx, time_control.get(), ui);
+            self.follow_button_ui(ctx, time_control.get(), ui);
+            self.pause_button_ui(ctx, time_control.get(), ui);
             self.step_time_button_ui(ctx, ui);
-            self.loop_button_ui(time_control, ui);
+            self.loop_button_ui(time_control.get_mut(), ui);
         });
     }
 
@@ -215,7 +220,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
 
         ui.scope(|ui| {
             // Loop-button cycles between states:
-            match time_control.looping() {
+            match time_control.get().looping() {
                 Looping::Off => {
                     if ui
                         .large_button_selected(icon, false)
@@ -252,7 +257,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
 
     #[allow(clippy::unused_self)]
     pub fn playback_speed_ui(&self, time_control: &mut TimeControl, ui: &mut egui::Ui) {
-        let mut speed = time_control.speed();
+        let mut speed = time_control.get().speed();
         let drag_speed = (speed * 0.02).at_least(0.01);
         ui.scope(|ui| {
             ui.spacing_mut().interact_size -= egui::Vec2::new(0., 4.);

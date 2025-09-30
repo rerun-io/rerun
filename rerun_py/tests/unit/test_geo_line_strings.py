@@ -5,13 +5,14 @@ from typing import Any, Optional, cast
 
 import numpy as np
 import pytest
-import rerun as rr
 import torch
 from rerun.components import (
     GeoLineStringArrayLike,
     GeoLineStringBatch,
 )
 from rerun.datatypes import DVec2D, Float32ArrayLike, Rgba32ArrayLike
+
+import rerun as rr
 
 from .common_arrays import (
     colors_arrays,

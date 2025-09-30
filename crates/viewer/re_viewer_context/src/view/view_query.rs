@@ -15,6 +15,7 @@ use re_types::{
 
 use crate::{
     DataResultTree, QueryRange, ViewHighlights, ViewId, ViewSystemIdentifier, ViewerContext,
+    blueprint_helpers::BlueprintContext as _,
 };
 
 /// Path to a specific entity in a specific store used for overrides.

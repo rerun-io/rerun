@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 
 use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_nanos;
-use re_log_types::{EntityPath, TimeInt};
+use re_log_types::{EntityPath, NonMinI64, TimeInt};
 use re_types::{
     ComponentBatch as _, View as _, ViewClassIdentifier,
     archetypes::{SeriesLines, SeriesPoints},
@@ -22,12 +22,12 @@ use re_view::{
     view_property_ui,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
-    QueryRange, RecommendedView, SmallVisualizerSet, SystemExecutionOutput,
-    TypedComponentFallbackProvider, ViewClass, ViewClassExt as _, ViewClassRegistryError,
-    ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
-    external::re_entity_db::InstancePath,
+    BlueprintContext as _, IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities,
+    PerVisualizer, QueryRange, RecommendedView, SmallVisualizerSet, SystemExecutionOutput,
+    TimeBlueprintExt as _, TypedComponentFallbackProvider, ViewClass, ViewClassExt as _,
+    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    VisualizableEntities, external::re_entity_db::InstancePath,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -547,9 +547,11 @@ impl ViewClass for TimeSeriesView {
             if plot_ui.response().secondary_clicked()
                 && let Some(pointer) = plot_ui.pointer_coordinate()
             {
+                ctx.set_time(NonMinI64::saturating_from_i64(
+                    pointer.x as i64 + time_offset,
+                ));
+
                 let mut time_ctrl_write = ctx.rec_cfg.time_ctrl.write();
-                let timeline = *time_ctrl_write.timeline();
-                time_ctrl_write.set_timeline_and_time(timeline, pointer.x as i64 + time_offset);
                 time_ctrl_write.pause();
             }
 
@@ -669,8 +671,9 @@ impl ViewClass for TimeSeriesView {
                 // Avoid frame-delay:
                 time_x = pointer_pos.x;
 
+                ctx.set_time(TimeInt::saturated_temporal_i64(new_time));
+
                 let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
-                time_ctrl.set_time(new_time);
                 time_ctrl.pause();
 
                 state.is_dragging_time_cursor = true;

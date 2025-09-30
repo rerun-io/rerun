@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
+
 from rerun_bindings import (
     ComponentColumnDescriptor as ComponentColumnDescriptor,
     ComponentColumnSelector as ComponentColumnSelector,

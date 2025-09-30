@@ -13,7 +13,9 @@ use re_types::blueprint::components::{
 };
 use re_types::components::Name;
 use re_types::{Archetype as _, components::Visible};
-use re_viewer_context::{ContainerId, Contents, ContentsName, ViewId, ViewerContext};
+use re_viewer_context::{
+    BlueprintContext as _, ContainerId, Contents, ContentsName, ViewId, ViewerContext,
+};
 
 /// The native version of a [`re_types::blueprint::archetypes::ContainerBlueprint`].
 ///

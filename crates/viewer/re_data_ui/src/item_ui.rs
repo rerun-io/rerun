@@ -5,7 +5,7 @@
 use re_entity_db::entity_db::EntityDbClass;
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
-use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, Timeline, TimelineName};
+use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, TimelineName};
 use re_types::{
     archetypes::RecordingInfo,
     components::{Name, Timestamp},
@@ -14,7 +14,8 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
-    HoverHighlight, Item, SystemCommand, SystemCommandSender as _, UiLayout, ViewId, ViewerContext,
+    HoverHighlight, Item, SystemCommand, SystemCommandSender as _, TimeBlueprintExt as _, UiLayout,
+    ViewId, ViewerContext,
 };
 
 use super::DataUi as _;
@@ -499,11 +500,7 @@ pub fn time_button(
         typ.format(value, ctx.app_options().timestamp_format),
     );
     if response.clicked() {
-        let timeline = Timeline::new(*timeline_name, typ);
-        ctx.rec_cfg
-            .time_ctrl
-            .write()
-            .set_timeline_and_time(timeline, value);
+        ctx.set_timeline_and_time(*timeline_name, value);
         ctx.rec_cfg.time_ctrl.write().pause();
     }
     response
@@ -529,9 +526,8 @@ pub fn timeline_button_to(
         .selectable_label(is_selected, text)
         .on_hover_text("Click to switch to this timeline");
     if response.clicked() {
+        ctx.set_timeline(*timeline_name);
         let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
-        let timeline = Timeline::new(*timeline_name, ctx.recording().timeline_type(timeline_name));
-        time_ctrl.set_timeline(timeline);
         time_ctrl.pause();
     }
     response

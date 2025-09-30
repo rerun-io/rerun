@@ -25,10 +25,10 @@ pub trait TestContextExt {
     fn ui_for_single_view(&self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>, view_id: ViewId);
 
     /// [`TestContext::run`] inside a central panel that displays the ui for a single given view.
-    fn run_with_single_view(&mut self, ui: &mut egui::Ui, view_id: ViewId);
+    fn run_with_single_view(&self, ui: &mut egui::Ui, view_id: ViewId);
 
     fn run_view_ui_and_save_snapshot(
-        &mut self,
+        &self,
         view_id: ViewId,
         snapshot_name: &str,
         size: egui::Vec2,
@@ -167,7 +167,7 @@ impl TestContextExt for TestContext {
     }
 
     /// [`TestContext::run`] for a single view.
-    fn run_with_single_view(&mut self, ui: &mut egui::Ui, view_id: ViewId) {
+    fn run_with_single_view(&self, ui: &mut egui::Ui, view_id: ViewId) {
         self.run_ui(ui, |ctx, ui| {
             self.ui_for_single_view(ui, ctx, view_id);
         });
@@ -176,7 +176,7 @@ impl TestContextExt for TestContext {
     }
 
     fn run_view_ui_and_save_snapshot(
-        &mut self,
+        &self,
         view_id: ViewId,
         snapshot_name: &str,
         size: egui::Vec2,

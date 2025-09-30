@@ -10,8 +10,9 @@ import threading
 import time
 from typing import TYPE_CHECKING, Any
 
-import rerun as rr
 import rerun.blueprint as rrb
+
+import rerun as rr
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

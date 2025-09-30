@@ -13,11 +13,11 @@ use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintUndoState, CommandSender,
-    ComponentUiRegistry, DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState,
-    RecordingConfig, SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
-    SystemCommandSender as _, TableStore, ViewClassRegistry, ViewStates, ViewerContext,
-    blueprint_timeline,
+    AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintTimeControl,
+    BlueprintUndoState, CommandSender, ComponentUiRegistry, DisplayMode, DragAndDropManager,
+    GlobalContext, Item, PlayState, RecordingConfig, SelectionChange, StorageContext, StoreContext,
+    StoreHub, SystemCommand, SystemCommandSender as _, TableStore, TimeControl, ViewClassRegistry,
+    ViewStates, ViewerContext, blueprint_timeline,
     open_url::{self, ViewerOpenUrl},
 };
 use re_viewport::ViewportUi;
@@ -39,7 +39,7 @@ pub struct AppState {
 
     /// Configuration for the current recording (found in [`EntityDb`]).
     pub recording_configs: HashMap<StoreId, RecordingConfig>,
-    pub blueprint_cfg: RecordingConfig,
+    pub blueprint_cfg: RecordingConfig<BlueprintTimeControl>,
 
     /// Maps blueprint id to the current undo state for it.
     #[serde(skip)]
@@ -795,6 +795,7 @@ fn move_time(
         // The state diffs are used to trigger callbacks if they are configured.
         // Unless we have a real recording open, we should not actually trigger any callbacks.
         should_diff_time_ctrl,
+        Some(ctx),
     );
 
     handle_time_ctrl_event(recording, events, &recording_time_ctrl_response);
@@ -811,6 +812,7 @@ fn move_time(
                 dt,
                 more_data_is_coming,
                 should_diff_time_ctrl,
+                None::<&ViewerContext<'_>>,
             )
             .needs_repaint
     } else {
@@ -871,7 +873,7 @@ pub(crate) fn recording_config_entry<'cfgs>(
             PlayState::Following // No known source 🤷‍♂️
         };
 
-        let mut rec_cfg = RecordingConfig::default();
+        let mut rec_cfg = RecordingConfig::<TimeControl>::default();
 
         rec_cfg
             .time_ctrl

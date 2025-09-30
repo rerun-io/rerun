@@ -14,7 +14,7 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
 use re_global_context::{AppOptions, DisplayMode, Item, SystemCommandSender as _};
 use re_log_types::{
-    EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind, Timeline,
+    EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind,
     external::re_tuid::Tuid,
 };
 use re_types::{Component as _, ComponentDescriptor, archetypes::RecordingInfo};
@@ -22,10 +22,10 @@ use re_types_core::reflection::Reflection;
 use re_ui::Help;
 
 use re_viewer_context::{
-    ApplicationSelectionState, CommandReceiver, CommandSender, ComponentUiRegistry,
-    DataQueryResult, GlobalContext, ItemCollection, RecordingConfig, StoreHub, SystemCommand,
-    ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
-    command_channel,
+    ApplicationSelectionState, BlueprintContext, CommandReceiver, CommandSender,
+    ComponentUiRegistry, DataQueryResult, GlobalContext, ItemCollection, RecordingConfig, StoreHub,
+    SystemCommand, TimeBlueprintExt as _, ViewClass, ViewClassRegistry, ViewId, ViewStates,
+    ViewerContext, blueprint_timeline, command_channel,
 };
 
 pub mod external {
@@ -77,6 +77,31 @@ pub struct TestContext {
 
     egui_render_state: Mutex<Option<egui_wgpu::RenderState>>,
     called_setup_kittest_for_rendering: AtomicBool,
+}
+
+pub struct TestBlueprintCtx<'a> {
+    command_sender: &'a CommandSender,
+    current_blueprint: &'a EntityDb,
+    default_blueprint: Option<&'a EntityDb>,
+    blueprint_query: &'a re_chunk::LatestAtQuery,
+}
+
+impl BlueprintContext for TestBlueprintCtx<'_> {
+    fn command_sender(&self) -> &CommandSender {
+        self.command_sender
+    }
+
+    fn current_blueprint(&self) -> &EntityDb {
+        self.current_blueprint
+    }
+
+    fn default_blueprint(&self) -> Option<&EntityDb> {
+        self.default_blueprint
+    }
+
+    fn blueprint_query(&self) -> &re_chunk::LatestAtQuery {
+        self.blueprint_query
+    }
 }
 
 impl Default for TestContext {
@@ -167,11 +192,6 @@ impl TestContext {
 
         let reflection =
             re_types::reflection::generate_reflection().expect("Failed to generate reflection");
-
-        recording_config
-            .time_ctrl
-            .write()
-            .set_timeline(Timeline::log_tick());
 
         Self {
             app_options: Default::default(),
@@ -301,6 +321,24 @@ fn init_shared_renderer_setup() -> SharedWgpuResources {
 }
 
 impl TestContext {
+    /// Used to get a context with helper functions to write & read from blueprints.
+    pub fn with_blueprint_ctx<R>(&self, f: impl FnOnce(TestBlueprintCtx<'_>) -> R) -> R {
+        let mut store_hub = self
+            .store_hub
+            .try_lock()
+            .expect("Failed to get lock for blueprint ctx");
+        let (_, Some(store_context)) = store_hub.read_context() else {
+            panic!("No active blueprint")
+        };
+
+        f(TestBlueprintCtx {
+            command_sender: &self.command_sender,
+            current_blueprint: store_context.blueprint,
+            default_blueprint: store_context.default_blueprint,
+            blueprint_query: &self.blueprint_query,
+        })
+    }
+
     pub fn setup_kittest_for_rendering(&self) -> egui_kittest::HarnessBuilder<()> {
         // Egui kittests insists on having a fresh render state for each test.
         let new_render_state = create_egui_renderstate();
@@ -338,13 +376,6 @@ impl TestContext {
             .expect("expected an active recording")
             .store_id()
             .clone()
-    }
-
-    pub fn set_active_timeline(&self, timeline: Timeline) {
-        self.recording_config
-            .time_ctrl
-            .write()
-            .set_timeline(timeline);
     }
 
     pub fn edit_selection(&self, edit_fn: impl FnOnce(&mut ApplicationSelectionState)) {
@@ -572,7 +603,7 @@ impl TestContext {
     }
 
     /// Best-effort attempt to meaningfully handle some of the system commands.
-    pub fn handle_system_commands(&mut self) {
+    pub fn handle_system_commands(&self) {
         while let Some(command) = self.command_receiver.recv_system() {
             let mut handled = true;
             let command_name = format!("{command:?}");
@@ -585,7 +616,10 @@ impl TestContext {
                     // Ignore this trying to copy to the clipboard.
                 }
                 SystemCommand::AppendToStore(store_id, chunks) => {
-                    let store_hub = self.store_hub.get_mut();
+                    let mut store_hub = self
+                        .store_hub
+                        .try_lock()
+                        .expect("Failed to lock store hub mutex");
                     let db = store_hub.entity_db_mut(&store_id);
 
                     for chunk in chunks {
@@ -595,7 +629,10 @@ impl TestContext {
                 }
 
                 SystemCommand::DropEntity(store_id, entity_path) => {
-                    let store_hub = self.store_hub.get_mut();
+                    let mut store_hub = self
+                        .store_hub
+                        .try_lock()
+                        .expect("Failed to lock store hub mutex");
                     assert_eq!(Some(&store_id), store_hub.active_blueprint_id());
 
                     store_hub
@@ -615,21 +652,19 @@ impl TestContext {
                     store_id: rec_id,
                     timeline,
                     time,
-                    pending,
+                    pending: _,
                 } => {
                     assert_eq!(
                         &rec_id,
                         self.store_hub.lock().active_recording().unwrap().store_id()
                     );
-                    let mut time_ctrl = self.recording_config.time_ctrl.write();
-                    if pending {
-                        time_ctrl.set_pending_timeline(timeline);
-                    } else {
-                        time_ctrl.set_timeline(timeline);
-                    }
-                    if let Some(time) = time {
-                        time_ctrl.set_time(time);
-                    }
+                    self.with_blueprint_ctx(|ctx| {
+                        ctx.set_timeline(*timeline.name());
+
+                        if let Some(time) = time {
+                            ctx.set_time(time.floor());
+                        }
+                    });
                 }
 
                 SystemCommand::AddValidTimeRange {

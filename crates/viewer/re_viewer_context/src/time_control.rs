@@ -1,16 +1,94 @@
-use std::collections::BTreeMap;
+use std::{
+    collections::BTreeMap,
+    ops::{Deref, DerefMut},
+};
 
 use nohash_hasher::IntMap;
+use re_types::blueprint::archetypes::TimePanelBlueprint;
 use vec1::Vec1;
 
-use re_chunk::TimelineName;
+use re_chunk::{EntityPath, TimelineName};
 use re_entity_db::{TimeCounts, TimelineStats, TimesPerTimeline};
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeCell, TimeInt, TimeReal, TimeType,
     Timeline,
 };
 
-use crate::NeedsRepaint;
+use crate::{NeedsRepaint, blueprint_helpers::BlueprintContext};
+
+pub const TIME_PANEL_PATH: &str = "time_panel";
+
+pub fn time_panel_blueprint_entity_path() -> EntityPath {
+    TIME_PANEL_PATH.into()
+}
+
+/// Helper trait to write time panel related blueprint components.
+pub trait TimeBlueprintExt {
+    fn set_timeline_and_time(&self, timeline: TimelineName, time: impl Into<TimeInt>) {
+        self.set_timeline(timeline);
+        self.set_time(time);
+    }
+
+    fn set_time(&self, time: impl Into<TimeInt>);
+
+    fn get_time(&self) -> Option<TimeInt>;
+
+    fn set_timeline(&self, timeline: TimelineName);
+
+    fn get_timeline(&self) -> Option<TimelineName>;
+
+    /// Replaces the current timeline with the automatic one.
+    fn clear_timeline(&self);
+}
+
+impl<T: BlueprintContext> TimeBlueprintExt for T {
+    fn set_time(&self, time: impl Into<TimeInt>) {
+        let time: TimeInt = time.into();
+        self.save_blueprint_component_static(
+            time_panel_blueprint_entity_path(),
+            &TimePanelBlueprint::descriptor_time(),
+            &re_types::blueprint::components::TimeCell(time.as_i64().into()),
+        );
+    }
+
+    fn get_time(&self) -> Option<TimeInt> {
+        let (_, time) = self
+            .current_blueprint()
+            .latest_at_component_quiet::<re_types::blueprint::components::TimeCell>(
+                &time_panel_blueprint_entity_path(),
+                self.blueprint_query(),
+                &TimePanelBlueprint::descriptor_time(),
+            )?;
+
+        Some(TimeInt::saturated_temporal_i64(time.0.0))
+    }
+
+    fn set_timeline(&self, timeline: TimelineName) {
+        self.save_blueprint_component(
+            time_panel_blueprint_entity_path(),
+            &TimePanelBlueprint::descriptor_timeline(),
+            &re_types::blueprint::components::TimelineName::from(timeline.as_str()),
+        );
+    }
+
+    fn get_timeline(&self) -> Option<TimelineName> {
+        let (_, timeline) = self
+            .current_blueprint()
+            .latest_at_component_quiet::<re_types::blueprint::components::TimelineName>(
+            &time_panel_blueprint_entity_path(),
+            self.blueprint_query(),
+            &TimePanelBlueprint::descriptor_timeline(),
+        )?;
+
+        Some(TimelineName::new(timeline.as_str()))
+    }
+    fn clear_timeline(&self) {
+        self.clear_blueprint_component(
+            time_panel_blueprint_entity_path(),
+            TimePanelBlueprint::descriptor_timeline(),
+        );
+    }
+}
 
 /// The time range we are currently zoomed in on.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize, PartialEq)]
@@ -240,6 +318,9 @@ impl TimeControl {
     ///
     /// If `should_diff_state` is true, then the response also contains any changes in state
     /// between last frame and the current one.
+    ///
+    /// If `blueprint_ctx` is `Some` this will read and write the current
+    /// time & timeline from the related blueprint.
     #[must_use]
     pub fn update(
         &mut self,
@@ -247,8 +328,36 @@ impl TimeControl {
         stable_dt: f32,
         more_data_is_coming: bool,
         should_diff_state: bool,
+        blueprint_ctx: Option<&impl BlueprintContext>,
     ) -> TimeControlResponse {
+        if let Some(blueprint_ctx) = blueprint_ctx {
+            if let Some(timeline) = blueprint_ctx.get_timeline() {
+                if matches!(self.timeline, ActiveTimeline::Auto(_))
+                    || timeline.as_str() != self.timeline().name().as_str()
+                {
+                    self.timeline = ActiveTimeline::Pending(Timeline::new_sequence(timeline));
+                }
+            } else {
+                self.timeline = ActiveTimeline::Auto(*self.timeline());
+            }
+
+            if let Some(time) = blueprint_ctx.get_time()
+                && self.time_int() != Some(time)
+            {
+                self.set_time(time.into());
+            }
+        }
+
         self.select_a_valid_timeline(times_per_timeline);
+
+        let set_time = |this: &mut Self, time: TimeReal| {
+            if this.time_int() != Some(time.floor()) {
+                if let Some(blueprint_ctx) = blueprint_ctx {
+                    blueprint_ctx.set_time(time.floor());
+                }
+            }
+            this.set_time(time);
+        };
 
         let Some(full_valid_range) = self.full_valid_range(times_per_timeline) else {
             return TimeControlResponse::no_repaint(); // we have no data on this timeline yet, so bail
@@ -281,7 +390,7 @@ impl TimeControl {
 
                 if self.looping == Looping::Off && full_valid_range.max() <= state.current.time {
                     // We've reached the end of the data
-                    state.current.time = full_valid_range.max().into();
+                    set_time(self, full_valid_range.max().into());
 
                     if more_data_is_coming {
                         // then let's wait for it without pausing!
@@ -292,6 +401,8 @@ impl TimeControl {
                     }
                 }
 
+                let mut new_time = state.current.time;
+
                 let loop_range = match self.looping {
                     Looping::Off => None,
                     Looping::Selection => state.current.loop_selection,
@@ -300,17 +411,17 @@ impl TimeControl {
 
                 match self.timeline.typ() {
                     TimeType::Sequence => {
-                        state.current.time += TimeReal::from(state.current.fps * dt);
+                        new_time += TimeReal::from(state.current.fps * dt);
                     }
                     TimeType::DurationNs | TimeType::TimestampNs => {
-                        state.current.time += TimeReal::from(Duration::from_secs(dt));
+                        new_time += TimeReal::from(Duration::from_secs(dt));
                     }
                 }
 
                 if let Some(loop_range) = loop_range
-                    && loop_range.max < state.current.time
+                    && loop_range.max < new_time
                 {
-                    state.current.time = loop_range.min; // loop!
+                    new_time = loop_range.min; // loop!
                 }
 
                 // Confine cursor to valid ranges.
@@ -323,28 +434,21 @@ impl TimeControl {
 
                     // The valid range index that the time cursor is either contained in or just behind.
                     let next_valid_range_idx =
-                        valid_ranges.partition_point(|range| range.max() < state.current.time);
+                        valid_ranges.partition_point(|range| range.max() < new_time);
                     let clamp_range = valid_ranges
                         .get(next_valid_range_idx)
                         .unwrap_or_else(|| valid_ranges.last());
-                    state.current.time = state
-                        .current
-                        .time
-                        .clamp(clamp_range.min().into(), clamp_range.max().into());
+                    new_time = new_time.clamp(clamp_range.min().into(), clamp_range.max().into());
                 }
+
+                set_time(self, new_time);
 
                 NeedsRepaint::Yes
             }
             PlayState::Following => {
                 // Set the time to the max:
-                match self.states.entry(*self.timeline.name()) {
-                    std::collections::btree_map::Entry::Vacant(entry) => {
-                        entry.insert(TimeStateEntry::new(full_valid_range.max()));
-                    }
-                    std::collections::btree_map::Entry::Occupied(mut entry) => {
-                        entry.get_mut().current.time = full_valid_range.max().into();
-                    }
-                }
+                set_time(self, full_valid_range.max().into());
+
                 NeedsRepaint::No // no need for request_repaint - we already repaint when new data arrives
             }
         };
@@ -469,7 +573,11 @@ impl TimeControl {
         self.playing = false;
     }
 
-    pub fn step_time_back(&mut self, times_per_timeline: &TimesPerTimeline) {
+    pub fn step_time_back(
+        &mut self,
+        ctx: &impl TimeBlueprintExt,
+        times_per_timeline: &TimesPerTimeline,
+    ) {
         let Some(timeline_stats) = times_per_timeline.get(self.timeline().name()) else {
             return;
         };
@@ -483,11 +591,15 @@ impl TimeControl {
             } else {
                 step_back_time(time, &timeline_stats.per_time).into()
             };
-            self.set_time(new_time);
+            ctx.set_time(new_time.floor());
         }
     }
 
-    pub fn step_time_fwd(&mut self, times_per_timeline: &TimesPerTimeline) {
+    pub fn step_time_fwd(
+        &mut self,
+        ctx: &impl TimeBlueprintExt,
+        times_per_timeline: &TimesPerTimeline,
+    ) {
         let Some(stats) = times_per_timeline.get(self.timeline().name()) else {
             return;
         };
@@ -501,7 +613,7 @@ impl TimeControl {
             } else {
                 step_fwd_time(time, &stats.per_time).into()
             };
-            self.set_time(new_time);
+            ctx.set_time(new_time.floor());
         }
     }
 
@@ -605,8 +717,11 @@ impl TimeControl {
             // If it's pending never automatically refresh it.
             ActiveTimeline::Pending(timeline) => {
                 // If the pending timeline is valid, it shouldn't be pending anymore.
-                if is_timeline_valid(timeline, times_per_timeline) {
-                    self.set_timeline(*timeline);
+                if let Some(timeline) = times_per_timeline
+                    .timelines()
+                    .find(|t| t.name() == timeline.name())
+                {
+                    self.timeline = ActiveTimeline::UserEdited(*timeline);
                 }
 
                 false
@@ -628,14 +743,6 @@ impl TimeControl {
     /// The time type of the currently selected timeline
     pub fn time_type(&self) -> TimeType {
         self.timeline.typ()
-    }
-
-    pub fn set_timeline(&mut self, timeline: Timeline) {
-        self.timeline = ActiveTimeline::UserEdited(timeline);
-    }
-
-    pub fn set_pending_timeline(&mut self, timeline: Timeline) {
-        self.timeline = ActiveTimeline::Pending(timeline);
     }
 
     /// Mark up a time range as valid.
@@ -825,28 +932,14 @@ impl TimeControl {
         matches!(self.timeline, ActiveTimeline::Pending(_))
     }
 
-    pub fn set_timeline_and_time(&mut self, timeline: Timeline, time: impl Into<TimeReal>) {
-        self.timeline = ActiveTimeline::UserEdited(timeline);
-        self.set_time(time);
-    }
-
     pub fn time_for_timeline(&self, timeline: TimelineName) -> Option<TimeReal> {
         self.states.get(&timeline).map(|state| state.current.time)
     }
 
-    pub fn set_time_for_timeline(&mut self, timeline: Timeline, time: impl Into<TimeReal>) {
-        let time = time.into();
-
-        self.states
-            .entry(*timeline.name())
-            .or_insert_with(|| TimeStateEntry::new(time))
-            .current
-            .time = time;
-    }
-
-    pub fn set_time(&mut self, time: impl Into<TimeReal>) {
-        let time = time.into();
-
+    /// Set the time.
+    ///
+    /// This does not affect the time stored in blueprints.
+    fn set_time(&mut self, time: TimeReal) {
         self.states
             .entry(*self.timeline.name())
             .or_insert_with(|| TimeStateEntry::new(time))
@@ -875,6 +968,36 @@ impl TimeControl {
         if let Some(state) = self.states.get_mut(self.timeline.name()) {
             state.current.view = None;
         }
+    }
+}
+
+/// Same as [`TimeControl`] but exposes some extra functions
+/// to mutate inner state.
+#[derive(Default, serde::Deserialize, serde::Serialize, Clone, PartialEq)]
+#[serde(default)]
+pub struct BlueprintTimeControl(TimeControl);
+
+impl Deref for BlueprintTimeControl {
+    type Target = TimeControl;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for BlueprintTimeControl {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl BlueprintTimeControl {
+    pub fn set_time(&mut self, time: impl Into<TimeReal>) {
+        self.0.set_time(time.into());
+    }
+
+    pub fn set_timeline(&mut self, timeline: Timeline) {
+        self.0.timeline = ActiveTimeline::UserEdited(timeline);
     }
 }
 

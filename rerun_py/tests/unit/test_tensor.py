@@ -4,9 +4,10 @@ from typing import Any
 
 import numpy as np
 import pytest
-import rerun as rr
 from rerun.components import TensorData, TensorDataBatch
 from rerun.datatypes import TensorBuffer, TensorDataLike
+
+import rerun as rr
 
 rng = np.random.default_rng(12345)
 RANDOM_TENSOR_SOURCE = rng.uniform(0.0, 1.0, (8, 6, 3, 5))

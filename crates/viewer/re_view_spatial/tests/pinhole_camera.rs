@@ -22,7 +22,7 @@ pub fn test_pinhole_camera() {
     });
 
     let view_id = setup_blueprint(&mut test_context);
-    run_view_ui_and_save_snapshot(&mut test_context, view_id, egui::vec2(300.0, 300.0));
+    run_view_ui_and_save_snapshot(&test_context, view_id, egui::vec2(300.0, 300.0));
 }
 
 #[allow(clippy::unwrap_used)]
@@ -44,11 +44,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     })
 }
 
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    size: egui::Vec2,
-) {
+fn run_view_ui_and_save_snapshot(test_context: &TestContext, view_id: ViewId, size: egui::Vec2) {
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(size)

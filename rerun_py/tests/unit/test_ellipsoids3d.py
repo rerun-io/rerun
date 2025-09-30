@@ -3,8 +3,9 @@ from __future__ import annotations
 import itertools
 from typing import TYPE_CHECKING, Optional, cast
 
-import rerun as rr
 from rerun.components import HalfSize3DBatch, PoseRotationAxisAngleBatch, PoseRotationQuatBatch, PoseTranslation3DBatch
+
+import rerun as rr
 
 from .common_arrays import (
     class_ids_arrays,

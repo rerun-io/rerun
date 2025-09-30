@@ -15,10 +15,11 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::{
-    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, RecordingOrTable,
-    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
-    ViewClassRegistry, ViewClassRegistryError, command_channel,
+    AppOptions, AsyncRuntimeHandle, BlueprintContext, BlueprintUndoState, CommandReceiver,
+    CommandSender, ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig,
+    RecordingOrTable, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _,
+    TableStore, TimeBlueprintExt as _, ViewClass, ViewClassRegistry, ViewClassRegistryError,
+    command_channel,
     open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url},
     santitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
@@ -911,24 +912,26 @@ impl App {
 
             SystemCommand::SetActiveTime {
                 store_id,
+                // TODO: Make this only be timeline name.
                 timeline,
+                // TODO: Make this be time int?
                 time,
-                pending,
+                // TODO: Remove this
+                pending: _,
             } => {
-                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &store_id) {
-                    let mut time_ctrl = rec_cfg.time_ctrl.write();
-
-                    if pending {
-                        time_ctrl.set_pending_timeline(timeline);
-                    } else {
-                        time_ctrl.set_timeline(timeline);
-                    }
+                if let Some(blueprint_ctx) =
+                    blueprint_ctx(&mut self.state, &self.command_sender, store_hub)
+                {
+                    blueprint_ctx.set_timeline(*timeline.name());
 
                     if let Some(time) = time {
-                        time_ctrl.set_time(time);
+                        blueprint_ctx.set_time(time.floor());
                     }
 
-                    time_ctrl.pause();
+                    if let Some(rec_cfg) = self.recording_config_mut(store_hub, &store_id) {
+                        let mut time_ctrl = rec_cfg.time_ctrl.write();
+                        time_ctrl.pause();
+                    }
                 } else {
                     re_log::debug!(
                         "SystemCommand::SetActiveTime ignored: unknown store ID '{store_id:?}'"
@@ -941,11 +944,16 @@ impl App {
                 timeline,
                 time_range,
             } => {
-                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &store_id) {
-                    let mut guard = rec_cfg.time_ctrl.write();
-                    guard.set_timeline(timeline);
-                    guard.set_loop_selection(time_range);
-                    guard.set_looping(re_viewer_context::Looping::Selection);
+                if let Some(blueprint_ctx) =
+                    blueprint_ctx(&mut self.state, &self.command_sender, store_hub)
+                {
+                    blueprint_ctx.set_timeline(*timeline.name());
+
+                    if let Some(rec_cfg) = self.recording_config_mut(store_hub, &store_id) {
+                        let mut guard = rec_cfg.time_ctrl.write();
+                        guard.set_loop_selection(time_range);
+                        guard.set_looping(re_viewer_context::Looping::Selection);
+                    }
                 } else {
                     re_log::debug!(
                         "SystemCommand::SetLoopSelection ignored: unknown store ID '{store_id:?}'"
@@ -1672,7 +1680,17 @@ impl App {
         store_context: Option<&StoreContext<'_>>,
         command: TimeControlCommand,
     ) {
-        let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
+        let Some((entity_db, blueprint_ctx)) = store_context.as_ref().map(|ctx| {
+            (
+                ctx.recording,
+                AppBlueprintCtx {
+                    command_sender: &self.command_sender,
+                    current_blueprint: ctx.blueprint,
+                    default_blueprint: ctx.default_blueprint,
+                    blueprint_query: self.state.blueprint_query_for_viewer(ctx.blueprint),
+                },
+            )
+        }) else {
             return;
         };
         let rec_cfg = self.state.recording_config_mut(entity_db);
@@ -1688,10 +1706,10 @@ impl App {
                 time_ctrl.set_play_state(times_per_timeline, PlayState::Following);
             }
             TimeControlCommand::StepBack => {
-                time_ctrl.step_time_back(times_per_timeline);
+                time_ctrl.step_time_back(&blueprint_ctx, times_per_timeline);
             }
             TimeControlCommand::StepForward => {
-                time_ctrl.step_time_fwd(times_per_timeline);
+                time_ctrl.step_time_fwd(&blueprint_ctx, times_per_timeline);
             }
             TimeControlCommand::Restart => {
                 time_ctrl.restart(times_per_timeline);
@@ -3318,4 +3336,47 @@ async fn async_save_dialog(
         messages,
     )?;
     file_handle.write(&bytes).await.context("Failed to save")
+}
+
+pub struct AppBlueprintCtx<'a> {
+    command_sender: &'a CommandSender,
+    current_blueprint: &'a EntityDb,
+    default_blueprint: Option<&'a EntityDb>,
+    blueprint_query: re_chunk::LatestAtQuery,
+}
+
+impl BlueprintContext for AppBlueprintCtx<'_> {
+    fn command_sender(&self) -> &CommandSender {
+        self.command_sender
+    }
+
+    fn current_blueprint(&self) -> &EntityDb {
+        self.current_blueprint
+    }
+
+    fn default_blueprint(&self) -> Option<&EntityDb> {
+        self.default_blueprint
+    }
+
+    fn blueprint_query(&self) -> &re_chunk::LatestAtQuery {
+        &self.blueprint_query
+    }
+}
+fn blueprint_ctx<'a>(
+    app_state: &mut AppState,
+    command_sender: &'a CommandSender,
+    store_hub: &'a mut StoreHub,
+) -> Option<AppBlueprintCtx<'a>> {
+    let (_, Some(store_context)) = store_hub.read_context() else {
+        return None;
+    };
+
+    let blueprint_query = app_state.blueprint_query_for_viewer(store_context.blueprint);
+
+    Some(AppBlueprintCtx {
+        command_sender,
+        current_blueprint: store_context.blueprint,
+        default_blueprint: store_context.default_blueprint,
+        blueprint_query,
+    })
 }

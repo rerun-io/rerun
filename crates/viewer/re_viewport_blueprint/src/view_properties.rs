@@ -5,8 +5,9 @@ use re_types::{
     Archetype, ArchetypeName, ComponentBatch, ComponentDescriptor, DeserializationError,
 };
 use re_viewer_context::{
-    ComponentFallbackError, ComponentFallbackProvider, QueryContext, ViewContext, ViewId,
-    ViewSystemExecutionError, ViewerContext, external::re_entity_db::EntityTree,
+    BlueprintContext as _, ComponentFallbackError, ComponentFallbackProvider, QueryContext,
+    ViewContext, ViewId, ViewSystemExecutionError, ViewerContext,
+    external::re_entity_db::EntityTree,
 };
 
 #[derive(thiserror::Error, Debug)]

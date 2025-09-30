@@ -12,6 +12,7 @@ import pyarrow as pa
 import pytest
 from datafusion import col, functions as f
 from rerun.catalog import CatalogClient
+
 from rerun_bindings import EntryKind
 
 if TYPE_CHECKING:

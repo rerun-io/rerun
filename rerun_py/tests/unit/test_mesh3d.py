@@ -3,7 +3,6 @@ from __future__ import annotations
 import itertools
 from typing import Any, Optional, cast
 
-import rerun as rr
 from rerun.components import AlbedoFactorBatch, Position3DBatch, TriangleIndicesBatch, Vector3DBatch
 from rerun.components.texcoord2d import Texcoord2DBatch
 from rerun.datatypes import (
@@ -15,6 +14,8 @@ from rerun.datatypes import (
     Vec2DArrayLike,
     Vec3DArrayLike,
 )
+
+import rerun as rr
 
 from .common_arrays import (
     class_ids_arrays,

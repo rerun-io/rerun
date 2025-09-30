@@ -7,11 +7,11 @@ import math
 import uuid
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
 
-from rerun_bindings import ChunkBatcherConfig  # noqa: TC002
 from typing_extensions import deprecated
 
 import rerun as rr
 from rerun import bindings
+from rerun_bindings import ChunkBatcherConfig
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

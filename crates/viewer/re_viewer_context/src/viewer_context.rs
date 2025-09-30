@@ -17,7 +17,7 @@ use crate::{
     SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId,
     query_context::DataQueryResult,
 };
-use crate::{GlobalContext, Item, StorageContext, StoreHub};
+use crate::{BlueprintTimeControl, GlobalContext, Item, StorageContext, StoreHub};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -50,7 +50,7 @@ pub struct ViewerContext<'a> {
     pub rec_cfg: &'a RecordingConfig,
 
     /// UI config for the current blueprint.
-    pub blueprint_cfg: &'a RecordingConfig,
+    pub blueprint_cfg: &'a RecordingConfig<BlueprintTimeControl>,
 
     /// The blueprint query used for resolving blueprint in this frame
     pub blueprint_query: &'a LatestAtQuery,
@@ -425,7 +425,7 @@ impl ViewerContext<'_> {
 /// UI config for the current recording (found in [`EntityDb`]).
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub struct RecordingConfig {
+pub struct RecordingConfig<Tc = TimeControl> {
     /// The current time of the time panel, how fast it is moving, etc.
-    pub time_ctrl: RwLock<TimeControl>,
+    pub time_ctrl: RwLock<Tc>,
 }

@@ -6,12 +6,13 @@ from typing import TYPE_CHECKING, Optional, cast
 import numpy as np
 import numpy.typing as npt
 import pytest
-import rerun as rr
 import torch
 from rerun.components import (
     HalfSize2DBatch,
     Position2DBatch,
 )
+
+import rerun as rr
 
 from .common_arrays import (
     class_ids_arrays,

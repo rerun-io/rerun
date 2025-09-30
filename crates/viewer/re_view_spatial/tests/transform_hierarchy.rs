@@ -1,8 +1,8 @@
 use re_chunk_store::RowId;
-use re_log_types::{EntityPath, TimePoint, Timeline};
+use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{ViewClass as _, ViewId};
+use re_viewer_context::{TimeBlueprintExt as _, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
@@ -135,7 +135,7 @@ pub fn test_transform_hierarchy() {
     let view_id = setup_blueprint(&mut test_context);
 
     run_view_ui_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         timeline_step,
         view_id,
         "transform_hierarchy",
@@ -156,15 +156,15 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
+    test_context: &TestContext,
     timeline: Timeline,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
 ) {
-    test_context.set_active_timeline(timeline);
-
-    let rec_cfg = test_context.recording_config.clone();
+    test_context.with_blueprint_ctx(|ctx| {
+        ctx.set_timeline(*timeline.name());
+    });
 
     let mut harness = test_context
         .setup_kittest_for_rendering()
@@ -201,10 +201,9 @@ fn run_view_ui_and_save_snapshot(
         for time in 0..=7 {
             let name = format!("{name}_{}_{time}", timeline.name());
 
-            rec_cfg
-                .time_ctrl
-                .write()
-                .set_time_for_timeline(timeline, time);
+            test_context.with_blueprint_ctx(|ctx| {
+                ctx.set_time(TimeInt::saturated_temporal_i64(time as i64));
+            });
 
             harness.run_steps(8);
 

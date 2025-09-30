@@ -374,7 +374,9 @@ mod tests {
     use re_chunk::EntityPath;
     use re_log_types::{AbsoluteTimeRangeF, TimeCell, external::re_tuid};
     use re_test_context::TestContext;
-    use re_viewer_context::{DisplayMode, Item, ItemCollection, open_url::ViewerOpenUrl};
+    use re_viewer_context::{
+        DisplayMode, Item, ItemCollection, TimeBlueprintExt as _, open_url::ViewerOpenUrl,
+    };
 
     use crate::ui::ShareModal;
 
@@ -428,7 +430,9 @@ mod tests {
 
         // Set the timeline so it shows up on the dialog.
         {
-            test_ctx.set_active_timeline(timeline);
+            test_ctx.with_blueprint_ctx(|ctx| {
+                ctx.set_timeline(*timeline.name());
+            });
             let mut time_ctrl = test_ctx.recording_config.time_ctrl.write();
             time_ctrl.set_loop_selection(AbsoluteTimeRangeF::new(0.0, 1000.0));
         }

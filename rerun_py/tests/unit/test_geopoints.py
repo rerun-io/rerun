@@ -5,12 +5,13 @@ from typing import TYPE_CHECKING, Optional, cast
 
 import numpy as np
 import pytest
-import rerun as rr
 from rerun.components import (
     Color,
     ColorBatch,
     LatLonBatch,
 )
+
+import rerun as rr
 
 from .common_arrays import (
     colors_arrays,

@@ -4,15 +4,18 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_types::blueprint::{archetypes::PanelBlueprint, components::PanelState};
+use re_types::blueprint::{
+    archetypes::{PanelBlueprint, TimePanelBlueprint},
+    components::PanelState,
+};
 use re_viewer_context::{
-    CommandSender, SystemCommand, SystemCommandSender as _, blueprint_timepoint_for_writes,
+    CommandSender, SystemCommand, SystemCommandSender as _, TIME_PANEL_PATH,
+    blueprint_timepoint_for_writes,
 };
 
 const TOP_PANEL_PATH: &str = "top_panel";
 const BLUEPRINT_PANEL_PATH: &str = "blueprint_panel";
 const SELECTION_PANEL_PATH: &str = "selection_panel";
-const TIME_PANEL_PATH: &str = "time_panel";
 
 /// Blueprint for top-level application
 pub struct AppBlueprint<'a> {
@@ -22,7 +25,7 @@ pub struct AppBlueprint<'a> {
     overrides: Option<PanelStateOverrides>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct PanelStates {
     pub top: PanelState,
     pub blueprint: PanelState,
@@ -255,7 +258,13 @@ fn load_panel_state(
     query: &LatestAtQuery,
 ) -> Option<PanelState> {
     re_tracing::profile_function!();
+    let descriptor = if path == &TIME_PANEL_PATH.into() {
+        TimePanelBlueprint::descriptor_state()
+    } else {
+        PanelBlueprint::descriptor_state()
+    };
+
     blueprint_db
-        .latest_at_component_quiet::<PanelState>(path, query, &PanelBlueprint::descriptor_state())
+        .latest_at_component_quiet::<PanelState>(path, query, &descriptor)
         .map(|(_index, p)| p)
 }
