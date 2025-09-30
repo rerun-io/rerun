@@ -869,7 +869,9 @@ pub trait UiExt {
     }
 
     fn loading_screen_ui<R>(&mut self, add_contents: impl FnOnce(&mut egui::Ui) -> R) -> R {
-        self.ui_mut().center("loading spinner", |ui| {
+        let ui = self.ui_mut();
+        ui.set_min_height(ui.available_height());
+        ui.center("loading spinner", |ui| {
             ui.vertical_centered(|ui| {
                 ui.spinner();
                 add_contents(ui)
