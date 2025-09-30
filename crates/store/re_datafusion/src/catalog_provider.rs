@@ -10,6 +10,7 @@ use std::any::Any;
 use std::iter;
 use std::sync::Arc;
 
+pub const DEFAULT_CATALOG_NAME: &str = "datafusion";
 const DEFAULT_SCHEMA_NAME: &str = "public";
 
 #[derive(Debug)]
@@ -48,7 +49,7 @@ fn get_table_refs(client: &ConnectionClient) -> DataFusionResult<Vec<TableRefere
 
 impl GrpcCatalogProvider {
     pub fn new(name: Option<&str>, client: ConnectionClient) -> Self {
-        let name = if let Some(DEFAULT_CATALOG_NAME) = name {
+        let name = if let Some(inner_name) = name && inner_name == DEFAULT_CATALOG_NAME {
             None
         } else {
             name

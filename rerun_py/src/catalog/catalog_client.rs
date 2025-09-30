@@ -5,6 +5,7 @@ use pyo3::{
     pyclass, pymethods,
     types::PyAnyMethods as _,
 };
+use re_datafusion::DEFAULT_CATALOG_NAME;
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 
 use crate::catalog::datafusion_catalog::PyDataFusionCatalogProvider;
@@ -12,8 +13,6 @@ use crate::catalog::{
     ConnectionHandle, PyDatasetEntry, PyEntry, PyEntryId, PyRerunHtmlTable, PyTableEntry, to_py_err,
 };
 use crate::utils::wait_for_future;
-
-const DEFAULT_CATALOG_NAME: &str = "datafusion";
 
 /// Client for a remote Rerun catalog server.
 #[pyclass(name = "CatalogClientInternal")] // NOLINT: skip pyclass_eq, non-trivial implementation

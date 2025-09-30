@@ -13,7 +13,7 @@ mod search_provider;
 mod table_entry_provider;
 mod wasm_compat;
 
-pub use catalog_provider::GrpcCatalogProvider;
+pub use catalog_provider::{GrpcCatalogProvider, DEFAULT_CATALOG_NAME};
 pub use dataframe_query_common::{DataframeQueryTableProvider, query_from_query_expression};
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use dataframe_query_provider::PartitionStreamExec;
