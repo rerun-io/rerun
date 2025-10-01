@@ -66,11 +66,19 @@ pub struct TelemetryArgs {
     /// feature flags instead: <https://docs.rs/tracing/0.1.41/tracing/level_filters/index.html>.
     #[cfg_attr(
         feature = "enabled",
-        clap(long, env = "TELEMETRY_ENABLED", default_value_t = true)
+        clap(
+            long = "telemetry-enabled",
+            env = "TELEMETRY_ENABLED",
+            default_value_t = true
+        )
     )]
     #[cfg_attr(
         not(feature = "enabled"),
-        clap(long, env = "TELEMETRY_ENABLED", default_value_t = false)
+        clap(
+            long = "telemetry-enabled",
+            env = "TELEMETRY_ENABLED",
+            default_value_t = false
+        )
     )]
     pub enabled: bool,
 
