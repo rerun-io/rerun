@@ -26,6 +26,7 @@ macro_rules! build_info {
             is_in_rerun_workspace: env!("RE_BUILD_IS_IN_RERUN_WORKSPACE") == "yes",
             target_triple: env!("RE_BUILD_TARGET_TRIPLE").into(),
             datetime: env!("RE_BUILD_DATETIME").into(),
+            is_debug_build: cfg!(debug_assertions),
         }
     };
 }

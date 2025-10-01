@@ -163,6 +163,7 @@ impl App {
             is_in_rerun_workspace: _,
             target_triple,
             datetime,
+            is_debug_build,
         } = self.build_info();
 
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
@@ -174,8 +175,10 @@ impl App {
             format!("({short_git_hash})")
         };
 
+        let debug_label = if *is_debug_build { " (debug)" } else { "" };
+
         let mut label = format!(
-            "{crate_name} {version} {git_hash_suffix}\n\
+            "{crate_name} {version} {git_hash_suffix}{debug_label}\n\
             {target_triple}"
         );
 
