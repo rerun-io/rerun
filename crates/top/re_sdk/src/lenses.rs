@@ -578,4 +578,54 @@ mod test {
         let chunk = &res[0];
         insta::assert_snapshot!("inner_count", format!("{chunk:-240}"));
     }
+
+    #[test]
+    fn test_static_chunk_creation() {
+        let original_chunk = nullability_chunk();
+
+        let static_lens_a = Lens::new(
+            "nullability".parse().unwrap(),
+            "strings",
+            |_, entity_path| {
+                let mut metadata_builder_a = ListBuilder::new(StringBuilder::new());
+                metadata_builder_a
+                    .values()
+                    .append_value("static_metadata_a");
+                metadata_builder_a.append(true);
+
+                let mut metadata_builder_b = ListBuilder::new(StringBuilder::new());
+                metadata_builder_b
+                    .values()
+                    .append_value("static_metadata_b");
+                metadata_builder_b.append(true);
+
+                vec![
+                    TransformedColumn::new_static(
+                        entity_path.join(&EntityPath::parse_forgiving("static")),
+                        SerializedComponentColumn {
+                            list_array: metadata_builder_a.finish(),
+                            descriptor: ComponentDescriptor::partial("static_metadata_a"),
+                        },
+                    ),
+                    TransformedColumn::new_static(
+                        entity_path.join(&EntityPath::parse_forgiving("static")),
+                        SerializedComponentColumn {
+                            list_array: metadata_builder_b.finish(),
+                            descriptor: ComponentDescriptor::partial("static_metadata_b"),
+                        },
+                    ),
+                ]
+            },
+        );
+
+        let pipeline = LensRegistry {
+            lenses: vec![static_lens_a],
+        };
+
+        let res = pipeline.apply(&original_chunk);
+        assert_eq!(res.len(), 1);
+
+        let chunk = &res[0];
+        insta::assert_snapshot!("single_static", format!("{chunk:-240}"));
+    }
 }
