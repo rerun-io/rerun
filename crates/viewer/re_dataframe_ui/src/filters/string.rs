@@ -17,7 +17,7 @@ use strum::VariantArray as _;
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
-use super::{FilterError, FilterTrait, FilterUiAction, action_from_text_edit_response};
+use super::{Filter, FilterError, FilterUiAction, action_from_text_edit_response};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum::VariantArray)]
 pub enum StringOperator {
@@ -62,7 +62,7 @@ impl StringFilter {
     }
 }
 
-impl FilterTrait for StringFilter {
+impl Filter for StringFilter {
     fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
         if self.query.is_empty() {
             return Ok(lit(true));

@@ -14,7 +14,7 @@ use strum::VariantArray as _;
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
-use super::{FilterError, FilterTrait, FilterUiAction, action_from_text_edit_response};
+use super::{Filter, FilterError, FilterUiAction, action_from_text_edit_response};
 
 #[derive(Debug, Clone, Copy, Default, Hash, PartialEq, Eq, strum::VariantArray)]
 pub enum ComparisonOperator {
@@ -113,7 +113,7 @@ impl IntFilter {
     }
 }
 
-impl FilterTrait for IntFilter {
+impl Filter for IntFilter {
     fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
         let Some(rhs_value) = self.rhs_value else {
             return Ok(lit(true));
@@ -207,7 +207,7 @@ impl FloatFilter {
     }
 }
 
-impl FilterTrait for FloatFilter {
+impl Filter for FloatFilter {
     fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
         let Some(rhs_value) = self.rhs_value else {
             return Ok(lit(true));

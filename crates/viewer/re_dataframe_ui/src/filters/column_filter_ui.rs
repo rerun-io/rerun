@@ -5,7 +5,7 @@ use egui::{Atom, AtomLayout, Atoms, Frame, Margin, Sense};
 use re_log_types::TimestampFormat;
 use re_ui::{UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
 
-use super::{ColumnFilter, FilterTrait as _, TimestampFormatted};
+use super::{ColumnFilter, Filter as _, TimestampFormatted};
 use crate::TableBlueprint;
 
 /// Action to take based on the user interaction.
@@ -18,7 +18,7 @@ pub enum FilterUiAction {
     /// state should be committed to the table blueprint.
     CommitStateToBlueprint,
 
-    /// The user closed the filter popup using escape, so the edit should be cancelled by resetting
+    /// The user closed the filter popup using escape, so the edit should be canceled by resetting
     /// the filter state from the table blueprint.
     CancelStateEdit,
 }
@@ -336,10 +336,10 @@ mod tests {
         NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter,
     };
     use super::*;
-    use crate::filters::Filter;
+    use crate::filters::TypedFilter;
     use arrow::datatypes::{DataType, Field, FieldRef};
 
-    fn test_cases() -> Vec<(Filter, &'static str)> {
+    fn test_cases() -> Vec<(TypedFilter, &'static str)> {
         [
             (
                 NonNullableBooleanFilter::IsTrue.into(),

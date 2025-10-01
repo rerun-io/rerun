@@ -26,7 +26,7 @@ pub enum FilterError {
 }
 
 /// Trait describing what a filter must do.
-pub trait FilterTrait {
+pub trait Filter {
     /// Convert the filter to a datafusion expression.
     fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError>;
 
@@ -47,7 +47,7 @@ pub trait FilterTrait {
     fn on_commit(&mut self) {}
 }
 
-/// Concrete implementation of a [`FilterTrait`] with static dispatch.
+/// Concrete implementation of a [`Filter`] with static dispatch.
 ///
 /// ## Why does this exists?
 ///
@@ -65,7 +65,7 @@ pub trait FilterTrait {
 /// The last item is related to how the filter UI is implemented using the `SyntaxHighlighting`
 /// machinery.
 #[derive(Debug, Clone, PartialEq)]
-pub enum Filter {
+pub enum TypedFilter {
     NullableBoolean(NullableBooleanFilter),
     NonNullableBoolean(NonNullableBooleanFilter),
     Int(IntFilter),
@@ -74,7 +74,7 @@ pub enum Filter {
     Timestamp(TimestampFilter),
 }
 
-impl Filter {
+impl TypedFilter {
     pub fn default_for_column(field: &FieldRef) -> Option<Self> {
         match field.data_type() {
             DataType::List(inner_field) | DataType::ListView(inner_field) => {
@@ -122,7 +122,7 @@ impl Filter {
         }
     }
 
-    fn as_filter(&self) -> &dyn FilterTrait {
+    fn as_filter(&self) -> &dyn Filter {
         match self {
             Self::NullableBoolean(inner) => inner,
             Self::NonNullableBoolean(inner) => inner,
@@ -133,7 +133,7 @@ impl Filter {
         }
     }
 
-    fn as_filter_mut(&mut self) -> &mut dyn FilterTrait {
+    fn as_filter_mut(&mut self) -> &mut dyn Filter {
         match self {
             Self::NullableBoolean(inner) => inner,
             Self::NonNullableBoolean(inner) => inner,
@@ -145,7 +145,7 @@ impl Filter {
     }
 }
 
-impl FilterTrait for Filter {
+impl Filter for TypedFilter {
     fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
         self.as_filter().as_filter_expression(field)
     }
@@ -166,66 +166,66 @@ impl FilterTrait for Filter {
     }
 }
 
-impl From<NullableBooleanFilter> for Filter {
+impl From<NullableBooleanFilter> for TypedFilter {
     fn from(inner: NullableBooleanFilter) -> Self {
         Self::NullableBoolean(inner)
     }
 }
 
-impl From<NonNullableBooleanFilter> for Filter {
+impl From<NonNullableBooleanFilter> for TypedFilter {
     fn from(inner: NonNullableBooleanFilter) -> Self {
         Self::NonNullableBoolean(inner)
     }
 }
 
-impl From<IntFilter> for Filter {
+impl From<IntFilter> for TypedFilter {
     fn from(inner: IntFilter) -> Self {
         Self::Int(inner)
     }
 }
 
-impl From<FloatFilter> for Filter {
+impl From<FloatFilter> for TypedFilter {
     fn from(inner: FloatFilter) -> Self {
         Self::Float(inner)
     }
 }
 
-impl From<StringFilter> for Filter {
+impl From<StringFilter> for TypedFilter {
     fn from(inner: StringFilter) -> Self {
         Self::String(inner)
     }
 }
 
-impl From<TimestampFilter> for Filter {
+impl From<TimestampFilter> for TypedFilter {
     fn from(inner: TimestampFilter) -> Self {
         Self::Timestamp(inner)
     }
 }
 
-impl SyntaxHighlighting for TimestampFormatted<'_, Filter> {
+impl SyntaxHighlighting for TimestampFormatted<'_, TypedFilter> {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
         match self.inner {
-            Filter::NonNullableBoolean(inner) => {
+            TypedFilter::NonNullableBoolean(inner) => {
                 builder.append(inner);
             }
 
-            Filter::NullableBoolean(inner) => {
+            TypedFilter::NullableBoolean(inner) => {
                 builder.append(inner);
             }
 
-            Filter::Int(inner) => {
+            TypedFilter::Int(inner) => {
                 builder.append(inner);
             }
 
-            Filter::Float(inner) => {
+            TypedFilter::Float(inner) => {
                 builder.append(inner);
             }
 
-            Filter::String(inner) => {
+            TypedFilter::String(inner) => {
                 builder.append(inner);
             }
 
-            Filter::Timestamp(inner) => {
+            TypedFilter::Timestamp(inner) => {
                 builder.append(&self.convert(inner));
             }
         }

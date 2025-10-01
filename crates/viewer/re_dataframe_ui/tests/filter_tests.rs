@@ -19,8 +19,8 @@ use jiff::ToSpan as _;
 use strum::VariantArray as _;
 
 use re_dataframe_ui::{
-    ColumnFilter, ComparisonOperator, Filter, FloatFilter, IntFilter, NonNullableBooleanFilter,
-    Nullability, NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter,
+    ColumnFilter, ComparisonOperator, FloatFilter, IntFilter, NonNullableBooleanFilter,
+    Nullability, NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter, TypedFilter,
 };
 use re_viewer_context::external::tokio;
 
@@ -369,7 +369,7 @@ impl TestSessionContext {
 #[derive(Debug)]
 #[expect(dead_code)] // debug is excluded from dead code analysis
 struct TestResult<'a> {
-    filter: Filter,
+    filter: TypedFilter,
     field: FieldRef,
     unfiltered: ArrayRef,
     filtered: &'a ArrayRef,
@@ -378,7 +378,7 @@ struct TestResult<'a> {
 //note: this is a macro so insta is exposed to the actual test function
 macro_rules! filter_snapshot {
     ($filter_op:expr, $test_column:expr, $case:expr) => {
-        let filter: Filter = $filter_op.into();
+        let filter: TypedFilter = $filter_op.into();
         let column_filter = ColumnFilter::new(Arc::clone(&$test_column.field), filter.clone());
         let initial_field = Arc::clone(&$test_column.field);
         let initial_column = Arc::clone(&$test_column.array);

@@ -9,7 +9,7 @@ use strum::VariantArray as _;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{SyntaxHighlighting, UiExt as _};
 
-use super::{FilterError, FilterTrait, FilterUiAction};
+use super::{Filter, FilterError, FilterUiAction};
 
 /// Filter for non-nullable boolean columns.
 ///
@@ -30,7 +30,7 @@ impl NonNullableBooleanFilter {
     }
 }
 
-impl FilterTrait for NonNullableBooleanFilter {
+impl Filter for NonNullableBooleanFilter {
     fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
         match field.data_type() {
             DataType::Boolean => Ok(col(field.name().clone()).eq(lit(self.as_bool()))),
@@ -179,7 +179,7 @@ impl NullableBooleanFilter {
     }
 }
 
-impl FilterTrait for NullableBooleanFilter {
+impl Filter for NullableBooleanFilter {
     fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
         let column = Column::from(field.name().clone());
 

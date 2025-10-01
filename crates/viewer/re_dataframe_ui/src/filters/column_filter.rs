@@ -3,7 +3,7 @@ use std::fmt::Formatter;
 use arrow::datatypes::{DataType, Field, FieldRef};
 use datafusion::prelude::Expr;
 
-use super::{Filter, FilterError, FilterTrait as _};
+use super::{Filter as _, FilterError, TypedFilter};
 
 /// The nullability of a nested arrow datatype.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -75,11 +75,11 @@ impl Nullability {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ColumnFilter {
     pub field: FieldRef,
-    pub filter: Filter,
+    pub filter: TypedFilter,
 }
 
 impl ColumnFilter {
-    pub fn new(field: FieldRef, filter: impl Into<Filter>) -> Self {
+    pub fn new(field: FieldRef, filter: impl Into<TypedFilter>) -> Self {
         Self {
             field,
             filter: filter.into(),
@@ -87,7 +87,7 @@ impl ColumnFilter {
     }
 
     pub fn default_for_column(field: FieldRef) -> Option<Self> {
-        let filter = Filter::default_for_column(&field)?;
+        let filter = TypedFilter::default_for_column(&field)?;
         Some(Self::new(field, filter))
     }
 
