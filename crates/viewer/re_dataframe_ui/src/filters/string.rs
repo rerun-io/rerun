@@ -140,7 +140,6 @@ impl FilterUdf for StringFilter {
     }
 
     fn invoke_primitive_array(&self, array: &ArrayRef) -> DataFusionResult<BooleanArray> {
-        //TODO: needed?
         if !is_supported_string_datatype(array.data_type()) {
             return exec_err!("Unsupported data type {}", array.data_type());
         }
