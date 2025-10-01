@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import pathlib
 import platform
+import socket
 import subprocess
 import time
 from typing import TYPE_CHECKING
@@ -20,8 +21,8 @@ if TYPE_CHECKING:
     from rerun_bindings import DatasetEntry
 
 HOST = "localhost"
-PORT = 51234
-CATALOG_URL = f"rerun+http://{HOST}:{PORT}"
+PORT = None  # Will be set dynamically
+CATALOG_URL = None  # Will be set dynamically
 DATASET_NAME = "dataset"
 
 DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "rrd" / "dataset"
@@ -85,8 +86,6 @@ def shutdown_process(process: subprocess.Popen[str]) -> None:
 
 
 def wait_for_server_ready(timeout: int = 30) -> None:
-    import socket
-
     def is_port_open() -> bool:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(1)
@@ -123,21 +122,17 @@ def server_instance() -> Generator[ServerInstance, None, None]:
         # Server can be noisy by default
         env["RUST_LOG"] = "warning"
 
-    # TODO(#11173): pick a free port
-    cmd = [
-        "python",
-        "-m",
-        "rerun",
-        "server",
-        "--dataset",
-        str(DATASET_FILEPATH),
-        "--table",
-        str(TABLE_FILEPATH),
-        "--table",
-        f"second_schema.second_table={TABLE_FILEPATH}",
-        "--table",
-        f"alternate_catalog.third_schema.third_table={TABLE_FILEPATH}",
-    ]
+    # Find a free port dynamically
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind((HOST, 0))
+    global PORT
+    PORT = sock.getsockname()[1]
+    sock.close()
+
+    global CATALOG_URL
+    CATALOG_URL = f"rerun+http://{HOST}:{PORT}"
+
+    cmd = ["python", "-m", "rerun", "server", "--dataset", str(DATASET_FILEPATH), "--table", str(TABLE_FILEPATH)]
     server_process = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     try:
