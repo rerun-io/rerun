@@ -113,7 +113,7 @@ fn main() -> anyhow::Result<()> {
         }),
     };
 
-    let gello_a_transform = PerChunkTransform {
+    let destructure_transform = PerChunkTransform {
         filter: "/nested"
             .parse::<EntityPathFilter>()?
             .resolve_without_substitutions(), // TODO: call the right thing here.
@@ -168,7 +168,7 @@ fn main() -> anyhow::Result<()> {
     };
 
     let transform = PerChunkPiplineTransform {
-        transforms: vec![instruction_transform, gello_a_transform],
+        transforms: vec![instruction_transform, destructure_transform],
     }
     .to_sink(GrpcSink::default());
 
