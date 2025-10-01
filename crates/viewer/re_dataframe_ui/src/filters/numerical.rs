@@ -115,7 +115,7 @@ impl Filter for IntFilter {
         };
 
         let udf = IntFilterUdf {
-            op: self.operator,
+            op: self.operator, //TODO: Ne should not go there!
             rhs_value,
         }
         .as_scalar_udf();
@@ -162,6 +162,7 @@ impl Filter for IntFilter {
     }
 }
 
+//TODO: docstring
 #[derive(Debug, Clone)]
 struct IntFilterUdf {
     op: ComparisonOperator,
