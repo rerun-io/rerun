@@ -85,7 +85,7 @@ pub mod sink {
     pub use crate::binary_stream_sink::{BinaryStreamSink, BinaryStreamStorage};
     pub use crate::log_sink::{
         BufferedSink, CallbackSink, IntoMultiSink, LogSink, MemorySink, MemorySinkStorage,
-        MultiSink, Pipeline, PipelineTransform, SinkFlushError,
+        MultiSink, SinkFlushError,
     };
 
     pub use crate::log_sink::{GrpcSink, GrpcSinkConnectionFailure, GrpcSinkConnectionState};
@@ -115,6 +115,13 @@ pub use re_types::{
     Loggable, SerializationError, SerializationResult, SerializedComponentBatch,
     SerializedComponentColumn,
 };
+
+/// Transformation and reinterpretation of components.
+///
+/// # Experimental
+///
+/// This is an experimental API and may change in future releases.
+pub mod lenses;
 
 pub use re_byte_size::SizeBytes;
 

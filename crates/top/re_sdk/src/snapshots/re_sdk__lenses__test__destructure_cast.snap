@@ -1,6 +1,6 @@
 ---
-source: examples/rust/transform/src/main.rs
-expression: "re_format_arrow::format_record_batch_opts(transformed_batch, &FORMAT_OPTS,)"
+source: crates/top/re_sdk/src/lenses.rs
+expression: "format!(\"{chunk:-240}\")"
 ---
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                         │

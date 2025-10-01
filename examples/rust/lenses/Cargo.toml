@@ -1,5 +1,5 @@
 [package]
-name = "transform"
+name = "lenses"
 version = "0.26.0-alpha.1+dev"
 edition = "2024"
 rust-version = "1.88"
