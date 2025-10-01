@@ -1,8 +1,5 @@
-use std::fmt::Formatter;
-use std::sync::Arc;
-
 use arrow::datatypes::{DataType, Field, FieldRef};
-use datafusion::prelude::Expr;
+use datafusion::logical_expr::Expr;
 
 use re_log_types::TimestampFormat;
 use re_types_core::{Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE};
@@ -10,78 +7,13 @@ use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
 use super::{
-    FilterUiAction, FloatFilter, IntFilter, NonNullableBooleanFilter, NullableBooleanFilter,
-    StringFilter, TimestampFilter, TimestampFormatted, is_supported_string_datatype,
+    FilterUiAction, FloatFilter, IntFilter, NonNullableBooleanFilter, Nullability,
+    NullableBooleanFilter, StringFilter, TimestampFilter, TimestampFormatted,
+    is_supported_string_datatype,
 };
 
-/// The nullability of a nested arrow datatype.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct Nullability {
-    /// The inner datatype is nullable (e.g. for a list array, one row's array may contain nulls).
-    pub inner: bool,
-
-    /// The outer datatype is nullable (e.g, the a list array, one row may have a null instead of an
-    /// array).
-    pub outer: bool,
-}
-
-// for test snapshot naming
-impl std::fmt::Debug for Nullability {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match (self.inner, self.outer) {
-            (false, false) => write!(f, "no_null"),
-            (false, true) => write!(f, "outer_null"),
-            (true, false) => write!(f, "inner_null"),
-            (true, true) => write!(f, "both_null"),
-        }
-    }
-}
-
-impl Nullability {
-    pub const NONE: Self = Self {
-        inner: false,
-        outer: false,
-    };
-
-    pub const BOTH: Self = Self {
-        inner: true,
-        outer: true,
-    };
-
-    pub const INNER: Self = Self {
-        inner: true,
-        outer: false,
-    };
-
-    pub const OUTER: Self = Self {
-        inner: false,
-        outer: true,
-    };
-
-    pub const ALL: &'static [Self] = &[Self::NONE, Self::INNER, Self::OUTER, Self::BOTH];
-
-    pub fn from_field(field: &Field) -> Self {
-        match field.data_type() {
-            DataType::List(inner_field) | DataType::ListView(inner_field) => Self {
-                inner: inner_field.is_nullable(),
-                outer: field.is_nullable(),
-            },
-
-            //TODO(ab): support other containers
-            _ => Self {
-                inner: field.is_nullable(),
-                outer: false,
-            },
-        }
-    }
-
-    pub fn is_either(&self) -> bool {
-        self.inner || self.outer
-    }
-}
-
-//TODO: use anyhow?
 #[derive(Debug, Clone, thiserror::Error)]
+#[expect(clippy::enum_variant_names)]
 pub enum FilterError {
     #[error("invalid non-nullable boolean filter {0:?} for field {1}")]
     InvalidNonNullableBooleanFilter(NonNullableBooleanFilter, Box<Field>),
@@ -93,78 +25,45 @@ pub enum FilterError {
     InvalidStringFilter(StringFilter, Box<Field>),
 }
 
-/// A filter applied to a table's column.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ColumnFilter {
-    pub field: FieldRef,
+/// Trait describing what a filter must do.
+pub trait FilterTrait {
+    /// Convert the filter to a datafusion expression.
+    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError>;
 
-    // TODO: docstring
-    pub filter: Filter,
-}
+    /// Show the UI of the popup associated with this filter.
+    fn popup_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        timestamp_format: TimestampFormat,
+        column_name: &str,
+        popup_just_opened: bool,
+    ) -> FilterUiAction;
 
-impl ColumnFilter {
-    pub fn new(field: FieldRef, filter: impl Into<Filter>) -> Self {
-        Self {
-            field,
-            filter: filter.into(),
-        }
-    }
-
-    pub fn default_for_column(field: FieldRef) -> Option<Self> {
-        match field.data_type() {
-            DataType::List(inner_field) | DataType::ListView(inner_field) => {
-                // Note: we do not support double-nested types
-                Self::default_for_primitive_datatype(Arc::clone(inner_field))
-            }
-
-            //TODO(ab): support other nested types
-            _ => Self::default_for_primitive_datatype(field),
-        }
-    }
-
-    fn default_for_primitive_datatype(field: FieldRef) -> Option<Self> {
-        let nullability = Nullability::from_field(&field);
-
-        match field.data_type() {
-            DataType::Boolean => {
-                if nullability.is_either() {
-                    Some(Self::new(field, NullableBooleanFilter::default()))
-                } else {
-                    Some(Self::new(field, NonNullableBooleanFilter::default()))
-                }
-            }
-
-            DataType::Int64
-                if field.metadata().get(FIELD_METADATA_KEY_COMPONENT_TYPE)
-                    == Some(&re_types::components::Timestamp::name().to_string()) =>
-            {
-                Some(Self::new(field, TimestampFilter::default()))
-            }
-
-            data_type if data_type.is_integer() => Some(Self::new(field, IntFilter::default())),
-
-            DataType::Float16 | DataType::Float32 | DataType::Float64 => {
-                Some(Self::new(field, FloatFilter::default()))
-            }
-
-            data_type if is_supported_string_datatype(data_type) => {
-                Some(Self::new(field, StringFilter::default()))
-            }
-
-            DataType::Timestamp(_, _) => Some(Self::new(field, TimestampFilter::default())),
-
-            _ => None,
-        }
-    }
-
-    /// Convert to an [`Expr`].
+    /// Given a chance to the filter to update/clean itself upon committing the filter state to the
+    /// table blueprint.
     ///
-    /// The expression is used for filtering and should thus evaluate to a boolean.
-    pub fn as_filter_expression(&self) -> Result<Expr, FilterError> {
-        self.filter.as_filter_expression(&self.field)
-    }
+    /// This is used e.g. by the timestamp filter to normalize the user entry to the proper
+    /// representation of the parsed timestamp.
+    fn on_commit(&mut self) {}
 }
 
+/// Concrete implementation of a [`FilterTrait`] with static dispatch.
+///
+/// ## Why does this exists?
+///
+/// The obvious alternative would be some kind of `Box<dyn FilterTrait>` instead. After trying quite
+/// a bit, I decided that the complexity of this is not worth the advantages, which are non-obvious
+/// given that all implementations are known and local.
+///
+/// The complexity of achieving dynamic dispatch stems from filters needing to be:
+/// - `Clone` (achievable using the `dyn-clone` crate)
+/// - `PartialEq` (which is not dyn-compatible and doesn't have easy work-around)
+/// - `TimestampFormatted<T>: SyntaxHighlighting`
+///
+/// The first two items are required because both `TableBlueprint` and the datafusion machinery
+/// need them (e.g., to test blueprint inequality before triggering a costly table update).
+/// The last item is related to how the filter UI is implemented using the `SyntaxHighlighting`
+/// machinery.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Filter {
     NullableBoolean(NullableBooleanFilter),
@@ -176,6 +75,53 @@ pub enum Filter {
 }
 
 impl Filter {
+    pub fn default_for_column(field: &FieldRef) -> Option<Self> {
+        match field.data_type() {
+            DataType::List(inner_field) | DataType::ListView(inner_field) => {
+                // Note: we do not support double-nested types
+                Self::default_for_primitive_datatype(inner_field)
+            }
+
+            //TODO(ab): support other nested types
+            _ => Self::default_for_primitive_datatype(field),
+        }
+    }
+
+    fn default_for_primitive_datatype(field: &FieldRef) -> Option<Self> {
+        let nullability = Nullability::from_field(field);
+
+        match field.data_type() {
+            DataType::Boolean => {
+                if nullability.is_either() {
+                    Some(NullableBooleanFilter::default().into())
+                } else {
+                    Some(NonNullableBooleanFilter::default().into())
+                }
+            }
+
+            DataType::Int64
+                if field.metadata().get(FIELD_METADATA_KEY_COMPONENT_TYPE)
+                    == Some(&re_types::components::Timestamp::name().to_string()) =>
+            {
+                Some(TimestampFilter::default().into())
+            }
+
+            data_type if data_type.is_integer() => Some(IntFilter::default().into()),
+
+            DataType::Float16 | DataType::Float32 | DataType::Float64 => {
+                Some(FloatFilter::default().into())
+            }
+
+            data_type if is_supported_string_datatype(data_type) => {
+                Some(StringFilter::default().into())
+            }
+
+            DataType::Timestamp(_, _) => Some(TimestampFilter::default().into()),
+
+            _ => None,
+        }
+    }
+
     fn as_filter(&self) -> &dyn FilterTrait {
         match self {
             Self::NullableBoolean(inner) => inner,
@@ -284,25 +230,4 @@ impl SyntaxHighlighting for TimestampFormatted<'_, Filter> {
             }
         }
     }
-}
-
-//TODO: docstrings + move somewhere else?
-pub trait FilterTrait {
-    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError>;
-
-    /// Show the UI of the popup associated with this filter.
-    fn popup_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        timestamp_format: TimestampFormat,
-        column_name: &str,
-        popup_just_opened: bool,
-    ) -> FilterUiAction;
-
-    /// Given a chance to the underlying filter struct to update/clean itself upon committing the
-    /// filter state to the table blueprint.
-    ///
-    /// This is used e.g. by the timestamp filter to normalize the user entry to the proper
-    /// representation of the parsed timestamp.
-    fn on_commit(&mut self) {}
 }
