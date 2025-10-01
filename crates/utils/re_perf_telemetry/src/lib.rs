@@ -66,6 +66,8 @@ pub use self::{
     utils::to_short_str,
 };
 
+pub use re_protos::headers::{PropagateHeaders, PropagateHeadersLayer}; // TODO
+
 pub mod external {
     pub use clap;
     pub use opentelemetry;

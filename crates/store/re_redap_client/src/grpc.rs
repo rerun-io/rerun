@@ -119,24 +119,21 @@ pub(crate) async fn client(
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
-pub type RedapClientInner =
-    re_perf_telemetry::external::tower_http::propagate_header::PropagateHeader<
-        re_perf_telemetry::external::tower_http::propagate_header::PropagateHeader<
-            re_perf_telemetry::external::tower_http::trace::Trace<
-                tonic::service::interceptor::InterceptedService<
-                    tonic::service::interceptor::InterceptedService<
-                        tonic::transport::Channel,
-                        re_auth::client::AuthDecorator,
-                    >,
-                    re_perf_telemetry::TracingInjectorInterceptor,
-                >,
-                re_perf_telemetry::external::tower_http::classify::SharedClassifier<
-                    re_perf_telemetry::external::tower_http::classify::GrpcErrorsAsFailures,
-                >,
-                re_perf_telemetry::GrpcMakeSpan,
+pub type RedapClientInner = re_perf_telemetry::PropagateHeaders<
+    re_perf_telemetry::external::tower_http::trace::Trace<
+        tonic::service::interceptor::InterceptedService<
+            tonic::service::interceptor::InterceptedService<
+                tonic::transport::Channel,
+                re_auth::client::AuthDecorator,
             >,
+            re_perf_telemetry::TracingInjectorInterceptor,
         >,
-    >;
+        re_perf_telemetry::external::tower_http::classify::SharedClassifier<
+            re_perf_telemetry::external::tower_http::classify::GrpcErrorsAsFailures,
+        >,
+        re_perf_telemetry::GrpcMakeSpan,
+    >,
+>;
 
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "perf_telemetry")))]
 pub type RedapClientInner = tonic::service::interceptor::InterceptedService<
