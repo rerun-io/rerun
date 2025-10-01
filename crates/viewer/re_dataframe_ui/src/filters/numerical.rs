@@ -11,7 +11,6 @@ use datafusion::logical_expr::{
 };
 use strum::VariantArray as _;
 
-use re_log_types::TimestampFormat;
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
@@ -137,7 +136,7 @@ impl FilterTrait for IntFilter {
     fn popup_ui(
         &mut self,
         ui: &mut egui::Ui,
-        _timestamp_format: TimestampFormat,
+        _timestamp_format: re_log_types::TimestampFormat,
         column_name: &str,
         popup_just_opened: bool,
     ) -> FilterUiAction {
@@ -232,7 +231,7 @@ impl FilterTrait for FloatFilter {
     fn popup_ui(
         &mut self,
         ui: &mut egui::Ui,
-        _timestamp_format: TimestampFormat,
+        _timestamp_format: re_log_types::TimestampFormat,
         column_name: &str,
         popup_just_opened: bool,
     ) -> FilterUiAction {

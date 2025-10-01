@@ -74,7 +74,7 @@ pub struct EntryLinksSpec {
 }
 
 /// The "blueprint" for a table, a.k.a the specification of how it should look.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct TableBlueprint {
     pub sort_by: Option<SortBy>,
     pub partition_links: Option<PartitionLinksSpec>,

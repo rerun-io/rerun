@@ -6,7 +6,6 @@ use datafusion::logical_expr::{Expr, col, lit, not};
 use datafusion::prelude::{array_element, array_has, array_sort};
 use strum::VariantArray as _;
 
-use re_log_types::TimestampFormat;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{SyntaxHighlighting, UiExt as _};
 
@@ -53,7 +52,7 @@ impl FilterTrait for NonNullableBooleanFilter {
     fn popup_ui(
         &mut self,
         ui: &mut egui::Ui,
-        _timestamp_format: TimestampFormat,
+        _timestamp_format: re_log_types::TimestampFormat,
         column_name: &str,
         _popup_just_opened: bool,
     ) -> FilterUiAction {
@@ -225,7 +224,7 @@ impl FilterTrait for NullableBooleanFilter {
     fn popup_ui(
         &mut self,
         ui: &mut egui::Ui,
-        _timestamp_format: TimestampFormat,
+        _timestamp_format: re_log_types::TimestampFormat,
         column_name: &str,
         _popup_just_opened: bool,
     ) -> FilterUiAction {
