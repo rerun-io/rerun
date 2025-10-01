@@ -127,8 +127,6 @@ impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
     }
 }
 
-pub type RerunHeadersPropagationLayer = ();
-
 /// Creates a new [`tower::Layer`] middleware that always makes sure to propagate Rerun headers
 /// back and forth across requests and responses.
 pub fn new_rerun_headers_propagation_layer() -> PropagateHeadersLayer {
@@ -205,10 +203,8 @@ use tower::layer::Layer;
 
 /// Layer that applies [`PropagateHeaders`] which propagates multiple headers at once from requests to responses.
 ///
-/// If the header is present on the request it'll be applied to the response as well. This could
-/// for example be used to propagate headers such as `X-Request-Id`.
-///
-/// See the [module docs](crate::propagate_header) for more details.
+/// If the headers are present on the request they'll be applied to the response as well. This could
+/// for example be used to propagate headers such as `x-rerun-entry-id`, `x-rerun-client-version`, etc.
 #[derive(Clone, Debug)]
 pub struct PropagateHeadersLayer {
     headers: HashSet<HeaderName>,
@@ -234,10 +230,8 @@ impl<S> Layer<S> for PropagateHeadersLayer {
 
 /// Middleware that propagates multiple headers at once from requests to responses.
 ///
-/// If the header is present on the request it'll be applied to the response as well. This could
-/// for example be used to propagate headers such as `X-Request-Id`.
-///
-/// See the [module docs](crate::propagate_header) for more details.
+/// If the headers are present on the request they'll be applied to the response as well. This could
+/// for example be used to propagate headers such as `x-rerun-entry-id`, `x-rerun-client-version`, etc.
 #[derive(Clone, Debug)]
 pub struct PropagateHeaders<S> {
     inner: S,
