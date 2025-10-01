@@ -169,6 +169,12 @@ impl Telemetry {
             });
         }
 
+        let Some(service_name) = service_name else {
+            anyhow::bail!(
+                "either `OTEL_SERVICE_NAME` or `TelemetryArgs::service_name` must be set in order to initialize telemetry"
+            );
+        };
+
         // For these things, all we need to do is make sure that the right OTEL env var is set.
         // All the downstream libraries will do the right thing if they are.
         //
