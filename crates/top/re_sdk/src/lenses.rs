@@ -76,18 +76,21 @@ impl<S: LogSink> LogSink for LensesSink<S> {
     }
 }
 
-/// TODO: Better defintions + pub / private distinctions.
+/// A transformed column result from applying a lens operation.
+///
+/// Contains the output of a lens transformation, including the new entity path,
+/// the serialized component data, and whether the data should be treated as static.
 pub struct TransformedColumn {
-    /// TODO
+    /// The entity path where this transformed column should be logged.
     pub entity_path: EntityPath,
-    /// TODO
+    /// The serialized component column containing the transformed data.
     pub column: SerializedComponentColumn,
-    /// TODO
+    /// Whether this column represents static data.
     pub is_static: bool,
 }
 
 impl TransformedColumn {
-    /// TODO
+    /// Creates a new transformed column.
     pub fn new(entity_path: EntityPath, column: SerializedComponentColumn) -> Self {
         Self {
             entity_path,
@@ -96,7 +99,7 @@ impl TransformedColumn {
         }
     }
 
-    /// TODO
+    /// Creates a new static transformed column.
     pub fn new_static(entity_path: EntityPath, column: SerializedComponentColumn) -> Self {
         Self {
             entity_path,
@@ -108,7 +111,11 @@ impl TransformedColumn {
 
 type LensFunc = Box<dyn Fn(ListArray, &EntityPath) -> Vec<TransformedColumn> + Send + Sync>;
 
-/// TODO
+/// A lens that transforms component data from one form to another.
+///
+/// Lenses allow you to extract, transform, and restructure component data
+/// as it flows through the logging pipeline. They are applied to chunks
+/// that match the specified entity path filter and contain the target component.
 pub struct Lens {
     /// The entity path to apply the transformation to.
     pub filter: ResolvedEntityPathFilter,
@@ -132,9 +139,11 @@ impl LensRegistry {
             .filter(|transform| transform.filter.matches(chunk.entity_path()))
     }
 
-    /// TODO: This will drop component columns that are not relevant.
+    /// Applies all relevant lenses to a chunk and returns the transformed chunks.
     ///
-    /// Retaining some of the original data could be done via idenity lenses, or via multi sinks.
+    /// This will only transform component columns that match registered lenses.
+    /// Other component columns are dropped. To retain original data, use identity
+    /// lenses or multi-sink configurations.
     pub fn apply(&self, chunk: &Chunk) -> Vec<Chunk> {
         self.relevant(chunk)
             .flat_map(|transform| transform.apply(chunk))
@@ -143,7 +152,12 @@ impl LensRegistry {
 }
 
 impl Lens {
-    /// TODO
+    /// Creates a new lens with the specified filter, component, and transformation function.
+    ///
+    /// # Arguments
+    /// * `entity_path_filter` - Filter to match entity paths this lens should apply to
+    /// * `component` - The component identifier to transform
+    /// * `func` - Transformation function that takes a ListArray and EntityPath and returns transformed columns
     pub fn new<F>(
         entity_path_filter: EntityPathFilter,
         component: impl Into<ComponentIdentifier>,
@@ -229,7 +243,10 @@ pub mod op {
         datatypes::{DataType, Field},
     };
 
-    /// TODO
+    /// Extracts a specific field from a struct component within a ListArray.
+    ///
+    /// Takes a ListArray containing StructArrays and extracts the specified field,
+    /// returning a new ListArray containing only that field's data.
     pub fn extract_field(list_array: ListArray, column_name: &str) -> ListArray {
         let (_field, offsets, values, nulls) = list_array.into_parts();
         let struct_array = values.as_any().downcast_ref::<StructArray>().unwrap();
@@ -242,7 +259,10 @@ pub mod op {
         )
     }
 
-    /// TODO
+    /// Casts the inner array of a ListArray to a different data type.
+    ///
+    /// Performs type casting on the component data within the ListArray,
+    /// preserving the list structure while changing the inner data type.
     pub fn cast_component_batch(list_array: ListArray, to_inner_type: &DataType) -> ListArray {
         let (_field, offsets, ref array, nulls) = list_array.into_parts();
         let res = compute::cast(array, to_inner_type).unwrap();
