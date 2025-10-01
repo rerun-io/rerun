@@ -37,8 +37,8 @@ impl FilterUiAction {
 /// Current state of the filter bar.
 ///
 /// Since this is dynamically changed, e.g. as the user types a query, the content of [`Self`] can
-/// differ from the content of [`TableBlueprint::filters`]. [`Self::filter_bar_ui`] returns a flag
-/// to indicate when this content should be committed to the blueprint.
+/// differ from the content of [`TableBlueprint::column_filters`]. [`Self::filter_bar_ui`] returns a
+/// flag to indicate when this content should be committed to the blueprint.
 #[derive(Clone, Debug)]
 pub struct FilterState {
     pub column_filters: Vec<ColumnFilter>,
