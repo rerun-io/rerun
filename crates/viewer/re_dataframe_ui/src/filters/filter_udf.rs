@@ -10,17 +10,37 @@ use datafusion::logical_expr::{
     ScalarUDFImpl, Signature, TypeSignature, Volatility,
 };
 
+/// Helper trait to make it straightforward to implement a filter UDF.
 pub trait FilterUdf: Any + Clone + Debug + Send + Sync {
+    /// The scalar datafusion type signature for this UDF.
+    ///
+    /// The list version will automatically be accepted as well, see [`Self::signature`].
     const PRIMITIVE_SIGNATURE: TypeSignature;
 
+    /// Name for this UDF.
+    ///
+    /// Keep it simple, it's also used in error. Example: "string" (for a string filter).
     fn name(&self) -> &'static str;
+
+    /// Which _primitive_ datatypes are supported?
+    ///
+    /// Emphasis on "primitive". One layer of nested types (aka `List`) is automatically supported
+    /// as well, see [`Self::is_valid_input_type`].
     fn is_valid_primitive_input_type(data_type: &DataType) -> bool;
+
+    /// Invoke this UDF on a primitive array.
+    ///
+    /// Again, nested types (aka `List`) are automatically supported, see [`Self::invoke_list_array`].
     fn invoke_primitive_array(&self, array: &ArrayRef) -> DataFusionResult<BooleanArray>;
 
+    /// Turn this type into a [`ScalarUDF`].
     fn as_scalar_udf(&self) -> ScalarUDF {
         ScalarUDF::new_from_impl(FilterUdfWrapper(self.clone()))
     }
 
+    /// Signature for this UDF.
+    ///
+    /// See [`ScalarUDFImpl::signature`].
     fn signature(&self) -> &Signature {
         static SIGNATURE: OnceLock<Signature> = OnceLock::new();
 
@@ -38,6 +58,9 @@ pub trait FilterUdf: Any + Clone + Debug + Send + Sync {
         })
     }
 
+    /// Is this datatype valid?
+    ///
+    /// Delegates to [`Self::is_valid_primitive_input_type`] for non-nested types.
     fn is_valid_input_type(data_type: &DataType) -> bool {
         match data_type {
             DataType::List(field) | DataType::ListView(field) => {
@@ -50,6 +73,9 @@ pub trait FilterUdf: Any + Clone + Debug + Send + Sync {
         }
     }
 
+    /// Invoke this UDF for a list array.
+    ///
+    /// Delegates actual implementation to [`Self::invoke_primitive_array`].
     fn invoke_list_array(&self, list_array: &ListArray) -> DataFusionResult<BooleanArray> {
         // TODO(ab): we probably should do this in two steps:
         // 1) Convert the list array to a bool array (with same offsets and nulls)
