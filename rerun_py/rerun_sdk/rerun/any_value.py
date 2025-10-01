@@ -83,26 +83,12 @@ class AnyValues(AsComponents):
     @deprecated(
         "`rr.AnyValues.with_field` is deprecated, use `rr.AnyValues.with_component_from_data` instead.",
     )
-    def with_field(
-        self, descriptor: str | ComponentDescriptor, value: Any, drop_untyped_nones: bool = True
-    ) -> AnyValues:
+    def with_field(self, descriptor: str, value: Any, drop_untyped_nones: bool = True) -> AnyValues:
         return self.with_component_from_data(descriptor, value, drop_untyped_nones)
 
-    def with_component_from_data(
-        self, descriptor: str | ComponentDescriptor, value: Any, drop_untyped_nones: bool = True
-    ) -> AnyValues:
+    def with_component_from_data(self, descriptor: str, value: Any, drop_untyped_nones: bool = True) -> AnyValues:
         """Adds an `AnyValueBatch` to this `AnyValues` bundle."""
-        # TODO(#10908): Prune this type in 0.26
-        if isinstance(descriptor, ComponentDescriptor):
-            warnings.warn(
-                "`rr.AnyValues.with_field` using a component descriptor is deprecated, "
-                "use DynamicArchetype if trying to specify archetype grouping of values.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            self._builder._with_descriptor_internal(descriptor, value, drop_untyped_nones=drop_untyped_nones)
-        else:
-            self._builder.with_component_from_data(descriptor, value, drop_untyped_nones=drop_untyped_nones)
+        self._builder.with_component_from_data(descriptor, value, drop_untyped_nones=drop_untyped_nones)
         return self
 
     @deprecated(
