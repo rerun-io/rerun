@@ -12,7 +12,7 @@ use crate::catalog::{
 };
 
 /// Client for a remote Rerun catalog server.
-#[pyclass(name = "CatalogClientInternal")]
+#[pyclass(name = "CatalogClientInternal")] // NOLINT
 pub struct PyCatalogClientInternal {
     origin: re_uri::Origin,
 
