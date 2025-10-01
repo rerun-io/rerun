@@ -12,6 +12,18 @@ pub const RERUN_HTTP_HEADER_ENTRY_ID: &str = "x-rerun-entry-id";
 /// while HTTP2 headers only support ASCII.
 pub const RERUN_HTTP_HEADER_ENTRY_NAME: &str = "x-rerun-entry-name-bin";
 
+/// The HTTP header key that all our official gRPC clients use to specify their identity and version.
+///
+/// All our official gRPC servers make sure to always return a copy of this header to the client as-is, in
+/// addition to propagating it into our gRPC metrics, traces and metrics.
+pub const RERUN_HTTP_HEADER_CLIENT_VERSION: &str = "x-rerun-client-version";
+
+/// The HTTP header key that all our official gRPC servers use to specify their identity and version.
+///
+/// All our official gRPC servers always set this header in all their responses, in addition to
+/// propagating it into our gRPC metrics, traces and metrics.
+pub const RERUN_HTTP_HEADER_SERVER_VERSION: &str = "x-rerun-server-version";
+
 /// Extension trait for [`tonic::Request`] to inject Rerun Data Protocol headers into gRPC requests.
 ///
 /// Example:
@@ -127,17 +139,112 @@ impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
     }
 }
 
+// ---
+
+pub type RerunHeadersLayer = tower::layer::util::Stack<
+    PropagateHeadersLayer,
+    tower::layer::util::Stack<
+        tonic::service::InterceptorLayer<RerunVersionInterceptor>,
+        tower::layer::util::Identity,
+    >,
+>;
+
+/// Instantiates a compound [`tower::Layer`] that handles all things related to Rerun headers.
+pub fn new_rerun_headers_layer(
+    name: Option<String>,
+    version: Option<String>,
+    is_client: bool,
+) -> RerunHeadersLayer {
+    tower::ServiceBuilder::new()
+        .layer(tonic::service::interceptor::InterceptorLayer::new({
+            RerunVersionInterceptor::new(is_client, name, version)
+        }))
+        .layer(new_rerun_headers_propagation_layer())
+        .into_inner()
+}
+
 /// Creates a new [`tower::Layer`] middleware that always makes sure to propagate Rerun headers
 /// back and forth across requests and responses.
 pub fn new_rerun_headers_propagation_layer() -> PropagateHeadersLayer {
     PropagateHeadersLayer::new(
         [
             http::HeaderName::from_static(RERUN_HTTP_HEADER_ENTRY_ID),
-            http::HeaderName::from_static("x-request-id"),
+            http::HeaderName::from_static(RERUN_HTTP_HEADER_CLIENT_VERSION),
+            http::HeaderName::from_static(RERUN_HTTP_HEADER_SERVER_VERSION),
         ]
         .into_iter()
         .collect(),
     )
+}
+
+/// Implements a `[tonic::service::Interceptor]` that records the identity and version of the client and/or server
+/// in well-known headers.
+///
+/// See also [`RERUN_HTTP_HEADER_CLIENT_VERSION`] & [`RERUN_HTTP_HEADER_SERVER_VERSION`].
+#[derive(Clone)]
+pub struct RerunVersionInterceptor {
+    is_client: bool,
+    name: String,
+    version: String,
+}
+
+impl RerunVersionInterceptor {
+    pub fn new_client(name: Option<String>, version: Option<String>) -> Self {
+        Self::new(true, name, version)
+    }
+
+    pub fn new_server(name: Option<String>, version: Option<String>) -> Self {
+        Self::new(false, name, version)
+    }
+
+    pub fn new(is_client: bool, name: Option<String>, version: Option<String>) -> Self {
+        let mut name = name
+            .or_else(|| std::env::var("OTEL_SERVICE_NAME").ok())
+            .or_else(|| {
+                let path = std::env::current_exe().ok()?;
+                path.file_stem()
+                    .map(|stem| stem.to_string_lossy().to_string())
+            })
+            .unwrap_or_else(|| env!("CARGO_PKG_NAME").to_owned());
+
+        if !name.is_ascii() {
+            // Cannot have non ASCII data in HTTP headers.
+            name = "<non_ascii_name_redacted>".to_owned();
+        }
+
+        let version = version.unwrap_or_else(|| env!("CARGO_PKG_VERSION").to_owned());
+
+        Self {
+            is_client,
+            name,
+            version,
+        }
+    }
+}
+
+impl tonic::service::Interceptor for RerunVersionInterceptor {
+    fn call(&mut self, mut req: tonic::Request<()>) -> Result<tonic::Request<()>, tonic::Status> {
+        let Self {
+            is_client,
+            name,
+            version,
+        } = self;
+
+        let version = format!("{name}/{version}");
+
+        req.metadata_mut().insert(
+            if *is_client {
+                RERUN_HTTP_HEADER_CLIENT_VERSION
+            } else {
+                RERUN_HTTP_HEADER_SERVER_VERSION
+            },
+            version
+                .parse()
+                .expect("cannot fail, checked in constructor"),
+        );
+
+        Ok(req)
+    }
 }
 
 // ---
