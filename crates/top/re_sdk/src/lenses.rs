@@ -247,10 +247,23 @@ pub mod op {
     ///
     /// Takes a ListArray containing StructArrays and extracts the specified field,
     /// returning a new ListArray containing only that field's data.
+    /// Returns an empty ListArray if the extraction fails.
     pub fn extract_field(list_array: ListArray, column_name: &str) -> ListArray {
-        let (_field, offsets, values, nulls) = list_array.into_parts();
-        let struct_array = values.as_any().downcast_ref::<StructArray>().unwrap();
-        let column = struct_array.column_by_name(column_name).unwrap();
+        let (field, offsets, values, nulls) = list_array.into_parts();
+        let struct_array = match values.as_any().downcast_ref::<StructArray>() {
+            Some(array) => array,
+            None => {
+                re_log::error_once!("Expected StructArray in ListArray, but found different type");
+                return ListArray::new_null(field, offsets.len() - 1);
+            }
+        };
+        let column = match struct_array.column_by_name(column_name) {
+            Some(col) => col,
+            None => {
+                re_log::error_once!("Field '{}' not found in struct", column_name);
+                return ListArray::new_null(field, offsets.len() - 1);
+            }
+        };
         ListArray::new(
             Arc::new(Field::new_list_field(column.data_type().clone(), true)),
             offsets,
@@ -263,9 +276,16 @@ pub mod op {
     ///
     /// Performs type casting on the component data within the ListArray,
     /// preserving the list structure while changing the inner data type.
+    /// Returns an empty ListArray if the cast fails.
     pub fn cast_component_batch(list_array: ListArray, to_inner_type: &DataType) -> ListArray {
-        let (_field, offsets, ref array, nulls) = list_array.into_parts();
-        let res = compute::cast(array, to_inner_type).unwrap();
+        let (field, offsets, ref array, nulls) = list_array.into_parts();
+        let res = match compute::cast(array, to_inner_type) {
+            Ok(casted) => casted,
+            Err(err) => {
+                re_log::error_once!("Failed to cast array to {:?}: {}", to_inner_type, err);
+                return ListArray::new_null(field, offsets.len() - 1);
+            }
+        };
         ListArray::new(
             Arc::new(Field::new_list_field(res.data_type().clone(), true)),
             offsets,
