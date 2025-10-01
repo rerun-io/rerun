@@ -9045,7 +9045,6 @@ dependencies = [
  "parking_lot",
  "prometheus-client",
  "re_memory",
- "re_protos",
  "serde",
  "serde_json",
  "tokio",

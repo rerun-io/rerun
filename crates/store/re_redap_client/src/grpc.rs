@@ -119,7 +119,7 @@ pub(crate) async fn client(
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
-pub type RedapClientInner = re_perf_telemetry::PropagateHeaders<
+pub type RedapClientInner = re_protos::headers::PropagateHeaders<
     re_perf_telemetry::external::tower_http::trace::Trace<
         tonic::service::interceptor::InterceptedService<
             tonic::service::interceptor::InterceptedService<
@@ -153,6 +153,8 @@ pub(crate) async fn client(
     let auth = AuthDecorator::new(token);
 
     let middlewares = tower::ServiceBuilder::new();
+
+    let middlewares = middlewares.layer(re_protos::headers::new_rerun_headers_propagation_layer());
 
     #[cfg(feature = "perf_telemetry")]
     let middlewares = middlewares.layer(re_perf_telemetry::new_client_telemetry_layer());

@@ -492,10 +492,7 @@ pub type ServerTelemetryLayer = tower::layer::util::Stack<
             GrpcOnFirstBodyChunk,
             GrpcOnEos,
         >,
-        tower::layer::util::Stack<
-            re_protos::headers::PropagateHeadersLayer,
-            tower::layer::util::Identity,
-        >,
+        tower::layer::util::Identity,
     >,
 >;
 
@@ -504,15 +501,6 @@ pub type ServerTelemetryLayer = tower::layer::util::Stack<
 /// * Logs all gRPC responses (status, latency, etc).
 /// * Measures all gRPC responses (status, latency, etc).
 pub fn new_server_telemetry_layer() -> ServerTelemetryLayer {
-    let propagation_layer = re_protos::headers::PropagateHeadersLayer::new(
-        [
-            http::HeaderName::from_static(RERUN_HTTP_HEADER_ENTRY_ID),
-            http::HeaderName::from_static("x-request-id"),
-        ]
-        .into_iter()
-        .collect(),
-    );
-
     let trace_layer = tower_http::trace::TraceLayer::new_for_grpc()
         .make_span_with(GrpcMakeSpan::new())
         .on_request(GrpcOnRequest::new())
@@ -521,7 +509,6 @@ pub fn new_server_telemetry_layer() -> ServerTelemetryLayer {
         .on_eos(GrpcOnEos::new());
 
     tower::ServiceBuilder::new()
-        .layer(propagation_layer)
         .layer(trace_layer)
         .layer(TracingExtractorInterceptor::new_layer())
         .into_inner()
@@ -531,10 +518,7 @@ pub type ClientTelemetryLayer = tower::layer::util::Stack<
     tonic::service::interceptor::InterceptorLayer<TracingInjectorInterceptor>,
     tower::layer::util::Stack<
         tower_http::trace::TraceLayer<tower_http::trace::GrpcMakeClassifier, GrpcMakeSpan>,
-        tower::layer::util::Stack<
-            re_protos::headers::PropagateHeadersLayer,
-            tower::layer::util::Identity,
-        >,
+        tower::layer::util::Identity,
     >,
 >;
 
@@ -546,20 +530,10 @@ pub type ClientTelemetryLayer = tower::layer::util::Stack<
 // TODO(cmc): at the moment there's little value to have anything beyond traces on the client, but
 // we ultimately can add all the same things that we have on the server as we need them.
 pub fn new_client_telemetry_layer() -> ClientTelemetryLayer {
-    let propagation_layer = re_protos::headers::PropagateHeadersLayer::new(
-        [
-            http::HeaderName::from_static(RERUN_HTTP_HEADER_ENTRY_ID),
-            http::HeaderName::from_static("x-request-id"),
-        ]
-        .into_iter()
-        .collect(),
-    );
-
     let trace_layer =
         tower_http::trace::TraceLayer::new_for_grpc().make_span_with(GrpcMakeSpan::new());
 
     tower::ServiceBuilder::new()
-        .layer(propagation_layer)
         .layer(trace_layer)
         .layer(TracingInjectorInterceptor::new_layer())
         .into_inner()

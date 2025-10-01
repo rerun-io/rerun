@@ -127,6 +127,21 @@ impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
     }
 }
 
+pub type RerunHeadersPropagationLayer = ();
+
+/// Creates a new [`tower::Layer`] middleware that always makes sure to propagate Rerun headers
+/// back and forth across requests and responses.
+pub fn new_rerun_headers_propagation_layer() -> PropagateHeadersLayer {
+    PropagateHeadersLayer::new(
+        [
+            http::HeaderName::from_static(RERUN_HTTP_HEADER_ENTRY_ID),
+            http::HeaderName::from_static("x-request-id"),
+        ]
+        .into_iter()
+        .collect(),
+    )
+}
+
 // ---
 
 // NOTE: This if a fork of <https://docs.rs/tower-http/0.6.6/tower_http/propagate_header/struct.PropagateHeader.html>.
