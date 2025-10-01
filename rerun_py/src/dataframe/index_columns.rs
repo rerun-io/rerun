@@ -11,16 +11,18 @@ use re_sorbet::{IndexColumnDescriptor, TimeColumnSelector};
 /// column, use [`IndexColumnSelector`][rerun.dataframe.IndexColumnSelector].
 #[pyclass(
     frozen,
+    eq,
+    hash,
     name = "IndexColumnDescriptor",
     module = "rerun_bindings.rerun_bindings"
 )]
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct PyIndexColumnDescriptor(pub IndexColumnDescriptor);
 
 #[pymethods]
 impl PyIndexColumnDescriptor {
     fn __repr__(&self) -> String {
-        format!("Index(timeline:{})", self.0.column_name())
+        format!("Index(timeline:{})", self.0.column_name(),)
     }
 
     /// The name of the index.
@@ -56,10 +58,11 @@ impl From<IndexColumnDescriptor> for PyIndexColumnDescriptor {
 ///     The name of the index to select. Usually the name of a timeline.
 #[pyclass(
     frozen,
+    eq,
     name = "IndexColumnSelector",
     module = "rerun_bindings.rerun_bindings"
 )]
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PyIndexColumnSelector(pub TimeColumnSelector);
 
 #[pymethods]
