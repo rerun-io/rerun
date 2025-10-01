@@ -30,9 +30,7 @@ use re_types_core::datatypes::TimeInt;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, SyntaxHighlighting, UiExt as _};
 
-use super::{
-    FilterError, Filter, FilterUdf, FilterUiAction, TimestampFormatted, parse_timestamp,
-};
+use super::{Filter, FilterError, FilterUdf, FilterUiAction, TimestampFormatted, parse_timestamp};
 
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq)]
 enum TimestampFilterKind {

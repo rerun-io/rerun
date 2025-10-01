@@ -9,7 +9,7 @@ use strum::VariantArray as _;
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
-use super::{FilterError, Filter, FilterUdf, FilterUiAction, action_from_text_edit_response};
+use super::{Filter, FilterError, FilterUdf, FilterUiAction, action_from_text_edit_response};
 
 #[derive(Debug, Clone, Copy, Default, Hash, PartialEq, Eq, strum::VariantArray)]
 pub enum ComparisonOperator {
@@ -114,16 +114,19 @@ impl Filter for IntFilter {
             return Ok(lit(true));
         };
 
+        // Consistent with other column types, we treat `Ne` as an outer-NOT with ALL semantics on
+        // lists. This is achieved by two things working in concert:
+        // - `ComparisonOperator::apply` (which the UDF uses) handles `Ne` identically to `Eq`.
+        // - For `Ne`, outer negation is then applied below (see `should_invert_expression`).
+
         let udf = IntFilterUdf {
-            op: self.operator, //TODO: Ne should not go there!
+            op: self.operator,
             rhs_value,
         }
         .as_scalar_udf();
 
         let expr = udf.call(vec![col(field.name().clone())]);
 
-        // Consistent with other column types, we treat `Ne` as an outer-NOT, so we applies it here
-        // while the UDF handles `Ne` and `Eq` in the same way (see `ComparisonOperator::apply`).
         let should_invert_expression = self.operator == ComparisonOperator::Ne;
 
         Ok(if should_invert_expression {
@@ -162,7 +165,10 @@ impl Filter for IntFilter {
     }
 }
 
-//TODO: docstring
+/// Wrapper to implement [`FilterUdf`].
+///
+/// The only purpose of this wrapper is to _not_ have an `Option` around `rhs_value` and thus
+/// simplify the implementation.
 #[derive(Debug, Clone)]
 struct IntFilterUdf {
     op: ComparisonOperator,
@@ -311,37 +317,10 @@ impl Filter for FloatFilter {
     }
 }
 
-// ---
-
-fn numerical_comparison_operator_ui(
-    ui: &mut egui::Ui,
-    column_name: &str,
-    operator_text: &str,
-    op: &mut ComparisonOperator,
-) {
-    ui.horizontal(|ui| {
-        ui.label(SyntaxHighlightedBuilder::body_default(column_name).into_widget_text(ui.style()));
-
-        egui::ComboBox::new("comp_op", "")
-            .selected_text(
-                SyntaxHighlightedBuilder::keyword(operator_text).into_widget_text(ui.style()),
-            )
-            .show_ui(ui, |ui| {
-                for possible_op in crate::filters::ComparisonOperator::VARIANTS {
-                    if ui
-                        .button(
-                            SyntaxHighlightedBuilder::keyword(&possible_op.to_string())
-                                .into_widget_text(ui.style()),
-                        )
-                        .clicked()
-                    {
-                        *op = *possible_op;
-                    }
-                }
-            });
-    });
-}
-
+/// Wrapper to implement [`FilterUdf`].
+///
+/// The only purpose of this wrapper is to _not_ have an `Option` around `rhs_value` and thus
+/// simplify the implementation.
 #[derive(Debug, Clone)]
 struct FloatFilterUdf {
     op: ComparisonOperator,
@@ -389,4 +368,35 @@ impl FilterUdf for FloatFilterUdf {
             }
         }
     }
+}
+
+// ---
+
+fn numerical_comparison_operator_ui(
+    ui: &mut egui::Ui,
+    column_name: &str,
+    operator_text: &str,
+    op: &mut ComparisonOperator,
+) {
+    ui.horizontal(|ui| {
+        ui.label(SyntaxHighlightedBuilder::body_default(column_name).into_widget_text(ui.style()));
+
+        egui::ComboBox::new("comp_op", "")
+            .selected_text(
+                SyntaxHighlightedBuilder::keyword(operator_text).into_widget_text(ui.style()),
+            )
+            .show_ui(ui, |ui| {
+                for possible_op in crate::filters::ComparisonOperator::VARIANTS {
+                    if ui
+                        .button(
+                            SyntaxHighlightedBuilder::keyword(&possible_op.to_string())
+                                .into_widget_text(ui.style()),
+                        )
+                        .clicked()
+                    {
+                        *op = *possible_op;
+                    }
+                }
+            });
+    });
 }

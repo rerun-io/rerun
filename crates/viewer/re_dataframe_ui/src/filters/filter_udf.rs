@@ -12,7 +12,8 @@ use datafusion::logical_expr::{
 
 /// Helper trait to make it straightforward to implement a filter UDF.
 ///
-/// TODO: make it clear that a "filter UDF" is not necessarily a fully ready `Expr` thing. It's just a building block
+/// Note that a filter UDF is only a _building block_ towards creating a final expression for
+/// datafusion. See [`super::Filter::as_filter_expression`] in its implementation for more details.
 pub trait FilterUdf: Any + Clone + Debug + Send + Sync {
     /// The scalar datafusion type signature for this UDF.
     ///
