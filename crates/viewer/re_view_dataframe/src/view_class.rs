@@ -19,7 +19,7 @@ use crate::{
 #[derive(Default)]
 struct DataframeViewState {
     /// Cache for the expanded rows.
-    expended_rows_cache: ExpandedRowsCache,
+    expanded_rows_cache: ExpandedRowsCache,
 
     /// List of view columns for the current query, cached here for the column visibility UI.
     view_columns: Option<Vec<ColumnDescriptor>>,
@@ -169,7 +169,7 @@ Configure in the selection panel:
             ctx,
             ui,
             &query_handle,
-            &mut state.expended_rows_cache,
+            &mut state.expanded_rows_cache,
             &query.view_id,
         );
 

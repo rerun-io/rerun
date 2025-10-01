@@ -692,7 +692,7 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandS
 
             match msg {
                 HttpMessage::LogMsg(msg) => {
-                    if tx.send(msg).is_ok() {
+                    if tx.send(msg.into()).is_ok() {
                         ControlFlow::Continue(())
                     } else {
                         re_log::info_once!(
@@ -989,7 +989,7 @@ mod tests {
             selection: Some(re_log_types::DataPath {
                 entity_path: EntityPath::from_single_string("test/entity"),
                 instance: None,
-                component_descriptor: None,
+                component: None,
             }),
             when: Some((
                 re_chunk::TimelineName::new("test"),

@@ -44,7 +44,7 @@ impl TimeDragValue {
         let base_time = time_range_base_time(*range.start(), span);
         let (unit_symbol, unit_factor) = unit_from_span(span);
 
-        // `abs_range` is used by the DragValue when editing an absolute time, its bound expended to
+        // `abs_range` is used by the DragValue when editing an absolute time, its bound expanded to
         // the nearest unit to minimize glitches.
         let abs_range =
             round_down(*range.start(), unit_factor)..=round_up(*range.end(), unit_factor);

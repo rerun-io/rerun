@@ -643,5 +643,8 @@ In-memory Rerun data server.
 * `-d, --dataset <DATASETS>`
 > Load a directory of RRD as dataset (can be specified multiple times).
 
+* `-t, --table <TABLES>`
+> Load a lance file as a table (can be specified multiple times).
+
 * `-V, --version `
 > Print version.

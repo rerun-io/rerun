@@ -19,6 +19,9 @@ pub fn viewer_harness() -> Harness<'static, App> {
                 build_info!(),
                 AppEnvironment::Test,
                 StartupOptions {
+                    // Don't show the welcome / example screen in tests.
+                    // See also: https://github.com/rerun-io/rerun/issues/10989
+                    hide_welcome_screen: true,
                     // Don't calculate memory limit in tests.
                     memory_limit: re_memory::MemoryLimit::UNLIMITED,
                     ..Default::default()

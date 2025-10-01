@@ -7,7 +7,9 @@ use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{FileContents, LogDataSource};
 use re_entity_db::{InstancePath, entity_db::EntityDb};
-use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
+use re_log_types::{
+    ApplicationId, DataSourceMessage, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg,
+};
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
@@ -91,7 +93,7 @@ pub struct App {
 
     component_ui_registry: ComponentUiRegistry,
 
-    rx_log: ReceiveSet<LogMsg>,
+    rx_log: ReceiveSet<DataSourceMessage>,
     rx_table: ReceiveSetTable,
 
     #[cfg(target_arch = "wasm32")]
@@ -451,7 +453,7 @@ impl App {
     }
 
     #[allow(clippy::needless_pass_by_ref_mut)]
-    pub fn add_log_receiver(&mut self, rx: re_smart_channel::Receiver<LogMsg>) {
+    pub fn add_log_receiver(&mut self, rx: re_smart_channel::Receiver<DataSourceMessage>) {
         re_log::debug!("Adding new log receiver: {:?}", rx.source());
 
         // Make sure we wake up when a message is sent.
@@ -479,7 +481,7 @@ impl App {
         self.rx_table.lock().push(rx);
     }
 
-    pub fn msg_receive_set(&self) -> &ReceiveSet<LogMsg> {
+    pub fn msg_receive_set(&self) -> &ReceiveSet<DataSourceMessage> {
         &self.rx_log
     }
 
@@ -1106,31 +1108,10 @@ impl App {
                 egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
             })
         };
-        let on_ui_cmd = {
-            let command_sender = self.command_sender.clone();
-            Box::new(move |cmd| match cmd {
-                re_redap_client::UiCommand::AddValidTimeRange {
-                    store_id,
-                    timeline,
-                    time_range,
-                } => {
-                    command_sender.send_system(SystemCommand::AddValidTimeRange {
-                        store_id,
-                        timeline,
-                        time_range,
-                    });
-                }
-
-                re_redap_client::UiCommand::SetUrlFragment { store_id, fragment } => {
-                    command_sender
-                        .send_system(SystemCommand::SetUrlFragment { store_id, fragment });
-                }
-            })
-        };
 
         match data_source
             .clone()
-            .stream(&self.connection_registry, Some(on_ui_cmd), Some(waker))
+            .stream(&self.connection_registry, Some(waker))
         {
             Ok(rx) => self.add_log_receiver(rx),
             Err(err) => {
@@ -1149,14 +1130,11 @@ impl App {
             let re_log_types::DataPath {
                 entity_path,
                 instance,
-                component_descriptor,
+                component,
             } = selection;
 
-            let item = if let Some(component_descriptor) = component_descriptor {
-                Item::from(re_log_types::ComponentPath::new(
-                    entity_path,
-                    component_descriptor,
-                ))
+            let item = if let Some(component) = component {
+                Item::from(re_log_types::ComponentPath::new(entity_path, component))
             } else if let Some(instance) = instance {
                 Item::from(InstancePath::instance(entity_path, instance))
             } else {
@@ -1934,7 +1912,7 @@ impl App {
         }
     }
 
-    fn receive_messages(&self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
+    fn receive_messages(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         re_tracing::profile_function!();
 
         // TODO(grtlr): Should we bring back analytics for this too?
@@ -1994,168 +1972,226 @@ impl App {
                 }
             };
 
-            let store_id = msg.store_id();
-
-            if store_hub.is_active_blueprint(store_id) {
-                // TODO(#5514): handle loading of active blueprints.
-                re_log::warn_once!(
-                    "Loading a blueprint {store_id:?} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details."
-                );
-            }
-
-            // TODO(cmc): we have to keep grabbing and releasing entity_db because everything references
-            // everything and some of it is mutable and some not… it's really not pretty, but it
-            // does the job for now.
-
-            let msg_will_add_new_store = matches!(&msg, LogMsg::SetStoreInfo(..))
-                && !store_hub.store_bundle().contains(store_id);
-
-            let was_empty = {
-                let entity_db = store_hub.entity_db_mut(store_id);
-                if entity_db.data_source.is_none() {
-                    entity_db.data_source = Some((*channel_source).clone());
-                }
-                entity_db.is_empty()
-            };
-
-            match store_hub.entity_db_mut(store_id).add(&msg) {
-                Ok(store_events) => {
-                    if let Some(caches) = store_hub.active_caches() {
-                        caches.on_store_events(&store_events);
-                    }
-
-                    self.validate_loaded_events(&store_events);
+            match msg {
+                DataSourceMessage::LogMsg(msg) => {
+                    self.receive_log_msg(&msg, store_hub, egui_ctx, &channel_source);
                 }
 
-                Err(err) => {
-                    re_log::error_once!("Failed to add incoming msg: {err}");
-                }
-            }
-
-            let entity_db = store_hub.entity_db_mut(store_id);
-
-            if was_empty && !entity_db.is_empty() {
-                // Hack: we cannot go to a specific timeline or entity until we know about it.
-                // Now we _hopefully_ do.
-                if let SmartChannelSource::RedapGrpcStream { uri, .. } = channel_source.as_ref() {
-                    self.go_to_dataset_data(uri.store_id(), uri.fragment.clone());
-                }
-            }
-
-            let is_example = entity_db.store_class().is_example();
-
-            match &msg {
-                LogMsg::SetStoreInfo(_) => {
-                    if channel_source.select_when_loaded() {
-                        // Set the recording-id after potentially creating the store in the hub.
-                        // This ordering is important because the `StoreHub` internally
-                        // updates the app-id when changing the recording.
-                        match store_id.kind() {
-                            StoreKind::Recording => {
-                                re_log::trace!("Opening a new recording: '{store_id:?}'");
-                                self.make_store_active_and_highlight(store_hub, egui_ctx, store_id);
-                            }
-                            StoreKind::Blueprint => {
-                                // We wait with activating blueprints until they are fully loaded,
-                                // so that we don't run heuristics on half-loaded blueprints.
-                                // Otherwise on a mixed connection (SDK sending both blueprint and recording)
-                                // the blueprint won't be activated until the whole _recording_ has finished loading.
-                            }
-                        }
-                    }
-
-                    if cfg!(target_arch = "wasm32")
-                        && !self.startup_options.is_in_notebook
-                        && !is_example
-                    {
-                        use std::sync::Once;
-                        static ONCE: Once = Once::new();
-                        ONCE.call_once(|| {
-                            // Tell the user there is a faster native viewer they can use instead of the web viewer:
-                            let notification = re_ui::notifications::Notification::new(
-                                    re_ui::notifications::NotificationLevel::Tip, "For better performance, try the native Rerun Viewer!").with_link(
-                                    re_ui::Link {
-                                        text: "Install…".into(),
-                                        url: "https://rerun.io/docs/getting-started/installing-viewer#installing-the-viewer".into(),
-                                    }
-                                )
-                                .no_toast()
-                                .permanent_dismiss_id(egui::Id::new("install_native_viewer_prompt"));
-                            self.command_sender
-                                .send_system(SystemCommand::ShowNotification(notification));
-                        });
-                    }
-                }
-
-                LogMsg::ArrowMsg(_, _) => {
-                    // Handled by `EntityDb::add`
-                }
-
-                LogMsg::BlueprintActivationCommand(cmd) => match store_id.kind() {
-                    StoreKind::Recording => {
-                        re_log::debug!(
-                            "Unexpected `BlueprintActivationCommand` message for {store_id:?}"
-                        );
-                    }
-                    StoreKind::Blueprint => {
-                        if let Some(info) = entity_db.store_info() {
-                            re_log::trace!(
-                                "Activating blueprint that was loaded from {channel_source}"
-                            );
-                            let app_id = info.application_id().clone();
-                            if cmd.make_default {
-                                store_hub
-                                    .set_default_blueprint_for_app(store_id)
-                                    .unwrap_or_else(|err| {
-                                        re_log::warn!("Failed to make blueprint default: {err}");
-                                    });
-                            }
-                            if cmd.make_active {
-                                store_hub
-                                    .set_cloned_blueprint_active_for_app(store_id)
-                                    .unwrap_or_else(|err| {
-                                        re_log::warn!("Failed to make blueprint active: {err}");
-                                    });
-
-                                // Switch to this app, e.g. on drag-and-drop of a blueprint file
-                                store_hub.set_active_app(app_id);
-
-                                // If the viewer is in the background, tell the user that it has received something new.
-                                egui_ctx.send_viewport_cmd(
-                                    egui::ViewportCommand::RequestUserAttention(
-                                        egui::UserAttentionType::Informational,
-                                    ),
-                                );
-                            }
-                        } else {
-                            re_log::warn!(
-                                "Got ActivateStore message without first receiving a SetStoreInfo"
-                            );
-                        }
-                    }
-                },
-            }
-
-            // Do analytics/events after ingesting the new message,
-            // because `entity_db.store_info` needs to be set.
-            let entity_db = store_hub.entity_db_mut(store_id);
-            if msg_will_add_new_store && entity_db.store_kind() == StoreKind::Recording {
-                #[cfg(feature = "analytics")]
-                if let Some(analytics) = re_analytics::Analytics::global_or_init()
-                    && let Some(event) =
-                        crate::viewer_analytics::event::open_recording(&self.app_env, entity_db)
-                {
-                    analytics.record(event);
-                }
-
-                if let Some(event_dispatcher) = self.event_dispatcher.as_ref() {
-                    event_dispatcher.on_recording_open(entity_db);
+                DataSourceMessage::UiCommand(ui_command) => {
+                    self.receive_data_source_ui_command(ui_command, &channel_source);
                 }
             }
 
             if start.elapsed() > web_time::Duration::from_millis(10) {
                 egui_ctx.request_repaint(); // make sure we keep receiving messages asap
                 break; // don't block the main thread for too long
+            }
+        }
+
+        // Run pending system commands in case any of the messages resulted in additional commands.
+        // This avoid further frame delays on these commands.
+        self.run_pending_system_commands(store_hub, egui_ctx);
+    }
+
+    fn receive_log_msg(
+        &self,
+        msg: &LogMsg,
+        store_hub: &mut StoreHub,
+        egui_ctx: &egui::Context,
+        channel_source: &SmartChannelSource,
+    ) {
+        let store_id = msg.store_id();
+
+        if store_hub.is_active_blueprint(store_id) {
+            // TODO(#5514): handle loading of active blueprints.
+            re_log::warn_once!(
+                "Loading a blueprint {store_id:?} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details."
+            );
+        }
+
+        // TODO(cmc): we have to keep grabbing and releasing entity_db because everything references
+        // everything and some of it is mutable and some not… it's really not pretty, but it
+        // does the job for now.
+
+        let msg_will_add_new_store = matches!(&msg, LogMsg::SetStoreInfo(..))
+            && !store_hub.store_bundle().contains(store_id);
+
+        let was_empty = {
+            let entity_db = store_hub.entity_db_mut(store_id);
+            if entity_db.data_source.is_none() {
+                entity_db.data_source = Some((*channel_source).clone());
+            }
+            entity_db.is_empty()
+        };
+
+        match store_hub.entity_db_mut(store_id).add(msg) {
+            Ok(store_events) => {
+                if let Some(caches) = store_hub.active_caches() {
+                    caches.on_store_events(&store_events);
+                }
+
+                self.validate_loaded_events(&store_events);
+            }
+
+            Err(err) => {
+                re_log::error_once!("Failed to add incoming msg: {err}");
+            }
+        }
+
+        let entity_db = store_hub.entity_db_mut(store_id);
+
+        if was_empty && !entity_db.is_empty() {
+            // Hack: we cannot go to a specific timeline or entity until we know about it.
+            // Now we _hopefully_ do.
+            if let SmartChannelSource::RedapGrpcStream { uri, .. } = channel_source {
+                self.go_to_dataset_data(uri.store_id(), uri.fragment.clone());
+            }
+        }
+
+        let is_example = entity_db.store_class().is_example();
+
+        match &msg {
+            LogMsg::SetStoreInfo(_) => {
+                if channel_source.select_when_loaded() {
+                    // Set the recording-id after potentially creating the store in the hub.
+                    // This ordering is important because the `StoreHub` internally
+                    // updates the app-id when changing the recording.
+                    match store_id.kind() {
+                        StoreKind::Recording => {
+                            re_log::trace!("Opening a new recording: '{store_id:?}'");
+                            self.make_store_active_and_highlight(store_hub, egui_ctx, store_id);
+                        }
+                        StoreKind::Blueprint => {
+                            // We wait with activating blueprints until they are fully loaded,
+                            // so that we don't run heuristics on half-loaded blueprints.
+                            // Otherwise on a mixed connection (SDK sending both blueprint and recording)
+                            // the blueprint won't be activated until the whole _recording_ has finished loading.
+                        }
+                    }
+                }
+
+                if cfg!(target_arch = "wasm32")
+                    && !self.startup_options.is_in_notebook
+                    && !is_example
+                {
+                    use std::sync::Once;
+                    static ONCE: Once = Once::new();
+                    ONCE.call_once(|| {
+                        // Tell the user there is a faster native viewer they can use instead of the web viewer:
+                        let notification = re_ui::notifications::Notification::new(
+                                re_ui::notifications::NotificationLevel::Tip, "For better performance, try the native Rerun Viewer!").with_link(
+                                re_ui::Link {
+                                    text: "Install…".into(),
+                                    url: "https://rerun.io/docs/getting-started/installing-viewer#installing-the-viewer".into(),
+                                }
+                            )
+                            .no_toast()
+                            .permanent_dismiss_id(egui::Id::new("install_native_viewer_prompt"));
+                        self.command_sender
+                            .send_system(SystemCommand::ShowNotification(notification));
+                    });
+                }
+            }
+
+            LogMsg::ArrowMsg(_, _) => {
+                // Handled by `EntityDb::add`
+            }
+
+            LogMsg::BlueprintActivationCommand(cmd) => match store_id.kind() {
+                StoreKind::Recording => {
+                    re_log::debug!(
+                        "Unexpected `BlueprintActivationCommand` message for {store_id:?}"
+                    );
+                }
+                StoreKind::Blueprint => {
+                    if let Some(info) = entity_db.store_info() {
+                        re_log::trace!(
+                            "Activating blueprint that was loaded from {channel_source}"
+                        );
+                        let app_id = info.application_id().clone();
+                        if cmd.make_default {
+                            store_hub
+                                .set_default_blueprint_for_app(store_id)
+                                .unwrap_or_else(|err| {
+                                    re_log::warn!("Failed to make blueprint default: {err}");
+                                });
+                        }
+                        if cmd.make_active {
+                            store_hub
+                                .set_cloned_blueprint_active_for_app(store_id)
+                                .unwrap_or_else(|err| {
+                                    re_log::warn!("Failed to make blueprint active: {err}");
+                                });
+
+                            // Switch to this app, e.g. on drag-and-drop of a blueprint file
+                            store_hub.set_active_app(app_id);
+
+                            // If the viewer is in the background, tell the user that it has received something new.
+                            egui_ctx.send_viewport_cmd(
+                                egui::ViewportCommand::RequestUserAttention(
+                                    egui::UserAttentionType::Informational,
+                                ),
+                            );
+                        }
+                    } else {
+                        re_log::warn!(
+                            "Got ActivateStore message without first receiving a SetStoreInfo"
+                        );
+                    }
+                }
+            },
+        }
+
+        // Do analytics/events after ingesting the new message,
+        // because `entity_db.store_info` needs to be set.
+        let entity_db = store_hub.entity_db_mut(store_id);
+        if msg_will_add_new_store && entity_db.store_kind() == StoreKind::Recording {
+            #[cfg(feature = "analytics")]
+            if let Some(analytics) = re_analytics::Analytics::global_or_init()
+                && let Some(event) =
+                    crate::viewer_analytics::event::open_recording(&self.app_env, entity_db)
+            {
+                analytics.record(event);
+            }
+
+            if let Some(event_dispatcher) = self.event_dispatcher.as_ref() {
+                event_dispatcher.on_recording_open(entity_db);
+            }
+        }
+    }
+
+    fn receive_data_source_ui_command(
+        &self,
+        ui_command: re_log_types::DataSourceUiCommand,
+        channel_source: &SmartChannelSource,
+    ) {
+        match ui_command {
+            re_log_types::DataSourceUiCommand::AddValidTimeRange {
+                store_id,
+                timeline,
+                time_range,
+            } => {
+                self.command_sender
+                    .send_system(SystemCommand::AddValidTimeRange {
+                        store_id,
+                        timeline,
+                        time_range,
+                    });
+            }
+
+            re_log_types::DataSourceUiCommand::SetUrlFragment { store_id, fragment } => {
+                match re_uri::Fragment::from_str(&fragment) {
+                    Ok(fragment) => {
+                        self.command_sender
+                            .send_system(SystemCommand::SetUrlFragment { store_id, fragment });
+                    }
+
+                    Err(err) => {
+                        re_log::warn!(
+                            "Failed to parse fragment received from {channel_source:?}: {err}"
+                        );
+                    }
+                }
             }
         }
     }

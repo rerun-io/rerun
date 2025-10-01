@@ -41,6 +41,21 @@ async fn settings_screen() {
     harness.snapshot("settings_screen");
 }
 
+/// Opens the Rerun menu without an active recording and snapshots the app.
+/// Tests that certain recording-related entries are disabled (e.g. save or close recording).
+#[tokio::test]
+async fn menu_without_recording() {
+    let mut harness = viewer_test_utils::viewer_harness();
+    harness.get_by_label("Menu").click();
+    harness.run_ok();
+    // Mask the shortcut for quitting, it's platform-dependent.
+    harness.mask(harness.get_by_label_contains("Quit").rect());
+    harness.snapshot_options(
+        "menu_without_recording",
+        &SnapshotOptions::new().failed_pixel_count_threshold(2),
+    );
+}
+
 /// Tests the colormap selector UI with snapshot testing.
 /// This is defined here instead of in `re_viewer/tests` because it depends on `re_test_context`,
 /// which depends on `re_viewer_context`.

@@ -195,7 +195,7 @@ fn component_list_ui(
 
                 for (component_descr, unit) in components {
                     let component_path =
-                        ComponentPath::new(entity_path.clone(), component_descr.clone());
+                        ComponentPath::new(entity_path.clone(), component_descr.component);
 
                     let is_static = db
                         .storage_engine()
@@ -234,7 +234,7 @@ fn component_list_ui(
                             crate::ComponentPathLatestAtResults {
                                 component_path: ComponentPath::new(
                                     entity_path.clone(),
-                                    component_descr.clone(),
+                                    component_descr.component,
                                 ),
                                 unit,
                             }

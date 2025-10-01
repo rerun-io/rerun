@@ -167,14 +167,19 @@ impl SelectionPanel {
             Item::ComponentPath(component_path) => {
                 let ComponentPath {
                     entity_path,
-                    component_descriptor,
+                    component,
                 } = component_path;
 
                 let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
-                let is_static = db
-                    .storage_engine()
+                let engine = db.storage_engine();
+                let component_descriptor = engine
                     .store()
-                    .entity_has_static_component(entity_path, component_descriptor);
+                    .entity_component_descriptor(entity_path, *component)
+                    .unwrap_or(ComponentDescriptor::partial(*component));
+
+                let is_static = engine
+                    .store()
+                    .entity_has_static_component(entity_path, &component_descriptor);
 
                 ui.list_item_flat_noninteractive(PropertyContent::new("Parent entity").value_fn(
                     |ui, _| {
@@ -228,7 +233,7 @@ impl SelectionPanel {
                                 if let Some(markdown) = ctx
                                     .reflection()
                                     .components
-                                    .get(component_type)
+                                    .get(&component_type)
                                     .map(|info| info.docstring_md)
                                 {
                                     ui.markdown_ui(markdown);
@@ -1206,7 +1211,7 @@ mod tests {
 
         let component_path = re_log_types::ComponentPath {
             entity_path,
-            component_descriptor: archetypes::Points2D::descriptor_positions(),
+            component: archetypes::Points2D::descriptor_positions().component,
         };
 
         test_context
@@ -1269,7 +1274,7 @@ mod tests {
             .lock()
             .set_selection(Item::ComponentPath(re_log_types::ComponentPath {
                 entity_path,
-                component_descriptor: archetypes::Points2D::descriptor_positions(),
+                component: archetypes::Points2D::descriptor_positions().component,
             }));
 
         let viewport_blueprint = ViewportBlueprint::from_db(
@@ -1341,7 +1346,7 @@ mod tests {
             .lock()
             .set_selection(Item::ComponentPath(re_log_types::ComponentPath {
                 entity_path,
-                component_descriptor: archetypes::Points2D::descriptor_positions(),
+                component: archetypes::Points2D::descriptor_positions().component,
             }));
 
         let viewport_blueprint = ViewportBlueprint::from_db(

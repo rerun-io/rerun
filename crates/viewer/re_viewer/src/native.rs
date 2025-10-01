@@ -103,7 +103,7 @@ pub fn run_native_viewer_with_messages(
         re_smart_channel::SmartChannelSource::Sdk,
     );
     for log_msg in log_messages {
-        tx.send(log_msg).ok();
+        tx.send(log_msg.into()).ok();
     }
 
     let force_wgpu_backend = startup_options.force_wgpu_backend.clone();

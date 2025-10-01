@@ -1,4 +1,4 @@
-use re_log_types::{LogMsg, RecordingId};
+use re_log_types::{DataSourceMessage, RecordingId};
 use re_redap_client::ConnectionRegistryHandle;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 
@@ -146,9 +146,8 @@ impl LogDataSource {
     pub fn stream(
         self,
         connection_registry: &ConnectionRegistryHandle,
-        on_ui_cmd: Option<Box<dyn Fn(re_redap_client::UiCommand) + Send + Sync>>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-    ) -> anyhow::Result<Receiver<LogMsg>> {
+    ) -> anyhow::Result<Receiver<DataSourceMessage>> {
         re_tracing::profile_function!();
 
         match self {
@@ -254,7 +253,7 @@ impl LogDataSource {
                 let stream_partition = async move {
                     let client = connection_registry.client(uri_clone.origin.clone()).await?;
                     re_redap_client::stream_blueprint_and_partition_from_server(
-                        client, tx, uri_clone, on_ui_cmd, on_msg,
+                        client, tx, uri_clone, on_msg,
                     )
                     .await
                 };

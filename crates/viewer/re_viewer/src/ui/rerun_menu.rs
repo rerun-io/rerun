@@ -75,7 +75,10 @@ impl App {
 
         UICommand::SaveBlueprint.menu_button_ui(ui, &self.command_sender);
 
-        UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
+        let has_recording = _store_context.is_some_and(|ctx| !ctx.recording.is_empty());
+        ui.add_enabled_ui(has_recording, |ui| {
+            UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
+        });
 
         ui.add_space(SPACING);
 
@@ -163,6 +166,7 @@ impl App {
             is_in_rerun_workspace: _,
             target_triple,
             datetime,
+            is_debug_build,
         } = self.build_info();
 
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
@@ -174,8 +178,10 @@ impl App {
             format!("({short_git_hash})")
         };
 
+        let debug_label = if *is_debug_build { " (debug)" } else { "" };
+
         let mut label = format!(
-            "{crate_name} {version} {git_hash_suffix}\n\
+            "{crate_name} {version} {git_hash_suffix}{debug_label}\n\
             {target_triple}"
         );
 

@@ -12,13 +12,14 @@ use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, Expr, ScalarFunctionArgs,
     ScalarUDF, ScalarUDFImpl, Signature, TypeSignature, Volatility, col, lit, not,
 };
+use strum::VariantArray as _;
 
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
 use super::{FilterUiAction, action_from_text_edit_response};
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum::VariantArray)]
 pub enum StringOperator {
     #[default]
     Contains,
@@ -36,15 +37,6 @@ impl std::fmt::Display for StringOperator {
             Self::EndsWith => "ends with".fmt(f),
         }
     }
-}
-
-impl StringOperator {
-    pub const ALL: &'static [Self] = &[
-        Self::Contains,
-        Self::DoesNotContain,
-        Self::StartsWith,
-        Self::EndsWith,
-    ];
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -81,9 +73,10 @@ impl StringFilter {
 
         // The udf treats `DoesNotContains` in the same way as `Contains`, so we must apply an
         // outer `NOT` (or null) operation. This way, both operators yield complementary results.
-        let apply_any_or_null_semantics = self.operator() == StringOperator::DoesNotContain;
+        let apply_should_invert_expression_semantics =
+            self.operator() == StringOperator::DoesNotContain;
 
-        if apply_any_or_null_semantics {
+        if apply_should_invert_expression_semantics {
             not(expr.clone()).or(expr.is_null())
         } else {
             expr
@@ -108,7 +101,7 @@ impl StringFilter {
                     SyntaxHighlightedBuilder::keyword(&operator_text).into_widget_text(ui.style()),
                 )
                 .show_ui(ui, |ui| {
-                    for possible_op in crate::filters::StringOperator::ALL {
+                    for possible_op in StringOperator::VARIANTS {
                         if ui
                             .button(
                                 SyntaxHighlightedBuilder::keyword(&possible_op.to_string())

@@ -6,9 +6,7 @@ use std::{
 use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
 
-use re_chunk::{
-    ArchetypeName, Chunk, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName,
-};
+use re_chunk::{Chunk, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::AbsoluteTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types_core::{
@@ -282,12 +280,9 @@ impl ChunkStore {
     pub fn entity_component_descriptor(
         &self,
         entity_path: &EntityPath,
-        archetype_name: Option<ArchetypeName>,
         identifier: ComponentIdentifier,
     ) -> Option<ComponentDescriptor> {
-        let matches = |descr: &&ComponentDescriptor| {
-            descr.component == identifier && descr.archetype == archetype_name
-        };
+        let matches = |descr: &&ComponentDescriptor| descr.component == identifier;
 
         let static_chunks = self.static_chunk_ids_per_entity.get(entity_path);
         let static_components_descr =

@@ -160,7 +160,7 @@ impl ComponentColumnDescriptor {
     pub fn component_path(&self) -> ComponentPath {
         ComponentPath {
             entity_path: self.entity_path.clone(),
-            component_descriptor: self.component_descriptor(),
+            component: self.component,
         }
     }
 
