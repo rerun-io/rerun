@@ -164,6 +164,10 @@ impl Filter for TypedFilter {
         self.as_filter_mut()
             .popup_ui(ui, timestamp_format, column_name, popup_just_opened)
     }
+
+    fn on_commit(&mut self) {
+        self.as_filter_mut().on_commit();
+    }
 }
 
 impl From<NullableBooleanFilter> for TypedFilter {

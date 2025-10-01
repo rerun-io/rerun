@@ -331,13 +331,17 @@ pub fn action_from_text_edit_response(ui: &egui::Ui, response: &egui::Response) 
 mod tests {
     use std::sync::Arc;
 
+    use arrow::datatypes::{DataType, Field, FieldRef};
+    use egui::accesskit::Role;
+    use egui::{Key, Modifiers};
+    use egui_kittest::kittest::Queryable as _;
+
     use super::super::{
         ComparisonOperator, FloatFilter, IntFilter, NonNullableBooleanFilter,
         NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter,
     };
     use super::*;
     use crate::filters::TypedFilter;
-    use arrow::datatypes::{DataType, Field, FieldRef};
 
     fn test_cases() -> Vec<(TypedFilter, &'static str)> {
         [
@@ -526,5 +530,56 @@ mod tests {
         harness.run();
 
         harness.snapshot("filter_wrapping");
+    }
+
+    /// This test runs through a full edit cycle of a timestamp filter, and assess that the
+    /// timestamp string is normalized after commit—that is, the timestamp string is set to the
+    /// canonical representation of the previously entered timestamp.
+    #[test]
+    fn test_timestamp_filter_on_commit() {
+        let filters = vec![ColumnFilter::new(
+            dummy_field("some:column:name"),
+            TimestampFilter::after(jiff::Timestamp::from_millisecond(100_000_000_000).unwrap()),
+        )];
+
+        let mut filters = FilterState {
+            column_filters: filters,
+            active_filter: None,
+        };
+
+        let mut harness = egui_kittest::Harness::builder()
+            .with_size(egui::Vec2::new(700.0, 500.0))
+            .build_ui(|ui| {
+                re_ui::apply_style_and_install_loaders(ui.ctx());
+
+                filters.filter_bar_ui(ui, TimestampFormat::utc(), &mut TableBlueprint::default());
+            });
+
+        // Open the popup for the timeststamp filter.
+        harness.run();
+        let node = harness.get_by_role(Role::Unknown);
+        node.click();
+        harness.run();
+
+        // Activate the text input and select all.
+        harness.key_press(Key::Tab);
+        harness.run();
+        let text_input = harness.get_by_role(Role::TextInput);
+        text_input.click();
+        harness.key_press_modifiers(Modifiers::COMMAND, Key::A);
+        harness.run();
+
+        // Enter a timestamp string and commit the change.
+        let text_input = harness.get_by_role(Role::TextInput);
+        text_input.type_text("1979-07-10");
+        harness.key_press(Key::Enter);
+        harness.run();
+
+        // Open the popup again.
+        let node = harness.get_by_role(Role::Unknown);
+        node.click();
+        harness.run();
+
+        harness.snapshot("timestamp_filter_on_commit");
     }
 }
