@@ -8,8 +8,8 @@ use re_protos::cloud::v1alpha1::{EntryKind, ext::EntryDetails};
 use crate::catalog::PyCatalogClientInternal;
 
 /// A unique identifier for an entry in the catalog.
-#[pyclass(name = "EntryId")]
-#[derive(Clone)]
+#[pyclass(eq, name = "EntryId")]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PyEntryId {
     pub id: EntryId,
 }
@@ -104,7 +104,7 @@ impl From<PyEntryKind> for EntryKind {
 // ---
 
 /// An entry in the catalog.
-#[pyclass(name = "Entry", subclass)]
+#[pyclass(name = "Entry", subclass)] // NOLINT
 pub struct PyEntry {
     pub client: Py<PyCatalogClientInternal>,
 
