@@ -121,9 +121,12 @@ pub struct TelemetryArgs {
 
     /// The service name used for all things telemetry.
     ///
+    /// This is mandatory, but we leave it as optional to give users a chance to set it at initialization
+    /// time (as opposed to e.g. via env configuration) if needed.
+    ///
     /// Part of the `OpenTelemetry` spec.
     #[clap(long, env = "OTEL_SERVICE_NAME")]
-    pub service_name: String,
+    pub service_name: Option<String>,
 
     /// The service attributes used for all things telemetry.
     ///
