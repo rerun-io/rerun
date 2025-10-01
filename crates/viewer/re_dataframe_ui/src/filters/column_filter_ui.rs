@@ -14,7 +14,7 @@ pub enum FilterUiAction {
     #[default]
     None,
 
-    /// The user as closed the filter popup using enter or clicking outside. The updated filter
+    /// The user closed the filter popup using enter or by clicking outside. The updated filter
     /// state should be committed to the table blueprint.
     CommitStateToBlueprint,
 
