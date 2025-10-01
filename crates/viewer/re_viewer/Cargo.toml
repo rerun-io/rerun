@@ -176,6 +176,7 @@ web-sys = { workspace = true, features = [
 egui_kittest.workspace = true
 re_test_context.workspace = true
 re_test_viewport.workspace = true
+tempfile.workspace = true
 tokio.workspace = true
 
 [build-dependencies]

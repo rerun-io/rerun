@@ -10083,6 +10083,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "tap",
+ "tempfile",
  "thiserror 1.0.69",
  "tokio",
  "url",
