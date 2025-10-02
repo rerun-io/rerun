@@ -126,3 +126,188 @@ impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
         Ok(Some(entry_name))
     }
 }
+
+/// Creates a new [`tower::Layer`] middleware that always makes sure to propagate Rerun headers
+/// back and forth across requests and responses.
+pub fn new_rerun_headers_propagation_layer() -> PropagateHeadersLayer {
+    PropagateHeadersLayer::new(
+        [
+            http::HeaderName::from_static(RERUN_HTTP_HEADER_ENTRY_ID),
+            http::HeaderName::from_static("x-request-id"),
+        ]
+        .into_iter()
+        .collect(),
+    )
+}
+
+// ---
+
+// NOTE: This if a fork of <https://docs.rs/tower-http/0.6.6/tower_http/propagate_header/struct.PropagateHeader.html>.
+//
+// It exists to prevent never-ending chains of generics when propagating multiple headers, e.g.:
+// ```
+// pub type RedapClientInner =
+//     re_perf_telemetry::external::tower_http::propagate_header::PropagateHeader<
+//         re_perf_telemetry::external::tower_http::propagate_header::PropagateHeader<
+//             re_perf_telemetry::external::tower_http::propagate_header::PropagateHeader<
+//                 re_perf_telemetry::external::tower_http::propagate_header::PropagateHeader<
+//                     re_perf_telemetry::external::tower_http::trace::Trace<
+//                         tonic::service::interceptor::InterceptedService<
+//                             tonic::service::interceptor::InterceptedService<
+//                                 tonic::transport::Channel,
+//                                 re_auth::client::AuthDecorator,
+//                             >,
+//                             re_perf_telemetry::TracingInjectorInterceptor,
+//                         >,
+//                         re_perf_telemetry::external::tower_http::classify::SharedClassifier<
+//                             re_perf_telemetry::external::tower_http::classify::GrpcErrorsAsFailures,
+//                         >,
+//                         re_perf_telemetry::GrpcMakeSpan,
+//                     >,
+//                 >,
+//             >,
+//         >,
+//     >;
+// ```
+// which instead becomes this:
+// ```
+// pub type RedapClientInner =
+//     PropagateHeaders<
+//         re_perf_telemetry::external::tower_http::trace::Trace<
+//             tonic::service::interceptor::InterceptedService<
+//                 tonic::service::interceptor::InterceptedService<
+//                     tonic::transport::Channel,
+//                     re_auth::client::AuthDecorator,
+//                 >,
+//                 re_perf_telemetry::TracingInjectorInterceptor,
+//             >,
+//             re_perf_telemetry::external::tower_http::classify::SharedClassifier<
+//                 re_perf_telemetry::external::tower_http::classify::GrpcErrorsAsFailures,
+//             >,
+//             re_perf_telemetry::GrpcMakeSpan,
+//         >,
+//     >;
+// ```
+
+use std::collections::HashSet;
+use std::future::Future;
+use std::{
+    pin::Pin,
+    task::{Context, Poll, ready},
+};
+
+use http::{HeaderValue, Request, Response, header::HeaderName};
+use pin_project_lite::pin_project;
+use tower::Service;
+use tower::layer::Layer;
+
+/// Layer that applies [`PropagateHeaders`] which propagates multiple headers at once from requests to responses.
+///
+/// If the headers are present on the request they'll be applied to the response as well. This could
+/// for example be used to propagate headers such as `x-rerun-entry-id`, `x-rerun-client-version`, etc.
+#[derive(Clone, Debug)]
+pub struct PropagateHeadersLayer {
+    headers: HashSet<HeaderName>,
+}
+
+impl PropagateHeadersLayer {
+    /// Create a new [`PropagateHeadersLayer`].
+    pub fn new(headers: HashSet<HeaderName>) -> Self {
+        Self { headers }
+    }
+}
+
+impl<S> Layer<S> for PropagateHeadersLayer {
+    type Service = PropagateHeaders<S>;
+
+    fn layer(&self, inner: S) -> Self::Service {
+        PropagateHeaders {
+            inner,
+            headers: self.headers.clone(),
+        }
+    }
+}
+
+/// Middleware that propagates multiple headers at once from requests to responses.
+///
+/// If the headers are present on the request they'll be applied to the response as well. This could
+/// for example be used to propagate headers such as `x-rerun-entry-id`, `x-rerun-client-version`, etc.
+#[derive(Clone, Debug)]
+pub struct PropagateHeaders<S> {
+    inner: S,
+    headers: HashSet<HeaderName>,
+}
+
+impl<S> PropagateHeaders<S> {
+    /// Create a new [`PropagateHeaders`] that propagates the given header.
+    pub fn new(inner: S, headers: HashSet<HeaderName>) -> Self {
+        Self { inner, headers }
+    }
+
+    /// Returns a new [`Layer`] that wraps services with a `PropagateHeaders` middleware.
+    ///
+    /// [`Layer`]: tower::layer::Layer
+    pub fn layer(headers: HashSet<HeaderName>) -> PropagateHeadersLayer {
+        PropagateHeadersLayer::new(headers)
+    }
+}
+
+impl<ReqBody, ResBody, S> Service<Request<ReqBody>> for PropagateHeaders<S>
+where
+    S: Service<Request<ReqBody>, Response = Response<ResBody>>,
+{
+    type Response = S::Response;
+    type Error = S::Error;
+    type Future = ResponseFuture<S::Future>;
+
+    #[inline]
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(cx)
+    }
+
+    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+        let headers_and_values = self
+            .headers
+            .iter()
+            .filter_map(|name| {
+                req.headers()
+                    .get(name)
+                    .cloned()
+                    .map(|value| (name.clone(), value))
+            })
+            .collect();
+
+        ResponseFuture {
+            future: self.inner.call(req),
+            headers_and_values,
+        }
+    }
+}
+
+pin_project! {
+    /// Response future for [`PropagateHeaders`].
+    #[derive(Debug)]
+    pub struct ResponseFuture<F> {
+        #[pin]
+        future: F,
+        headers_and_values: Vec<(HeaderName, HeaderValue)>,
+    }
+}
+
+impl<F, ResBody, E> Future for ResponseFuture<F>
+where
+    F: Future<Output = Result<Response<ResBody>, E>>,
+{
+    type Output = F::Output;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+        let mut res = ready!(this.future.poll(cx)?);
+
+        for (header, value) in std::mem::take(this.headers_and_values) {
+            res.headers_mut().insert(header, value);
+        }
+
+        Poll::Ready(Ok(res))
+    }
+}

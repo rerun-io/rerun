@@ -8216,7 +8216,9 @@ name = "re_protos"
 version = "0.26.0-alpha.1"
 dependencies = [
  "arrow",
+ "http",
  "jiff",
+ "pin-project-lite",
  "prost",
  "prost-types",
  "pyo3",
@@ -8230,6 +8232,7 @@ dependencies = [
  "serde",
  "thiserror 1.0.69",
  "tonic",
+ "tower",
  "url",
 ]
 
