@@ -82,6 +82,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
 
         Some(TimelineName::new(timeline.as_str()))
     }
+
     fn clear_timeline(&self) {
         self.clear_blueprint_component(
             time_panel_blueprint_entity_path(),
@@ -980,12 +981,14 @@ pub struct BlueprintTimeControl(TimeControl);
 impl Deref for BlueprintTimeControl {
     type Target = TimeControl;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
 impl DerefMut for BlueprintTimeControl {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
