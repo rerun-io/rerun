@@ -74,7 +74,7 @@ impl TransformInfo {
         }
     }
 
-    /// Returns the first instance transform and warns if there are multiple (via [`Self::warn_on_per_instance_transform`]).
+    /// Returns the first instance transform and warns if there are multiple.
     #[inline]
     pub fn single_entity_transform_required(
         &self,
