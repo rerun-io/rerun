@@ -2,7 +2,7 @@ use arrow::datatypes::{DataType, Field, FieldRef};
 use datafusion::logical_expr::Expr;
 
 use re_log_types::TimestampFormat;
-use re_types_core::{Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE};
+use re_types_core::{Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE, Loggable as _};
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
@@ -75,22 +75,29 @@ pub enum TypedFilter {
 }
 
 impl TypedFilter {
-    pub fn default_for_column(field: &FieldRef) -> Option<Self> {
-        match field.data_type() {
+    pub fn default_for_column(column_field: &FieldRef) -> Option<Self> {
+        match column_field.data_type() {
             DataType::List(inner_field) | DataType::ListView(inner_field) => {
                 // Note: we do not support double-nested types
-                Self::default_for_primitive_datatype(inner_field)
+                Self::default_for_primitive_datatype(inner_field.data_type(), column_field)
             }
 
             //TODO(ab): support other nested types
-            _ => Self::default_for_primitive_datatype(field),
+            _ => Self::default_for_primitive_datatype(column_field.data_type(), column_field),
         }
     }
 
-    fn default_for_primitive_datatype(field: &FieldRef) -> Option<Self> {
-        let nullability = Nullability::from_field(field);
+    /// Create a [`Self`] instance based on the provided primitive datatype.
+    ///
+    /// Note that `column_field`, as its name implies, is from the actual column, and its datatype
+    /// may be nested (e.g., a list array). This is why `primitive_datatype` is provided as well.
+    fn default_for_primitive_datatype(
+        primitive_datatype: &DataType,
+        column_field: &FieldRef,
+    ) -> Option<Self> {
+        let nullability = Nullability::from_field(column_field);
 
-        match field.data_type() {
+        match primitive_datatype {
             DataType::Boolean => {
                 if nullability.is_either() {
                     Some(NullableBooleanFilter::default().into())
@@ -99,9 +106,12 @@ impl TypedFilter {
                 }
             }
 
-            DataType::Int64
-                if field.metadata().get(FIELD_METADATA_KEY_COMPONENT_TYPE)
-                    == Some(&re_types::components::Timestamp::name().to_string()) =>
+            data_type
+                if data_type == &re_types::components::Timestamp::arrow_datatype()
+                    && column_field
+                        .metadata()
+                        .get(FIELD_METADATA_KEY_COMPONENT_TYPE)
+                        == Some(&re_types::components::Timestamp::name().to_string()) =>
             {
                 Some(TimestampFilter::default().into())
             }
