@@ -95,8 +95,12 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, Connec
 }
 
 #[cfg(target_arch = "wasm32")]
-pub type RedapClientInner = re_protos::headers::PropagateHeaders<
-    tonic::service::interceptor::InterceptedService<tonic_web_wasm_client::Client, AuthDecorator>,
+pub type RedapClientInner = tonic::service::interceptor::InterceptedService<
+    tonic::service::interceptor::InterceptedService<
+        re_protos::headers::PropagateHeaders<tonic_web_wasm_client::Client>,
+        re_protos::headers::RerunVersionInterceptor,
+    >,
+    re_auth::client::AuthDecorator,
 >;
 
 #[cfg(target_arch = "wasm32")]
@@ -109,8 +113,13 @@ pub(crate) async fn client(
     let auth = AuthDecorator::new(token);
 
     let middlewares = tower::ServiceBuilder::new()
-        .layer(re_protos::headers::new_rerun_headers_propagation_layer())
-        .layer(tonic::service::interceptor::InterceptorLayer::new(auth));
+        .layer(tonic::service::interceptor::InterceptorLayer::new(auth))
+        .layer({
+            let name = Some("rerun-web".to_owned());
+            let version = None;
+            let is_client = true;
+            re_protos::headers::new_rerun_headers_layer(name, version, is_client)
+        });
 
     let svc = tower::ServiceBuilder::new()
         .layer(middlewares.into_inner())
@@ -120,28 +129,32 @@ pub(crate) async fn client(
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
-pub type RedapClientInner = re_protos::headers::PropagateHeaders<
-    re_perf_telemetry::external::tower_http::trace::Trace<
-        tonic::service::interceptor::InterceptedService<
-            tonic::service::interceptor::InterceptedService<
-                tonic::transport::Channel,
-                re_auth::client::AuthDecorator,
+pub type RedapClientInner = tonic::service::interceptor::InterceptedService<
+    tonic::service::interceptor::InterceptedService<
+        re_protos::headers::PropagateHeaders<
+            re_perf_telemetry::external::tower_http::trace::Trace<
+                tonic::service::interceptor::InterceptedService<
+                    tonic::transport::Channel,
+                    re_perf_telemetry::TracingInjectorInterceptor,
+                >,
+                re_perf_telemetry::external::tower_http::classify::SharedClassifier<
+                    re_perf_telemetry::external::tower_http::classify::GrpcErrorsAsFailures,
+                >,
+                re_perf_telemetry::GrpcMakeSpan,
             >,
-            re_perf_telemetry::TracingInjectorInterceptor,
         >,
-        re_perf_telemetry::external::tower_http::classify::SharedClassifier<
-            re_perf_telemetry::external::tower_http::classify::GrpcErrorsAsFailures,
-        >,
-        re_perf_telemetry::GrpcMakeSpan,
+        re_protos::headers::RerunVersionInterceptor,
     >,
+    re_auth::client::AuthDecorator,
 >;
 
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "perf_telemetry")))]
-pub type RedapClientInner = re_protos::headers::PropagateHeaders<
+pub type RedapClientInner = tonic::service::interceptor::InterceptedService<
     tonic::service::interceptor::InterceptedService<
-        tonic::transport::Channel,
-        re_auth::client::AuthDecorator,
+        re_protos::headers::PropagateHeaders<tonic::transport::Channel>,
+        re_protos::headers::RerunVersionInterceptor,
     >,
+    re_auth::client::AuthDecorator,
 >;
 
 pub type RedapClient = RerunCloudServiceClient<RedapClientInner>;
@@ -153,15 +166,19 @@ pub(crate) async fn client(
 ) -> Result<RedapClient, ConnectionError> {
     let channel = channel(origin).await?;
 
-    let auth = AuthDecorator::new(token);
-
     let middlewares = tower::ServiceBuilder::new()
-        .layer(re_protos::headers::new_rerun_headers_propagation_layer());
+        .layer(tonic::service::interceptor::InterceptorLayer::new(
+            AuthDecorator::new(token),
+        ))
+        .layer({
+            let name = None;
+            let version = None;
+            let is_client = true;
+            re_protos::headers::new_rerun_headers_layer(name, version, is_client)
+        });
 
     #[cfg(feature = "perf_telemetry")]
     let middlewares = middlewares.layer(re_perf_telemetry::new_client_telemetry_layer());
-
-    let middlewares = middlewares.layer(tonic::service::interceptor::InterceptorLayer::new(auth));
 
     let svc = tower::ServiceBuilder::new()
         .layer(middlewares.into_inner())
