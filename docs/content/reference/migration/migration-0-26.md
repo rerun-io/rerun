@@ -28,7 +28,7 @@ rr.ImageFormat(width, height, pixel_format="YUV420")
 blueprint.spawn("my_app", port=1234)
 ```
 
-[ruff](https://github.com/astral-sh/ruff) (or your preferred Python linter) will find all the places in your code that needs to be updated!
+[ruff](https://github.com/astral-sh/ruff) (or your preferred Python linter) will find all the places in your code that need to be updated!
 
 ## Python DataFusion interface: update to 49.0.0
 The DataFusion FFI that we rely on for user defined functions and
