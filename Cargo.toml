@@ -301,6 +301,7 @@ paste = "1.0"
 pathdiff = "0.2"
 percent-encoding = "2.3"
 pico-args = "0.5"
+pin-project-lite = "0.2"
 ply-rs = { version = "0.1", default-features = false }
 poll-promise = "0.3"
 pollster = "0.4"

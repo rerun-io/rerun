@@ -95,8 +95,9 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, Connec
 }
 
 #[cfg(target_arch = "wasm32")]
-pub type RedapClientInner =
-    tonic::service::interceptor::InterceptedService<tonic_web_wasm_client::Client, AuthDecorator>;
+pub type RedapClientInner = re_protos::headers::PropagateHeaders<
+    tonic::service::interceptor::InterceptedService<tonic_web_wasm_client::Client, AuthDecorator>,
+>;
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) async fn client(
@@ -108,40 +109,39 @@ pub(crate) async fn client(
     let auth = AuthDecorator::new(token);
 
     let middlewares = tower::ServiceBuilder::new()
-        .layer(tonic::service::interceptor::InterceptorLayer::new(auth))
-        .into_inner();
+        .layer(re_protos::headers::new_rerun_headers_propagation_layer())
+        .layer(tonic::service::interceptor::InterceptorLayer::new(auth));
 
     let svc = tower::ServiceBuilder::new()
-        .layer(middlewares)
+        .layer(middlewares.into_inner())
         .service(channel);
 
     Ok(RerunCloudServiceClient::new(svc).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
-pub type RedapClientInner =
-    re_perf_telemetry::external::tower_http::propagate_header::PropagateHeader<
-        re_perf_telemetry::external::tower_http::propagate_header::PropagateHeader<
-            re_perf_telemetry::external::tower_http::trace::Trace<
-                tonic::service::interceptor::InterceptedService<
-                    tonic::service::interceptor::InterceptedService<
-                        tonic::transport::Channel,
-                        re_auth::client::AuthDecorator,
-                    >,
-                    re_perf_telemetry::TracingInjectorInterceptor,
-                >,
-                re_perf_telemetry::external::tower_http::classify::SharedClassifier<
-                    re_perf_telemetry::external::tower_http::classify::GrpcErrorsAsFailures,
-                >,
-                re_perf_telemetry::GrpcMakeSpan,
+pub type RedapClientInner = re_protos::headers::PropagateHeaders<
+    re_perf_telemetry::external::tower_http::trace::Trace<
+        tonic::service::interceptor::InterceptedService<
+            tonic::service::interceptor::InterceptedService<
+                tonic::transport::Channel,
+                re_auth::client::AuthDecorator,
             >,
+            re_perf_telemetry::TracingInjectorInterceptor,
         >,
-    >;
+        re_perf_telemetry::external::tower_http::classify::SharedClassifier<
+            re_perf_telemetry::external::tower_http::classify::GrpcErrorsAsFailures,
+        >,
+        re_perf_telemetry::GrpcMakeSpan,
+    >,
+>;
 
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "perf_telemetry")))]
-pub type RedapClientInner = tonic::service::interceptor::InterceptedService<
-    tonic::transport::Channel,
-    re_auth::client::AuthDecorator,
+pub type RedapClientInner = re_protos::headers::PropagateHeaders<
+    tonic::service::interceptor::InterceptedService<
+        tonic::transport::Channel,
+        re_auth::client::AuthDecorator,
+    >,
 >;
 
 pub type RedapClient = RerunCloudServiceClient<RedapClientInner>;
@@ -155,17 +155,16 @@ pub(crate) async fn client(
 
     let auth = AuthDecorator::new(token);
 
-    let middlewares = tower::ServiceBuilder::new();
+    let middlewares = tower::ServiceBuilder::new()
+        .layer(re_protos::headers::new_rerun_headers_propagation_layer());
 
     #[cfg(feature = "perf_telemetry")]
     let middlewares = middlewares.layer(re_perf_telemetry::new_client_telemetry_layer());
 
-    let middlewares = middlewares
-        .layer(tonic::service::interceptor::InterceptorLayer::new(auth))
-        .into_inner();
+    let middlewares = middlewares.layer(tonic::service::interceptor::InterceptorLayer::new(auth));
 
     let svc = tower::ServiceBuilder::new()
-        .layer(middlewares)
+        .layer(middlewares.into_inner())
         .service(channel);
 
     Ok(RerunCloudServiceClient::new(svc).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
