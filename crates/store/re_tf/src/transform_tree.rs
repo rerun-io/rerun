@@ -11,7 +11,7 @@ use crate::{
     TransformCacheStoreSubscriber, image_view_coordinates,
 };
 
-// TODO(andreas): this is struct is comically large for what we're doing here. Need to refactor this to make it smaller & more efficient.
+// TODO(andreas): this struct is comically large for what we're doing here. Need to refactor this to make it smaller & more efficient.
 #[derive(Clone, Debug)]
 pub struct TransformInfo {
     /// The transform from the entity to the reference space.
