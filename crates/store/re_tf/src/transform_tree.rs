@@ -386,7 +386,7 @@ fn transform_info_for_upward_propagation(
     if let Some(entity_from_2d_pinhole_content) =
         transforms_at_entity.instance_from_pinhole_image_plane
     {
-        // If we're going up the tree and encounter a pinhole, we still to apply it.
+        // If we're going up the tree and encounter a pinhole, we still need to apply it.
         // This is what handles "3D in 2D".
         reference_from_entity *= entity_from_2d_pinhole_content.inverse();
     }
