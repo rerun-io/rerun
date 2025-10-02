@@ -375,9 +375,8 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                                 self.ctx.command_sender().send_system(
                                     re_viewer_context::SystemCommand::SetActiveTime {
                                         store_id: self.ctx.store_id().clone(),
-                                        timeline: descr.timeline(),
+                                        timeline: *descr.timeline().name(),
                                         time: None,
-                                        pending: false,
                                     },
                                 );
                             }

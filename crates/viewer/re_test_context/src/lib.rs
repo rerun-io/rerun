@@ -595,9 +595,8 @@ impl TestContext {
             self.command_sender
                 .send_system(SystemCommand::SetActiveTime {
                     store_id,
-                    timeline: re_chunk::Timeline::new(timeline, timecell.typ()),
-                    time: Some(timecell.as_i64().into()),
-                    pending: true,
+                    timeline,
+                    time: Some(timecell.value.into()),
                 });
         }
     }
@@ -652,17 +651,16 @@ impl TestContext {
                     store_id: rec_id,
                     timeline,
                     time,
-                    pending: _,
                 } => {
                     assert_eq!(
                         &rec_id,
                         self.store_hub.lock().active_recording().unwrap().store_id()
                     );
                     self.with_blueprint_ctx(|ctx| {
-                        ctx.set_timeline(*timeline.name());
+                        ctx.set_timeline(timeline);
 
                         if let Some(time) = time {
-                            ctx.set_time(time.floor());
+                            ctx.set_time(time);
                         }
                     });
                 }

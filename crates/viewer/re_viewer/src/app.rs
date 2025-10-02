@@ -912,20 +912,16 @@ impl App {
 
             SystemCommand::SetActiveTime {
                 store_id,
-                // TODO: Make this only be timeline name.
                 timeline,
-                // TODO: Make this be time int?
                 time,
-                // TODO: Remove this
-                pending: _,
             } => {
                 if let Some(blueprint_ctx) =
                     blueprint_ctx(&mut self.state, &self.command_sender, store_hub)
                 {
-                    blueprint_ctx.set_timeline(*timeline.name());
+                    blueprint_ctx.set_timeline(timeline);
 
                     if let Some(time) = time {
-                        blueprint_ctx.set_time(time.floor());
+                        blueprint_ctx.set_time(time);
                     }
 
                     if let Some(rec_cfg) = self.recording_config_mut(store_hub, &store_id) {
@@ -1157,9 +1153,8 @@ impl App {
             self.command_sender
                 .send_system(SystemCommand::SetActiveTime {
                     store_id,
-                    timeline: re_chunk::Timeline::new(timeline, timecell.typ()),
-                    time: Some(timecell.as_i64().into()),
-                    pending: true,
+                    timeline: timeline,
+                    time: Some(timecell.value.into()),
                 });
         }
     }
