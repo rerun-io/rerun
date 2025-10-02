@@ -24,10 +24,7 @@ pub fn time_panel_blueprint_entity_path() -> EntityPath {
 
 /// Helper trait to write time panel related blueprint components.
 pub trait TimeBlueprintExt {
-    fn set_timeline_and_time(&self, timeline: TimelineName, time: impl Into<TimeInt>) {
-        self.set_timeline(timeline);
-        self.set_time(time);
-    }
+    fn set_timeline_and_time(&self, timeline: TimelineName, time: impl Into<TimeInt>);
 
     fn set_time(&self, time: impl Into<TimeInt>);
 
@@ -39,9 +36,20 @@ pub trait TimeBlueprintExt {
 
     /// Replaces the current timeline with the automatic one.
     fn clear_timeline(&self);
+
+    fn clear_time(&self);
 }
 
 impl<T: BlueprintContext> TimeBlueprintExt for T {
+    fn set_timeline_and_time(&self, timeline: TimelineName, time: impl Into<TimeInt>) {
+        self.save_blueprint_component(
+            time_panel_blueprint_entity_path(),
+            &TimePanelBlueprint::descriptor_timeline(),
+            &re_types::blueprint::components::TimelineName::from(timeline.as_str()),
+        );
+        self.set_time(time);
+    }
+
     fn set_time(&self, time: impl Into<TimeInt>) {
         let time: TimeInt = time.into();
         self.save_blueprint_component_static(
@@ -69,6 +77,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
             &TimePanelBlueprint::descriptor_timeline(),
             &re_types::blueprint::components::TimelineName::from(timeline.as_str()),
         );
+        self.clear_time();
     }
 
     fn get_timeline(&self) -> Option<TimelineName> {
@@ -87,6 +96,13 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
         self.clear_blueprint_component(
             time_panel_blueprint_entity_path(),
             TimePanelBlueprint::descriptor_timeline(),
+        );
+    }
+
+    fn clear_time(&self) {
+        self.clear_static_blueprint_component(
+            time_panel_blueprint_entity_path(),
+            TimePanelBlueprint::descriptor_time(),
         );
     }
 }
@@ -318,7 +334,7 @@ impl TimeControl {
     pub fn from_blueprint(blueprint_ctx: &impl BlueprintContext) -> Self {
         let mut this = Self::default();
 
-        this.update_from_blueprint(blueprint_ctx);
+        this.update_from_blueprint(blueprint_ctx, None);
 
         this
     }
@@ -356,7 +372,11 @@ impl TimeControl {
         self.set_time(time);
     }
 
-    fn update_from_blueprint(&mut self, blueprint_ctx: &impl BlueprintContext) {
+    fn update_from_blueprint(
+        &mut self,
+        blueprint_ctx: &impl BlueprintContext,
+        times_per_timeline: Option<&TimesPerTimeline>,
+    ) {
         if let Some(timeline) = blueprint_ctx.get_timeline() {
             if matches!(self.timeline, ActiveTimeline::Auto(_))
                 || timeline.as_str() != self.timeline().name().as_str()
@@ -367,10 +387,18 @@ impl TimeControl {
             self.timeline = ActiveTimeline::Auto(*self.timeline());
         }
 
-        if let Some(time) = blueprint_ctx.get_time()
-            && self.time_int() != Some(time)
-        {
-            self.set_time(time.into());
+        if let Some(times_per_timeline) = times_per_timeline {
+            self.select_a_valid_timeline(times_per_timeline);
+        }
+
+        if let Some(time) = blueprint_ctx.get_time() {
+            if self.time_int() != Some(time) {
+                self.set_time(time.into());
+            }
+        }
+        // If the blueprint time wasn't set, but the current state's time was, we likely just switched timelines, so restore that timeline's time.
+        else if let Some(state) = self.states.get(self.timeline().name()) {
+            blueprint_ctx.set_time(state.current.time.floor());
         }
     }
 
@@ -384,10 +412,10 @@ impl TimeControl {
         blueprint_ctx: Option<&impl BlueprintContext>,
     ) -> TimeControlResponse {
         if let Some(blueprint_ctx) = blueprint_ctx {
-            self.update_from_blueprint(blueprint_ctx);
+            self.update_from_blueprint(blueprint_ctx, Some(times_per_timeline));
+        } else {
+            self.select_a_valid_timeline(times_per_timeline);
         }
-
-        self.select_a_valid_timeline(times_per_timeline);
 
         let Some(full_valid_range) = self.full_valid_range(times_per_timeline) else {
             return TimeControlResponse::no_repaint(); // we have no data on this timeline yet, so bail

@@ -257,6 +257,49 @@ pub trait BlueprintContext {
             }
         }
     }
+
+    fn clear_static_blueprint_component(
+        &self,
+        entity_path: EntityPath,
+        component_descr: ComponentDescriptor,
+    ) {
+        let blueprint = self.current_blueprint();
+
+        let Some(datatype) = blueprint
+            .latest_at(self.blueprint_query(), &entity_path, [&component_descr])
+            .get(&component_descr)
+            .and_then(|unit| {
+                unit.component_batch_raw(&component_descr)
+                    .map(|array| array.data_type().clone())
+            })
+        else {
+            // There's no component at this path yet, so there's nothing to clear.
+            return;
+        };
+
+        let chunk = Chunk::builder(entity_path)
+            .with_row(
+                RowId::new(),
+                TimePoint::STATIC,
+                [(
+                    component_descr,
+                    re_chunk::external::arrow::array::new_empty_array(&datatype),
+                )],
+            )
+            .build();
+
+        match chunk {
+            Ok(chunk) => self
+                .command_sender()
+                .send_system(SystemCommand::AppendToStore(
+                    blueprint.store_id().clone(),
+                    vec![chunk],
+                )),
+            Err(err) => {
+                re_log::error_once!("Failed to create Chunk for blueprint component: {}", err);
+            }
+        }
+    }
 }
 
 impl BlueprintContext for ViewerContext<'_> {
