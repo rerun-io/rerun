@@ -32,5 +32,4 @@ bitflags.workspace = true
 glam.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
-smallvec.workspace = true
 vec1 = { workspace = true, features = ["smallvec-v1"] }
