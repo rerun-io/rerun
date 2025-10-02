@@ -65,6 +65,9 @@ pub struct AppState {
     #[serde(skip)]
     pub(crate) share_modal: crate::ui::ShareModal,
 
+    #[serde(skip)]
+    pub(crate) test_hook: Option<Box<dyn FnOnce(&ViewerContext<'_>)>>,
+
     /// A stack of display modes that represents tab-like navigation of the user.
     #[serde(skip)]
     pub(crate) navigation: Navigation,
@@ -114,6 +117,7 @@ impl Default for AppState {
             view_states: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
+            test_hook: None,
         }
     }
 }
@@ -678,6 +682,9 @@ impl AppState {
                 self.open_url_modal.ui(ui);
                 self.share_modal
                     .ui(&ctx, ui, startup_options.web_viewer_base_url().as_ref());
+                if let Some(test_hook) = self.test_hook.take() {
+                    test_hook(&ctx);
+                }
             }
         }
 

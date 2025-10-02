@@ -21,6 +21,8 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 [dev-dependencies]
 re_viewer = { workspace = true, features = ["testing"] }
+re_viewport_blueprint.workspace = true
+re_view_text_document.workspace = true
 egui_kittest.workspace = true
 egui.workspace = true
 
