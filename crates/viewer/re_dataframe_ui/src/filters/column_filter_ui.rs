@@ -343,10 +343,9 @@ mod tests {
 
     use super::super::{
         ComparisonOperator, FloatFilter, IntFilter, NonNullableBooleanFilter,
-        NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter,
+        NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter, TypedFilter,
     };
     use super::*;
-    use crate::filters::TypedFilter;
 
     fn test_cases() -> Vec<(TypedFilter, &'static str)> {
         // Let's remember to update this test when adding new filter types.
