@@ -1,6 +1,6 @@
 use std::any::Any;
 use std::fmt::Debug;
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 use arrow::array::{ArrayRef, BooleanArray, ListArray, as_list_array};
 use arrow::datatypes::DataType;
@@ -38,27 +38,7 @@ pub trait FilterUdf: Any + Clone + Debug + Send + Sync {
 
     /// Turn this type into a [`ScalarUDF`].
     fn as_scalar_udf(&self) -> ScalarUDF {
-        ScalarUDF::new_from_impl(FilterUdfWrapper(self.clone()))
-    }
-
-    /// Signature for this UDF.
-    ///
-    /// See [`ScalarUDFImpl::signature`].
-    fn signature(&self) -> &Signature {
-        static SIGNATURE: OnceLock<Signature> = OnceLock::new();
-
-        SIGNATURE.get_or_init(|| {
-            Signature::one_of(
-                vec![
-                    Self::PRIMITIVE_SIGNATURE,
-                    TypeSignature::ArraySignature(ArrayFunctionSignature::Array {
-                        arguments: vec![ArrayFunctionArgument::Array],
-                        array_coercion: None,
-                    }),
-                ],
-                Volatility::Immutable,
-            )
-        })
+        ScalarUDF::new_from_impl(FilterUdfWrapper::new(self.clone()))
     }
 
     /// Is this datatype valid?
@@ -105,21 +85,48 @@ pub trait FilterUdf: Any + Clone + Debug + Send + Sync {
     }
 }
 
-// shield against orphan rule
-#[derive(Debug, Clone)]
-struct FilterUdfWrapper<T: FilterUdf + Debug + Send + Sync>(T);
+/// Wrapper for implementor of [`FilterUdf`].
+///
+/// This serves two purposes:
+/// 1) Allow blanket implementation of [`ScalarUDFImpl`] (orphan rule)
+/// 2) Cache the [`Signature`] (needed for [`ScalarUDFImpl::signature`])
+#[derive(Debug)]
+struct FilterUdfWrapper<T: FilterUdf> {
+    inner: T,
+    signature: Signature,
+}
+
+impl<T: FilterUdf> FilterUdfWrapper<T> {
+    fn new(filter: T) -> Self {
+        let signature = Signature::one_of(
+            vec![
+                T::PRIMITIVE_SIGNATURE,
+                TypeSignature::ArraySignature(ArrayFunctionSignature::Array {
+                    arguments: vec![ArrayFunctionArgument::Array],
+                    array_coercion: None,
+                }),
+            ],
+            Volatility::Immutable,
+        );
+
+        Self {
+            inner: filter,
+            signature,
+        }
+    }
+}
 
 impl<T: FilterUdf + Debug + Send + Sync> ScalarUDFImpl for FilterUdfWrapper<T> {
     fn as_any(&self) -> &dyn Any {
-        &self.0
+        &self.inner
     }
 
     fn name(&self) -> &'static str {
-        self.0.name()
+        self.inner.name()
     }
 
     fn signature(&self) -> &Signature {
-        self.0.signature()
+        &self.signature
     }
 
     fn return_type(&self, arg_types: &[DataType]) -> DataFusionResult<DataType> {
@@ -136,7 +143,7 @@ impl<T: FilterUdf + Debug + Send + Sync> ScalarUDFImpl for FilterUdfWrapper<T> {
             exec_err!(
                 "input data type {} not supported for {} filter UDF",
                 arg_types[0],
-                self.0.name()
+                self.inner.name()
             )
         }
     }
@@ -149,18 +156,18 @@ impl<T: FilterUdf + Debug + Send + Sync> ScalarUDFImpl for FilterUdfWrapper<T> {
         let results = match input_array.data_type() {
             DataType::List(_field) => {
                 let array = as_list_array(input_array);
-                self.0.invoke_list_array(array)?
+                self.inner.invoke_list_array(array)?
             }
 
             //TODO(ab): support other containers
             data_type if T::is_valid_primitive_input_type(data_type) => {
-                self.0.invoke_primitive_array(input_array)?
+                self.inner.invoke_primitive_array(input_array)?
             }
 
             _ => {
                 return exec_err!(
                     "DataType not implemented for {} filter UDF: {}",
-                    self.0.name(),
+                    self.inner.name(),
                     input_array.data_type()
                 );
             }
