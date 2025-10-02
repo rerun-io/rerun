@@ -8,12 +8,11 @@ use re_protos::cloud::v1alpha1::GetChunksRequest;
 use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::common::v1alpha1::ext::PartitionId;
-use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_uri::{Origin, TimeSelection};
 
 use tokio_stream::{Stream, StreamExt as _};
 
-use crate::{ConnectionClient, MAX_DECODING_MESSAGE_SIZE, StreamError, StreamPartitionError};
+use crate::{ConnectionClient, MAX_DECODING_MESSAGE_SIZE, StreamError};
 
 // TODO(ab): do not publish this out of this crate (for now it is still being used by rerun_py
 // the viewer grpc connection). Ideally we'd only publish `ClientConnectionError`.
