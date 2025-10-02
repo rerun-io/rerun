@@ -131,6 +131,12 @@ Use debug-formatting (`{:?}`) when logging strings in logs and error messages. T
 
 Use `re_error::format(err)` when displaying an error.
 
+We make extensive use of snapshot testing. To work around non-deterministic values, such as TUIDs (time-prefixed unique IDs), many types (should) offer `std::fmt::Display` implementations with redactions that can be access via an overloaded `-` formatting option:
+
+```rs
+println!("{:-}, value"); // The `-` option stands for redaction.
+```
+
 
 ## C++
 We use `clang-format` to enforce most style choices (see [`.clang-format`](.clang-format)).

@@ -8984,7 +8984,6 @@ dependencies = [
  "mcap",
  "prost-reflect",
  "re_chunk",
- "re_format_arrow",
  "re_log",
  "re_log_types",
  "re_tracing",

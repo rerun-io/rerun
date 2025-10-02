@@ -200,7 +200,7 @@ impl Default for RecordBatchFormatOpts {
 
 /// Nicely format this record batch in a way that fits the terminal.
 pub fn format_record_batch(batch: &arrow::array::RecordBatch) -> Table {
-    format_record_batch_with_width(batch, None)
+    format_record_batch_with_width(batch, None, false)
 }
 
 /// Nicely format this record batch using the specified options.
@@ -223,6 +223,7 @@ pub fn format_record_batch_opts(
 pub fn format_record_batch_with_width(
     batch: &arrow::array::RecordBatch,
     width: Option<usize>,
+    redact_non_deterministic: bool,
 ) -> Table {
     format_dataframe_with_metadata(
         &batch.schema_ref().metadata.clone().into_iter().collect(), // HashMap -> BTreeMap
@@ -236,7 +237,7 @@ pub fn format_record_batch_with_width(
             trim_field_names: true,
             trim_metadata_keys: true,
             trim_metadata_values: true,
-            redact_non_deterministic: false,
+            redact_non_deterministic,
         },
     )
 }
