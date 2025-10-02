@@ -1,0 +1,22 @@
+---
+source: crates/top/re_sdk/src/lenses.rs
+expression: "op.describe(EntityPath::parse_forgiving(\"test\"), struct_list_array,\nComponentDescriptor::partial(\"test\")).unwrap()"
+---
+TransformedColumn {
+    entity_path: /test/a,
+    column: SerializedComponentColumn {
+        list_array: ListArray
+        [
+          PrimitiveArray<Float64>
+        [
+          0.0,
+        ],
+        ],
+        descriptor: ComponentDescriptor {
+            archetype: None,
+            component: "test",
+            component_type: None,
+        },
+    },
+    is_static: false,
+}

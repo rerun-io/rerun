@@ -5,59 +5,12 @@ use arrow::{
     datatypes::{DataType, Field},
 };
 use rerun::{
-    DynamicArchetype, EntityPath, RecordingStream, Scalars, SerializedComponentColumn, SeriesLines,
+    DynamicArchetype, RecordingStream, Scalars, SerializedComponentColumn, SeriesLines,
     SeriesPoints, TextDocument, TimeCell,
     external::re_log,
-    lenses::{Lens, LensesSink, TransformedColumn, op},
+    lenses::{Lens, LensBuilder, LensesSink, TransformedColumn, op},
     sink::GrpcSink,
 };
-
-fn lens_instruction() -> anyhow::Result<Lens> {
-    Ok(Lens::new(
-        "/instructions".parse()?,
-        "com.Example.Instruction:text",
-        |array, entity_path| {
-            vec![TransformedColumn {
-                entity_path: entity_path.clone(),
-                column: SerializedComponentColumn {
-                    descriptor: TextDocument::descriptor_text(),
-                    list_array: array,
-                },
-                is_static: false,
-            }]
-        },
-    ))
-}
-
-fn lens_destructure() -> anyhow::Result<Lens> {
-    Ok(Lens::new(
-        "/nested".parse().unwrap(),
-        "com.Example.Nested:payload",
-        |array, entity_path| {
-            let list_array_a = op::extract_field(array.clone(), "a");
-            let list_array_a = op::cast_component_batch(list_array_a, &DataType::Float64);
-
-            let list_array_b = op::extract_field(array, "b");
-
-            vec![
-                TransformedColumn::new(
-                    entity_path.join(&EntityPath::parse_forgiving("a")),
-                    SerializedComponentColumn {
-                        descriptor: Scalars::descriptor_scalars(),
-                        list_array: list_array_a,
-                    },
-                ),
-                TransformedColumn::new(
-                    entity_path.join(&EntityPath::parse_forgiving("b")),
-                    SerializedComponentColumn {
-                        descriptor: Scalars::descriptor_scalars(),
-                        list_array: list_array_b,
-                    },
-                ),
-            ]
-        },
-    ))
-}
 
 fn lens_flag() -> anyhow::Result<Lens> {
     Ok(Lens::new(
@@ -120,9 +73,21 @@ fn lens_flag() -> anyhow::Result<Lens> {
 fn main() -> anyhow::Result<()> {
     re_log::setup_logging();
 
+    let instruction = LensBuilder::new("/instructions".parse()?, "com.Example.Instruction:text")
+        .describe(TextDocument::descriptor_text())
+        .build();
+
+    let destructure = LensBuilder::new("/nested".parse().unwrap(), "com.Example.Nested:payload")
+        .view_as(
+            op::access_field("a").and_then(op::cast(DataType::Float64)),
+            Scalars::descriptor_scalars(),
+        )
+        .view_as(op::access_field("b"), Scalars::descriptor_scalars())
+        .build();
+
     let lenses_sink = LensesSink::new(GrpcSink::default())
-        .with_lens(lens_instruction()?)
-        .with_lens(lens_destructure()?)
+        .with_lens(instruction)
+        .with_lens(destructure)
         .with_lens(lens_flag()?);
 
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_lenses").spawn()?;
@@ -134,6 +99,8 @@ fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+// Logging helpers
 
 fn log_flag(rec: &RecordingStream) -> anyhow::Result<()> {
     let flags = ["ACTIVE", "ACTIVE", "INACTIVE", "UNKNOWN"];
