@@ -1930,7 +1930,9 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Register new partitions with the Dataset
+        /// Register new partitions with the Dataset.
+        ///
+        /// This endpoint requires the standard dataset headers.
         pub async fn register_with_dataset(
             &mut self,
             request: impl tonic::IntoRequest<super::RegisterWithDatasetRequest>,
@@ -2006,6 +2008,8 @@ pub mod rerun_cloud_service_client {
         /// Inspect the contents of the partition table.
         ///
         /// The data will follow the schema returned by `GetPartitionTableSchema`.
+        ///
+        /// This endpoint requires the standard dataset headers.
         pub async fn scan_partition_table(
             &mut self,
             request: impl tonic::IntoRequest<super::ScanPartitionTableRequest>,
@@ -2031,6 +2035,8 @@ pub mod rerun_cloud_service_client {
         ///
         /// This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
         /// entities and components present in the dataset.
+        ///
+        /// This endpoint requires the standard dataset headers.
         pub async fn get_dataset_schema(
             &mut self,
             request: impl tonic::IntoRequest<super::GetDatasetSchemaRequest>,
@@ -2051,6 +2057,8 @@ pub mod rerun_cloud_service_client {
             self.inner.unary(req, path, codec).await
         }
         /// Creates a custom index for a specific column (vector search, full-text search, etc).
+        ///
+        /// This endpoint requires the standard dataset headers.
         pub async fn create_index(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateIndexRequest>,
@@ -2071,6 +2079,8 @@ pub mod rerun_cloud_service_client {
             self.inner.unary(req, path, codec).await
         }
         /// Search a previously created index.
+        ///
+        /// This endpoint requires the standard dataset headers.
         pub async fn search_dataset(
             &mut self,
             request: impl tonic::IntoRequest<super::SearchDatasetRequest>,
@@ -2106,6 +2116,8 @@ pub mod rerun_cloud_service_client {
         /// To fetch the actual chunks themselves, see `GetChunks`.
         ///
         /// Passing chunk IDs to this method effectively acts as a IF_EXIST filter.
+        ///
+        /// This endpoint requires the standard dataset headers.
         pub async fn query_dataset(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryDatasetRequest>,
@@ -2135,6 +2147,8 @@ pub mod rerun_cloud_service_client {
         /// * Arbitrary Lance filters.
         ///
         /// To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
+        ///
+        /// This endpoint requires the standard dataset headers.
         pub async fn get_chunks(
             &mut self,
             request: impl tonic::IntoRequest<super::GetChunksRequest>,
@@ -2305,6 +2319,8 @@ pub mod rerun_cloud_service_client {
             self.inner.server_streaming(req, path, codec).await
         }
         /// Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
+        ///
+        /// This endpoint requires the standard dataset headers.
         pub async fn do_maintenance(
             &mut self,
             request: impl tonic::IntoRequest<super::DoMaintenanceRequest>,
@@ -2395,7 +2411,9 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::ReadTableEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::ReadTableEntryResponse>, tonic::Status>;
-        /// Register new partitions with the Dataset
+        /// Register new partitions with the Dataset.
+        ///
+        /// This endpoint requires the standard dataset headers.
         async fn register_with_dataset(
             &self,
             request: tonic::Request<super::RegisterWithDatasetRequest>,
@@ -2432,6 +2450,8 @@ pub mod rerun_cloud_service_server {
         /// Inspect the contents of the partition table.
         ///
         /// The data will follow the schema returned by `GetPartitionTableSchema`.
+        ///
+        /// This endpoint requires the standard dataset headers.
         async fn scan_partition_table(
             &self,
             request: tonic::Request<super::ScanPartitionTableRequest>,
@@ -2440,11 +2460,15 @@ pub mod rerun_cloud_service_server {
         ///
         /// This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
         /// entities and components present in the dataset.
+        ///
+        /// This endpoint requires the standard dataset headers.
         async fn get_dataset_schema(
             &self,
             request: tonic::Request<super::GetDatasetSchemaRequest>,
         ) -> std::result::Result<tonic::Response<super::GetDatasetSchemaResponse>, tonic::Status>;
         /// Creates a custom index for a specific column (vector search, full-text search, etc).
+        ///
+        /// This endpoint requires the standard dataset headers.
         async fn create_index(
             &self,
             request: tonic::Request<super::CreateIndexRequest>,
@@ -2455,6 +2479,8 @@ pub mod rerun_cloud_service_server {
             > + std::marker::Send
             + 'static;
         /// Search a previously created index.
+        ///
+        /// This endpoint requires the standard dataset headers.
         async fn search_dataset(
             &self,
             request: tonic::Request<super::SearchDatasetRequest>,
@@ -2478,6 +2504,8 @@ pub mod rerun_cloud_service_server {
         /// To fetch the actual chunks themselves, see `GetChunks`.
         ///
         /// Passing chunk IDs to this method effectively acts as a IF_EXIST filter.
+        ///
+        /// This endpoint requires the standard dataset headers.
         async fn query_dataset(
             &self,
             request: tonic::Request<super::QueryDatasetRequest>,
@@ -2495,6 +2523,8 @@ pub mod rerun_cloud_service_server {
         /// * Arbitrary Lance filters.
         ///
         /// To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
+        ///
+        /// This endpoint requires the standard dataset headers.
         async fn get_chunks(
             &self,
             request: tonic::Request<super::GetChunksRequest>,
@@ -2552,6 +2582,8 @@ pub mod rerun_cloud_service_server {
             request: tonic::Request<super::QueryTasksOnCompletionRequest>,
         ) -> std::result::Result<tonic::Response<Self::QueryTasksOnCompletionStream>, tonic::Status>;
         /// Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
+        ///
+        /// This endpoint requires the standard dataset headers.
         async fn do_maintenance(
             &self,
             request: tonic::Request<super::DoMaintenanceRequest>,

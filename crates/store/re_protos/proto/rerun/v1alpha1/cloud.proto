@@ -46,7 +46,9 @@ service RerunCloudService {
 
   /* Write data */
 
-  // Register new partitions with the Dataset
+  // Register new partitions with the Dataset.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (RegisterWithDatasetResponse) {}
 
   // Write chunks to one or more partitions.
@@ -71,22 +73,30 @@ service RerunCloudService {
   // Inspect the contents of the partition table.
   //
   // The data will follow the schema returned by `GetPartitionTableSchema`.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc ScanPartitionTable(ScanPartitionTableRequest) returns (stream ScanPartitionTableResponse) {}
 
   // Returns the schema of the dataset.
   //
   // This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
   // entities and components present in the dataset.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc GetDatasetSchema(GetDatasetSchemaRequest) returns (GetDatasetSchemaResponse) {}
 
   /* Indexing */
 
   // Creates a custom index for a specific column (vector search, full-text search, etc).
+  //
+  // This endpoint requires the standard dataset headers.
   rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
 
   /* Queries */
 
   // Search a previously created index.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc SearchDataset(SearchDatasetRequest) returns (stream SearchDatasetResponse) {}
 
   // Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
@@ -103,6 +113,8 @@ service RerunCloudService {
   // To fetch the actual chunks themselves, see `GetChunks`.
   //
   // Passing chunk IDs to this method effectively acts as a IF_EXIST filter.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc QueryDataset(QueryDatasetRequest) returns (stream QueryDatasetResponse) {}
 
   // Perform Rerun-native queries on a dataset, returning the underlying chunks.
@@ -113,6 +125,8 @@ service RerunCloudService {
   // * Arbitrary Lance filters.
   //
   // To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc GetChunks(GetChunksRequest) returns (stream GetChunksResponse) {}
 
   // Fetch specific chunks from Rerun Cloud. In a 2-step query process, result of 1st phase,
@@ -146,6 +160,8 @@ service RerunCloudService {
   // --- Utilities ---
 
   // Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {}
 
   // Run global maintenance operations on the platform: this includes optimization
