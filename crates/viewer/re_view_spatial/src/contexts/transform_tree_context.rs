@@ -47,6 +47,7 @@ impl TransformTreeContext {
         self.0.transform_info_for_entity(entity_path)
     }
 
+    #[inline]
     pub fn reference_path(&self) -> &EntityPath {
         self.0.reference_path()
     }

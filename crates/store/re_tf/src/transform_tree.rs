@@ -319,6 +319,7 @@ impl TransformTree {
     /// Retrieves transform information for a given entity.
     ///
     /// Returns `None` if it's not reachable from the view's origin.
+    #[inline]
     pub fn transform_info_for_entity(&self, ent_path: EntityPathHash) -> Option<&TransformInfo> {
         self.transform_per_entity.get(&ent_path)
     }
