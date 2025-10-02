@@ -158,8 +158,6 @@ struct GrpcSchemaProvider {
     in_memory_tables: Mutex<HashMap<String, Arc<dyn TableProvider>>>,
 }
 
-impl GrpcSchemaProvider {}
-
 #[async_trait]
 impl SchemaProvider for GrpcSchemaProvider {
     fn owner_name(&self) -> Option<&str> {
