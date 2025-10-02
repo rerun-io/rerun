@@ -222,7 +222,17 @@ criterion = "0.5"
 cros-codecs = "0.0.6"
 crossbeam = "0.8"
 datafusion = { version = "49.0.2", default-features = false, features = [
+  # NOTE: we enable the same features everywhere
+  # because otherwise we will recompile datafusion all the time based on our current compile target.
+  # The features here are the same as in https://github.com/lancedb/lance/blob/v0.36.0/Cargo.toml#L99-L107
+  # This is very hacky, and I don't like it.
+  "crypto_expressions",
+  "datetime_expressions",
+  "encoding_expressions",
   "nested_expressions",
+  "regex_expressions",
+  "string_expressions",
+  "unicode_expressions",
 ] }
 datafusion-ffi = "49.0.2"
 directories = "6"
@@ -257,7 +267,7 @@ itertools = "0.14"
 jiff = { version = "0.2.3", features = ["js"] }
 js-sys = "0.3"
 jsonwebtoken = { version = "9", default-features = false }
-lance = { version = "0.36.0", default-features = false }
+lance = { version = "0.36.0", default-features = false } # When you update this, also update the list of features enabled for `datafusion` (~50 lines up)
 libc = "0.2"
 linked-hash-map = { version = "0.5", default-features = false }
 log = "0.4"
@@ -291,6 +301,7 @@ paste = "1.0"
 pathdiff = "0.2"
 percent-encoding = "2.3"
 pico-args = "0.5"
+pin-project-lite = "0.2"
 ply-rs = { version = "0.1", default-features = false }
 poll-promise = "0.3"
 pollster = "0.4"
