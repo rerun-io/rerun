@@ -24,6 +24,7 @@ all-features = true
 nasm = ["re_video/nasm"]
 
 [dependencies]
+
 re_byte_size.workspace = true
 re_chunk_store.workspace = true
 re_data_ui.workspace = true
@@ -32,20 +33,21 @@ re_error.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
+re_mp4.workspace = true
 re_query.workspace = true
 re_renderer = { workspace = true, features = [
   "import-gltf",
   "import-obj",
   "import-stl",
 ] }
-re_view.workspace = true
+re_tf.workspace = true
 re_tracing.workspace = true
 re_types = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_ui.workspace = true
 re_video.workspace = true
+re_view.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
-re_mp4.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true

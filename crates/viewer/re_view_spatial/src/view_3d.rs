@@ -4,6 +4,7 @@ use nohash_hasher::IntSet;
 
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
+use re_tf::query_view_coordinates;
 use re_types::blueprint::archetypes::{EyeControls3D, LineGrid3D};
 use re_types::components;
 use re_types::{Component as _, View as _, ViewClassIdentifier, blueprint::archetypes::Background};
@@ -18,7 +19,6 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::transform_cache::query_view_coordinates;
 use crate::visualizers::{AxisLengthDetector, CamerasVisualizer, Transform3DArrowsVisualizer};
 use crate::{
     contexts::register_spatial_contexts,
@@ -73,8 +73,8 @@ impl ViewClass for SpatialView3D {
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
         // Ensure spatial topology is registered.
+        re_tf::TransformCacheStoreSubscriber::subscription_handle();
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
-        crate::transform_cache::TransformCacheStoreSubscriber::subscription_handle();
 
         register_spatial_contexts(system_registry)?;
         register_3d_spatial_visualizers(system_registry)?;

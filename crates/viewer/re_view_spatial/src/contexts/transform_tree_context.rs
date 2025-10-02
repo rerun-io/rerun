@@ -1,20 +1,18 @@
 use nohash_hasher::IntMap;
+use vec1::smallvec_v1::SmallVec1;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityTree};
 use re_log_types::EntityPathHash;
+use re_tf::{
+    CachedTransformsForTimeline, PoseTransformArchetypeMap, ResolvedPinholeProjection,
+    TransformCacheStoreSubscriber,
+};
 use re_types::{ArchetypeName, archetypes, components::ImagePlaneDistance};
 use re_view::DataResultQuery as _;
 use re_viewer_context::{DataResultTree, IdentifiedViewSystem, ViewContext, ViewContextSystem};
-use vec1::smallvec_v1::SmallVec1;
 
-use crate::{
-    transform_cache::{
-        CachedTransformsForTimeline, PoseTransformArchetypeMap, ResolvedPinholeProjection,
-        TransformCacheStoreSubscriber,
-    },
-    visualizers::{CamerasVisualizer, image_view_coordinates},
-};
+use crate::visualizers::{CamerasVisualizer, image_view_coordinates};
 
 // TODO(andreas): this is struct is comically large for what we're doing here. Need to refactor this to make it smaller & more efficient.
 #[derive(Clone, Debug)]
