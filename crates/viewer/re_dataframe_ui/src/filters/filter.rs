@@ -1,88 +1,20 @@
-use std::collections::HashMap;
-use std::fmt::Formatter;
+use arrow::datatypes::{DataType, Field, FieldRef};
+use datafusion::logical_expr::Expr;
 
-use arrow::datatypes::{DataType, Field};
-use datafusion::common::{DFSchema, ExprSchema as _};
-use datafusion::prelude::{Column, Expr};
-
+use re_log_types::TimestampFormat;
 use re_types_core::{Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE};
+use re_ui::SyntaxHighlighting;
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
 use super::{
-    FloatFilter, IntFilter, NonNullableBooleanFilter, NullableBooleanFilter, StringFilter,
-    TimestampFilter, is_supported_string_datatype,
+    FilterUiAction, FloatFilter, IntFilter, NonNullableBooleanFilter, Nullability,
+    NullableBooleanFilter, StringFilter, TimestampFilter, TimestampFormatted,
+    is_supported_string_datatype,
 };
 
-/// The nullability of a nested arrow datatype.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct Nullability {
-    /// The inner datatype is nullable (e.g. for a list array, one row's array may contain nulls).
-    pub inner: bool,
-
-    /// The outer datatype is nullable (e.g, the a list array, one row may have a null instead of an
-    /// array).
-    pub outer: bool,
-}
-
-// for test snapshot naming
-impl std::fmt::Debug for Nullability {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match (self.inner, self.outer) {
-            (false, false) => write!(f, "no_null"),
-            (false, true) => write!(f, "outer_null"),
-            (true, false) => write!(f, "inner_null"),
-            (true, true) => write!(f, "both_null"),
-        }
-    }
-}
-
-impl Nullability {
-    pub const NONE: Self = Self {
-        inner: false,
-        outer: false,
-    };
-
-    pub const BOTH: Self = Self {
-        inner: true,
-        outer: true,
-    };
-
-    pub const INNER: Self = Self {
-        inner: true,
-        outer: false,
-    };
-
-    pub const OUTER: Self = Self {
-        inner: false,
-        outer: true,
-    };
-
-    pub const ALL: &'static [Self] = &[Self::NONE, Self::INNER, Self::OUTER, Self::BOTH];
-
-    pub fn from_field(field: &Field) -> Self {
-        match field.data_type() {
-            DataType::List(inner_field) | DataType::ListView(inner_field) => Self {
-                inner: inner_field.is_nullable(),
-                outer: field.is_nullable(),
-            },
-
-            //TODO(ab): support other containers
-            _ => Self {
-                inner: field.is_nullable(),
-                outer: false,
-            },
-        }
-    }
-
-    pub fn is_either(&self) -> bool {
-        self.inner || self.outer
-    }
-}
-
 #[derive(Debug, Clone, thiserror::Error)]
+#[expect(clippy::enum_variant_names)]
 pub enum FilterError {
-    #[error("column {0} was not found")]
-    ColumnNotFound(Column),
-
     #[error("invalid non-nullable boolean filter {0:?} for field {1}")]
     InvalidNonNullableBooleanFilter(NonNullableBooleanFilter, Box<Field>),
 
@@ -93,37 +25,47 @@ pub enum FilterError {
     InvalidStringFilter(StringFilter, Box<Field>),
 }
 
-/// A filter applied to a table.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Filter {
-    pub column_name: String,
-    pub kind: FilterKind,
-}
+/// Trait describing what a filter must do.
+pub trait Filter {
+    /// Convert the filter to a datafusion expression.
+    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError>;
 
-impl Filter {
-    pub fn new(column_name: impl Into<String>, kind: FilterKind) -> Self {
-        Self {
-            column_name: column_name.into(),
-            kind,
-        }
-    }
+    /// Show the UI of the popup associated with this filter.
+    fn popup_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        timestamp_format: TimestampFormat,
+        column_name: &str,
+        popup_just_opened: bool,
+    ) -> FilterUiAction;
 
-    /// Convert to an [`Expr`].
+    /// Given a chance to the filter to update/clean itself upon committing the filter state to the
+    /// table blueprint.
     ///
-    /// The expression is used for filtering and should thus evaluate to a boolean.
-    pub fn as_filter_expression(&self, schema: &DFSchema) -> Result<Expr, FilterError> {
-        let column = Column::from(self.column_name.clone());
-        let Ok(field) = schema.field_from_column(&column) else {
-            return Err(FilterError::ColumnNotFound(column));
-        };
-
-        self.kind.as_filter_expression(&column, field)
-    }
+    /// This is used e.g. by the timestamp filter to normalize the user entry to the proper
+    /// representation of the parsed timestamp.
+    fn on_commit(&mut self) {}
 }
 
-/// The UI state for a filter kind.
+/// Concrete implementation of a [`Filter`] with static dispatch.
+///
+/// ## Why does this exists?
+///
+/// The obvious alternative would be some kind of `Box<dyn FilterTrait>` instead. After trying quite
+/// a bit, I decided that the complexity of this is not worth the advantages, which are non-obvious
+/// given that all implementations are known and local.
+///
+/// The complexity of achieving dynamic dispatch stems from filters needing to be:
+/// - `Clone` (achievable using the `dyn-clone` crate)
+/// - `PartialEq` (which is not dyn-compatible and doesn't have easy work-around)
+/// - `TimestampFormatted<T>: SyntaxHighlighting`
+///
+/// The first two items are required because both `TableBlueprint` and the datafusion machinery
+/// need them (e.g., to test blueprint inequality before triggering a costly table update).
+/// The last item is related to how the filter UI is implemented using the `SyntaxHighlighting`
+/// machinery.
 #[derive(Debug, Clone, PartialEq)]
-pub enum FilterKind {
+pub enum TypedFilter {
     NullableBoolean(NullableBooleanFilter),
     NonNullableBoolean(NonNullableBooleanFilter),
     Int(IntFilter),
@@ -132,85 +74,164 @@ pub enum FilterKind {
     Timestamp(TimestampFilter),
 }
 
-impl FilterKind {
-    /// Create a filter suitable for this column datatype (if any).
-    pub fn default_for_column(field: &Field) -> Option<Self> {
-        let nullability = Nullability::from_field(field);
+impl TypedFilter {
+    pub fn default_for_column(field: &FieldRef) -> Option<Self> {
         match field.data_type() {
             DataType::List(inner_field) | DataType::ListView(inner_field) => {
                 // Note: we do not support double-nested types
-                Self::default_for_primitive_datatype(
-                    inner_field.data_type(),
-                    field.metadata(),
-                    nullability,
-                )
+                Self::default_for_primitive_datatype(inner_field)
             }
 
             //TODO(ab): support other nested types
-            _ => Self::default_for_primitive_datatype(
-                field.data_type(),
-                field.metadata(),
-                nullability,
-            ),
+            _ => Self::default_for_primitive_datatype(field),
         }
     }
 
-    fn default_for_primitive_datatype(
-        data_type: &DataType,
-        metadata: &HashMap<String, String>,
-        nullability: Nullability,
-    ) -> Option<Self> {
-        match data_type {
+    fn default_for_primitive_datatype(field: &FieldRef) -> Option<Self> {
+        let nullability = Nullability::from_field(field);
+
+        match field.data_type() {
             DataType::Boolean => {
                 if nullability.is_either() {
-                    Some(Self::NullableBoolean(Default::default()))
+                    Some(NullableBooleanFilter::default().into())
                 } else {
-                    Some(Self::NonNullableBoolean(Default::default()))
+                    Some(NonNullableBooleanFilter::default().into())
                 }
             }
 
             DataType::Int64
-                if metadata.get(FIELD_METADATA_KEY_COMPONENT_TYPE)
+                if field.metadata().get(FIELD_METADATA_KEY_COMPONENT_TYPE)
                     == Some(&re_types::components::Timestamp::name().to_string()) =>
             {
-                Some(Self::Timestamp(TimestampFilter::default()))
+                Some(TimestampFilter::default().into())
             }
 
-            data_type if data_type.is_integer() => Some(Self::Int(Default::default())),
+            data_type if data_type.is_integer() => Some(IntFilter::default().into()),
 
             DataType::Float16 | DataType::Float32 | DataType::Float64 => {
-                Some(Self::Float(Default::default()))
+                Some(FloatFilter::default().into())
             }
 
             data_type if is_supported_string_datatype(data_type) => {
-                Some(Self::String(Default::default()))
+                Some(StringFilter::default().into())
             }
 
-            DataType::Timestamp(_, _) => Some(Self::Timestamp(Default::default())),
+            DataType::Timestamp(_, _) => Some(TimestampFilter::default().into()),
 
             _ => None,
         }
     }
 
-    /// Convert to an [`Expr`].
-    ///
-    /// The expression is used for filtering and should thus evaluate to a boolean.
-    pub fn as_filter_expression(
-        &self,
-        column: &Column,
-        field: &Field,
-    ) -> Result<Expr, FilterError> {
+    fn as_filter(&self) -> &dyn Filter {
         match self {
-            Self::NullableBoolean(boolean_filter) => {
-                boolean_filter.as_filter_expression(column, field)
+            Self::NullableBoolean(inner) => inner,
+            Self::NonNullableBoolean(inner) => inner,
+            Self::Int(inner) => inner,
+            Self::Float(inner) => inner,
+            Self::String(inner) => inner,
+            Self::Timestamp(inner) => inner,
+        }
+    }
+
+    fn as_filter_mut(&mut self) -> &mut dyn Filter {
+        match self {
+            Self::NullableBoolean(inner) => inner,
+            Self::NonNullableBoolean(inner) => inner,
+            Self::Int(inner) => inner,
+            Self::Float(inner) => inner,
+            Self::String(inner) => inner,
+            Self::Timestamp(inner) => inner,
+        }
+    }
+}
+
+impl Filter for TypedFilter {
+    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
+        self.as_filter().as_filter_expression(field)
+    }
+
+    fn popup_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        timestamp_format: TimestampFormat,
+        column_name: &str,
+        popup_just_opened: bool,
+    ) -> FilterUiAction {
+        // Reduce the default width unnecessarily expands the popup width (queries as usually vers
+        // small).
+        ui.spacing_mut().text_edit_width = 150.0;
+
+        self.as_filter_mut()
+            .popup_ui(ui, timestamp_format, column_name, popup_just_opened)
+    }
+
+    fn on_commit(&mut self) {
+        self.as_filter_mut().on_commit();
+    }
+}
+
+impl From<NullableBooleanFilter> for TypedFilter {
+    fn from(inner: NullableBooleanFilter) -> Self {
+        Self::NullableBoolean(inner)
+    }
+}
+
+impl From<NonNullableBooleanFilter> for TypedFilter {
+    fn from(inner: NonNullableBooleanFilter) -> Self {
+        Self::NonNullableBoolean(inner)
+    }
+}
+
+impl From<IntFilter> for TypedFilter {
+    fn from(inner: IntFilter) -> Self {
+        Self::Int(inner)
+    }
+}
+
+impl From<FloatFilter> for TypedFilter {
+    fn from(inner: FloatFilter) -> Self {
+        Self::Float(inner)
+    }
+}
+
+impl From<StringFilter> for TypedFilter {
+    fn from(inner: StringFilter) -> Self {
+        Self::String(inner)
+    }
+}
+
+impl From<TimestampFilter> for TypedFilter {
+    fn from(inner: TimestampFilter) -> Self {
+        Self::Timestamp(inner)
+    }
+}
+
+impl SyntaxHighlighting for TimestampFormatted<'_, TypedFilter> {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        match self.inner {
+            TypedFilter::NonNullableBoolean(inner) => {
+                builder.append(inner);
             }
-            Self::NonNullableBoolean(boolean_filter) => {
-                boolean_filter.as_filter_expression(column, field)
+
+            TypedFilter::NullableBoolean(inner) => {
+                builder.append(inner);
             }
-            Self::Int(int_filter) => Ok(int_filter.as_filter_expression(column)),
-            Self::Float(float_filter) => Ok(float_filter.as_filter_expression(column)),
-            Self::String(string_filter) => Ok(string_filter.as_filter_expression(column)),
-            Self::Timestamp(timestamp_filter) => Ok(timestamp_filter.as_filter_expression(column)),
+
+            TypedFilter::Int(inner) => {
+                builder.append(inner);
+            }
+
+            TypedFilter::Float(inner) => {
+                builder.append(inner);
+            }
+
+            TypedFilter::String(inner) => {
+                builder.append(inner);
+            }
+
+            TypedFilter::Timestamp(inner) => {
+                builder.append(&self.convert(inner));
+            }
         }
     }
 }

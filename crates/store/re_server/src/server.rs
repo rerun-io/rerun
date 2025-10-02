@@ -117,6 +117,12 @@ impl Server {
             });
 
             let middlewares = tower::ServiceBuilder::new()
+                .layer({
+                    let name = Some("rerun-oss".to_owned());
+                    let version = None;
+                    let is_client = false;
+                    re_protos::headers::new_rerun_headers_layer(name, version, is_client)
+                })
                 .layer(tonic_web::GrpcWebLayer::new()) // Support `grpc-web` clients
                 .into_inner();
 

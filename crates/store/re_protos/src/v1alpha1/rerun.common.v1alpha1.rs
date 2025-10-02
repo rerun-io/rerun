@@ -422,6 +422,9 @@ pub struct BuildInfo {
     /// Empty if unknown.
     #[prost(string, optional, tag = "9")]
     pub build_time: ::core::option::Option<::prost::alloc::string::String>,
+    /// / True if this is a debug build.
+    #[prost(bool, optional, tag = "10")]
+    pub is_debug_build: ::core::option::Option<bool>,
 }
 impl ::prost::Name for BuildInfo {
     const NAME: &'static str = "BuildInfo";

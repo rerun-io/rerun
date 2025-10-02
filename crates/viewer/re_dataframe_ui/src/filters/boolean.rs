@@ -6,10 +6,10 @@ use datafusion::logical_expr::{Expr, col, lit, not};
 use datafusion::prelude::{array_element, array_has, array_sort};
 use strum::VariantArray as _;
 
-use re_ui::UiExt as _;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use re_ui::{SyntaxHighlighting, UiExt as _};
 
-use super::{FilterError, FilterUiAction};
+use super::{Filter, FilterError, FilterUiAction};
 
 /// Filter for non-nullable boolean columns.
 ///
@@ -28,20 +28,18 @@ impl NonNullableBooleanFilter {
             Self::IsFalse => false,
         }
     }
+}
 
-    pub fn as_filter_expression(
-        &self,
-        column: &Column,
-        field: &Field,
-    ) -> Result<Expr, FilterError> {
+impl Filter for NonNullableBooleanFilter {
+    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
         match field.data_type() {
-            DataType::Boolean => Ok(col(column.clone()).eq(lit(self.as_bool()))),
+            DataType::Boolean => Ok(col(field.name().clone()).eq(lit(self.as_bool()))),
 
             DataType::List(field) | DataType::ListView(field)
                 if field.data_type() == &DataType::Boolean =>
             {
                 // `ANY` semantics
-                Ok(array_has(col(column.clone()), lit(self.as_bool())))
+                Ok(array_has(col(field.name().clone()), lit(self.as_bool())))
             }
 
             _ => Err(FilterError::InvalidNonNullableBooleanFilter(
@@ -51,11 +49,13 @@ impl NonNullableBooleanFilter {
         }
     }
 
-    pub fn operand_text(&self) -> String {
-        self.as_bool().to_string()
-    }
-
-    pub fn popup_ui(&mut self, ui: &mut egui::Ui, column_name: &str) -> FilterUiAction {
+    fn popup_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        _timestamp_format: re_log_types::TimestampFormat,
+        column_name: &str,
+        _popup_just_opened: bool,
+    ) -> FilterUiAction {
         ui.label(
             SyntaxHighlightedBuilder::body_default(column_name)
                 .with_keyword(" is")
@@ -77,6 +77,13 @@ impl NonNullableBooleanFilter {
         } else {
             FilterUiAction::None
         }
+    }
+}
+
+impl SyntaxHighlighting for NonNullableBooleanFilter {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        builder.append_keyword("is ");
+        builder.append_primitive(&self.as_bool().to_string());
     }
 }
 
@@ -163,17 +170,25 @@ impl NullableBooleanFilter {
         self
     }
 
-    pub fn as_filter_expression(
-        &self,
-        column: &Column,
-        field: &Field,
-    ) -> Result<Expr, FilterError> {
+    pub fn operand_text(&self) -> String {
+        if let Some(value) = self.value.as_bool() {
+            value.to_string()
+        } else {
+            "null".to_owned()
+        }
+    }
+}
+
+impl Filter for NullableBooleanFilter {
+    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
+        let column = Column::from(field.name().clone());
+
         let expr = match field.data_type() {
             DataType::Boolean => {
                 if let Some(value) = self.value.as_bool() {
-                    col(column.clone()).eq(lit(value))
+                    col(column).eq(lit(value))
                 } else {
-                    col(column.clone()).is_null()
+                    col(column).is_null()
                 }
             }
 
@@ -182,10 +197,10 @@ impl NullableBooleanFilter {
             {
                 // `ANY` semantics
                 if let Some(value) = self.value.as_bool() {
-                    array_has(col(column.clone()), lit(value))
+                    array_has(col(column), lit(value))
                 } else {
                     col(column.clone()).is_null().or(array_element(
-                        array_sort(col(column.clone()), lit("ASC"), lit("NULLS FIRST")),
+                        array_sort(col(column), lit("ASC"), lit("NULLS FIRST")),
                         lit(1),
                     )
                     .is_null())
@@ -206,19 +221,13 @@ impl NullableBooleanFilter {
         }
     }
 
-    pub fn operand_text(&self) -> String {
-        if let Some(value) = self.value.as_bool() {
-            value.to_string()
-        } else {
-            "null".to_owned()
-        }
-    }
-
-    pub fn operator(&self) -> NullableBooleanOperator {
-        self.operator
-    }
-
-    pub fn popup_ui(&mut self, ui: &mut egui::Ui, column_name: &str) -> FilterUiAction {
+    fn popup_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        _timestamp_format: re_log_types::TimestampFormat,
+        column_name: &str,
+        _popup_just_opened: bool,
+    ) -> FilterUiAction {
         ui.horizontal(|ui| {
             ui.label(
                 SyntaxHighlightedBuilder::body_default(column_name).into_widget_text(ui.style()),
@@ -273,6 +282,14 @@ impl NullableBooleanFilter {
         } else {
             FilterUiAction::None
         }
+    }
+}
+
+impl SyntaxHighlighting for NullableBooleanFilter {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        builder.append_keyword(&self.operator.to_string());
+        builder.append_keyword(" ");
+        builder.append_primitive(&self.operand_text());
     }
 }
 
