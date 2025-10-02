@@ -8,7 +8,6 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, fields
-
 from rerun_bindings import ComponentDescriptor
 
 from .error_utils import catch_and_log_exceptions

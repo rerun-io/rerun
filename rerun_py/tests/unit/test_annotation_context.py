@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+import rerun as rr
 from rerun.components import AnnotationContext, AnnotationContextLike
 from rerun.datatypes import (
     AnnotationInfo,
@@ -15,8 +16,6 @@ from rerun.datatypes import (
     Rgba32,
     Utf8,
 )
-
-import rerun as rr
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

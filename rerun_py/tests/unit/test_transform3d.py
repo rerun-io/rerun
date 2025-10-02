@@ -6,6 +6,7 @@ from fractions import Fraction
 from typing import Optional, cast
 
 import numpy as np
+import rerun as rr
 import torch
 from rerun.datatypes import (
     Angle,
@@ -14,8 +15,6 @@ from rerun.datatypes import (
     RotationAxisAngle,
     Vec3D,
 )
-
-import rerun as rr
 
 from .common_arrays import none_empty_or_value
 from .test_matnxn import MAT_3X3_INPUT

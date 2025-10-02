@@ -8,9 +8,8 @@ import tempfile
 import cv2
 import numpy as np
 import pytest
-from PIL import Image
-
 import rerun as rr  # pip install rerun-sdk
+from PIL import Image
 
 
 def test_image_encoded_png() -> None:

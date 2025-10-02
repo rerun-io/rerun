@@ -6,9 +6,8 @@ import sys
 from typing import Any
 
 import pytest
-from rerun.error_utils import RerunWarning, catch_and_log_exceptions
-
 import rerun as rr
+from rerun.error_utils import RerunWarning, catch_and_log_exceptions
 
 
 @catch_and_log_exceptions()

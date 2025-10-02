@@ -3,10 +3,9 @@ from __future__ import annotations
 import itertools
 from typing import TYPE_CHECKING, Optional, cast
 
+import rerun as rr
 import rerun.blueprint as rrb
 from rerun.blueprint import components as blueprint_components
-
-import rerun as rr
 
 from .common_arrays import none_empty_or_value
 

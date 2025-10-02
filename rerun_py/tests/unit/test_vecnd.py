@@ -4,6 +4,7 @@ from fractions import Fraction
 
 import numpy as np
 import pytest
+import rerun as rr
 from rerun.datatypes import (
     Vec2D,
     Vec2DArrayLike,
@@ -18,8 +19,6 @@ from rerun.datatypes import (
     Vec4DBatch,
     Vec4DLike,
 )
-
-import rerun as rr
 
 from .common_arrays import (
     vec2ds_arrays,

@@ -4,9 +4,8 @@ from typing import Any
 
 import numpy as np
 import pytest
-import torch
-
 import rerun as rr
+import torch
 
 rng = np.random.default_rng(12345)
 RANDOM_IMAGE_SOURCE = rng.integers(0, 255, size=(10, 20))

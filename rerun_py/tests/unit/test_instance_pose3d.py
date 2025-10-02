@@ -4,12 +4,11 @@ import itertools
 from fractions import Fraction
 from typing import Optional, cast
 
+import rerun as rr
 from rerun.datatypes import (
     Quaternion,
     RotationAxisAngle,
 )
-
-import rerun as rr
 
 from .test_matnxn import MAT_3X3_INPUT
 from .test_vecnd import VEC_3D_INPUT

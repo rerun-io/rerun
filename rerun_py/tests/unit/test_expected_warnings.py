@@ -3,9 +3,8 @@ from __future__ import annotations
 from typing import Callable
 
 import pytest
-from rerun.error_utils import RerunWarning
-
 import rerun as rr
+from rerun.error_utils import RerunWarning
 
 rr.init("rerun_example_exceptions", spawn=False)
 # Make sure strict mode isn't leaking in from another context

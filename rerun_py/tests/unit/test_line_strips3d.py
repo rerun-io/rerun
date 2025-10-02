@@ -5,11 +5,10 @@ from typing import TYPE_CHECKING, Any, Optional, cast
 
 import numpy as np
 import pytest
+import rerun as rr
 import torch
 from rerun.components.line_strip3d import LineStrip3DArrayLike, LineStrip3DBatch
 from rerun.datatypes import Float32ArrayLike, Vec3D
-
-import rerun as rr
 
 from .common_arrays import (
     class_ids_arrays,

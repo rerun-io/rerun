@@ -4,9 +4,8 @@ import itertools
 from typing import TYPE_CHECKING, Optional, cast
 
 import numpy as np
-from rerun.components import Position3DBatch, Vector3DBatch
-
 import rerun as rr
+from rerun.components import Position3DBatch, Vector3DBatch
 
 from .common_arrays import (
     class_ids_arrays,

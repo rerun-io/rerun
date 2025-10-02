@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pytest
-
 import rerun as rr
 
 if TYPE_CHECKING:

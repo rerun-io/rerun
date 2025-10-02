@@ -4,9 +4,12 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_types::blueprint::{
-    archetypes::{PanelBlueprint, TimePanelBlueprint},
-    components::PanelState,
+use re_types::{
+    AsComponents,
+    blueprint::{
+        archetypes::{PanelBlueprint, TimePanelBlueprint},
+        components::PanelState,
+    },
 };
 use re_viewer_context::{
     CommandSender, SystemCommand, SystemCommandSender as _, TIME_PANEL_PATH,
@@ -234,12 +237,14 @@ impl AppBlueprint<'_> {
 
             let timepoint = blueprint_timepoint_for_writes(blueprint_db);
 
+            let component_update: &dyn AsComponents = if panel_name == TIME_PANEL_PATH {
+                &TimePanelBlueprint::update_fields().with_state(value)
+            } else {
+                &PanelBlueprint::update_fields().with_state(value)
+            };
+
             let chunk = Chunk::builder(entity_path)
-                .with_archetype(
-                    RowId::new(),
-                    timepoint,
-                    &PanelBlueprint::update_fields().with_state(value),
-                )
+                .with_archetype(RowId::new(), timepoint, component_update)
                 .build()
                 // All builtin types, no reason for this to ever fail.
                 .expect("Failed to build chunk.");

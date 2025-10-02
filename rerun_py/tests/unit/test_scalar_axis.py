@@ -4,9 +4,8 @@ import itertools
 from typing import Optional, cast
 
 import numpy as np
-import rerun.blueprint as rrb
-
 import rerun as rr
+import rerun.blueprint as rrb
 
 from .common_arrays import none_empty_or_value
 

@@ -5,9 +5,8 @@ from typing import Any
 import numpy as np
 import pyarrow as pa
 import pytest
-from rerun.error_utils import RerunWarning
-
 import rerun as rr
+from rerun.error_utils import RerunWarning
 
 
 def test_any_value() -> None:

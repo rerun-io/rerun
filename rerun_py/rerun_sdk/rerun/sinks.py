@@ -3,15 +3,15 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Union
 
-from typing_extensions import deprecated
-
 import rerun_bindings as bindings
-from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
-from rerun.recording_stream import RecordingStream, get_application_id
 from rerun_bindings import (
     FileSink,
     GrpcSink,
 )
+from typing_extensions import deprecated
+
+from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
+from rerun.recording_stream import RecordingStream, get_application_id
 
 from ._spawn import _spawn_viewer
 

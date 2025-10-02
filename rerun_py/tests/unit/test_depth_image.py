@@ -5,11 +5,10 @@ from typing import Any
 
 import numpy as np
 import pytest
+import rerun as rr
 import torch
 from rerun.components import DepthMeter, ImageFormat
 from rerun.datatypes import ChannelDatatype, Float32Like
-
-import rerun as rr
 
 rng = np.random.default_rng(12345)
 RANDOM_IMAGE_SOURCE = rng.uniform(0.0, 1.0, (10, 20))

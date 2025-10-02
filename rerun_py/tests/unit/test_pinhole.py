@@ -4,9 +4,8 @@ import itertools
 from typing import TYPE_CHECKING
 
 import numpy as np
-from rerun.components import PinholeProjectionBatch, ResolutionBatch, ViewCoordinatesBatch
-
 import rerun as rr
+from rerun.components import PinholeProjectionBatch, ResolutionBatch, ViewCoordinatesBatch
 
 if TYPE_CHECKING:
     from rerun.datatypes import Mat3x3Like, Vec2DLike, ViewCoordinatesLike
