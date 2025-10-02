@@ -5,13 +5,14 @@ use egui::Vec2;
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
 use re_log_types::{
-    AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, TimeType, Timeline, build_frame_nr,
+    AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
+    build_frame_nr,
     example_components::{MyPoint, MyPoints},
 };
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_time_panel::TimePanel;
 use re_types::archetypes::Points2D;
-use re_viewer_context::{CollapseScope, TimeView, blueprint_timeline};
+use re_viewer_context::{CollapseScope, TimeBlueprintExt as _, TimeView, blueprint_timeline};
 use re_viewport_blueprint::ViewportBlueprint;
 
 fn add_sparse_data(test_context: &mut TestContext) {
@@ -39,7 +40,7 @@ pub fn time_panel_two_sections() {
     add_sparse_data(&mut test_context);
 
     run_time_panel_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         TimePanel::default(),
         300.0,
         false,
@@ -63,7 +64,7 @@ pub fn time_panel_two_sections_with_valid_range() {
     }
 
     run_time_panel_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         TimePanel::default(),
         300.0,
         false,
@@ -79,7 +80,7 @@ pub fn time_panel_two_sections_with_valid_range() {
         });
     }
     run_time_panel_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         TimePanel::default(),
         300.0,
         false,
@@ -109,7 +110,7 @@ pub fn time_panel_two_sections_with_two_valid_ranges() {
     }
 
     run_time_panel_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         TimePanel::default(),
         300.0,
         false,
@@ -125,7 +126,7 @@ pub fn time_panel_two_sections_with_two_valid_ranges() {
         });
     }
     run_time_panel_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         TimePanel::default(),
         300.0,
         false,
@@ -165,7 +166,7 @@ pub fn time_panel_dense_data() {
     });
 
     run_time_panel_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         TimePanel::default(),
         300.0,
         false,
@@ -243,11 +244,12 @@ pub fn test_various_entity_kinds_in_time_panel() {
 
             log_data_for_various_entity_kinds_tests(&mut test_context);
 
-            test_context
-                .recording_config
-                .time_ctrl
-                .write()
-                .set_timeline_and_time(Timeline::new(timeline, TimeType::Sequence), time);
+            test_context.with_blueprint_ctx(|ctx| {
+                ctx.set_timeline_and_time(
+                    TimelineName::new(timeline),
+                    TimeInt::saturated_temporal_i64(time),
+                );
+            });
 
             test_context
                 .recording_config
@@ -358,7 +360,7 @@ pub fn log_static_data(test_context: &mut TestContext, entity_path: impl Into<En
 }
 
 fn run_time_panel_and_save_snapshot(
-    test_context: &mut TestContext,
+    test_context: &TestContext,
     mut time_panel: TimePanel,
     height: f32,
     expand_all: bool,

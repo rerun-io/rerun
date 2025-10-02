@@ -1153,7 +1153,7 @@ impl App {
             self.command_sender
                 .send_system(SystemCommand::SetActiveTime {
                     store_id,
-                    timeline: timeline,
+                    timeline,
                     time: Some(timecell.value.into()),
                 });
         }
@@ -3357,6 +3357,8 @@ impl BlueprintContext for AppBlueprintCtx<'_> {
         &self.blueprint_query
     }
 }
+
+/// Build a [`AppBlueprintCtx`] to interact with the active blueprint.
 fn blueprint_ctx<'a>(
     app_state: &mut AppState,
     command_sender: &'a CommandSender,

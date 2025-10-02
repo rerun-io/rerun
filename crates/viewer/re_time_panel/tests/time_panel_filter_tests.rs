@@ -116,7 +116,7 @@ fn add_point_to_chunk_builder(builder: ChunkBuilder) -> ChunkBuilder {
 }
 
 fn run_time_panel_and_save_snapshot(
-    mut test_context: TestContext,
+    test_context: TestContext,
     mut time_panel: TimePanel,
     snapshot_name: &str,
 ) {
