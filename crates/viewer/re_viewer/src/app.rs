@@ -821,7 +821,8 @@ impl App {
 
                 let db = store_hub.entity_db_mut(&store_id);
 
-                if store_id.is_blueprint() {
+                // No need to clear undo buffer if we're just appending static data.
+                if store_id.is_blueprint() && chunks.iter().any(|c| !c.is_static()) {
                     self.state
                         .blueprint_undo_state
                         .entry(store_id)

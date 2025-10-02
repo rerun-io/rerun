@@ -52,7 +52,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
 
     fn set_time(&self, time: impl Into<TimeInt>) {
         let time: TimeInt = time.into();
-        self.save_blueprint_component_static(
+        self.save_static_blueprint_component(
             time_panel_blueprint_entity_path(),
             &TimePanelBlueprint::descriptor_time(),
             &re_types::blueprint::components::TimeCell(time.as_i64().into()),

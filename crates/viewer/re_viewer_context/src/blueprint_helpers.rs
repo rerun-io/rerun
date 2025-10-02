@@ -80,7 +80,7 @@ pub trait BlueprintContext {
         self.save_serialized_blueprint_component(entity_path, serialized);
     }
 
-    fn save_blueprint_component_static(
+    fn save_static_blueprint_component(
         &self,
         entity_path: EntityPath,
         component_descr: &ComponentDescriptor,
@@ -91,10 +91,10 @@ pub trait BlueprintContext {
             return;
         };
 
-        self.save_serialized_blueprint_component_static(entity_path, serialized);
+        self.save_serialized_static_blueprint_component(entity_path, serialized);
     }
 
-    fn save_serialized_blueprint_component_static(
+    fn save_serialized_static_blueprint_component(
         &self,
         entity_path: EntityPath,
         component_batch: SerializedComponentBatch,
