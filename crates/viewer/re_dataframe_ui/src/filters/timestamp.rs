@@ -20,8 +20,8 @@ use std::str::FromStr as _;
 use std::sync::Arc;
 
 use arrow::array::{ArrayRef, BooleanArray, ListArray, as_list_array};
-use arrow::datatypes::{DataType, TimeUnit};
-use datafusion::common::{Column, Result as DataFusionResult, exec_err};
+use arrow::datatypes::{DataType, Field, TimeUnit};
+use datafusion::common::{Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, Expr, ScalarFunctionArgs,
     ScalarUDF, ScalarUDFImpl, Signature, TypeSignature, Volatility, col, not,
@@ -35,7 +35,7 @@ use re_types_core::datatypes::TimeInt;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, SyntaxHighlighting, UiExt as _};
 
-use super::{FilterUiAction, TimestampFormatted, parse_timestamp};
+use super::{Filter, FilterError, FilterUiAction, TimestampFormatted, parse_timestamp};
 
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq)]
 enum TimestampFilterKind {
@@ -178,14 +178,13 @@ impl TimestampFilter {
         self.operator = TimestampOperator::IsNot;
         self
     }
-
-    pub fn operator(&self) -> TimestampOperator {
-        self.operator
-    }
 }
 
 impl SyntaxHighlighting for TimestampFormatted<'_, TimestampFilter> {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        builder.append_keyword(&self.inner.operator.to_string());
+        builder.append_keyword(" ");
+
         let low_bound = self
             .inner
             .low_bound_timestamp
@@ -221,12 +220,13 @@ impl SyntaxHighlighting for TimestampFormatted<'_, TimestampFilter> {
     }
 }
 
-impl TimestampFilter {
-    pub fn popup_ui(
+impl Filter for TimestampFilter {
+    fn popup_ui(
         &mut self,
         ui: &mut egui::Ui,
-        column_name: &str,
         timestamp_format: TimestampFormat,
+        column_name: &str,
+        _popup_just_opened: bool,
     ) -> FilterUiAction {
         ui.horizontal(|ui| {
             ui.label(
@@ -388,20 +388,19 @@ impl TimestampFilter {
         action
     }
 
-    pub fn on_commit(&mut self) {
+    fn on_commit(&mut self) {
         self.low_bound_timestamp.invalidate_timestamp_string();
         self.high_bound_timestamp.invalidate_timestamp_string();
     }
 
-    /// Convert to an [`Expr`].
-    pub fn as_filter_expression(&self, column: &Column) -> Expr {
+    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
         let udf = ScalarUDF::new_from_impl(TimestampFilterUdf::new(self.into()));
-        let expr = udf.call(vec![col(column.clone())]);
+        let expr = udf.call(vec![col(field.name().clone())]);
 
-        match self.operator {
+        Ok(match self.operator {
             TimestampOperator::Is => expr,
             TimestampOperator::IsNot => not(expr.clone()).or(expr.is_null()),
-        }
+        })
     }
 }
 

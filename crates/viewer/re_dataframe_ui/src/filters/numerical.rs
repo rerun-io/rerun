@@ -3,8 +3,8 @@ use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
 use arrow::array::{Array as _, ArrayRef, BooleanArray, ListArray, as_list_array};
-use arrow::datatypes::DataType;
-use datafusion::common::{Column, Result as DataFusionResult, exec_err};
+use arrow::datatypes::{DataType, Field};
+use datafusion::common::{Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, Expr, ScalarFunctionArgs,
     ScalarUDF, ScalarUDFImpl, Signature, TypeSignature, Volatility, col, lit, not,
@@ -14,9 +14,9 @@ use strum::VariantArray as _;
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
-use super::{FilterUiAction, action_from_text_edit_response};
+use super::{Filter, FilterError, FilterUiAction, action_from_text_edit_response};
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum::VariantArray)]
+#[derive(Debug, Clone, Copy, Default, Hash, PartialEq, Eq, strum::VariantArray)]
 pub enum ComparisonOperator {
     #[default]
     Eq,
@@ -85,6 +85,9 @@ pub struct IntFilter {
 
 impl SyntaxHighlighting for IntFilter {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        builder.append_keyword(&self.comparison_operator().to_string());
+        builder.append_keyword(" ");
+
         if let Some(value) = self.rhs_value {
             builder.append_primitive(&re_format::format_int(value));
         } else {
@@ -108,10 +111,32 @@ impl IntFilter {
     pub fn rhs_value(&self) -> Option<i128> {
         self.rhs_value
     }
+}
 
-    pub fn popup_ui(
+impl Filter for IntFilter {
+    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
+        let Some(rhs_value) = self.rhs_value else {
+            return Ok(lit(true));
+        };
+
+        let udf = ScalarUDF::new_from_impl(IntFilterUdf::new(self.operator, rhs_value));
+        let expr = udf.call(vec![col(field.name().clone())]);
+
+        // Consistent with other column types, we treat `Ne` as an outer-NOT, so we applies it here
+        // while the UDF handles `Ne` and `Eq` in the same way (see `ComparisonOperator::apply`).
+        let should_invert_expression = self.operator == ComparisonOperator::Ne;
+
+        Ok(if should_invert_expression {
+            not(expr.clone()).or(expr.is_null())
+        } else {
+            expr
+        })
+    }
+
+    fn popup_ui(
         &mut self,
         ui: &mut egui::Ui,
+        _timestamp_format: re_log_types::TimestampFormat,
         column_name: &str,
         popup_just_opened: bool,
     ) -> FilterUiAction {
@@ -135,28 +160,6 @@ impl IntFilter {
 
         action_from_text_edit_response(ui, &response)
     }
-
-    /// Convert to an [`Expr`].
-    ///
-    /// The expression is used for filtering and should thus evaluate to a boolean.
-    pub fn as_filter_expression(&self, column: &Column) -> Expr {
-        let Some(rhs_value) = self.rhs_value else {
-            return lit(true);
-        };
-
-        let udf = ScalarUDF::new_from_impl(IntFilterUdf::new(self.operator, rhs_value));
-        let expr = udf.call(vec![col(column.clone())]);
-
-        // Consistent with other column types, we treat `Ne` as an outer-NOT, so we applies it here
-        // while the UDF handles `Ne` and `Eq` in the same way (see `ComparisonOperator::apply`).
-        let apply_should_invert_expression_semantics = self.operator == ComparisonOperator::Ne;
-
-        if apply_should_invert_expression_semantics {
-            not(expr.clone()).or(expr.is_null())
-        } else {
-            expr
-        }
-    }
 }
 
 // ---
@@ -176,6 +179,9 @@ pub struct FloatFilter {
 
 impl SyntaxHighlighting for FloatFilter {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        builder.append_keyword(&self.comparison_operator().to_string());
+        builder.append_keyword(" ");
+
         if let Some(value) = self.rhs_value {
             builder.append_primitive(&re_format::format_f64(value));
         } else {
@@ -199,10 +205,33 @@ impl FloatFilter {
     pub fn rhs_value(&self) -> Option<f64> {
         self.rhs_value
     }
+}
 
-    pub fn popup_ui(
+impl Filter for FloatFilter {
+    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
+        let Some(rhs_value) = self.rhs_value else {
+            return Ok(lit(true));
+        };
+
+        let udf = ScalarUDF::new_from_impl(FloatFilterUdf::new(self.operator, rhs_value));
+
+        let expr = udf.call(vec![col(field.name().clone())]);
+
+        // Consistent with other column types, we treat `Ne` as an outer-NOT, so we applies it here
+        // while the UDF handles `Ne` and `Eq` in the same way (see `ComparisonOperator::apply`).
+        let should_invert_expression = self.operator == ComparisonOperator::Ne;
+
+        Ok(if should_invert_expression {
+            not(expr.clone()).or(expr.is_null())
+        } else {
+            expr
+        })
+    }
+
+    fn popup_ui(
         &mut self,
         ui: &mut egui::Ui,
+        _timestamp_format: re_log_types::TimestampFormat,
         column_name: &str,
         popup_just_opened: bool,
     ) -> FilterUiAction {
@@ -225,29 +254,6 @@ impl FloatFilter {
         }
 
         action_from_text_edit_response(ui, &response)
-    }
-
-    /// Convert to an [`Expr`].
-    ///
-    /// The expression is used for filtering and should thus evaluate to a boolean.
-    pub fn as_filter_expression(&self, column: &Column) -> Expr {
-        let Some(rhs_value) = self.rhs_value else {
-            return lit(true);
-        };
-
-        let udf = ScalarUDF::new_from_impl(FloatFilterUdf::new(self.operator, rhs_value));
-
-        let expr = udf.call(vec![col(column.clone())]);
-
-        // Consistent with other column types, we treat `Ne` as an outer-NOT, so we applies it here
-        // while the UDF handles `Ne` and `Eq` in the same way (see `ComparisonOperator::apply`).
-        let apply_should_invert_expression_semantics = self.operator == ComparisonOperator::Ne;
-
-        if apply_should_invert_expression_semantics {
-            not(expr.clone()).or(expr.is_null())
-        } else {
-            expr
-        }
     }
 }
 

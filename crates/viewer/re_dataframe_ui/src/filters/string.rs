@@ -7,7 +7,7 @@ use arrow::array::{
     as_list_array,
 };
 use arrow::datatypes::{DataType, Field};
-use datafusion::common::{Column, Result as DataFusionResult, exec_err};
+use datafusion::common::{Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, Expr, ScalarFunctionArgs,
     ScalarUDF, ScalarUDFImpl, Signature, TypeSignature, Volatility, col, lit, not,
@@ -17,7 +17,7 @@ use strum::VariantArray as _;
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
-use super::{FilterUiAction, action_from_text_edit_response};
+use super::{Filter, FilterError, FilterUiAction, action_from_text_edit_response};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum::VariantArray)]
 pub enum StringOperator {
@@ -47,6 +47,8 @@ pub struct StringFilter {
 
 impl SyntaxHighlighting for StringFilter {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        builder.append_keyword(&self.operator.to_string());
+        builder.append_keyword(" ");
         builder.append_string_value(&self.query);
     }
 }
@@ -58,34 +60,33 @@ impl StringFilter {
             query: query.into(),
         }
     }
+}
 
-    pub fn operator(&self) -> StringOperator {
-        self.operator
-    }
-
-    pub fn as_filter_expression(&self, column: &Column) -> Expr {
+impl Filter for StringFilter {
+    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
         if self.query.is_empty() {
-            return lit(true);
+            return Ok(lit(true));
         }
 
         let udf = ScalarUDF::new_from_impl(StringFilterUdf::new(self));
-        let expr = udf.call(vec![col(column.clone())]);
+        let expr = udf.call(vec![col(field.name().clone())]);
 
         // The udf treats `DoesNotContains` in the same way as `Contains`, so we must apply an
         // outer `NOT` (or null) operation. This way, both operators yield complementary results.
         let apply_should_invert_expression_semantics =
-            self.operator() == StringOperator::DoesNotContain;
+            self.operator == StringOperator::DoesNotContain;
 
-        if apply_should_invert_expression_semantics {
+        Ok(if apply_should_invert_expression_semantics {
             not(expr.clone()).or(expr.is_null())
         } else {
             expr
-        }
+        })
     }
 
-    pub fn popup_ui(
+    fn popup_ui(
         &mut self,
         ui: &mut egui::Ui,
+        _timestamp_format: re_log_types::TimestampFormat,
         column_name: &str,
         popup_just_opened: bool,
     ) -> FilterUiAction {
