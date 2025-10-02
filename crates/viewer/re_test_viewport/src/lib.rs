@@ -4,7 +4,7 @@ mod test_view;
 
 use ahash::HashMap;
 
-use re_test_context::TestContext;
+use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_viewer_context::{Contents, ViewId, ViewerContext, VisitorControlFlow};
 
 use re_viewport_blueprint::{DataQueryPropertyResolver, ViewBlueprint, ViewportBlueprint};
@@ -26,6 +26,14 @@ pub trait TestContextExt {
 
     /// [`TestContext::run`] inside a central panel that displays the ui for a single given view.
     fn run_with_single_view(&mut self, ui: &mut egui::Ui, view_id: ViewId);
+
+    fn run_view_ui_and_save_snapshot(
+        &mut self,
+        view_id: ViewId,
+        snapshot_name: &str,
+        size: egui::Vec2,
+        snapshot_options: Option<SnapshotOptions>,
+    );
 }
 
 impl TestContextExt for TestContext {
@@ -165,5 +173,23 @@ impl TestContextExt for TestContext {
         });
 
         self.handle_system_commands();
+    }
+
+    fn run_view_ui_and_save_snapshot(
+        &mut self,
+        view_id: ViewId,
+        snapshot_name: &str,
+        size: egui::Vec2,
+        snapshot_options: Option<SnapshotOptions>,
+    ) {
+        let snapshot_options = snapshot_options.unwrap_or_default();
+        let mut harness = self
+            .setup_kittest_for_rendering()
+            .with_size(size)
+            .build_ui(|ui| {
+                self.run_with_single_view(ui, view_id);
+            });
+        harness.run();
+        harness.snapshot_options(snapshot_name, &snapshot_options);
     }
 }

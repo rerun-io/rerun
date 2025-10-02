@@ -27,11 +27,11 @@ pub fn test_blueprint_overrides_and_defaults_with_time_series() {
     }
 
     let view_id = setup_blueprint(&mut test_context);
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
+    test_context.run_view_ui_and_save_snapshot(
         view_id,
         "blueprint_overrides_and_defaults_with_time_series",
         egui::vec2(300.0, 300.0),
+        Some(SnapshotOptions::new().threshold(1.0)),
     );
 }
 
@@ -63,20 +63,4 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
 
         blueprint.add_view_at_root(view)
     })
-}
-
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    name: &str,
-    size: egui::Vec2,
-) {
-    let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
-        .build_ui(|ui| {
-            test_context.run_with_single_view(ui, view_id);
-        });
-    harness.run();
-    harness.snapshot_options(name, &SnapshotOptions::new().threshold(1.0));
 }
