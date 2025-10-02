@@ -17,7 +17,7 @@ use datafusion::logical_expr::{
 pub trait FilterUdf: Any + Clone + Debug + Send + Sync {
     /// The scalar datafusion type signature for this UDF.
     ///
-    /// The list version will automatically be accepted as well, see [`Self::signature`].
+    /// The list version will automatically be accepted as well, see `FilterUdfWrapper::signature`.
     const PRIMITIVE_SIGNATURE: TypeSignature;
 
     /// Name for this UDF.
