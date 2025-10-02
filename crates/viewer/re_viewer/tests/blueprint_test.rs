@@ -9,7 +9,7 @@ use re_viewer_context::ViewClass as _;
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewBlueprint;
 
-fn setup_viewport(test_context: &mut TestContext) {
+fn log_test_data_and_register_views(test_context: &mut TestContext, scalars_count: usize) {
     test_context.register_view_class::<re_view_dataframe::DataframeView>();
     test_context.register_view_class::<re_view_bar_chart::BarChartView>();
 
@@ -18,11 +18,11 @@ fn setup_viewport(test_context: &mut TestContext) {
         builder.with_archetype(
             RowId::new(),
             [(timeline_a, 0)],
-            &re_types::archetypes::Scalars::single(10.0),
+            &re_types::archetypes::Scalars::single(scalars_count as f32),
         )
     });
 
-    let vector = (0..16).map(|i| i as f32).collect::<Vec<_>>();
+    let vector = (0..scalars_count).map(|i| i as f32).collect::<Vec<_>>();
 
     test_context.log_entity("vector", |builder| {
         builder.with_archetype(
@@ -31,7 +31,9 @@ fn setup_viewport(test_context: &mut TestContext) {
             &re_types::archetypes::BarChart::new(vector),
         )
     });
+}
 
+fn setup_viewport(test_context: &mut TestContext) {
     let view_1 =
         ViewBlueprint::new_with_root_wildcard(re_view_bar_chart::BarChartView::identifier());
     let view_2 =
@@ -39,7 +41,7 @@ fn setup_viewport(test_context: &mut TestContext) {
 
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
         // Set the color override for the bar chart view.
-        let color_override = re_types::archetypes::BarChart::default().with_color([255, 200, 50]);
+        let color_override = re_types::archetypes::BarChart::default().with_color([255, 144, 1]); // #FF9001
         let override_path = re_viewport_blueprint::ViewContents::override_path_for_entity(
             view_1.id,
             &re_chunk::EntityPath::from("vector"),
@@ -98,6 +100,7 @@ fn take_snapshot(test_context: &mut TestContext, snapshot_name: &str) {
 #[test]
 fn test_blueprint_change_and_restore() {
     let mut test_context = TestContext::new();
+    log_test_data_and_register_views(&mut test_context, 16);
     let rbl_file = tempfile::NamedTempFile::new().unwrap();
     let rbl_path = rbl_file.path();
 
@@ -117,4 +120,23 @@ fn test_blueprint_change_and_restore() {
 
     load_blueprint_from_file(&mut test_context, rbl_path);
     take_snapshot(&mut test_context, "blueprint_change_and_restore");
+}
+
+#[test]
+fn test_blueprint_load_into_new_context() {
+    let mut test_context = TestContext::new();
+    log_test_data_and_register_views(&mut test_context, 10);
+
+    let rbl_file = tempfile::NamedTempFile::new().unwrap();
+    let rbl_path = rbl_file.path();
+
+    setup_viewport(&mut test_context);
+    save_blueprint_to_file(&test_context, rbl_path);
+    take_snapshot(&mut test_context, "blueprint_load_into_new_context_1");
+
+    let mut test_context_2 = TestContext::new();
+    log_test_data_and_register_views(&mut test_context_2, 20);
+
+    load_blueprint_from_file(&mut test_context_2, rbl_path);
+    take_snapshot(&mut test_context_2, "blueprint_load_into_new_context_2");
 }
