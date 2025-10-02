@@ -19,11 +19,11 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     import numpy as np
+    from rerun_bindings import ChunkBatcherConfig
 
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch
     from rerun.memory import MemoryRecording
     from rerun.sinks import LogSinkLike
-    from rerun_bindings import ChunkBatcherConfig
 
     from ._send_columns import TimeColumnLike
 

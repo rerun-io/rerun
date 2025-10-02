@@ -338,6 +338,7 @@ impl TimeControl {
 
         this
     }
+
     /// Move the time forward (if playing), and perhaps pause if we've reached the end.
     ///
     /// If `should_diff_state` is true, then the response also contains any changes in state

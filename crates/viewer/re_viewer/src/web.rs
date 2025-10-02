@@ -587,7 +587,7 @@ impl WebHandle {
         let blueprint_query =
             re_chunk::LatestAtQuery::latest(re_viewer_context::blueprint_timeline());
 
-        // Can't use `app.blueprint_ctx(...)` here because of borrow issues.
+        // Can't use `app.blueprint_ctx` here because of borrow issues.
         let ctx = AppBlueprintCtx {
             command_sender,
             current_blueprint: blueprint,
