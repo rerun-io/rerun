@@ -134,7 +134,7 @@ Use `re_error::format(err)` when displaying an error.
 We make extensive use of snapshot testing. To work around non-deterministic values, such as TUIDs (time-prefixed unique IDs), many types (should) offer `std::fmt::Display` implementations with redactions that can be access via an overloaded `-` formatting option:
 
 ```rs
-println!("{:-}, /* ... */"); // The `-` option stands for redaction.
+println!("{:-}, value"); // The `-` option stands for redaction.
 ```
 
 
