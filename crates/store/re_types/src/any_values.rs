@@ -20,19 +20,6 @@ impl Default for AnyValues {
 }
 
 impl AnyValues {
-    //TODO(#10908): Prune this method in 0.26.0
-    /// Assigns an (archetype) name to this set of any values.
-    #[deprecated(
-        since = "0.25.0",
-        note = "Use of archetype leads to ambiguity whether provided field names should be prefixed to be unique. Refer to dynamic_archetype instead for an unambiguous usage."
-    )]
-    #[inline]
-    pub fn new(archetype_name: impl Into<ArchetypeName>) -> Self {
-        Self {
-            builder: DynamicArchetype::new(archetype_name),
-        }
-    }
-
     /// Adds a component generated from arbitrary data to this collection.
     ///
     /// In many cases, it might be more convenient to use [`Self::with_component`] to log an existing Rerun component instead.
@@ -42,18 +29,6 @@ impl AnyValues {
         field: impl AsRef<str>,
         array: arrow::array::ArrayRef,
     ) -> Self {
-        Self {
-            builder: self.builder.with_component_from_data(field, array),
-        }
-    }
-
-    //TODO(#10908): Prune this method in 0.26.0
-    /// Adds a field of arbitrary data to this collection.
-    ///
-    /// In many cases, it might be more convenient to use [`Self::with_component`] to log an existing Rerun component instead.
-    #[deprecated(since = "0.25.0", note = "Use with_component_from_data instead.")]
-    #[inline]
-    pub fn with_field(self, field: impl AsRef<str>, array: arrow::array::ArrayRef) -> Self {
         Self {
             builder: self.builder.with_component_from_data(field, array),
         }
@@ -76,25 +51,6 @@ impl AnyValues {
     /// This method can be used to override the component type.
     #[inline]
     pub fn with_component_override<L: Loggable>(
-        self,
-        field: impl AsRef<str>,
-        component_type: impl Into<ComponentType>,
-        loggable: impl IntoIterator<Item = impl Into<L>>,
-    ) -> Self {
-        Self {
-            builder: self
-                .builder
-                .with_component_override(field, component_type, loggable),
-        }
-    }
-
-    //TODO(#10908): Prune this method in 0.26.0
-    /// Adds an existing Rerun [`Component`] to this collection.
-    ///
-    /// This method can be used to override the component type.
-    #[deprecated(since = "0.25.0", note = "Use with_component_override instead.")]
-    #[inline]
-    pub fn with_loggable<L: Loggable>(
         self,
         field: impl AsRef<str>,
         component_type: impl Into<ComponentType>,
