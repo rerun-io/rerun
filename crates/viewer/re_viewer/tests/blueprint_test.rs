@@ -67,7 +67,7 @@ fn load_blueprint_from_file(test_context: &mut TestContext, path: &Path) {
     {
         let mut lock = test_context.store_hub.lock();
         let app_id = lock.active_app().expect("Missing active app").clone();
-        lock.try_to_load_persisted_blueprint_store(rbl_store, &app_id)
+        lock.load_blueprint_store(rbl_store, &app_id)
             .expect("Failed to load blueprint store");
     }
 
