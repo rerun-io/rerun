@@ -454,70 +454,58 @@ async fn stream_partition_from_server(
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), StreamError> {
     let static_chunk_stream = {
-        let request = GetChunksRequest {
-            partition_ids: vec![partition_id.clone().into()],
-            chunk_ids: vec![],
-            entity_paths: vec![],
-            select_all_entity_paths: true,
-            fuzzy_descriptors: vec![],
-            exclude_static_data: false,
-            exclude_temporal_data: true,
-            query: None,
-        };
-
         client
-            .inner()
             .get_chunks(
-                tonic::Request::new(request)
-                    .with_entry_id(dataset_id)
-                    .map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?,
+                dataset_id,
+                GetChunksRequest {
+                    partition_ids: vec![partition_id.clone().into()],
+                    chunk_ids: vec![],
+                    entity_paths: vec![],
+                    select_all_entity_paths: true,
+                    fuzzy_descriptors: vec![],
+                    exclude_static_data: false,
+                    exclude_temporal_data: true,
+                    query: None,
+                },
             )
-            .await
-            .map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?
-            .into_inner()
+            .await?
     };
 
     let temporal_chunk_stream = {
-        let request = GetChunksRequest {
-            partition_ids: vec![partition_id.into()],
-            chunk_ids: vec![],
-            entity_paths: vec![],
-            select_all_entity_paths: true,
-            fuzzy_descriptors: vec![],
-            exclude_static_data: true,
-            exclude_temporal_data: false,
-            query: time_range.clone().map(|time_range| {
-                Query {
-                    range: Some(QueryRange {
-                        index: time_range.timeline.name().to_string(),
-                        index_range: time_range.clone().into(),
-                    }),
-                    latest_at: Some(QueryLatestAt {
-                        index: Some(time_range.timeline.name().to_string()),
-                        at: time_range.range.min(),
-                    }),
-                    columns_always_include_everything: false,
-                    columns_always_include_chunk_ids: false,
-                    columns_always_include_byte_offsets: false,
-                    columns_always_include_entity_paths: false,
-                    columns_always_include_static_indexes: false,
-                    columns_always_include_global_indexes: false,
-                    columns_always_include_component_indexes: false,
-                }
-                .into()
-            }),
-        };
-
         client
-            .inner()
             .get_chunks(
-                tonic::Request::new(request)
-                    .with_entry_id(dataset_id)
-                    .map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?,
+                dataset_id,
+                GetChunksRequest {
+                    partition_ids: vec![partition_id.into()],
+                    chunk_ids: vec![],
+                    entity_paths: vec![],
+                    select_all_entity_paths: true,
+                    fuzzy_descriptors: vec![],
+                    exclude_static_data: true,
+                    exclude_temporal_data: false,
+                    query: time_range.clone().map(|time_range| {
+                        Query {
+                            range: Some(QueryRange {
+                                index: time_range.timeline.name().to_string(),
+                                index_range: time_range.clone().into(),
+                            }),
+                            latest_at: Some(QueryLatestAt {
+                                index: Some(time_range.timeline.name().to_string()),
+                                at: time_range.range.min(),
+                            }),
+                            columns_always_include_everything: false,
+                            columns_always_include_chunk_ids: false,
+                            columns_always_include_byte_offsets: false,
+                            columns_always_include_entity_paths: false,
+                            columns_always_include_static_indexes: false,
+                            columns_always_include_global_indexes: false,
+                            columns_always_include_component_indexes: false,
+                        }
+                        .into()
+                    }),
+                },
             )
-            .await
-            .map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?
-            .into_inner()
+            .await?
     };
 
     let store_id = store_info.store_id.clone();
