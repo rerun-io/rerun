@@ -98,11 +98,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/bfe6853639d2427dd424e529b5d70950e2f61840/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/bfe6853639d2427dd424e529b5d70950e2f61840/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/bfe6853639d2427dd424e529b5d70950e2f61840/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/bfe6853639d2427dd424e529b5d70950e2f61840/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/bfe6853639d2427dd424e529b5d70950e2f61840/1200w.png">
+  <img src="https://static.rerun.io/crates/c4945bdef6cdcf99bf37a05480d19be23bfd2b7f/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/c4945bdef6cdcf99bf37a05480d19be23bfd2b7f/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/c4945bdef6cdcf99bf37a05480d19be23bfd2b7f/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/c4945bdef6cdcf99bf37a05480d19be23bfd2b7f/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/c4945bdef6cdcf99bf37a05480d19be23bfd2b7f/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -180,6 +180,7 @@ Update instructions:
 | re_protos       | Rerun remote store gRPC API types                               |
 | re_query        | Querying data in the re_chunk_store                             |
 | re_server       | In-memory data server                                           |
+| re_tf           | Dealing with spatial transforms & transform frames              |
 | re_types        | The built-in Rerun data types, component types, and archetypes. |
 
 ### Low-level store
