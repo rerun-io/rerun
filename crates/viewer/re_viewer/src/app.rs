@@ -2622,7 +2622,7 @@ impl App {
         }
     }
 
-    /// Get an [`AppBlueprintCtx`] to interact with the given recording.
+    /// Get a helper struct to interact with the given recording.
     pub fn blueprint_ctx<'a>(&'a self, recording_id: &StoreId) -> Option<AppBlueprintCtx<'a>> {
         let hub = self.store_hub.as_ref()?;
 
@@ -3389,7 +3389,7 @@ impl BlueprintContext for AppBlueprintCtx<'_> {
     }
 }
 
-/// Build a [`AppBlueprintCtx`] to interact with the active blueprint.
+/// Build a helper struct to interact with the active blueprint.
 pub fn active_blueprint_ctx<'a>(
     app_state: &mut AppState,
     command_sender: &'a CommandSender,
