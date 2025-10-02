@@ -99,8 +99,8 @@ impl FilterState {
             FilterUiAction::CommitStateToBlueprint => {
                 // give a chance to filters to clean themselves up before committing to the table
                 // blueprint
-                for filter in &mut self.column_filters {
-                    filter.filter.on_commit();
+                for column_filter in &mut self.column_filters {
+                    column_filter.filter.on_commit();
                 }
                 table_blueprint.column_filters = self.column_filters.clone();
             }
@@ -137,15 +137,20 @@ impl FilterState {
                 let mut remove_idx = None;
 
                 ui.horizontal_wrapped(|ui| {
-                    for (index, filter) in self.column_filters.iter_mut().enumerate() {
+                    for (index, column_filter) in self.column_filters.iter_mut().enumerate() {
                         // egui uses this id to store the popup openness and size information,
                         // so we must invalidate if the filter at a given index changes its
                         // name.
-                        let filter_id =
-                            ui.make_persistent_id(egui::Id::new(index).with(filter.field.name()));
+                        let filter_id = ui.make_persistent_id(
+                            egui::Id::new(index).with(column_filter.field.name()),
+                        );
 
-                        let result =
-                            filter.ui(ui, timestamp_format, filter_id, Some(index) == active_index);
+                        let result = column_filter.ui(
+                            ui,
+                            timestamp_format,
+                            filter_id,
+                            Some(index) == active_index,
+                        );
 
                         action = action.merge(result.filter_action);
 
@@ -344,6 +349,21 @@ mod tests {
     use crate::filters::TypedFilter;
 
     fn test_cases() -> Vec<(TypedFilter, &'static str)> {
+        // Let's remember to update this test when adding new filter types.
+        #[cfg(debug_assertions)]
+        let _: () = {
+            use TypedFilter::*;
+            let _op = String(Default::default());
+            match _op {
+                NonNullableBoolean(_)
+                | NullableBoolean(_)
+                | Int(_)
+                | Float(_)
+                | String(_)
+                | Timestamp(_) => {}
+            }
+        };
+
         [
             (
                 NonNullableBooleanFilter::IsTrue.into(),
@@ -455,7 +475,7 @@ mod tests {
     fn test_popup_ui() {
         for (mut filter_op, test_name) in test_cases() {
             let mut harness = egui_kittest::Harness::builder()
-                .with_size(egui::Vec2::new(700.0, 500.0))
+                .with_size(egui::Vec2::new(400.0, 400.0))
                 .build_ui(|ui| {
                     re_ui::apply_style_and_install_loaders(ui.ctx());
 
@@ -463,7 +483,7 @@ mod tests {
                         ui.id().with("popup"),
                         ui.ctx().clone(),
                         egui::Rect::from_min_size(
-                            egui::pos2(0., 0.),
+                            egui::pos2(10., 10.),
                             egui::vec2(ui.available_width(), 0.0),
                         ),
                         ui.layer_id(),
@@ -548,7 +568,7 @@ mod tests {
         };
 
         let mut harness = egui_kittest::Harness::builder()
-            .with_size(egui::Vec2::new(700.0, 500.0))
+            .with_size(egui::Vec2::new(400.0, 400.0))
             .build_ui(|ui| {
                 re_ui::apply_style_and_install_loaders(ui.ctx());
 
