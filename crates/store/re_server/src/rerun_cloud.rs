@@ -916,32 +916,33 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::GetChunksRequest>,
     ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status> {
+        if !request.get_ref().chunk_ids.is_empty() {
+            return Err(tonic::Status::unimplemented(
+                "get_chunks: querying specific chunk ids is not implemented",
+            ));
+        }
+
+        let entry_id = get_entry_id_from_headers(&*self.store.read().await, &request)?;
+
         let GetChunksRequest {
-            dataset_id,
             partition_ids,
-            chunk_ids,
+            chunk_ids: _,
             entity_paths,
 
             // We don't support queries, so you always get everything
             query: _,
         } = GetChunksRequest::try_from(request.into_inner())?;
 
-        if !chunk_ids.is_empty() {
-            return Err(tonic::Status::unimplemented(
-                "get_chunks: querying specific chunk ids is not implemented",
-            ));
-        }
-
         let entity_paths: IntSet<EntityPath> = entity_paths.into_iter().collect();
 
-        let storage_engines = self.get_storage_engines(dataset_id, partition_ids).await?;
+        let storage_engines = self.get_storage_engines(entry_id, partition_ids).await?;
 
         let stream = futures::stream::iter(storage_engines.into_iter().map(
             move |(partition_id, storage_engine)| {
                 let compression = re_log_encoding::Compression::Off;
                 let store_id = StoreId::new(
                     StoreKind::Recording,
-                    dataset_id.to_string(),
+                    entry_id.to_string(),
                     partition_id.id.as_str(),
                 );
 

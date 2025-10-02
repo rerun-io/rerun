@@ -360,21 +360,26 @@ impl PyDatasetEntry {
 
         //TODO(ab): use `ConnectionHandle::get_chunk()`
         let store: PyResult<ChunkStore> = wait_for_future(self_.py(), async move {
+            let request = GetChunksRequest {
+                partition_ids: vec![partition_id.clone().into()],
+                chunk_ids: vec![],
+                entity_paths: vec![],
+                select_all_entity_paths: true,
+                fuzzy_descriptors: vec![],
+                exclude_static_data: false,
+                exclude_temporal_data: false,
+                query: None,
+            };
+
             let catalog_chunk_stream = connection
                 .client()
                 .await?
                 .inner()
-                .get_chunks(GetChunksRequest {
-                    dataset_id: Some(dataset_id.into()),
-                    partition_ids: vec![partition_id.clone().into()],
-                    chunk_ids: vec![],
-                    entity_paths: vec![],
-                    select_all_entity_paths: true,
-                    fuzzy_descriptors: vec![],
-                    exclude_static_data: false,
-                    exclude_temporal_data: false,
-                    query: None,
-                })
+                .get_chunks(
+                    tonic::Request::new(request)
+                        .with_entry_id(dataset_id)
+                        .map_err(to_py_err)?,
+                )
                 .await
                 .map_err(to_py_err)?
                 .into_inner();

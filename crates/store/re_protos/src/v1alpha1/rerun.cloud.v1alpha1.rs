@@ -674,8 +674,6 @@ impl ::prost::Name for QueryRange {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetChunksRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// Client can specify from which partitions to get chunks. If left unspecified (empty list),
     /// data from all partition (that match other query parameters) will be included.
     #[prost(message, repeated, tag = "2")]

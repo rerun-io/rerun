@@ -63,7 +63,6 @@ impl From<RegisterWithDatasetRequest> for crate::cloud::v1alpha1::RegisterWithDa
 
 #[derive(Debug, Clone)]
 pub struct GetChunksRequest {
-    pub dataset_id: EntryId,
     pub partition_ids: Vec<crate::common::v1alpha1::ext::PartitionId>,
     pub chunk_ids: Vec<re_chunk::ChunkId>,
     pub entity_paths: Vec<EntityPath>,
@@ -75,11 +74,6 @@ impl TryFrom<crate::cloud::v1alpha1::GetChunksRequest> for GetChunksRequest {
 
     fn try_from(value: crate::cloud::v1alpha1::GetChunksRequest) -> Result<Self, Self::Error> {
         Ok(Self {
-            dataset_id: value
-                .dataset_id
-                .ok_or_else(|| tonic::Status::invalid_argument("dataset_id is required"))?
-                .try_into()?,
-
             partition_ids: value
                 .partition_ids
                 .into_iter()

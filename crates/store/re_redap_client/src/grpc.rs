@@ -8,6 +8,7 @@ use re_protos::cloud::v1alpha1::GetChunksRequest;
 use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::common::v1alpha1::ext::PartitionId;
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_uri::{Origin, TimeSelection};
 
 use tokio_stream::{Stream, StreamExt as _};
@@ -453,57 +454,67 @@ async fn stream_partition_from_server(
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), StreamError> {
     let static_chunk_stream = {
+        let request = GetChunksRequest {
+            partition_ids: vec![partition_id.clone().into()],
+            chunk_ids: vec![],
+            entity_paths: vec![],
+            select_all_entity_paths: true,
+            fuzzy_descriptors: vec![],
+            exclude_static_data: false,
+            exclude_temporal_data: true,
+            query: None,
+        };
+
         client
             .inner()
-            .get_chunks(GetChunksRequest {
-                dataset_id: Some(dataset_id.into()),
-                partition_ids: vec![partition_id.clone().into()],
-                chunk_ids: vec![],
-                entity_paths: vec![],
-                select_all_entity_paths: true,
-                fuzzy_descriptors: vec![],
-                exclude_static_data: false,
-                exclude_temporal_data: true,
-                query: None,
-            })
+            .get_chunks(
+                tonic::Request::new(request)
+                    .with_entry_id(dataset_id)
+                    .map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?,
+            )
             .await
             .map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?
             .into_inner()
     };
 
     let temporal_chunk_stream = {
+        let request = GetChunksRequest {
+            partition_ids: vec![partition_id.into()],
+            chunk_ids: vec![],
+            entity_paths: vec![],
+            select_all_entity_paths: true,
+            fuzzy_descriptors: vec![],
+            exclude_static_data: true,
+            exclude_temporal_data: false,
+            query: time_range.clone().map(|time_range| {
+                Query {
+                    range: Some(QueryRange {
+                        index: time_range.timeline.name().to_string(),
+                        index_range: time_range.clone().into(),
+                    }),
+                    latest_at: Some(QueryLatestAt {
+                        index: Some(time_range.timeline.name().to_string()),
+                        at: time_range.range.min(),
+                    }),
+                    columns_always_include_everything: false,
+                    columns_always_include_chunk_ids: false,
+                    columns_always_include_byte_offsets: false,
+                    columns_always_include_entity_paths: false,
+                    columns_always_include_static_indexes: false,
+                    columns_always_include_global_indexes: false,
+                    columns_always_include_component_indexes: false,
+                }
+                .into()
+            }),
+        };
+
         client
             .inner()
-            .get_chunks(GetChunksRequest {
-                dataset_id: Some(dataset_id.into()),
-                partition_ids: vec![partition_id.into()],
-                chunk_ids: vec![],
-                entity_paths: vec![],
-                select_all_entity_paths: true,
-                fuzzy_descriptors: vec![],
-                exclude_static_data: true,
-                exclude_temporal_data: false,
-                query: time_range.clone().map(|time_range| {
-                    Query {
-                        range: Some(QueryRange {
-                            index: time_range.timeline.name().to_string(),
-                            index_range: time_range.clone().into(),
-                        }),
-                        latest_at: Some(QueryLatestAt {
-                            index: Some(time_range.timeline.name().to_string()),
-                            at: time_range.range.min(),
-                        }),
-                        columns_always_include_everything: false,
-                        columns_always_include_chunk_ids: false,
-                        columns_always_include_byte_offsets: false,
-                        columns_always_include_entity_paths: false,
-                        columns_always_include_static_indexes: false,
-                        columns_always_include_global_indexes: false,
-                        columns_always_include_component_indexes: false,
-                    }
-                    .into()
-                }),
-            })
+            .get_chunks(
+                tonic::Request::new(request)
+                    .with_entry_id(dataset_id)
+                    .map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?,
+            )
             .await
             .map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?
             .into_inner()
