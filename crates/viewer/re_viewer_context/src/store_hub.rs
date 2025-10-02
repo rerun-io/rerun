@@ -291,6 +291,11 @@ impl StoreHub {
         self.store_bundle.entry(store_id)
     }
 
+    /// Read-only access to a [`EntityDb`] by id
+    pub fn entity_db(&self, store_id: &StoreId) -> Option<&EntityDb> {
+        self.store_bundle.get(store_id)
+    }
+
     // ---------------------
     // Add and remove stores
 
@@ -755,7 +760,7 @@ impl StoreHub {
             .total_size_bytes;
 
         if let Some(caches) = self.caches_per_recording.get_mut(&store_id) {
-            caches.on_store_events(&store_events);
+            caches.on_store_events(&store_events, entity_db);
         }
 
         // No point keeping an empty recording around.
@@ -842,7 +847,7 @@ impl StoreHub {
                 if !store_events.is_empty() {
                     re_log::debug!("Garbage-collected blueprint store");
                     if let Some(caches) = self.caches_per_recording.get_mut(blueprint_id) {
-                        caches.on_store_events(&store_events);
+                        caches.on_store_events(&store_events, blueprint);
                     }
                 }
 
