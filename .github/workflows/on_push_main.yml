@@ -143,7 +143,7 @@ jobs:
     name: "Mac-Arm64: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
-      CONCURRENCY: nightly-macos-arm64
+      CONCURRENCY: push-macos-arm64-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       PLATFORM: macos-arm64
     secrets: inherit
 
@@ -173,7 +173,7 @@ jobs:
     name: "Mac-arm64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
-      CONCURRENCY: nightly-macos-arm64
+      CONCURRENCY: push-macos-arm64-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       PLATFORM: macos-arm64
     secrets: inherit
 
@@ -207,7 +207,7 @@ jobs:
     name: "Macos-arm64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
-      CONCURRENCY: nightly-macos-arm64
+      CONCURRENCY: push-macos-arm64-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       PLATFORM: macos-arm64
       WHEEL_ARTIFACT_NAME: macos-arm64-wheel
       MODE: "pypi"
@@ -241,7 +241,7 @@ jobs:
     name: "macos-arm64: Test Wheels"
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
-      CONCURRENCY: nightly-macos-arm64
+      CONCURRENCY: push-macos-arm64-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       PLATFORM: macos-arm64
       WHEEL_ARTIFACT_NAME: macos-arm64-wheel
     secrets: inherit
