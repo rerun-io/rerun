@@ -11,7 +11,6 @@ from typing_extensions import deprecated
 
 import rerun as rr
 from rerun import bindings
-from rerun_bindings import ChunkBatcherConfig
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -24,6 +23,7 @@ if TYPE_CHECKING:
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch
     from rerun.memory import MemoryRecording
     from rerun.sinks import LogSinkLike
+    from rerun_bindings import ChunkBatcherConfig
 
     from ._send_columns import TimeColumnLike
 

@@ -4,9 +4,8 @@ from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, overload
 
 import numpy as np
-from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
-
 import rerun_bindings as bindings
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 if TYPE_CHECKING:
     from rerun.recording_stream import RecordingStream

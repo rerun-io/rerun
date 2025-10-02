@@ -493,9 +493,7 @@ class TimePanel(Panel):
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
 
         if self.time is not None:
-            static_arch = TimePanelBlueprint(
-                time=self.time
-            )
+            static_arch = TimePanelBlueprint(time=self.time)
 
             stream.log(self.blueprint_path(), static_arch, static=True)
 
