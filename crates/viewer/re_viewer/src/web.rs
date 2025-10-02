@@ -11,9 +11,9 @@ use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
 use re_log::ResultExt as _;
-use re_log_types::{TableId, TableMsg};
+use re_log_types::{TableId, TableMsg, TimeReal};
 use re_memory::AccountingAllocator;
-use re_viewer_context::{AsyncRuntimeHandle, open_url};
+use re_viewer_context::{AsyncRuntimeHandle, TimeBlueprintExt as _, open_url};
 
 use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
@@ -441,32 +441,21 @@ impl WebHandle {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
-        let crate::App {
-            store_hub: Some(hub),
-            state,
-            egui_ctx,
-            ..
-        } = &mut *app
-        else {
+
+        let Some(hub) = &app.store_hub else {
             return;
         };
 
-        let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
-            return;
-        };
-        let Some(recording) = hub.store_bundle().get(&store_id) else {
-            return;
-        };
-        let rec_cfg = recording_config_entry(&mut state.recording_configs, recording);
-
-        let Some(timeline) = recording.timelines().get(&timeline_name.into()).copied() else {
-            re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id:?}");
+        let Some(recording_id) = store_id_from_recording_id(hub, recording_id) else {
             return;
         };
 
-        rec_cfg.time_ctrl.write().set_timeline(timeline);
+        let Some(ctx) = app.blueprint_ctx(&recording_id) else {
+            return;
+        };
 
-        egui_ctx.request_repaint();
+        ctx.set_timeline(timeline_name.into());
+        app.egui_ctx.request_repaint();
     }
 
     //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
@@ -489,33 +478,21 @@ impl WebHandle {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
-        let crate::App {
-            store_hub: Some(hub),
-            state,
-            egui_ctx,
-            ..
-        } = &mut *app
-        else {
+
+        let Some(hub) = &app.store_hub else {
             return;
         };
 
-        let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
-            return;
-        };
-        let Some(recording) = hub.store_bundle().get(&store_id) else {
-            return;
-        };
-        let rec_cfg = recording_config_entry(&mut state.recording_configs, recording);
-        let Some(timeline) = recording.timelines().get(&timeline_name.into()).copied() else {
-            re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id:?}");
+        let Some(recording_id) = store_id_from_recording_id(hub, recording_id) else {
             return;
         };
 
-        rec_cfg
-            .time_ctrl
-            .write()
-            .set_timeline_and_time(timeline, time);
-        egui_ctx.request_repaint();
+        let Some(ctx) = app.blueprint_ctx(&recording_id) else {
+            return;
+        };
+
+        ctx.set_timeline_and_time(timeline_name.into(), TimeReal::from(time).floor());
+        app.egui_ctx.request_repaint();
     }
 
     //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)

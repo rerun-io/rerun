@@ -17,7 +17,9 @@ use crate::{
     SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId,
     query_context::DataQueryResult,
 };
-use crate::{BlueprintTimeControl, GlobalContext, Item, StorageContext, StoreHub};
+use crate::{
+    BlueprintContext, BlueprintTimeControl, GlobalContext, Item, StorageContext, StoreHub,
+};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -428,4 +430,12 @@ impl ViewerContext<'_> {
 pub struct RecordingConfig<Tc = TimeControl> {
     /// The current time of the time panel, how fast it is moving, etc.
     pub time_ctrl: RwLock<Tc>,
+}
+
+impl RecordingConfig {
+    pub fn from_blueprint(blueprint_ctx: &impl BlueprintContext) -> Self {
+        Self {
+            time_ctrl: RwLock::new(TimeControl::from_blueprint(blueprint_ctx)),
+        }
+    }
 }

@@ -226,7 +226,7 @@ pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_na
         time_panel.activate_filter(query);
     }
 
-    run_time_panel_and_save_snapshot(&mut test_context, time_panel, 300.0, false, snapshot_name);
+    run_time_panel_and_save_snapshot(&test_context, time_panel, 300.0, false, snapshot_name);
 }
 
 // --
@@ -263,7 +263,7 @@ pub fn test_various_entity_kinds_in_time_panel() {
             let time_panel = TimePanel::default();
 
             run_time_panel_and_save_snapshot(
-                &mut test_context,
+                &test_context,
                 time_panel,
                 1200.0,
                 true,
@@ -287,7 +287,7 @@ pub fn test_focused_item_is_focused() {
     let time_panel = TimePanel::default();
 
     run_time_panel_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         time_panel,
         200.0,
         false,

@@ -916,7 +916,7 @@ impl App {
                 time,
             } => {
                 if let Some(blueprint_ctx) =
-                    blueprint_ctx(&mut self.state, &self.command_sender, store_hub)
+                    active_blueprint_ctx(&mut self.state, &self.command_sender, store_hub)
                 {
                     blueprint_ctx.set_timeline(timeline);
 
@@ -941,7 +941,7 @@ impl App {
                 time_range,
             } => {
                 if let Some(blueprint_ctx) =
-                    blueprint_ctx(&mut self.state, &self.command_sender, store_hub)
+                    active_blueprint_ctx(&mut self.state, &self.command_sender, store_hub)
                 {
                     blueprint_ctx.set_timeline(*timeline.name());
 
@@ -1021,14 +1021,22 @@ impl App {
                     url: url.to_string(),
                     follow: *follow,
                 };
+                let Some(blueprint_ctx) =
+                    active_blueprint_ctx(&mut self.state, &self.command_sender, store_hub)
+                else {
+                    return;
+                };
+
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     if let Some(entity_db) = store_hub.find_recording_store_by_source(&new_source) {
                         if *follow {
-                            let rec_cfg = self.state.recording_config_mut(entity_db);
+                            let rec_cfg =
+                                self.state.recording_config_mut(entity_db, &blueprint_ctx);
                             let time_ctrl = rec_cfg.time_ctrl.get_mut();
                             time_ctrl.set_play_state(
                                 entity_db.times_per_timeline(),
                                 PlayState::Following,
+                                &blueprint_ctx,
                             );
                         }
 
@@ -1688,26 +1696,26 @@ impl App {
         }) else {
             return;
         };
-        let rec_cfg = self.state.recording_config_mut(entity_db);
+        let rec_cfg = self.state.recording_config_mut(entity_db, &blueprint_ctx);
         let time_ctrl = rec_cfg.time_ctrl.get_mut();
 
         let times_per_timeline = entity_db.times_per_timeline();
 
         match command {
             TimeControlCommand::TogglePlayPause => {
-                time_ctrl.toggle_play_pause(times_per_timeline);
+                time_ctrl.toggle_play_pause(times_per_timeline, &blueprint_ctx);
             }
             TimeControlCommand::Follow => {
-                time_ctrl.set_play_state(times_per_timeline, PlayState::Following);
+                time_ctrl.set_play_state(times_per_timeline, PlayState::Following, &blueprint_ctx);
             }
             TimeControlCommand::StepBack => {
-                time_ctrl.step_time_back(&blueprint_ctx, times_per_timeline);
+                time_ctrl.step_time_back(times_per_timeline, &blueprint_ctx);
             }
             TimeControlCommand::StepForward => {
-                time_ctrl.step_time_fwd(&blueprint_ctx, times_per_timeline);
+                time_ctrl.step_time_fwd(times_per_timeline, &blueprint_ctx);
             }
             TimeControlCommand::Restart => {
-                time_ctrl.restart(times_per_timeline);
+                time_ctrl.restart(times_per_timeline, &blueprint_ctx);
             }
         }
     }
@@ -2364,8 +2372,11 @@ impl App {
         store_hub: &StoreHub,
         store_id: &StoreId,
     ) -> Option<&mut RecordingConfig> {
-        if let Some(entity_db) = store_hub.store_bundle().get(store_id) {
-            Some(self.state.recording_config_mut(entity_db))
+        if let Some(entity_db) = store_hub.store_bundle().get(store_id)
+            && let Some(blueprint_ctx) =
+                active_blueprint_ctx(&mut self.state, &self.command_sender, store_hub)
+        {
+            Some(self.state.recording_config_mut(entity_db, &blueprint_ctx))
         } else {
             re_log::debug!("Failed to find recording '{store_id:?}' in store hub");
             None
@@ -2608,6 +2619,25 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))] // no full-app screenshotting on web
             self.screenshotter.save(&self.egui_ctx, image);
         }
+    }
+
+    /// Get an [`AppBlueprintCtx`] to interact with the given recording.
+    pub fn blueprint_ctx<'a>(&'a self, recording_id: &StoreId) -> Option<AppBlueprintCtx<'a>> {
+        let hub = self.store_hub.as_ref()?;
+
+        let blueprint = hub.active_blueprint_for_app(recording_id.application_id())?;
+
+        let default_blueprint = hub.default_blueprint_for_app(recording_id.application_id());
+
+        let blueprint_query =
+            re_chunk::LatestAtQuery::latest(re_viewer_context::blueprint_timeline());
+
+        Some(AppBlueprintCtx {
+            command_sender: &self.command_sender,
+            current_blueprint: blueprint,
+            default_blueprint,
+            blueprint_query,
+        })
     }
 }
 
@@ -3334,10 +3364,10 @@ async fn async_save_dialog(
 }
 
 pub struct AppBlueprintCtx<'a> {
-    command_sender: &'a CommandSender,
-    current_blueprint: &'a EntityDb,
-    default_blueprint: Option<&'a EntityDb>,
-    blueprint_query: re_chunk::LatestAtQuery,
+    pub command_sender: &'a CommandSender,
+    pub current_blueprint: &'a EntityDb,
+    pub default_blueprint: Option<&'a EntityDb>,
+    pub blueprint_query: re_chunk::LatestAtQuery,
 }
 
 impl BlueprintContext for AppBlueprintCtx<'_> {
@@ -3359,21 +3389,22 @@ impl BlueprintContext for AppBlueprintCtx<'_> {
 }
 
 /// Build a [`AppBlueprintCtx`] to interact with the active blueprint.
-fn blueprint_ctx<'a>(
+pub fn active_blueprint_ctx<'a>(
     app_state: &mut AppState,
     command_sender: &'a CommandSender,
-    store_hub: &'a mut StoreHub,
+    hub: &'a StoreHub,
 ) -> Option<AppBlueprintCtx<'a>> {
-    let (_, Some(store_context)) = store_hub.read_context() else {
-        return None;
-    };
+    let active_app = hub.active_app()?;
+    let current_blueprint = hub.active_blueprint_for_app(active_app)?;
 
-    let blueprint_query = app_state.blueprint_query_for_viewer(store_context.blueprint);
+    let default_blueprint = hub.default_blueprint_for_app(active_app);
+
+    let blueprint_query = app_state.blueprint_query_for_viewer(current_blueprint);
 
     Some(AppBlueprintCtx {
         command_sender,
-        current_blueprint: store_context.blueprint,
-        default_blueprint: store_context.default_blueprint,
+        current_blueprint,
+        default_blueprint,
         blueprint_query,
     })
 }

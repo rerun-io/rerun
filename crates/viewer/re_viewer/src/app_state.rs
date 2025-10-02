@@ -13,11 +13,11 @@ use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintTimeControl,
-    BlueprintUndoState, CommandSender, ComponentUiRegistry, DisplayMode, DragAndDropManager,
-    GlobalContext, Item, PlayState, RecordingConfig, SelectionChange, StorageContext, StoreContext,
-    StoreHub, SystemCommand, SystemCommandSender as _, TableStore, TimeControl, ViewClassRegistry,
-    ViewStates, ViewerContext, blueprint_timeline,
+    AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintContext,
+    BlueprintTimeControl, BlueprintUndoState, CommandSender, ComponentUiRegistry, DisplayMode,
+    DragAndDropManager, GlobalContext, Item, PlayState, RecordingConfig, SelectionChange,
+    StorageContext, StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, TableStore,
+    ViewClassRegistry, ViewStates, ViewerContext, blueprint_timeline,
     open_url::{self, ViewerOpenUrl},
 };
 use re_viewport::ViewportUi;
@@ -25,8 +25,9 @@ use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
 use crate::{
-    StartupOptions, app_blueprint::AppBlueprint, event::ViewerEventDispatcher,
-    navigation::Navigation, open_url_description::ViewerOpenUrlDescription, ui::settings_screen_ui,
+    StartupOptions, app::AppBlueprintCtx, app_blueprint::AppBlueprint,
+    event::ViewerEventDispatcher, navigation::Navigation,
+    open_url_description::ViewerOpenUrlDescription, ui::settings_screen_ui,
 };
 
 const WATERMARK: bool = false; // Nice for recording media material
@@ -311,7 +312,16 @@ impl AppState {
                         .collect::<_>()
                 };
 
-                let rec_cfg = recording_config_entry(recording_configs, recording);
+                let app_blueprint_ctx = AppBlueprintCtx {
+                    command_sender,
+                    current_blueprint: store_context.blueprint,
+                    default_blueprint: store_context.default_blueprint,
+                    blueprint_query,
+                };
+                let rec_cfg =
+                    recording_config_entry(recording_configs, recording, &app_blueprint_ctx);
+                let blueprint_query = app_blueprint_ctx.blueprint_query;
+
                 let egui_ctx = ui.ctx().clone();
                 let display_mode = self.navigation.peek();
                 let ctx = ViewerContext {
@@ -722,8 +732,12 @@ impl AppState {
         self.recording_configs.get(rec_id)
     }
 
-    pub fn recording_config_mut(&mut self, entity_db: &EntityDb) -> &mut RecordingConfig {
-        recording_config_entry(&mut self.recording_configs, entity_db)
+    pub fn recording_config_mut(
+        &mut self,
+        entity_db: &EntityDb,
+        blueprint_ctx: &impl BlueprintContext,
+    ) -> &mut RecordingConfig {
+        recording_config_entry(&mut self.recording_configs, entity_db, blueprint_ctx)
     }
 
     pub fn cleanup(&mut self, store_hub: &StoreHub) {
@@ -795,7 +809,7 @@ fn move_time(
         // The state diffs are used to trigger callbacks if they are configured.
         // Unless we have a real recording open, we should not actually trigger any callbacks.
         should_diff_time_ctrl,
-        Some(ctx),
+        ctx,
     );
 
     handle_time_ctrl_event(recording, events, &recording_time_ctrl_response);
@@ -812,7 +826,6 @@ fn move_time(
                 dt,
                 more_data_is_coming,
                 should_diff_time_ctrl,
-                None::<&ViewerContext<'_>>,
             )
             .needs_repaint
     } else {
@@ -851,8 +864,12 @@ fn handle_time_ctrl_event(
 pub(crate) fn recording_config_entry<'cfgs>(
     configs: &'cfgs mut HashMap<StoreId, RecordingConfig>,
     entity_db: &'_ EntityDb,
+    blueprint_ctx: &'_ impl BlueprintContext,
 ) -> &'cfgs mut RecordingConfig {
-    fn new_recording_config(entity_db: &'_ EntityDb) -> RecordingConfig {
+    fn new_recording_config(
+        entity_db: &'_ EntityDb,
+        blueprint_ctx: &'_ impl BlueprintContext,
+    ) -> RecordingConfig {
         let play_state = if let Some(data_source) = &entity_db.data_source {
             match data_source {
                 // Play files from the start by default - it feels nice and alive.
@@ -873,19 +890,20 @@ pub(crate) fn recording_config_entry<'cfgs>(
             PlayState::Following // No known source 🤷‍♂️
         };
 
-        let mut rec_cfg = RecordingConfig::<TimeControl>::default();
+        let mut rec_cfg = RecordingConfig::from_blueprint(blueprint_ctx);
 
-        rec_cfg
-            .time_ctrl
-            .get_mut()
-            .set_play_state(entity_db.times_per_timeline(), play_state);
+        rec_cfg.time_ctrl.get_mut().set_play_state(
+            entity_db.times_per_timeline(),
+            play_state,
+            blueprint_ctx,
+        );
 
         rec_cfg
     }
 
     configs
         .entry(entity_db.store_id().clone())
-        .or_insert_with(|| new_recording_config(entity_db))
+        .or_insert_with(|| new_recording_config(entity_db, blueprint_ctx))
 }
 
 /// Handles all kind of links that can be opened within the viewer.

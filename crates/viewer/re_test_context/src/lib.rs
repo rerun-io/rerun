@@ -193,7 +193,7 @@ impl TestContext {
         let reflection =
             re_types::reflection::generate_reflection().expect("Failed to generate reflection");
 
-        Self {
+        let this = Self {
             app_options: Default::default(),
 
             view_class_registry: Default::default(),
@@ -215,7 +215,13 @@ impl TestContext {
             called_setup_kittest_for_rendering: AtomicBool::new(false),
 
             store_hub: Mutex::new(store_hub),
-        }
+        };
+
+        this.with_blueprint_ctx(|ctx| {
+            ctx.set_timeline("log_tick".into());
+        });
+
+        this
     }
 
     /// Create a new test context that knows about a specific view class.
