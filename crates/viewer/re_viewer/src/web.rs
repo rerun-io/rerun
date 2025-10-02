@@ -15,6 +15,7 @@ use re_log_types::{TableId, TableMsg, TimeReal};
 use re_memory::AccountingAllocator;
 use re_viewer_context::{AsyncRuntimeHandle, TimeBlueprintExt as _, open_url};
 
+use crate::app::AppBlueprintCtx;
 use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
 use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
@@ -438,7 +439,7 @@ impl WebHandle {
     //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
     #[wasm_bindgen]
     pub fn set_active_timeline(&self, recording_id: &str, timeline_name: &str) {
-        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
 
@@ -475,7 +476,7 @@ impl WebHandle {
     //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
     #[wasm_bindgen]
     pub fn set_time_for_timeline(&self, recording_id: &str, timeline_name: &str, time: f64) {
-        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
 
@@ -563,6 +564,7 @@ impl WebHandle {
             store_hub,
             state,
             egui_ctx,
+            command_sender,
             ..
         } = &mut *app;
 
@@ -575,7 +577,25 @@ impl WebHandle {
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
-        let rec_cfg = recording_config_entry(&mut state.recording_configs, recording);
+
+        let Some(blueprint) = hub.active_blueprint_for_app(store_id.application_id()) else {
+            return;
+        };
+
+        let default_blueprint = hub.default_blueprint_for_app(store_id.application_id());
+
+        let blueprint_query =
+            re_chunk::LatestAtQuery::latest(re_viewer_context::blueprint_timeline());
+
+        // Can't use `app.blueprint_ctx(...)` here because of borrow issues.
+        let ctx = AppBlueprintCtx {
+            command_sender,
+            current_blueprint: blueprint,
+            default_blueprint,
+            blueprint_query,
+        };
+
+        let rec_cfg = recording_config_entry(&mut state.recording_configs, recording, &ctx);
 
         let play_state = if value {
             re_viewer_context::PlayState::Playing
@@ -586,7 +606,7 @@ impl WebHandle {
         rec_cfg
             .time_ctrl
             .write()
-            .set_play_state(recording.times_per_timeline(), play_state);
+            .set_play_state(recording.times_per_timeline(), play_state, &ctx);
         egui_ctx.request_repaint();
     }
 }
