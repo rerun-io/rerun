@@ -8,7 +8,7 @@ use re_renderer::{
     LineDrawableBuilder, Size,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
 };
-use re_tf::query_view_coordinates_at_closest_ancestor;
+use re_tf::{image_view_coordinates, query_view_coordinates_at_closest_ancestor};
 use re_types::{
     blueprint::{
         archetypes::{Background, EyeControls3D, LineGrid3D},
@@ -34,7 +34,7 @@ use crate::{
     space_camera_3d::SpaceCamera3D,
     ui::{SpatialViewState, create_labels},
     view_kind::SpatialViewKind,
-    visualizers::{CamerasVisualizer, collect_ui_labels, image_view_coordinates},
+    visualizers::{CamerasVisualizer, collect_ui_labels},
 };
 
 use super::eye::{Eye, ViewEye};
