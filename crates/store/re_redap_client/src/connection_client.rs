@@ -381,17 +381,20 @@ where
         unsafe_allow_recent_cleanup: bool,
     ) -> Result<(), StreamError> {
         self.inner()
-            .do_maintenance(tonic::Request::new(
-                re_protos::cloud::v1alpha1::ext::DoMaintenanceRequest {
-                    dataset_id: Some(dataset_id.into()),
-                    optimize_indexes,
-                    retrain_indexes,
-                    compact_fragments,
-                    cleanup_before,
-                    unsafe_allow_recent_cleanup,
-                }
-                .into(),
-            ))
+            .do_maintenance(
+                tonic::Request::new(
+                    re_protos::cloud::v1alpha1::ext::DoMaintenanceRequest {
+                        optimize_indexes,
+                        retrain_indexes,
+                        compact_fragments,
+                        cleanup_before,
+                        unsafe_allow_recent_cleanup,
+                    }
+                    .into(),
+                )
+                .with_entry_id(dataset_id)
+                .map_err(|err| StreamEntryError::InvalidId(err.into()))?,
+            )
             .await
             .map_err(|err| StreamEntryError::Maintenance(err.into()))?;
 

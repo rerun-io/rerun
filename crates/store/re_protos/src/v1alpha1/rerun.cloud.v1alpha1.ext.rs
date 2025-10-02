@@ -106,7 +106,6 @@ impl TryFrom<crate::cloud::v1alpha1::GetChunksRequest> for GetChunksRequest {
 
 #[derive(Debug, Clone)]
 pub struct DoMaintenanceRequest {
-    pub dataset_id: Option<crate::common::v1alpha1::EntryId>,
     pub optimize_indexes: bool,
     pub retrain_indexes: bool,
     pub compact_fragments: bool,
@@ -117,7 +116,6 @@ pub struct DoMaintenanceRequest {
 impl From<DoMaintenanceRequest> for crate::cloud::v1alpha1::DoMaintenanceRequest {
     fn from(value: DoMaintenanceRequest) -> Self {
         Self {
-            dataset_id: value.dataset_id,
             optimize_indexes: value.optimize_indexes,
             retrain_indexes: value.retrain_indexes,
             compact_fragments: value.compact_fragments,

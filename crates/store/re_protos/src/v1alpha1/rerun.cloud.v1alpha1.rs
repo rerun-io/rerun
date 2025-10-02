@@ -850,8 +850,6 @@ impl ::prost::Name for ScanTableResponse {
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct DoMaintenanceRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// Optimize all builtin and user-defined indexes on this dataset.
     ///
     /// This merges all individual index deltas back in the main index, improving runtime performance

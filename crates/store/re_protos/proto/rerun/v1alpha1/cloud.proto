@@ -610,8 +610,6 @@ message ScanTableResponse {
 // --- Maintenance ---
 
 message DoMaintenanceRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-
   // Optimize all builtin and user-defined indexes on this dataset.
   //
   // This merges all individual index deltas back in the main index, improving runtime performance
@@ -646,6 +644,9 @@ message DoMaintenanceRequest {
   //
   // ⚠️ Do not ever use this unless you know exactly what you're doing. Improper use will lead to data loss.
   bool unsafe_allow_recent_cleanup = 5;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message DoMaintenanceResponse {
