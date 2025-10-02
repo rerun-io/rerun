@@ -23,13 +23,13 @@ use vec1::smallvec_v1::SmallVec1;
 /// Store subscriber that resolves all transform components at a given entity to an affine transform.
 ///
 /// It only handles resulting transforms individually to each entity, not how these transforms propagate in the tree.
-/// For transform tree propagation see [`crate::contexts::TransformTreeContext`].
+/// For transform tree propagation see [`crate::TransformTree`].
 ///
 /// There are different kinds of transforms handled here:
 /// * [`archetypes::Transform3D`]
-///   Tree transforms that should propagate in the tree (via [`crate::contexts::TransformTreeContext`]).
+///   Tree transforms that should propagate in the tree (via [`crate::TransformTree`]).
 /// * [`archetypes::InstancePoses3D`]
-///   Instance poses that should be applied to the tree transforms (via [`crate::contexts::TransformTreeContext`]) but not propagate.
+///   Instance poses that should be applied to the tree transforms (via [`crate::TransformTree`]) but not propagate.
 /// * [`components::PinholeProjection`] and [`components::ViewCoordinates`]
 ///   Pinhole projections & associated view coordinates used for visualizing cameras in 3D and embedding 2D in 3D
 ///
@@ -412,7 +412,7 @@ impl TransformCacheStoreSubscriber {
     /// Makes sure the transform cache is up to date with the latest data.
     ///
     /// This needs to be called once per frame prior to any transform propagation.
-    /// (which is done by [`crate::contexts::TransformTreeContext`])
+    /// (which is done by [`crate::TransformTree`])
     // TODO(andreas): easy optimization: apply only updates for a single timeline at a time.
     pub fn apply_all_updates(&mut self, entity_db: &EntityDb) {
         re_tracing::profile_function!();

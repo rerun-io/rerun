@@ -9501,6 +9501,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_tf"
+version = "0.26.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "bitflags 2.9.1",
+ "glam",
+ "itertools 0.14.0",
+ "nohash-hasher",
+ "re_chunk_store",
+ "re_entity_db",
+ "re_log",
+ "re_log_types",
+ "re_tracing",
+ "re_types",
+ "vec1",
+]
+
+[[package]]
 name = "re_time_panel"
 version = "0.26.0-alpha.1+dev"
 dependencies = [
@@ -9897,6 +9915,7 @@ dependencies = [
  "re_renderer",
  "re_test_context",
  "re_test_viewport",
+ "re_tf",
  "re_tracing",
  "re_types",
  "re_ui",
@@ -9907,7 +9926,6 @@ dependencies = [
  "serde",
  "smallvec",
  "thiserror 1.0.69",
- "vec1",
  "web-time",
 ]
 
