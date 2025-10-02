@@ -11,7 +11,7 @@ use re_protos::common::v1alpha1::TaskId;
 use super::{PyCatalogClientInternal, PyDataFusionTable, to_py_err};
 
 /// A handle on a remote task.
-#[pyclass(name = "Task")] //NOLINT
+#[pyclass(name = "Task")] // NOLINT
 pub struct PyTask {
     pub client: Py<PyCatalogClientInternal>,
 
