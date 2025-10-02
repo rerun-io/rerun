@@ -137,7 +137,7 @@ class DynamicArchetype(AsComponents):
         self._name = name
 
     def _with_descriptor_internal(
-        self, descriptor: ComponentDescriptor, value: Any, drop_untyped_nones: bool = True
+        self, descriptor: ComponentDescriptor, value: Any, *, drop_untyped_nones: bool = True
     ) -> DynamicArchetype:
         """Adds a `Batch` to this `DynamicArchetype` bundle."""
         batch = AnyBatchValue(descriptor, value, drop_untyped_nones=drop_untyped_nones)
@@ -145,7 +145,7 @@ class DynamicArchetype(AsComponents):
             self._component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
         return self
 
-    def with_component_from_data(self, field: str, value: Any, drop_untyped_nones: bool = True) -> DynamicArchetype:
+    def with_component_from_data(self, field: str, value: Any, *, drop_untyped_nones: bool = True) -> DynamicArchetype:
         """Adds a `Batch` to this `DynamicArchetype` bundle."""
         descriptor = ComponentDescriptor(component=field)
         if self._archetype is not None:
@@ -153,7 +153,7 @@ class DynamicArchetype(AsComponents):
         return self._with_descriptor_internal(descriptor, value, drop_untyped_nones=drop_untyped_nones)
 
     def with_component_override(
-        self, field: str, component_type: str, value: Any, drop_untyped_nones: bool = True
+        self, field: str, component_type: str, value: Any, *, drop_untyped_nones: bool = True
     ) -> DynamicArchetype:
         """Adds a `Batch` to this `DynamicArchetype` bundle with name and component type."""
         descriptor = ComponentDescriptor(component=field, component_type=component_type)
