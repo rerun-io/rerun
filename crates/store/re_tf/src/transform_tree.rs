@@ -503,7 +503,7 @@ fn transform_from_pinhole_with_image_plane(
 
     // TODO(#1025):
     // As such we don't ever want to invert this matrix!
-    // However, currently our 2D views require do to exactly that since we're forced to
+    // However, currently our 2D views require us to do exactly that since we're forced to
     // build a relationship between the 2D plane and the 3D world, when actually the 2D plane
     // should have infinite depth!
     // The inverse of this matrix *is* working for this, but quickly runs into precision issues.
