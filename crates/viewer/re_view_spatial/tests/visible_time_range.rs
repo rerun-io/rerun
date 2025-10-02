@@ -304,7 +304,7 @@ fn run_visible_time_range_test(
     add_data(&mut test_context);
 
     let view_id = setup_blueprint(&mut test_context, view_time_range, green_time_range);
-    test_context.run_view_ui_and_save_snapshot(view_id, name, egui::vec2(200.0, 200.0));
+    test_context.run_view_ui_and_save_snapshot(view_id, name, egui::vec2(200.0, 200.0), None);
 }
 
 fn setup_blueprint(

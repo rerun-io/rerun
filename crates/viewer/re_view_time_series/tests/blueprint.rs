@@ -13,8 +13,7 @@ use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
 #[test]
 pub fn test_blueprint_overrides_and_defaults_with_time_series() {
-    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>()
-        .with_snapshot_options(SnapshotOptions::new().threshold(1.0));
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
     for i in 0..32 {
         let timepoint = TimePoint::from([(test_context.active_timeline(), i)]);
@@ -32,6 +31,7 @@ pub fn test_blueprint_overrides_and_defaults_with_time_series() {
         view_id,
         "blueprint_overrides_and_defaults_with_time_series",
         egui::vec2(300.0, 300.0),
+        Some(SnapshotOptions::new().threshold(1.0)),
     );
 }
 

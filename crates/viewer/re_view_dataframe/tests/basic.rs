@@ -28,7 +28,12 @@ pub fn test_null_timeline() {
     });
 
     let view_id = setup_blueprint(&mut test_context, timeline_a.name());
-    test_context.run_view_ui_and_save_snapshot(view_id, "null_timeline", egui::vec2(400.0, 200.0));
+    test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "null_timeline",
+        egui::vec2(400.0, 200.0),
+        None,
+    );
 }
 
 #[test]
@@ -50,6 +55,7 @@ pub fn test_unknown_timeline() {
         view_id,
         "unknown_timeline_view_ui",
         egui::vec2(300.0, 150.0),
+        None,
     );
 
     run_view_selection_panel_ui_and_save_snapshot(

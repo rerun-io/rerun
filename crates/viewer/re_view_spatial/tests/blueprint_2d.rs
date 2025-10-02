@@ -20,6 +20,7 @@ pub fn test_blueprint_no_overrides_or_defaults_with_spatial_2d() {
         view_id,
         "blueprint_no_overrides_or_defaults_with_spatial_2d",
         SNAPSHOT_SIZE,
+        None,
     );
 }
 
@@ -34,6 +35,7 @@ pub fn test_blueprint_overrides_with_spatial_2d() {
         view_id,
         "blueprint_overrides_with_spatial_2d",
         SNAPSHOT_SIZE,
+        None,
     );
 }
 
@@ -48,6 +50,7 @@ pub fn test_blueprint_defaults_with_spatial_2d() {
         view_id,
         "blueprint_defaults_with_spatial_2d",
         SNAPSHOT_SIZE,
+        None,
     );
 }
 

@@ -24,7 +24,7 @@ fn test_tensor() {
     });
 
     let view_id = setup_blueprint(&mut test_context);
-    test_context.run_view_ui_and_save_snapshot(view_id, "tensor_1d", egui::vec2(300.0, 50.0));
+    test_context.run_view_ui_and_save_snapshot(view_id, "tensor_1d", egui::vec2(300.0, 50.0), None);
 }
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {

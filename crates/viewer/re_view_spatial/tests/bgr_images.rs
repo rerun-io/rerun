@@ -21,10 +21,7 @@ fn convert_pixels_to<T: From<u8> + Copy>(u8s: &[u8]) -> Vec<T> {
 }
 
 fn run_bgr_test<T: ImageChannelType>(image: &[T], size: [u32; 2], color_model: ColorModel) {
-    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>()
-        .with_snapshot_options(
-            SnapshotOptions::new().failed_pixel_count_threshold(OsThreshold::new(2)),
-        );
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
     test_context.log_entity("bgr_image", |builder| {
         builder.with_archetype(
             RowId::new(),
@@ -58,7 +55,12 @@ fn run_bgr_test<T: ImageChannelType>(image: &[T], size: [u32; 2], color_model: C
         color_model.to_string().to_lowercase(),
     );
 
-    test_context.run_view_ui_and_save_snapshot(view_id, &snapshot_name, egui::vec2(160.0, 120.0));
+    test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        &snapshot_name,
+        egui::vec2(160.0, 120.0),
+        Some(SnapshotOptions::new().failed_pixel_count_threshold(OsThreshold::new(2))),
+    );
 }
 
 fn run_all_formats(image: &[u8], size: [u32; 2], color_model: ColorModel) {
