@@ -953,7 +953,7 @@ mod tests {
         let filter = ResolvedTimestampFilter::Last24Hours;
 
         // Note: this test doesn't attempt to test close to the limits, because it can become
-        // flaky with slow execution time. This is also why we calling `Timestamp::now()` again
+        // flaky with slow execution time. This is also why we are calling `Timestamp::now()` again
         // for each assert.
 
         // Should accept timestamps within the last 24 hours
