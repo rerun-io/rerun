@@ -107,14 +107,7 @@ class RecordingOpenEvent(ViewerEventBase):
 
 
 # Union type for all possible event types
-ViewerEvent = (
-    PlayEvent
-    | PauseEvent
-    | TimeUpdateEvent
-    | TimelineChangeEvent
-    | SelectionChangeEvent
-    | RecordingOpenEvent
-)
+ViewerEvent = PlayEvent | PauseEvent | TimeUpdateEvent | TimelineChangeEvent | SelectionChangeEvent | RecordingOpenEvent
 
 
 def _viewer_event_from_json_str(json_str: str) -> ViewerEvent:
