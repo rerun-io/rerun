@@ -259,12 +259,12 @@ mod file_server_impl {
                     #[allow(clippy::enum_glob_use)]
                     use notify::EventKind::*;
                     match ev.kind {
-                        Access(_) | Create(_) | Modify(_) | Any => ev
+                        Create(_) | Modify(_) | Any => ev
                             .paths
                             .into_iter()
                             .filter_map(canonicalize_opt)
                             .collect::<Vec<_>>(),
-                        Remove(_) | Other => Vec::new(),
+                        Access(_) | Remove(_) | Other => Vec::new(),
                     }
                 })
                 .collect();
