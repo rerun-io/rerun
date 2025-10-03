@@ -544,22 +544,22 @@ impl ConnectionHandle {
                 // when running with `block_on`.
                 let get_chunks_response_stream = tokio::spawn(async move {
                     let resp = client
-                        .inner()
-                        .get_chunks(GetChunksRequest {
-                            dataset_id: Some(dataset_id.into()),
-                            partition_ids,
-                            chunk_ids: vec![],
-                            entity_paths,
-                            select_all_entity_paths,
-                            fuzzy_descriptors,
-                            exclude_static_data: false,
-                            exclude_temporal_data: false,
-                            query: Some(query.into()),
-                        })
+                        .get_chunks(
+                            dataset_id,
+                            GetChunksRequest {
+                                partition_ids,
+                                chunk_ids: vec![],
+                                entity_paths,
+                                select_all_entity_paths,
+                                fuzzy_descriptors,
+                                exclude_static_data: false,
+                                exclude_temporal_data: false,
+                                query: Some(query.into()),
+                            },
+                        )
                         .instrument(tracing::trace_span!("get_chunks::grpc"))
                         .await
-                        .map_err(to_py_err)?
-                        .into_inner();
+                        .map_err(to_py_err)?;
 
                     Ok::<_, PyErr>(resp)
                 })

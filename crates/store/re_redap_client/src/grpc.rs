@@ -12,7 +12,7 @@ use re_uri::{Origin, TimeSelection};
 
 use tokio_stream::{Stream, StreamExt as _};
 
-use crate::{ConnectionClient, MAX_DECODING_MESSAGE_SIZE, StreamError, StreamPartitionError};
+use crate::{ConnectionClient, MAX_DECODING_MESSAGE_SIZE, StreamError};
 
 // TODO(ab): do not publish this out of this crate (for now it is still being used by rerun_py
 // the viewer grpc connection). Ideally we'd only publish `ClientConnectionError`.
@@ -284,6 +284,8 @@ pub fn fetch_chunks_response_to_chunk_and_partition_id(
 pub fn get_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming<re_protos::cloud::v1alpha1::GetChunksResponse>,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
+    use crate::StreamPartitionError;
+
     response.map(|resp| {
         let resp = resp.map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?;
 
@@ -314,6 +316,8 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
 pub fn fetch_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming<re_protos::cloud::v1alpha1::FetchChunksResponse>,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
+    use crate::StreamPartitionError;
+
     response.map(|resp| {
         let resp = resp.map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?;
 
@@ -454,59 +458,57 @@ async fn stream_partition_from_server(
 ) -> Result<(), StreamError> {
     let static_chunk_stream = {
         client
-            .inner()
-            .get_chunks(GetChunksRequest {
-                dataset_id: Some(dataset_id.into()),
-                partition_ids: vec![partition_id.clone().into()],
-                chunk_ids: vec![],
-                entity_paths: vec![],
-                select_all_entity_paths: true,
-                fuzzy_descriptors: vec![],
-                exclude_static_data: false,
-                exclude_temporal_data: true,
-                query: None,
-            })
-            .await
-            .map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?
-            .into_inner()
+            .get_chunks(
+                dataset_id,
+                GetChunksRequest {
+                    partition_ids: vec![partition_id.clone().into()],
+                    chunk_ids: vec![],
+                    entity_paths: vec![],
+                    select_all_entity_paths: true,
+                    fuzzy_descriptors: vec![],
+                    exclude_static_data: false,
+                    exclude_temporal_data: true,
+                    query: None,
+                },
+            )
+            .await?
     };
 
     let temporal_chunk_stream = {
         client
-            .inner()
-            .get_chunks(GetChunksRequest {
-                dataset_id: Some(dataset_id.into()),
-                partition_ids: vec![partition_id.into()],
-                chunk_ids: vec![],
-                entity_paths: vec![],
-                select_all_entity_paths: true,
-                fuzzy_descriptors: vec![],
-                exclude_static_data: true,
-                exclude_temporal_data: false,
-                query: time_range.clone().map(|time_range| {
-                    Query {
-                        range: Some(QueryRange {
-                            index: time_range.timeline.name().to_string(),
-                            index_range: time_range.clone().into(),
-                        }),
-                        latest_at: Some(QueryLatestAt {
-                            index: Some(time_range.timeline.name().to_string()),
-                            at: time_range.range.min(),
-                        }),
-                        columns_always_include_everything: false,
-                        columns_always_include_chunk_ids: false,
-                        columns_always_include_byte_offsets: false,
-                        columns_always_include_entity_paths: false,
-                        columns_always_include_static_indexes: false,
-                        columns_always_include_global_indexes: false,
-                        columns_always_include_component_indexes: false,
-                    }
-                    .into()
-                }),
-            })
-            .await
-            .map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?
-            .into_inner()
+            .get_chunks(
+                dataset_id,
+                GetChunksRequest {
+                    partition_ids: vec![partition_id.into()],
+                    chunk_ids: vec![],
+                    entity_paths: vec![],
+                    select_all_entity_paths: true,
+                    fuzzy_descriptors: vec![],
+                    exclude_static_data: true,
+                    exclude_temporal_data: false,
+                    query: time_range.clone().map(|time_range| {
+                        Query {
+                            range: Some(QueryRange {
+                                index: time_range.timeline.name().to_string(),
+                                index_range: time_range.clone().into(),
+                            }),
+                            latest_at: Some(QueryLatestAt {
+                                index: Some(time_range.timeline.name().to_string()),
+                                at: time_range.range.min(),
+                            }),
+                            columns_always_include_everything: false,
+                            columns_always_include_chunk_ids: false,
+                            columns_always_include_byte_offsets: false,
+                            columns_always_include_entity_paths: false,
+                            columns_always_include_static_indexes: false,
+                            columns_always_include_global_indexes: false,
+                            columns_always_include_component_indexes: false,
+                        }
+                        .into()
+                    }),
+                },
+            )
+            .await?
     };
 
     let store_id = store_info.store_id.clone();
