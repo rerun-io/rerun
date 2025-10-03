@@ -8719,6 +8719,7 @@ dependencies = [
  "anyhow",
  "document-features",
  "emath",
+ "indexmap 2.10.0",
  "itertools 0.14.0",
  "nohash-hasher",
  "parking_lot",
