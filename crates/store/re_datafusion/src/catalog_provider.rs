@@ -14,7 +14,7 @@ use tokio::runtime::Handle as RuntimeHandle;
 pub const DEFAULT_CATALOG_NAME: &str = "datafusion";
 const DEFAULT_SCHEMA_NAME: &str = "public";
 
-/// DataFusion catalog provider for interacting with Rerun gRPC services.
+/// `DataFusion` catalog provider for interacting with Rerun gRPC services.
 ///
 /// Tables are stored on the server in a flat namespace with a string
 /// representation of the catalog, schema, and table delimited by a
@@ -24,7 +24,7 @@ const DEFAULT_SCHEMA_NAME: &str = "public";
 /// `my_table` will be stored within the `datafusion` catalog and
 /// `public` schema. If a table is specified with more than three
 /// levels, it will also be stored in the default catalog and schema.
-/// This matches how DataFusion will store such table names.
+/// This matches how `DataFusion` will store such table names.
 #[derive(Debug)]
 pub struct RedapCatalogProvider {
     catalog_name: Option<String>,
@@ -160,7 +160,7 @@ impl CatalogProvider for RedapCatalogProvider {
     }
 }
 
-/// DataFusion schema provider for interacting with Rerun gRPC services.
+/// `DataFusion` schema provider for interacting with Rerun gRPC services.
 ///
 /// For a detailed description of how tables are named on the server
 /// vs represented in the catalog and schema providers, see
