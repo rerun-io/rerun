@@ -1,13 +1,19 @@
-use std::any::{Any, TypeId};
+use std::{
+    any::{Any, TypeId},
+    sync::Arc,
+};
 
 use ahash::HashMap;
-use parking_lot::Mutex;
+use parking_lot::{
+    ArcRwLockReadGuard, MappedRwLockReadGuard, Mutex, RawRwLock, RwLock, RwLockReadGuard,
+    RwLockWriteGuard,
+};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::StoreId;
 
-/// Does memoization of different objects for the immediate mode UI.
+/// Various "ad-hoc" caches that are used for a given store.
 pub struct Caches {
-    caches: Mutex<HashMap<TypeId, Box<dyn Cache>>>,
+    caches: RwLock<HashMap<TypeId, Mutex<Box<dyn Cache>>>>,
     store_id: StoreId,
 }
 
@@ -15,16 +21,9 @@ impl Caches {
     /// Creates a new instance of `Caches` associated with a specific store.
     pub fn new(store_id: StoreId) -> Self {
         Self {
-            caches: Mutex::new(HashMap::default()),
+            caches: RwLock::new(HashMap::default()),
             store_id,
         }
-    }
-
-    /// Call a function with a reference to the caches map.
-    pub fn with_caches<R>(&self, f: impl FnOnce(&HashMap<TypeId, Box<dyn Cache>>) -> R) -> R {
-        let guard = self.caches.lock();
-
-        f(&guard)
     }
 
     /// Call once per frame to potentially flush the cache(s).
@@ -32,16 +31,19 @@ impl Caches {
         re_tracing::profile_function!();
 
         #[expect(clippy::iter_over_hash_type)]
-        for cache in self.caches.lock().values_mut() {
-            cache.begin_frame();
+        for cache in self.caches.read().values() {
+            cache.write().begin_frame();
         }
     }
 
     pub fn memory_reports(&self) -> HashMap<&'static str, CacheMemoryReport> {
         self.caches
-            .lock()
+            .read()
             .values()
-            .map(|cache| (cache.name(), cache.memory_report()))
+            .map(|cache| {
+                let cache_read_locked = cache.read();
+                (cache_read_locked.name(), cache_read_locked.memory_report())
+            })
             .collect()
     }
 
@@ -50,8 +52,8 @@ impl Caches {
         re_tracing::profile_function!();
 
         #[expect(clippy::iter_over_hash_type)]
-        for cache in self.caches.lock().values_mut() {
-            cache.purge_memory();
+        for cache in self.caches.read().values() {
+            cache.write().purge_memory();
         }
     }
 
@@ -69,25 +71,55 @@ impl Caches {
             return;
         }
 
-        #[expect(clippy::iter_over_hash_type)]
-        for cache in self.caches.lock().values_mut() {
-            cache.on_store_events(&relevant_events);
+        // TODO:
+        // TODO: par_iter
+        // #[expect(clippy::iter_over_hash_type)]
+        // for cache in self.caches.read().values_mut() {
+        //     cache.on_store_events(&relevant_events);
+        // }
+    }
+
+    /// Retrieve cache entry of a given type.
+    ///
+    /// Adds the cache lazily if it wasn't already there.
+    fn get_or_create_entry<C: Cache + Default>(
+        &self,
+    ) -> MappedRwLockReadGuard<'_, Mutex<Box<dyn Cache>>> {
+        // Almost always, the entry already exists.
+        // Only if it doesn't, we have to read lock the map.
+        // Given that we think this is VERY rare, it's also fine to hold that read lock for a bit longer.
+        {
+            let caches_read_locked = self.caches.read();
+
+            if let Ok(mapped_rw_lock_read_guard) =
+                RwLockReadGuard::try_map(caches_read_locked, |caches| {
+                    caches.get(&TypeId::of::<C>())
+                })
+            {
+                return mapped_rw_lock_read_guard;
+            }
         }
+
+        // Add the entry if needed.
+        // Note that by now someone else might have added it.
+        let mut caches_write_locked = self.caches.write();
+        caches_write_locked
+            .entry(TypeId::of::<C>())
+            .or_insert_with(|| Mutex::new(Box::new(C::default())));
+        self.get_or_create_entry::<C>()
     }
 
     /// Accesses a cache for reading and writing.
     ///
     /// Adds the cache lazily if it wasn't already there.
     pub fn entry<C: Cache + Default, R>(&self, f: impl FnOnce(&mut C) -> R) -> R {
-        #[allow(clippy::unwrap_or_default)] // or_default doesn't work here.
-        f(self
-            .caches
-            .lock()
-            .entry(TypeId::of::<C>())
-            .or_insert(Box::<C>::default())
+        let cache = self.get_or_create_entry::<C>();
+        let mut locked_cache = cache.lock();
+        let typed_cache = locked_cache
             .as_any_mut()
             .downcast_mut::<C>()
-            .expect("Downcast failed, this indicates a bug in how `Caches` adds new cache types."))
+            .expect("Downcast failed, this indicates a bug in how `Caches` adds new cache types.");
+        f(typed_cache)
     }
 }
 
@@ -130,6 +162,9 @@ pub trait Cache: std::any::Any + Send + Sync {
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         _ = events;
     }
+
+    /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
+    fn as_any(&self) -> &dyn Any;
 
     /// Converts itself to a mutable reference of [`Any`], which enables mutable downcasting to concrete types.
     fn as_any_mut(&mut self) -> &mut dyn Any;
