@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use arrow::array::RecordBatchOptions;
+use arrow::array::{
+    FixedSizeBinaryArray, ListBuilder, RecordBatchOptions, StringBuilder, UInt64Array,
+};
 use arrow::{
     array::{Array, ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
     datatypes::{DataType, Field, Schema, TimeUnit},
@@ -11,10 +13,9 @@ use re_chunk::TimelineName;
 use re_log_types::{EntityPath, EntryId, TimeInt};
 use re_sorbet::ComponentColumnDescriptor;
 
-use crate::cloud::v1alpha1::{EntryKind, QueryTasksResponse};
 use crate::cloud::v1alpha1::{
-    GetDatasetSchemaResponse, RegisterWithDatasetResponse, ScanPartitionTableResponse,
-    VectorDistanceMetric,
+    EntryKind, GetDatasetSchemaResponse, QueryTasksResponse, RegisterWithDatasetResponse,
+    ScanLayerTableResponse, ScanPartitionTableResponse, VectorDistanceMetric,
 };
 use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId};
 use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
@@ -1178,51 +1179,125 @@ pub struct RegisterWithDatasetTaskDescriptor {
 
 impl ScanPartitionTableResponse {
     pub const PARTITION_ID: &str = "rerun_partition_id";
-    pub const PARTITION_TYPE: &str = "rerun_partition_type";
-    pub const STORAGE_URL: &str = "rerun_storage_url";
-    pub const REGISTRATION_TIME: &str = "rerun_registration_time";
-    pub const PARTITION_MANIFEST_UPDATED_AT: &str = "rerun_partition_manifest_updated_at";
-    pub const PARTITION_MANIFEST_URL: &str = "rerun_partition_manifest_url";
+    pub const LAYERS: &str = "rerun_layers";
+    pub const LAST_UPDATED_AT: &str = "rerun_last_updated_at";
+    pub const NUM_CHUNKS: &str = "rerun_num_chunks";
+    pub const SIZE_BYTES: &str = "rerun_size_bytes";
 
     pub fn schema() -> Schema {
         Schema::new(vec![
             Field::new(Self::PARTITION_ID, DataType::Utf8, false),
-            Field::new(Self::PARTITION_TYPE, DataType::Utf8, false),
-            Field::new(Self::STORAGE_URL, DataType::Utf8, false),
             Field::new(
-                Self::REGISTRATION_TIME,
-                DataType::Timestamp(TimeUnit::Nanosecond, None),
+                Self::LAYERS,
+                DataType::List(Arc::new(Field::new(Self::LAYERS, DataType::Utf8, false))),
                 false,
             ),
             Field::new(
-                Self::PARTITION_MANIFEST_UPDATED_AT,
-                DataType::Timestamp(TimeUnit::Nanosecond, None),
-                true,
+                Self::LAST_UPDATED_AT,
+                DataType::Timestamp(TimeUnit::Nanosecond, Some("utc".into())),
+                false,
             ),
-            Field::new(Self::PARTITION_MANIFEST_URL, DataType::Utf8, true),
+            Field::new(Self::NUM_CHUNKS, DataType::UInt64, false),
+            Field::new(Self::SIZE_BYTES, DataType::UInt64, false),
         ])
     }
 
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
         partition_ids: Vec<String>,
-        partition_types: Vec<String>,
-        storage_urls: Vec<String>,
-        registration_times: Vec<i64>,
-        partition_manifest_updated_ats: Vec<Option<i64>>,
-        partition_manifest_urls: Vec<Option<String>>,
+        layers: Vec<Vec<String>>,
+        last_updated_at: Vec<i64>,
+        num_chunks: Vec<u64>,
+        size_bytes: Vec<u64>,
     ) -> arrow::error::Result<RecordBatch> {
         let row_count = partition_ids.len();
         let schema = Arc::new(Self::schema());
+
+        let mut layers_builder = ListBuilder::new(StringBuilder::new());
+        for mut inner_vec in layers {
+            for layer_name in inner_vec.drain(..) {
+                layers_builder.values().append_value(layer_name)
+            }
+            layers_builder.append(true);
+        }
+
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(partition_ids)),
-            Arc::new(StringArray::from(partition_types)),
+            Arc::new(layers_builder.finish()),
+            Arc::new(TimestampNanosecondArray::from(last_updated_at)),
+            Arc::new(UInt64Array::from(num_chunks)),
+            Arc::new(UInt64Array::from(size_bytes)),
+        ];
+
+        RecordBatch::try_new_with_options(
+            schema,
+            columns,
+            &RecordBatchOptions::default().with_row_count(Some(row_count)),
+        )
+    }
+
+    pub fn data(&self) -> Result<&DataframePart, TypeConversionError> {
+        Ok(self.data.as_ref().ok_or_else(|| {
+            missing_field!(crate::cloud::v1alpha1::ScanPartitionTableResponse, "data")
+        })?)
+    }
+}
+
+// --- ScanLayerTableResponse --
+
+impl ScanLayerTableResponse {
+    pub const LAYER_NAME: &str = "rerun_layer_name";
+    pub const PARTITION_ID: &str = "rerun_partition_id";
+    pub const STORAGE_URL: &str = "rerun_storage_url";
+    pub const LAYER_TYPE: &str = "rerun_layer_type";
+    pub const REGISTRATION_TIME: &str = "rerun_registration_time";
+    pub const NUM_CHUNKS: &str = "rerun_num_chunks";
+    pub const SIZE_BYTES: &str = "rerun_size_bytes";
+    pub const SCHEMA_SHA256: &str = "rerun_schema_sha256";
+
+    pub fn schema() -> Schema {
+        Schema::new(vec![
+            Field::new(Self::LAYER_NAME, DataType::Utf8, false),
+            Field::new(Self::PARTITION_ID, DataType::Utf8, false),
+            Field::new(Self::STORAGE_URL, DataType::Utf8, false),
+            Field::new(Self::LAYER_TYPE, DataType::Utf8, false),
+            Field::new(
+                Self::REGISTRATION_TIME,
+                DataType::Timestamp(TimeUnit::Nanosecond, Some("utc".into())),
+                false,
+            ),
+            Field::new(Self::NUM_CHUNKS, DataType::UInt64, false),
+            Field::new(Self::SIZE_BYTES, DataType::UInt64, false),
+            Field::new(Self::SCHEMA_SHA256, DataType::FixedSizeBinary(32), false),
+        ])
+    }
+
+    /// Helper to simplify instantiation of the dataframe in [`Self::data`].
+    pub fn create_dataframe(
+        layer_names: Vec<String>,
+        partition_ids: Vec<String>,
+        storage_urls: Vec<String>,
+        layer_types: Vec<String>,
+        registration_times: Vec<i64>,
+        num_chunks: Vec<u64>,
+        size_bytes: Vec<u64>,
+        schema_sha256s: Vec<[u8; 32]>,
+    ) -> arrow::error::Result<RecordBatch> {
+        let row_count = partition_ids.len();
+        let schema = Arc::new(Self::schema());
+
+        let columns: Vec<ArrayRef> = vec![
+            Arc::new(StringArray::from(layer_names)),
+            Arc::new(StringArray::from(partition_ids)),
             Arc::new(StringArray::from(storage_urls)),
+            Arc::new(StringArray::from(layer_types)),
             Arc::new(TimestampNanosecondArray::from(registration_times)),
-            Arc::new(TimestampNanosecondArray::from(
-                partition_manifest_updated_ats,
-            )),
-            Arc::new(StringArray::from(partition_manifest_urls)),
+            Arc::new(UInt64Array::from(num_chunks)),
+            Arc::new(UInt64Array::from(size_bytes)),
+            Arc::new(
+                FixedSizeBinaryArray::try_from_iter(schema_sha256s.into_iter())
+                    .expect("sizes of nested slices are guaranteed to match"),
+            ),
         ];
 
         RecordBatch::try_new_with_options(

@@ -77,6 +77,21 @@ service RerunCloudService {
   // This endpoint requires the standard dataset headers.
   rpc ScanPartitionTable(ScanPartitionTableRequest) returns (stream ScanPartitionTableResponse) {}
 
+  // Returns the schema of the layer table.
+  //
+  // To inspect the data of the partition table, which is guaranteed to match the schema returned by
+  // this endpoint, check out `ScanLayerTable`.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc GetLayerTableSchema(GetLayerTableSchemaRequest) returns (GetLayerTableSchemaResponse) {}
+
+  // Inspect the contents of the layer table.
+  //
+  // The data will follow the schema returned by `GetLayerTableSchema`.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc ScanLayerTable(ScanLayerTableRequest) returns (stream ScanLayerTableResponse) {}
+
   // Returns the schema of the dataset.
   //
   // This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
@@ -268,6 +283,29 @@ message ScanPartitionTableRequest {
 
 message ScanPartitionTableResponse {
   // Partitions metadata as arrow RecordBatch
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message GetLayerTableSchemaRequest {
+  reserved "dataset_id";
+}
+
+message GetLayerTableSchemaResponse {
+  rerun.common.v1alpha1.Schema schema = 1;
+}
+
+message ScanLayerTableRequest {
+  // A list of column names to be projected server-side.
+  //
+  // All of them if left empty.
+  repeated string columns = 3;
+
+  reserved "dataset_id";
+  reserved "scan_parameters";
+}
+
+message ScanLayerTableResponse {
+  // Layer metadata as arrow RecordBatch
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
