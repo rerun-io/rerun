@@ -7,7 +7,7 @@
 //! arrays, names, constants, default values).
 use anyhow::Context as _;
 
-use crate::parsers::ros2msg::reflection::message_spec::MessageSpecification;
+use crate::message_spec::MessageSpecification;
 
 pub mod deserialize;
 pub mod message_spec;

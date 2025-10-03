@@ -58,11 +58,24 @@ impl MessageSpecification {
                 continue;
             }
 
-            if Constant::is_constant_line(line) {
-                let constant = Constant::parse(line)?;
+            // Parse type and name (common to both constants and fields)
+            let (ty_start, ty_end) = next_token_bounds(line, 0)
+                .ok_or_else(|| ParseError::Syntax(format!("missing type in line: `{line}`")))?;
+            let (name_start, name_end) = next_token_bounds(line, ty_end)
+                .ok_or_else(|| ParseError::Syntax(format!("missing name in line: `{line}`")))?;
+
+            let ty_str = &line[ty_start..ty_end];
+            let name = &line[name_start..name_end];
+            let ty = Type::parse(ty_str)?;
+
+            // Check if rest starts with '=' to differentiate constant from field
+            let rest = line[name_end..].trim();
+
+            if rest.starts_with('=') {
+                let constant = Constant::parse(ty, name, rest)?;
                 constants.push(constant);
             } else {
-                let field = Field::parse(line)?;
+                let field = Field::parse(ty, name, rest)?;
                 fields.push(field);
             }
         }
@@ -97,51 +110,12 @@ pub struct Constant {
 }
 
 impl Constant {
-    /// Determine if a line is a constant definition or a field definition.
-    ///
-    /// A constant definition has the following structure: `<type> <NAME>=<value>`
-    /// where `NAME` is all-caps with digits and underscores only, and `<type>` is not an array.
-    ///
-    /// We look for the first `=` that is not inside quotes or brackets to make this determination.
-    fn is_constant_line(line: &str) -> bool {
-        let mut in_quote = false;
-        let mut bracket_depth = 0usize;
-        let mut chars = line.chars().peekable();
-
-        while let Some(c) = chars.next() {
-            match c {
-                '"' | '\'' => in_quote = !in_quote,
-                '[' if !in_quote => bracket_depth += 1,
-                ']' if !in_quote => {
-                    bracket_depth = bracket_depth.saturating_sub(1);
-                }
-                '<' if !in_quote && bracket_depth == 0 => {
-                    // Check if this is part of a <= in a bounded string type
-                    if chars.peek() == Some(&'=') {
-                        chars.next(); // consume the '='
-                    }
-                }
-                '=' if !in_quote && bracket_depth == 0 => return true,
-                _ => {}
-            }
+    fn parse(ty: Type, name: &str, rest: &str) -> Result<Self, ParseError> {
+        if !Self::is_valid_constant_name(name) {
+            return Err(ParseError::Validate(format!(
+                "constant name must be all-caps alphanumeric and underscores only, got `{name}`"
+            )));
         }
-
-        false
-    }
-
-    fn parse(line: &str) -> Result<Self, ParseError> {
-        let (type_and_name, value_str) = line
-            .split_once('=')
-            .ok_or_else(|| ParseError::Syntax("constant definition missing '='".to_owned()))?;
-
-        let (type_str, name) = type_and_name.trim().rsplit_once(' ').ok_or_else(|| {
-            ParseError::Syntax(format!(
-                "constant definition `{type_and_name}` missing space between type and name"
-            ))
-        })?;
-
-        let ty = Type::parse(type_str)?;
-        let value = Literal::parse(value_str.trim(), &ty)?;
 
         if matches!(ty, Type::Array { .. }) {
             return Err(ParseError::Type(
@@ -149,11 +123,19 @@ impl Constant {
             ));
         }
 
-        if !Self::is_valid_constant_name(name) {
-            return Err(ParseError::Validate(format!(
-                "constant name must be all-caps alphanumeric and underscores only, got `{name}`"
-            )));
+        if matches!(ty, Type::Complex(_)) {
+            return Err(ParseError::Type(
+                "constant type must be a built-in type".to_owned(),
+            ));
         }
+
+        // rest should start with '='
+        let value_str = rest
+            .strip_prefix('=')
+            .ok_or_else(|| ParseError::Syntax("constant definition missing '='".to_owned()))?
+            .trim();
+
+        let value = Literal::parse(value_str, &ty)?;
 
         Ok(Self {
             ty,
@@ -208,53 +190,11 @@ pub struct Field {
 }
 
 impl Field {
-    fn parse(line: &str) -> Result<Self, ParseError> {
-        let line = line.trim();
-
-        // Parse first two whitespace-delimited tokens (type and name) with indices
-        fn next_token_bounds(s: &str, start: usize) -> Option<(usize, usize)> {
-            let bytes = s.as_bytes();
-            let mut i = start;
-            while i < bytes.len() && bytes[i].is_ascii_whitespace() {
-                i += 1;
-            }
-            if i >= bytes.len() {
-                return None;
-            }
-            let start = i;
-            while i < bytes.len() && !bytes[i].is_ascii_whitespace() {
-                i += 1;
-            }
-            Some((start, i))
-        }
-
-        let (ty_start, ty_end) = next_token_bounds(line, 0).ok_or_else(|| {
-            ParseError::Syntax(format!("field definition (`{line}`) missing type"))
-        })?;
-        let type_str = &line[ty_start..ty_end];
-
-        let (name_start, name_end) = next_token_bounds(line, ty_end).ok_or_else(|| {
-            ParseError::Syntax(format!("field definition (`{line}`) missing name"))
-        })?;
-        let name = &line[name_start..name_end];
-
-        let rest = line[name_end..].trim();
-        let optional_default = if rest.is_empty() { None } else { Some(rest) };
-
-        let ty = Type::parse(type_str).map_err(|_e| {
-            ParseError::Type(format!(
-                "failed to parse type `{type_str}` in field definition `{line}`"
-            ))
-        })?;
-
-        let default = if let Some(default_str) = optional_default {
-            Some(Literal::parse(default_str, &ty).map_err(|_e| {
-                ParseError::Value(format!(
-                    "failed to parse default value `{default_str}` for type `{ty:?}` in field definition `{line}`"
-                ))
-            })?)
-        } else {
+    fn parse(ty: Type, name: &str, rest: &str) -> Result<Self, ParseError> {
+        let default = if rest.is_empty() {
             None
+        } else {
+            Some(Literal::parse(rest, &ty)?)
         };
 
         Ok(Self {
@@ -523,6 +463,53 @@ impl Literal {
     }
 }
 
+/// Parse the bounds of the next whitespace-delimited token in a string.
+/// Returns (`start_index`, `end_index`) of the token, or `None` if no token found.
+/// Treats '=' as a separate single-character token, except when part of '<=' type bounds.
+fn next_token_bounds(s: &str, start: usize) -> Option<(usize, usize)> {
+    let remaining = s.get(start..)?;
+    let token_start = start + remaining.len() - remaining.trim_start().len();
+    let token = remaining.trim_start();
+
+    if token.is_empty() {
+        return None;
+    }
+
+    // If the token starts with '=', return it as a single-character token
+    if token.starts_with('=') {
+        return Some((token_start, token_start + 1));
+    }
+
+    // Find the end of the token
+    // Stop at whitespace or standalone '=' (not part of '<=' type bound)
+    let chars: Vec<char> = token.chars().collect();
+    let mut token_len_bytes = 0;
+
+    for (i, &c) in chars.iter().enumerate() {
+        if c.is_whitespace() {
+            break;
+        }
+
+        // Check if this is '=' and it's not part of '<='
+        if c == '=' {
+            // Check if previous char was '<'
+            let prev_is_lt = i > 0 && chars[i - 1] == '<';
+            if !prev_is_lt {
+                // This '=' is standalone, stop here
+                break;
+            }
+        }
+
+        token_len_bytes += c.len_utf8();
+    }
+
+    if token_len_bytes == 0 {
+        None
+    } else {
+        Some((token_start, token_start + token_len_bytes))
+    }
+}
+
 /// Strip comments from a line (anything after a '#').
 fn strip_comment(s: &str) -> &str {
     let mut in_quote = false;
@@ -565,7 +552,7 @@ mod tests {
     #[test]
     fn valid_constant() {
         assert_eq!(
-            Constant::parse("int32 CONST_NAME=42").unwrap(),
+            Constant::parse(Type::BuiltIn(BuiltInType::Int32), "CONST_NAME", "=42").unwrap(),
             Constant {
                 ty: Type::BuiltIn(BuiltInType::Int32),
                 name: "CONST_NAME".to_owned(),
@@ -574,7 +561,12 @@ mod tests {
         );
 
         assert_eq!(
-            Constant::parse("string CONST_STR=\"hello\"").unwrap(),
+            Constant::parse(
+                Type::BuiltIn(BuiltInType::String(None)),
+                "CONST_STR",
+                "=\"hello\""
+            )
+            .unwrap(),
             Constant {
                 ty: Type::BuiltIn(BuiltInType::String(None)),
                 name: "CONST_STR".to_owned(),
@@ -583,7 +575,7 @@ mod tests {
         );
 
         assert_eq!(
-            Constant::parse("float64 CONST_FLOAT=3.1").unwrap(),
+            Constant::parse(Type::BuiltIn(BuiltInType::Float64), "CONST_FLOAT", "=3.1").unwrap(),
             Constant {
                 ty: Type::BuiltIn(BuiltInType::Float64),
                 name: "CONST_FLOAT".to_owned(),
@@ -594,21 +586,29 @@ mod tests {
 
     #[test]
     fn invalid_constant() {
-        assert!(Constant::parse("int32=42").is_err()); // missing name
-        assert!(Constant::parse("CONST_NAME=42").is_err()); // missing type
-        assert!(Constant::parse("int32 CONST_NAME").is_err()); // missing '=' and value
-        assert!(Constant::parse("int32 CONST_NAME=abc").is_err()); // invalid int value
-        assert!(Constant::parse("int32 CONST_NAME[]=42").is_err()); // array type not allowed
-        assert!(Constant::parse("int32 const_name=42").is_err()); // invalid name (not all-caps)
-        assert!(Constant::parse("int32 CONST__NAME=42").is_err()); // invalid name (consecutive underscores
-        assert!(Constant::parse("int32 _CONSTNAME=42").is_err()); // invalid name (doesn't start with letter)
-        assert!(Constant::parse("int32 CONSTNAME_=42").is_err()); // invalid name (ends with underscore)
+        assert!(Constant::parse(Type::BuiltIn(BuiltInType::Int32), "CONST_NAME", "").is_err()); // missing '=' and value
+        assert!(Constant::parse(Type::BuiltIn(BuiltInType::Int32), "CONST_NAME", "=abc").is_err()); // invalid int value
+        assert!(
+            Constant::parse(
+                Type::Array {
+                    ty: Box::new(Type::BuiltIn(BuiltInType::Int32)),
+                    size: ArraySize::Unbounded
+                },
+                "CONST_NAME",
+                "=42"
+            )
+            .is_err()
+        ); // array type not allowed
+        assert!(Constant::parse(Type::BuiltIn(BuiltInType::Int32), "const_name", "=42").is_err()); // invalid name (not all-caps)
+        assert!(Constant::parse(Type::BuiltIn(BuiltInType::Int32), "CONST__NAME", "=42").is_err()); // invalid name (consecutive underscores
+        assert!(Constant::parse(Type::BuiltIn(BuiltInType::Int32), "_CONSTNAME", "=42").is_err()); // invalid name (doesn't start with letter)
+        assert!(Constant::parse(Type::BuiltIn(BuiltInType::Int32), "CONSTNAME_", "=42").is_err()); // invalid name (ends with underscore)
     }
 
     #[test]
     fn valid_field() {
         assert_eq!(
-            Field::parse("int32 field_name").unwrap(),
+            Field::parse(Type::BuiltIn(BuiltInType::Int32), "field_name", "").unwrap(),
             Field {
                 ty: Type::BuiltIn(BuiltInType::Int32),
                 name: "field_name".to_owned(),
@@ -617,7 +617,12 @@ mod tests {
         );
 
         assert_eq!(
-            Field::parse("string<=10 name \"default\"").unwrap(),
+            Field::parse(
+                Type::BuiltIn(BuiltInType::String(Some(10))),
+                "name",
+                "\"default\""
+            )
+            .unwrap(),
             Field {
                 name: "name".to_owned(),
                 ty: Type::BuiltIn(BuiltInType::String(Some(10))),
@@ -626,7 +631,15 @@ mod tests {
         );
 
         assert_eq!(
-            Field::parse("float64[3] position [0.0, 1.0, 2.0]").unwrap(),
+            Field::parse(
+                Type::Array {
+                    ty: Box::new(Type::BuiltIn(BuiltInType::Float64)),
+                    size: ArraySize::Fixed(3)
+                },
+                "position",
+                "[0.0, 1.0, 2.0]"
+            )
+            .unwrap(),
             Field {
                 name: "position".to_owned(),
                 ty: Type::Array {
@@ -642,7 +655,18 @@ mod tests {
         );
 
         assert_eq!(
-            Field::parse("geometry_msgs/Point[] points").unwrap(),
+            Field::parse(
+                Type::Array {
+                    ty: Box::new(Type::Complex(ComplexType::Absolute {
+                        package: "geometry_msgs".to_owned(),
+                        name: "Point".to_owned()
+                    })),
+                    size: ArraySize::Unbounded
+                },
+                "points",
+                ""
+            )
+            .unwrap(),
             Field {
                 name: "points".to_owned(),
                 ty: Type::Array {
@@ -657,7 +681,7 @@ mod tests {
         );
 
         assert_eq!(
-            Field::parse("bool enabled true").unwrap(),
+            Field::parse(Type::BuiltIn(BuiltInType::Bool), "enabled", "true").unwrap(),
             Field {
                 ty: Type::BuiltIn(BuiltInType::Bool),
                 name: "enabled".to_owned(),
@@ -668,13 +692,7 @@ mod tests {
 
     #[test]
     fn invalid_field() {
-        assert!(Field::parse("int32").is_err()); // missing name
-        assert!(Field::parse("field_name").is_err()); // missing type
-        assert!(Field::parse("int32 field_name extra token").is_err()); // extra token
-        assert!(Field::parse("string<=abc name").is_err()); // invalid bounded string
-        assert!(Field::parse("float64[abc] position").is_err()); // invalid array size
-        assert!(Field::parse("geometry_msgs/ Point[] points").is_err()); // invalid complex type
-        assert!(Field::parse("bool enabled maybe").is_err()); // invalid bool literal
+        assert!(Field::parse(Type::BuiltIn(BuiltInType::Bool), "enabled", "maybe").is_err()); // invalid bool literal
     }
 
     #[test]

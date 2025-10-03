@@ -1,3 +1,4 @@
+use anyhow::Context as _;
 use arrow::{
     array::{
         ArrayBuilder, ArrowPrimitiveType, BinaryBuilder, BooleanBuilder, FixedSizeListBuilder,
@@ -10,17 +11,42 @@ use arrow::{
         Int64Type, UInt8Type, UInt16Type, UInt32Type, UInt64Type,
     },
 };
+use cdr_encoding::CdrDeserializer;
 use re_chunk::{Chunk, ChunkId};
-use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
-
-use crate::parsers::ros2msg::reflection::{
+use re_ros_msg::{
     MessageSchema,
-    deserialize::primitive_array::PrimitiveArray,
-    deserialize::{Value, decode_bytes},
+    deserialize::{MapResolver, MessageSeed, Value, primitive_array::PrimitiveArray},
     message_spec::{ArraySize, BuiltInType, ComplexType, MessageSpecification, Type},
 };
-use crate::parsers::{MessageParser, ParserContext};
+use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
+use serde::de::DeserializeSeed as _;
+
+use crate::parsers::{MessageParser, ParserContext, dds};
 use crate::{Error, LayerIdentifier, MessageLayer};
+
+pub fn decode_bytes(top: &MessageSchema, buf: &[u8]) -> anyhow::Result<Value> {
+    // 4-byte encapsulation header
+    if buf.len() < 4 {
+        anyhow::bail!("short encapsulation");
+    }
+
+    let representation_identifier = dds::RepresentationIdentifier::from_bytes([buf[0], buf[1]])
+        .with_context(|| "failed to parse CDR representation identifier")?;
+
+    let resolver = MapResolver::new(top.dependencies.iter().map(|dep| (dep.name.clone(), dep)));
+
+    let seed = MessageSeed::new(&top.spec, &resolver);
+
+    if representation_identifier.is_big_endian() {
+        let mut de = CdrDeserializer::<byteorder::BigEndian>::new(&buf[4..]);
+        seed.deserialize(&mut de)
+            .with_context(|| "failed to deserialize CDR message")
+    } else {
+        let mut de = CdrDeserializer::<byteorder::LittleEndian>::new(&buf[4..]);
+        seed.deserialize(&mut de)
+            .with_context(|| "failed to deserialize CDR message")
+    }
+}
 
 struct Ros2ReflectionMessageParser {
     num_rows: usize,
@@ -260,7 +286,7 @@ fn append_value(
 
             struct_builder.append(true);
         }
-        Value::Array(vec) | Value::Seq(vec) => {
+        Value::Array(vec) | Value::Sequence(vec) => {
             let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder)?;
 
             for val in vec {
