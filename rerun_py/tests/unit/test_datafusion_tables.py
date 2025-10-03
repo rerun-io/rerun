@@ -338,3 +338,14 @@ def test_query_lance_table(server_instance: ServerInstance) -> None:
     entry = client.get_table_entry(name=expected_table_name)
     assert entry.name == expected_table_name
     assert entry.kind == EntryKind.TABLE
+
+
+def test_dataset_schema_comparison_self_consistent(server_instance: ServerInstance) -> None:
+    dataset = server_instance.dataset
+
+    schema_0 = dataset.schema()
+    schema_1 = dataset.schema()
+    set_diff = set(schema_0).symmetric_difference(schema_1)
+
+    assert len(set_diff) == 0, f"Schema iterator is not self-consistent: {set_diff}"
+    assert schema_0 == schema_1, "Schema is not self-consistent"

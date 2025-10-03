@@ -314,8 +314,8 @@ impl DurationLike {
 }
 
 /// Defines the different batching thresholds used within the RecordingStream.
-#[pyclass(name = "ChunkBatcherConfig")]
-#[derive(Clone)]
+#[pyclass(eq, name = "ChunkBatcherConfig")]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PyChunkBatcherConfig(ChunkBatcherConfig);
 
 #[pymethods]
@@ -325,7 +325,7 @@ impl PyChunkBatcherConfig {
     #[pyo3(
         text_signature = "(self, flush_tick=None, flush_num_bytes=None, flush_num_rows=None, chunk_max_rows_if_unsorted=None)"
     )]
-    /// Initialize the chunk batcher onfiguration.
+    /// Initialize the chunk batcher configuration.
     ///
     /// Check out <https://rerun.io/docs/reference/sdk/micro-batching> for more information.
     ///
@@ -616,7 +616,7 @@ fn shutdown(py: Python<'_>) {
 
 // --- Recordings ---
 
-#[pyclass(frozen)]
+#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
 #[derive(Clone)]
 struct PyRecordingStream(RecordingStream);
 
@@ -1286,7 +1286,7 @@ fn binary_stream(
     Some(PyBinarySinkStorage { inner })
 }
 
-#[pyclass(frozen)]
+#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
 struct PyMemorySinkStorage {
     // So we can flush when needed!
     inner: MemorySinkStorage,
@@ -1352,7 +1352,7 @@ impl PyMemorySinkStorage {
     }
 }
 
-#[pyclass(frozen)]
+#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
 struct PyBinarySinkStorage {
     /// The underlying binary sink storage.
     inner: BinaryStreamStorage,
@@ -1646,8 +1646,12 @@ fn flush(py: Python<'_>, timeout_sec: f32, recording: Option<&PyRecordingStream>
 /// Every component at a given entity path is uniquely identified by the
 /// `component` field of the descriptor. The `archetype` and `component_type`
 /// fields provide additional information about the semantics of the data.
-#[pyclass(name = "ComponentDescriptor", module = "rerun_bindings.rerun_bindings")]
-#[derive(Clone)]
+#[pyclass(
+    eq,
+    name = "ComponentDescriptor",
+    module = "rerun_bindings.rerun_bindings"
+)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 struct PyComponentDescriptor(pub ComponentDescriptor);
 
 #[pymethods]
@@ -1664,10 +1668,6 @@ impl PyComponentDescriptor {
         };
 
         Self(descr)
-    }
-
-    fn __eq__(&self, other: &Self) -> bool {
-        self.0 == other.0
     }
 
     fn __hash__(&self) -> u64 {
