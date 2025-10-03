@@ -1098,7 +1098,10 @@ mod tests {
         TimeType,
         example_components::{MyPoint, MyPoints},
     };
-    use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+    use re_test_context::{
+        TestContext,
+        external::egui_kittest::{SnapshotOptions, kittest::Queryable as _},
+    };
     use re_test_viewport::{TestContextExt as _, TestView};
     use re_types::archetypes;
     use re_viewer_context::{RecommendedView, ViewClass as _, blueprint_timeline};
@@ -1182,10 +1185,7 @@ mod tests {
                 test_context.handle_system_commands();
             });
 
-        let raw_input = harness.input_mut();
-        raw_input
-            .events
-            .push(egui::Event::PointerMoved(egui::Pos2 { x: 120.0, y: 80.0 }));
+        harness.get_by_label("test_app").hover();
 
         harness.run();
 

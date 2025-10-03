@@ -468,13 +468,13 @@ class TimePanel(Panel):
             The time cursor for a timestamp timeline.
 
         """
+        super().__init__(blueprint_path="time_panel", expanded=expanded, state=state)
+        self.timeline = timeline
+
         if sum(x is not None for x in (sequence_cursor, duration_cursor, timestamp_cursor)) > 1:
             raise ValueError(
                 "At most one of `sequence`, `duration`, and `timestamp` must be set",
             )
-
-        super().__init__(blueprint_path="time_panel", expanded=expanded, state=state)
-        self.timeline = timeline
 
         if sequence_cursor is not None:
             self.time = sequence_cursor

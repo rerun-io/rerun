@@ -184,16 +184,31 @@ impl TestContext {
 
         let (command_sender, command_receiver) = command_channel();
 
-        let recording_config = RecordingConfig::default();
-
         let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
+
+        let recording_config = {
+            let ctx = TestBlueprintCtx {
+                command_sender: &command_sender,
+                current_blueprint: store_hub
+                    .active_blueprint()
+                    .expect("We should have an active blueprint now"),
+                default_blueprint: store_hub.default_blueprint_for_app(
+                    store_hub
+                        .active_app()
+                        .expect("We should have an active app now"),
+                ),
+                blueprint_query: &blueprint_query,
+            };
+
+            RecordingConfig::from_blueprint(&ctx)
+        };
 
         let component_ui_registry = ComponentUiRegistry::new();
 
         let reflection =
             re_types::reflection::generate_reflection().expect("Failed to generate reflection");
 
-        let this = Self {
+        Self {
             app_options: Default::default(),
 
             view_class_registry: Default::default(),
@@ -215,13 +230,7 @@ impl TestContext {
             called_setup_kittest_for_rendering: AtomicBool::new(false),
 
             store_hub: Mutex::new(store_hub),
-        };
-
-        this.with_blueprint_ctx(|ctx| {
-            ctx.set_timeline("log_tick".into());
-        });
-
-        this
+        }
     }
 
     /// Create a new test context that knows about a specific view class.
@@ -448,6 +457,7 @@ impl TestContext {
             .callback_resources
             .get_mut::<re_renderer::RenderContext>()
             .expect("No re_renderer::RenderContext in egui_render_state");
+
         render_ctx.begin_frame();
 
         let mut selection_state = self.selection_state.lock();
@@ -484,6 +494,14 @@ impl TestContext {
             focused_item: &focused_item,
             drag_and_drop_manager: &drag_and_drop_manager,
         };
+
+        self.recording_config.time_ctrl.write().update(
+            store_context.recording.times_per_timeline(),
+            0.0,
+            false,
+            true,
+            &ctx,
+        );
 
         func(&ctx);
 

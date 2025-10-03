@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use re_chunk::{Chunk, RowId};
+use re_chunk::{Chunk, RowId, TimePoint};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
@@ -203,19 +203,9 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
         (SELECTION_PANEL_PATH, PanelState::Hidden),
         (TIME_PANEL_PATH, PanelState::Hidden),
     ] {
-        let entity_path = EntityPath::from(panel_name);
-
         let timepoint = re_viewer_context::blueprint_timepoint_for_writes(welcome_screen_blueprint);
 
-        let chunk = Chunk::builder(entity_path)
-            .with_archetype(
-                RowId::new(),
-                timepoint,
-                &PanelBlueprint::update_fields().with_state(value),
-            )
-            .build()
-            // All builtin types, no reason for this to ever fail.
-            .expect("Failed to build chunk.");
+        let chunk = get_panel_state_chunk(panel_name, timepoint, value);
 
         welcome_screen_blueprint
             .add_chunk(&Arc::new(chunk))
@@ -233,21 +223,9 @@ impl AppBlueprint<'_> {
         command_sender: &CommandSender,
     ) {
         if let Some(blueprint_db) = self.blueprint_db {
-            let entity_path = EntityPath::from(panel_name);
-
             let timepoint = blueprint_timepoint_for_writes(blueprint_db);
 
-            let component_update: &dyn AsComponents = if panel_name == TIME_PANEL_PATH {
-                &TimePanelBlueprint::update_fields().with_state(value)
-            } else {
-                &PanelBlueprint::update_fields().with_state(value)
-            };
-
-            let chunk = Chunk::builder(entity_path)
-                .with_archetype(RowId::new(), timepoint, component_update)
-                .build()
-                // All builtin types, no reason for this to ever fail.
-                .expect("Failed to build chunk.");
+            let chunk = get_panel_state_chunk(panel_name, timepoint, value);
 
             command_sender.send_system(SystemCommand::AppendToStore(
                 blueprint_db.store_id().clone(),
@@ -255,6 +233,22 @@ impl AppBlueprint<'_> {
             ));
         }
     }
+}
+
+fn get_panel_state_chunk(panel_name: &str, timepoint: TimePoint, value: PanelState) -> Chunk {
+    let entity_path = EntityPath::from(panel_name);
+
+    let component_update: &dyn AsComponents = if panel_name == TIME_PANEL_PATH {
+        &TimePanelBlueprint::update_fields().with_state(value)
+    } else {
+        &PanelBlueprint::update_fields().with_state(value)
+    };
+
+    Chunk::builder(entity_path)
+        .with_archetype(RowId::new(), timepoint, component_update)
+        .build()
+        // All builtin types, no reason for this to ever fail.
+        .expect("Failed to build chunk.")
 }
 
 fn load_panel_state(
