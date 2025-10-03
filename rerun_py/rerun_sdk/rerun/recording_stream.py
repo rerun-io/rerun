@@ -7,6 +7,7 @@ import math
 import uuid
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
 
+from rerun_bindings import ChunkBatcherConfig  # noqa: TC002
 from typing_extensions import deprecated
 
 import rerun as rr
@@ -19,7 +20,6 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     import numpy as np
-    from rerun_bindings import ChunkBatcherConfig
 
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch
     from rerun.memory import MemoryRecording
