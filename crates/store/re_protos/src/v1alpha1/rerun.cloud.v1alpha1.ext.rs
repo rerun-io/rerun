@@ -113,6 +113,25 @@ pub struct DoMaintenanceRequest {
     pub unsafe_allow_recent_cleanup: bool,
 }
 
+impl TryFrom<crate::cloud::v1alpha1::DoMaintenanceRequest> for DoMaintenanceRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::DoMaintenanceRequest) -> Result<Self, Self::Error> {
+        let cleanup_before = value
+            .cleanup_before
+            .map(|ts| jiff::Timestamp::new(ts.seconds, ts.nanos))
+            .transpose()?;
+
+        Ok(Self {
+            optimize_indexes: value.optimize_indexes,
+            retrain_indexes: value.retrain_indexes,
+            compact_fragments: value.compact_fragments,
+            cleanup_before,
+            unsafe_allow_recent_cleanup: value.unsafe_allow_recent_cleanup,
+        })
+    }
+}
+
 impl From<DoMaintenanceRequest> for crate::cloud::v1alpha1::DoMaintenanceRequest {
     fn from(value: DoMaintenanceRequest) -> Self {
         Self {
