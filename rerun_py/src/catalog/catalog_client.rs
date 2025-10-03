@@ -12,7 +12,7 @@ use crate::catalog::datafusion_catalog::PyDataFusionCatalogProvider;
 use crate::catalog::{
     ConnectionHandle, PyDatasetEntry, PyEntry, PyEntryId, PyRerunHtmlTable, PyTableEntry, to_py_err,
 };
-use crate::utils::wait_for_future;
+use crate::utils::{get_tokio_runtime, wait_for_future};
 
 /// Client for a remote Rerun catalog server.
 #[pyclass(name = "CatalogClientInternal")] // NOLINT: skip pyclass_eq, non-trivial implementation
@@ -78,7 +78,8 @@ impl PyCatalogClientInternal {
             .and_then(|df_formatter| df_formatter.getattr("set_formatter"));
 
         let client = wait_for_future(py, connection.client())?;
-        let provider_names = get_all_catalog_names(&client).map_err(to_py_err)?;
+        let runtime = get_tokio_runtime().handle();
+        let provider_names = get_all_catalog_names(&client, runtime).map_err(to_py_err)?;
         let mut providers = provider_names
             .iter()
             .map(|p| p.as_str())

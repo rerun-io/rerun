@@ -15,7 +15,8 @@ pub struct PyDataFusionCatalogProvider {
 
 impl PyDataFusionCatalogProvider {
     pub fn new(name: Option<String>, client: ConnectionClient) -> Self {
-        let provider = Arc::new(GrpcCatalogProvider::new(name.as_deref(), client));
+        let runtime = get_tokio_runtime().handle().clone();
+        let provider = Arc::new(GrpcCatalogProvider::new(name.as_deref(), client, runtime));
         Self { name, provider }
     }
 }

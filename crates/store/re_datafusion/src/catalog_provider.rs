@@ -9,6 +9,7 @@ use re_redap_client::ConnectionClient;
 use std::any::Any;
 use std::iter;
 use std::sync::Arc;
+use tokio::runtime::Handle as RuntimeHandle;
 
 // These are to match the defaults in datafusion.
 pub const DEFAULT_CATALOG_NAME: &str = "datafusion";
@@ -19,14 +20,14 @@ pub struct GrpcCatalogProvider {
     catalog_name: Option<String>,
     client: ConnectionClient,
     schemas: Mutex<HashMap<Option<String>, Arc<GrpcSchemaProvider>>>,
+    runtime: RuntimeHandle,
 }
 
-fn get_table_refs(client: &ConnectionClient) -> DataFusionResult<Vec<TableReference>> {
-    let mut builder = tokio::runtime::Builder::new_current_thread();
-    builder.enable_all();
-    let rt = builder.build().expect("failed to build tokio runtime");
-
-    rt.block_on(async {
+fn get_table_refs(
+    client: &ConnectionClient,
+    runtime: &RuntimeHandle,
+) -> DataFusionResult<Vec<TableReference>> {
+    runtime.block_on(async {
         Ok::<Vec<_>, DataFusionError>(
             client
                 .clone()
@@ -48,8 +49,11 @@ fn get_table_refs(client: &ConnectionClient) -> DataFusionResult<Vec<TableRefere
     })
 }
 
-pub fn get_all_catalog_names(client: &ConnectionClient) -> DataFusionResult<Vec<String>> {
-    let catalog_names = get_table_refs(client)?
+pub fn get_all_catalog_names(
+    client: &ConnectionClient,
+    runtime: &RuntimeHandle,
+) -> DataFusionResult<Vec<String>> {
+    let catalog_names = get_table_refs(client, runtime)?
         .into_iter()
         .filter_map(|reference| reference.catalog().map(|c| c.to_owned()))
         .collect::<HashSet<String>>();
@@ -58,7 +62,7 @@ pub fn get_all_catalog_names(client: &ConnectionClient) -> DataFusionResult<Vec<
 }
 
 impl GrpcCatalogProvider {
-    pub fn new(name: Option<&str>, client: ConnectionClient) -> Self {
+    pub fn new(name: Option<&str>, client: ConnectionClient, runtime: RuntimeHandle) -> Self {
         let name = if let Some(inner_name) = name
             && inner_name == DEFAULT_CATALOG_NAME
         {
@@ -70,6 +74,7 @@ impl GrpcCatalogProvider {
             catalog_name: name.map(ToOwned::to_owned),
             schema_name: None,
             client: client.clone(),
+            runtime: runtime.clone(),
             in_memory_tables: Default::default(),
         });
         let schemas: HashMap<_, _> = iter::once((None, default_schema)).collect();
@@ -78,11 +83,12 @@ impl GrpcCatalogProvider {
             catalog_name: name.map(ToOwned::to_owned),
             client,
             schemas: Mutex::new(schemas),
+            runtime,
         }
     }
 
     fn update_from_server(&self) -> DataFusionResult<()> {
-        let table_names = get_table_refs(&self.client)?;
+        let table_names = get_table_refs(&self.client, &self.runtime)?;
 
         let schema_names: HashSet<_> = table_names
             .into_iter()
@@ -99,6 +105,7 @@ impl GrpcCatalogProvider {
                     catalog_name: self.catalog_name.clone(),
                     schema_name,
                     client: self.client.clone(),
+                    runtime: self.runtime.clone(),
                     in_memory_tables: Default::default(),
                 }
                 .into(),
@@ -156,6 +163,7 @@ struct GrpcSchemaProvider {
     catalog_name: Option<String>,
     schema_name: Option<String>,
     client: ConnectionClient,
+    runtime: RuntimeHandle,
     in_memory_tables: Mutex<HashMap<String, Arc<dyn TableProvider>>>,
 }
 
@@ -170,7 +178,7 @@ impl SchemaProvider for GrpcSchemaProvider {
     }
 
     fn table_names(&self) -> Vec<String> {
-        let table_refs = get_table_refs(&self.client).unwrap_or_else(|err| {
+        let table_refs = get_table_refs(&self.client, &self.runtime).unwrap_or_else(|err| {
             log::error!("Error getting table references: {err}");
             vec![]
         });
@@ -215,7 +223,7 @@ impl SchemaProvider for GrpcSchemaProvider {
         name: String,
         table: Arc<dyn TableProvider>,
     ) -> DataFusionResult<Option<Arc<dyn TableProvider>>> {
-        let server_tables = get_table_refs(&self.client)?;
+        let server_tables = get_table_refs(&self.client, &self.runtime)?;
         if server_tables.into_iter().any(|table_ref| {
             table_ref.catalog() == self.catalog_name.as_deref()
                 && table_ref.schema() == self.schema_name.as_deref()
