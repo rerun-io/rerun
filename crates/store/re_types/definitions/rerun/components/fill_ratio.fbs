@@ -11,7 +11,7 @@ namespace rerun.components;
 /// Defaults to 1.0.
 struct FillRatio (
   "attr.python.aliases": "float",
-  "attr.python.array_aliases": "float, npt.ArrayLike",
+  "attr.python.array_aliases": "float | npt.ArrayLike",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {
