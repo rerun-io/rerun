@@ -352,6 +352,7 @@ def test_dataset_schema_comparison_self_consistent(server_instance: ServerInstan
     assert len(set_diff) == 0, f"Schema iterator is not self-consistent: {set_diff}"
     assert schema_0 == schema_1, "Schema is not self-consistent"
 
+
 def test_datafusion_catalog_get_tables(server_instance: ServerInstance) -> None:
     ctx = server_instance.client.ctx
 
