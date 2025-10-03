@@ -577,7 +577,7 @@ impl RerunCloudService for RerunCloudHandler {
                 .or_insert_with(|| {
                     ChunkStore::new(
                         StoreId::new(StoreKind::Recording, entry_id.to_string(), partition_id.id),
-                        ChunkStoreConfig::ALL_DISABLED,
+                        ChunkStoreConfig::CHANGELOG_DISABLED,
                     )
                 })
                 .insert_chunk(&chunk)
