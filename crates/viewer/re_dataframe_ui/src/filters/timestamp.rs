@@ -951,21 +951,23 @@ mod tests {
     #[test]
     fn test_last_24_hours_filter() {
         let filter = ResolvedTimestampFilter::Last24Hours;
-        let now = Timestamp::now();
+
+        // Note: this test doesn't attempt to test close to the limits, because it can become
+        // flaky with slow execution time. This is also why we calling `Timestamp::now()` again
+        // for each assert.
 
         // Should accept timestamps within the last 24 hours
-        assert!(filter.apply(now));
-        assert!(filter.apply(now.checked_sub(1.hours()).unwrap()));
-        assert!(filter.apply(now.checked_sub(12.hours()).unwrap()));
-        assert!(filter.apply(now.checked_sub(23.hours()).unwrap()));
+        assert!(filter.apply(Timestamp::now()));
+        assert!(filter.apply(Timestamp::now().checked_sub(1.hours()).unwrap()));
+        assert!(filter.apply(Timestamp::now().checked_sub(12.hours()).unwrap()));
+        assert!(filter.apply(Timestamp::now().checked_sub(23.hours()).unwrap()));
 
         // Should reject timestamps older than 24 hours
-        assert!(!filter.apply(now.checked_sub(25.hours()).unwrap()));
-        assert!(!filter.apply(now.checked_sub(48.hours()).unwrap()));
+        assert!(!filter.apply(Timestamp::now().checked_sub(25.hours()).unwrap()));
+        assert!(!filter.apply(Timestamp::now().checked_sub(48.hours()).unwrap()));
 
         // Should reject future timestamps
-        assert!(!filter.apply(now.checked_add(1.seconds()).unwrap()));
-        assert!(!filter.apply(now.checked_add(1.hours()).unwrap()));
+        assert!(!filter.apply(Timestamp::now().checked_add(1.hours()).unwrap()));
     }
 
     #[test]
