@@ -284,6 +284,8 @@ pub fn fetch_chunks_response_to_chunk_and_partition_id(
 pub fn get_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming<re_protos::cloud::v1alpha1::GetChunksResponse>,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
+    use crate::StreamPartitionError;
+
     response.map(|resp| {
         let resp = resp.map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?;
 
@@ -314,6 +316,8 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
 pub fn fetch_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming<re_protos::cloud::v1alpha1::FetchChunksResponse>,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
+    use crate::StreamPartitionError;
+
     response.map(|resp| {
         let resp = resp.map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?;
 
