@@ -364,10 +364,11 @@ impl TimeControl {
     }
 
     fn update_time(&mut self, blueprint_ctx: Option<&impl BlueprintContext>, time: TimeReal) {
-        if self.time_int() != Some(time.floor())
+        let time_int = time.floor();
+        if self.time_int() != Some(time_int)
             && let Some(blueprint_ctx) = blueprint_ctx
         {
-            blueprint_ctx.set_time(time.floor());
+            blueprint_ctx.set_time(time_int);
         }
 
         self.set_time(time);
