@@ -113,7 +113,6 @@ ViewerEvent = (
     | TimeUpdateEvent
     | TimelineChangeEvent
     | SelectionChangeEvent
-    | TimelineChangeEvent
     | RecordingOpenEvent
 )
 
