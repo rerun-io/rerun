@@ -4,7 +4,6 @@ use async_trait::async_trait;
 use datafusion::catalog::{CatalogProvider, SchemaProvider, TableProvider};
 use datafusion::common::{DataFusionError, Result as DataFusionResult, TableReference, exec_err};
 use parking_lot::Mutex;
-use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 use re_redap_client::ConnectionClient;
 use std::any::Any;
 use std::iter;
@@ -42,19 +41,11 @@ fn get_table_refs(
         Ok::<Vec<_>, DataFusionError>(
             client
                 .clone()
-                .inner()
-                .find_entries(re_protos::cloud::v1alpha1::FindEntriesRequest {
-                    filter: Some(EntryFilter {
-                        entry_kind: Some(EntryKind::Table.into()),
-                        ..Default::default()
-                    }),
-                })
+                .get_table_names()
                 .await
                 .map_err(|err| DataFusionError::External(Box::new(err)))?
-                .into_inner()
-                .entries
                 .into_iter()
-                .map(|entry| TableReference::from(entry.name()))
+                .map(TableReference::from)
                 .collect(),
         )
     })
