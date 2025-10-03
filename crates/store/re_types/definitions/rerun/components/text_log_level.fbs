@@ -15,7 +15,7 @@ namespace rerun.components;
 table TextLogLevel (
   "attr.arrow.transparent",
   "attr.python.aliases": "str",
-  "attr.python.array_aliases": "str, Sequence[str]",
+  "attr.python.array_aliases": "str | Sequence[str]",
   "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.repr": "transparent"
 ) {

@@ -991,16 +991,13 @@ def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
         .join(", ")
     );
     code.push_unindented(
-        format!("{enum_name}Like = Union[{enum_name}, {variants}, int]"),
+        format!("{enum_name}Like = {enum_name} | {variants} | int"),
         1,
     );
     code.push_unindented(
         format!(
             r#"
-            {enum_name}ArrayLike = Union[
-                {enum_name}Like,
-                Sequence[{enum_name}Like]
-            ]
+            {enum_name}ArrayLike = {enum_name} | Sequence[{enum_name}Like]
             "#,
         ),
         2,
@@ -1115,7 +1112,7 @@ fn code_for_union(
     };
 
     let inner_type = if field_types.len() > 1 {
-        format!("Union[{}]", field_types.iter().join(", "))
+        field_types.iter().join(" | ")
     } else {
         field_types.iter().next().unwrap().clone()
     };
@@ -1522,13 +1519,11 @@ fn quote_aliases_from_object(obj: &Object) -> String {
             format!(
                 r#"
                 if TYPE_CHECKING:
-                    {name}Like = Union[
-                        {name},
-                        {aliases}
-                    ]
+                    {name}Like = {name}{aliases}
                 else:
                     {name}Like = Any
                 "#,
+                aliases = format!(" | {}", aliases).trim_end_matches(" | "),
             )
         } else {
             format!("{name}Like = {name}")
@@ -1539,12 +1534,9 @@ fn quote_aliases_from_object(obj: &Object) -> String {
     code.push_unindented(
         format!(
             r#"
-            {name}ArrayLike = Union[
-                {name},
-                Sequence[{name}Like],
-                {array_aliases}
-            ]
+            {name}ArrayLike = {name} | Sequence[{name}Like]{array_aliases}
             "#,
+            array_aliases = format!(" | {}", array_aliases).trim_end_matches(" | "),
         ),
         0,
     );
@@ -1567,23 +1559,20 @@ fn quote_union_aliases_from_object<'a>(
 
     let name = &obj.name;
 
-    let union_fields = field_types.join(",");
+    let union_fields = field_types.join(" | ");
     let aliases = aliases.unwrap_or_default();
 
     unindent(&format!(
         r#"
             if TYPE_CHECKING:
-                {name}Like = Union[
-                    {name},{union_fields},{aliases}
-                ]
-                {name}ArrayLike = Union[
-                    {name},{union_fields},
-                    Sequence[{name}Like],{array_aliases}
-                ]
+                {name}Like = {name} | {union_fields}{aliases}
+                {name}ArrayLike = {name} | {union_fields} | Sequence[{name}Like]{array_aliases}
             else:
                 {name}Like = Any
                 {name}ArrayLike = Any
             "#,
+        aliases = format!(" | {}", aliases).trim_end_matches(" | "),
+        array_aliases = format!(" | {}", array_aliases).trim_end_matches(" | ")
     ))
 }
 
@@ -2070,7 +2059,7 @@ fn quote_arrow_serialization(
                     return Ok(unindent(
                         r##"
                             if isinstance(data, str):
-                                array: Union[list[str], npt.ArrayLike] = [data]
+                                array: list[str] | npt.ArrayLike = [data]
                             elif isinstance(data, Sequence):
                                 array = [str(datum) for datum in data]
                             elif isinstance(data, np.ndarray):
