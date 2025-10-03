@@ -3,20 +3,20 @@ use datafusion::catalog::CatalogProvider;
 use datafusion_ffi::catalog_provider::FFI_CatalogProvider;
 use pyo3::types::PyCapsule;
 use pyo3::{Bound, PyResult, Python, pyclass, pymethods};
-use re_datafusion::GrpcCatalogProvider;
+use re_datafusion::RedapCatalogProvider;
 use re_redap_client::ConnectionClient;
 use std::sync::Arc;
 
 #[pyclass(frozen, name = "DataFusionCatalog")]
 pub struct PyDataFusionCatalogProvider {
     pub name: Option<String>,
-    pub provider: Arc<GrpcCatalogProvider>,
+    pub provider: Arc<RedapCatalogProvider>,
 }
 
 impl PyDataFusionCatalogProvider {
     pub fn new(name: Option<String>, client: ConnectionClient) -> Self {
         let runtime = get_tokio_runtime().handle().clone();
-        let provider = Arc::new(GrpcCatalogProvider::new(name.as_deref(), client, runtime));
+        let provider = Arc::new(RedapCatalogProvider::new(name.as_deref(), client, runtime));
         Self { name, provider }
     }
 }

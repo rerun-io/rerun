@@ -27,10 +27,10 @@ const DEFAULT_SCHEMA_NAME: &str = "public";
 /// levels, it will also be stored in the default catalog and schema.
 /// This matches how DataFusion will store such table names.
 #[derive(Debug)]
-pub struct GrpcCatalogProvider {
+pub struct RedapCatalogProvider {
     catalog_name: Option<String>,
     client: ConnectionClient,
-    schemas: Mutex<HashMap<Option<String>, Arc<GrpcSchemaProvider>>>,
+    schemas: Mutex<HashMap<Option<String>, Arc<RedapSchemaProvider>>>,
     runtime: RuntimeHandle,
 }
 
@@ -72,7 +72,7 @@ pub fn get_all_catalog_names(
     Ok(catalog_names.into_iter().collect())
 }
 
-impl GrpcCatalogProvider {
+impl RedapCatalogProvider {
     pub fn new(name: Option<&str>, client: ConnectionClient, runtime: RuntimeHandle) -> Self {
         let name = if let Some(inner_name) = name
             && inner_name == DEFAULT_CATALOG_NAME
@@ -81,7 +81,7 @@ impl GrpcCatalogProvider {
         } else {
             name
         };
-        let default_schema = Arc::new(GrpcSchemaProvider {
+        let default_schema = Arc::new(RedapSchemaProvider {
             catalog_name: name.map(ToOwned::to_owned),
             schema_name: None,
             client: client.clone(),
@@ -112,7 +112,7 @@ impl GrpcCatalogProvider {
         schemas.retain(|k, _| schema_names.contains(k) || k.is_none());
         for schema_name in schema_names {
             let _ = schemas.entry(schema_name.clone()).or_insert(
-                GrpcSchemaProvider {
+                RedapSchemaProvider {
                     catalog_name: self.catalog_name.clone(),
                     schema_name,
                     client: self.client.clone(),
@@ -137,7 +137,7 @@ impl GrpcCatalogProvider {
     }
 }
 
-impl CatalogProvider for GrpcCatalogProvider {
+impl CatalogProvider for RedapCatalogProvider {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -173,9 +173,9 @@ impl CatalogProvider for GrpcCatalogProvider {
 ///
 /// For a detailed description of how tables are named on the server
 /// vs represented in the catalog and schema providers, see
-/// [`GrpcCatalogProvider`].
+/// [`RedapCatalogProvider`].
 #[derive(Debug)]
-struct GrpcSchemaProvider {
+struct RedapSchemaProvider {
     catalog_name: Option<String>,
     schema_name: Option<String>,
     client: ConnectionClient,
@@ -184,7 +184,7 @@ struct GrpcSchemaProvider {
 }
 
 #[async_trait]
-impl SchemaProvider for GrpcSchemaProvider {
+impl SchemaProvider for RedapSchemaProvider {
     fn owner_name(&self) -> Option<&str> {
         self.catalog_name.as_deref()
     }
