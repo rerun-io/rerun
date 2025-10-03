@@ -1523,7 +1523,7 @@ fn quote_aliases_from_object(obj: &Object) -> String {
                 else:
                     {name}Like = Any
                 "#,
-                aliases = format!(" | {}", aliases).trim_end_matches(" | "),
+                aliases = format!(" | {aliases}").trim_end_matches(" | "),
             )
         } else {
             format!("{name}Like = {name}")
@@ -1536,7 +1536,7 @@ fn quote_aliases_from_object(obj: &Object) -> String {
             r#"
             {name}ArrayLike = {name} | Sequence[{name}Like]{array_aliases}
             "#,
-            array_aliases = format!(" | {}", array_aliases).trim_end_matches(" | "),
+            array_aliases = format!(" | {array_aliases}").trim_end_matches(" | "),
         ),
         0,
     );
@@ -1571,8 +1571,8 @@ fn quote_union_aliases_from_object<'a>(
                 {name}Like = Any
                 {name}ArrayLike = Any
             "#,
-        aliases = format!(" | {}", aliases).trim_end_matches(" | "),
-        array_aliases = format!(" | {}", array_aliases).trim_end_matches(" | ")
+        aliases = format!(" | {aliases}").trim_end_matches(" | "),
+        array_aliases = format!(" | {array_aliases}").trim_end_matches(" | ")
     ))
 }
 
