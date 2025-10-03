@@ -358,26 +358,25 @@ impl PyDatasetEntry {
         let dataset_id = super_.details.id;
         let dataset_name = super_.details.name.clone();
 
-        //TODO(ab): use `ConnectionHandle::get_chunk()`
         let store: PyResult<ChunkStore> = wait_for_future(self_.py(), async move {
             let catalog_chunk_stream = connection
                 .client()
                 .await?
-                .inner()
-                .get_chunks(GetChunksRequest {
-                    dataset_id: Some(dataset_id.into()),
-                    partition_ids: vec![partition_id.clone().into()],
-                    chunk_ids: vec![],
-                    entity_paths: vec![],
-                    select_all_entity_paths: true,
-                    fuzzy_descriptors: vec![],
-                    exclude_static_data: false,
-                    exclude_temporal_data: false,
-                    query: None,
-                })
+                .get_chunks(
+                    dataset_id,
+                    GetChunksRequest {
+                        partition_ids: vec![partition_id.clone().into()],
+                        chunk_ids: vec![],
+                        entity_paths: vec![],
+                        select_all_entity_paths: true,
+                        fuzzy_descriptors: vec![],
+                        exclude_static_data: false,
+                        exclude_temporal_data: false,
+                        query: None,
+                    },
+                )
                 .await
-                .map_err(to_py_err)?
-                .into_inner();
+                .map_err(to_py_err)?;
 
             let store_id = StoreId::new(StoreKind::Recording, dataset_name, partition_id.clone());
             let mut store = ChunkStore::new(store_id, Default::default());

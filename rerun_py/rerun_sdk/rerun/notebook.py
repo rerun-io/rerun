@@ -207,7 +207,7 @@ class Viewer:
         return RecordBatch.from_arrays(record_batch.columns, schema=schema)
 
     def set_application_blueprint(
-        self, application_id: str, blueprint: BlueprintLike, make_active: bool = True, make_default: bool = True
+        self, application_id: str, blueprint: BlueprintLike, *, make_active: bool = True, make_default: bool = True
     ) -> None:
         """
         Set the blueprint for the given application.

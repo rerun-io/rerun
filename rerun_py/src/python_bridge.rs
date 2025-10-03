@@ -117,12 +117,6 @@ fn init_perf_telemetry() -> parking_lot::MutexGuard<'static, re_perf_telemetry::
     static TELEMETRY: OnceLock<parking_lot::Mutex<re_perf_telemetry::Telemetry>> = OnceLock::new();
     TELEMETRY
         .get_or_init(|| {
-            // Safety: anything touching the env is unsafe, tis what it is.
-            #[expect(unsafe_code)]
-            unsafe {
-                std::env::set_var("OTEL_SERVICE_NAME", "rerun-py");
-            }
-
             // NOTE: We're just parsing the environment, hence the `vec![]` for CLI flags.
             use re_perf_telemetry::external::clap::Parser as _;
             let args = re_perf_telemetry::TelemetryArgs::parse_from::<_, String>(vec![]);
@@ -153,6 +147,15 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         // called more than once.
         // The SDK should not be as noisy as the CLI, so we set log filter to warning if not specified otherwise.
         re_log::setup_logging_with_filter(&re_log::log_filter_from_env_or_default("warn"));
+    }
+
+    // There is always value in setting this, even if `re_perf_telemetry` is disabled. For example,
+    // the Rerun versioning headers will automatically pick it up.
+    //
+    // Safety: anything touching the env is unsafe, tis what it is.
+    #[expect(unsafe_code)]
+    unsafe {
+        std::env::set_var("OTEL_SERVICE_NAME", "rerun-py");
     }
 
     #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]

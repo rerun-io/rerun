@@ -24,12 +24,7 @@ fn test_tensor() {
     });
 
     let view_id = setup_blueprint(&mut test_context);
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
-        view_id,
-        "tensor_1d",
-        egui::vec2(300.0, 50.0),
-    );
+    test_context.run_view_ui_and_save_snapshot(view_id, "tensor_1d", egui::vec2(300.0, 50.0), None);
 }
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
@@ -38,20 +33,4 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
             TensorView::identifier(),
         ))
     })
-}
-
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    name: &str,
-    size: egui::Vec2,
-) {
-    let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
-        .build_ui(|ui| {
-            test_context.run_with_single_view(ui, view_id);
-        });
-    harness.run();
-    harness.snapshot(name);
 }

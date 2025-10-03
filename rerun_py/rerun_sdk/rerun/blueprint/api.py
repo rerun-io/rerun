@@ -666,6 +666,7 @@ class Blueprint:
     def spawn(
         self,
         application_id: str,
+        *,
         port: int = 9876,
         memory_limit: str = "75%",
         hide_welcome_screen: bool = False,

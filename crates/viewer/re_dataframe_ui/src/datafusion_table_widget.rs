@@ -23,7 +23,7 @@ use re_viewer_context::{
 
 use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQueryResult};
 use crate::display_record_batch::DisplayColumn;
-use crate::filters::{Filter, FilterKind, FilterState};
+use crate::filters::{ColumnFilter, FilterState};
 use crate::header_tooltip::column_header_tooltip_ui;
 use crate::table_blueprint::{
     ColumnBlueprint, EntryLinksSpec, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
@@ -715,8 +715,10 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                     // In the future, we'll probably need to be more fine-grained.
                                     #[expect(clippy::collapsible_if)]
                                     if column.blueprint.variant_ui.is_none()
-                                        && let Some(filter_op) =
-                                            FilterKind::default_for_column(column_field)
+                                        && let Some(column_filter) =
+                                            ColumnFilter::default_for_column(Arc::clone(
+                                                column_field,
+                                            ))
                                     {
                                         if ui
                                             .icon_and_text_menu_item(
@@ -725,10 +727,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                             )
                                             .clicked()
                                         {
-                                            self.filter_state.push_new_filter(Filter::new(
-                                                column_physical_name.clone(),
-                                                filter_op,
-                                            ));
+                                            self.filter_state.push_new_filter(column_filter);
                                         }
                                     }
                                 });

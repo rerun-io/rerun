@@ -28,11 +28,11 @@ pub fn test_null_timeline() {
     });
 
     let view_id = setup_blueprint(&mut test_context, timeline_a.name());
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
+    test_context.run_view_ui_and_save_snapshot(
         view_id,
         "null_timeline",
         egui::vec2(400.0, 200.0),
+        None,
     );
 }
 
@@ -51,11 +51,11 @@ pub fn test_unknown_timeline() {
 
     let view_id = setup_blueprint(&mut test_context, &TimelineName::from("unknown_timeline"));
 
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
+    test_context.run_view_ui_and_save_snapshot(
         view_id,
         "unknown_timeline_view_ui",
         egui::vec2(300.0, 150.0),
+        None,
     );
 
     run_view_selection_panel_ui_and_save_snapshot(
@@ -87,23 +87,6 @@ fn setup_blueprint(test_context: &mut TestContext, timeline_name: &TimelineName)
 
         view_id
     })
-}
-
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    name: &str,
-    size: egui::Vec2,
-) {
-    let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
-        .build_ui(|ui| {
-            test_context.run_with_single_view(ui, view_id);
-        });
-
-    harness.run();
-    harness.snapshot(name);
 }
 
 fn run_view_selection_panel_ui_and_save_snapshot(

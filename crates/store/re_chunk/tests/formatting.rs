@@ -55,40 +55,11 @@ fn format_chunk() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Wrapper struct to help with `insta` snapshot tests.
-struct ChunkRedacted(Chunk);
-
-impl std::fmt::Display for ChunkRedacted {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let batch = self.0.to_record_batch().map_err(|err| {
-            re_log::error_once!("couldn't display Chunk: {err}");
-            std::fmt::Error
-        })?;
-        re_format_arrow::format_record_batch_opts(
-            &batch,
-            &re_format_arrow::RecordBatchFormatOpts {
-                transposed: false,
-                width: f.width(),
-                include_metadata: true,
-                include_column_metadata: true,
-                trim_field_names: false,
-                trim_metadata_keys: false,
-                trim_metadata_values: false,
-                redact_non_deterministic: true,
-            },
-        )
-        .fmt(f)
-    }
-}
-
 #[test]
 fn format_chunk_redacted() -> anyhow::Result<()> {
     let chunk = create_chunk()?;
 
-    insta::assert_snapshot!(
-        "format_chunk_redacted",
-        format!("{:240}", ChunkRedacted(chunk))
-    );
+    insta::assert_snapshot!("format_chunk_redacted", format!("{:-240}", chunk));
 
     Ok(())
 }
