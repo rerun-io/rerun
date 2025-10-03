@@ -66,6 +66,10 @@ pub struct GetChunksRequest {
     pub partition_ids: Vec<crate::common::v1alpha1::ext::PartitionId>,
     pub chunk_ids: Vec<re_chunk::ChunkId>,
     pub entity_paths: Vec<EntityPath>,
+    pub select_all_entity_paths: bool,
+    pub fuzzy_descriptors: Vec<String>,
+    pub exclude_static_data: bool,
+    pub exclude_temporal_data: bool,
     pub query: Option<Query>,
 }
 
@@ -98,6 +102,13 @@ impl TryFrom<crate::cloud::v1alpha1::GetChunksRequest> for GetChunksRequest {
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?,
+
+            select_all_entity_paths: value.select_all_entity_paths,
+
+            fuzzy_descriptors: value.fuzzy_descriptors,
+
+            exclude_static_data: value.exclude_static_data,
+            exclude_temporal_data: value.exclude_temporal_data,
 
             query: value.query.map(|q| q.try_into()).transpose()?,
         })
