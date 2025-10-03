@@ -200,6 +200,8 @@ impl TestContext {
                 blueprint_query: &blueprint_query,
             };
 
+            // ctx.set_timeline("log_tick".into());
+
             RecordingConfig::from_blueprint(&ctx)
         };
 
@@ -346,12 +348,19 @@ impl TestContext {
             panic!("No active blueprint")
         };
 
-        f(TestBlueprintCtx {
+        let r = f(TestBlueprintCtx {
             command_sender: &self.command_sender,
             current_blueprint: store_context.blueprint,
             default_blueprint: store_context.default_blueprint,
             blueprint_query: &self.blueprint_query,
-        })
+        });
+
+        drop(store_hub);
+
+        // Handle system commands directly after updating blueprints to write it to the store.
+        self.handle_system_commands();
+
+        r
     }
 
     pub fn setup_kittest_for_rendering(&self) -> egui_kittest::HarnessBuilder<()> {
@@ -495,13 +504,10 @@ impl TestContext {
             drag_and_drop_manager: &drag_and_drop_manager,
         };
 
-        self.recording_config.time_ctrl.write().update(
-            store_context.recording.times_per_timeline(),
-            0.0,
-            false,
-            true,
-            &ctx,
-        );
+        self.recording_config
+            .time_ctrl
+            .write()
+            .update_from_blueprint(&ctx, Some(store_context.recording.times_per_timeline()));
 
         func(&ctx);
 

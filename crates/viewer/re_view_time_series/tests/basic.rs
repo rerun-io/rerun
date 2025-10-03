@@ -3,7 +3,7 @@ use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
-use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
+use re_viewer_context::{BlueprintContext as _, TimeBlueprintExt as _, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
 fn color_gradient0(step: i64) -> re_types::components::Color {
@@ -23,6 +23,8 @@ pub fn test_clear_series_points_and_line() {
 
 fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+
+    let timeline = Timeline::log_tick();
 
     // TODO(#10512): Potentially fix up this after we have "markers".
     // There are some intricacies involved with this test. `SeriesLines` and
@@ -50,7 +52,7 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
     });
 
     for i in 0..32 {
-        let timepoint = TimePoint::from([(test_context.active_timeline(), i)]);
+        let timepoint = TimePoint::from([(timeline, i)]);
 
         match i {
             15 => {
@@ -84,6 +86,10 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
             }
         }
     }
+
+    test_context.with_blueprint_ctx(|ctx| {
+        ctx.set_timeline(*timeline.name());
+    });
 
     let allowed_broken_pixels = if two_series_per_entity { 5 } else { 2 };
     let view_id = setup_blueprint(&mut test_context);
@@ -136,6 +142,8 @@ fn test_line_properties() {
 fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
+    let timeline = Timeline::log_tick();
+
     let properties_static = if multiple_properties {
         re_types::archetypes::SeriesLines::new()
             .with_widths([4.0, 8.0])
@@ -155,7 +163,7 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
     });
 
     for step in 0..32 {
-        let timepoint = TimePoint::from([(test_context.active_timeline(), step)]);
+        let timepoint = TimePoint::from([(timeline, step)]);
 
         let properties = if multiple_properties {
             re_types::archetypes::SeriesLines::new()
@@ -180,6 +188,10 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
                 .with_archetype(RowId::new(), timepoint, &scalars_dynamic)
         });
     }
+
+    test_context.with_blueprint_ctx(|ctx| {
+        ctx.set_timeline(*timeline.name());
+    });
 
     let view_id = setup_blueprint(&mut test_context);
     let mut name = "line_properties".to_owned();
@@ -208,6 +220,8 @@ fn test_per_series_visibility() {
     ] {
         let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
+        let timeline = Timeline::log_tick();
+
         test_context.log_entity("plots", |builder| {
             builder.with_archetype(
                 RowId::new(),
@@ -217,12 +231,16 @@ fn test_per_series_visibility() {
         });
 
         for step in 0..32 {
-            let timepoint = TimePoint::from([(test_context.active_timeline(), step)]);
+            let timepoint = TimePoint::from([(timeline, step)]);
             let (scalars, _) = scalars_for_properties_test(step, true);
             test_context.log_entity("plots", |builder| {
                 builder.with_archetype(RowId::new(), timepoint.clone(), &scalars)
             });
         }
+
+        test_context.with_blueprint_ctx(|ctx| {
+            ctx.set_timeline(*timeline.name());
+        });
 
         let view_id = setup_blueprint(&mut test_context);
         test_context.run_view_ui_and_save_snapshot(view_id, name, egui::vec2(300.0, 300.0), None);
@@ -253,6 +271,8 @@ fn test_point_properties() {
 fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool) {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
+    let timeline = Timeline::log_tick();
+
     let static_props = if multiple_properties {
         re_types::archetypes::SeriesPoints::new()
             .with_marker_sizes([4.0, 8.0])
@@ -278,7 +298,7 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
     });
 
     for step in 0..32 {
-        let timepoint = TimePoint::from([(test_context.active_timeline(), step)]);
+        let timepoint = TimePoint::from([(timeline, step)]);
 
         let properties = if multiple_properties {
             re_types::archetypes::SeriesPoints::new()
@@ -307,6 +327,10 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
                 .with_archetype(RowId::new(), timepoint, &scalars_dynamic)
         });
     }
+
+    test_context.with_blueprint_ctx(|ctx| {
+        ctx.set_timeline(*timeline.name());
+    });
 
     let view_id = setup_blueprint(&mut test_context);
     let mut name = "point_properties".to_owned();
@@ -397,6 +421,10 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool) {
         }
 
         blueprint.add_view_at_root(view)
+    });
+
+    test_context.with_blueprint_ctx(|ctx| {
+        ctx.set_timeline(*Timeline::log_tick().name());
     });
 
     let name = if partial_range {

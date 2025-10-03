@@ -382,7 +382,7 @@ impl TimeControl {
     ///
     /// If `times_per_timeline` is some this will also make sure we are on
     /// a valid timeline.
-    fn update_from_blueprint(
+    pub fn update_from_blueprint(
         &mut self,
         blueprint_ctx: &impl BlueprintContext,
         times_per_timeline: Option<&TimesPerTimeline>,

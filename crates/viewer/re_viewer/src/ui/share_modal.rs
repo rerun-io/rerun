@@ -382,9 +382,18 @@ mod tests {
 
     #[test]
     fn test_share_modal() {
-        let test_ctx = TestContext::new();
+        let mut test_ctx = TestContext::new();
 
         let timeline = re_log_types::Timeline::new_timestamp("pictime");
+
+        // Log some entity so our timeline exists.
+        test_ctx.log_entity(EntityPath::from("points"), |builder| {
+            builder.with_archetype(
+                re_chunk::RowId::new(),
+                [(timeline, re_chunk::TimeInt::ZERO)],
+                &re_types::archetypes::Points2D::new([(0., 0.), (1., 1.)]),
+            )
+        });
 
         let selection = Item::from(EntityPath::parse_forgiving("entity/path"));
         let origin = re_uri::Origin::from_str("rerun+http://example.com").unwrap();
@@ -431,7 +440,7 @@ mod tests {
         // Set the timeline so it shows up on the dialog.
         {
             test_ctx.with_blueprint_ctx(|ctx| {
-                ctx.set_timeline(*timeline.name());
+                ctx.set_timeline_and_time(*timeline.name(), re_chunk::TimeInt::ZERO);
             });
             let mut time_ctrl = test_ctx.recording_config.time_ctrl.write();
             time_ctrl.set_loop_selection(AbsoluteTimeRangeF::new(0.0, 1000.0));

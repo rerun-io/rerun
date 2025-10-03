@@ -1,7 +1,7 @@
 #![expect(clippy::unwrap_used)] // It's a test!
 
 use re_chunk_store::RowId;
-use re_log_types::{NonMinI64, TimePoint};
+use re_log_types::{NonMinI64, TimeInt, TimePoint};
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
 use re_types::{
@@ -287,7 +287,9 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
         // not tearing down the video player!
         let desired_seek_ns = seek_location.get_time_ns(&frame_timestamps_nanos);
         test_context.with_blueprint_ctx(|ctx| {
-            ctx.set_time(NonMinI64::new(desired_seek_ns).unwrap());
+            ctx.set_time(TimeInt::from_nanos(
+                NonMinI64::new(desired_seek_ns).unwrap(),
+            ));
         });
 
         // Video decoding happens in a different thread, so it's important that we give it time

@@ -8,15 +8,17 @@ use re_types::{
     blueprint, components,
 };
 use re_view_time_series::TimeSeriesView;
-use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
+use re_viewer_context::{BlueprintContext as _, TimeBlueprintExt as _, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
 #[test]
 pub fn test_blueprint_overrides_and_defaults_with_time_series() {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
+    let timeline = re_log_types::Timeline::log_tick();
+
     for i in 0..32 {
-        let timepoint = TimePoint::from([(test_context.active_timeline(), i)]);
+        let timepoint = TimePoint::from([(timeline, i)]);
         let t = i as f64 / 8.0;
         test_context.log_entity("plots/sin", |builder| {
             builder.with_archetype(RowId::new(), timepoint.clone(), &Scalars::single(t.sin()))
@@ -25,6 +27,10 @@ pub fn test_blueprint_overrides_and_defaults_with_time_series() {
             builder.with_archetype(RowId::new(), timepoint, &Scalars::single(t.cos()))
         });
     }
+
+    test_context.with_blueprint_ctx(|ctx| {
+        ctx.set_timeline(*timeline.name());
+    });
 
     let view_id = setup_blueprint(&mut test_context);
     test_context.run_view_ui_and_save_snapshot(
