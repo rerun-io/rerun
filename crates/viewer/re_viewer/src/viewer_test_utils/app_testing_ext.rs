@@ -1,11 +1,11 @@
 use re_viewer_context::StoreHub;
-use re_viewer_context::ViewerContext;
 
 use crate::App;
+use crate::app_state::TestHookFn;
 
 pub trait AppTestingExt {
     fn testonly_get_store_hub(&mut self) -> &mut StoreHub;
-    fn testonly_set_test_hook(&mut self, func: Option<Box<dyn FnOnce(&ViewerContext<'_>)>>);
+    fn testonly_set_test_hook(&mut self, func: TestHookFn);
 }
 
 impl AppTestingExt for App {
@@ -15,7 +15,7 @@ impl AppTestingExt for App {
             .expect("store_hub should be initialized")
     }
 
-    fn testonly_set_test_hook(&mut self, func: Option<Box<dyn FnOnce(&ViewerContext<'_>)>>) {
-        self.state.test_hook = func;
+    fn testonly_set_test_hook(&mut self, func: TestHookFn) {
+        self.state.test_hook = Some(func);
     }
 }

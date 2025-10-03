@@ -31,6 +31,8 @@ use crate::{
 
 const WATERMARK: bool = false; // Nice for recording media material
 
+pub type TestHookFn = Box<dyn FnOnce(&ViewerContext<'_>)>;
+
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct AppState {
@@ -66,7 +68,7 @@ pub struct AppState {
     pub(crate) share_modal: crate::ui::ShareModal,
 
     #[serde(skip)]
-    pub(crate) test_hook: Option<Box<dyn FnOnce(&ViewerContext<'_>)>>,
+    pub(crate) test_hook: Option<TestHookFn>,
 
     /// A stack of display modes that represents tab-like navigation of the user.
     #[serde(skip)]

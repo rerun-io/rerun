@@ -88,8 +88,7 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
     }
 
     fn run_with_viewer_context(&mut self, func: impl FnOnce(&ViewerContext<'_>) + 'static) {
-        self.state_mut()
-            .testonly_set_test_hook(Some(Box::new(func)));
+        self.state_mut().testonly_set_test_hook(Box::new(func));
         self.run_ok();
     }
 
