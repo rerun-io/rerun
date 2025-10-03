@@ -165,6 +165,12 @@ impl CatalogProvider for RedapCatalogProvider {
 /// For a detailed description of how tables are named on the server
 /// vs represented in the catalog and schema providers, see
 /// [`RedapCatalogProvider`].
+///
+/// When the user calls `register_table` on this provider, it will
+/// register the table *only for the current session*. To persist
+/// tables, instead they must be registered via the [`ConnectionClient`]
+/// `register_table`. It is expected for this behavior to change in
+/// the future.
 #[derive(Debug)]
 struct RedapSchemaProvider {
     catalog_name: Option<String>,
