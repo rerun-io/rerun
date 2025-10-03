@@ -1,6 +1,6 @@
 [package]
-name = "re_mcap"
-description = "Convert MCAP into Rerun-compatible data"
+name = "re_ros_msg"
+description = "Parse and decode ROS messages"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -15,24 +15,18 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-re_chunk.workspace = true
 re_log.workspace = true
-re_log_types.workspace = true
-re_ros_msg.workspace = true
 re_tracing.workspace = true
-re_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
 
 ahash.workspace = true
 anyhow.workspace = true
-arrow.workspace = true
 byteorder.workspace = true
 cdr-encoding.workspace = true
-mcap.workspace = true
-prost-reflect.workspace = true
 serde.workspace = true
 serde_bytes.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+re_format_arrow.workspace = true
+
 insta = { workspace = true, features = ["filters", "redactions"] }
-prost-reflect = { workspace = true, features = ["text-format"] }

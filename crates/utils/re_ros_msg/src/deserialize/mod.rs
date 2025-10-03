@@ -1,16 +1,10 @@
 use std::collections::{BTreeMap, HashMap};
 
-use anyhow::Context as _;
-use cdr_encoding::CdrDeserializer;
 use serde::de::{self, DeserializeSeed};
 
-use crate::parsers::{
-    dds,
-    ros2msg::reflection::{
-        MessageSchema,
-        deserialize::primitive_array::PrimitiveArraySeed,
-        message_spec::{ComplexType, MessageSpecification, Type},
-    },
+use crate::{
+    deserialize::primitive_array::PrimitiveArraySeed,
+    message_spec::{ComplexType, MessageSpecification, Type},
 };
 
 pub mod primitive;
@@ -18,30 +12,7 @@ pub mod primitive_array;
 
 use primitive::{PrimitiveVisitor, StringVisitor};
 
-pub fn decode_bytes(top: &MessageSchema, buf: &[u8]) -> anyhow::Result<Value> {
-    // 4-byte encapsulation header
-    if buf.len() < 4 {
-        anyhow::bail!("short encapsulation");
-    }
-
-    let representation_identifier = dds::RepresentationIdentifier::from_bytes([buf[0], buf[1]])
-        .with_context(|| "failed to parse CDR representation identifier")?;
-
-    let resolver = MapResolver::new(top.dependencies.iter().map(|dep| (dep.name.clone(), dep)));
-
-    let seed = MessageSeed::new(&top.spec, &resolver);
-
-    if representation_identifier.is_big_endian() {
-        let mut de = CdrDeserializer::<byteorder::BigEndian>::new(&buf[4..]);
-        seed.deserialize(&mut de)
-            .with_context(|| "failed to deserialize CDR message")
-    } else {
-        let mut de = CdrDeserializer::<byteorder::LittleEndian>::new(&buf[4..]);
-        seed.deserialize(&mut de)
-            .with_context(|| "failed to deserialize CDR message")
-    }
-}
-
+/// A single deserialized value of any type that can appear in a ROS message.
 #[derive(Clone, PartialEq)]
 pub enum Value {
     Bool(bool),
@@ -56,10 +27,20 @@ pub enum Value {
     F32(f32),
     F64(f64),
     String(String),
-    Array(Vec<Value>), // fixed-size [N] - for complex types
-    Seq(Vec<Value>),   // variable-size [] or [<=N] - for complex types
-    PrimitiveArray(primitive_array::PrimitiveArray), // fixed-size [N] - for primitives
-    PrimitiveSeq(primitive_array::PrimitiveArray), // variable-size [] or [<=N] - for primitives
+
+    /// Fixed-size array of values.
+    Array(Vec<Value>),
+
+    /// Variable-size or bounded array of values.
+    Sequence(Vec<Value>),
+
+    /// Fixed-size array of primitive values.
+    PrimitiveArray(primitive_array::PrimitiveArray),
+
+    /// Variable-size or bounded array of primitive values.
+    PrimitiveSeq(primitive_array::PrimitiveArray),
+
+    /// Nested message.
     Message(BTreeMap<String, Value>),
 }
 
@@ -79,7 +60,7 @@ impl std::fmt::Debug for Value {
             Self::F64(v) => write!(f, "F64({v})"),
             Self::String(v) => write!(f, "String({v:?})"),
             Self::Array(v) => write!(f, "Array({})", v.len()),
-            Self::Seq(v) => write!(f, "Seq({})", v.len()),
+            Self::Sequence(v) => write!(f, "Seq({})", v.len()),
             Self::PrimitiveArray(v) | Self::PrimitiveSeq(v) => write!(f, "{v:?}"),
             Self::Message(v) => {
                 write!(f, "Message({{")?;
@@ -97,7 +78,7 @@ impl std::fmt::Debug for Value {
 
 /// How we resolve a [`ComplexType`] at runtime.
 pub trait TypeResolver {
-    fn resolve(&self, ct: &ComplexType) -> Option<&MessageSpecification>;
+    fn resolve(&self, ty: &ComplexType) -> Option<&MessageSpecification>;
 }
 
 /// Efficient type resolver with separate maps for absolute and relative lookups.
@@ -130,8 +111,8 @@ impl<'a> MapResolver<'a> {
 }
 
 impl TypeResolver for MapResolver<'_> {
-    fn resolve(&self, ct: &ComplexType) -> Option<&MessageSpecification> {
-        match ct {
+    fn resolve(&self, ty: &ComplexType) -> Option<&MessageSpecification> {
+        match ty {
             ComplexType::Absolute { package, name } => {
                 let full_name = format!("{package}/{name}");
                 self.absolute.get(&full_name).copied()
@@ -141,16 +122,16 @@ impl TypeResolver for MapResolver<'_> {
     }
 }
 
-// Whole message (struct) in field order.
-pub(super) struct MessageSeed<'a, R: TypeResolver> {
-    spec: &'a MessageSpecification,
+/// Whole message (struct) in field order.
+pub struct MessageSeed<'a, R: TypeResolver> {
+    specification: &'a MessageSpecification,
     type_resolver: &'a R,
 }
 
 impl<'a, R: TypeResolver> MessageSeed<'a, R> {
     pub fn new(spec: &'a MessageSpecification, type_resolver: &'a R) -> Self {
         Self {
-            spec,
+            specification: spec,
             type_resolver,
         }
     }
@@ -164,9 +145,9 @@ impl<'de, R: TypeResolver> DeserializeSeed<'de> for MessageSeed<'_, R> {
         D: de::Deserializer<'de>,
     {
         de.deserialize_tuple(
-            self.spec.fields.len(),
+            self.specification.fields.len(),
             MessageVisitor {
-                spec: self.spec,
+                spec: self.specification,
                 type_resolver: self.type_resolver,
             },
         )
@@ -190,17 +171,17 @@ impl<'de, R: TypeResolver> serde::de::Visitor<'de> for MessageVisitor<'_, R> {
         A: serde::de::SeqAccess<'de>,
     {
         let mut out = std::collections::BTreeMap::new();
-        for f in &self.spec.fields {
+        for field in &self.spec.fields {
             let v = seq
-                .next_element_seed(SchemaSeed::new(&f.ty, self.type_resolver))?
+                .next_element_seed(SchemaSeed::new(&field.ty, self.type_resolver))?
                 .ok_or_else(|| serde::de::Error::custom("missing struct field"))?;
-            out.insert(f.name.clone(), v);
+            out.insert(field.name.clone(), v);
         }
         Ok(Value::Message(out))
     }
 }
 
-/// One value, driven by a Type + resolver.
+/// One value, driven by a [`Type`] + resolver.
 pub(super) struct SchemaSeed<'a, R: TypeResolver> {
     ty: &'a Type,
     resolver: &'a R,
@@ -219,7 +200,7 @@ impl<'de, R: TypeResolver> DeserializeSeed<'de> for SchemaSeed<'_, R> {
     where
         D: de::Deserializer<'de>,
     {
-        use crate::parsers::ros2msg::reflection::message_spec::{
+        use crate::message_spec::{
             ArraySize::{Bounded, Fixed, Unbounded},
             BuiltInType::{
                 Bool, Byte, Char, Float32, Float64, Int8, Int16, Int32, Int64, String, UInt8,
@@ -229,7 +210,7 @@ impl<'de, R: TypeResolver> DeserializeSeed<'de> for SchemaSeed<'_, R> {
         };
 
         match self.ty {
-            Type::BuiltIn(p) => match p {
+            Type::BuiltIn(primitive_type) => match primitive_type {
                 Bool => de
                     .deserialize_bool(PrimitiveVisitor::<bool>::new())
                     .map(Value::Bool),
@@ -268,17 +249,17 @@ impl<'de, R: TypeResolver> DeserializeSeed<'de> for SchemaSeed<'_, R> {
                 }
             },
             Type::Array { ty, size } => match size {
-                Fixed(n) => {
+                Fixed(len) => {
                     // Check if this is a primitive array and use optimized path
                     if let Type::BuiltIn(prim_type) = ty.as_ref() {
                         PrimitiveArraySeed {
                             elem: prim_type,
-                            fixed_len: Some(*n),
+                            fixed_len: Some(*len),
                         }
                         .deserialize(de)
                         .map(Value::PrimitiveArray)
                     } else {
-                        SequenceSeed::new(ty, Some(*n), self.resolver)
+                        SequenceSeed::new(ty, Some(*len), self.resolver)
                             .deserialize(de)
                             .map(Value::Array)
                     }
@@ -296,7 +277,7 @@ impl<'de, R: TypeResolver> DeserializeSeed<'de> for SchemaSeed<'_, R> {
                         // CDR: length-prefixed sequence; serde side is a seq.
                         SequenceSeed::new(ty, None, self.resolver)
                             .deserialize(de)
-                            .map(Value::Seq)
+                            .map(Value::Sequence)
                     }
                 }
             },
@@ -336,11 +317,11 @@ impl<'de, R: TypeResolver> DeserializeSeed<'de> for SequenceSeed<'_, R> {
         D: de::Deserializer<'de>,
     {
         match self.fixed_len {
-            Some(n) => de.deserialize_tuple(
-                n,
+            Some(len) => de.deserialize_tuple(
+                len,
                 SequenceVisitor {
                     elem: self.elem,
-                    fixed_len: Some(n),
+                    fixed_len: Some(len),
                     type_resolver: self.resolver,
                 },
             ),
@@ -370,11 +351,11 @@ impl<'de, R: TypeResolver> serde::de::Visitor<'de> for SequenceVisitor<'_, R> {
     where
         A: serde::de::SeqAccess<'de>,
     {
-        let cap = self.fixed_len.or_else(|| seq.size_hint()).unwrap_or(0);
-        let mut out = Vec::with_capacity(cap);
+        let len = self.fixed_len.or_else(|| seq.size_hint());
+        let mut out = Vec::with_capacity(len.unwrap_or(0));
 
-        if let Some(n) = self.fixed_len.or_else(|| seq.size_hint()) {
-            for _ in 0..n {
+        if let Some(len) = len {
+            for _ in 0..len {
                 let v = seq
                     .next_element_seed(SchemaSeed::new(self.elem, self.type_resolver))?
                     .ok_or_else(|| serde::de::Error::custom("short sequence"))?;

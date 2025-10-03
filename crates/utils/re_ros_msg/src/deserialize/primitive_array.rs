@@ -1,4 +1,4 @@
-use crate::parsers::ros2msg::reflection::message_spec::BuiltInType;
+use crate::message_spec::BuiltInType;
 use serde::de::{self, DeserializeSeed, Visitor};
 use std::fmt;
 
