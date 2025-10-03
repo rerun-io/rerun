@@ -9318,16 +9318,8 @@ dependencies = [
 name = "re_ros_msg"
 version = "0.26.0-alpha.1+dev"
 dependencies = [
- "ahash",
  "anyhow",
- "byteorder",
- "cdr-encoding",
- "insta",
- "re_format_arrow",
- "re_log",
- "re_tracing",
  "serde",
- "serde_bytes",
  "thiserror 1.0.69",
 ]
 
