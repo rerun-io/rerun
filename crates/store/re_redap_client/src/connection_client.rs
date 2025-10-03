@@ -1,9 +1,11 @@
 use tokio_stream::StreamExt as _;
 use tonic::codegen::{Body, StdError};
 
+use crate::{StreamEntryError, StreamError};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
+use re_protos::cloud::v1alpha1::EntryKind;
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::{
     TypeConversionError,
@@ -32,8 +34,6 @@ use re_protos::{
     headers::RerunHeadersInjectorExt as _,
     missing_field,
 };
-
-use crate::{StreamEntryError, StreamError};
 
 /// Expose an ergonomic API over the gRPC redap client.
 ///
@@ -427,5 +427,17 @@ where
             .map_err(|err| StreamEntryError::Maintenance(err.into()))?;
 
         Ok(())
+    }
+
+    pub async fn get_table_names(&mut self) -> Result<Vec<String>, StreamError> {
+        Ok(self
+            .find_entries(re_protos::cloud::v1alpha1::EntryFilter {
+                entry_kind: Some(EntryKind::Table.into()),
+                ..Default::default()
+            })
+            .await?
+            .into_iter()
+            .map(|entry| entry.name.clone())
+            .collect())
     }
 }

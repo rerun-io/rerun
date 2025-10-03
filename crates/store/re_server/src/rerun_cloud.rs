@@ -34,6 +34,7 @@ use re_protos::{
 };
 use re_types_core::{ChunkId, Loggable as _};
 
+use crate::entrypoint::NamedPath;
 use crate::store::{Dataset, InMemoryStore, Table};
 
 #[derive(Debug, Default)]
@@ -53,7 +54,7 @@ impl RerunCloudHandlerBuilder {
 
     pub fn with_directory_as_dataset(
         mut self,
-        directory: &std::path::Path,
+        directory: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<Self, crate::store::Error> {
         self.store
@@ -64,7 +65,7 @@ impl RerunCloudHandlerBuilder {
 
     pub async fn with_directory_as_table(
         mut self,
-        path: &std::path::Path,
+        path: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<Self, crate::store::Error> {
         self.store

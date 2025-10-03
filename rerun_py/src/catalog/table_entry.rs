@@ -57,12 +57,8 @@ impl PyTableEntry {
         let ctx = client.ctx(py)?;
         let ctx = ctx.bind(py);
 
-        drop(client);
-
-        // We're fine with this failing.
-        ctx.call_method1("deregister_table", (table_name.clone(),))?;
-
-        ctx.call_method1("register_table_provider", (table_name.clone(), self_))?;
+        // Any tables for which we have a TableEntry are already
+        // registered with the CatalogProvider.
 
         let df = ctx.call_method1("table", (table_name,))?;
 

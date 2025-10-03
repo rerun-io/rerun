@@ -28,6 +28,8 @@ use re_protos::{
 use re_tuid::Tuid;
 use re_types_core::{ComponentBatch as _, Loggable as _};
 
+use crate::entrypoint::NamedPath;
+
 const ENTRIES_TABLE_NAME: &str = "__entries";
 
 #[derive(thiserror::Error, Debug)]
@@ -302,10 +304,10 @@ impl InMemoryStore {
     /// Load a directory of RRDs.
     pub fn load_directory_as_dataset(
         &mut self,
-        directory: &std::path::Path,
+        named_path: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<(), Error> {
-        let directory = directory.canonicalize()?;
+        let directory = named_path.path.canonicalize()?;
         if !directory.is_dir() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
@@ -314,10 +316,13 @@ impl InMemoryStore {
             .into());
         }
 
-        let entry_name = directory
-            .file_name()
-            .expect("the directory should have a name and the path was canonicalized")
-            .to_string_lossy();
+        let entry_name = match &named_path.name {
+            Some(name) => name.into(),
+            None => directory
+                .file_name()
+                .expect("the directory should have a name and the path was canonicalized")
+                .to_string_lossy(),
+        };
 
         let dataset = self
             .create_dataset(&entry_name)
@@ -343,10 +348,10 @@ impl InMemoryStore {
 
     pub async fn load_directory_as_table(
         &mut self,
-        directory: &std::path::Path,
+        named_path: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<(), Error> {
-        let directory = directory.canonicalize()?;
+        let directory = named_path.path.canonicalize()?;
         if !directory.is_dir() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
@@ -355,10 +360,13 @@ impl InMemoryStore {
             .into());
         }
 
-        let entry_name = directory
-            .file_name()
-            .expect("the directory should have a name and the path was canonicalized")
-            .to_string_lossy();
+        let entry_name = match &named_path.name {
+            Some(name) => name.into(),
+            None => directory
+                .file_name()
+                .expect("the directory should have a name and the path was canonicalized")
+                .to_string_lossy(),
+        };
 
         // Verify it is a valid lance table
         let path = directory.to_str().ok_or(std::io::Error::new(
