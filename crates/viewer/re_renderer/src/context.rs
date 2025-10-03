@@ -413,10 +413,12 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
             self.before_submit();
         }
 
-        // Request write used staging buffer back.
-        // TODO(andreas): If we'd control all submissions, we could move this directly after the submission which would be a bit better.
+        // Request write-staging buffers back.
+        // Ideally we'd do this as closely as possible to the last submission containing any cpu->gpu operations as possible.
         self.cpu_write_gpu_read_belt.get_mut().after_queue_submit();
-        // Map all read staging buffers.
+
+        // Schedule mapping for all read staging buffers.
+        // Ideally we'd do this as closely as possible to the last submission containing any gpu->cpu operations as possible.
         self.gpu_readback_belt.get_mut().after_queue_submit();
 
         // Close previous' frame error scope.
@@ -502,7 +504,8 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
     pub fn before_submit(&mut self) {
         re_tracing::profile_function!();
 
-        // Unmap all write staging buffers.
+        // Unmap all write staging buffers, so we don't get validation errors about buffers still being mapped
+        // that the gpu wants to read from.
         self.cpu_write_gpu_read_belt.lock().before_queue_submit();
 
         if let Some(command_encoder) = self

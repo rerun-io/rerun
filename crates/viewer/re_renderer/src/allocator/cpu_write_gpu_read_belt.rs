@@ -49,6 +49,8 @@ pub enum CpuWriteGpuReadError {
 /// Note that the "vec like behavior" further encourages
 /// * not leaving holes
 /// * keeping writes sequential
+///
+/// Must be dropped before calling [`CpuWriteGpuReadBelt::before_queue_submit`] (typically the end of a frame).
 pub struct CpuWriteGpuReadBuffer<T: bytemuck::Pod + Send + Sync> {
     /// Write view into the relevant buffer portion.
     write_view: wgpu::BufferViewMut,
@@ -551,7 +553,10 @@ impl CpuWriteGpuReadBelt {
 
     /// Prepare currently mapped buffers for use in a submission.
     ///
-    /// This must be called before the command encoder(s) used in [`CpuWriteGpuReadBuffer`] copy operations are submitted.
+    /// All existing [`CpuWriteGpuReadBuffer`] MUST be dropped before calling this function.
+    /// Any not dropped [`CpuWriteGpuReadBuffer`] will cause a validation error.
+    ///
+    /// This must be called BEFORE the command encoder(s) used in any [`CpuWriteGpuReadBuffer`] copy operations are submitted.
     ///
     /// At this point, all the partially used staging buffers are closed (cannot be used for
     /// further writes) until after [`CpuWriteGpuReadBelt::after_queue_submit`] is called *and* the GPU is done
@@ -563,6 +568,10 @@ impl CpuWriteGpuReadBelt {
         // https://github.com/gfx-rs/wgpu/issues/1468
         // However, WebGPU does not support this!
 
+        // We're done with writing to this chunk and are ready to have the GPU read it!
+        //
+        // This part has to happen before submit, otherwise we get a validation error that
+        // the buffers are still mapped and can't be read by the gpu.
         for chunk in self.active_chunks.drain(..) {
             chunk.buffer.unmap();
             self.closed_chunks.push(chunk);
@@ -574,11 +583,15 @@ impl CpuWriteGpuReadBelt {
     /// This must only be called after the command encoder(s) used in [`CpuWriteGpuReadBuffer`]
     /// copy operations are submitted. Additional calls are harmless.
     /// Not calling this as soon as possible may result in increased buffer memory usage.
+    ///
+    /// Implementation note:
+    /// We can't use [`wgpu::CommandEncoder::map_buffer_on_submit`] here because for that we'd need to know which
+    /// command encoder is the last one scheduling any cpu->gpu copy operations.
+    /// Note that if chunks were fully tied to a single encoder, we could call [`wgpu::CommandEncoder::map_buffer_on_submit`]
+    /// once we know a chunk has all its cpu->gpu copy operations scheduled on that very encoder.
     pub fn after_queue_submit(&mut self) {
         re_tracing::profile_function!();
         self.receive_chunks();
-
-        // TODO(andreas): Use `map_buffer_on_submit` https://github.com/gfx-rs/wgpu/pull/8125 once available.
 
         let sender = &self.sender;
         for chunk in self.closed_chunks.drain(..) {
