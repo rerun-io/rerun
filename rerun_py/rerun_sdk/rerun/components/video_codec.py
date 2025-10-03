@@ -81,7 +81,7 @@ class VideoCodec(Enum):
 
 
 VideoCodecLike = VideoCodec | Literal["H264", "H265", "h264", "h265"] | int
-VideoCodecArrayLike = VideoCodec | Sequence[VideoCodecLike]
+VideoCodecArrayLike = VideoCodec | Literal["H264", "H265", "h264", "h265"] | int | Sequence[VideoCodecLike]
 
 
 class VideoCodecBatch(BaseBatch[VideoCodecArrayLike], ComponentBatchMixin):

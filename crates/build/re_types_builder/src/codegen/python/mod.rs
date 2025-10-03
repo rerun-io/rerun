@@ -997,7 +997,7 @@ def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
     code.push_unindented(
         format!(
             r#"
-            {enum_name}ArrayLike = {enum_name} | Sequence[{enum_name}Like]
+            {enum_name}ArrayLike = {enum_name} | {variants} | int |Sequence[{enum_name}Like]
             "#,
         ),
         2,

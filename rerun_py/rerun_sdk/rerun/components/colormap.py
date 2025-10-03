@@ -140,7 +140,29 @@ ColormapLike = (
     ]
     | int
 )
-ColormapArrayLike = Colormap | Sequence[ColormapLike]
+ColormapArrayLike = (
+    Colormap
+    | Literal[
+        "CyanToYellow",
+        "Grayscale",
+        "Inferno",
+        "Magma",
+        "Plasma",
+        "Spectral",
+        "Turbo",
+        "Viridis",
+        "cyantoyellow",
+        "grayscale",
+        "inferno",
+        "magma",
+        "plasma",
+        "spectral",
+        "turbo",
+        "viridis",
+    ]
+    | int
+    | Sequence[ColormapLike]
+)
 
 
 class ColormapBatch(BaseBatch[ColormapArrayLike], ComponentBatchMixin):

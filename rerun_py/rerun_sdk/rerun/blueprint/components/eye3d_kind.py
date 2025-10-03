@@ -68,7 +68,9 @@ class Eye3DKind(Enum):
 
 
 Eye3DKindLike = Eye3DKind | Literal["FirstPerson", "Orbital", "firstperson", "orbital"] | int
-Eye3DKindArrayLike = Eye3DKind | Sequence[Eye3DKindLike]
+Eye3DKindArrayLike = (
+    Eye3DKind | Literal["FirstPerson", "Orbital", "firstperson", "orbital"] | int | Sequence[Eye3DKindLike]
+)
 
 
 class Eye3DKindBatch(BaseBatch[Eye3DKindArrayLike], ComponentBatchMixin):

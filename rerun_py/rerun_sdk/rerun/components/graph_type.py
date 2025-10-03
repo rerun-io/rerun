@@ -52,7 +52,9 @@ class GraphType(Enum):
 
 
 GraphTypeLike = GraphType | Literal["Directed", "Undirected", "directed", "undirected"] | int
-GraphTypeArrayLike = GraphType | Sequence[GraphTypeLike]
+GraphTypeArrayLike = (
+    GraphType | Literal["Directed", "Undirected", "directed", "undirected"] | int | Sequence[GraphTypeLike]
+)
 
 
 class GraphTypeBatch(BaseBatch[GraphTypeArrayLike], ComponentBatchMixin):

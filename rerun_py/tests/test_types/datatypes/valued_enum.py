@@ -56,7 +56,12 @@ class ValuedEnum(Enum):
 
 
 ValuedEnumLike = ValuedEnum | Literal["One", "TheAnswer", "Three", "Two", "one", "theanswer", "three", "two"] | int
-ValuedEnumArrayLike = ValuedEnum | Sequence[ValuedEnumLike]
+ValuedEnumArrayLike = (
+    ValuedEnum
+    | Literal["One", "TheAnswer", "Three", "Two", "one", "theanswer", "three", "two"]
+    | int
+    | Sequence[ValuedEnumLike]
+)
 
 
 class ValuedEnumBatch(BaseBatch[ValuedEnumArrayLike]):

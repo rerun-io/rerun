@@ -71,7 +71,21 @@ MapProviderLike = (
     ]
     | int
 )
-MapProviderArrayLike = MapProvider | Sequence[MapProviderLike]
+MapProviderArrayLike = (
+    MapProvider
+    | Literal[
+        "MapboxDark",
+        "MapboxSatellite",
+        "MapboxStreets",
+        "OpenStreetMap",
+        "mapboxdark",
+        "mapboxsatellite",
+        "mapboxstreets",
+        "openstreetmap",
+    ]
+    | int
+    | Sequence[MapProviderLike]
+)
 
 
 class MapProviderBatch(BaseBatch[MapProviderArrayLike], ComponentBatchMixin):
