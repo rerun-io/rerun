@@ -6,8 +6,6 @@ thumbnail_dimensions = [480, 360]
 channel = "main"
 -->
 
-<!-- TODO: Replace with an inline viewer or screenshot showing the embedded mesh -->
-
 ## Overview
 
 This notebook shows the easiest way to embed the Rerun Viewer widget inside a Jupyter notebook. Instead of logging new data, it loads a pre-recorded `.rrd` file and renders the scene inline, making it perfect for demos, documentation, or quick inspections of existing captures.

@@ -6,8 +6,6 @@ thumbnail_dimensions = [480, 480]
 channel = "main"
 -->
 
-<!-- TODO: Replace with an inline viewer or screenshot of the callback UI -->
-
 ## Overview
 
 This notebook demonstrates how to react to user interactions coming from the embedded Rerun Viewer widget. It logs a dynamic 3D point cloud, listens for timeline, time, and selection events, and surfaces them in real time using Jupyter widgets.
