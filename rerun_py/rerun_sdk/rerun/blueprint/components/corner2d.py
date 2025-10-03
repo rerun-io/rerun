@@ -62,7 +62,12 @@ Corner2DLike = (
     | Literal["LeftBottom", "LeftTop", "RightBottom", "RightTop", "leftbottom", "lefttop", "rightbottom", "righttop"]
     | int
 )
-Corner2DArrayLike = Corner2D | Sequence[Corner2DLike]
+Corner2DArrayLike = (
+    Corner2D
+    | Literal["LeftBottom", "LeftTop", "RightBottom", "RightTop", "leftbottom", "lefttop", "rightbottom", "righttop"]
+    | int
+    | Sequence[Corner2DLike]
+)
 
 
 class Corner2DBatch(BaseBatch[Corner2DArrayLike], ComponentBatchMixin):

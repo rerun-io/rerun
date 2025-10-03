@@ -91,7 +91,25 @@ AggregationPolicyLike = (
     ]
     | int
 )
-AggregationPolicyArrayLike = AggregationPolicy | Sequence[AggregationPolicyLike]
+AggregationPolicyArrayLike = (
+    AggregationPolicy
+    | Literal[
+        "Average",
+        "Max",
+        "Min",
+        "MinMax",
+        "MinMaxAverage",
+        "Off",
+        "average",
+        "max",
+        "min",
+        "minmax",
+        "minmaxaverage",
+        "off",
+    ]
+    | int
+    | Sequence[AggregationPolicyLike]
+)
 
 
 class AggregationPolicyBatch(BaseBatch[AggregationPolicyArrayLike], ComponentBatchMixin):

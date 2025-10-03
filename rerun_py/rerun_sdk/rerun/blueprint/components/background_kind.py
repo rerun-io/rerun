@@ -67,7 +67,12 @@ BackgroundKindLike = (
     | Literal["GradientBright", "GradientDark", "SolidColor", "gradientbright", "gradientdark", "solidcolor"]
     | int
 )
-BackgroundKindArrayLike = BackgroundKind | Sequence[BackgroundKindLike]
+BackgroundKindArrayLike = (
+    BackgroundKind
+    | Literal["GradientBright", "GradientDark", "SolidColor", "gradientbright", "gradientdark", "solidcolor"]
+    | int
+    | Sequence[BackgroundKindLike]
+)
 
 
 class BackgroundKindBatch(BaseBatch[BackgroundKindArrayLike], ComponentBatchMixin):

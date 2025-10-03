@@ -65,7 +65,12 @@ class ColorModel(ColorModelExt, Enum):
 
 
 ColorModelLike = ColorModel | Literal["BGR", "BGRA", "L", "RGB", "RGBA", "bgr", "bgra", "l", "rgb", "rgba"] | int
-ColorModelArrayLike = ColorModel | Sequence[ColorModelLike]
+ColorModelArrayLike = (
+    ColorModel
+    | Literal["BGR", "BGRA", "L", "RGB", "RGBA", "bgr", "bgra", "l", "rgb", "rgba"]
+    | int
+    | Sequence[ColorModelLike]
+)
 
 
 class ColorModelBatch(BaseBatch[ColorModelArrayLike]):

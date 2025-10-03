@@ -52,7 +52,9 @@ class LinkAxis(Enum):
 
 
 LinkAxisLike = LinkAxis | Literal["Independent", "LinkToGlobal", "independent", "linktoglobal"] | int
-LinkAxisArrayLike = LinkAxis | Sequence[LinkAxisLike]
+LinkAxisArrayLike = (
+    LinkAxis | Literal["Independent", "LinkToGlobal", "independent", "linktoglobal"] | int | Sequence[LinkAxisLike]
+)
 
 
 class LinkAxisBatch(BaseBatch[LinkAxisArrayLike], ComponentBatchMixin):

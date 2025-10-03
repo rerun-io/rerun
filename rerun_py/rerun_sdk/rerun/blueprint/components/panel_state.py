@@ -55,7 +55,12 @@ class PanelState(Enum):
 
 
 PanelStateLike = PanelState | Literal["Collapsed", "Expanded", "Hidden", "collapsed", "expanded", "hidden"] | int
-PanelStateArrayLike = PanelState | Sequence[PanelStateLike]
+PanelStateArrayLike = (
+    PanelState
+    | Literal["Collapsed", "Expanded", "Hidden", "collapsed", "expanded", "hidden"]
+    | int
+    | Sequence[PanelStateLike]
+)
 
 
 class PanelStateBatch(BaseBatch[PanelStateArrayLike], ComponentBatchMixin):

@@ -60,7 +60,12 @@ class ContainerKind(Enum):
 ContainerKindLike = (
     ContainerKind | Literal["Grid", "Horizontal", "Tabs", "Vertical", "grid", "horizontal", "tabs", "vertical"] | int
 )
-ContainerKindArrayLike = ContainerKind | Sequence[ContainerKindLike]
+ContainerKindArrayLike = (
+    ContainerKind
+    | Literal["Grid", "Horizontal", "Tabs", "Vertical", "grid", "horizontal", "tabs", "vertical"]
+    | int
+    | Sequence[ContainerKindLike]
+)
 
 
 class ContainerKindBatch(BaseBatch[ContainerKindArrayLike], ComponentBatchMixin):

@@ -182,7 +182,33 @@ PixelFormatLike = (
     ]
     | int
 )
-PixelFormatArrayLike = PixelFormat | Sequence[PixelFormatLike]
+PixelFormatArrayLike = (
+    PixelFormat
+    | Literal[
+        "NV12",
+        "Y8_FullRange",
+        "Y8_LimitedRange",
+        "YUY2",
+        "Y_U_V12_FullRange",
+        "Y_U_V12_LimitedRange",
+        "Y_U_V16_FullRange",
+        "Y_U_V16_LimitedRange",
+        "Y_U_V24_FullRange",
+        "Y_U_V24_LimitedRange",
+        "nv12",
+        "y8_fullrange",
+        "y8_limitedrange",
+        "y_u_v12_fullrange",
+        "y_u_v12_limitedrange",
+        "y_u_v16_fullrange",
+        "y_u_v16_limitedrange",
+        "y_u_v24_fullrange",
+        "y_u_v24_limitedrange",
+        "yuy2",
+    ]
+    | int
+    | Sequence[PixelFormatLike]
+)
 
 
 class PixelFormatBatch(BaseBatch[PixelFormatArrayLike]):

@@ -101,7 +101,33 @@ MarkerShapeLike = (
     ]
     | int
 )
-MarkerShapeArrayLike = MarkerShape | Sequence[MarkerShapeLike]
+MarkerShapeArrayLike = (
+    MarkerShape
+    | Literal[
+        "Asterisk",
+        "Circle",
+        "Cross",
+        "Diamond",
+        "Down",
+        "Left",
+        "Plus",
+        "Right",
+        "Square",
+        "Up",
+        "asterisk",
+        "circle",
+        "cross",
+        "diamond",
+        "down",
+        "left",
+        "plus",
+        "right",
+        "square",
+        "up",
+    ]
+    | int
+    | Sequence[MarkerShapeLike]
+)
 
 
 class MarkerShapeBatch(BaseBatch[MarkerShapeArrayLike], ComponentBatchMixin):

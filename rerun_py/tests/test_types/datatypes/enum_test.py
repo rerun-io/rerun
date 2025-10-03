@@ -66,7 +66,12 @@ EnumTestLike = (
     | Literal["Back", "Down", "Forward", "Left", "Right", "Up", "back", "down", "forward", "left", "right", "up"]
     | int
 )
-EnumTestArrayLike = EnumTest | Sequence[EnumTestLike]
+EnumTestArrayLike = (
+    EnumTest
+    | Literal["Back", "Down", "Forward", "Left", "Right", "Up", "back", "down", "forward", "left", "right", "up"]
+    | int
+    | Sequence[EnumTestLike]
+)
 
 
 class EnumTestBatch(BaseBatch[EnumTestArrayLike]):
