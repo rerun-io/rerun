@@ -165,11 +165,7 @@ eframe = { version = "0.32.3", default-features = false, features = [
   "wayland",
   "x11",
 ] }
-egui = { version = "0.32.3", features = [
-  "callstack",
-  "color-hex",
-  "rayon",
-] }
+egui = { version = "0.32.3", features = ["callstack", "color-hex", "rayon"] }
 egui_commonmark = { version = "0.21", default-features = false }
 egui_dnd = { version = "0.13" }
 egui_extras = { version = "0.32.3", features = [
