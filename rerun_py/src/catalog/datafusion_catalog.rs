@@ -11,8 +11,7 @@ use re_redap_client::ConnectionClient;
 use crate::utils::get_tokio_runtime;
 
 #[pyclass(frozen, name = "DataFusionCatalog")]
-pub struct PyDataFusionCatalogProvider {
-    pub name: Option<String>,
+pub(crate) struct PyDataFusionCatalogProvider {
     pub provider: Arc<RedapCatalogProvider>,
 }
 
@@ -20,7 +19,7 @@ impl PyDataFusionCatalogProvider {
     pub fn new(name: Option<String>, client: ConnectionClient) -> Self {
         let runtime = get_tokio_runtime().handle().clone();
         let provider = Arc::new(RedapCatalogProvider::new(name.as_deref(), client, runtime));
-        Self { name, provider }
+        Self { provider }
     }
 }
 
