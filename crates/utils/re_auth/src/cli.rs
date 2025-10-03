@@ -63,6 +63,7 @@ struct NoCredentialsError;
 #[error("Your credentials are expired, run `rerun auth login` first")]
 struct ExpiredCredentialsError;
 
+/// Prints the token to stdout
 pub async fn token(context: &AuthContext) -> Result<(), Error> {
     let mut credentials = match workos::Credentials::load() {
         Ok(Some(credentials)) => credentials,
@@ -88,9 +89,7 @@ pub async fn token(context: &AuthContext) -> Result<(), Error> {
         unreachable!("bug: no access token after refresh");
     };
 
-    use std::io::Write as _;
-    let mut stdout = std::io::stdout();
-    write!(stdout, "{}", token.as_str()).ok();
+    println!("{}", token.as_str());
 
     Ok(())
 }
