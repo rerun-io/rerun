@@ -104,7 +104,7 @@ impl From<PyEntryKind> for EntryKind {
 // ---
 
 /// An entry in the catalog.
-#[pyclass(name = "Entry", subclass)] // NOLINT
+#[pyclass(name = "Entry", subclass)] // NOLINT: skip pyclass_eq, non-trivial implementation
 pub struct PyEntry {
     pub client: Py<PyCatalogClientInternal>,
 

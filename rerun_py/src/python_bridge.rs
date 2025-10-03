@@ -325,7 +325,7 @@ impl PyChunkBatcherConfig {
     #[pyo3(
         text_signature = "(self, flush_tick=None, flush_num_bytes=None, flush_num_rows=None, chunk_max_rows_if_unsorted=None)"
     )]
-    /// Initialize the chunk batcher onfiguration.
+    /// Initialize the chunk batcher configuration.
     ///
     /// Check out <https://rerun.io/docs/reference/sdk/micro-batching> for more information.
     ///
@@ -616,7 +616,7 @@ fn shutdown(py: Python<'_>) {
 
 // --- Recordings ---
 
-#[pyclass(frozen)] // NOLINT
+#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
 #[derive(Clone)]
 struct PyRecordingStream(RecordingStream);
 
@@ -1286,7 +1286,7 @@ fn binary_stream(
     Some(PyBinarySinkStorage { inner })
 }
 
-#[pyclass(frozen)] // NOLINT
+#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
 struct PyMemorySinkStorage {
     // So we can flush when needed!
     inner: MemorySinkStorage,
@@ -1352,7 +1352,7 @@ impl PyMemorySinkStorage {
     }
 }
 
-#[pyclass(frozen)] // NOLINT
+#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
 struct PyBinarySinkStorage {
     /// The underlying binary sink storage.
     inner: BinaryStreamStorage,

@@ -37,7 +37,7 @@ use super::{
 };
 
 /// A dataset entry in the catalog.
-#[pyclass(name = "DatasetEntry", extends=PyEntry)] // NOLINT
+#[pyclass(name = "DatasetEntry", extends=PyEntry)] // NOLINT: skip pyclass_eq, non-trivial implementation
 pub struct PyDatasetEntry {
     pub dataset_details: DatasetDetails,
     pub dataset_handle: DatasetHandle,

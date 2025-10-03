@@ -13,7 +13,7 @@ use super::{
 };
 use crate::catalog::to_py_err;
 
-#[pyclass(module = "rerun_bindings.rerun_bindings")] // NOLINT
+#[pyclass(module = "rerun_bindings.rerun_bindings")] // NOLINT: skip pyclass_eq, non-trivial implementation
 pub struct SchemaIterator {
     iter: std::vec::IntoIter<PyObject>,
 }
