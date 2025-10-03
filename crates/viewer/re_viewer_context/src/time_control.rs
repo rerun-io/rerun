@@ -363,6 +363,10 @@ impl TimeControl {
         )
     }
 
+    /// Sets the current time.
+    ///
+    /// If `blueprint_ctx` is some, this will also update the time stored in
+    /// the blueprint if `time_int` has changed.
     fn update_time(&mut self, blueprint_ctx: Option<&impl BlueprintContext>, time: TimeReal) {
         let time_int = time.floor();
         if self.time_int() != Some(time_int)
@@ -374,6 +378,10 @@ impl TimeControl {
         self.set_time(time);
     }
 
+    /// Read from the time panel blueprint and update the state from that.
+    ///
+    /// If `times_per_timeline` is some this will also make sure we are on
+    /// a valid timeline.
     fn update_from_blueprint(
         &mut self,
         blueprint_ctx: &impl BlueprintContext,
@@ -404,6 +412,10 @@ impl TimeControl {
         }
     }
 
+    /// See [`Self::update`].
+    ///
+    /// If `blueprint_ctx` is some, this will read and write to the
+    /// time panel blueprint.
     #[must_use]
     fn update_inner(
         &mut self,

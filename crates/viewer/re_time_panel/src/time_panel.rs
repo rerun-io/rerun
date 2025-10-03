@@ -167,6 +167,8 @@ impl Default for TimePanel {
     }
 }
 
+/// This trait is used for the time panel to interact with either a
+/// `TimeControl` or a `BlueprintTimeControl` to avoid code duplication.
 pub trait TimeControlExt: Clone + PartialEq {
     fn get(&self) -> &TimeControl;
     fn get_mut(&mut self) -> &mut TimeControl;
