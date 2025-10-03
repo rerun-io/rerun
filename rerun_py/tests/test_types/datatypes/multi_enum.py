@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -50,10 +50,7 @@ class MultiEnum:
 
 
 MultiEnumLike = MultiEnum
-MultiEnumArrayLike = Union[
-    MultiEnum,
-    Sequence[MultiEnumLike],
-]
+MultiEnumArrayLike = MultiEnum | Sequence[MultiEnumLike]
 
 
 class MultiEnumBatch(BaseBatch[MultiEnumArrayLike]):

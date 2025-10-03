@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -68,14 +68,11 @@ class ComponentColumnSelector(ComponentColumnSelectorExt):
 
 
 if TYPE_CHECKING:
-    ComponentColumnSelectorLike = Union[ComponentColumnSelector, str]
+    ComponentColumnSelectorLike = ComponentColumnSelector | str
 else:
     ComponentColumnSelectorLike = Any
 
-ComponentColumnSelectorArrayLike = Union[
-    ComponentColumnSelector,
-    Sequence[ComponentColumnSelectorLike],
-]
+ComponentColumnSelectorArrayLike = ComponentColumnSelector | Sequence[ComponentColumnSelectorLike]
 
 
 class ComponentColumnSelectorBatch(BaseBatch[ComponentColumnSelectorArrayLike]):

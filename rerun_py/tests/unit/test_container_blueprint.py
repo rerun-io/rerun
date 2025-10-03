@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from rerun.blueprint.archetypes.container_blueprint import ContainerBlueprint
 from rerun.blueprint.components.active_tab import ActiveTab, ActiveTabBatch
@@ -99,13 +99,13 @@ def test_container_blueprint() -> None:
         container_kind = container_kind if container_kind is not None else container_kind_arrays[-1]
 
         container_kind = cast("ContainerKindLike", container_kind)
-        display_name = cast("Optional[Utf8Like]", display_name)
-        contents = cast("Optional[EntityPathArrayLike]", contents)
-        col_shares = cast("Optional[Float32ArrayLike]", col_shares)
-        row_shares = cast("Optional[Float32ArrayLike]", row_shares)
-        active_tab = cast("Optional[EntityPathLike]", active_tab)
-        visible = cast("Optional[BoolLike]", visible)
-        grid_columns = cast("Optional[UInt32ArrayLike]", grid_columns)
+        display_name = cast("Utf8Like | None", display_name)
+        contents = cast("EntityPathArrayLike | None", contents)
+        col_shares = cast("Float32ArrayLike | None", col_shares)
+        row_shares = cast("Float32ArrayLike | None", row_shares)
+        active_tab = cast("EntityPathLike | None", active_tab)
+        visible = cast("BoolLike | None", visible)
+        grid_columns = cast("UInt32ArrayLike | None", grid_columns)
 
         print(
             "rr.ContainerBlueprint(\n",

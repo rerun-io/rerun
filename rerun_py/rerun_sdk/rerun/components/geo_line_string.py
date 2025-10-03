@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -40,11 +40,11 @@ class GeoLineString(GeoLineStringExt, ComponentMixin):
 if TYPE_CHECKING:
     from .. import datatypes
 
-    GeoLineStringLike = Union[GeoLineString, datatypes.DVec2DArrayLike, npt.NDArray[np.float64]]
+    GeoLineStringLike = GeoLineString | datatypes.DVec2DArrayLike | npt.NDArray[np.float64]
 else:
     GeoLineStringLike = Any
 
-GeoLineStringArrayLike = Union[GeoLineString, Sequence[GeoLineStringLike], npt.NDArray[np.float64]]
+GeoLineStringArrayLike = GeoLineString | Sequence[GeoLineStringLike] | npt.NDArray[np.float64]
 
 
 class GeoLineStringBatch(BaseBatch[GeoLineStringArrayLike], ComponentBatchMixin):

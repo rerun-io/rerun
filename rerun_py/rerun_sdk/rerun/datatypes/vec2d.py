@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -47,13 +47,13 @@ class Vec2D(Vec2DExt):
 
 
 if TYPE_CHECKING:
-    Vec2DLike = Union[Vec2D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]
+    Vec2DLike = Vec2D | npt.NDArray[Any] | npt.ArrayLike | Sequence[float]
 else:
     Vec2DLike = Any
 
-Vec2DArrayLike = Union[
-    Vec2D, Sequence[Vec2DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
-]
+Vec2DArrayLike = (
+    Vec2D | Sequence[Vec2DLike] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[float]] | Sequence[float]
+)
 
 
 class Vec2DBatch(BaseBatch[Vec2DArrayLike]):

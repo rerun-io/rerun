@@ -4,7 +4,8 @@ import functools
 import random
 import sys
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 

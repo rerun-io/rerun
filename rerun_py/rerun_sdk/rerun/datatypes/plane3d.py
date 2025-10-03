@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Union
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -53,7 +53,7 @@ class Plane3D(Plane3DExt):
 
 
 Plane3DLike = Plane3D
-Plane3DArrayLike = Union[Plane3D, Sequence[Plane3DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]]]
+Plane3DArrayLike = Plane3D | Sequence[Plane3DLike] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[float]]
 
 
 class Plane3DBatch(BaseBatch[Plane3DArrayLike]):

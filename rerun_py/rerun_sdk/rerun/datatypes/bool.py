@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pyarrow as pa
@@ -36,14 +36,11 @@ class Bool:
 
 
 if TYPE_CHECKING:
-    BoolLike = Union[Bool, bool]
+    BoolLike = Bool | bool
 else:
     BoolLike = Any
 
-BoolArrayLike = Union[
-    Bool,
-    Sequence[BoolLike],
-]
+BoolArrayLike = Bool | Sequence[BoolLike]
 
 
 class BoolBatch(BaseBatch[BoolArrayLike]):

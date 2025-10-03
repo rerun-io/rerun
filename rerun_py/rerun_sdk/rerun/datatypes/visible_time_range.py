@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -45,10 +44,7 @@ class VisibleTimeRange(VisibleTimeRangeExt):
 
 
 VisibleTimeRangeLike = VisibleTimeRange
-VisibleTimeRangeArrayLike = Union[
-    VisibleTimeRange,
-    Sequence[VisibleTimeRangeLike],
-]
+VisibleTimeRangeArrayLike = VisibleTimeRange | Sequence[VisibleTimeRangeLike]
 
 
 class VisibleTimeRangeBatch(BaseBatch[VisibleTimeRangeArrayLike]):

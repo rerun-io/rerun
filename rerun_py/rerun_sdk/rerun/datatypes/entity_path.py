@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -40,11 +40,11 @@ class EntityPath:
 
 
 if TYPE_CHECKING:
-    EntityPathLike = Union[EntityPath, str]
+    EntityPathLike = EntityPath | str
 else:
     EntityPathLike = Any
 
-EntityPathArrayLike = Union[EntityPath, Sequence[EntityPathLike], Sequence[str]]
+EntityPathArrayLike = EntityPath | Sequence[EntityPathLike] | Sequence[str]
 
 
 class EntityPathBatch(BaseBatch[EntityPathArrayLike]):
