@@ -10,9 +10,15 @@ use re_redap_client::ConnectionClient;
 
 use crate::utils::get_tokio_runtime;
 
-#[pyclass(frozen, name = "DataFusionCatalog")]
+#[pyclass(frozen, eq, name = "DataFusionCatalog")]
 pub(crate) struct PyDataFusionCatalogProvider {
     pub provider: Arc<RedapCatalogProvider>,
+}
+
+impl PartialEq for PyDataFusionCatalogProvider {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.provider, &other.provider)
+    }
 }
 
 impl PyDataFusionCatalogProvider {
