@@ -59,6 +59,68 @@ impl From<RegisterWithDatasetRequest> for crate::cloud::v1alpha1::RegisterWithDa
     }
 }
 
+// --- QueryDatasetRequest ---
+
+#[derive(Debug, Clone)]
+pub struct QueryDatasetRequest {
+    pub partition_ids: Vec<crate::common::v1alpha1::ext::PartitionId>,
+    pub chunk_ids: Vec<re_chunk::ChunkId>,
+    pub entity_paths: Vec<EntityPath>,
+    pub select_all_entity_paths: bool,
+    pub fuzzy_descriptors: Vec<String>,
+    pub exclude_static_data: bool,
+    pub exclude_temporal_data: bool,
+    pub scan_parameters: Option<crate::common::v1alpha1::ext::ScanParameters>,
+    pub query: Option<Query>,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetRequest {
+    type Error = tonic::Status;
+
+    fn try_from(value: crate::cloud::v1alpha1::QueryDatasetRequest) -> Result<Self, Self::Error> {
+        Ok(Self {
+            partition_ids: value
+                .partition_ids
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<Vec<_>, _>>()?,
+
+            chunk_ids: value
+                .chunk_ids
+                .into_iter()
+                .map(|tuid| {
+                    let id: re_tuid::Tuid = tuid.try_into()?;
+                    Ok::<_, tonic::Status>(re_chunk::ChunkId::from_u128(id.as_u128()))
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+
+            entity_paths: value
+                .entity_paths
+                .into_iter()
+                .map(|path| {
+                    path.try_into().map_err(|err| {
+                        tonic::Status::invalid_argument(format!("invalid entity path: {err}"))
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+
+            select_all_entity_paths: value.select_all_entity_paths,
+
+            fuzzy_descriptors: value.fuzzy_descriptors,
+
+            exclude_static_data: value.exclude_static_data,
+            exclude_temporal_data: value.exclude_temporal_data,
+
+            scan_parameters: value
+                .scan_parameters
+                .map(|params| params.try_into())
+                .transpose()?,
+
+            query: value.query.map(|q| q.try_into()).transpose()?,
+        })
+    }
+}
+
 // --- GetChunksRequest --
 
 #[derive(Debug, Clone)]
@@ -66,6 +128,10 @@ pub struct GetChunksRequest {
     pub partition_ids: Vec<crate::common::v1alpha1::ext::PartitionId>,
     pub chunk_ids: Vec<re_chunk::ChunkId>,
     pub entity_paths: Vec<EntityPath>,
+    pub select_all_entity_paths: bool,
+    pub fuzzy_descriptors: Vec<String>,
+    pub exclude_static_data: bool,
+    pub exclude_temporal_data: bool,
     pub query: Option<Query>,
 }
 
@@ -99,6 +165,13 @@ impl TryFrom<crate::cloud::v1alpha1::GetChunksRequest> for GetChunksRequest {
                 })
                 .collect::<Result<Vec<_>, _>>()?,
 
+            select_all_entity_paths: value.select_all_entity_paths,
+
+            fuzzy_descriptors: value.fuzzy_descriptors,
+
+            exclude_static_data: value.exclude_static_data,
+            exclude_temporal_data: value.exclude_temporal_data,
+
             query: value.query.map(|q| q.try_into()).transpose()?,
         })
     }
@@ -111,6 +184,25 @@ pub struct DoMaintenanceRequest {
     pub compact_fragments: bool,
     pub cleanup_before: Option<jiff::Timestamp>,
     pub unsafe_allow_recent_cleanup: bool,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::DoMaintenanceRequest> for DoMaintenanceRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::DoMaintenanceRequest) -> Result<Self, Self::Error> {
+        let cleanup_before = value
+            .cleanup_before
+            .map(|ts| jiff::Timestamp::new(ts.seconds, ts.nanos))
+            .transpose()?;
+
+        Ok(Self {
+            optimize_indexes: value.optimize_indexes,
+            retrain_indexes: value.retrain_indexes,
+            compact_fragments: value.compact_fragments,
+            cleanup_before,
+            unsafe_allow_recent_cleanup: value.unsafe_allow_recent_cleanup,
+        })
+    }
 }
 
 impl From<DoMaintenanceRequest> for crate::cloud::v1alpha1::DoMaintenanceRequest {

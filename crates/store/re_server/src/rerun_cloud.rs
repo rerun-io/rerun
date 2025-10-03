@@ -928,9 +928,11 @@ impl RerunCloudService for RerunCloudHandler {
             partition_ids,
             chunk_ids: _,
             entity_paths,
-
-            // We don't support queries, so you always get everything
             query: _,
+            select_all_entity_paths: _,
+            fuzzy_descriptors: _,
+            exclude_static_data: _,
+            exclude_temporal_data: _,
         } = GetChunksRequest::try_from(request.into_inner())?;
 
         let entity_paths: IntSet<EntityPath> = entity_paths.into_iter().collect();
