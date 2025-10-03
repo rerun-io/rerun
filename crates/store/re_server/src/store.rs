@@ -184,8 +184,9 @@ impl Dataset {
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<BTreeSet<PartitionId>, Error> {
         re_log::info!("Loading RRD: {}", path.display());
-        let contents = ChunkStore::handle_from_rrd_filepath(&ChunkStoreConfig::ALL_DISABLED, path)
-            .map_err(Error::RrdLoadingError)?;
+        let contents =
+            ChunkStore::handle_from_rrd_filepath(&ChunkStoreConfig::CHANGELOG_DISABLED, path)
+                .map_err(Error::RrdLoadingError)?;
 
         let mut new_partition_ids = BTreeSet::default();
 
