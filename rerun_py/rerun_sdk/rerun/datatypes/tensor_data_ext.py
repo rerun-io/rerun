@@ -23,10 +23,12 @@ class TorchTensorLike(Protocol):
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from . import TensorBufferLike, TensorDataArrayLike, TensorDataLike
+    from . import TensorBufferLike, TensorDataArrayLike
 
-    TensorLike = TensorDataLike | TorchTensorLike
+    TensorLike = npt.ArrayLike | TorchTensorLike
     """Type helper for a tensor-like object that can be logged to Rerun."""
+else:
+    TensorLike = Any
 
 
 def _to_numpy(tensor: TensorLike) -> npt.NDArray[Any]:
