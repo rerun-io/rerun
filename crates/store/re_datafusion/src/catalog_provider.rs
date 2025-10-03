@@ -10,6 +10,7 @@ use std::any::Any;
 use std::iter;
 use std::sync::Arc;
 
+// These are to match the defaults in datafusion.
 pub const DEFAULT_CATALOG_NAME: &str = "datafusion";
 const DEFAULT_SCHEMA_NAME: &str = "public";
 
