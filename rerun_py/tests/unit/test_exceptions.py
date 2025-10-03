@@ -88,7 +88,7 @@ def test_stack_tracking() -> None:
             uses_context()
             value = 42
 
-        expected_line = get_line_number() - 7  # the first line of the context block
+        expected_line = get_line_number() - 4  # the first line of the context block
         expected_warnings(warnings, mem, starting_msgs, 1, expected_line)
         # value is changed because uses_context its own exception internally
         assert value == 42
@@ -102,7 +102,7 @@ def test_stack_tracking() -> None:
             raise ValueError("some value error")
             value = 42
 
-        expected_line = get_line_number() - 7  # the open of the context manager
+        expected_line = get_line_number() - 4  # the open of the context manager
         expected_warnings(warnings, mem, starting_msgs, 1, expected_line)
         # value wasn't changed because an exception was raised
         assert value == 0
