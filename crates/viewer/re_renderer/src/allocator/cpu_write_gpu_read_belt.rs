@@ -51,10 +51,7 @@ pub enum CpuWriteGpuReadError {
 /// * keeping writes sequential
 pub struct CpuWriteGpuReadBuffer<T: bytemuck::Pod + Send + Sync> {
     /// Write view into the relevant buffer portion.
-    ///
-    /// UNSAFE: The lifetime is transmuted to be `'static`.
-    /// In actuality it is tied to the lifetime of [`chunk_buffer`](Self::chunk_buffer)!
-    write_view: wgpu::BufferViewMut<'static>,
+    write_view: wgpu::BufferViewMut,
 
     /// Range in T elements in `write_view` that haven't been written yet.
     unwritten_element_range: std::ops::Range<usize>,
@@ -377,22 +374,6 @@ impl Chunk {
         let buffer_slice = self.buffer.slice(byte_offset_in_chunk_buffer..end_offset);
         let write_view = buffer_slice.get_mapped_range_mut();
         self.unused_offset = end_offset;
-
-        #[allow(unsafe_code)]
-        // SAFETY:
-        // write_view has a lifetime dependency on the chunk's buffer - internally it holds a pointer to it!
-        //
-        // To ensure that the buffer is still around, we put the ref counted buffer handle into the struct with it.
-        // Additionally, the buffer pool needs to ensure:
-        // * it can't drop buffers if there's still users
-        //      -> We assert on that
-        // * buffers are never moved in memory
-        //      -> buffers are always owned by the pool and are always Arc.
-        //          This means it not allowed to move the buffer out.
-        //          (We could make them Pin<Arc<>> but this complicates things inside the BufferPool)
-        let write_view = unsafe {
-            std::mem::transmute::<wgpu::BufferViewMut<'_>, wgpu::BufferViewMut<'static>>(write_view)
-        };
 
         CpuWriteGpuReadBuffer {
             chunk_buffer: self.buffer.clone(),

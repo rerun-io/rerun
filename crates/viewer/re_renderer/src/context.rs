@@ -290,7 +290,7 @@ impl RenderContext {
             device.on_uncaptured_error({
                 let err_tracker = Arc::clone(&err_tracker);
                 let frame_index_for_uncaptured_errors = frame_index_for_uncaptured_errors.clone();
-                Box::new(move |err| {
+                Arc::new(move |err| {
                     err_tracker.handle_error(
                         err,
                         frame_index_for_uncaptured_errors.load(Ordering::Acquire),
@@ -377,9 +377,10 @@ impl RenderContext {
             // * On WebGPU poll is a no-op and we don't get here.
             // * On WebGL we'll just immediately timeout since we can't actually wait for frames.
             if !cfg!(target_arch = "wasm32")
-                && let Err(err) = self.device.poll(wgpu::PollType::WaitForSubmissionIndex(
-                    newest_submission_to_wait_for,
-                ))
+                && let Err(err) = self.device.poll(wgpu::PollType::Wait {
+                    submission_index: Some(newest_submission_to_wait_for),
+                    timeout: None,
+                })
             {
                 re_log::warn_once!(
                     "Failed to limit number of in-flight GPU frames to {}: {:?}",
