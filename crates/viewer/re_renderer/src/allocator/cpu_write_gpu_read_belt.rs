@@ -51,6 +51,7 @@ pub enum CpuWriteGpuReadError {
 /// * keeping writes sequential
 ///
 /// Must be dropped before calling [`CpuWriteGpuReadBelt::before_queue_submit`] (typically the end of a frame).
+/// If this buffer is not dropped before calling [`CpuWriteGpuReadBelt::before_queue_submit`], a validation error will occur.
 pub struct CpuWriteGpuReadBuffer<T: bytemuck::Pod + Send + Sync> {
     /// Write view into the relevant buffer portion.
     write_view: wgpu::BufferViewMut,
