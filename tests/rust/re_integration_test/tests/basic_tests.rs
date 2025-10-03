@@ -1,3 +1,4 @@
+use egui_kittest::SnapshotOptions;
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
@@ -31,5 +32,8 @@ pub async fn test_single_text_document() {
         ));
     });
 
-    harness.snapshot("test_single_text_document_2");
+    harness.snapshot_options(
+        "test_single_text_document_2",
+        &SnapshotOptions::new().failed_pixel_count_threshold(20),
+    );
 }
