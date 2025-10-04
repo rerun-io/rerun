@@ -339,7 +339,7 @@ impl SyntaxHighlightedStyle {
             Self::Primitive => {
                 Self::monospace_with_color(style, style.tokens().code_primitive_color)
             }
-            Self::Syntax => Self::monospace_with_color(style, style.tokens().text_strong),
+            Self::Syntax => Self::monospace_with_color(style, style.tokens().text_subdued),
             Self::Body => Self::body(style),
             Self::BodyDefault => {
                 let mut format = Self::body(style);
