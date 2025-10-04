@@ -12,7 +12,7 @@ use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 
 use crate::{
     contexts::SpatialSceneEntityContext,
-    mesh_cache::{AnyMesh, MeshCache, MeshCacheKey},
+    caches::{AnyMesh, MeshCache, MeshCacheKey},
     view_kind::SpatialViewKind,
 };
 

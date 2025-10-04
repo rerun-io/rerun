@@ -1,12 +1,12 @@
 //! Rerun spatial transform processing
 
-mod transform_cache;
+mod component_type_info;
+mod transform_resolution_cache;
 mod transform_tree;
 
-pub use transform_cache::{
+pub use transform_resolution_cache::{
     CachedTransformsForTimeline, PoseTransformArchetypeMap, ResolvedPinholeProjection,
-    TransformCacheStoreSubscriber, query_view_coordinates,
-    query_view_coordinates_at_closest_ancestor,
+    TransformResolutionCache, query_view_coordinates, query_view_coordinates_at_closest_ancestor,
 };
 pub use transform_tree::{TransformInfo, TransformTree, TwoDInThreeDTransformInfo};
 

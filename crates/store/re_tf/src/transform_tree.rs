@@ -8,7 +8,7 @@ use re_types::ArchetypeName;
 
 use crate::{
     CachedTransformsForTimeline, PoseTransformArchetypeMap, ResolvedPinholeProjection,
-    TransformCacheStoreSubscriber, image_view_coordinates,
+    TransformResolutionCache, image_view_coordinates,
 };
 
 // TODO(andreas): this struct is comically large for what we're doing here. Need to refactor this to make it smaller & more efficient.
@@ -150,18 +150,11 @@ impl TransformTree {
     pub fn execute(
         &mut self,
         recording: &re_entity_db::EntityDb,
+        transform_cache: &TransformResolutionCache,
         time_query: &LatestAtQuery,
         pinhole_image_plane_distance: &dyn Fn(&EntityPath) -> f32,
     ) {
         re_tracing::profile_function!();
-
-        // Make sure transform cache is up to date.
-        // TODO(andreas): This is a rather annoying sync point between different views.
-        // We could alleviate this by introducing a per view class (not instance) method that is called
-        // before system execution.
-        TransformCacheStoreSubscriber::access_mut(recording.store_id(), |cache| {
-            cache.apply_all_updates(recording);
-        });
 
         let entity_tree = recording.tree();
 
@@ -173,32 +166,30 @@ impl TransformTree {
             return;
         };
 
-        TransformCacheStoreSubscriber::access(recording.store_id(), |cache| {
-            let transforms = cache.transforms_for_timeline(time_query.timeline());
+        let transforms = transform_cache.transforms_for_timeline(time_query.timeline());
 
-            // Child transforms of this space
-            {
-                re_tracing::profile_scope!("gather_descendants_transforms");
+        // Child transforms of this space
+        {
+            re_tracing::profile_scope!("gather_descendants_transforms");
 
-                self.gather_descendants_transforms(
-                    current_tree,
-                    time_query,
-                    // Ignore potential pinhole camera at the root of the view, since it is regarded as being "above" this root.
-                    TransformInfo::default(),
-                    transforms,
-                    pinhole_image_plane_distance,
-                );
-            }
-
-            // Walk up from the reference to the highest reachable parent.
-            self.gather_parent_transforms(
-                recording.tree(),
+            self.gather_descendants_transforms(
                 current_tree,
                 time_query,
+                // Ignore potential pinhole camera at the root of the view, since it is regarded as being "above" this root.
+                TransformInfo::default(),
                 transforms,
                 pinhole_image_plane_distance,
             );
-        }); // Note that this can return None if no event has happened for this timeline yet.
+        }
+
+        // Walk up from the reference to the highest reachable parent.
+        self.gather_parent_transforms(
+            recording.tree(),
+            current_tree,
+            time_query,
+            transforms,
+            pinhole_image_plane_distance,
+        );
     }
 }
 
