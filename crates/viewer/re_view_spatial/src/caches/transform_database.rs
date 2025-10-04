@@ -3,27 +3,18 @@ use std::sync::Arc;
 
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
-use re_tf::{TransformCache, TransformCacheStoreSubscriber};
+use re_tf::TransformCache;
 use re_viewer_context::{Cache, CacheMemoryReport};
 
 /// Stores a [`re_tf::TransformCache`] for each recording.
 ///
 /// Ensures that the cache stays up to date.
-pub struct TransformDatabase {
+#[derive(Default)]
+pub struct TransformDatabaseCache {
     transform_cache: Arc<RwLock<TransformCache>>,
 }
 
-impl Default for TransformDatabase {
-    fn default() -> Self {
-        TransformCacheStoreSubscriber::ensure_registered();
-
-        Self {
-            transform_cache: Arc::new(RwLock::new(TransformCache::default())),
-        }
-    }
-}
-
-impl TransformDatabase {
+impl TransformDatabaseCache {
     /// Gets read access to the transform cache.
     ///
     /// While the lock is held, no new updates can be applied to the transform cache.
@@ -32,7 +23,7 @@ impl TransformDatabase {
     }
 }
 
-impl Cache for TransformDatabase {
+impl Cache for TransformDatabaseCache {
     fn purge_memory(&mut self) {
         // Can't purge memory from the transform cache right now and even if we could, there's
         // no point to it since we can't build it up in a more compact fashion yet.
@@ -51,7 +42,7 @@ impl Cache for TransformDatabase {
         "Transform Database"
     }
 
-    fn on_store_events(&mut self, _events: &[&ChunkStoreEvent], entity_db: &EntityDb) {
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent], entity_db: &EntityDb) {
         re_tracing::profile_function!();
 
         debug_assert!(
@@ -59,12 +50,9 @@ impl Cache for TransformDatabase {
             "Transform cache is still locked on processing store events. This should never happen."
         );
 
-        // Store subscribers ran now already, therefore we can apply all updates!
-        let transform_events =
-            TransformCacheStoreSubscriber::take_transform_events(entity_db.store_id());
         self.transform_cache
             .write()
-            .apply_all_updates(entity_db, &transform_events);
+            .apply_all_updates(entity_db, events.iter().copied());
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

@@ -4,7 +4,7 @@ use re_types::{archetypes, components::ImagePlaneDistance};
 use re_view::DataResultQuery as _;
 use re_viewer_context::{DataResultTree, IdentifiedViewSystem, ViewContext, ViewContextSystem};
 
-use crate::{caches::TransformDatabase, visualizers::CamerasVisualizer};
+use crate::{caches::TransformDatabaseCache, visualizers::CamerasVisualizer};
 
 #[derive(Clone, Default)]
 pub struct TransformTreeContext(re_tf::TransformTree);
@@ -27,7 +27,7 @@ impl ViewContextSystem for TransformTreeContext {
         // (Determining entity transforms could take a while, and we don't want to block other threads from doing work with the caches!)
         let caches = ctx.viewer_ctx.store_context.caches;
         let transform_cache =
-            caches.entry(|c: &mut TransformDatabase| c.read_lock_transform_cache());
+            caches.entry(|c: &mut TransformDatabaseCache| c.read_lock_transform_cache());
 
         let query_result = ctx.viewer_ctx.lookup_query_result(query.view_id);
         let data_result_tree = &query_result.tree;

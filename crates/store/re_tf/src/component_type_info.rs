@@ -38,7 +38,7 @@ impl Default for TransformComponentTypeInfo {
 
 impl TransformComponentTypeInfo {
     /// Retrieves global cached instance.
-    pub fn get() -> &'static TransformComponentTypeInfo {
+    pub fn get() -> &'static Self {
         static ONCE: OnceLock<TransformComponentTypeInfo> = OnceLock::new();
         ONCE.get_or_init(Default::default)
     }

@@ -2,14 +2,12 @@
 
 mod component_type_info;
 mod transform_cache;
-mod transform_cache_subscriber;
 mod transform_tree;
 
 pub use transform_cache::{
     CachedTransformsForTimeline, PoseTransformArchetypeMap, ResolvedPinholeProjection,
     TransformCache, query_view_coordinates, query_view_coordinates_at_closest_ancestor,
 };
-pub use transform_cache_subscriber::TransformCacheStoreSubscriber;
 pub use transform_tree::{TransformInfo, TransformTree, TwoDInThreeDTransformInfo};
 
 /// Returns the view coordinates used for 2D (image) views.

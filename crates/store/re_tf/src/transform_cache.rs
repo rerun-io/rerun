@@ -7,7 +7,7 @@ use glam::Affine3A;
 use itertools::Either;
 use nohash_hasher::IntMap;
 
-use re_chunk_store::LatestAtQuery;
+use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntityPathHash, TimeInt, TimelineName};
 use re_types::{
@@ -74,22 +74,31 @@ bitflags::bitflags! {
 }
 
 impl TransformAspect {
+    /// Converts a component type to a transform aspect.
     pub fn from_component_type(component_type: ComponentType) -> Self {
-        let mut aspects = Self::empty();
-
         let component_info = TransformComponentTypeInfo::get();
 
         if component_info.transform.contains(&component_type) {
-            aspects |= Self::Tree;
+            Self::Tree
+        } else if component_info.pose.contains(&component_type) {
+            Self::Pose
+        } else if component_info.pinhole.contains(&component_type) {
+            Self::PinholeOrViewCoordinates
+        } else if component_type == re_types::components::ClearIsRecursive::name() {
+            Self::Clear
+        } else {
+            Self::empty()
         }
-        if component_info.pose.contains(&component_type) {
-            aspects |= Self::Pose;
-        }
-        if component_info.pinhole.contains(&component_type) {
-            aspects |= Self::PinholeOrViewCoordinates;
-        }
-        if component_type == re_types::components::ClearIsRecursive::name() {
-            aspects |= Self::Clear;
+    }
+
+    /// Collects the transform aspects a chunk covers.
+    pub fn transform_aspects_of(chunk: &Chunk) -> Self {
+        let mut aspects = Self::empty();
+        for component_type in chunk
+            .component_descriptors()
+            .filter_map(|c| c.component_type)
+        {
+            aspects |= Self::from_component_type(component_type);
         }
         aspects
     }
@@ -390,24 +399,38 @@ impl TransformCache {
     /// This needs to be called once per frame prior to any transform propagation.
     /// (which is done by [`crate::TransformTree`])
     // TODO(andreas): easy optimization: apply only updates for a single timeline at a time.
-    pub fn apply_all_updates(
+    pub fn apply_all_updates<'a>(
         &mut self,
         entity_db: &EntityDb,
-        events: &[(re_chunk_store::ChunkStoreEvent, TransformAspect)],
+        events: impl Iterator<Item = &'a re_chunk_store::ChunkStoreEvent>,
     ) {
         re_tracing::profile_function!();
 
-        // TODO: delay to invalidated events is no longer needed.
-        for (event, aspects) in events {
+        // First collecting all invalidation events is technically no longer needed,
+        // but maybe worth keeping as a pattern as it may lead to less queries in total?
+        let mut any_updates = false;
+        for event in events {
+            let aspects = TransformAspect::transform_aspects_of(&event.chunk);
+            if aspects.is_empty() {
+                continue;
+            }
+
+            any_updates = true;
             if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
-                self.remove_chunk(event, *aspects);
+                self.remove_chunk(&event.chunk, aspects);
             } else if event.diff.chunk.is_static() {
-                self.add_static_chunk(event, *aspects);
+                self.add_static_chunk(&event.chunk, aspects);
             } else {
-                self.add_temporal_chunk(event, *aspects);
+                self.add_temporal_chunk(&event.chunk, aspects);
             }
         }
 
+        if any_updates {
+            self.process_updates(entity_db);
+        }
+    }
+
+    fn process_updates(&mut self, entity_db: &EntityDb) {
         // Update static transforms.
         for invalidated_transform in self.static_timeline.invalidated_transforms.drain(..) {
             let InvalidatedTransforms {
@@ -526,14 +549,9 @@ impl TransformCache {
         }
     }
 
-    fn add_temporal_chunk(
-        &mut self,
-        event: &re_chunk_store::ChunkStoreEvent,
-        aspects: TransformAspect,
-    ) {
+    fn add_temporal_chunk(&mut self, chunk: &Chunk, aspects: TransformAspect) {
         re_tracing::profile_function!();
 
-        let chunk = &event.diff.chunk;
         debug_assert!(!chunk.is_static());
 
         let entity_path = chunk.entity_path();
@@ -617,16 +635,12 @@ impl TransformCache {
         }
     }
 
-    fn add_static_chunk(
-        &mut self,
-        event: &re_chunk_store::ChunkStoreEvent,
-        aspects: TransformAspect,
-    ) {
+    fn add_static_chunk(&mut self, chunk: &Chunk, aspects: TransformAspect) {
         re_tracing::profile_function!();
 
-        debug_assert!(event.diff.chunk.is_static());
+        debug_assert!(chunk.is_static());
 
-        let entity_path = event.chunk.entity_path();
+        let entity_path = chunk.entity_path();
 
         self.static_timeline
             .invalidated_transforms
@@ -695,13 +709,13 @@ impl TransformCache {
         }
     }
 
-    fn remove_chunk(&mut self, event: &re_chunk_store::ChunkStoreEvent, aspects: TransformAspect) {
+    fn remove_chunk(&mut self, chunk: &Chunk, aspects: TransformAspect) {
         re_tracing::profile_function!();
 
-        let entity_path = event.chunk.entity_path();
+        let entity_path = chunk.entity_path();
 
         // Note that we ignore static timelines for removal.
-        for (timeline, time_column) in event.diff.chunk.timelines() {
+        for (timeline, time_column) in chunk.timelines() {
             let Some(per_timeline) = self.per_timeline.get_mut(timeline) else {
                 continue;
             };
@@ -1144,13 +1158,14 @@ pub fn query_view_coordinates_at_closest_ancestor(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::sync::{Arc, OnceLock};
 
-    use re_chunk_store::{Chunk, GarbageCollectionOptions, RowId};
+    use re_chunk_store::{
+        Chunk, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriber, ChunkStoreSubscriberHandle,
+        GarbageCollectionOptions, RowId,
+    };
     use re_log_types::{StoreId, TimePoint, Timeline};
     use re_types::{archetypes, datatypes};
-
-    use crate::TransformCacheStoreSubscriber;
 
     use super::*;
 
@@ -1188,10 +1203,50 @@ mod tests {
         },
     ];
 
+    #[derive(Default)]
+    pub struct TestStoreSubscriber {
+        unprocessed_events: Vec<ChunkStoreEvent>,
+    }
+
+    impl TestStoreSubscriber {
+        /// Accesses the global store subscriber.
+        ///
+        /// Lazily registers the subscriber if it hasn't been registered yet.
+        pub fn subscription_handle() -> ChunkStoreSubscriberHandle {
+            static SUBSCRIPTION: OnceLock<ChunkStoreSubscriberHandle> = OnceLock::new();
+            *SUBSCRIPTION.get_or_init(|| ChunkStore::register_subscriber(Box::new(Self::default())))
+        }
+
+        /// Retrieves all transform events that have not been processed yet since the last call to this function.
+        pub fn take_transform_events() -> Vec<re_chunk_store::ChunkStoreEvent> {
+            ChunkStore::with_subscriber_mut(Self::subscription_handle(), |subscriber: &mut Self| {
+                std::mem::take(&mut subscriber.unprocessed_events)
+            })
+            .unwrap_or_default()
+        }
+    }
+
+    impl ChunkStoreSubscriber for TestStoreSubscriber {
+        fn name(&self) -> String {
+            "TestStoreSubscriber".to_owned()
+        }
+
+        fn on_events(&mut self, events: &[ChunkStoreEvent]) {
+            self.unprocessed_events.extend_from_slice(events);
+        }
+
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+
+        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+            self
+        }
+    }
+
     fn apply_store_subscriber_events(cache: &mut TransformCache, entity_db: &EntityDb) {
-        let events = TransformCacheStoreSubscriber::take_transform_events(entity_db.store_id());
-        dbg!(&events);
-        cache.apply_all_updates(entity_db, &events);
+        let events = TestStoreSubscriber::take_transform_events();
+        cache.apply_all_updates(entity_db, events.iter());
     }
 
     fn static_test_setup_store(
@@ -1241,7 +1296,7 @@ mod tests {
             re_log_types::StoreKind::Recording,
             "test_app",
         ));
-        TransformCacheStoreSubscriber::ensure_registered();
+        let _ = TestStoreSubscriber::subscription_handle();
         entity_db
     }
 

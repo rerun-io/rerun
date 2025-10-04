@@ -73,7 +73,6 @@ impl ViewClass for SpatialView3D {
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
         // Ensure spatial topology is registered.
-        re_tf::TransformCacheStoreSubscriber::ensure_registered();
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
 
         register_spatial_contexts(system_registry)?;
