@@ -8,7 +8,7 @@ use re_types::ArchetypeName;
 
 use crate::{
     CachedTransformsForTimeline, PoseTransformArchetypeMap, ResolvedPinholeProjection,
-    TransformCache, image_view_coordinates,
+    TransformResolutionCache, image_view_coordinates,
 };
 
 // TODO(andreas): this struct is comically large for what we're doing here. Need to refactor this to make it smaller & more efficient.
@@ -150,7 +150,7 @@ impl TransformTree {
     pub fn execute(
         &mut self,
         recording: &re_entity_db::EntityDb,
-        transform_cache: &TransformCache,
+        transform_cache: &TransformResolutionCache,
         time_query: &LatestAtQuery,
         pinhole_image_plane_distance: &dyn Fn(&EntityPath) -> f32,
     ) {

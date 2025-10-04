@@ -3,19 +3,19 @@ use std::sync::Arc;
 
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
-use re_tf::TransformCache;
+use re_tf::TransformResolutionCache;
 use re_viewer_context::{Cache, CacheMemoryReport};
 
-/// Stores a [`re_tf::TransformCache`] for each recording.
+/// Stores a [`re_tf::TransformResolutionCache`] for each recording.
 ///
 /// Ensures that the cache stays up to date.
 #[derive(Default)]
-pub struct TransformDatabaseCache {
+pub struct TransformDatabaseStoreCache {
     initialized: bool,
-    transform_cache: Arc<RwLock<TransformCache>>,
+    transform_cache: Arc<RwLock<TransformResolutionCache>>,
 }
 
-impl TransformDatabaseCache {
+impl TransformDatabaseStoreCache {
     /// Gets read access to the transform cache.
     ///
     /// If the cache was newly added, will make sure that all existing chunks in the entity db are processed.
@@ -24,7 +24,7 @@ impl TransformDatabaseCache {
     pub fn read_lock_transform_cache(
         &mut self,
         entity_db: &EntityDb,
-    ) -> ArcRwLockReadGuard<RawRwLock, TransformCache> {
+    ) -> ArcRwLockReadGuard<RawRwLock, TransformResolutionCache> {
         if !self.initialized {
             self.initialized = true;
             self.transform_cache
@@ -36,7 +36,7 @@ impl TransformDatabaseCache {
     }
 }
 
-impl Cache for TransformDatabaseCache {
+impl Cache for TransformDatabaseStoreCache {
     fn purge_memory(&mut self) {
         // Can't purge memory from the transform cache right now and even if we could, there's
         // no point to it since we can't build it up in a more compact fashion yet.
@@ -44,7 +44,7 @@ impl Cache for TransformDatabaseCache {
 
     fn memory_report(&self) -> CacheMemoryReport {
         CacheMemoryReport {
-            // TODO(RR-2516): Implement SizeBytes for TransformCache.
+            // TODO(RR-2516): Implement SizeBytes for TransformResolutionCache.
             bytes_cpu: 0, //self.transform_cache.total_size_bytes(),
             bytes_gpu: None,
             per_cache_item_info: Vec::new(),

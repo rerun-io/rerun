@@ -35,13 +35,13 @@ use crate::component_type_info::TransformComponentTypeInfo;
 ///
 /// Most of what this construct does internally is to keep track at which points in time these sets of components
 /// change such that a latest-at query for them may (!) yield any new results.
-/// It then (in [`TransformCache::apply_all_updates`]) performs those queries and derives transforms from them.
-pub struct TransformCache {
+/// It then (in [`TransformResolutionCache::apply_all_updates`]) performs those queries and derives transforms from them.
+pub struct TransformResolutionCache {
     per_timeline: HashMap<TimelineName, CachedTransformsForTimeline>,
     static_timeline: CachedTransformsForTimeline,
 }
 
-impl Default for TransformCache {
+impl Default for TransformResolutionCache {
     #[inline]
     fn default() -> Self {
         Self {
@@ -173,7 +173,7 @@ impl CachedTransformsForTimeline {
 ///
 /// If there's a concrete archetype in here, the mapped values are the full resolved pose transform.
 ///
-/// `TransformCache` doesn't do tree propgation, however (!!!) there's a mini-tree in here that we already fully apply:
+/// `TransformResolutionCache` doesn't do tree propgation, however (!!!) there's a mini-tree in here that we already fully apply:
 /// `InstancePose3D` are applied on top of concrete archetype poses.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct PoseTransformArchetypeMap {
@@ -383,7 +383,7 @@ impl TransformsForEntity {
     }
 }
 
-impl TransformCache {
+impl TransformResolutionCache {
     /// Accesses the transform component tracking data for a given timeline.
     ///
     /// Returns `None` if the timeline doesn't have any transforms at all.
@@ -1278,13 +1278,13 @@ mod tests {
         }
     }
 
-    fn apply_store_subscriber_events(cache: &mut TransformCache, entity_db: &EntityDb) {
+    fn apply_store_subscriber_events(cache: &mut TransformResolutionCache, entity_db: &EntityDb) {
         let events = TestStoreSubscriber::take_transform_events();
         cache.apply_all_updates(entity_db, events.iter());
     }
 
     fn static_test_setup_store(
-        cache: &mut TransformCache,
+        cache: &mut TransformResolutionCache,
         prior_static_chunk: Chunk,
         final_static_chunk: Chunk,
         regular_chunk: Chunk,
@@ -1337,7 +1337,7 @@ mod tests {
     #[test]
     fn test_transforms_per_timeline_access() {
         let mut entity_db = new_entity_db_with_subscriber_registered();
-        let mut cache = TransformCache::default();
+        let mut cache = TransformResolutionCache::default();
 
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
@@ -1415,7 +1415,7 @@ mod tests {
                 .build()
                 .unwrap();
 
-            let mut cache = TransformCache::default();
+            let mut cache = TransformResolutionCache::default();
             let entity_db = static_test_setup_store(
                 &mut cache,
                 prior_static_chunk,
@@ -1496,7 +1496,7 @@ mod tests {
                 .build()
                 .unwrap();
 
-            let mut cache = TransformCache::default();
+            let mut cache = TransformResolutionCache::default();
             let entity_db = static_test_setup_store(
                 &mut cache,
                 prior_static_chunk,
@@ -1611,7 +1611,7 @@ mod tests {
                 .build()
                 .unwrap();
 
-            let mut cache = TransformCache::default();
+            let mut cache = TransformResolutionCache::default();
             let entity_db = static_test_setup_store(
                 &mut cache,
                 prior_static_chunk,
@@ -1698,7 +1698,7 @@ mod tests {
                 .build()
                 .unwrap();
 
-            let mut cache = TransformCache::default();
+            let mut cache = TransformResolutionCache::default();
             let entity_db = static_test_setup_store(
                 &mut cache,
                 prior_static_chunk,
@@ -1737,7 +1737,7 @@ mod tests {
     #[test]
     fn test_tree_transforms() {
         let mut entity_db = new_entity_db_with_subscriber_registered();
-        let mut cache = TransformCache::default();
+        let mut cache = TransformResolutionCache::default();
 
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
@@ -1811,7 +1811,7 @@ mod tests {
     #[test]
     fn test_pose_transforms_instance_poses_only() {
         let mut entity_db = new_entity_db_with_subscriber_registered();
-        let mut cache = TransformCache::default();
+        let mut cache = TransformResolutionCache::default();
 
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
@@ -1916,7 +1916,7 @@ mod tests {
     #[test]
     fn test_mixing_instance_poses() {
         let mut entity_db = new_entity_db_with_subscriber_registered();
-        let mut cache = TransformCache::default();
+        let mut cache = TransformResolutionCache::default();
 
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
@@ -2052,7 +2052,7 @@ mod tests {
     #[test]
     fn test_pinhole_projections() {
         let mut entity_db = new_entity_db_with_subscriber_registered();
-        let mut cache = TransformCache::default();
+        let mut cache = TransformResolutionCache::default();
 
         let image_from_camera =
             components::PinholeProjection::from_focal_length_and_principal_point(
@@ -2129,7 +2129,7 @@ mod tests {
     #[test]
     fn test_out_of_order_updates() {
         let mut entity_db = new_entity_db_with_subscriber_registered();
-        let mut cache = TransformCache::default();
+        let mut cache = TransformResolutionCache::default();
 
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
@@ -2216,7 +2216,7 @@ mod tests {
             println!("clear_in_separate_chunk: {clear_in_separate_chunk}");
 
             let mut entity_db = new_entity_db_with_subscriber_registered();
-            let mut cache = TransformCache::default();
+            let mut cache = TransformResolutionCache::default();
 
             let timeline = Timeline::new_sequence("t");
             let path = EntityPath::from("ent");
@@ -2284,7 +2284,7 @@ mod tests {
             );
 
             let mut entity_db = new_entity_db_with_subscriber_registered();
-            let mut cache = TransformCache::default();
+            let mut cache = TransformResolutionCache::default();
 
             let timeline = Timeline::new_sequence("t");
 
@@ -2354,7 +2354,7 @@ mod tests {
     #[test]
     fn test_gc() {
         let mut entity_db = new_entity_db_with_subscriber_registered();
-        let mut cache = TransformCache::default();
+        let mut cache = TransformResolutionCache::default();
 
         let timeline = Timeline::new_sequence("t");
         let chunk = Chunk::builder(EntityPath::from("my_entity0"))
