@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
 use super::MessageLayer;
-use crate::{
-    parsers::MessageParser,
-    parsers::ros2msg::{
+use crate::parsers::{
+    MessageParser,
+    ros2msg::{
         Ros2MessageParser,
         rcl_interfaces::LogMessageParser,
         sensor_msgs::{
@@ -114,6 +114,7 @@ impl MessageLayer for McapRos2Layer {
                 "Message schema {:?} is currently not supported",
                 schema.name
             );
+
             None
         }
     }

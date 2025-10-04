@@ -2,6 +2,7 @@ mod protobuf;
 mod raw;
 mod recording_info;
 mod ros2;
+mod ros2_reflection;
 mod schema;
 mod stats;
 
@@ -10,7 +11,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub use self::{
     protobuf::McapProtobufLayer, raw::McapRawLayer, recording_info::McapRecordingInfoLayer,
-    ros2::McapRos2Layer, schema::McapSchemaLayer, stats::McapStatisticLayer,
+    ros2::McapRos2Layer, ros2_reflection::McapRos2ReflectionLayer, schema::McapSchemaLayer,
+    stats::McapStatisticLayer,
 };
 
 use crate::{
@@ -324,6 +326,7 @@ impl LayerRegistry {
             .register_file_layer::<McapStatisticLayer>()
             // message layers (priority order):
             .register_message_layer::<McapRos2Layer>()
+            .register_message_layer::<McapRos2ReflectionLayer>()
             .register_message_layer::<McapProtobufLayer>();
 
         if raw_fallback_enabled {

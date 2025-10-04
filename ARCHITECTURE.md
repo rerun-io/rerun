@@ -233,6 +233,7 @@ Update instructions:
 | re_mcap            | Convert MCAP into Rerun-compatible data.                                             |
 | re_memory          | Run-time memory tracking and profiling.                                              |
 | re_perf_telemetry  | In and out of process performance profiling utilities for Rerun & Redap              |
+| re_ros_msg         | Parsing and deserializing ROS   messages                                             |
 | re_smart_channel   | A channel that keeps track of latency and queue length.                              |
 | re_span            | An integer range that always has a non-negative length                               |
 | re_string_interner | Yet another string interning library                                                 |

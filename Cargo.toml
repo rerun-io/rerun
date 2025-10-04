@@ -106,6 +106,7 @@ re_log = { path = "crates/utils/re_log", version = "=0.26.0-alpha.1", default-fe
 re_mcap = { path = "crates/utils/re_mcap", version = "=0.26.0-alpha.1", default-features = false }
 re_memory = { path = "crates/utils/re_memory", version = "=0.26.0-alpha.1", default-features = false }
 re_perf_telemetry = { path = "crates/utils/re_perf_telemetry", version = "=0.26.0-alpha.1", default-features = false }
+re_ros_msg = { path = "crates/utils/re_ros_msg", version = "=0.26.0-alpha.1", default-features = false }
 re_smart_channel = { path = "crates/utils/re_smart_channel", version = "=0.26.0-alpha.1", default-features = false }
 re_span = { path = "crates/utils/re_span", version = "=0.26.0-alpha.1", default-features = false }
 re_string_interner = { path = "crates/utils/re_string_interner", version = "=0.26.0-alpha.1", default-features = false }
