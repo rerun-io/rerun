@@ -963,7 +963,7 @@ impl ObjectField {
 
         assert!(
             !field.required(),
-            "required fields are not used, but found in {filepath:?} for {fqname}"
+            "required fields should not be used, but found in {filepath} for {fqname}",
         );
 
         let docs = Docs::from_raw_docs(reporter, &virtpath, field.name(), field.documentation());
