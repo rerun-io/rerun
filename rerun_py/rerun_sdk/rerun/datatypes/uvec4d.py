@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -46,13 +46,13 @@ class UVec4D:
 
 
 if TYPE_CHECKING:
-    UVec4DLike = Union[UVec4D, npt.NDArray[Any], npt.ArrayLike, Sequence[int]]
+    UVec4DLike = UVec4D | npt.NDArray[Any] | npt.ArrayLike | Sequence[int]
 else:
     UVec4DLike = Any
 
-UVec4DArrayLike = Union[
-    UVec4D, Sequence[UVec4DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[int]], Sequence[int]
-]
+UVec4DArrayLike = (
+    UVec4D | Sequence[UVec4DLike] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[int]] | Sequence[int]
+)
 
 
 class UVec4DBatch(BaseBatch[UVec4DArrayLike]):

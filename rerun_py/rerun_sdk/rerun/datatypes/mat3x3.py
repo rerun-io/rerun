@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -79,11 +79,11 @@ class Mat3x3(Mat3x3Ext):
 
 
 if TYPE_CHECKING:
-    Mat3x3Like = Union[Mat3x3, npt.ArrayLike]
+    Mat3x3Like = Mat3x3 | npt.ArrayLike
 else:
     Mat3x3Like = Any
 
-Mat3x3ArrayLike = Union[Mat3x3, Sequence[Mat3x3Like], npt.ArrayLike]
+Mat3x3ArrayLike = Mat3x3 | Sequence[Mat3x3Like] | npt.ArrayLike
 
 
 class Mat3x3Batch(BaseBatch[Mat3x3ArrayLike]):

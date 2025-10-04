@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -74,11 +74,11 @@ class TensorData(TensorDataExt):
 
 
 if TYPE_CHECKING:
-    TensorDataLike = Union[TensorData, npt.ArrayLike]
+    TensorDataLike = TensorData | npt.ArrayLike
 else:
     TensorDataLike = Any
 
-TensorDataArrayLike = Union[TensorData, Sequence[TensorDataLike], npt.ArrayLike]
+TensorDataArrayLike = TensorData | Sequence[TensorDataLike] | npt.ArrayLike
 
 
 class TensorDataBatch(BaseBatch[TensorDataArrayLike]):

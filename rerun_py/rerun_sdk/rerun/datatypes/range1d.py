@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -47,13 +47,13 @@ class Range1D(Range1DExt):
 
 
 if TYPE_CHECKING:
-    Range1DLike = Union[Range1D, npt.NDArray[Any], npt.ArrayLike, Sequence[float], slice]
+    Range1DLike = Range1D | npt.NDArray[Any] | npt.ArrayLike | Sequence[float] | slice
 else:
     Range1DLike = Any
 
-Range1DArrayLike = Union[
-    Range1D, Sequence[Range1DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
-]
+Range1DArrayLike = (
+    Range1D | Sequence[Range1DLike] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[float]] | Sequence[float]
+)
 
 
 class Range1DBatch(BaseBatch[Range1DArrayLike]):

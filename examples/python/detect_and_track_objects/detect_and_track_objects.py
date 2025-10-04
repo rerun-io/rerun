@@ -124,7 +124,7 @@ class Detector:
         self.log_detections(boxes, class_ids, things)
 
         objects_to_track: list[Detection] = []
-        for idx, (class_id, is_thing) in enumerate(zip(class_ids, things)):
+        for idx, (class_id, is_thing) in enumerate(zip(class_ids, things, strict=False)):
             if is_thing:
                 x_min, y_min, x_max, y_max = boxes[idx, :]
                 bbox_xywh = [x_min, y_min, x_max - x_min, y_max - y_min]

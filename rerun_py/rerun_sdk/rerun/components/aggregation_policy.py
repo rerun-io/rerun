@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -73,9 +73,9 @@ class AggregationPolicy(Enum):
         return self.name
 
 
-AggregationPolicyLike = Union[
-    AggregationPolicy,
-    Literal[
+AggregationPolicyLike = (
+    AggregationPolicy
+    | Literal[
         "Average",
         "Max",
         "Min",
@@ -88,10 +88,28 @@ AggregationPolicyLike = Union[
         "minmax",
         "minmaxaverage",
         "off",
-    ],
-    int,
-]
-AggregationPolicyArrayLike = Union[AggregationPolicyLike, Sequence[AggregationPolicyLike]]
+    ]
+    | int
+)
+AggregationPolicyArrayLike = (
+    AggregationPolicy
+    | Literal[
+        "Average",
+        "Max",
+        "Min",
+        "MinMax",
+        "MinMaxAverage",
+        "Off",
+        "average",
+        "max",
+        "min",
+        "minmax",
+        "minmaxaverage",
+        "off",
+    ]
+    | int
+    | Sequence[AggregationPolicyLike]
+)
 
 
 class AggregationPolicyBatch(BaseBatch[AggregationPolicyArrayLike], ComponentBatchMixin):

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Hashable
+from collections.abc import Callable, Hashable
 from concurrent.futures import ThreadPoolExecutor
 from math import floor
 from multiprocessing import Event, cpu_count
 from queue import Empty, Queue
-from typing import TYPE_CHECKING, Callable, Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 if TYPE_CHECKING:
     from multiprocessing.synchronize import Event as EventClass

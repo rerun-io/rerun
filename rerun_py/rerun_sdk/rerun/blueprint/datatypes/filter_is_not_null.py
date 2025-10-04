@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -67,14 +67,11 @@ class FilterIsNotNull(FilterIsNotNullExt):
 if TYPE_CHECKING:
     from ...blueprint import datatypes as blueprint_datatypes
 
-    FilterIsNotNullLike = Union[FilterIsNotNull, blueprint_datatypes.ComponentColumnSelectorLike]
+    FilterIsNotNullLike = FilterIsNotNull | blueprint_datatypes.ComponentColumnSelectorLike
 else:
     FilterIsNotNullLike = Any
 
-FilterIsNotNullArrayLike = Union[
-    FilterIsNotNull,
-    Sequence[FilterIsNotNullLike],
-]
+FilterIsNotNullArrayLike = FilterIsNotNull | Sequence[FilterIsNotNullLike]
 
 
 class FilterIsNotNullBatch(BaseBatch[FilterIsNotNullArrayLike]):

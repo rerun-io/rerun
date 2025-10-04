@@ -1,5 +1,11 @@
 # Rerun changelog
 
+## 0.26.0 - TBD - TBD
+
+### ⚠️ Breaking changes
+
+- Minimum supported Python is now 3.10.
+
 
 ## [0.25.1](https://github.com/rerun-io/rerun/compare/0.25.0...0.25.1) - 2025-09-19 - Bug fixes
 - Fix vector search [#11259](https://github.com/rerun-io/rerun/pull/11259)
@@ -462,7 +468,7 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 - Make `archetype_field_name` mandatory in `ComponentDescriptor` [#10082](https://github.com/rerun-io/rerun/pull/10082)
 
 #### 📦 Dependencies
-- Update to wgpu 0.25 [#10009](https://github.com/rerun-io/rerun/pull/10009) (thanks [@Vrixyz](https://github.com/Vrixyz)!)
+- Update to wgpu 0.25 [#10009](https://github.com/rerun-io/rerun/pull/10009) (thanks [@ThierryBerger](https://github.com/ThierryBerger)!)
 - Update Arrow and DataFusion dedpendencies [#10195](https://github.com/rerun-io/rerun/pull/10195)
 - Update egui to 0.32 [#10604](https://github.com/rerun-io/rerun/pull/10604)
 

@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -79,11 +79,11 @@ class ViewCoordinates(ViewCoordinatesExt):
 
 
 if TYPE_CHECKING:
-    ViewCoordinatesLike = Union[ViewCoordinates, npt.ArrayLike]
+    ViewCoordinatesLike = ViewCoordinates | npt.ArrayLike
 else:
     ViewCoordinatesLike = Any
 
-ViewCoordinatesArrayLike = Union[ViewCoordinates, Sequence[ViewCoordinatesLike], npt.ArrayLike]
+ViewCoordinatesArrayLike = ViewCoordinates | Sequence[ViewCoordinatesLike] | npt.ArrayLike
 
 
 class ViewCoordinatesBatch(BaseBatch[ViewCoordinatesArrayLike]):

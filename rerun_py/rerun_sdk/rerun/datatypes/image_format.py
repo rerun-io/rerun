@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pyarrow as pa
@@ -111,10 +111,7 @@ class ImageFormat(ImageFormatExt):
 
 
 ImageFormatLike = ImageFormat
-ImageFormatArrayLike = Union[
-    ImageFormat,
-    Sequence[ImageFormatLike],
-]
+ImageFormatArrayLike = ImageFormat | Sequence[ImageFormatLike]
 
 
 class ImageFormatBatch(BaseBatch[ImageFormatArrayLike]):
