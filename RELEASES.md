@@ -93,7 +93,6 @@ from the previous release's tag.
 Note: you do not need to create a PR for this branch -- the release workflow will do that for you.
 
 For patch releases, immediately bump the crate versions to dev version, so that any testing done against this branch will not look like the old version:
-
 ```sh
 pixi run python scripts/ci/crates.py version --exact 0.x.y --dev
 ```
@@ -122,10 +121,10 @@ Update the change log. It should include:
 
 -   A one-line summary of the release
 -   A multi-line summary of the release
-    -   You may ask feature leads to write a summary for each highlighted item
+    - You may ask feature leads to write a summary for each highlighted item
 -   A gif or screenshot showing one or more major new features
-    -   Try to avoid `mp4`s, gifs have a better experience on GitHub
-    -   You can upload images to a PR, use the link it generates to use GitHub as an image hosting service.
+    - Try to avoid `mp4`s, gifs have a better experience on GitHub
+    - You can upload images to a PR, use the link it generates to use GitHub as an image hosting service.
 -   Run `pip install GitPython && scripts/generate_changelog.py > new_changelog.md`
 -   Edit PR descriptions/labels to improve the generated changelog
 -   Copy-paste the results into `CHANGELOG.md`.
