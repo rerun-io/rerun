@@ -732,10 +732,8 @@ numpy = ">=2" # Rerun still needs numpy <2. Enforce this outside of the pypi dep
 
 
 [feature.python-pypi.pypi-dependencies]
-# TODO(nick): When we release 0.26.0 we should bump this and put extras back to all
-# currently blocked on datafusion being too high (which means this env probably doesn't work)
-rerun-sdk = { version = "==0.25.1", extras = ["notebook"] }
-rerun-notebook = "==0.25.1"
+rerun-sdk = { version = "==0.24.0", extras = ["all"] }
+rerun-notebook = "==0.24.0"
 
 # EXAMPLES ENVIRONMENT
 [feature.examples-common]
