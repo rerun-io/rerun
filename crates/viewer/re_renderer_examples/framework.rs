@@ -132,8 +132,7 @@ impl<E: Example + 'static> Application<E> {
                 label: None,
                 required_features: wgpu::Features::empty(),
                 required_limits: device_caps.limits(),
-                memory_hints: Default::default(),
-                trace: wgpu::Trace::Off,
+                ..Default::default()
             })
             .await
             .context("failed to create device")?;

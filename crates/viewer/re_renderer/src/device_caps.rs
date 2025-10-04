@@ -326,8 +326,7 @@ impl DeviceCaps {
             label: Some("re_renderer device"),
             required_features: self.tier.features(),
             required_limits: self.limits(),
-            memory_hints: Default::default(),
-            trace: wgpu::Trace::Off,
+            ..Default::default()
         }
     }
 }
