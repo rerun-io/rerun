@@ -27,7 +27,7 @@ impl ViewContextSystem for TransformTreeContext {
         // (Determining entity transforms could take a while, and we don't want to block other threads from doing work with the caches!)
         let caches = ctx.viewer_ctx.store_context.caches;
         let transform_cache =
-            caches.entry(|c: &mut TransformDatabaseCache| c.read_lock_transform_cache());
+            caches.entry(|c: &mut TransformDatabaseCache| c.read_lock_transform_cache(recording));
 
         let query_result = ctx.viewer_ctx.lookup_query_result(query.view_id);
         let data_result_tree = &query_result.tree;

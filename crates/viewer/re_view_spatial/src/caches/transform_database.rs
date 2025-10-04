@@ -11,14 +11,27 @@ use re_viewer_context::{Cache, CacheMemoryReport};
 /// Ensures that the cache stays up to date.
 #[derive(Default)]
 pub struct TransformDatabaseCache {
+    initialized: bool,
     transform_cache: Arc<RwLock<TransformCache>>,
 }
 
 impl TransformDatabaseCache {
     /// Gets read access to the transform cache.
     ///
+    /// If the cache was newly added, will make sure that all existing chunks in the entity db are processed.
+    ///
     /// While the lock is held, no new updates can be applied to the transform cache.
-    pub fn read_lock_transform_cache(&self) -> ArcRwLockReadGuard<RawRwLock, TransformCache> {
+    pub fn read_lock_transform_cache(
+        &mut self,
+        entity_db: &EntityDb,
+    ) -> ArcRwLockReadGuard<RawRwLock, TransformCache> {
+        if !self.initialized {
+            self.initialized = true;
+            self.transform_cache
+                .write()
+                .add_chunks(entity_db, entity_db.storage_engine().store().iter_chunks());
+        }
+
         self.transform_cache.read_arc()
     }
 }

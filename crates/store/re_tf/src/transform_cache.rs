@@ -398,6 +398,8 @@ impl TransformCache {
     ///
     /// This needs to be called once per frame prior to any transform propagation.
     /// (which is done by [`crate::TransformTree`])
+    ///
+    /// See also [`Self::add_chunks`].
     // TODO(andreas): easy optimization: apply only updates for a single timeline at a time.
     pub fn apply_all_updates<'a>(
         &mut self,
@@ -422,6 +424,38 @@ impl TransformCache {
                 self.add_static_chunk(&event.chunk, aspects);
             } else {
                 self.add_temporal_chunk(&event.chunk, aspects);
+            }
+        }
+
+        if any_updates {
+            self.process_updates(entity_db);
+        }
+    }
+
+    /// Adds chunks to the transform cache.
+    ///
+    /// See also [`Self::apply_all_updates`].
+    pub fn add_chunks<'a>(
+        &mut self,
+        entity_db: &EntityDb,
+        chunks: impl Iterator<Item = &'a std::sync::Arc<Chunk>>,
+    ) {
+        re_tracing::profile_function!();
+
+        // First collecting all invalidation events is technically no longer needed,
+        // but maybe worth keeping as a pattern as it may lead to less queries in total?
+        let mut any_updates = false;
+        for chunk in chunks {
+            let aspects = TransformAspect::transform_aspects_of(chunk);
+            if aspects.is_empty() {
+                continue;
+            }
+
+            any_updates = true;
+            if chunk.is_static() {
+                self.add_static_chunk(chunk, aspects);
+            } else {
+                self.add_temporal_chunk(chunk, aspects);
             }
         }
 
