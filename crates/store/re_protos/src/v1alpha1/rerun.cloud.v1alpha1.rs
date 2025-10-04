@@ -197,6 +197,67 @@ impl ::prost::Name for ScanPartitionTableResponse {
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct GetLayerTableSchemaRequest {}
+impl ::prost::Name for GetLayerTableSchemaRequest {
+    const NAME: &'static str = "GetLayerTableSchemaRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetLayerTableSchemaRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetLayerTableSchemaRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetLayerTableSchemaResponse {
+    #[prost(message, optional, tag = "1")]
+    pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
+}
+impl ::prost::Name for GetLayerTableSchemaResponse {
+    const NAME: &'static str = "GetLayerTableSchemaResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetLayerTableSchemaResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetLayerTableSchemaResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScanLayerTableRequest {
+    /// A list of column names to be projected server-side.
+    ///
+    /// All of them if left empty.
+    #[prost(string, repeated, tag = "3")]
+    pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ScanLayerTableRequest {
+    const NAME: &'static str = "ScanLayerTableRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ScanLayerTableRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ScanLayerTableRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScanLayerTableResponse {
+    /// Layer metadata as arrow RecordBatch
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for ScanLayerTableResponse {
+    const NAME: &'static str = "ScanLayerTableResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ScanLayerTableResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ScanLayerTableResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct GetDatasetSchemaRequest {}
 impl ::prost::Name for GetDatasetSchemaRequest {
     const NAME: &'static str = "GetDatasetSchemaRequest";
@@ -2031,6 +2092,57 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
+        /// Returns the schema of the layer table.
+        ///
+        /// To inspect the data of the partition table, which is guaranteed to match the schema returned by
+        /// this endpoint, check out `ScanLayerTable`.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        pub async fn get_layer_table_schema(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetLayerTableSchemaRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetLayerTableSchemaResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetLayerTableSchema",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "GetLayerTableSchema",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Inspect the contents of the layer table.
+        ///
+        /// The data will follow the schema returned by `GetLayerTableSchema`.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        pub async fn scan_layer_table(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ScanLayerTableRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::ScanLayerTableResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/ScanLayerTable",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "ScanLayerTable",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
         /// Returns the schema of the dataset.
         ///
         /// This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
@@ -2456,6 +2568,30 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::ScanPartitionTableRequest>,
         ) -> std::result::Result<tonic::Response<Self::ScanPartitionTableStream>, tonic::Status>;
+        /// Returns the schema of the layer table.
+        ///
+        /// To inspect the data of the partition table, which is guaranteed to match the schema returned by
+        /// this endpoint, check out `ScanLayerTable`.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        async fn get_layer_table_schema(
+            &self,
+            request: tonic::Request<super::GetLayerTableSchemaRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetLayerTableSchemaResponse>, tonic::Status>;
+        /// Server streaming response type for the ScanLayerTable method.
+        type ScanLayerTableStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::ScanLayerTableResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        /// Inspect the contents of the layer table.
+        ///
+        /// The data will follow the schema returned by `GetLayerTableSchema`.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        async fn scan_layer_table(
+            &self,
+            request: tonic::Request<super::ScanLayerTableRequest>,
+        ) -> std::result::Result<tonic::Response<Self::ScanLayerTableStream>, tonic::Status>;
         /// Returns the schema of the dataset.
         ///
         /// This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
@@ -3175,6 +3311,93 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = ScanPartitionTableSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetLayerTableSchema" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetLayerTableSchemaSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::GetLayerTableSchemaRequest>
+                        for GetLayerTableSchemaSvc<T>
+                    {
+                        type Response = super::GetLayerTableSchemaResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetLayerTableSchemaRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::get_layer_table_schema(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetLayerTableSchemaSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/ScanLayerTable" => {
+                    #[allow(non_camel_case_types)]
+                    struct ScanLayerTableSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ServerStreamingService<super::ScanLayerTableRequest>
+                        for ScanLayerTableSvc<T>
+                    {
+                        type Response = super::ScanLayerTableResponse;
+                        type ResponseStream = T::ScanLayerTableStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ScanLayerTableRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::scan_layer_table(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ScanLayerTableSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
