@@ -961,6 +961,11 @@ impl ObjectField {
             .unwrap();
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
+        assert!(
+            !field.required(),
+            "required fields are not used, but found in {filepath:?} for {fqname}"
+        );
+
         let docs = Docs::from_raw_docs(reporter, &virtpath, field.name(), field.documentation());
 
         let attrs = Attributes::from_raw_attrs(field.attributes());
@@ -1809,4 +1814,79 @@ fn filepath_from_declaration_file(
     declaration_file
         .canonicalize_utf8()
         .unwrap_or_else(|_| panic!("Failed to canonicalize declaration path {declaration_file:?}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::reflection::reflection as fb;
+    use camino::Utf8PathBuf;
+    use flatbuffers::FlatBufferBuilder;
+
+    #[test]
+    fn field_panics_on_flatbuffers_required_keyword() {
+        let (_report, reporter) = crate::report::init();
+        let tempdir = tempfile::tempdir().unwrap();
+        let include_dir = Utf8PathBuf::from_path_buf(tempdir.path().to_path_buf()).unwrap();
+
+        std::fs::write(include_dir.join("test.fbs"), "// test schema").unwrap();
+
+        let mut builder = FlatBufferBuilder::new();
+
+        let mut ty_builder = fb::TypeBuilder::new(&mut builder);
+        ty_builder.add_base_type(fb::BaseType::Bool);
+        let ty = ty_builder.finish();
+
+        let field_name = builder.create_string("value");
+        let declaration_file = builder.create_string("//test.fbs");
+        let object_name = builder.create_string("rerun.components.Test");
+
+        let mut field_builder = fb::FieldBuilder::new(&mut builder);
+        field_builder.add_name(field_name);
+        field_builder.add_type_(ty);
+        field_builder.add_required(true);
+        let field = field_builder.finish();
+
+        let fields = builder.create_vector(&[field]);
+
+        let mut object_builder = fb::ObjectBuilder::new(&mut builder);
+        object_builder.add_name(object_name);
+        object_builder.add_fields(fields);
+        object_builder.add_declaration_file(declaration_file);
+        let object = object_builder.finish();
+
+        builder.finish(object, None);
+
+        let buffer = builder.finished_data();
+        let fb_object = flatbuffers::root::<fb::Object<'_>>(buffer).unwrap();
+        let field = fb_object.fields().iter().next().unwrap();
+
+        let enums: Vec<fb::Enum<'_>> = Vec::new();
+        let objects: Vec<fb::Object<'_>> = vec![fb_object];
+
+        let result = std::panic::catch_unwind(|| {
+            ObjectField::from_raw_object_field(
+                &reporter,
+                include_dir.as_path(),
+                &enums,
+                &objects,
+                &fb_object,
+                &field,
+            );
+        });
+
+        let panic_message = result.expect_err("expected panic when using FlatBuffers `required`");
+
+        let panic_message = panic_message
+            .downcast::<String>()
+            .map(|s| *s)
+            .or_else(|panic_message| panic_message.downcast::<&str>().map(|s| (*s).to_owned()))
+            .unwrap();
+
+        assert!(
+            panic_message.contains("FlatBuffers `required` keyword"),
+            "panic message did not mention the required keyword: {}",
+            panic_message
+        );
+    }
 }
