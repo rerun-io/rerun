@@ -31,6 +31,7 @@
 #include "blueprint/components/row_share.hpp"
 #include "blueprint/components/selected_columns.hpp"
 #include "blueprint/components/tensor_dimension_index_slider.hpp"
+#include "blueprint/components/time_cell.hpp"
 #include "blueprint/components/timeline_name.hpp"
 #include "blueprint/components/view_class.hpp"
 #include "blueprint/components/view_fit.hpp"

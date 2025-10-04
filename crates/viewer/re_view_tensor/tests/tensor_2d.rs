@@ -57,7 +57,7 @@ fn test_tensor() {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
+    test_context: &TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,

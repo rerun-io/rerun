@@ -42,7 +42,7 @@ pub use re_global_context::*;
 pub use self::{
     annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos},
     async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend},
-    blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
+    blueprint_helpers::{BlueprintContext, blueprint_timeline, blueprint_timepoint_for_writes},
     cache::{
         Cache, CacheMemoryReport, CacheMemoryReportItem, Caches, ImageDecodeCache, ImageStatsCache,
         SharablePlayableVideoStream, TensorStatsCache, VideoAssetCache, VideoStreamCache,
@@ -71,7 +71,10 @@ pub use self::{
     store_hub::StoreHub,
     tables::{TableStore, TableStores},
     tensor::{ImageStats, TensorStats},
-    time_control::{Looping, PlayState, TimeControl, TimeControlResponse, TimeView},
+    time_control::{
+        BlueprintTimeControl, Looping, PlayState, TIME_PANEL_PATH, TimeBlueprintExt, TimeControl,
+        TimeControlResponse, TimeView, time_panel_blueprint_entity_path,
+    },
     typed_entity_collections::{
         IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, VisualizableEntities,
     },

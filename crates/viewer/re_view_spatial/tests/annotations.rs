@@ -59,7 +59,7 @@ pub fn test_annotations() {
         ))
     });
     run_view_ui_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         view_id,
         "annotations",
         // We need quite a bunch of pixels to be able to stack the double hover pop-ups.
@@ -79,7 +79,7 @@ fn get_test_context() -> TestContext {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
+    test_context: &TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,

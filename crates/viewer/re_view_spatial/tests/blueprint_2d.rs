@@ -4,7 +4,7 @@ use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::{Archetype as _, archetypes};
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::{ViewClass as _, ViewId};
+use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
 const SNAPSHOT_SIZE: egui::Vec2 = egui::vec2(400.0, 180.0);

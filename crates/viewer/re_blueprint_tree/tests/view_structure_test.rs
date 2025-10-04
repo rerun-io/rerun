@@ -11,12 +11,12 @@ use re_blueprint_tree::BlueprintTree;
 use re_blueprint_tree::data::BlueprintTreeData;
 use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
-use re_log_types::{EntityPath, Timeline, build_frame_nr};
+use re_log_types::{EntityPath, TimelineName, build_frame_nr};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::archetypes::Points3D;
 use re_ui::filter_widget::FilterState;
-use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
+use re_viewer_context::{RecommendedView, TimeBlueprintExt as _, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 const VIEW_ID: &str = "this-is-a-view-id";
@@ -163,7 +163,7 @@ fn test_all_snapshot_test_cases() {
 }
 
 fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(), SnapshotError> {
-    let mut test_context = test_context(test_case);
+    let test_context = test_context(test_case);
     let view_id = ViewId::hashed_from_str(VIEW_ID);
 
     let mut blueprint_tree = BlueprintTree::default();
@@ -183,7 +183,9 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
     }
 
     // set the current timeline to the timeline where data was logged to
-    test_context.set_active_timeline(Timeline::new_sequence("frame_nr"));
+    test_context.with_blueprint_ctx(|ctx| {
+        ctx.set_timeline(TimelineName::new("frame_nr"));
+    });
 
     let mut harness = test_context
         .setup_kittest_for_rendering()

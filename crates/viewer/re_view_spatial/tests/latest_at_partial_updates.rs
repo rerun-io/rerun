@@ -4,7 +4,7 @@ use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
 use re_types::{Archetype as _, archetypes};
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::{ViewClass as _, ViewId};
+use re_viewer_context::{BlueprintContext as _, TimeBlueprintExt as _, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
@@ -74,7 +74,7 @@ fn test_latest_at_partial_update() {
 
     let view_id = setup_blueprint(&mut test_context);
     run_view_ui_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         view_id,
         "latest_at_partial_updates",
         egui::vec2(200.0, 200.0),
@@ -110,12 +110,12 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
+    test_context: &TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
 ) {
-    let rec_config = test_context.recording_config.clone();
+    let (timeline, _) = build_frame_nr(42);
 
     let mut harness = test_context
         .setup_kittest_for_rendering()
@@ -123,6 +123,7 @@ fn run_view_ui_and_save_snapshot(
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
+
     {
         let broken_pixels_fraction = 0.004;
         let options = SnapshotOptions::new()
@@ -134,10 +135,10 @@ fn run_view_ui_and_save_snapshot(
         let mut success = true;
         for frame_nr in 42..=46 {
             {
-                let (timeline, time) = build_frame_nr(frame_nr);
-                let mut time_ctrl = rec_config.time_ctrl.write();
-                time_ctrl.set_timeline(timeline);
-                time_ctrl.set_time(time);
+                let (_, time) = build_frame_nr(frame_nr);
+                test_context.with_blueprint_ctx(|ctx| {
+                    ctx.set_timeline_and_time(*timeline.name(), time);
+                });
             }
 
             harness.run_steps(8);

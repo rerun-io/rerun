@@ -3,7 +3,8 @@ use re_types_core::{Archetype, ArchetypeReflectionMarker, reflection::ArchetypeF
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{
-    ComponentFallbackProvider, ComponentUiTypes, QueryContext, ViewContext, ViewerContext,
+    BlueprintContext as _, ComponentFallbackProvider, ComponentUiTypes, QueryContext, ViewContext,
+    ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 

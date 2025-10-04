@@ -31,6 +31,7 @@ from .root_container import RootContainer, RootContainerBatch
 from .row_share import RowShare, RowShareBatch
 from .selected_columns import SelectedColumns, SelectedColumnsBatch
 from .tensor_dimension_index_slider import TensorDimensionIndexSlider, TensorDimensionIndexSliderBatch
+from .time_cell import TimeCell, TimeCellBatch
 from .timeline_name import TimelineName, TimelineNameBatch
 from .view_class import ViewClass, ViewClassBatch
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike
@@ -115,6 +116,8 @@ __all__ = [
     "SelectedColumnsBatch",
     "TensorDimensionIndexSlider",
     "TensorDimensionIndexSliderBatch",
+    "TimeCell",
+    "TimeCellBatch",
     "TimelineName",
     "TimelineNameBatch",
     "ViewClass",

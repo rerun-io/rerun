@@ -20,7 +20,7 @@ namespace rerun::blueprint::archetypes {
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct PanelBlueprint {
-        /// Current state of the panels.
+        /// Current state of the panel.
         std::optional<ComponentBatch> state;
 
       public:
@@ -48,7 +48,7 @@ namespace rerun::blueprint::archetypes {
         /// Clear all the fields of a `PanelBlueprint`.
         static PanelBlueprint clear_fields();
 
-        /// Current state of the panels.
+        /// Current state of the panel.
         PanelBlueprint with_state(const rerun::blueprint::components::PanelState& _state) && {
             state = ComponentBatch::from_loggable(_state, Descriptor_state).value_or_throw();
             return std::move(*this);

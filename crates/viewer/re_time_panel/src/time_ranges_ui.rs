@@ -11,7 +11,9 @@ use egui::{NumExt as _, lerp, remap};
 use itertools::Itertools as _;
 
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeInt, TimeReal};
-use re_viewer_context::{PlayState, TimeControl, TimeView};
+use re_viewer_context::{PlayState, TimeView, ViewerContext};
+
+use crate::time_panel::TimeControlExt;
 
 /// The ideal gap between time segments.
 ///
@@ -281,16 +283,16 @@ impl TimeRangesUi {
     }
 
     // Make sure playback time doesn't get stuck between non-continuous regions:
-    pub fn snap_time_control(&self, time_ctrl: &mut TimeControl) {
-        if time_ctrl.play_state() != PlayState::Playing {
+    pub fn snap_time_control(&self, ctx: &ViewerContext<'_>, time_ctrl: &mut impl TimeControlExt) {
+        if time_ctrl.get().play_state() != PlayState::Playing {
             return;
         }
 
         // Make sure time doesn't get stuck between non-continuous regions:
-        if let Some(time) = time_ctrl.time() {
+        if let Some(time) = time_ctrl.get().time() {
             let time = self.snap_time_to_segments(time);
-            time_ctrl.set_time(time);
-        } else if let Some(selection) = time_ctrl.loop_selection() {
+            time_ctrl.set_time(ctx, time.floor());
+        } else if let Some(selection) = time_ctrl.get().loop_selection() {
             let snapped_min = self.snap_time_to_segments(selection.min);
             let snapped_max = self.snap_time_to_segments(selection.max);
 
@@ -302,10 +304,12 @@ impl TimeRangesUi {
             }
 
             // Keeping max works better when looping
-            time_ctrl.set_loop_selection(AbsoluteTimeRangeF::new(
-                snapped_max - selection.length(),
-                snapped_max,
-            ));
+            time_ctrl
+                .get_mut()
+                .set_loop_selection(AbsoluteTimeRangeF::new(
+                    snapped_max - selection.length(),
+                    snapped_max,
+                ));
         }
     }
 
