@@ -185,7 +185,7 @@ egui_table = "0.4" # https://github.com/rerun-io/egui_table
 egui_tiles = "0.13" # https://github.com/rerun-io/egui_tiles
 egui-wgpu = "0.32.3"
 emath = "0.32.3"
-walkers = "0.43"
+walkers = "0.45"
 
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
