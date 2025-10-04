@@ -5958,9 +5958,9 @@ dependencies = [
 
 [[package]]
 name = "lru"
-version = "0.15.0"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0281c2e25e62316a5c9d98f2d2e9e95a37841afdaf4383c177dbb5c1dfab0568"
+checksum = "bfe949189f46fabb938b3a9a0be30fdd93fd8a09260da863399a8cf3db756ec8"
 dependencies = [
  "hashbrown 0.15.4",
 ]
@@ -12676,9 +12676,9 @@ dependencies = [
 
 [[package]]
 name = "walkers"
-version = "0.43.0"
+version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1959f265e0ea31bfb2293639cb6a61fc656c63cee8b93f4db5db03ba2691e555"
+checksum = "812f4b53123ac81952ae1848c7a3b1c40f4adbaff83946dfc429d69720d77e23"
 dependencies = [
  "egui",
  "egui_extras",
@@ -12687,7 +12687,7 @@ dependencies = [
  "http-cache-reqwest",
  "image",
  "log",
- "lru 0.15.0",
+ "lru 0.16.1",
  "reqwest",
  "reqwest-middleware",
  "thiserror 2.0.12",
