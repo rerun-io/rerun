@@ -961,6 +961,11 @@ impl ObjectField {
             .unwrap();
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
+        assert!(
+            !field.required(),
+            "required fields should not be used, but found in {filepath} for {fqname}",
+        );
+
         let docs = Docs::from_raw_docs(reporter, &virtpath, field.name(), field.documentation());
 
         let attrs = Attributes::from_raw_attrs(field.attributes());
