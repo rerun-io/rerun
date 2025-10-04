@@ -51,7 +51,7 @@ impl ServerHandle {
             ready = self.ready.recv() => {
                 match ready {
                     Some(local_addr) => {
-                        info!("Ready for connections");
+                        info!("Ready for connections.");
                         Ok(local_addr)
                     },
                     None => Err(ServerError::ReadyChannelClosedUnexpectedly)
@@ -91,7 +91,9 @@ impl Server {
             let listener = if let Ok(listener) = TcpListener::bind(self.addr).await {
                 #[expect(clippy::unwrap_used)]
                 let local_addr = listener.local_addr().unwrap();
-                info!("Listening on {local_addr}");
+                info!(
+                    "Listening on {local_addr}. To connect the Rerun Viewer, use the following address: rerun+http://{local_addr}"
+                );
 
                 #[expect(clippy::unwrap_used)]
                 ready_tx.send(local_addr).await.unwrap();
