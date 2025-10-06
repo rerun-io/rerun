@@ -69,6 +69,8 @@ impl GrpcStreamToTable for PartitionTableProvider {
         ))
     }
 
+    // TODO(ab): what `GrpcStreamToTable` attempts to simplify should probably be handled by
+    // `ConnectionClient`
     #[instrument(skip(self), err)]
     async fn send_streaming_request(
         &mut self,
