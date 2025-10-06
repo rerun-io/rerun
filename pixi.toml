@@ -326,14 +326,20 @@ pb-check = { depends-on = ["pb-fmt-check", "pb-lint", "pb-breaking"] }
 misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
 misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
 
+# Until we resolve nbqa config issue keep aligned with nbqa dirs above
+nb-strip = "python scripts/nbstripout.py mypy examples/python scripts/ tests/python/ docs/snippets/ --extra-keys='metadata.language_info metadata.vscode metadata.kernelspec cell.metadata.vscode' --drop-empty-cells"
+
 # Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
 py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --config rerun_py/pyproject.toml ."
 py-fmt-check = "ruff check --config rerun_py/pyproject.toml . && ruff format --check --config rerun_py/pyproject.toml"
 # Get non-internal things that are ok to not check rerun on
 py-lint-non-sdk = { cmd = "mypy --config-file rerun_py/.non_sdk_mypy.ini --install-types --non-interactive --no-warn-unused-ignore", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
+# I couldn't get the config to work correctly so placing relevant directories in command line
+# Until we resolve nbqa config issue keep aligned with nb-strip dirs below
+py-lint-nb-rerun = { cmd ="nbqa mypy examples/python scripts/ tests/python/ docs/snippets/ --config rerun_py/pyproject.toml  ", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
 # Need to run this in env with rerun installed
 py-lint-rerun = "mypy --config-file rerun_py/pyproject.toml --install-types --non-interactive --no-warn-unused-ignore"
-py-lint = { depends-on = ["py-lint-non-sdk", "py-lint-rerun"] }
+py-lint = { depends-on = ["py-lint-non-sdk", "py-lint-rerun", "py-lint-nb-rerun"] }
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
@@ -604,6 +610,8 @@ gitpython = ">=3.1.40"
 jinja2 = ">=3.1.3,<3.2"           # For `build_screenshot_compare.py` and other utilities that build websites.
 mypy = "1.14.1.*"
 nasm = ">=2.16"                   # Required by https://github.com/memorysafety/rav1d for native video support
+nbqa = "*"
+nbstripout = "*"
 ninja = "1.11.1.*"
 numpy = ">=2"                     # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
 prettier = ">=3.6"
