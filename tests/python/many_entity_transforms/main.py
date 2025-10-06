@@ -86,7 +86,7 @@ def main() -> None:
             rrb.Grid(
                 contents=[rrb.Spatial3DView(origin=path, contents="/**") for path in entity_paths[: args.num_views]]
             ),
-            collapse_panels=True,  # Collapse panels, so we perf is mostly about the data & the views.
+            collapse_panels=True,  # Collapse panels, so perf is mostly about the data & the views.
         )
     )
 
