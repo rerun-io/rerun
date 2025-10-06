@@ -8657,7 +8657,6 @@ name = "re_datafusion"
 version = "0.26.0-alpha.1+dev"
 dependencies = [
  "ahash",
- "anyhow",
  "arrow",
  "async-stream",
  "async-trait",
@@ -8666,7 +8665,6 @@ dependencies = [
  "futures",
  "futures-util",
  "getrandom 0.3.3",
- "itertools 0.14.0",
  "log",
  "parking_lot",
  "re_arrow_util",
@@ -8676,7 +8674,6 @@ dependencies = [
  "re_protos",
  "re_redap_client",
  "re_sorbet",
- "re_tuid",
  "re_uri",
  "tokio",
  "tokio-stream",
