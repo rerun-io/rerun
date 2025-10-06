@@ -6,11 +6,11 @@ use datafusion::{
     catalog::TableProvider,
     error::{DataFusionError, Result as DataFusionResult},
 };
-use re_log_types::EntryId;
 use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
 use re_log_encoding::codec::wire::decoder::Decode as _;
+use re_log_types::EntryId;
 use re_protos::{
     cloud::v1alpha1::{SearchDatasetRequest, SearchDatasetResponse},
     common::v1alpha1::ScanParameters,
@@ -23,7 +23,6 @@ use crate::wasm_compat::make_future_send;
 
 #[derive(Clone)]
 pub struct SearchResultsTableProvider {
-    //TODO(#10191): this should use a `ConnectionRegistryHandle` instead
     client: ConnectionClient,
     dataset_id: EntryId,
     request: SearchDatasetRequest,
