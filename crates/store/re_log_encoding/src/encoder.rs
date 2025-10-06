@@ -1,14 +1,15 @@
 //! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
 
+use re_build_info::CrateVersion;
+use re_chunk::{ChunkError, ChunkResult};
+use re_log_types::LogMsg;
+use re_protos::log_msg::v1alpha1::LogMsg as LogMsgProto;
+
 use crate::FileHeader;
 use crate::Serializer;
 use crate::codec;
 use crate::codec::file::{self, encoder};
 use crate::{Compression, EncodingOptions};
-use re_build_info::CrateVersion;
-use re_chunk::{ChunkError, ChunkResult};
-use re_log_types::LogMsg;
-use re_protos::log_msg::v1alpha1::LogMsg as LogMsgProto;
 
 // ----------------------------------------------------------------------------
 
@@ -49,23 +50,6 @@ impl From<ChunkError> for EncodeError {
     fn from(err: ChunkError) -> Self {
         Self::Chunk(Box::new(err))
     }
-}
-
-// ----------------------------------------------------------------------------
-
-pub fn encode_to_bytes<'a>(
-    version: CrateVersion,
-    options: EncodingOptions,
-    msgs: impl IntoIterator<Item = &'a LogMsg>,
-) -> Result<Vec<u8>, EncodeError> {
-    let mut bytes: Vec<u8> = vec![];
-    {
-        let mut encoder = Encoder::new(version, options, std::io::Cursor::new(&mut bytes))?;
-        for msg in msgs {
-            encoder.append(msg)?;
-        }
-    }
-    Ok(bytes)
 }
 
 // ----------------------------------------------------------------------------
