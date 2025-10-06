@@ -12,10 +12,9 @@ This is written for anyone who wants to contribute to the Rerun repository.
 
 ## What to contribute
 * **Examples**: We welcome any examples you would like to add. Follow the pattern of the existing examples in the [`examples/`](examples) folder.
-
-* **Bug reports and issues**: Open them at <https://github.com/rerun-io/rerun/issues>.
-
-You can also look at our [`good first issue` tag](https://github.com/rerun-io/rerun/labels/good%20first%20issue).
+* Report bugs and features requests at <https://github.com/rerun-io/rerun/issues>.
+* You can also look at our [`good first issue` tag](https://github.com/rerun-io/rerun/labels/good%20first%20issue).
+* We track things we would like implemented in 3rd party crates [here](https://github.com/rerun-io/opensource/issues/1).
 
 ## Pull requests
 We use [Trunk Based Development](https://trunkbaseddevelopment.com/), which means we encourage small, short-lived branches.
