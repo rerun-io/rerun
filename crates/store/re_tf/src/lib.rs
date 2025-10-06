@@ -8,7 +8,9 @@ pub use transform_resolution_cache::{
     CachedTransformsForTimeline, PoseTransformArchetypeMap, ResolvedPinholeProjection,
     TransformResolutionCache, query_view_coordinates, query_view_coordinates_at_closest_ancestor,
 };
-pub use transform_tree::{TransformInfo, TransformTree, TwoDInThreeDTransformInfo};
+pub use transform_tree::{
+    TransformFromToError, TransformInfo, TransformTree, TwoDInThreeDTransformInfo,
+};
 
 /// Returns the view coordinates used for 2D (image) views.
 ///
