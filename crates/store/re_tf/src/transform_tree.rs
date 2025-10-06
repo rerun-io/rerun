@@ -104,41 +104,36 @@ impl TransformInfo {
     }
 }
 
-/// Provides transforms from an entity to a chosen reference space for all elements in the scene
-/// for the currently selected time & timeline.
-///
-/// The resulting transforms are dependent on:
-/// * tree, pose, pinhole and view-coordinates transforms components as logged to the data store
-///    * TODO(#6743): blueprint overrides aren't respected yet
-/// * the view' spatial origin
-/// * the query time
-///    * TODO(#723): ranges aren't taken into account yet
-/// * TODO(andreas): the queried entities. Right now we determine transforms for ALL entities in the scene.
-///   since 3D views tend to display almost everything that's mostly fine, but it's very wasteful when they don't.
-///
-/// The renderer then uses this reference space as its world space,
-/// making world and reference space equivalent for a given view.
-///
-/// TODO(#7025): Right now we also do full tree traversal in here to resolve transforms to the root.
-/// However, for views that share the same query, we can easily make all entities relative to the respective origin in a linear pass over all matrices.
-/// (Note that right now the query IS always the same across all views for a given frame since it's just latest-at controlled by the timeline,
-/// but once we support range queries it may be not or only partially the case)
-#[derive(Clone)]
-pub struct TransformTree {
-    /// All transforms provided are relative to this reference path.
-    space_origin: EntityPath,
+#[derive(Clone, Debug, thiserror::Error)]
+pub enum TransformFromToError {
+    #[error("No transform relationships about the target frame {0:?} are known")]
+    UnknownTargetFrame(EntityPathHash),
 
-    /// All reachable entities.
-    transform_per_entity: IntMap<EntityPathHash, TransformInfo>,
+    #[error("No transform relationships about the source frame {0:?} are known")]
+    UnknownSourceFrame(EntityPathHash),
+    // TODO(RR-2514): Can't happen yet since for now everything is connected to the root.
+    // #[error("There's no path between {target:?} and {source:?}")]
+    // NoPathBetweenFrames {
+    //     target: EntityPathHash,
+    //     source: EntityPathHash,
+    // },
 }
 
-impl Default for TransformTree {
-    fn default() -> Self {
-        Self {
-            space_origin: EntityPath::root(),
-            transform_per_entity: Default::default(),
-        }
-    }
+/// Provides transforms from any transform frame to a root transform frame for a given time & timeline.
+///
+/// This information can then be used to relatively quickly resolve transforms to a given reference transform frame
+/// should such a connection exist.
+///
+/// The resulting transforms are dependent on:
+/// * tree, pose, pinhole and view-coordinates transforms components as logged to the data store. See [`TransformResolutionCache`] for more details.
+///    * TODO(#6743): blueprint overrides aren't respected yet
+/// * the query time
+///    * TODO(#723): ranges aren't taken into account yet
+// TODO(andreas): This has to become a `TransformForest` as we move on to arbitrary graphs.
+#[derive(Clone)]
+pub struct TransformTree {
+    /// All entities reachable from the root.
+    transform_per_entity: IntMap<EntityPathHash, TransformInfo>,
 }
 
 impl TransformTree {
@@ -147,105 +142,32 @@ impl TransformTree {
     ///
     /// This means that the entities in `reference_space` get the identity transform and all other
     /// entities are transformed relative to it.
-    pub fn execute(
-        &mut self,
+    pub fn new(
         recording: &re_entity_db::EntityDb,
         transform_cache: &TransformResolutionCache,
         time_query: &LatestAtQuery,
-        pinhole_image_plane_distance: &dyn Fn(&EntityPath) -> f32,
-    ) {
+    ) -> Self {
         re_tracing::profile_function!();
 
         let entity_tree = recording.tree();
-
-        // Find the entity path tree for the root.
-        let Some(current_tree) = &entity_tree.subtree(&self.space_origin) else {
-            // It seems the space path is not part of the object tree!
-            // This happens frequently when the viewer remembers views from a previous run that weren't shown yet.
-            // Naturally, in this case we don't have any transforms yet.
-            return;
-        };
-
         let transforms = transform_cache.transforms_for_timeline(time_query.timeline());
 
-        // Child transforms of this space
-        {
-            re_tracing::profile_scope!("gather_descendants_transforms");
-
-            self.gather_descendants_transforms(
-                current_tree,
-                time_query,
-                // Ignore potential pinhole camera at the root of the view, since it is regarded as being "above" this root.
-                TransformInfo::default(),
-                transforms,
-                pinhole_image_plane_distance,
-            );
-        }
-
-        // Walk up from the reference to the highest reachable parent.
-        self.gather_parent_transforms(
-            recording.tree(),
-            current_tree,
+        let mut tree = Self {
+            transform_per_entity: Default::default(),
+        };
+        tree.gather_descendants_transforms(
+            entity_tree,
             time_query,
+            // Ignore potential pinhole camera at the root of the view, since it is regarded as being "above" this root.
+            TransformInfo::default(),
             transforms,
-            pinhole_image_plane_distance,
         );
+
+        tree
     }
 }
 
 impl TransformTree {
-    /// Gather transforms for everything _above_ the root.
-    fn gather_parent_transforms<'a>(
-        &mut self,
-        entire_entity_tree: &'a EntityTree,
-        mut current_tree: &'a EntityTree,
-        time_query: &LatestAtQuery,
-        transforms: &CachedTransformsForTimeline,
-        pinhole_image_plane_distance: &dyn Fn(&EntityPath) -> f32,
-    ) {
-        re_tracing::profile_function!();
-
-        let mut reference_from_ancestor = glam::Affine3A::IDENTITY;
-        while let Some(parent_path) = current_tree.path.parent() {
-            let Some(parent_tree) = entire_entity_tree.subtree(&parent_path) else {
-                // Unlike not having the space path in the hierarchy, this should be impossible.
-                re_log::error_once!(
-                    "Path {parent_path} is not part of the global entity tree whereas its child is"
-                );
-                return;
-            };
-
-            // Note that the transform at the reference is the first that needs to be inverted to "break out" of its hierarchy.
-            // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
-            let transforms_at_entity = transforms_at(
-                &current_tree.path,
-                time_query,
-                // TODO(#1025): See comment in transform_at. This is a workaround for precision issues
-                // and the fact that there is no meaningful image plane distance for 3D->2D views.
-                &|_| 500.0,
-                &mut None, // Don't care about pinhole encounters.
-                transforms,
-            );
-            let new_transform = transform_info_for_upward_propagation(
-                reference_from_ancestor,
-                &transforms_at_entity,
-            );
-
-            reference_from_ancestor = new_transform.reference_from_entity;
-
-            // (this skips over everything at and under `current_tree` automatically)
-            self.gather_descendants_transforms(
-                parent_tree,
-                time_query,
-                new_transform,
-                transforms,
-                pinhole_image_plane_distance,
-            );
-
-            current_tree = parent_tree;
-        }
-    }
-
     #[allow(clippy::too_many_arguments)]
     fn gather_descendants_transforms(
         &mut self,
@@ -253,7 +175,6 @@ impl TransformTree {
         query: &LatestAtQuery,
         transform: TransformInfo,
         transforms_for_timeline: &CachedTransformsForTimeline,
-        pinhole_image_plane_distance: &dyn Fn(&EntityPath) -> f32,
     ) {
         let twod_in_threed_info = transform.twod_in_threed_info.clone();
         let reference_from_parent = transform.reference_from_entity;
@@ -276,7 +197,6 @@ impl TransformTree {
             let transforms_at_entity = transforms_at(
                 child_path,
                 query,
-                pinhole_image_plane_distance,
                 &mut encountered_pinhole,
                 transforms_for_timeline,
             );
@@ -292,28 +212,105 @@ impl TransformTree {
                 query,
                 new_transform,
                 transforms_for_timeline,
-                pinhole_image_plane_distance,
             );
         }
     }
 
-    #[inline]
-    pub fn set_reference_path(&mut self, path: EntityPath) {
-        self.space_origin = path;
-    }
-
-    #[inline]
-    pub fn reference_path(&self) -> &EntityPath {
-        &self.space_origin
-    }
-
-    /// Retrieves transform information for a given entity.
+    /// Computes the transform from one entity to another if there is a path between them.
     ///
-    /// Returns `None` if it's not reachable from the view's origin.
-    #[inline]
-    pub fn transform_info_for_entity(&self, ent_path: EntityPathHash) -> Option<&TransformInfo> {
-        self.transform_per_entity.get(&ent_path)
+    /// `target`: The frame into which to transform.
+    /// `sources`: The frames from which to transform.
+    ///
+    /// Returns an iterator of results, one for each source.
+    /// If the target frame is not known at all, returns [`TransformFromToError::UnknownTargetFrame`] for every source.
+    pub fn transform_from_to(
+        &self,
+        target: EntityPathHash,
+        sources: impl Iterator<Item = EntityPathHash>,
+    ) -> impl Iterator<Item = (EntityPathHash, Result<TransformInfo, TransformFromToError>)> {
+        let Some(reference_from_target) = self.transform_per_entity.get(&target) else {
+            return itertools::Either::Left(sources.map(move |source| {
+                (
+                    source,
+                    Err(TransformFromToError::UnknownTargetFrame(target)),
+                )
+            }));
+        };
+
+        // Invert `reference_from_target` to get `target_from_reference`.
+        let target_from_reference = {
+            let TransformInfo {
+                reference_from_entity,
+                // Don't care about instance transforms on the target frame, as they don't tree-propagate.
+                reference_from_instances_overall: _,
+                // Don't care about archetype specific transforms on the target frame, as they don't tree-propagate.
+                reference_from_archetype: _,
+                // It's called "2D in 3D", therefore the inverse would be "3D in 2D".
+                // Which could be valuable information, but not something we're capturing right now!
+                twod_in_threed_info: _,
+            } = &reference_from_target;
+
+            reference_from_entity.inverse()
+        };
+
+        itertools::Either::Right(sources.map(move |source| {
+            let Some(reference_from_source) = self.transform_per_entity.get(&source) else {
+                return (
+                    source,
+                    Err(TransformFromToError::UnknownSourceFrame(source)),
+                );
+            };
+
+            // TODO: special case for source == target?
+
+            // Conceptually:
+            // target_from_source = target_from_reference * reference_from_source
+
+            let TransformInfo {
+                reference_from_entity: reference_from_source,
+                reference_from_instances_overall: reference_from_source_instances_overall,
+                reference_from_archetype: reference_from_source_archetypes,
+                twod_in_threed_info: twod_in_threed_info_source,
+            } = reference_from_source;
+
+            let target_from_source = target_from_reference * reference_from_source;
+            let target_from_source_instances_overall = multiply_smallvec1_of_transforms(
+                target_from_reference,
+                reference_from_source_instances_overall,
+            );
+            let target_from_source_archetypes = reference_from_source_archetypes
+                .iter()
+                .map(|(archetype, transforms)| {
+                    (
+                        *archetype,
+                        multiply_smallvec1_of_transforms(target_from_reference, transforms),
+                    )
+                })
+                .collect();
+
+            (
+                source,
+                Ok(TransformInfo {
+                    reference_from_entity: target_from_source,
+                    reference_from_instances_overall: target_from_source_instances_overall,
+                    reference_from_archetype: target_from_source_archetypes,
+                    twod_in_threed_info: twod_in_threed_info_source.clone(),
+                }),
+            )
+        }))
     }
+}
+
+fn multiply_smallvec1_of_transforms(
+    target_from_reference: glam::Affine3A,
+    reference_from_source: &SmallVec1<[glam::Affine3A; 1]>,
+) -> SmallVec1<[glam::Affine3A; 1]> {
+    // Easiest to deal with SmallVec1 in-place.
+    let mut target_from_source_archetypes = reference_from_source.clone();
+    for transform in &mut target_from_source_archetypes {
+        *transform = target_from_reference * *transform;
+    }
+    target_from_source_archetypes
 }
 
 fn compute_reference_from_instances(
@@ -364,51 +361,6 @@ fn compute_reference_from_archetype(
         .unwrap_or_default()
 }
 
-/// Compute transform info for when we walk up the tree from the reference.
-fn transform_info_for_upward_propagation(
-    reference_from_ancestor: glam::Affine3A,
-    transforms_at_entity: &TransformsAtEntity<'_>,
-) -> TransformInfo {
-    let mut reference_from_entity = reference_from_ancestor;
-
-    // Need to take care of the fact that we're walking the other direction of the tree here compared to `transform_info_for_downward_propagation`!
-    // Apply inverse transforms in flipped order!
-
-    // Apply 2D->3D transform if present.
-    if let Some(entity_from_2d_pinhole_content) =
-        transforms_at_entity.instance_from_pinhole_image_plane
-    {
-        // If we're going up the tree and encounter a pinhole, we still need to apply it.
-        // This is what handles "3D in 2D".
-        reference_from_entity *= entity_from_2d_pinhole_content.inverse();
-    }
-
-    // Apply tree transform.
-    reference_from_entity *= transforms_at_entity
-        .parent_from_entity_tree_transform
-        .inverse();
-
-    // Collect & compute poses.
-    let reference_from_instances_overall = compute_references_from_instances_overall(
-        reference_from_entity,
-        transforms_at_entity.entity_from_instance_poses,
-    );
-    let reference_from_archetype = compute_reference_from_archetype(
-        reference_from_entity,
-        transforms_at_entity.entity_from_instance_poses,
-    );
-
-    TransformInfo {
-        reference_from_entity,
-        reference_from_instances_overall,
-        reference_from_archetype,
-
-        // Going up the tree, we can only encounter 2D->3D transforms.
-        // 3D->2D transforms can't happen because `Pinhole` represents 3D->2D (and we're walking backwards!)
-        twod_in_threed_info: None,
-    }
-}
-
 /// Compute transform info for when we walk down the tree from the reference.
 fn transform_info_for_downward_propagation(
     current_path: &EntityPath,
@@ -457,9 +409,8 @@ fn transform_info_for_downward_propagation(
 }
 
 fn transform_from_pinhole_with_image_plane(
-    entity_path: &EntityPath,
     resolved_pinhole_projection: &ResolvedPinholeProjection,
-    pinhole_image_plane_distance: &dyn Fn(&EntityPath) -> f32,
+    pinhole_image_plane_distance: f32,
 ) -> glam::Affine3A {
     let ResolvedPinholeProjection {
         image_from_camera,
@@ -470,11 +421,11 @@ fn transform_from_pinhole_with_image_plane(
     // Our visualization interprets this as looking at a 2D image plane from a single point (the pinhole).
 
     // Center the image plane and move it along z, scaling the further the image plane is.
-    let distance = pinhole_image_plane_distance(entity_path);
     let focal_length = image_from_camera.focal_length_in_pixels();
     let focal_length = glam::vec2(focal_length.x(), focal_length.y());
-    let scale = distance / focal_length;
-    let translation = (-image_from_camera.principal_point() * scale).extend(distance);
+    let scale = pinhole_image_plane_distance / focal_length;
+    let translation =
+        (-image_from_camera.principal_point() * scale).extend(pinhole_image_plane_distance);
 
     let image_plane3d_from_2d_content = glam::Affine3A::from_translation(translation)
             // We want to preserve any depth that might be on the pinhole image.
@@ -513,7 +464,6 @@ struct TransformsAtEntity<'a> {
 fn transforms_at<'a>(
     entity_path: &EntityPath,
     query: &LatestAtQuery,
-    pinhole_image_plane_distance: &dyn Fn(&EntityPath) -> f32,
     encountered_pinhole: &mut Option<EntityPath>,
     transforms_for_timeline: &'a CachedTransformsForTimeline,
 ) -> TransformsAtEntity<'a> {
@@ -530,9 +480,8 @@ fn transforms_at<'a>(
             .latest_at_pinhole(query)
             .map(|resolved_pinhole_projection| {
                 transform_from_pinhole_with_image_plane(
-                    entity_path,
                     resolved_pinhole_projection,
-                    pinhole_image_plane_distance,
+                    1.0, // TODO: I think we can just scale this later...
                 )
             });
 
@@ -552,3 +501,5 @@ fn transforms_at<'a>(
 
     transforms_at_entity
 }
+
+// TODO: unit tests?
