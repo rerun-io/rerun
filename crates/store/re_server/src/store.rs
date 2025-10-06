@@ -156,9 +156,15 @@ impl Dataset {
 
         let layers = vec![vec!["base".to_owned()]; partition_ids.len()];
 
+        let storage_urls = partition_ids
+            .iter()
+            .map(|partition_id| vec![format!("memory:///{}/{partition_id}", self.id)])
+            .collect();
+
         ScanPartitionTableResponse::create_dataframe(
             partition_ids,
             layers,
+            storage_urls,
             last_updated_at,
             num_chunks,
             size_bytes,

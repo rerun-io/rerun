@@ -1180,6 +1180,7 @@ pub struct RegisterWithDatasetTaskDescriptor {
 impl ScanPartitionTableResponse {
     pub const PARTITION_ID: &str = "rerun_partition_id";
     pub const LAYERS: &str = "rerun_layers";
+    pub const STORAGE_URLS: &str = "rerun_storage_urls";
     pub const LAST_UPDATED_AT: &str = "rerun_last_updated_at";
     pub const NUM_CHUNKS: &str = "rerun_num_chunks";
     pub const SIZE_BYTES: &str = "rerun_size_bytes";
@@ -1190,6 +1191,15 @@ impl ScanPartitionTableResponse {
             Field::new(
                 Self::LAYERS,
                 DataType::List(Arc::new(Field::new(Self::LAYERS, DataType::Utf8, false))),
+                false,
+            ),
+            Field::new(
+                Self::STORAGE_URLS,
+                DataType::List(Arc::new(Field::new(
+                    Self::STORAGE_URLS,
+                    DataType::Utf8,
+                    false,
+                ))),
                 false,
             ),
             Field::new(
@@ -1206,6 +1216,7 @@ impl ScanPartitionTableResponse {
     pub fn create_dataframe(
         partition_ids: Vec<String>,
         layers: Vec<Vec<String>>,
+        storage_urls: Vec<Vec<String>>,
         last_updated_at: Vec<i64>,
         num_chunks: Vec<u64>,
         size_bytes: Vec<u64>,
@@ -1221,9 +1232,18 @@ impl ScanPartitionTableResponse {
             layers_builder.append(true);
         }
 
+        let mut urls_builder = ListBuilder::new(StringBuilder::new());
+        for mut inner_vec in storage_urls {
+            for layer_name in inner_vec.drain(..) {
+                urls_builder.values().append_value(layer_name)
+            }
+            urls_builder.append(true);
+        }
+
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(partition_ids)),
             Arc::new(layers_builder.finish()),
+            Arc::new(urls_builder.finish()),
             Arc::new(TimestampNanosecondArray::from(last_updated_at)),
             Arc::new(UInt64Array::from(num_chunks)),
             Arc::new(UInt64Array::from(size_bytes)),
