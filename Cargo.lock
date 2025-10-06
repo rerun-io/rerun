@@ -9903,6 +9903,7 @@ dependencies = [
  "ndarray",
  "nohash-hasher",
  "ordered-float 4.6.0",
+ "parking_lot",
  "re_byte_size",
  "re_chunk_store",
  "re_component_ui",
