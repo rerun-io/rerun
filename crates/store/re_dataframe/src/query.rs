@@ -346,11 +346,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             re_chunk::LatestAtQuery::new(TimelineName::new(""), TimeInt::STATIC);
 
                         let component_descriptor = store
-                            .entity_component_descriptor(
-                                &descr.entity_path,
-                                descr.archetype,
-                                descr.component,
-                            )
+                            .entity_component_descriptor(&descr.entity_path, descr.component)
                             .into_iter()
                             .next()?;
 
@@ -1067,11 +1063,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         re_chunk::LatestAtQuery::new(state.filtered_index, *cur_index_value);
 
                     let component_descriptor = store
-                        .entity_component_descriptor(
-                            &descr.entity_path,
-                            descr.archetype,
-                            descr.component,
-                        )
+                        .entity_component_descriptor(&descr.entity_path, descr.component)
                         .into_iter()
                         .next()?;
 
@@ -1368,7 +1360,8 @@ mod tests {
         #[inline]
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let width = 200;
-            re_format_arrow::format_record_batch_with_width(&self.0, Some(width)).fmt(f)
+            re_format_arrow::format_record_batch_with_width(&self.0, Some(width), f.sign_minus())
+                .fmt(f)
         }
     }
 

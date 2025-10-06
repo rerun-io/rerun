@@ -1488,7 +1488,17 @@ impl RecordingStream {
                 let this = self.clone_weak();
                 move || {
                     while let Some(msg) = rx.recv().ok().and_then(|msg| msg.into_data()) {
-                        this.record_msg(msg);
+                        match msg {
+                            re_log_types::DataSourceMessage::LogMsg(log_msg) => {
+                                this.record_msg(log_msg);
+                            }
+                            re_log_types::DataSourceMessage::UiCommand(ui_cmd) => {
+                                re_log::debug!(
+                                    "Ignoring unexpected ui command from file {:?}",
+                                    ui_cmd
+                                );
+                            }
+                        }
                     }
                 }
             })

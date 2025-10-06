@@ -58,7 +58,7 @@ impl TimePanelItem {
         if let Some(component_descr) = component_descr.as_ref() {
             Item::ComponentPath(ComponentPath::new(
                 entity_path.clone(),
-                component_descr.clone(),
+                component_descr.component,
             ))
         } else {
             Item::InstancePath(InstancePath::entity_all(entity_path.clone()))
@@ -866,8 +866,8 @@ impl TimePanel {
             for component_descr in components {
                 let is_static = store.entity_has_static_component(entity_path, &component_descr);
 
-                let component_path = ComponentPath::new(entity_path.clone(), component_descr);
-                let component_descr = &component_path.component_descriptor;
+                let component_path =
+                    ComponentPath::new(entity_path.clone(), component_descr.component);
                 let item = TimePanelItem {
                     entity_path: entity_path.clone(),
                     component_descr: Some(component_descr.clone()),
@@ -908,12 +908,12 @@ impl TimePanel {
 
                 response.on_hover_ui(|ui| {
                     let num_static_messages =
-                        store.num_static_events_for_component(entity_path, component_descr);
+                        store.num_static_events_for_component(entity_path, &component_descr);
                     let num_temporal_messages = store
                         .num_temporal_events_for_component_on_timeline(
                             time_ctrl.timeline().name(),
                             entity_path,
-                            component_descr,
+                            &component_descr,
                         );
                     let total_num_messages = num_static_messages + num_temporal_messages;
 
@@ -985,7 +985,7 @@ impl TimePanel {
                         .entity_has_component_on_timeline(
                             time_ctrl.timeline().name(),
                             entity_path,
-                            component_descr,
+                            &component_descr,
                         );
 
                     if component_has_data_in_current_timeline {
@@ -1877,10 +1877,10 @@ fn copy_timeline_properties_context_menu(
                 copy_command.is_ok() && has_fragment,
                 egui::Button::new("Copy link to timestamp"),
             )
-            .on_disabled_hover_text(if copy_command.is_err() {
-                "Can't share links to the current recording"
+            .on_disabled_hover_text(if let Err(err) = copy_command.as_ref() {
+                format!("Can't share links to the current recording: {err}")
             } else {
-                "The current recording doesn't support time stamp links"
+                "The current recording doesn't support time stamp links".to_owned()
             })
             .clicked()
             && let Ok(copy_command) = copy_command

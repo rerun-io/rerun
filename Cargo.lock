@@ -5958,9 +5958,9 @@ dependencies = [
 
 [[package]]
 name = "lru"
-version = "0.15.0"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0281c2e25e62316a5c9d98f2d2e9e95a37841afdaf4383c177dbb5c1dfab0568"
+checksum = "bfe949189f46fabb938b3a9a0be30fdd93fd8a09260da863399a8cf3db756ec8"
 dependencies = [
  "hashbrown 0.15.4",
 ]
@@ -8647,6 +8647,7 @@ dependencies = [
  "re_viewer_context",
  "serde",
  "static_assertions",
+ "strum",
  "thiserror 1.0.69",
  "tokio",
 ]
@@ -8667,6 +8668,7 @@ dependencies = [
  "getrandom 0.3.3",
  "itertools 0.14.0",
  "log",
+ "parking_lot",
  "re_arrow_util",
  "re_dataframe",
  "re_log_encoding",
@@ -8718,6 +8720,7 @@ dependencies = [
  "anyhow",
  "document-features",
  "emath",
+ "indexmap 2.10.0",
  "itertools 0.14.0",
  "nohash-hasher",
  "parking_lot",
@@ -8983,7 +8986,6 @@ dependencies = [
  "mcap",
  "prost-reflect",
  "re_chunk",
- "re_format_arrow",
  "re_log",
  "re_log_types",
  "re_tracing",
@@ -9061,7 +9063,9 @@ name = "re_protos"
 version = "0.26.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "http",
  "jiff",
+ "pin-project-lite",
  "prost",
  "prost-types",
  "pyo3",
@@ -9075,6 +9079,7 @@ dependencies = [
  "serde",
  "thiserror 1.0.69",
  "tonic",
+ "tower",
  "url",
 ]
 
@@ -9153,6 +9158,7 @@ dependencies = [
  "itertools 0.14.0",
  "re_data_ui",
  "re_entity_db",
+ "re_log",
  "re_log_types",
  "re_redap_browser",
  "re_smart_channel",
@@ -9202,7 +9208,6 @@ dependencies = [
  "re_arrow_util",
  "re_auth",
  "re_chunk",
- "re_error",
  "re_log",
  "re_log_encoding",
  "re_log_types",
@@ -9219,7 +9224,6 @@ dependencies = [
  "tower",
  "tracing",
  "url",
- "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -9382,6 +9386,7 @@ dependencies = [
  "nohash-hasher",
  "re_build_info",
  "re_build_tools",
+ "re_byte_size",
  "re_chunk_store",
  "re_entity_db",
  "re_grpc_server",
@@ -9389,6 +9394,8 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_protos",
+ "re_tuid",
+ "re_types_core",
  "thiserror 1.0.69",
  "tokio",
  "tokio-stream",
@@ -9496,6 +9503,24 @@ dependencies = [
  "re_viewer_context",
  "re_viewport",
  "re_viewport_blueprint",
+]
+
+[[package]]
+name = "re_tf"
+version = "0.26.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "bitflags 2.9.1",
+ "glam",
+ "itertools 0.14.0",
+ "nohash-hasher",
+ "re_chunk_store",
+ "re_entity_db",
+ "re_log",
+ "re_log_types",
+ "re_tracing",
+ "re_types",
+ "vec1",
 ]
 
 [[package]]
@@ -9895,6 +9920,7 @@ dependencies = [
  "re_renderer",
  "re_test_context",
  "re_test_viewport",
+ "re_tf",
  "re_tracing",
  "re_types",
  "re_ui",
@@ -9905,7 +9931,6 @@ dependencies = [
  "serde",
  "smallvec",
  "thiserror 1.0.69",
- "vec1",
  "web-time",
 ]
 
@@ -12651,9 +12676,9 @@ dependencies = [
 
 [[package]]
 name = "walkers"
-version = "0.43.0"
+version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1959f265e0ea31bfb2293639cb6a61fc656c63cee8b93f4db5db03ba2691e555"
+checksum = "812f4b53123ac81952ae1848c7a3b1c40f4adbaff83946dfc429d69720d77e23"
 dependencies = [
  "egui",
  "egui_extras",
@@ -12662,7 +12687,7 @@ dependencies = [
  "http-cache-reqwest",
  "image",
  "log",
- "lru 0.15.0",
+ "lru 0.16.1",
  "reqwest",
  "reqwest-middleware",
  "thiserror 2.0.12",

@@ -15,7 +15,7 @@ on:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: write
@@ -128,15 +128,16 @@ jobs:
 
           if [ -n "$comparison" ]; then
             echo "is_comparison_set=true" >> "$GITHUB_OUTPUT"
+            echo "is_comparison_set=true"
           else
             echo "is_comparison_set=false" >> "$GITHUB_OUTPUT"
+            echo "is_comparison_set=false"
           fi
 
           echo "$entries"
           echo "previous: $(cat /tmp/prev.json)"
           echo "current: $(cat /tmp/data.json)"
           echo "$comparison"
-          echo "is comparison set: $is_comparison_set"
 
       - name: Upload data to GCS (commit)
         uses: google-github-actions/upload-cloud-storage@v2

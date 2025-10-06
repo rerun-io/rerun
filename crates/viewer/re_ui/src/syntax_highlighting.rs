@@ -428,12 +428,12 @@ impl SyntaxHighlighting for ComponentPath {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
         let Self {
             entity_path,
-            component_descriptor,
+            component,
         } = self;
         builder
             .append(entity_path)
             .append_syntax(":")
-            .append(component_descriptor);
+            .append(component);
     }
 }
 

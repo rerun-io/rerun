@@ -15,7 +15,7 @@ fn x() -> Vec<f32> {
 fn test_bar_chart() {
     let mut test_context = TestContext::new_with_view_class::<BarChartView>();
 
-    test_context.log_entity("tensor", |builder| {
+    test_context.log_entity("time_series", |builder| {
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
@@ -24,11 +24,11 @@ fn test_bar_chart() {
     });
 
     let view_id = setup_blueprint(&mut test_context);
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
+    test_context.run_view_ui_and_save_snapshot(
         view_id,
-        "tensor_1d",
+        "bar_chart_1d",
         egui::vec2(400.0, 300.0),
+        None,
     );
 }
 
@@ -38,20 +38,4 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
             BarChartView::identifier(),
         ))
     })
-}
-
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    name: &str,
-    size: egui::Vec2,
-) {
-    let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
-        .build_ui(|ui| {
-            test_context.run_with_single_view(ui, view_id);
-        });
-    harness.run();
-    harness.snapshot(name);
 }

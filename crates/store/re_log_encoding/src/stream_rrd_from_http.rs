@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use re_log::ResultExt as _;
-use re_log_types::LogMsg;
+use re_log_types::{DataSourceMessage, LogMsg};
 
 /// Stream an rrd file from a HTTP server.
 ///
@@ -15,7 +15,7 @@ pub fn stream_rrd_from_http_to_channel(
     url: String,
     follow: bool,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> re_smart_channel::Receiver<LogMsg> {
+) -> re_smart_channel::Receiver<DataSourceMessage> {
     let (tx, rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::RrdHttpStream { url: url.clone() },
         re_smart_channel::SmartChannelSource::RrdHttpStream {
@@ -31,7 +31,7 @@ pub fn stream_rrd_from_http_to_channel(
             }
             match msg {
                 HttpMessage::LogMsg(msg) => {
-                    if tx.send(msg).is_ok() {
+                    if tx.send(msg.into()).is_ok() {
                         ControlFlow::Continue(())
                     } else {
                         re_log::info_once!("Closing connection to {url}");

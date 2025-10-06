@@ -3,7 +3,7 @@ source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
 expression: test_results
 ---
 TestResult {
-    op: Int(
+    filter: Int(
         IntFilter {
             operator: Ne,
             rhs_value: Some(
@@ -87,12 +87,6 @@ TestResult {
     [
       PrimitiveArray<Int64>
     [
-      1,
-      2,
-      3,
-    ],
-      PrimitiveArray<Int64>
-    [
       4,
       5,
       6,
@@ -103,24 +97,9 @@ TestResult {
       4,
       9,
     ],
-      PrimitiveArray<Int64>
-    [
-      5,
-      2,
-      1,
-    ],
-      PrimitiveArray<Int64>
-    [
       null,
-      1,
-      2,
-      3,
-    ],
       PrimitiveArray<Int64>
     [
-      1,
-      2,
-      3,
       null,
     ],
     ],

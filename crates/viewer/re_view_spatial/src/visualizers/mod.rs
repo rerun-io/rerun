@@ -296,13 +296,6 @@ pub fn load_keypoint_connections(
     Ok(())
 }
 
-/// Returns the view coordinates used for 2D (image) views.
-///
-/// TODO(#1387): Image coordinate space should be configurable.
-pub fn image_view_coordinates() -> re_types::components::ViewCoordinates {
-    re_types::archetypes::Pinhole::DEFAULT_CAMERA_XYZ
-}
-
 fn filter_visualizable_2d_entities(
     entities: MaybeVisualizableEntities,
     context: &dyn VisualizableFilterContext,

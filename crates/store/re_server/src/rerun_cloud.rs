@@ -9,42 +9,32 @@ use arrow::array::{
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
-use re_chunk_store::Chunk;
-use re_chunk_store::external::re_chunk::external::re_byte_size::SizeBytes as _;
-use re_entity_db::EntityDb;
-use re_entity_db::external::re_query::StorageEngine;
-use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
-use re_log_types::external::re_types_core::{ChunkId, Loggable as _};
-use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::ext::GetChunksRequest;
-use re_protos::cloud::v1alpha1::{
-    EntryDetails, GetChunksResponse, GetDatasetSchemaResponse, GetPartitionTableSchemaResponse,
-    QueryDatasetResponse, ScanPartitionTableResponse, ScanTableResponse,
-};
-use re_protos::headers::RerunHeadersExtractorExt as _;
-use re_protos::{cloud::v1alpha1::RegisterWithDatasetResponse, common::v1alpha1::ext::PartitionId};
-use re_protos::{
-    cloud::v1alpha1::ext,
-    cloud::v1alpha1::ext::{
-        CreateDatasetEntryResponse, ReadDatasetEntryResponse, ReadTableEntryResponse,
-    },
-};
-use re_protos::{
-    cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
-    cloud::v1alpha1::{
-        FetchTaskOutputRequest, FetchTaskOutputResponse, QueryTasksOnCompletionRequest,
-        QueryTasksRequest, QueryTasksResponse,
-    },
-};
-use re_protos::{
-    cloud::v1alpha1::{
-        DeleteEntryResponse, EntryKind, RegisterTableRequest, RegisterTableResponse,
-    },
-    common::v1alpha1::ext::IfDuplicateBehavior,
-};
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Status};
 
+use re_byte_size::SizeBytes as _;
+use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
+use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
+use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
+use re_protos::{
+    cloud::v1alpha1::{
+        DeleteEntryResponse, EntryDetails, EntryKind, FetchTaskOutputRequest,
+        FetchTaskOutputResponse, GetChunksResponse, GetDatasetSchemaResponse,
+        GetPartitionTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionRequest,
+        QueryTasksRequest, QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
+        RegisterWithDatasetResponse, ScanPartitionTableResponse, ScanTableResponse,
+        ext::{
+            self, CreateDatasetEntryResponse, GetChunksRequest, ReadDatasetEntryResponse,
+            ReadTableEntryResponse,
+        },
+        rerun_cloud_service_server::RerunCloudService,
+    },
+    common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId},
+    headers::RerunHeadersExtractorExt as _,
+};
+use re_types_core::{ChunkId, Loggable as _};
+
+use crate::entrypoint::NamedPath;
 use crate::store::{Dataset, InMemoryStore, Table};
 
 #[derive(Debug, Default)]
@@ -64,7 +54,7 @@ impl RerunCloudHandlerBuilder {
 
     pub fn with_directory_as_dataset(
         mut self,
-        directory: &std::path::Path,
+        directory: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<Self, crate::store::Error> {
         self.store
@@ -75,7 +65,7 @@ impl RerunCloudHandlerBuilder {
 
     pub async fn with_directory_as_table(
         mut self,
-        path: &std::path::Path,
+        path: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<Self, crate::store::Error> {
         self.store
@@ -111,7 +101,7 @@ impl RerunCloudHandler {
         &self,
         dataset_id: EntryId,
         mut partition_ids: Vec<PartitionId>,
-    ) -> Result<Vec<(PartitionId, StorageEngine)>, tonic::Status> {
+    ) -> Result<Vec<(PartitionId, ChunkStoreHandle)>, tonic::Status> {
         let store = self.store.read().await;
         let dataset = store.dataset(dataset_id).ok_or_else(|| {
             tonic::Status::not_found(format!("Entry with ID {dataset_id} not found"))
@@ -125,19 +115,13 @@ impl RerunCloudHandler {
             .into_iter()
             .map(|partition_id| {
                 dataset
-                    .partition(&partition_id)
+                    .partition_store_handle(&partition_id)
                     .ok_or_else(|| {
                         tonic::Status::not_found(format!(
                             "Partition with ID {partition_id} not found"
                         ))
                     })
-                    .map(|partition| {
-                        #[expect(unsafe_code)]
-                        // Safety: no viewer is running, and we've locked the store for the duration
-                        // of the handler already.
-                        unsafe { partition.storage_engine_raw() }.clone()
-                    })
-                    .map(|storage_engine| (partition_id, storage_engine))
+                    .map(|store_handle| (partition_id, store_handle.clone()))
             })
             .collect::<Result<Vec<_>, _>>()
     }
@@ -560,7 +544,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         let mut request = request.into_inner();
 
-        let mut entity_dbs = HashMap::new();
+        let mut chunk_stores = HashMap::new();
 
         while let Some(chunk_msg) = request.next().await {
             let chunk_msg = chunk_msg?;
@@ -589,16 +573,15 @@ impl RerunCloudService for RerunCloudHandler {
                 tonic::Status::internal(format!("error decoding chunk from record batch: {err:#}"))
             })?);
 
-            entity_dbs
+            chunk_stores
                 .entry(partition_id.clone())
                 .or_insert_with(|| {
-                    EntityDb::new(StoreId::new(
-                        StoreKind::Recording,
-                        entry_id.to_string(),
-                        partition_id.id,
-                    ))
+                    ChunkStore::new(
+                        StoreId::new(StoreKind::Recording, entry_id.to_string(), partition_id.id),
+                        ChunkStoreConfig::CHANGELOG_DISABLED,
+                    )
                 })
-                .add_chunk(&chunk)
+                .insert_chunk(&chunk)
                 .map_err(|err| {
                     tonic::Status::internal(format!("error adding chunk to store: {err:#}"))
                 })?;
@@ -610,8 +593,8 @@ impl RerunCloudService for RerunCloudHandler {
         };
 
         #[expect(clippy::iter_over_hash_type)]
-        for (entity_path, entity_db) in entity_dbs {
-            dataset.add_partition(entity_path, entity_db);
+        for (entity_path, chunk_store) in chunk_stores {
+            dataset.add_partition(entity_path, ChunkStoreHandle::new(chunk_store));
         }
 
         Ok(tonic::Response::new(
@@ -767,9 +750,8 @@ impl RerunCloudService for RerunCloudHandler {
         let storage_engines = self.get_storage_engines(entry_id, partition_ids).await?;
 
         let stream = futures::stream::iter(storage_engines.into_iter().map(
-            move |(partition_id, storage_engine)| {
-                let storage_read = storage_engine.read();
-                let chunk_store = storage_read.store();
+            move |(partition_id, store_handle)| {
+                let chunk_store = store_handle.read();
                 let num_rows = chunk_store.num_chunks();
 
                 let mut chunk_partition_id = Vec::with_capacity(num_rows);
@@ -916,42 +898,44 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::GetChunksRequest>,
     ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status> {
-        let GetChunksRequest {
-            dataset_id,
-            partition_ids,
-            chunk_ids,
-            entity_paths,
-
-            // We don't support queries, so you always get everything
-            query: _,
-        } = GetChunksRequest::try_from(request.into_inner())?;
-
-        if !chunk_ids.is_empty() {
+        if !request.get_ref().chunk_ids.is_empty() {
             return Err(tonic::Status::unimplemented(
                 "get_chunks: querying specific chunk ids is not implemented",
             ));
         }
 
+        let entry_id = get_entry_id_from_headers(&*self.store.read().await, &request)?;
+
+        let GetChunksRequest {
+            partition_ids,
+            chunk_ids: _,
+            entity_paths,
+            query: _,
+            select_all_entity_paths: _,
+            fuzzy_descriptors: _,
+            exclude_static_data: _,
+            exclude_temporal_data: _,
+        } = GetChunksRequest::try_from(request.into_inner())?;
+
         let entity_paths: IntSet<EntityPath> = entity_paths.into_iter().collect();
 
-        let storage_engines = self.get_storage_engines(dataset_id, partition_ids).await?;
+        let storage_engines = self.get_storage_engines(entry_id, partition_ids).await?;
 
         let stream = futures::stream::iter(storage_engines.into_iter().map(
-            move |(partition_id, storage_engine)| {
+            move |(partition_id, store_handle)| {
                 let compression = re_log_encoding::Compression::Off;
                 let store_id = StoreId::new(
                     StoreKind::Recording,
-                    dataset_id.to_string(),
+                    entry_id.to_string(),
                     partition_id.id.as_str(),
                 );
 
-                let arrow_msgs: Result<Vec<_>, _> = storage_engine
+                let arrow_msgs: Result<Vec<_>, _> = store_handle
                     // NOTE: ⚠️This is super cursed ⚠️The underlying lock is synchronous: the only
                     // reason this doesn't deadlock is because we collect() at the end of this mapping,
                     // before the overarching stream ever gets a chance to yield.
                     // Make sure it stays that way.
                     .read()
-                    .store()
                     .iter_chunks()
                     .filter(|chunk| {
                         entity_paths.is_empty() || entity_paths.contains(chunk.entity_path())
@@ -1033,7 +1017,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         // get storage engines only for the partitions we actually need
         let store = self.store.read().await;
-        let storage_engines: std::collections::HashMap<_, _> = store
+        let store_handles: std::collections::HashMap<_, _> = store
             .iter_datasets()
             .flat_map(|dataset| {
                 let dataset_id = dataset.id();
@@ -1043,13 +1027,9 @@ impl RerunCloudService for RerunCloudHandler {
                         .iter()
                         .any(|(_, pid)| pid == &partition_id)
                     {
-                        dataset.partition(&partition_id).map(|partition| {
-                            #[expect(unsafe_code)]
-                            // Safety: no viewer is running, and we've locked the store for the duration
-                            // of the handler already.
-                            let storage_engine = unsafe { partition.storage_engine_raw() }.clone();
-                            (partition_id, (dataset_id, storage_engine))
-                        })
+                        dataset
+                            .partition_store_handle(&partition_id)
+                            .map(|store_handle| (partition_id, (dataset_id, store_handle.clone())))
                     } else {
                         None
                     }
@@ -1062,15 +1042,13 @@ impl RerunCloudService for RerunCloudHandler {
         let compression = re_log_encoding::Compression::Off;
 
         for (chunk_id, partition_id) in chunk_partition_pairs {
-            let (dataset_id, storage_engine) =
-                storage_engines.get(&partition_id).ok_or_else(|| {
-                    tonic::Status::internal(format!(
-                        "Storage engine not found for partition {partition_id}"
-                    ))
-                })?;
+            let (dataset_id, store_handle) = store_handles.get(&partition_id).ok_or_else(|| {
+                tonic::Status::internal(format!(
+                    "Storage engine not found for partition {partition_id}"
+                ))
+            })?;
 
-            let storage_read = storage_engine.read();
-            let chunk_store = storage_read.store();
+            let chunk_store = store_handle.read();
 
             if let Some(chunk) = chunk_store.chunk(&chunk_id) {
                 let store_id = StoreId::new(

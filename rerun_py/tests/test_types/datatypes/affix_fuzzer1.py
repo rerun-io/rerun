@@ -42,6 +42,7 @@ def _affix_fuzzer1__almost_flattened_scalar__special_field_converter_override(
 class AffixFuzzer1:
     def __init__(
         self: Any,
+        *,
         single_string_required: str,
         many_strings_required: list[str],
         flattened_scalar: float,

@@ -12,8 +12,8 @@ README = """\
 
 ## Blueprint tree
 
-* Right-click on Viewport and select "Collapse all". Check everything is collapsed by manually expending everything.
-* Right-click on Viewport and select "Collapse all" and then "Expend all". Check everything is expanded.
+* Right-click on Viewport and select "Collapse all". Check everything is collapsed by manually expanding everything.
+* Right-click on Viewport and select "Collapse all" and then "Expand all". Check everything is expanded.
 
 ## Streams tree
 

@@ -3,7 +3,7 @@ source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
 expression: test_results
 ---
 TestResult {
-    op: Float(
+    filter: Float(
         FloatFilter {
             operator: Ne,
             rhs_value: Some(
@@ -68,12 +68,6 @@ TestResult {
     [
       PrimitiveArray<Float64>
     [
-      1.0,
-      2.0,
-      3.0,
-    ],
-      PrimitiveArray<Float64>
-    [
       4.0,
       5.0,
       6.0,
@@ -83,12 +77,6 @@ TestResult {
       7.0,
       4.0,
       9.0,
-    ],
-      PrimitiveArray<Float64>
-    [
-      5.0,
-      2.0,
-      1.0,
     ],
     ],
 }

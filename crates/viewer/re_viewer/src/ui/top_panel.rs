@@ -172,7 +172,7 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppE
                 .small()
                 .color(ui.visuals().warn_fg_color),
         )
-        .on_hover_text("egui was compiled with debug assertions enabled.");
+        .on_hover_text("Rerun was compiled with debug assertions enabled.");
     }
 
     if !app_env.is_test() {
@@ -271,7 +271,7 @@ fn multi_pass_warning_dot_ui(ui: &mut egui::Ui) {
     );
 }
 
-fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>) {
+fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::DataSourceMessage>) {
     let sources = rx
         .sources()
         .into_iter()

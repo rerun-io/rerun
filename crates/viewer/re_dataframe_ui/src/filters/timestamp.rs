@@ -14,16 +14,23 @@
 //! - We always consider the physical timestamp to be UTC, even with the time zone is `None`.
 //! - We ignore the time zone hint and use instead our global [`TimestampFormat`] for display.
 
-use std::fmt::Formatter;
+use std::fmt::{Display, Formatter};
 use std::str::FromStr as _;
 
+use arrow::array::{ArrayRef, BooleanArray};
+use arrow::datatypes::{DataType, Field, TimeUnit};
+use datafusion::common::{Result as DataFusionResult, exec_err};
+use datafusion::logical_expr::{Expr, TypeSignature, col, not};
 use jiff::{RoundMode, Timestamp, TimestampRound, ToSpan as _};
+use strum::VariantArray as _;
 
 use re_log_types::TimestampFormat;
+use re_types_core::Loggable as _;
+use re_types_core::datatypes::TimeInt;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, SyntaxHighlighting, UiExt as _};
 
-use super::{FilterUiAction, TimestampFormatted, parse_timestamp};
+use super::{Filter, FilterError, FilterUdf, FilterUiAction, TimestampFormatted, parse_timestamp};
 
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq)]
 enum TimestampFilterKind {
@@ -38,6 +45,22 @@ enum TimestampFilterKind {
     Between,
 }
 
+#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, strum::VariantArray)]
+pub enum TimestampOperator {
+    #[default]
+    Is,
+    IsNot,
+}
+
+impl Display for TimestampOperator {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Is => f.write_str("is"),
+            Self::IsNot => f.write_str("is not"),
+        }
+    }
+}
+
 /// A filter for [`arrow::datatypes::DataType::Timestamp`] columns.
 ///
 /// This represents both the filter itself, and the state of the corresponding UI.
@@ -45,6 +68,9 @@ enum TimestampFilterKind {
 pub struct TimestampFilter {
     /// The kind of temporal filter to use.
     kind: TimestampFilterKind,
+
+    /// Operator to use (is/is not).
+    operator: TimestampOperator,
 
     /// The low bound of the filter (for [`TimestampFilterKind::After`] and
     /// [`TimestampFilterKind::Between`]).
@@ -58,6 +84,11 @@ pub struct TimestampFilter {
 // used for test snapshots, so we make it nice and concise
 impl std::fmt::Debug for TimestampFilter {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let op_str = match self.operator {
+            TimestampOperator::Is => "",
+            TimestampOperator::IsNot => "not ",
+        };
+
         let inner = match self.kind {
             TimestampFilterKind::Today => "Today".to_owned(),
             TimestampFilterKind::Yesterday => "Yesterday".to_owned(),
@@ -72,7 +103,7 @@ impl std::fmt::Debug for TimestampFilter {
             ),
         };
 
-        f.write_str(&format!("TimestampFilter({inner})"))
+        f.write_str(&format!("TimestampFilter({op_str}{inner})"))
     }
 }
 
@@ -134,35 +165,21 @@ impl TimestampFilter {
             kind: TimestampFilterKind::Between,
             low_bound_timestamp: EditableTimestamp::new(low_bound),
             high_bound_timestamp: EditableTimestamp::new(high_bound),
+            ..Default::default()
         }
     }
-}
 
-// filtering
-impl TimestampFilter {
-    pub fn apply_seconds(&self, seconds: i64) -> bool {
-        jiff::Timestamp::from_second(seconds)
-            .is_ok_and(|t| ResolvedTimestampFilter::from(self).apply(t))
-    }
-
-    pub fn apply_milliseconds(&self, milli: i64) -> bool {
-        jiff::Timestamp::from_millisecond(milli)
-            .is_ok_and(|t| ResolvedTimestampFilter::from(self).apply(t))
-    }
-
-    pub fn apply_microseconds(&self, micro: i64) -> bool {
-        jiff::Timestamp::from_microsecond(micro)
-            .is_ok_and(|t| ResolvedTimestampFilter::from(self).apply(t))
-    }
-
-    pub fn apply_nanoseconds(&self, nano: i64) -> bool {
-        jiff::Timestamp::from_nanosecond(nano as _)
-            .is_ok_and(|t| ResolvedTimestampFilter::from(self).apply(t))
+    pub fn with_is_not(mut self) -> Self {
+        self.operator = TimestampOperator::IsNot;
+        self
     }
 }
 
 impl SyntaxHighlighting for TimestampFormatted<'_, TimestampFilter> {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        builder.append_keyword(&self.inner.operator.to_string());
+        builder.append_keyword(" ");
+
         let low_bound = self
             .inner
             .low_bound_timestamp
@@ -198,14 +215,38 @@ impl SyntaxHighlighting for TimestampFormatted<'_, TimestampFilter> {
     }
 }
 
-impl TimestampFilter {
-    pub fn popup_ui(
+impl Filter for TimestampFilter {
+    fn popup_ui(
         &mut self,
         ui: &mut egui::Ui,
-        column_name: &str,
         timestamp_format: TimestampFormat,
+        column_name: &str,
+        _popup_just_opened: bool,
     ) -> FilterUiAction {
-        super::basic_operation_ui(ui, column_name, "is");
+        ui.horizontal(|ui| {
+            ui.label(
+                SyntaxHighlightedBuilder::body_default(column_name).into_widget_text(ui.style()),
+            );
+
+            egui::ComboBox::new("timestamp_op", "")
+                .selected_text(
+                    SyntaxHighlightedBuilder::keyword(&self.operator.to_string())
+                        .into_widget_text(ui.style()),
+                )
+                .show_ui(ui, |ui| {
+                    for possible_op in TimestampOperator::VARIANTS {
+                        if ui
+                            .button(
+                                SyntaxHighlightedBuilder::keyword(&possible_op.to_string())
+                                    .into_widget_text(ui.style()),
+                            )
+                            .clicked()
+                        {
+                            self.operator = *possible_op;
+                        }
+                    }
+                });
+        });
 
         // Note on prefilling value for `Before`. Since `Before` generally uses the "high" boundary
         // for computation, it would seem to make sense that the prefilling logic also use the
@@ -342,9 +383,19 @@ impl TimestampFilter {
         action
     }
 
-    pub fn on_commit(&mut self) {
+    fn on_commit(&mut self) {
         self.low_bound_timestamp.invalidate_timestamp_string();
         self.high_bound_timestamp.invalidate_timestamp_string();
+    }
+
+    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
+        let udf = ResolvedTimestampFilter::from(self).as_scalar_udf();
+        let expr = udf.call(vec![col(field.name().clone())]);
+
+        Ok(match self.operator {
+            TimestampOperator::Is => expr,
+            TimestampOperator::IsNot => not(expr.clone()).or(expr.is_null()),
+        })
     }
 }
 
@@ -531,6 +582,8 @@ fn format_timestamp(timestamp: Timestamp, timestamp_format: TimestampFormat) -> 
 }
 
 /// Helper to resolve a [`TimestampFilter`] and actually perform the filtering.
+///
+/// IMPORTANT: this ignores the `TimestampOperator`, because it is applied outside of the UDF.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ResolvedTimestampFilter {
     All,
@@ -654,6 +707,22 @@ impl ResolvedTimestampFilter {
 
         result
     }
+
+    fn apply_seconds(&self, seconds: i64) -> bool {
+        jiff::Timestamp::from_second(seconds).is_ok_and(|t| self.apply(t))
+    }
+
+    fn apply_milliseconds(&self, milli: i64) -> bool {
+        jiff::Timestamp::from_millisecond(milli).is_ok_and(|t| self.apply(t))
+    }
+
+    fn apply_microseconds(&self, micro: i64) -> bool {
+        jiff::Timestamp::from_microsecond(micro).is_ok_and(|t| self.apply(t))
+    }
+
+    fn apply_nanoseconds(&self, nano: i64) -> bool {
+        jiff::Timestamp::from_nanosecond(nano as _).is_ok_and(|t| self.apply(t))
+    }
 }
 
 /// Convert day boundaries into timestamp boundaries.
@@ -672,6 +741,57 @@ fn day_range_to_timestamp_range(
         high.and_then(|d| d.at(0, 0, 0, 0).to_zoned(tz).ok())
             .map(|t| t.timestamp()),
     )
+}
+
+impl FilterUdf for ResolvedTimestampFilter {
+    const PRIMITIVE_SIGNATURE: TypeSignature = TypeSignature::Any(1);
+
+    fn name(&self) -> &'static str {
+        "timestamp"
+    }
+
+    fn is_valid_primitive_input_type(data_type: &DataType) -> bool {
+        match data_type {
+            _data_type if _data_type == &TimeInt::arrow_datatype() => true,
+            DataType::Timestamp(_, _) => true,
+            _ => false,
+        }
+    }
+
+    fn invoke_primitive_array(&self, array: &ArrayRef) -> DataFusionResult<BooleanArray> {
+        macro_rules! timestamp_case {
+            ($apply_fun:ident, $conv_fun:ident, $op:expr) => {{
+                let array = datafusion::common::cast::$conv_fun(array)?;
+                let result: BooleanArray =
+                    array.iter().map(|x| x.map(|v| $op.$apply_fun(v))).collect();
+
+                Ok(result)
+            }};
+        }
+
+        match array.data_type() {
+            _data_type if _data_type == &TimeInt::arrow_datatype() => {
+                timestamp_case!(apply_nanoseconds, as_int64_array, self)
+            }
+
+            DataType::Timestamp(TimeUnit::Second, _) => {
+                timestamp_case!(apply_seconds, as_timestamp_second_array, self)
+            }
+            DataType::Timestamp(TimeUnit::Millisecond, _) => {
+                timestamp_case!(apply_milliseconds, as_timestamp_millisecond_array, self)
+            }
+            DataType::Timestamp(TimeUnit::Microsecond, _) => {
+                timestamp_case!(apply_microseconds, as_timestamp_microsecond_array, self)
+            }
+            DataType::Timestamp(TimeUnit::Nanosecond, _) => {
+                timestamp_case!(apply_nanoseconds, as_timestamp_nanosecond_array, self)
+            }
+
+            _ => {
+                exec_err!("Unsupported data type {}", array.data_type())
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -831,21 +951,23 @@ mod tests {
     #[test]
     fn test_last_24_hours_filter() {
         let filter = ResolvedTimestampFilter::Last24Hours;
-        let now = Timestamp::now();
+
+        // Note: this test doesn't attempt to test close to the limits, because it can become
+        // flaky with slow execution time. This is also why we are calling `Timestamp::now()` again
+        // for each assert.
 
         // Should accept timestamps within the last 24 hours
-        assert!(filter.apply(now));
-        assert!(filter.apply(now.checked_sub(1.hours()).unwrap()));
-        assert!(filter.apply(now.checked_sub(12.hours()).unwrap()));
-        assert!(filter.apply(now.checked_sub(23.hours()).unwrap()));
+        assert!(filter.apply(Timestamp::now()));
+        assert!(filter.apply(Timestamp::now().checked_sub(1.hours()).unwrap()));
+        assert!(filter.apply(Timestamp::now().checked_sub(12.hours()).unwrap()));
+        assert!(filter.apply(Timestamp::now().checked_sub(23.hours()).unwrap()));
 
         // Should reject timestamps older than 24 hours
-        assert!(!filter.apply(now.checked_sub(25.hours()).unwrap()));
-        assert!(!filter.apply(now.checked_sub(48.hours()).unwrap()));
+        assert!(!filter.apply(Timestamp::now().checked_sub(25.hours()).unwrap()));
+        assert!(!filter.apply(Timestamp::now().checked_sub(48.hours()).unwrap()));
 
         // Should reject future timestamps
-        assert!(!filter.apply(now.checked_add(1.seconds()).unwrap()));
-        assert!(!filter.apply(now.checked_add(1.hours()).unwrap()));
+        assert!(!filter.apply(Timestamp::now().checked_add(1.hours()).unwrap()));
     }
 
     #[test]

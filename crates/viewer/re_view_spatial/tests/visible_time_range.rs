@@ -304,7 +304,7 @@ fn run_visible_time_range_test(
     add_data(&mut test_context);
 
     let view_id = setup_blueprint(&mut test_context, view_time_range, green_time_range);
-    run_view_ui_and_save_snapshot(&mut test_context, view_id, name, egui::vec2(200.0, 200.0));
+    test_context.run_view_ui_and_save_snapshot(view_id, name, egui::vec2(200.0, 200.0), None);
 }
 
 fn setup_blueprint(
@@ -357,21 +357,4 @@ fn setup_blueprint(
 
         view_id
     })
-}
-
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    name: &str,
-    size: egui::Vec2,
-) {
-    let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
-        .build_ui(|ui| {
-            test_context.run_with_single_view(ui, view_id);
-        });
-
-    harness.run();
-    harness.snapshot(name);
 }

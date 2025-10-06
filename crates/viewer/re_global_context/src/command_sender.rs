@@ -24,7 +24,7 @@ pub enum SystemCommand {
     LoadDataSource(LogDataSource),
 
     /// Add a new receiver for log messages.
-    AddReceiver(re_smart_channel::Receiver<re_log_types::LogMsg>),
+    AddReceiver(re_smart_channel::Receiver<re_log_types::DataSourceMessage>),
 
     /// Add a new server to the redap browser.
     AddRedapServer(re_uri::Origin),
