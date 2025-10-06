@@ -21,7 +21,7 @@ def main() -> None:
         default=100,
         help="Number of timestamps to log. Stamps shift for each entity a bit.",
     )
-    parser.add_argument("--no-points-on-leafs", action="store_true", help="If set, don't log a point at each leaf")
+    parser.add_argument("--transforms-only", action="store_true", help="If set, don't log a point at each leaf")
     parser.add_argument(
         "--num-views", type=int, default=6, help="Number of 3D views to create (each will use a different origin)"
     )
@@ -34,7 +34,7 @@ def main() -> None:
     entity_paths = []
     call_id = 0
 
-    def log_hierarchy(entity_path: str, level: int):
+    def log_hierarchy(entity_path: str, level: int) -> None:
         nonlocal call_id
         call_id += 1
         entity_paths.append(entity_path)
@@ -68,7 +68,7 @@ def main() -> None:
                 )
 
         if level == args.hierarchy_depth:
-            if not args.no_points_on_leafs:
+            if not args.transforms_only:
                 # Log a single point at the leaf
                 rr.set_time("sim_time", duration=0)
                 rr.log(entity_path, rr.Points3D([[0.0, 0.0, 0.0]]))
