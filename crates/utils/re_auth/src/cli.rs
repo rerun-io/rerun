@@ -13,9 +13,6 @@ pub enum Error {
     #[error("HTTP server error: {0}")]
     Http(std::io::Error),
 
-    #[error("failed to open browser: {0}")]
-    WebBrowser(std::io::Error),
-
     #[error("failed to load context: {0}")]
     Context(#[from] workos::ContextLoadError),
 
@@ -167,7 +164,10 @@ pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(
     if options.open_browser {
         p.println("Opening login page in your browser.");
         p.println("Once you've logged in, the process will continue here.");
-        webbrowser::open(&login_url).map_err(Error::WebBrowser)?;
+        p.println(format!(
+            "Alternatively, manually open this url: {login_url}"
+        ));
+        webbrowser::open(&login_url).ok(); // Ok to ignore error here. The user can just open the above url themselves.
     } else {
         p.println("Open the following page in your browser:");
         p.println(&login_url);
