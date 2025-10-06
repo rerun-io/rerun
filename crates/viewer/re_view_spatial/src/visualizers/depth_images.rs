@@ -3,6 +3,7 @@ use nohash_hasher::IntMap;
 use re_entity_db::EntityPath;
 use re_log_types::EntityPathHash;
 use re_renderer::renderer::{ColormappedTexture, DepthCloud, DepthClouds};
+use re_tf::TwoDInThreeDTransformInfo;
 use re_types::{
     Archetype as _,
     archetypes::DepthImage,
@@ -20,8 +21,7 @@ use re_viewer_context::{
 
 use crate::{
     PickableRectSourceData, PickableTexturedRect, SpatialView3D,
-    contexts::{SpatialSceneEntityContext, TwoDInThreeDTransformInfo},
-    view_kind::SpatialViewKind,
+    contexts::SpatialSceneEntityContext, view_kind::SpatialViewKind,
     visualizers::filter_visualizable_2d_entities,
 };
 

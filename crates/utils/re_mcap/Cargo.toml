@@ -33,7 +33,5 @@ serde_bytes.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
-re_format_arrow.workspace = true
-
 insta = { workspace = true, features = ["filters", "redactions"] }
 prost-reflect = { workspace = true, features = ["text-format"] }

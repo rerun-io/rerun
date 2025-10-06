@@ -591,6 +591,15 @@ where
         re_crash_handler::install_crash_handlers(build_info.clone());
     }
 
+    // There is always value in setting this, even if `re_perf_telemetry` is disabled. For example,
+    // the Rerun versioning headers will automatically pick it up.
+    //
+    // Safety: anything touching the env is unsafe, tis what it is.
+    #[expect(unsafe_code)]
+    unsafe {
+        std::env::set_var("OTEL_SERVICE_NAME", "rerun");
+    }
+
     use clap::Parser as _;
     let mut args = Args::parse_from(args);
 
@@ -618,11 +627,7 @@ where
     let res = if let Some(command) = args.command {
         match command {
             #[cfg(feature = "auth")]
-            Command::Auth(cmd) => {
-                let runtime =
-                    re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime.handle().clone());
-                cmd.run(&runtime).map_err(Into::into)
-            }
+            Command::Auth(cmd) => cmd.run(tokio_runtime.handle()).map_err(Into::into),
 
             #[cfg(feature = "analytics")]
             Command::Analytics(analytics) => analytics.run().map_err(Into::into),
@@ -655,12 +660,6 @@ where
     } else {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
         let mut _telemetry = {
-            // Safety: anything touching the env is unsafe, tis what it is.
-            #[expect(unsafe_code)]
-            unsafe {
-                std::env::set_var("OTEL_SERVICE_NAME", "rerun");
-            }
-
             // NOTE: We're just parsing the environment, hence the `vec![]` for CLI flags.
             use re_perf_telemetry::external::clap::Parser as _;
             let args = re_perf_telemetry::TelemetryArgs::parse_from::<_, String>(vec![]);

@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import warnings
 from typing import Any
 
 from typing_extensions import deprecated
-
-from rerun._baseclasses import ComponentDescriptor
 
 from ._baseclasses import ComponentColumn, ComponentColumnList, DescribedComponentBatch
 from ._log import AsComponents
@@ -83,10 +80,10 @@ class AnyValues(AsComponents):
     @deprecated(
         "`rr.AnyValues.with_field` is deprecated, use `rr.AnyValues.with_component_from_data` instead.",
     )
-    def with_field(self, descriptor: str, value: Any, drop_untyped_nones: bool = True) -> AnyValues:
-        return self.with_component_from_data(descriptor, value, drop_untyped_nones)
+    def with_field(self, descriptor: str, value: Any, *, drop_untyped_nones: bool = True) -> AnyValues:
+        return self.with_component_from_data(descriptor, value, drop_untyped_nones=drop_untyped_nones)
 
-    def with_component_from_data(self, descriptor: str, value: Any, drop_untyped_nones: bool = True) -> AnyValues:
+    def with_component_from_data(self, descriptor: str, value: Any, *, drop_untyped_nones: bool = True) -> AnyValues:
         """Adds an `AnyValueBatch` to this `AnyValues` bundle."""
         self._builder.with_component_from_data(descriptor, value, drop_untyped_nones=drop_untyped_nones)
         return self
@@ -94,13 +91,15 @@ class AnyValues(AsComponents):
     @deprecated(
         "`rr.AnyValues.with_component` is deprecated, use `rr.AnyValues.with_component_override` instead.",
     )
-    def with_component(self, field: str, component_type: str, value: Any, drop_untyped_nones: bool = True) -> AnyValues:
+    def with_component(
+        self, field: str, component_type: str, value: Any, *, drop_untyped_nones: bool = True
+    ) -> AnyValues:
         """Adds an `AnyValueBatch` to this `AnyValues` bundle with name and component type."""
         self._builder.with_component_override(field, component_type, value, drop_untyped_nones=drop_untyped_nones)
         return self
 
     def with_component_override(
-        self, field: str, component_type: str, value: Any, drop_untyped_nones: bool = True
+        self, field: str, component_type: str, value: Any, *, drop_untyped_nones: bool = True
     ) -> AnyValues:
         """Adds an `AnyValueBatch` to this `AnyValues` bundle with name and component type."""
         self._builder.with_component_override(field, component_type, value, drop_untyped_nones=drop_untyped_nones)

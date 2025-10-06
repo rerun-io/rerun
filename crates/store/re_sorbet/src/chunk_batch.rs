@@ -114,7 +114,7 @@ impl ChunkBatch {
 impl std::fmt::Display for ChunkBatch {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        re_format_arrow::format_record_batch_with_width(self, f.width()).fmt(f)
+        re_format_arrow::format_record_batch_with_width(self, f.width(), f.sign_minus()).fmt(f)
     }
 }
 
