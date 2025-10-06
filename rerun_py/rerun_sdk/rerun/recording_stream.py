@@ -501,23 +501,7 @@ class RecordingStream:
 
     def get_recording_id(self) -> str:
         """
-        Get the recording ID that this recording is logging to, as a UUIDv4, if any.
-
-        The default recording_id is based on `multiprocessing.current_process().authkey`
-        which means that all processes spawned with `multiprocessing`
-        will have the same default recording_id.
-
-        If you are not using `multiprocessing` and still want several different Python
-        processes to log to the same Rerun instance (and be part of the same recording),
-        you will need to manually assign them all the same recording_id.
-        Any random UUIDv4 will work, or copy the recording id for the parent process.
-
-        Parameters
-        ----------
-        recording:
-            Specifies the [`rerun.RecordingStream`][] to use.
-            If left unspecified, defaults to the current active data recording, if there is one.
-            See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+        Get the recording ID that this recording is logging to, as a UUIDv4.
 
         Returns
         -------
