@@ -336,10 +336,14 @@ py-fmt-check = "ruff check --config rerun_py/pyproject.toml . && ruff format --c
 py-lint-non-sdk = { cmd = "mypy --config-file rerun_py/.non_sdk_mypy.ini --install-types --non-interactive --no-warn-unused-ignore", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
 # I couldn't get the config to work correctly so placing relevant directories in command line
 # Until we resolve nbqa config issue keep aligned with nb-strip dirs below
-py-lint-nb-rerun = { cmd ="nbqa mypy examples/python scripts/ tests/python/ docs/snippets/ --config rerun_py/pyproject.toml  ", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
+py-lint-nb-rerun = { cmd = "nbqa mypy examples/python scripts/ tests/python/ docs/snippets/ --config rerun_py/pyproject.toml  ", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
 # Need to run this in env with rerun installed
 py-lint-rerun = "mypy --config-file rerun_py/pyproject.toml --install-types --non-interactive --no-warn-unused-ignore"
-py-lint = { depends-on = ["py-lint-non-sdk", "py-lint-rerun", "py-lint-nb-rerun"] }
+py-lint = { depends-on = [
+  "py-lint-non-sdk",
+  "py-lint-rerun",
+  "py-lint-nb-rerun",
+] }
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
