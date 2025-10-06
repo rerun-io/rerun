@@ -55,7 +55,7 @@ def main() -> None:
                 static=True,
             )
 
-            # Add a transforms that changes for each timestamp.
+            # Add a transform that changes for each timestamp.
             for i in range(args.num_timestamps):
                 call_id_factor = call_id * 0.02
                 rr.set_time("sim_time", duration=i + call_id_factor)
