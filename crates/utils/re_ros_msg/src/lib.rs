@@ -95,7 +95,7 @@ fn extract_msg_specs(input: &str) -> Vec<(String, String)> {
 
 /// Parse a section of lines into a (name, body) pair.
 ///
-/// The first line should contain "MSG: <name>" and subsequent lines form the message body.
+/// The first line should contain "MSG: `<name>`" and subsequent lines form the message body.
 fn parse_section(lines: &[&str]) -> Option<(String, String)> {
     if lines.len() < 2 {
         return None;
