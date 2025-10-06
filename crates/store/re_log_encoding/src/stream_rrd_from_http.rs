@@ -5,6 +5,8 @@ use std::sync::Arc;
 use re_log::ResultExt as _;
 use re_log_types::{DataSourceMessage, LogMsg};
 
+// TODO: im guessing this stuff cannot afford to use tokio or something?
+
 /// Stream an rrd file from a HTTP server.
 ///
 /// If `follow_if_http` is `true`, and the url is an HTTP source, the viewer will open the stream

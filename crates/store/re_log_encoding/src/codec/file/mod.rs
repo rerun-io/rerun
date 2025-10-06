@@ -3,6 +3,8 @@ pub mod decoder;
 #[cfg(feature = "encoder")]
 pub mod encoder;
 
+// TODO: i understand this is only used on the file path, but why is this not defined with protobuf? ¯\_(ツ)_/¯
+
 #[allow(dead_code)] // used behind feature flag
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u64)]

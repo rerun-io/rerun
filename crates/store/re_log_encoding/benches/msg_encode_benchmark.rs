@@ -33,6 +33,8 @@ criterion_group!(
 );
 criterion_main!(benches);
 
+// TODO: okay so this guy is benchmarking the naked implementations, specifically
+
 fn encode_log_msgs(
     messages: &[LogMsg],
     encoding_options: re_log_encoding::EncodingOptions,
@@ -65,6 +67,7 @@ fn generate_messages(store_id: &StoreId, chunks: &[Chunk]) -> Vec<LogMsg> {
         .collect()
 }
 
+// TODO: and this is completely unrelated, it's just measuring the cost of doing app-level decoding
 fn decode_chunks(messages: &[LogMsg]) -> Vec<Chunk> {
     messages
         .iter()

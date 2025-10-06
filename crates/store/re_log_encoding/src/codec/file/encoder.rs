@@ -5,6 +5,8 @@ use crate::encoder::EncodeError;
 use re_log_types::LogMsg;
 use re_protos::log_msg::v1alpha1 as proto;
 
+// TODO: same thing here: this is not an encoder (where is the encoder actually?)
+
 pub(crate) fn encode(
     buf: &mut Vec<u8>,
     message: &LogMsg,

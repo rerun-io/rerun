@@ -53,6 +53,11 @@ impl From<ChunkError> for EncodeError {
 
 // ----------------------------------------------------------------------------
 
+// TODO: so what is this exactly? just a random help I guess, but then this belongs to an impl
+// block, otherwise it's a nightmare.
+//
+// TODO: AFAIK, this thing just isn't used
+#[cfg(TODO)]
 pub fn encode_to_bytes<'a>(
     version: CrateVersion,
     options: EncodingOptions,
@@ -69,6 +74,8 @@ pub fn encode_to_bytes<'a>(
 }
 
 // ----------------------------------------------------------------------------
+
+// TODO: i dont understand why these cannot be merged..? (that is: DroppableEncoder and Encoder)
 
 /// An [`Encoder`] that properly closes the stream on drop.
 ///
@@ -131,6 +138,8 @@ impl<W: std::io::Write> std::ops::Drop for DroppableEncoder<W> {
         }
     }
 }
+
+// TODO: uh-huh, so this guy looks very much like the bare `Decoder` thing.
 
 /// Encode a stream of [`LogMsg`] into an `.rrd` file.
 ///
@@ -224,6 +233,9 @@ impl<W: std::io::Write> Encoder<W> {
         self.write
     }
 }
+
+// TODO: oh, and then there is this stuff lol. why are these a thing???
+// TODO: okay these standalone functions need to go or what? like, why are these not methods?
 
 /// Returns the size in bytes of the encoded data.
 pub fn encode(

@@ -16,6 +16,8 @@ use crate::{
     codec::{self, file::decoder},
 };
 
+// TODO: how can we have decoder/ but no encoder/ ... ??? oh, the encoder is just a file?
+
 // ----------------------------------------------------------------------------
 
 fn warn_on_version_mismatch(encoded_version: [u8; 4]) -> Result<(), DecodeError> {
@@ -47,6 +49,8 @@ fn warn_on_version_mismatch(encoded_version: [u8; 4]) -> Result<(), DecodeError>
 // ----------------------------------------------------------------------------
 
 /// When the file does not have the expected .rrd [FourCC](https://en.wikipedia.org/wiki/FourCC) header
+//
+// TODO: and i guess soon this will apply to the fourcc _footer_ too
 #[derive(Debug)]
 pub struct NotAnRrdError {
     pub expected_fourcc: [u8; 4],
@@ -133,6 +137,8 @@ const _: () = assert!(
     "Error type is too large. Try to reduce its size by boxing some of its variants.",
 );
 
+// TODO: why is there some random protobuf stuff here though...
+
 impl From<re_protos::TypeConversionError> for DecodeError {
     fn from(value: re_protos::TypeConversionError) -> Self {
         Self::TypeConversion(Box::new(value))
@@ -156,6 +162,10 @@ impl From<re_protos::common::v1alpha1::ext::StoreIdMissingApplicationIdError> fo
 
 // ----------------------------------------------------------------------------
 
+// TODO: again, wtf?
+//
+// TODO: who uses this??
+#[cfg(TODO)]
 pub fn decode_bytes(bytes: &[u8]) -> Result<Vec<LogMsg>, DecodeError> {
     re_tracing::profile_function!();
     let decoder = Decoder::new(std::io::Cursor::new(bytes))?;
@@ -169,6 +179,9 @@ pub fn decode_bytes(bytes: &[u8]) -> Result<Vec<LogMsg>, DecodeError> {
 // ----------------------------------------------------------------------------
 
 /// Read encoding options from the beginning of the stream.
+//
+// TODO: who uses this??
+#[cfg(TODO)]
 pub fn read_options(
     reader: &mut impl std::io::Read,
 ) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
@@ -179,6 +192,9 @@ pub fn read_options(
 }
 
 /// Read encoding options from the beginning of the stream asynchronously.
+//
+// TODO: who uses this??
+#[cfg(TODO)]
 pub async fn read_options_async(
     reader: &mut (impl tokio::io::AsyncRead + Unpin),
 ) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
@@ -226,6 +242,13 @@ impl<R: std::io::Read> std::io::Read for Reader<R> {
     }
 }
 
+// TODO: but then how is this thing different from the decoders in the codec/ folder????
+
+// TODO: so this guy is completely different from StreamDecoder and StreamingDecoder then...? can
+// we remove one of them? can we end up with SyncDecoder and AsyncDecoder, pretty please?
+
+// TODO: apparently this guy is used by the CLI as well as the data loaders
+// -> can we get rid of this?
 pub struct Decoder<R: std::io::Read> {
     version: CrateVersion,
     options: EncodingOptions,
@@ -318,6 +341,9 @@ impl<R: std::io::Read> Decoder<R> {
 
     /// Returns the next message in the stream, dropping messages missing application id that cannot
     /// be migrated (because they arrived before `SetStoreInfo`).
+    //
+    // TODO: okay so this isnt a decoder either, it's a driver that takes a decoder as input
+    // just-in-time..????!
     fn next<F, T>(&mut self, mut decoder: F) -> Option<Result<T, DecodeError>>
     where
         F: FnMut(

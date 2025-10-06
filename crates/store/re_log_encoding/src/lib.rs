@@ -1,5 +1,11 @@
 //! Crate that handles encoding of rerun log types.
 
+// TODO: how is codec different from decoder and encoder? why are there constants defined in every
+// single module???
+
+// TODO: reminder that getting rid of LogMsg doesnt necessarily mean getting rid of re_log_types::LogMsg.
+// It is possible to only get rid of the one used in transport for now.
+
 #[cfg(feature = "decoder")]
 pub mod decoder;
 
@@ -24,15 +30,21 @@ pub mod external {
 
 // ---------------------------------------------------------------------
 
+// TODO: oh shit, this thing
+
 pub use app_id_injector::{
     ApplicationIdInjector, CachingApplicationIdInjector, DummyApplicationIdInjector,
 };
+
+// TODO: not entirely sure why there's a sink in here... what does this have to do with encoding..?
 
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]
 pub use file_sink::{FileFlushError, FileSink, FileSinkError};
 
 // ----------------------------------------------------------------------------
+
+// TODO: that's a file only thing, it doesn't belong here
 
 #[cfg(any(feature = "encoder", feature = "decoder"))]
 const RRD_FOURCC: [u8; 4] = *b"RRF2";
@@ -41,6 +53,10 @@ const RRD_FOURCC: [u8; 4] = *b"RRF2";
 const OLD_RRD_FOURCC: &[[u8; 4]] = &[*b"RRF0", *b"RRF1"];
 
 // ----------------------------------------------------------------------------
+
+// TODO: is that for file-level compression? I thought we didn't do that anymore??
+// TODO: so actually im not sure that's for file-level compression. It's definitely used for
+// message-level compression, but it might also be used for both?? I dunno.
 
 /// Compression format used.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -59,6 +75,7 @@ pub enum Serializer {
     Protobuf = 2,
 }
 
+// TODO: so... is this file-level? what about gRPC? where does this go??
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EncodingOptions {
     pub compression: Compression,
@@ -127,12 +144,16 @@ pub enum OptionsError {
     UnknownSerializer(u8),
 }
 
+// TODO: yet another thing that id expect to be defined in proto but, whatever, it's fine
+
 #[cfg(any(feature = "encoder", feature = "decoder"))]
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct FileHeader {
     #[allow(dead_code)] // only used with the "encoder" feature
     pub fourcc: [u8; 4],
     pub version: [u8; 4],
+    // TODO: ha! there are my encoding options, so this is a file-only thing (as the name would
+    // suggest)... but then, why is it here?
     pub options: EncodingOptions,
 }
 

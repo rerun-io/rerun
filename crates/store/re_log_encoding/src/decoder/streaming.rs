@@ -13,11 +13,23 @@ use crate::{
     codec::file::{self, MessageKind},
 };
 
+// TODO: and we know that this guy is is what's used for the dataplatform for all reads
+
+// TODO: we wont escape the fact that we need both a sync and async version, but can we make them
+// closer in terms of implementations and semantics, at least?
+// -> can we have a decoder trait, even?
+
 use super::{DecodeError, FileHeader, options_from_bytes};
+
+// TODO: im also very unsure why there'd be any harm using this one everywhere...?
+// TODO: having one OSS and one enterprise is probably not an option either, since the OSS server
+// will want that feature in any case.
 
 /// A transport-level `LogMsg` with extra contextual information.
 ///
 /// Yielded by the [`StreamingDecoder`].
+//
+// TODO: can we use this output for everything...? and call it DecodedLogMsg or something
 #[derive(Debug, Clone)]
 pub struct StreamingLogMsg {
     pub kind: MessageKind,
@@ -454,6 +466,8 @@ mod tests {
         },
     };
 
+    // TODO: this test only works by sheer luck lmao, it's just that it happens remove a byte from
+    // the End message
     #[tokio::test]
     async fn test_streaming_decoder_handles_corrupted_input_file() {
         let rrd_version = CrateVersion::LOCAL;
@@ -494,6 +508,7 @@ mod tests {
                 .collect::<Vec<_>>()
                 .await;
 
+            dbg!((&messages, &decoded_messages));
             similar_asserts::assert_eq!(decoded_messages, messages);
         }
     }

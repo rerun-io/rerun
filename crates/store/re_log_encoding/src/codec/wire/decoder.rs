@@ -24,6 +24,8 @@ fn decode(
 }
 
 /// Decode an object from a its wire (protobuf) representation.
+//
+// TODO: this is the worst named trait ever btw
 pub trait Decode {
     fn decode(&self) -> Result<ArrowRecordBatch, CodecError>;
 }

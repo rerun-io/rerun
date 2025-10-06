@@ -10,6 +10,8 @@ use crate::decoder::options_from_bytes;
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
+// TODO: so apparently this guy is the code used for all things HTTP?
+
 use super::DecodeError;
 
 /// The stream decoder is a state machine which ingests byte chunks
@@ -156,6 +158,8 @@ impl StreamDecoder {
                     .try_read(crate::codec::file::MessageHeader::SIZE_BYTES)
                 {
                     let header = crate::codec::file::MessageHeader::from_bytes(bytes)?;
+                    // TODO: if this failed to parse, it might just be because we should look for
+                    // a file header instead.
 
                     re_log::trace!(?header, "MessageHeader");
 
@@ -165,6 +169,7 @@ impl StreamDecoder {
                     return self.try_read();
                 }
             }
+
             State::Message(header) => {
                 if let Some(bytes) = self.chunks.try_read(header.len as usize) {
                     re_log::trace!(?header, "Read message");

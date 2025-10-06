@@ -9,6 +9,9 @@ use crate::{
 
 use super::{MessageHeader, MessageKind};
 
+// TODO: okay so this is called decoder.rs but it's not actually a decoder, it's just callbacks
+// than an actual decoder uses.
+
 // ---
 
 /// This decodes all the way from raw bytes to application-level types (i.e. even Arrow layers are decoded).
