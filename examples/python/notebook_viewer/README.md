@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "Notebook: viewer"
 tags = ["Notebook", "Widget", "3D"]
-thumbnail = "https://static.rerun.io/notebook_viewer_placeholder/0e4e4540ff6f271da663886b5c2f3a1dbd7b3b2f/480w.png"
+thumbnail = "https://static.rerun.io/notebook_viewer/3e3bc9c7eede26db837fb317b7e2b2de77dfc777/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
 
