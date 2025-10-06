@@ -166,4 +166,4 @@ class AnyValues(AsComponents):
 
     @property
     def component_batches(self) -> list[DescribedComponentBatch]:
-        return self._builder.component_batches
+        return self._builder.as_component_batches()
