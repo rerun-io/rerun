@@ -340,25 +340,40 @@ fn init_shared_renderer_setup() -> SharedWgpuResources {
 impl TestContext {
     /// Used to get a context with helper functions to write & read from blueprints.
     pub fn with_blueprint_ctx<R>(&self, f: impl FnOnce(TestBlueprintCtx<'_>) -> R) -> R {
-        let mut store_hub = self
-            .store_hub
-            .try_lock()
-            .expect("Failed to get lock for blueprint ctx");
-        let (_, Some(store_context)) = store_hub.read_context() else {
-            panic!("No active blueprint")
-        };
+        fn with_blueprint_ctx_inner<R>(
+            this: &TestContext,
+            f: impl FnOnce(TestBlueprintCtx<'_>) -> R,
+        ) -> R {
+            let store_hub = this
+                .store_hub
+                .try_lock()
+                .expect("Failed to get lock for blueprint ctx");
 
-        let r = f(TestBlueprintCtx {
-            command_sender: &self.command_sender,
-            current_blueprint: store_context.blueprint,
-            default_blueprint: store_context.default_blueprint,
-            blueprint_query: &self.blueprint_query,
-        });
+            f(TestBlueprintCtx {
+                command_sender: &this.command_sender,
+                current_blueprint: store_hub
+                    .active_blueprint()
+                    .expect("The test context should always have an active blueprint"),
+                default_blueprint: store_hub.default_blueprint_for_app(
+                    store_hub
+                        .active_app()
+                        .expect("The test context should always have an active app"),
+                ),
+                blueprint_query: &this.blueprint_query,
+            })
+        }
 
-        drop(store_hub);
+        let r = with_blueprint_ctx_inner(self, f);
 
         // Handle system commands directly after updating blueprints to write it to the store.
         self.handle_system_commands();
+
+        with_blueprint_ctx_inner(self, |ctx| {
+            self.recording_config
+                .time_ctrl
+                .write()
+                .update_from_blueprint(&ctx, None);
+        });
 
         r
     }
