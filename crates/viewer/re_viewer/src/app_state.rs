@@ -31,6 +31,7 @@ use crate::{
 
 const WATERMARK: bool = false; // Nice for recording media material
 
+#[cfg(feature = "testing")]
 pub type TestHookFn = Box<dyn FnOnce(&ViewerContext<'_>)>;
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -67,6 +68,9 @@ pub struct AppState {
     #[serde(skip)]
     pub(crate) share_modal: crate::ui::ShareModal,
 
+    /// Test-only: single-shot callback to run at the end of the frame. Used in integration tests
+    /// to interact with the `ViewerContext`.
+    #[cfg(feature = "testing")]
     #[serde(skip)]
     pub(crate) test_hook: Option<TestHookFn>,
 
@@ -119,6 +123,8 @@ impl Default for AppState {
             view_states: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
+
+            #[cfg(feature = "testing")]
             test_hook: None,
         }
     }
@@ -684,6 +690,9 @@ impl AppState {
                 self.open_url_modal.ui(ui);
                 self.share_modal
                     .ui(&ctx, ui, startup_options.web_viewer_base_url().as_ref());
+
+                // Only in integration tests: call the test hook if any.
+                #[cfg(feature = "testing")]
                 if let Some(test_hook) = self.test_hook.take() {
                     test_hook(&ctx);
                 }

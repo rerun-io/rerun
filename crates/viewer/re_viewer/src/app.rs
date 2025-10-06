@@ -91,7 +91,7 @@ pub struct App {
     /// Listens to the local text log stream
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
 
-    pub(crate) component_ui_registry: ComponentUiRegistry,
+    component_ui_registry: ComponentUiRegistry,
 
     rx_log: ReceiveSet<DataSourceMessage>,
     rx_table: ReceiveSetTable,
@@ -131,17 +131,17 @@ pub struct App {
     cmd_palette: re_ui::CommandPalette,
 
     /// All known view types.
-    pub(crate) view_class_registry: ViewClassRegistry,
+    view_class_registry: ViewClassRegistry,
 
     pub(crate) panel_state_overrides_active: bool,
     pub(crate) panel_state_overrides: PanelStateOverrides,
 
-    pub(crate) reflection: re_types_core::reflection::Reflection,
+    reflection: re_types_core::reflection::Reflection,
 
     /// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
     pub event_dispatcher: Option<ViewerEventDispatcher>,
 
-    pub(crate) connection_registry: ConnectionRegistryHandle,
+    connection_registry: ConnectionRegistryHandle,
 
     /// The async runtime that should be used for all asynchronous operations.
     ///
