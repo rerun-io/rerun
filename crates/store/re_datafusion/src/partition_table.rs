@@ -10,10 +10,9 @@ use tracing::instrument;
 
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::GetPartitionTableSchemaRequest;
-use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{
-    cloud::v1alpha1::ScanPartitionTableRequest, cloud::v1alpha1::ScanPartitionTableResponse,
+    cloud::v1alpha1::{ScanPartitionTableRequest, ScanPartitionTableResponse},
+    headers::RerunHeadersInjectorExt as _,
 };
 use re_redap_client::ConnectionClient;
 
@@ -22,7 +21,6 @@ use crate::wasm_compat::make_future_send;
 
 #[derive(Clone)]
 pub struct PartitionTableProvider {
-    //TODO(#10191): this should use a `ConnectionRegistryHandle` instead
     client: ConnectionClient,
     dataset_id: EntryId,
 }
@@ -52,24 +50,22 @@ impl GrpcStreamToTable for PartitionTableProvider {
 
     #[instrument(skip(self), err)]
     async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef> {
-        let req = tonic::Request::new(GetPartitionTableSchemaRequest {})
-            .with_entry_id(self.dataset_id)
-            .map_err(|err| DataFusionError::External(Box::new(err)))?;
-
         let mut client = self.client.clone();
 
+        let dataset_id = self.dataset_id;
+
         Ok(Arc::new(
-            make_future_send(
-                async move { Ok(client.inner().get_partition_table_schema(req).await) },
-            )
-            .await?
-            .map_err(|err| DataFusionError::External(Box::new(err)))?
-            .into_inner()
-            .schema
-            .ok_or(DataFusionError::External(
-                "Schema missing from GetPartitionTableSchema response".into(),
-            ))?
-            .try_into()?,
+            make_future_send(async move {
+                client
+                    .get_partition_table_schema(dataset_id)
+                    .await
+                    .map_err(|err| {
+                        DataFusionError::External(
+                            format!("Couldn't get partition table schema: {err}").into(),
+                        )
+                    })
+            })
+            .await?,
         ))
     }
 
