@@ -296,6 +296,7 @@ impl Default for TimeControl {
     }
 }
 
+#[must_use]
 pub struct TimeControlResponse {
     pub needs_repaint: NeedsRepaint,
 
@@ -416,7 +417,6 @@ impl TimeControl {
     ///
     /// If `blueprint_ctx` is some, this will read and write to the
     /// time panel blueprint.
-    #[must_use]
     fn update_inner(
         &mut self,
         times_per_timeline: &TimesPerTimeline,
