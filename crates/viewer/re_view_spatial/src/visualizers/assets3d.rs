@@ -11,8 +11,8 @@ use re_viewer_context::{
 use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 
 use crate::{
-    contexts::SpatialSceneEntityContext,
     caches::{AnyMesh, MeshCache, MeshCacheKey},
+    contexts::SpatialSceneEntityContext,
     view_kind::SpatialViewKind,
 };
 
