@@ -627,11 +627,7 @@ where
     let res = if let Some(command) = args.command {
         match command {
             #[cfg(feature = "auth")]
-            Command::Auth(cmd) => {
-                let runtime =
-                    re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime.handle().clone());
-                cmd.run(&runtime).map_err(Into::into)
-            }
+            Command::Auth(cmd) => cmd.run(tokio_runtime.handle()).map_err(Into::into),
 
             #[cfg(feature = "analytics")]
             Command::Analytics(analytics) => analytics.run().map_err(Into::into),
