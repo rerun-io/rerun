@@ -133,6 +133,7 @@ itertools.workspace = true
 jiff.workspace = true
 parking_lot.workspace = true
 poll-promise = { workspace = true, features = ["web"] }
+rayon.workspace = true
 rfd.workspace = true
 ron.workspace = true
 serde = { workspace = true, features = ["derive"] }

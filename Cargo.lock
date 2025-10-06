@@ -10062,6 +10062,7 @@ dependencies = [
  "js-sys",
  "parking_lot",
  "poll-promise",
+ "rayon",
  "re_analytics",
  "re_auth",
  "re_blueprint_tree",
