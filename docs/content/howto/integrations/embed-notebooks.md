@@ -212,5 +212,5 @@ If you encounter the issue, you can try to use the `save()` API to save the data
 
 ## Future work
 
-We are actively working on improving the notebook experience and welcome any feedback or suggestions.
+We are actively working on improving the notebook experience and welcome any [feedback or suggestions](https://rerun.io/feedback).
 The ongoing roadmap is being tracked in [GitHub issue #1815](https://github.com/rerun-io/rerun/issues/1815).

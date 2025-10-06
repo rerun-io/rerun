@@ -43,4 +43,4 @@ The `protobuf` layer automatically decodes protobuf-encoded messages using schem
 To request support for additional message types:
 
 - [File a GitHub issue](https://github.com/rerun-io/rerun/issues) requesting the specific message type
-- Join the Rerun community on [Discord](https://discord.gg/PXtCgFBSmH) to discuss and provide feedback on message support priorities
+- Join the Rerun community on [Discord](https://discord.gg/PXtCgFBSmH) to discuss and provide feedback on message support priorities. Or if you're open for a conversation, [sign up here](https://rerun.io/feedback)

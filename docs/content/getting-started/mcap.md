@@ -5,7 +5,7 @@ order: 500
 
 The Rerun Viewer has built-in support for opening [MCAP](https://mcap.dev/) files, an open container format for storing timestamped messages.
 
-⚠️ **This is an early version of MCAP support** that will continue to evolve and expand over time. We are actively seeking feedback from the community to guide development priorities. Reinterpretation of custom messages and enhanced query capabilities are planned for following releases.
+⚠️ **This is an early version of MCAP support** that will continue to evolve and expand over time. We are actively seeking [feedback](https://rerun.io/feedback) from the community to guide development priorities. Reinterpretation of custom messages and enhanced query capabilities are planned for following releases.
 
 ## Quick start
 
