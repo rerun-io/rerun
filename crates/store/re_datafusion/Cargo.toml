@@ -69,3 +69,4 @@ getrandom = { workspace = true, features = ["wasm_js"] }
 [dev-dependencies]
 re_tuid.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
+rustls = { workspace = true, features = ["ring"] }

@@ -8678,6 +8678,7 @@ dependencies = [
  "re_sorbet",
  "re_tuid",
  "re_uri",
+ "rustls",
  "tokio",
  "tokio-stream",
  "tonic",
