@@ -1,4 +1,3 @@
-use egui_kittest::SnapshotOptions;
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
@@ -11,9 +10,9 @@ use re_viewport_blueprint::ViewBlueprint;
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_single_text_document() {
     let mut harness = viewer_test_utils::viewer_harness();
-    harness.init_recording_environment();
+    harness.init_recording();
     harness.toggle_selection_panel();
-    harness.snapshot("test_single_text_document_1");
+    harness.snapshot("single_text_document_1");
 
     // Log some data
     harness.log_entity("txt/hello", |builder| {
@@ -32,8 +31,5 @@ pub async fn test_single_text_document() {
         ));
     });
 
-    harness.snapshot_options(
-        "test_single_text_document_2",
-        &SnapshotOptions::new().failed_pixel_count_threshold(20),
-    );
+    harness.snapshot("single_text_document_2");
 }
