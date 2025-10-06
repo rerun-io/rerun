@@ -7,6 +7,7 @@ mod dataframe_query_provider;
 #[cfg(target_arch = "wasm32")]
 mod dataframe_query_provider_wasm;
 mod grpc_streaming_provider;
+mod layer_table;
 mod partition_table;
 mod search_provider;
 mod table_entry_provider;
@@ -18,6 +19,7 @@ pub use dataframe_query_common::{DataframeQueryTableProvider, query_from_query_e
 pub(crate) use dataframe_query_provider::PartitionStreamExec;
 #[cfg(target_arch = "wasm32")]
 pub(crate) use dataframe_query_provider_wasm::PartitionStreamExec;
+pub use layer_table::LayerTableProvider;
 pub use partition_table::PartitionTableProvider;
 pub use search_provider::SearchResultsTableProvider;
 pub use table_entry_provider::TableEntryTableProvider;

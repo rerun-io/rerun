@@ -9,9 +9,9 @@ use re_protos::{
     TypeConversionError,
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind, FindEntriesRequest,
-        GetPartitionTableSchemaRequest, GetPartitionTableSchemaResponse, ReadDatasetEntryRequest,
-        ReadTableEntryRequest, RegisterWithDatasetResponse, ScanPartitionTableRequest,
-        ScanPartitionTableResponse,
+        GetLayerTableSchemaRequest, GetLayerTableSchemaResponse, GetPartitionTableSchemaRequest,
+        GetPartitionTableSchemaResponse, ReadDatasetEntryRequest, ReadTableEntryRequest,
+        RegisterWithDatasetResponse, ScanPartitionTableRequest, ScanPartitionTableResponse,
         ext::{
             CreateDatasetEntryResponse, DataSource, DataSourceKind, DatasetDetails, DatasetEntry,
             EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails as _,
@@ -267,6 +267,26 @@ where
         }
 
         Ok(partition_ids)
+    }
+
+    //TODO(ab): accept entry name
+    pub async fn get_layer_table_schema(
+        &mut self,
+        entry_id: EntryId,
+    ) -> Result<ArrowSchema, StreamError> {
+        Ok(self
+            .inner()
+            .get_layer_table_schema(
+                tonic::Request::new(GetLayerTableSchemaRequest {})
+                    .with_entry_id(entry_id)
+                    .map_err(|err| StreamEntryError::InvalidId(err.into()))?,
+            )
+            .await
+            .map_err(|err| StreamEntryError::GetLayerTableSchema(err.into()))?
+            .into_inner()
+            .schema
+            .ok_or_else(|| missing_field!(GetLayerTableSchemaResponse, "schema"))?
+            .try_into()?)
     }
 
     /// Initiate registration of the provided recording URIs with a dataset and return the
