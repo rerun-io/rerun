@@ -1,5 +1,6 @@
 mod app_testing_ext;
 
+#[cfg(feature = "testing")]
 pub use app_testing_ext::AppTestingExt;
 use egui_kittest::Harness;
 use re_build_info::build_info;
