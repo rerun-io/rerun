@@ -1,5 +1,4 @@
 use clap::{Parser, Subcommand};
-use re_viewer::AsyncRuntimeHandle;
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum AuthCommands {
@@ -39,10 +38,8 @@ pub struct LoginCommand {
 pub struct TokenCommand {}
 
 impl AuthCommands {
-    pub fn run(&self, runtime: &AsyncRuntimeHandle) -> Result<(), re_auth::cli::Error> {
-        let context = runtime
-            .inner()
-            .block_on(re_auth::workos::AuthContext::load())?;
+    pub fn run(&self, runtime: &tokio::runtime::Handle) -> Result<(), re_auth::cli::Error> {
+        let context = runtime.block_on(re_auth::workos::AuthContext::load())?;
 
         match self {
             Self::Login(args) => {
@@ -51,12 +48,10 @@ impl AuthCommands {
                     open_browser: !args.no_open_browser,
                     force_login: args.force,
                 };
-                runtime
-                    .inner()
-                    .block_on(re_auth::cli::login(&context, options))
+                runtime.block_on(re_auth::cli::login(&context, options))
             }
 
-            Self::Token(_) => runtime.inner().block_on(re_auth::cli::token(&context)),
+            Self::Token(_) => runtime.block_on(re_auth::cli::token(&context)),
         }
     }
 }
