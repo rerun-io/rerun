@@ -13,7 +13,7 @@ use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
-use re_datafusion::{PartitionTableProvider, SearchResultsTableProvider};
+use re_datafusion::{LayerTableProvider, PartitionTableProvider, SearchResultsTableProvider};
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::ext::DatasetDetails;
@@ -161,6 +161,28 @@ impl PyDatasetEntry {
         Ok(PyDataFusionTable {
             client: super_.client.clone_ref(self_.py()),
             name: super_.name() + "_partition_table",
+            provider,
+        })
+    }
+
+    /// Return the layer table as a Datafusion table provider.
+    #[instrument(skip_all)]
+    fn layer_table(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let provider = wait_for_future(self_.py(), async move {
+            LayerTableProvider::new(connection.client().await?, dataset_id)
+                .into_provider()
+                .await
+                .map_err(to_py_err)
+        })?;
+
+        #[expect(clippy::string_add)]
+        Ok(PyDataFusionTable {
+            client: super_.client.clone_ref(self_.py()),
+            name: super_.name() + "_layer_table",
             provider,
         })
     }

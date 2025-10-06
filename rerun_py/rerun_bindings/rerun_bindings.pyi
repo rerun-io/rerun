@@ -1345,6 +1345,9 @@ class DatasetEntry(Entry):
     def partition_table(self) -> DataFusionTable:
         """Return the partition table as a Datafusion table provider."""
 
+    def layer_table(self) -> DataFusionTable:
+        """Return the layer table as a Datafusion table provider."""
+
     def partition_url(
         self,
         partition_id: str,
