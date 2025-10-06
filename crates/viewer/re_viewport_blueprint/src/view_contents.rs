@@ -462,6 +462,8 @@ impl<'a> DataQueryPropertyResolver<'a> {
         parent_visible: bool,
         parent_interactive: bool,
     ) {
+        // This is called very frequently, don't put a profile scope here.
+
         let Some(node) = query_result.tree.lookup_node_mut(handle) else {
             return;
         };
@@ -596,7 +598,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
         query_result: &mut DataQueryResult,
         view_states: &mut ViewStates,
     ) {
-        // This is called very frequently, don't put a profile scope here.
+        re_tracing::profile_function!();
 
         if let Some(root) = query_result.tree.root_handle() {
             let class = self.view.class(view_class_registry);
