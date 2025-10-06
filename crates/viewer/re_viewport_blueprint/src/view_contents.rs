@@ -22,7 +22,7 @@ use re_types::{
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     IndicatedEntities, MaybeVisualizableEntities, OverridePath, PerVisualizer, PropertyOverrides,
-    QueryRange, ViewClassRegistry, ViewId, ViewStates, ViewerContext, VisualizableEntities,
+    QueryRange, ViewClassRegistry, ViewId, ViewState, ViewerContext, VisualizableEntities,
 };
 
 use crate::{ViewBlueprint, ViewProperty};
@@ -594,14 +594,11 @@ impl<'a> DataQueryPropertyResolver<'a> {
         active_timeline: &Timeline,
         view_class_registry: &ViewClassRegistry,
         query_result: &mut DataQueryResult,
-        view_states: &mut ViewStates,
+        view_state: &dyn ViewState,
     ) {
         // This is called very frequently, don't put a profile scope here.
 
         if let Some(root) = query_result.tree.root_handle() {
-            let class = self.view.class(view_class_registry);
-            let view_state = view_states.get_mut_or_create(self.view.id, class);
-
             let default_query_range = self.view.query_range(
                 blueprint,
                 blueprint_query,

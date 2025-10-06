@@ -764,6 +764,12 @@ mod tests {
                 visualizable_entities,
             );
             let mut view_states = ViewStates::default();
+            let view_state = view_states.get_mut_or_create(
+                view.id,
+                ctx.view_class_registry
+                    .class(view.class_identifier())
+                    .expect("view class should be registered"),
+            );
 
             resolver.update_overrides(
                 ctx.blueprint_db(),
@@ -771,7 +777,7 @@ mod tests {
                 ctx.rec_cfg.time_ctrl.read().timeline(),
                 ctx.view_class_registry(),
                 &mut query_result,
-                &mut view_states,
+                view_state,
             );
 
             result = Some(query_result.clone());
