@@ -3,7 +3,6 @@ title = "Notebook: viewer callbacks"
 tags = ["Notebook", "Interactive", "Callbacks", "3D"]
 thumbnail = "https://static.rerun.io/notebook_callbacks_placeholder/8b6d2c9a4b2c37a1baf7826dbf0fef1cb2f6b77d/480w.png"
 thumbnail_dimensions = [480, 480]
-channel = "main"
 -->
 
 ## Overview

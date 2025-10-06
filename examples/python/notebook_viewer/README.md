@@ -2,8 +2,7 @@
 title = "Notebook: viewer"
 tags = ["Notebook", "Widget", "3D"]
 thumbnail = "https://static.rerun.io/notebook_viewer_placeholder/0e4e4540ff6f271da663886b5c2f3a1dbd7b3b2f/480w.png"
-thumbnail_dimensions = [480, 360]
-channel = "main"
+thumbnail_dimensions = [480, 480]
 -->
 
 ## Overview
