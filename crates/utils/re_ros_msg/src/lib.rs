@@ -66,7 +66,7 @@ fn extract_main_msg_spec(input: &str) -> String {
         .join("\n")
 }
 
-/// Find "MSG: <name>" and take the rest as content
+/// Find "MSG: `<name>`" and take the rest as content
 /// Extract all message specifications from input that are separated by schema separators.
 ///
 /// Returns a vector of `(message_name, message_body)` pairs for each schema found.
