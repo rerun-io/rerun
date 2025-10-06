@@ -1,5 +1,6 @@
 use re_viewer_context::{
-    AnnotationMap, IdentifiedViewSystem, ViewContextSystem, ViewSystemIdentifier,
+    AnnotationMap, IdentifiedViewSystem, ViewContextSystem, ViewContextSystemStaticExecResult,
+    ViewSystemIdentifier,
 };
 
 #[derive(Default)]
@@ -16,6 +17,7 @@ impl ViewContextSystem for AnnotationSceneContext {
         &mut self,
         ctx: &re_viewer_context::ViewContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
+        _static_execution_result: &ViewContextSystemStaticExecResult,
     ) {
         re_tracing::profile_function!();
         // We create a list of *all* entities here, do not only iterate over those with annotation context.

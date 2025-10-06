@@ -151,15 +151,21 @@ impl TestContextExt for TestContext {
             ViewBlueprint::try_from_db(view_id, ctx.store_context.blueprint, ctx.blueprint_query)
                 .expect("expected the view id to be known to the blueprint store");
 
-        let view_class = ctx
-            .view_class_registry()
-            .get_class_or_log_error(view_blueprint.class_identifier());
+        let class_registry = ctx.view_class_registry();
+        let class_identifier = view_blueprint.class_identifier();
+        let view_class = class_registry.get_class_or_log_error(class_identifier);
 
         let mut view_states = self.view_states.lock();
         let view_state = view_states.get_mut_or_create(view_id, view_class);
 
-        let (view_query, system_execution_output) =
-            execute_systems_for_view(ctx, &view_blueprint, view_state);
+        let context_system_static_exec_results = class_registry
+            .run_static_context_systems_for_views(ctx, std::iter::once(class_identifier));
+        let (view_query, system_execution_output) = execute_systems_for_view(
+            ctx,
+            &view_blueprint,
+            view_state,
+            &context_system_static_exec_results,
+        );
 
         view_class
             .ui(ctx, ui, view_state, &view_query, system_execution_output)
