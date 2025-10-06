@@ -1204,7 +1204,7 @@ impl ScanPartitionTableResponse {
             ),
             Field::new(
                 Self::LAST_UPDATED_AT,
-                DataType::Timestamp(TimeUnit::Nanosecond, Some("utc".into())),
+                DataType::Timestamp(TimeUnit::Nanosecond, None),
                 false,
             ),
             Field::new(Self::NUM_CHUNKS, DataType::UInt64, false),
@@ -1224,7 +1224,9 @@ impl ScanPartitionTableResponse {
         let row_count = partition_ids.len();
         let schema = Arc::new(Self::schema());
 
-        let mut layers_builder = ListBuilder::new(StringBuilder::new());
+        let mut layers_builder = ListBuilder::new(StringBuilder::new())
+            .with_field(Arc::new(Field::new(Self::LAYERS, DataType::Utf8, false)));
+
         for mut inner_vec in layers {
             for layer_name in inner_vec.drain(..) {
                 layers_builder.values().append_value(layer_name)
@@ -1232,7 +1234,10 @@ impl ScanPartitionTableResponse {
             layers_builder.append(true);
         }
 
-        let mut urls_builder = ListBuilder::new(StringBuilder::new());
+        let mut urls_builder = ListBuilder::new(StringBuilder::new()).with_field(Arc::new(
+            Field::new(Self::STORAGE_URLS, DataType::Utf8, false),
+        ));
+
         for mut inner_vec in storage_urls {
             for layer_name in inner_vec.drain(..) {
                 urls_builder.values().append_value(layer_name)
@@ -1283,7 +1288,7 @@ impl ScanLayerTableResponse {
             Field::new(Self::LAYER_TYPE, DataType::Utf8, false),
             Field::new(
                 Self::REGISTRATION_TIME,
-                DataType::Timestamp(TimeUnit::Nanosecond, Some("utc".into())),
+                DataType::Timestamp(TimeUnit::Nanosecond, None),
                 false,
             ),
             Field::new(Self::NUM_CHUNKS, DataType::UInt64, false),
