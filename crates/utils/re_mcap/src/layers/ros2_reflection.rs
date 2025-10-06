@@ -167,7 +167,7 @@ fn create_empty_message_chunk(
     timelines: IntMap<TimelineName, TimeColumn>,
     num_rows: usize,
     archetype_name: &str,
-) -> Result<Chunk, anyhow::Error> {
+) -> anyhow::Result<Chunk> {
     let empty_list = arrow::array::ListArray::new_null(
         std::sync::Arc::new(Field::new(
             "empty",
