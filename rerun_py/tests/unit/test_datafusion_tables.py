@@ -21,8 +21,6 @@ if TYPE_CHECKING:
     from rerun_bindings import DatasetEntry
 
 HOST = "localhost"
-PORT = None  # Will be set dynamically
-CATALOG_URL = None  # Will be set dynamically
 DATASET_NAME = "dataset"
 
 DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "rrd" / "dataset"
@@ -85,12 +83,12 @@ def shutdown_process(process: subprocess.Popen[str]) -> None:
         print(f"Error during cleanup: {e}")
 
 
-def wait_for_server_ready(timeout: int = 30) -> None:
+def wait_for_server_ready(port: int, timeout: int = 30) -> None:
     def is_port_open() -> bool:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(1)
         try:
-            result = sock.connect_ex((HOST, PORT))
+            result = sock.connect_ex((HOST, port))
             return result == 0
         finally:
             sock.close()
@@ -102,7 +100,7 @@ def wait_for_server_ready(timeout: int = 30) -> None:
             break
         time.sleep(0.1)
     else:
-        raise TimeoutError(f"Server port {PORT} not ready within {timeout}s")
+        raise TimeoutError(f"Server port {port} not ready within {timeout}s")
 
 
 class ServerInstance:
@@ -125,22 +123,20 @@ def server_instance() -> Generator[ServerInstance, None, None]:
     # Find a free port dynamically
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind((HOST, 0))
-    global PORT
-    PORT = sock.getsockname()[1]
+    port = sock.getsockname()[1]
     sock.close()
 
-    global CATALOG_URL
-    CATALOG_URL = f"rerun+http://{HOST}:{PORT}"
+    catalog_url = f"rerun+http://{HOST}:{port}"
 
     cmd = ["python", "-m", "rerun", "server", "--dataset", str(DATASET_FILEPATH), "--table", str(TABLE_FILEPATH)]
     server_process = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     try:
-        wait_for_server_ready()
+        wait_for_server_ready(port)
     except Exception as e:
         print(f"Error during waiting for server to start: {e}")
 
-    client = CatalogClient(CATALOG_URL)
+    client = CatalogClient(catalog_url)
     dataset = client.get_dataset(name=DATASET_NAME)
 
     resource = ServerInstance(server_process, client, dataset)
