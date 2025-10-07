@@ -24,13 +24,16 @@ pub mod external {
 
 // ---------------------------------------------------------------------
 
-pub use app_id_injector::{
+pub use self::app_id_injector::{
     ApplicationIdInjector, CachingApplicationIdInjector, DummyApplicationIdInjector,
 };
 
 #[cfg(feature = "encoder")]
+pub use self::encoder::{EncodeError, Encoder};
+
+#[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]
-pub use file_sink::{FileFlushError, FileSink, FileSinkError};
+pub use self::file_sink::{FileFlushError, FileSink, FileSinkError};
 
 // ----------------------------------------------------------------------------
 
