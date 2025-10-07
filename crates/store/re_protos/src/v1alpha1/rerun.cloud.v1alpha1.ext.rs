@@ -1208,6 +1208,8 @@ impl ScanPartitionTableResponse {
         Arc::new(Field::new(Self::STORAGE_URLS, DataType::Utf8, false))
     }
 
+    // NOTE: changing this method is a breaking change for implementation (aka it at least breaks
+    // tests in `dataplatform`)
     pub fn fields() -> Vec<Field> {
         vec![
             Field::new(Self::PARTITION_ID, DataType::Utf8, false),
@@ -1308,6 +1310,8 @@ impl ScanDatasetManifestResponse {
     pub const SIZE_BYTES: &str = "rerun_size_bytes";
     pub const SCHEMA_SHA256: &str = "rerun_schema_sha256";
 
+    // NOTE: changing this method is a breaking change for implementation (aka it at least breaks
+    // tests in `dataplatform`)
     pub fn fields() -> Vec<Field> {
         vec![
             Field::new(Self::LAYER_NAME, DataType::Utf8, false),
@@ -1633,5 +1637,60 @@ impl From<ComponentColumnDescriptor> for crate::cloud::v1alpha1::IndexColumn {
                 component_type: value.component_type.map(|c| c.full_name().to_owned()),
             }),
         }
+    }
+}
+
+// --
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Ensure `crate_dataframe` implementation is consistent with `schema()`
+    #[test]
+    fn test_scan_partition_table_response_create_dataframe() {
+        let partition_ids = vec!["1".to_owned(), "2".to_owned()];
+        let layer_names = vec![vec!["a".to_owned(), "b".to_owned()], vec!["c".to_owned()]];
+        let storage_urls = vec![vec!["d".to_owned(), "e".to_owned()], vec!["f".to_owned()]];
+        let last_updated_at = vec![1, 2];
+        let num_chunks = vec![1, 2];
+        let size_bytes = vec![1, 2];
+
+        ScanPartitionTableResponse::create_dataframe(
+            partition_ids,
+            layer_names,
+            storage_urls,
+            last_updated_at,
+            num_chunks,
+            size_bytes,
+        )
+        .unwrap();
+    }
+
+    /// Ensure `crate_dataframe` implementation is consistent with `schema()`
+    #[test]
+    fn test_scan_dataset_manifest_response_create_dataframe() {
+        let layer_name = vec!["a".to_owned()];
+        let partition_id = vec!["1".to_owned()];
+        let storage_url = vec!["d".to_owned()];
+        let layer_type = vec!["c".to_owned()];
+        let registration_time = vec![1];
+        let last_updated_at = vec![2];
+        let num_chunks = vec![1];
+        let size_bytes = vec![2];
+        let schema_sha256 = vec![[1; 32]];
+
+        ScanDatasetManifestResponse::create_dataframe(
+            layer_name,
+            partition_id,
+            storage_url,
+            layer_type,
+            registration_time,
+            last_updated_at,
+            num_chunks,
+            size_bytes,
+            schema_sha256,
+        )
+        .unwrap();
     }
 }
