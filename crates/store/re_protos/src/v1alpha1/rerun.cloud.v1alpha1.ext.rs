@@ -15,10 +15,12 @@ use re_sorbet::ComponentColumnDescriptor;
 
 use crate::cloud::v1alpha1::{
     EntryKind, GetDatasetSchemaResponse, QueryTasksResponse, RegisterWithDatasetResponse,
-    ScanLayerTableResponse, ScanPartitionTableResponse, VectorDistanceMetric,
+    ScanDatasetManifestResponse, ScanPartitionTableResponse, VectorDistanceMetric,
 };
-use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId};
-use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
+use crate::common::v1alpha1::{
+    ComponentDescriptor, DataframePart, TaskId,
+    ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
+};
 use crate::{TypeConversionError, missing_field};
 
 // --- RegisterWithDatasetRequest ---
@@ -1268,9 +1270,9 @@ impl ScanPartitionTableResponse {
     }
 }
 
-// --- ScanLayerTableResponse --
+// --- ScanDatasetManifestResponse --
 
-impl ScanLayerTableResponse {
+impl ScanDatasetManifestResponse {
     pub const LAYER_NAME: &str = "rerun_layer_name";
     pub const PARTITION_ID: &str = "rerun_partition_id";
     pub const STORAGE_URL: &str = "rerun_storage_url";

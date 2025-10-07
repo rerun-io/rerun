@@ -2,16 +2,19 @@ use arrow::datatypes::Schema as ArrowSchema;
 use tokio_stream::StreamExt as _;
 use tonic::codegen::{Body, StdError};
 
+use crate::{StreamEntryError, StreamError};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
+
 use re_protos::{
     TypeConversionError,
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind, FindEntriesRequest,
-        GetLayerTableSchemaRequest, GetLayerTableSchemaResponse, GetPartitionTableSchemaRequest,
-        GetPartitionTableSchemaResponse, ReadDatasetEntryRequest, ReadTableEntryRequest,
-        RegisterWithDatasetResponse, ScanPartitionTableRequest, ScanPartitionTableResponse,
+        GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
+        GetPartitionTableSchemaRequest, GetPartitionTableSchemaResponse, ReadDatasetEntryRequest,
+        ReadTableEntryRequest, RegisterWithDatasetResponse, ScanPartitionTableRequest,
+        ScanPartitionTableResponse,
         ext::{
             CreateDatasetEntryResponse, DataSource, DataSourceKind, DatasetDetails, DatasetEntry,
             EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails as _,
@@ -30,8 +33,6 @@ use re_protos::{
     headers::RerunHeadersInjectorExt as _,
     missing_field,
 };
-
-use crate::{StreamEntryError, StreamError};
 
 /// Expose an ergonomic API over the gRPC redap client.
 ///
@@ -270,22 +271,22 @@ where
     }
 
     //TODO(ab): accept entry name
-    pub async fn get_layer_table_schema(
+    pub async fn get_dataset_manifest_schema(
         &mut self,
         entry_id: EntryId,
     ) -> Result<ArrowSchema, StreamError> {
         Ok(self
             .inner()
-            .get_layer_table_schema(
-                tonic::Request::new(GetLayerTableSchemaRequest {})
+            .get_dataset_manifest_schema(
+                tonic::Request::new(GetDatasetManifestSchemaRequest {})
                     .with_entry_id(entry_id)
                     .map_err(|err| StreamEntryError::InvalidId(err.into()))?,
             )
             .await
-            .map_err(|err| StreamEntryError::GetLayerTableSchema(err.into()))?
+            .map_err(|err| StreamEntryError::GetDatasetManifestSchema(err.into()))?
             .into_inner()
             .schema
-            .ok_or_else(|| missing_field!(GetLayerTableSchemaResponse, "schema"))?
+            .ok_or_else(|| missing_field!(GetDatasetManifestSchemaResponse, "schema"))?
             .try_into()?)
     }
 

@@ -11,7 +11,7 @@ use tracing::instrument;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_protos::{
-    cloud::v1alpha1::{ScanLayerTableRequest, ScanLayerTableResponse},
+    cloud::v1alpha1::{ScanDatasetManifestRequest, ScanDatasetManifestResponse},
     headers::RerunHeadersInjectorExt as _,
 };
 use re_redap_client::ConnectionClient;
@@ -21,20 +21,20 @@ use crate::wasm_compat::make_future_send;
 
 //TODO(ab): deduplicate from PartitionTableProvider
 #[derive(Clone)]
-pub struct LayerTableProvider {
+pub struct DatsetManifestProvider {
     client: ConnectionClient,
     dataset_id: EntryId,
 }
 
-impl std::fmt::Debug for LayerTableProvider {
+impl std::fmt::Debug for DatsetManifestProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("LayerTableProvider")
+        f.debug_struct("DatasetManifestProvider")
             .field("dataset_id", &self.dataset_id)
             .finish()
     }
 }
 
-impl LayerTableProvider {
+impl DatsetManifestProvider {
     pub fn new(client: ConnectionClient, dataset_id: EntryId) -> Self {
         Self { client, dataset_id }
     }
@@ -46,8 +46,8 @@ impl LayerTableProvider {
 }
 
 #[async_trait]
-impl GrpcStreamToTable for LayerTableProvider {
-    type GrpcStreamData = ScanLayerTableResponse;
+impl GrpcStreamToTable for DatsetManifestProvider {
+    type GrpcStreamData = ScanDatasetManifestResponse;
 
     #[instrument(skip(self), err)]
     async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef> {
@@ -58,7 +58,7 @@ impl GrpcStreamToTable for LayerTableProvider {
         Ok(Arc::new(
             make_future_send(async move {
                 client
-                    .get_layer_table_schema(dataset_id)
+                    .get_dataset_manifest_schema(dataset_id)
                     .await
                     .map_err(|err| {
                         DataFusionError::External(
@@ -76,7 +76,7 @@ impl GrpcStreamToTable for LayerTableProvider {
     async fn send_streaming_request(
         &mut self,
     ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {
-        let request = tonic::Request::new(ScanLayerTableRequest {
+        let request = tonic::Request::new(ScanDatasetManifestRequest {
             columns: vec![], // all of them
         })
         .with_entry_id(self.dataset_id)
@@ -84,7 +84,7 @@ impl GrpcStreamToTable for LayerTableProvider {
 
         let mut client = self.client.clone();
 
-        make_future_send(async move { Ok(client.inner().scan_layer_table(request).await) })
+        make_future_send(async move { Ok(client.inner().scan_dataset_manifest(request).await) })
             .await?
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }

@@ -77,20 +77,20 @@ service RerunCloudService {
   // This endpoint requires the standard dataset headers.
   rpc ScanPartitionTable(ScanPartitionTableRequest) returns (stream ScanPartitionTableResponse) {}
 
-  // Returns the schema of the layer table.
+  // Returns the schema of the dataset manifest.
   //
-  // To inspect the data of the partition table, which is guaranteed to match the schema returned by
-  // this endpoint, check out `ScanLayerTable`.
+  // To inspect the data of the dataset manifest, which is guaranteed to match the schema returned by
+  // this endpoint, check out `ScanDatasetManifest`.
   //
   // This endpoint requires the standard dataset headers.
-  rpc GetLayerTableSchema(GetLayerTableSchemaRequest) returns (GetLayerTableSchemaResponse) {}
+  rpc GetDatasetManifestSchema(GetDatasetManifestSchemaRequest) returns (GetDatasetManifestSchemaResponse) {}
 
-  // Inspect the contents of the layer table.
+  // Inspect the contents of the dataset manifest.
   //
-  // The data will follow the schema returned by `GetLayerTableSchema`.
+  // The data will follow the schema returned by `GetDatasetManifestSchema`.
   //
   // This endpoint requires the standard dataset headers.
-  rpc ScanLayerTable(ScanLayerTableRequest) returns (stream ScanLayerTableResponse) {}
+  rpc ScanDatasetManifest(ScanDatasetManifestRequest) returns (stream ScanDatasetManifestResponse) {}
 
   // Returns the schema of the dataset.
   //
@@ -286,15 +286,15 @@ message ScanPartitionTableResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
-message GetLayerTableSchemaRequest {
+message GetDatasetManifestSchemaRequest {
   reserved "dataset_id";
 }
 
-message GetLayerTableSchemaResponse {
+message GetDatasetManifestSchemaResponse {
   rerun.common.v1alpha1.Schema schema = 1;
 }
 
-message ScanLayerTableRequest {
+message ScanDatasetManifestRequest {
   // A list of column names to be projected server-side.
   //
   // All of them if left empty.
@@ -304,7 +304,7 @@ message ScanLayerTableRequest {
   reserved "scan_parameters";
 }
 
-message ScanLayerTableResponse {
+message ScanDatasetManifestResponse {
   // Layer metadata as arrow RecordBatch
   rerun.common.v1alpha1.DataframePart data = 1;
 }

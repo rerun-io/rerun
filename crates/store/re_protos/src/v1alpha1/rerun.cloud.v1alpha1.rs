@@ -197,64 +197,64 @@ impl ::prost::Name for ScanPartitionTableResponse {
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct GetLayerTableSchemaRequest {}
-impl ::prost::Name for GetLayerTableSchemaRequest {
-    const NAME: &'static str = "GetLayerTableSchemaRequest";
+pub struct GetDatasetManifestSchemaRequest {}
+impl ::prost::Name for GetDatasetManifestSchemaRequest {
+    const NAME: &'static str = "GetDatasetManifestSchemaRequest";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.GetLayerTableSchemaRequest".into()
+        "rerun.cloud.v1alpha1.GetDatasetManifestSchemaRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.GetLayerTableSchemaRequest".into()
+        "/rerun.cloud.v1alpha1.GetDatasetManifestSchemaRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetLayerTableSchemaResponse {
+pub struct GetDatasetManifestSchemaResponse {
     #[prost(message, optional, tag = "1")]
     pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
 }
-impl ::prost::Name for GetLayerTableSchemaResponse {
-    const NAME: &'static str = "GetLayerTableSchemaResponse";
+impl ::prost::Name for GetDatasetManifestSchemaResponse {
+    const NAME: &'static str = "GetDatasetManifestSchemaResponse";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.GetLayerTableSchemaResponse".into()
+        "rerun.cloud.v1alpha1.GetDatasetManifestSchemaResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.GetLayerTableSchemaResponse".into()
+        "/rerun.cloud.v1alpha1.GetDatasetManifestSchemaResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ScanLayerTableRequest {
+pub struct ScanDatasetManifestRequest {
     /// A list of column names to be projected server-side.
     ///
     /// All of them if left empty.
     #[prost(string, repeated, tag = "3")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-impl ::prost::Name for ScanLayerTableRequest {
-    const NAME: &'static str = "ScanLayerTableRequest";
+impl ::prost::Name for ScanDatasetManifestRequest {
+    const NAME: &'static str = "ScanDatasetManifestRequest";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.ScanLayerTableRequest".into()
+        "rerun.cloud.v1alpha1.ScanDatasetManifestRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.ScanLayerTableRequest".into()
+        "/rerun.cloud.v1alpha1.ScanDatasetManifestRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ScanLayerTableResponse {
+pub struct ScanDatasetManifestResponse {
     /// Layer metadata as arrow RecordBatch
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
-impl ::prost::Name for ScanLayerTableResponse {
-    const NAME: &'static str = "ScanLayerTableResponse";
+impl ::prost::Name for ScanDatasetManifestResponse {
+    const NAME: &'static str = "ScanDatasetManifestResponse";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.ScanLayerTableResponse".into()
+        "rerun.cloud.v1alpha1.ScanDatasetManifestResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.ScanLayerTableResponse".into()
+        "/rerun.cloud.v1alpha1.ScanDatasetManifestResponse".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -2092,41 +2092,17 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// Returns the schema of the layer table.
+        /// Returns the schema of the dataset manifest.
         ///
-        /// To inspect the data of the partition table, which is guaranteed to match the schema returned by
-        /// this endpoint, check out `ScanLayerTable`.
-        ///
-        /// This endpoint requires the standard dataset headers.
-        pub async fn get_layer_table_schema(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetLayerTableSchemaRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetLayerTableSchemaResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.cloud.v1alpha1.RerunCloudService/GetLayerTableSchema",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.cloud.v1alpha1.RerunCloudService",
-                "GetLayerTableSchema",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// Inspect the contents of the layer table.
-        ///
-        /// The data will follow the schema returned by `GetLayerTableSchema`.
+        /// To inspect the data of the dataset manifest, which is guaranteed to match the schema returned by
+        /// this endpoint, check out `ScanDatasetManifest`.
         ///
         /// This endpoint requires the standard dataset headers.
-        pub async fn scan_layer_table(
+        pub async fn get_dataset_manifest_schema(
             &mut self,
-            request: impl tonic::IntoRequest<super::ScanLayerTableRequest>,
+            request: impl tonic::IntoRequest<super::GetDatasetManifestSchemaRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::ScanLayerTableResponse>>,
+            tonic::Response<super::GetDatasetManifestSchemaResponse>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -2134,12 +2110,38 @@ pub mod rerun_cloud_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.cloud.v1alpha1.RerunCloudService/ScanLayerTable",
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetDatasetManifestSchema",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.cloud.v1alpha1.RerunCloudService",
-                "ScanLayerTable",
+                "GetDatasetManifestSchema",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Inspect the contents of the dataset manifest.
+        ///
+        /// The data will follow the schema returned by `GetDatasetManifestSchema`.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        pub async fn scan_dataset_manifest(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ScanDatasetManifestRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::ScanDatasetManifestResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/ScanDatasetManifest",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "ScanDatasetManifest",
             ));
             self.inner.server_streaming(req, path, codec).await
         }
@@ -2568,30 +2570,33 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::ScanPartitionTableRequest>,
         ) -> std::result::Result<tonic::Response<Self::ScanPartitionTableStream>, tonic::Status>;
-        /// Returns the schema of the layer table.
+        /// Returns the schema of the dataset manifest.
         ///
-        /// To inspect the data of the partition table, which is guaranteed to match the schema returned by
-        /// this endpoint, check out `ScanLayerTable`.
+        /// To inspect the data of the dataset manifest, which is guaranteed to match the schema returned by
+        /// this endpoint, check out `ScanDatasetManifest`.
         ///
         /// This endpoint requires the standard dataset headers.
-        async fn get_layer_table_schema(
+        async fn get_dataset_manifest_schema(
             &self,
-            request: tonic::Request<super::GetLayerTableSchemaRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetLayerTableSchemaResponse>, tonic::Status>;
-        /// Server streaming response type for the ScanLayerTable method.
-        type ScanLayerTableStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::ScanLayerTableResponse, tonic::Status>,
+            request: tonic::Request<super::GetDatasetManifestSchemaRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetDatasetManifestSchemaResponse>,
+            tonic::Status,
+        >;
+        /// Server streaming response type for the ScanDatasetManifest method.
+        type ScanDatasetManifestStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::ScanDatasetManifestResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// Inspect the contents of the layer table.
+        /// Inspect the contents of the dataset manifest.
         ///
-        /// The data will follow the schema returned by `GetLayerTableSchema`.
+        /// The data will follow the schema returned by `GetDatasetManifestSchema`.
         ///
         /// This endpoint requires the standard dataset headers.
-        async fn scan_layer_table(
+        async fn scan_dataset_manifest(
             &self,
-            request: tonic::Request<super::ScanLayerTableRequest>,
-        ) -> std::result::Result<tonic::Response<Self::ScanLayerTableStream>, tonic::Status>;
+            request: tonic::Request<super::ScanDatasetManifestRequest>,
+        ) -> std::result::Result<tonic::Response<Self::ScanDatasetManifestStream>, tonic::Status>;
         /// Returns the schema of the dataset.
         ///
         /// This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
@@ -3326,23 +3331,25 @@ pub mod rerun_cloud_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.cloud.v1alpha1.RerunCloudService/GetLayerTableSchema" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetDatasetManifestSchema" => {
                     #[allow(non_camel_case_types)]
-                    struct GetLayerTableSchemaSvc<T: RerunCloudService>(pub Arc<T>);
+                    struct GetDatasetManifestSchemaSvc<T: RerunCloudService>(pub Arc<T>);
                     impl<T: RerunCloudService>
-                        tonic::server::UnaryService<super::GetLayerTableSchemaRequest>
-                        for GetLayerTableSchemaSvc<T>
+                        tonic::server::UnaryService<super::GetDatasetManifestSchemaRequest>
+                        for GetDatasetManifestSchemaSvc<T>
                     {
-                        type Response = super::GetLayerTableSchemaResponse;
+                        type Response = super::GetDatasetManifestSchemaResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetLayerTableSchemaRequest>,
+                            request: tonic::Request<super::GetDatasetManifestSchemaRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as RerunCloudService>::get_layer_table_schema(&inner, request)
-                                    .await
+                                <T as RerunCloudService>::get_dataset_manifest_schema(
+                                    &inner, request,
+                                )
+                                .await
                             };
                             Box::pin(fut)
                         }
@@ -3353,7 +3360,7 @@ pub mod rerun_cloud_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = GetLayerTableSchemaSvc(inner);
+                        let method = GetDatasetManifestSchemaSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -3369,24 +3376,25 @@ pub mod rerun_cloud_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.cloud.v1alpha1.RerunCloudService/ScanLayerTable" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/ScanDatasetManifest" => {
                     #[allow(non_camel_case_types)]
-                    struct ScanLayerTableSvc<T: RerunCloudService>(pub Arc<T>);
+                    struct ScanDatasetManifestSvc<T: RerunCloudService>(pub Arc<T>);
                     impl<T: RerunCloudService>
-                        tonic::server::ServerStreamingService<super::ScanLayerTableRequest>
-                        for ScanLayerTableSvc<T>
+                        tonic::server::ServerStreamingService<super::ScanDatasetManifestRequest>
+                        for ScanDatasetManifestSvc<T>
                     {
-                        type Response = super::ScanLayerTableResponse;
-                        type ResponseStream = T::ScanLayerTableStream;
+                        type Response = super::ScanDatasetManifestResponse;
+                        type ResponseStream = T::ScanDatasetManifestStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ScanLayerTableRequest>,
+                            request: tonic::Request<super::ScanDatasetManifestRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as RerunCloudService>::scan_layer_table(&inner, request).await
+                                <T as RerunCloudService>::scan_dataset_manifest(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
@@ -3397,7 +3405,7 @@ pub mod rerun_cloud_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = ScanLayerTableSvc(inner);
+                        let method = ScanDatasetManifestSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

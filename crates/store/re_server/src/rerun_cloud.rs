@@ -16,16 +16,15 @@ use re_byte_size::SizeBytes as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::{
-    GetLayerTableSchemaRequest, GetLayerTableSchemaResponse, ScanLayerTableRequest,
-};
 use re_protos::{
     cloud::v1alpha1::{
         DeleteEntryResponse, EntryDetails, EntryKind, FetchTaskOutputRequest,
-        FetchTaskOutputResponse, GetChunksResponse, GetDatasetSchemaResponse,
+        FetchTaskOutputResponse, GetChunksResponse, GetDatasetManifestSchemaRequest,
+        GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse,
         GetPartitionTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionRequest,
         QueryTasksRequest, QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
-        RegisterWithDatasetResponse, ScanPartitionTableResponse, ScanTableResponse,
+        RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanPartitionTableResponse,
+        ScanTableResponse,
         ext::{
             self, CreateDatasetEntryResponse, GetChunksRequest, ReadDatasetEntryResponse,
             ReadTableEntryResponse,
@@ -169,7 +168,7 @@ decl_stream!(FetchChunksResponseStream<manifest:FetchChunksResponse>);
 decl_stream!(GetChunksResponseStream<manifest:GetChunksResponse>);
 decl_stream!(QueryDatasetResponseStream<manifest:QueryDatasetResponse>);
 decl_stream!(ScanPartitionTableResponseStream<manifest:ScanPartitionTableResponse>);
-decl_stream!(ScanLayerTableResponseStream<manifest:ScanLayerTableResponse>);
+decl_stream!(ScanDatasetManifestResponseStream<manifest:ScanDatasetManifestResponse>);
 decl_stream!(SearchDatasetResponseStream<manifest:SearchDatasetResponse>);
 decl_stream!(ScanTableResponseStream<rerun_cloud:ScanTableResponse>);
 decl_stream!(QueryTasksOnCompletionResponseStream<tasks:QueryTasksOnCompletionResponse>);
@@ -671,25 +670,25 @@ impl RerunCloudService for RerunCloudHandler {
         ))
     }
 
-    type ScanLayerTableStream = ScanLayerTableResponseStream;
+    type ScanDatasetManifestStream = ScanDatasetManifestResponseStream;
 
-    async fn get_layer_table_schema(
+    async fn get_dataset_manifest_schema(
         &self,
-        _request: Request<GetLayerTableSchemaRequest>,
-    ) -> Result<Response<GetLayerTableSchemaResponse>, Status> {
+        _request: Request<GetDatasetManifestSchemaRequest>,
+    ) -> Result<Response<GetDatasetManifestSchemaResponse>, Status> {
         //TODO(RR-2482)
         Err(tonic::Status::unimplemented(
-            "get_layer_table_schema not implemented",
+            "get_dataset_manifest_schema not implemented",
         ))
     }
 
-    async fn scan_layer_table(
+    async fn scan_dataset_manifest(
         &self,
-        _request: Request<ScanLayerTableRequest>,
-    ) -> Result<Response<Self::ScanLayerTableStream>, Status> {
+        _request: Request<ScanDatasetManifestRequest>,
+    ) -> Result<Response<Self::ScanDatasetManifestStream>, Status> {
         //TODO(RR-2482)
         Err(tonic::Status::unimplemented(
-            "scan_layer_table not implemented",
+            "scan_dataset_manifest not implemented",
         ))
     }
 

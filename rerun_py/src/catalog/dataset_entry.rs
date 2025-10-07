@@ -13,18 +13,19 @@ use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
-use re_datafusion::{LayerTableProvider, PartitionTableProvider, SearchResultsTableProvider};
+use re_datafusion::{DatsetManifestProvider, PartitionTableProvider, SearchResultsTableProvider};
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::ext::DatasetDetails;
-use re_protos::cloud::v1alpha1::ext::IndexProperties;
-use re_protos::cloud::v1alpha1::{CreateIndexRequest, GetChunksRequest, SearchDatasetRequest};
-use re_protos::cloud::v1alpha1::{
-    IndexConfig, IndexQueryProperties, InvertedIndexQuery, VectorIndexQuery, index_query_properties,
+use re_protos::{
+    cloud::v1alpha1::{
+        CreateIndexRequest, GetChunksRequest, IndexConfig, IndexQueryProperties,
+        InvertedIndexQuery, SearchDatasetRequest, VectorIndexQuery,
+        ext::{DatasetDetails, IndexProperties},
+        index_query_properties,
+    },
+    common::v1alpha1::{IfDuplicateBehavior, ext::DatasetHandle},
+    headers::RerunHeadersInjectorExt as _,
 };
-use re_protos::common::v1alpha1::IfDuplicateBehavior;
-use re_protos::common::v1alpha1::ext::DatasetHandle;
-use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::get_chunks_response_to_chunk_and_partition_id;
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 
@@ -165,15 +166,15 @@ impl PyDatasetEntry {
         })
     }
 
-    /// Return the layer table as a Datafusion table provider.
+    /// Return the dataset manifest as a Datafusion table provider.
     #[instrument(skip_all)]
-    fn layer_table(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
+    fn manifest(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
         let provider = wait_for_future(self_.py(), async move {
-            LayerTableProvider::new(connection.client().await?, dataset_id)
+            DatsetManifestProvider::new(connection.client().await?, dataset_id)
                 .into_provider()
                 .await
                 .map_err(to_py_err)
@@ -182,7 +183,7 @@ impl PyDatasetEntry {
         #[expect(clippy::string_add)]
         Ok(PyDataFusionTable {
             client: super_.client.clone_ref(self_.py()),
-            name: super_.name() + "_layer_table",
+            name: super_.name() + "__manifest",
             provider,
         })
     }
