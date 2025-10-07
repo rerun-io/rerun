@@ -140,6 +140,44 @@ impl TransformInfo {
             twod_in_threed_info: twod_in_threed_info_source.clone(),
         }
     }
+
+    /// Multiplies all transforms from the right by `reference_from_source`
+    ///
+    /// Or in other words:
+    /// `target_from_reference = self`
+    /// `target_from_source = target_from_reference * reference_from_source`
+    ///
+    /// ⚠️ does not affect 2D-in-3D information, leaving it unaffected entirely.
+    pub fn right_multiply(&self, reference_from_source: glam::Affine3A) -> Self {
+        let Self {
+            reference_from_entity: target_from_reference,
+            reference_from_instances_overall: target_from_reference_instances_overall,
+            reference_from_archetype: target_from_reference_archetypes,
+            twod_in_threed_info: twod_in_threed_info_target,
+        } = self;
+
+        let target_from_source = target_from_reference * reference_from_source;
+        let target_from_source_instances_overall = right_multiply_smallvec1_of_transforms(
+            target_from_reference_instances_overall,
+            reference_from_source,
+        );
+        let target_from_source_archetypes = target_from_reference_archetypes
+            .iter()
+            .map(|(archetype, transforms)| {
+                (
+                    *archetype,
+                    right_multiply_smallvec1_of_transforms(transforms, reference_from_source),
+                )
+            })
+            .collect();
+
+        Self {
+            reference_from_entity: target_from_source,
+            reference_from_instances_overall: target_from_source_instances_overall,
+            reference_from_archetype: target_from_source_archetypes,
+            twod_in_threed_info: twod_in_threed_info_target.clone(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, thiserror::Error)]
@@ -317,6 +355,17 @@ fn left_multiply_smallvec1_of_transforms(
     }
     target_from_source
 }
+
+fn right_multiply_smallvec1_of_transforms(
+    target_from_reference: &SmallVec1<[glam::Affine3A; 1]>,
+    reference_from_source: glam::Affine3A,
+) -> SmallVec1<[glam::Affine3A; 1]> {
+    // Easiest to deal with SmallVec1 in-place.
+    let mut target_from_source = target_from_reference.clone();
+    for transform in &mut target_from_source {
+        *transform *= reference_from_source;
+    }
+    target_from_source
 }
 
 fn compute_reference_from_instances(
