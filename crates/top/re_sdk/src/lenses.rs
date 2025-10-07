@@ -321,7 +321,7 @@ impl LensBuilder {
         self
     }
 
-    // Finalizes this builder and returns the corresponding lens.
+    /// Finalizes this builder and returns the corresponding lens.
     pub fn build(self) -> Lens {
         self.0
     }
