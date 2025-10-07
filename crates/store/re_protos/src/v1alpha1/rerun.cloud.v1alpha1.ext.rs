@@ -1187,8 +1187,8 @@ impl ScanPartitionTableResponse {
     pub const NUM_CHUNKS: &str = "rerun_num_chunks";
     pub const SIZE_BYTES: &str = "rerun_size_bytes";
 
-    pub fn schema() -> Schema {
-        Schema::new(vec![
+    pub fn fields() -> Vec<Field> {
+        vec![
             Field::new(Self::PARTITION_ID, DataType::Utf8, false),
             Field::new(
                 Self::LAYERS,
@@ -1211,7 +1211,11 @@ impl ScanPartitionTableResponse {
             ),
             Field::new(Self::NUM_CHUNKS, DataType::UInt64, false),
             Field::new(Self::SIZE_BYTES, DataType::UInt64, false),
-        ])
+        ]
+    }
+
+    pub fn schema() -> Schema {
+        Schema::new(Self::fields())
     }
 
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
@@ -1283,8 +1287,8 @@ impl ScanDatasetManifestResponse {
     pub const SIZE_BYTES: &str = "rerun_size_bytes";
     pub const SCHEMA_SHA256: &str = "rerun_schema_sha256";
 
-    pub fn schema() -> Schema {
-        Schema::new(vec![
+    pub fn fields() -> Vec<Field> {
+        vec![
             Field::new(Self::LAYER_NAME, DataType::Utf8, false),
             Field::new(Self::PARTITION_ID, DataType::Utf8, false),
             Field::new(Self::STORAGE_URL, DataType::Utf8, false),
@@ -1297,7 +1301,11 @@ impl ScanDatasetManifestResponse {
             Field::new(Self::NUM_CHUNKS, DataType::UInt64, false),
             Field::new(Self::SIZE_BYTES, DataType::UInt64, false),
             Field::new(Self::SCHEMA_SHA256, DataType::FixedSizeBinary(32), false),
-        ])
+        ]
+    }
+
+    pub fn schema() -> Schema {
+        Schema::new(Self::fields())
     }
 
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
