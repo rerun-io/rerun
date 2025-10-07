@@ -1,7 +1,7 @@
 use std::{collections::BTreeSet, fs::File, io::BufWriter, sync::mpsc::Receiver};
 
 use clap::Subcommand;
-use re_log_encoding::encoder::Encoder;
+use re_log_encoding::Encoder;
 use re_log_types::{LogMsg, RecordingId};
 use re_mcap::{LayerIdentifier, SelectedLayers};
 use re_sdk::{

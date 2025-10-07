@@ -95,11 +95,8 @@ impl FileSink {
 
         let file = std::fs::File::create(&path)
             .map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-        let encoder = crate::encoder::Encoder::new(
-            re_build_info::CrateVersion::LOCAL,
-            encoding_options,
-            file,
-        )?;
+        let encoder =
+            crate::Encoder::new(re_build_info::CrateVersion::LOCAL, encoding_options, file)?;
         let join_handle = spawn_and_stream(Some(&path), encoder, rx)?;
 
         Ok(Self {
@@ -117,7 +114,7 @@ impl FileSink {
 
         re_log::debug!("Writing to stdout…");
 
-        let encoder = crate::encoder::Encoder::new(
+        let encoder = crate::Encoder::new(
             re_build_info::CrateVersion::LOCAL,
             encoding_options,
             std::io::stdout(),
@@ -158,7 +155,7 @@ impl FileSink {
 /// Set `filepath` to `None` to stream to standard output.
 fn spawn_and_stream<W: std::io::Write + Send + 'static>(
     filepath: Option<&std::path::Path>,
-    mut encoder: crate::encoder::Encoder<W>,
+    mut encoder: crate::Encoder<W>,
     rx: Receiver<Option<Command>>,
 ) -> Result<std::thread::JoinHandle<()>, FileSinkError> {
     let (name, target) = if let Some(filepath) = filepath {

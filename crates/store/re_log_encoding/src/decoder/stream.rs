@@ -312,8 +312,8 @@ mod tests {
     use re_chunk::RowId;
     use re_log_types::{SetStoreInfo, StoreInfo};
 
+    use crate::Encoder;
     use crate::EncodingOptions;
-    use crate::encoder::Encoder;
 
     use super::*;
 

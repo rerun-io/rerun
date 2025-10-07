@@ -329,7 +329,7 @@ impl RetryableFileReader {
 #[cfg(test)]
 mod tests {
     use re_chunk::RowId;
-    use re_log_encoding::encoder::Encoder;
+    use re_log_encoding::Encoder;
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
 
     use super::*;
