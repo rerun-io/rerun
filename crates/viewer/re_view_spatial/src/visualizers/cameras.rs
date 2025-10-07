@@ -76,7 +76,7 @@ impl CamerasVisualizer {
 
         // Assuming the fallback provider did the right thing, this value should always be set.
         // If the camera is our reference, there is nothing for us to display.
-        if transforms.reference_path() == ent_path {
+        if transforms.reference_path() == ent_path.hash() {
             self.space_cameras.push(SpaceCamera3D {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
