@@ -230,7 +230,7 @@ impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer 
         // If there is a camera in the scene and it has a pinhole, use the image plane distance to determine the axis length.
         if let Some(length) = query_result
             .tree
-            .lookup_result_by_path(ctx.target_entity_path)
+            .lookup_result_by_path(ctx.target_entity_path.hash())
             .cloned()
             .and_then(|data_result| {
                 if data_result
