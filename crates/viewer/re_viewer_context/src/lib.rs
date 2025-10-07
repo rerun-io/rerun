@@ -40,7 +40,10 @@ mod visitor_flow_control;
 pub use re_global_context::*;
 
 pub use self::{
-    annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos},
+    annotations::{
+        AnnotationContextStoreSubscriber, AnnotationMap, Annotations, ResolvedAnnotationInfo,
+        ResolvedAnnotationInfos,
+    },
     async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend},
     blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
     cache::{
