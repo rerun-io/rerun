@@ -315,9 +315,8 @@ fn append_value(
                     if let Some(field_value) = message_fields.get(&spec_field.name) {
                         append_value(field_builder, field_value)?;
                     } else {
-                        //TODO(gijsd): Field is missing in the message, append null
                         re_log::warn_once!(
-                            "Field {} is missing in the message, appending null",
+                            "Field {} is missing from message content",
                             spec_field.name
                         );
                     }
