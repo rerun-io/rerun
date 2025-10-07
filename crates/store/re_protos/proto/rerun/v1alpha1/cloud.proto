@@ -110,24 +110,12 @@ service RerunCloudService {
   // * Latest-at, range and dataframe queries.
   // * Arbitrary Lance filters.
   //
-  // To fetch the actual chunks themselves, see `GetChunks`.
+  // To fetch the actual chunks themselves, see `FetchChunks`.
   //
   // Passing chunk IDs to this method effectively acts as a IF_EXIST filter.
   //
   // This endpoint requires the standard dataset headers.
   rpc QueryDataset(QueryDatasetRequest) returns (stream QueryDatasetResponse) {}
-
-  // Perform Rerun-native queries on a dataset, returning the underlying chunks.
-  //
-  // These Rerun-native queries include:
-  // * Filtering by specific partition and chunk IDs.
-  // * Latest-at, range and dataframe queries.
-  // * Arbitrary Lance filters.
-  //
-  // To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
-  //
-  // This endpoint requires the standard dataset headers.
-  rpc GetChunks(GetChunksRequest) returns (stream GetChunksResponse) {}
 
   // Fetch specific chunks from Rerun Cloud. In a 2-step query process, result of 1st phase,
   // that is, the result of `QueryDataset` should include all the necessary information to send
@@ -528,63 +516,6 @@ message QueryRange {
 
   reserved 3;
   reserved "fuzzy_descriptors";
-}
-
-message GetChunksRequest {
-  // Client can specify from which partitions to get chunks. If left unspecified (empty list),
-  // data from all partition (that match other query parameters) will be included.
-  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
-
-  // Client can specify chunk ids to include. If left unspecified (empty list),
-  // all chunks (that match other query parameters) will be included.
-  repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
-
-  // Which entity paths are we interested in? Leave empty, and set `select_all_entity_paths`,
-  // in order to query all of them.
-  repeated rerun.common.v1alpha1.EntityPath entity_paths = 4;
-
-  // If set, the query will cover all existing entity paths.
-  //
-  // `entity_paths` must be empty, otherwise an error will be raised.
-  //
-  // Truth table:
-  // ```text
-  // select_all_entity_paths | entity_paths   | result
-  // ------------------------+----------------+--------
-  // false                   | []             | valid query, empty results (no entity paths selected)
-  // false                   | ['foo', 'bar'] | valid query, 'foo' & 'bar' selected
-  // true                    | []             | valid query, all entity paths selected
-  // true                    | ['foo', 'bar'] | invalid query, error
-  // ```
-  bool select_all_entity_paths = 6;
-
-  // Which components are we interested in?
-  //
-  // If left unspecified, all existing components are considered of interest.
-  //
-  // This will perform a basic fuzzy match on the available columns' descriptors.
-  // The fuzzy logic is a simple case-sensitive `contains()` query.
-  // For example, given a `log_tick__SeriesLines:width` index, all of the following
-  // would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
-  repeated string fuzzy_descriptors = 9;
-
-  // If set, static data will be excluded from the results.
-  bool exclude_static_data = 7;
-
-  // If set, temporal data will be excluded from the results.
-  bool exclude_temporal_data = 8;
-
-  // Query details
-  Query query = 5;
-
-  reserved 1;
-  reserved "dataset_id";
-}
-
-message GetChunksResponse {
-  // Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
-  // cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
-  repeated rerun.log_msg.v1alpha1.ArrowMsg chunks = 1;
 }
 
 message FetchChunksRequest {

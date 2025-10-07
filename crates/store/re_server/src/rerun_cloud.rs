@@ -19,14 +19,11 @@ use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
         DeleteEntryResponse, EntryDetails, EntryKind, FetchTaskOutputRequest,
-        FetchTaskOutputResponse, GetChunksResponse, GetDatasetSchemaResponse,
-        GetPartitionTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionRequest,
-        QueryTasksRequest, QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
-        RegisterWithDatasetResponse, ScanPartitionTableResponse, ScanTableResponse,
-        ext::{
-            self, CreateDatasetEntryResponse, GetChunksRequest, ReadDatasetEntryResponse,
-            ReadTableEntryResponse,
-        },
+        FetchTaskOutputResponse, GetDatasetSchemaResponse, GetPartitionTableSchemaResponse,
+        QueryDatasetResponse, QueryTasksOnCompletionRequest, QueryTasksRequest, QueryTasksResponse,
+        RegisterTableRequest, RegisterTableResponse, RegisterWithDatasetResponse,
+        ScanPartitionTableResponse, ScanTableResponse,
+        ext::{self, CreateDatasetEntryResponse, ReadDatasetEntryResponse, ReadTableEntryResponse},
         rerun_cloud_service_server::RerunCloudService,
     },
     common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId},
@@ -163,7 +160,6 @@ macro_rules! decl_stream {
 }
 
 decl_stream!(FetchChunksResponseStream<manifest:FetchChunksResponse>);
-decl_stream!(GetChunksResponseStream<manifest:GetChunksResponse>);
 decl_stream!(QueryDatasetResponseStream<manifest:QueryDatasetResponse>);
 decl_stream!(ScanPartitionTableResponseStream<manifest:ScanPartitionTableResponse>);
 decl_stream!(SearchDatasetResponseStream<manifest:SearchDatasetResponse>);
@@ -889,82 +885,6 @@ impl RerunCloudService for RerunCloudHandler {
 
         Ok(tonic::Response::new(
             Box::pin(stream) as Self::QueryDatasetStream
-        ))
-    }
-
-    type GetChunksStream = GetChunksResponseStream;
-
-    async fn get_chunks(
-        &self,
-        request: tonic::Request<re_protos::cloud::v1alpha1::GetChunksRequest>,
-    ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status> {
-        if !request.get_ref().chunk_ids.is_empty() {
-            return Err(tonic::Status::unimplemented(
-                "get_chunks: querying specific chunk ids is not implemented",
-            ));
-        }
-
-        let entry_id = get_entry_id_from_headers(&*self.store.read().await, &request)?;
-
-        let GetChunksRequest {
-            partition_ids,
-            chunk_ids: _,
-            entity_paths,
-            query: _,
-            select_all_entity_paths: _,
-            fuzzy_descriptors: _,
-            exclude_static_data: _,
-            exclude_temporal_data: _,
-        } = GetChunksRequest::try_from(request.into_inner())?;
-
-        let entity_paths: IntSet<EntityPath> = entity_paths.into_iter().collect();
-
-        let storage_engines = self.get_storage_engines(entry_id, partition_ids).await?;
-
-        let stream = futures::stream::iter(storage_engines.into_iter().map(
-            move |(partition_id, store_handle)| {
-                let compression = re_log_encoding::Compression::Off;
-                let store_id = StoreId::new(
-                    StoreKind::Recording,
-                    entry_id.to_string(),
-                    partition_id.id.as_str(),
-                );
-
-                let arrow_msgs: Result<Vec<_>, _> = store_handle
-                    // NOTE: ⚠️This is super cursed ⚠️The underlying lock is synchronous: the only
-                    // reason this doesn't deadlock is because we collect() at the end of this mapping,
-                    // before the overarching stream ever gets a chance to yield.
-                    // Make sure it stays that way.
-                    .read()
-                    .iter_chunks()
-                    .filter(|chunk| {
-                        entity_paths.is_empty() || entity_paths.contains(chunk.entity_path())
-                    })
-                    .map(|chunk| {
-                        let arrow_msg = re_log_types::ArrowMsg {
-                            chunk_id: *chunk.id(),
-                            batch: chunk.to_record_batch()?,
-                            on_release: None,
-                        };
-
-                        re_log_encoding::protobuf_conversions::arrow_msg_to_proto(
-                            &arrow_msg,
-                            store_id.clone(),
-                            compression,
-                        )
-                    })
-                    .collect();
-
-                Ok(GetChunksResponse {
-                    chunks: arrow_msgs.map_err(|err| {
-                        tonic::Status::internal(format!("encoding failed: {err:#}"))
-                    })?,
-                })
-            },
-        ));
-
-        Ok(tonic::Response::new(
-            Box::pin(stream) as Self::GetChunksStream
         ))
     }
 

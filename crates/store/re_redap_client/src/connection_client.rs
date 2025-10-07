@@ -388,23 +388,6 @@ where
         Ok(response.table_entry)
     }
 
-    pub async fn get_chunks(
-        &mut self,
-        dataset_id: EntryId,
-        req: re_protos::cloud::v1alpha1::GetChunksRequest,
-    ) -> Result<tonic::Streaming<re_protos::cloud::v1alpha1::GetChunksResponse>, StreamError> {
-        Ok(self
-            .inner()
-            .get_chunks(
-                tonic::Request::new(req)
-                    .with_entry_id(dataset_id)
-                    .map_err(|err| StreamEntryError::InvalidId(err.into()))?,
-            )
-            .await
-            .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?
-            .into_inner())
-    }
-
     #[allow(clippy::fn_params_excessive_bools)]
     pub async fn do_maintenance(
         &mut self,

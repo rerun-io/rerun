@@ -11,7 +11,7 @@ pub use self::{
     },
     grpc::{
         ConnectionError, RedapClient, channel, fetch_chunks_response_to_chunk_and_partition_id,
-        get_chunks_response_to_chunk_and_partition_id, stream_blueprint_and_partition_from_server,
+        fetch_partition_chunks, stream_blueprint_and_partition_from_server,
     },
 };
 

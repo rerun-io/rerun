@@ -346,7 +346,7 @@ fn compute_schema_for_query(
     // Create the actual filter to apply to the column descriptors
     let filter = ChunkStore::create_component_filter_from_query(query_expression);
 
-    // When we call GetChunks we will not return row_id, so we only select indices and
+    // When we call QueryDataset we will not return row_id, so we only select indices and
     // components from the column descriptors.
     let filtered_fields = column_descriptors
         .filter_components(filter)

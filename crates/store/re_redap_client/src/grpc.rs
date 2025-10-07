@@ -4,10 +4,11 @@ use re_log_types::{
     AbsoluteTimeRange, BlueprintActivationCommand, DataSourceMessage, DataSourceUiCommand, EntryId,
     LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
 };
-use re_protos::cloud::v1alpha1::GetChunksRequest;
 use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
-use re_protos::common::v1alpha1::ext::PartitionId;
+use re_protos::cloud::v1alpha1::{FetchChunksRequest, QueryDatasetRequest};
+use re_protos::common::v1alpha1::{ScanParameters, ext::PartitionId};
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_uri::{Origin, TimeSelection};
 
 use tokio_stream::{Stream, StreamExt as _};
@@ -187,52 +188,6 @@ pub(crate) async fn client(
     Ok(RerunCloudServiceClient::new(svc).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
 }
 
-/// Converts a `FetchPartitionResponse` stream into a stream of `Chunk`s.
-//
-// TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
-// TODO(cmc): we should compute contiguous runs of the same partition here, and return a `(String, Vec<Chunk>)`
-// instead. Because of how the server performs the computation, this will very likely work out well
-// in practice.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn get_chunks_response_to_chunk_and_partition_id(
-    response: tonic::Streaming<re_protos::cloud::v1alpha1::GetChunksResponse>,
-) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
-    use crate::StreamPartitionError;
-
-    response
-        .then(|resp| {
-            // We want to make sure to offload that compute-heavy work to the compute worker pool: it's
-            // not going to make this one single pipeline any faster, but it will prevent starvation of
-            // the Tokio runtime (which would slow down every other futures currently scheduled!).
-            tokio::task::spawn_blocking(move || {
-                let r = resp.map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?;
-                let _span =
-                    tracing::trace_span!("get_chunks::batch_decode", num_chunks = r.chunks.len())
-                        .entered();
-
-                r.chunks
-                    .into_iter()
-                    .map(|arrow_msg| {
-                        let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
-
-                        let arrow_msg =
-                            re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
-                                .map_err(Into::<StreamError>::into)?;
-
-                        let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
-                            .map_err(Into::<StreamError>::into)?;
-
-                        Ok((chunk, partition_id))
-                    })
-                    .collect::<Result<Vec<_>, _>>()
-            })
-        })
-        .map(|res| {
-            res.map_err(Into::<StreamError>::into)
-                .and_then(std::convert::identity)
-        })
-}
-
 /// Converts a `FetchChunksStream` stream into a stream of `Chunk`s.
 //
 // TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
@@ -240,9 +195,12 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
 // instead. Because of how the server performs the computation, this will very likely work out well
 // in practice.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn fetch_chunks_response_to_chunk_and_partition_id(
-    response: tonic::Streaming<re_protos::cloud::v1alpha1::FetchChunksResponse>,
-) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
+pub fn fetch_chunks_response_to_chunk_and_partition_id<S>(
+    response: S,
+) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>>
+where
+    S: Stream<Item = Result<re_protos::cloud::v1alpha1::FetchChunksResponse, tonic::Status>>,
+{
     use crate::StreamPartitionError;
 
     response
@@ -253,7 +211,7 @@ pub fn fetch_chunks_response_to_chunk_and_partition_id(
             tokio::task::spawn_blocking(move || {
                 let r = resp.map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?;
                 let _span =
-                    tracing::trace_span!("get_chunks::batch_decode", num_chunks = r.chunks.len())
+                    tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = r.chunks.len())
                         .entered();
 
                 r.chunks
@@ -281,48 +239,19 @@ pub fn fetch_chunks_response_to_chunk_and_partition_id(
 
 // This code path happens to be shared between native and web, but we don't have a Tokio runtime on web!
 #[cfg(target_arch = "wasm32")]
-pub fn get_chunks_response_to_chunk_and_partition_id(
-    response: tonic::Streaming<re_protos::cloud::v1alpha1::GetChunksResponse>,
-) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
+pub fn fetch_chunks_response_to_chunk_and_partition_id<S>(
+    response: S,
+) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>>
+where
+    S: Stream<Item = Result<re_protos::cloud::v1alpha1::FetchChunksResponse, tonic::Status>>,
+{
     use crate::StreamPartitionError;
 
     response.map(|resp| {
         let resp = resp.map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?;
 
         let _span =
-            tracing::trace_span!("get_chunks::batch_decode", num_chunks = resp.chunks.len())
-                .entered();
-
-        resp.chunks
-            .into_iter()
-            .map(|arrow_msg| {
-                let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
-
-                let arrow_msg =
-                    re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
-                        .map_err(Into::<StreamError>::into)?;
-
-                let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
-                    .map_err(Into::<StreamError>::into)?;
-
-                Ok((chunk, partition_id))
-            })
-            .collect::<Result<Vec<_>, _>>()
-    })
-}
-
-// This code path happens to be shared between native and web, but we don't have a Tokio runtime on web!
-#[cfg(target_arch = "wasm32")]
-pub fn fetch_chunks_response_to_chunk_and_partition_id(
-    response: tonic::Streaming<re_protos::cloud::v1alpha1::FetchChunksResponse>,
-) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
-    use crate::StreamPartitionError;
-
-    response.map(|resp| {
-        let resp = resp.map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?;
-
-        let _span =
-            tracing::trace_span!("get_chunks::batch_decode", num_chunks = resp.chunks.len())
+            tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = resp.chunks.len())
                 .entered();
 
         resp.chunks
@@ -444,6 +373,91 @@ pub async fn stream_blueprint_and_partition_from_server(
     Ok(())
 }
 
+pub type FetchChunksResponseStream = std::pin::Pin<
+    Box<
+        dyn Stream<Item = Result<re_protos::cloud::v1alpha1::FetchChunksResponse, tonic::Status>>
+            + Send,
+    >,
+>;
+
+/// Fetches all chunks for a specified partition. You can include/exclude static/temporal chunks.
+pub async fn fetch_partition_chunks(
+    client: &mut ConnectionClient,
+    dataset_id: EntryId,
+    partition_id: PartitionId,
+    exclude_static_data: bool,
+    exclude_temporal_data: bool,
+    query: Option<re_protos::cloud::v1alpha1::Query>,
+) -> Result<FetchChunksResponseStream, StreamError> {
+    let fields_of_interest = [
+        "chunk_partition_id",
+        "chunk_id",
+        "rerun_partition_layer",
+        "chunk_key",
+    ]
+    .into_iter()
+    .map(String::from)
+    .collect::<Vec<_>>();
+
+    let query_request = QueryDatasetRequest {
+        partition_ids: vec![partition_id.into()],
+        chunk_ids: vec![],
+        entity_paths: vec![],
+        select_all_entity_paths: true,
+        fuzzy_descriptors: vec![],
+        exclude_static_data,
+        exclude_temporal_data,
+        query,
+        scan_parameters: Some(ScanParameters {
+            columns: fields_of_interest,
+            ..Default::default()
+        }),
+    };
+
+    let response_stream = client
+        .inner()
+        .query_dataset(
+            tonic::Request::new(query_request)
+                .with_entry_id(dataset_id)
+                .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?,
+        )
+        .await
+        .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?
+        .into_inner();
+
+    let chunk_info_batches = response_stream
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?
+        .into_iter()
+        .map(|resp| {
+            resp.data.ok_or(crate::StreamError::MissingData(
+                "missing data in QueryDatasetResponse".to_owned(),
+            ))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    if chunk_info_batches.is_empty() {
+        let empty_stream = tokio_stream::empty();
+        return Ok(Box::pin(empty_stream));
+    }
+
+    let fetch_chunks_request = FetchChunksRequest {
+        chunk_infos: chunk_info_batches,
+    };
+
+    let fetch_chunks_response_stream = client
+        .inner()
+        .fetch_chunks(fetch_chunks_request)
+        .await
+        .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?
+        .into_inner();
+
+    Ok(Box::pin(fetch_chunks_response_stream))
+}
+
 /// Low-level function to stream data as a chunk store from a server.
 #[expect(clippy::too_many_arguments)]
 async fn stream_partition_from_server(
@@ -456,60 +470,48 @@ async fn stream_partition_from_server(
     fragment: re_uri::Fragment,
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), StreamError> {
-    let static_chunk_stream = {
-        client
-            .get_chunks(
-                dataset_id,
-                GetChunksRequest {
-                    partition_ids: vec![partition_id.clone().into()],
-                    chunk_ids: vec![],
-                    entity_paths: vec![],
-                    select_all_entity_paths: true,
-                    fuzzy_descriptors: vec![],
-                    exclude_static_data: false,
-                    exclude_temporal_data: true,
-                    query: None,
-                },
-            )
-            .await?
-    };
+    let exclude_static_data = false;
+    let exclude_temporal_data = true;
+    let static_chunk_stream = fetch_partition_chunks(
+        client,
+        dataset_id,
+        partition_id.clone(),
+        exclude_static_data,
+        exclude_temporal_data,
+        None,
+    )
+    .await?;
 
-    let temporal_chunk_stream = {
-        client
-            .get_chunks(
-                dataset_id,
-                GetChunksRequest {
-                    partition_ids: vec![partition_id.into()],
-                    chunk_ids: vec![],
-                    entity_paths: vec![],
-                    select_all_entity_paths: true,
-                    fuzzy_descriptors: vec![],
-                    exclude_static_data: true,
-                    exclude_temporal_data: false,
-                    query: time_range.clone().map(|time_range| {
-                        Query {
-                            range: Some(QueryRange {
-                                index: time_range.timeline.name().to_string(),
-                                index_range: time_range.clone().into(),
-                            }),
-                            latest_at: Some(QueryLatestAt {
-                                index: Some(time_range.timeline.name().to_string()),
-                                at: time_range.range.min(),
-                            }),
-                            columns_always_include_everything: false,
-                            columns_always_include_chunk_ids: false,
-                            columns_always_include_byte_offsets: false,
-                            columns_always_include_entity_paths: false,
-                            columns_always_include_static_indexes: false,
-                            columns_always_include_global_indexes: false,
-                            columns_always_include_component_indexes: false,
-                        }
-                        .into()
-                    }),
-                },
-            )
-            .await?
-    };
+    let exclude_static_data = true;
+    let exclude_temporal_data = false;
+    let temporal_chunk_stream = fetch_partition_chunks(
+        client,
+        dataset_id,
+        partition_id,
+        exclude_static_data,
+        exclude_temporal_data,
+        time_range.clone().map(|time_range| {
+            Query {
+                range: Some(QueryRange {
+                    index: time_range.timeline.name().to_string(),
+                    index_range: time_range.clone().into(),
+                }),
+                latest_at: Some(QueryLatestAt {
+                    index: Some(time_range.timeline.name().to_string()),
+                    at: time_range.range.min(),
+                }),
+                columns_always_include_everything: false,
+                columns_always_include_chunk_ids: false,
+                columns_always_include_byte_offsets: false,
+                columns_always_include_entity_paths: false,
+                columns_always_include_static_indexes: false,
+                columns_always_include_global_indexes: false,
+                columns_always_include_component_indexes: false,
+            }
+            .into()
+        }),
+    )
+    .await?;
 
     let store_id = store_info.store_id.clone();
 
@@ -568,9 +570,9 @@ async fn stream_partition_from_server(
 
     // TODO(#10229): this looks to be converting back and forth?
 
-    let static_chunk_stream = get_chunks_response_to_chunk_and_partition_id(static_chunk_stream);
+    let static_chunk_stream = fetch_chunks_response_to_chunk_and_partition_id(static_chunk_stream);
     let temporal_chunk_stream =
-        get_chunks_response_to_chunk_and_partition_id(temporal_chunk_stream);
+        fetch_chunks_response_to_chunk_and_partition_id(temporal_chunk_stream);
 
     let mut chunk_stream = static_chunk_stream.chain(temporal_chunk_stream);
 

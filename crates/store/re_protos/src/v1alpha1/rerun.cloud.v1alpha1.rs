@@ -673,82 +673,6 @@ impl ::prost::Name for QueryRange {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetChunksRequest {
-    /// Client can specify from which partitions to get chunks. If left unspecified (empty list),
-    /// data from all partition (that match other query parameters) will be included.
-    #[prost(message, repeated, tag = "2")]
-    pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
-    /// Client can specify chunk ids to include. If left unspecified (empty list),
-    /// all chunks (that match other query parameters) will be included.
-    #[prost(message, repeated, tag = "3")]
-    pub chunk_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
-    /// Which entity paths are we interested in? Leave empty, and set `select_all_entity_paths`,
-    /// in order to query all of them.
-    #[prost(message, repeated, tag = "4")]
-    pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::EntityPath>,
-    /// If set, the query will cover all existing entity paths.
-    ///
-    /// `entity_paths` must be empty, otherwise an error will be raised.
-    ///
-    /// Truth table:
-    /// ```text
-    /// select_all_entity_paths | entity_paths   | result
-    /// ------------------------+----------------+--------
-    /// false                   | \[\]             | valid query, empty results (no entity paths selected)
-    /// false                   | \['foo', 'bar'\] | valid query, 'foo' & 'bar' selected
-    /// true                    | \[\]             | valid query, all entity paths selected
-    /// true                    | \['foo', 'bar'\] | invalid query, error
-    /// ```
-    #[prost(bool, tag = "6")]
-    pub select_all_entity_paths: bool,
-    /// Which components are we interested in?
-    ///
-    /// If left unspecified, all existing components are considered of interest.
-    ///
-    /// This will perform a basic fuzzy match on the available columns' descriptors.
-    /// The fuzzy logic is a simple case-sensitive `contains()` query.
-    /// For example, given a `log_tick__SeriesLines:width` index, all of the following
-    /// would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
-    #[prost(string, repeated, tag = "9")]
-    pub fuzzy_descriptors: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    /// If set, static data will be excluded from the results.
-    #[prost(bool, tag = "7")]
-    pub exclude_static_data: bool,
-    /// If set, temporal data will be excluded from the results.
-    #[prost(bool, tag = "8")]
-    pub exclude_temporal_data: bool,
-    /// Query details
-    #[prost(message, optional, tag = "5")]
-    pub query: ::core::option::Option<Query>,
-}
-impl ::prost::Name for GetChunksRequest {
-    const NAME: &'static str = "GetChunksRequest";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.GetChunksRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.GetChunksRequest".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetChunksResponse {
-    /// Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
-    /// cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
-    #[prost(message, repeated, tag = "1")]
-    pub chunks: ::prost::alloc::vec::Vec<super::super::log_msg::v1alpha1::ArrowMsg>,
-}
-impl ::prost::Name for GetChunksResponse {
-    const NAME: &'static str = "GetChunksResponse";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.GetChunksResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.GetChunksResponse".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FetchChunksRequest {
     /// Information about the chunks to fetch. These dataframes have to include the following columns:
     /// * `chunk_id` - Chunk unique identifier
@@ -2113,7 +2037,7 @@ pub mod rerun_cloud_service_client {
         /// * Latest-at, range and dataframe queries.
         /// * Arbitrary Lance filters.
         ///
-        /// To fetch the actual chunks themselves, see `GetChunks`.
+        /// To fetch the actual chunks themselves, see `FetchChunks`.
         ///
         /// Passing chunk IDs to this method effectively acts as a IF_EXIST filter.
         ///
@@ -2136,37 +2060,6 @@ pub mod rerun_cloud_service_client {
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.cloud.v1alpha1.RerunCloudService",
                 "QueryDataset",
-            ));
-            self.inner.server_streaming(req, path, codec).await
-        }
-        /// Perform Rerun-native queries on a dataset, returning the underlying chunks.
-        ///
-        /// These Rerun-native queries include:
-        /// * Filtering by specific partition and chunk IDs.
-        /// * Latest-at, range and dataframe queries.
-        /// * Arbitrary Lance filters.
-        ///
-        /// To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
-        ///
-        /// This endpoint requires the standard dataset headers.
-        pub async fn get_chunks(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetChunksRequest>,
-        ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::GetChunksResponse>>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.cloud.v1alpha1.RerunCloudService/GetChunks",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.cloud.v1alpha1.RerunCloudService",
-                "GetChunks",
             ));
             self.inner.server_streaming(req, path, codec).await
         }
@@ -2501,7 +2394,7 @@ pub mod rerun_cloud_service_server {
         /// * Latest-at, range and dataframe queries.
         /// * Arbitrary Lance filters.
         ///
-        /// To fetch the actual chunks themselves, see `GetChunks`.
+        /// To fetch the actual chunks themselves, see `FetchChunks`.
         ///
         /// Passing chunk IDs to this method effectively acts as a IF_EXIST filter.
         ///
@@ -2510,25 +2403,6 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::QueryDatasetRequest>,
         ) -> std::result::Result<tonic::Response<Self::QueryDatasetStream>, tonic::Status>;
-        /// Server streaming response type for the GetChunks method.
-        type GetChunksStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::GetChunksResponse, tonic::Status>,
-            > + std::marker::Send
-            + 'static;
-        /// Perform Rerun-native queries on a dataset, returning the underlying chunks.
-        ///
-        /// These Rerun-native queries include:
-        /// * Filtering by specific partition and chunk IDs.
-        /// * Latest-at, range and dataframe queries.
-        /// * Arbitrary Lance filters.
-        ///
-        /// To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
-        ///
-        /// This endpoint requires the standard dataset headers.
-        async fn get_chunks(
-            &self,
-            request: tonic::Request<super::GetChunksRequest>,
-        ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status>;
         /// Server streaming response type for the FetchChunks method.
         type FetchChunksStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::FetchChunksResponse, tonic::Status>,
@@ -3347,50 +3221,6 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = QueryDatasetSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.server_streaming(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.cloud.v1alpha1.RerunCloudService/GetChunks" => {
-                    #[allow(non_camel_case_types)]
-                    struct GetChunksSvc<T: RerunCloudService>(pub Arc<T>);
-                    impl<T: RerunCloudService>
-                        tonic::server::ServerStreamingService<super::GetChunksRequest>
-                        for GetChunksSvc<T>
-                    {
-                        type Response = super::GetChunksResponse;
-                        type ResponseStream = T::GetChunksStream;
-                        type Future =
-                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetChunksRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as RerunCloudService>::get_chunks(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = GetChunksSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
