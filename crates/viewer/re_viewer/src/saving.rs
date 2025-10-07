@@ -3,7 +3,7 @@ use re_log_types::ApplicationId;
 /// Convert to lowercase and replace any character that is not a fairly common
 /// filename character with '-'
 pub fn sanitize_app_id(app_id: &ApplicationId) -> String {
-    re_viewer_context::santitize_file_name(&app_id.as_str().to_lowercase())
+    re_viewer_context::sanitize_file_name(&app_id.as_str().to_lowercase())
 }
 
 /// Determine the default path for a blueprint based on its `ApplicationId`

@@ -120,7 +120,7 @@ class Rgba32Ext:
                 except (IndexError, ValueError):
                     pass
 
-                # Fially, handle heterogeneous sequence of Rgba32-like object,
+                # Finally, handle heterogeneous sequence of Rgba32-like object,
                 # such as Rgba32 instances, ints, sub-sequence, etc.
                 #
                 # Note how this is simplified by the flexible implementation of

@@ -11,7 +11,7 @@ if(DEFINED ENV{RERUN_WERROR})
 endif()
 
 if(DEFINED ENV{RERUN_USE_ASAN})
-    message(STATUS "Compiling with address sanatizer ('asan') since RERUN_USE_ASAN is set.")
+    message(STATUS "Compiling with address sanitizer ('asan') since RERUN_USE_ASAN is set.")
     set(RERUN_USE_ASAN ON)
 endif()
 
@@ -45,7 +45,7 @@ function(rerun_strict_warning_settings target)
         endif()
 
         if(RERUN_USE_ASAN)
-            message(WARNING "Rerun C++ build does not support address sanatizer ('asan') on Windows. Ignoring RERUN_USE_ASAN.")
+            message(WARNING "Rerun C++ build does not support address sanitizer ('asan') on Windows. Ignoring RERUN_USE_ASAN.")
         endif()
     else()
         # Enabled warnings.
@@ -115,7 +115,7 @@ function(rerun_strict_warning_settings target)
         endif()
 
         if(RERUN_USE_ASAN)
-            # Turn on the address sanatizer ("asan"):
+            # Turn on the address sanitizer ("asan"):
             target_compile_options(${target} PRIVATE -fsanitize=address)
             target_link_options(${target} PRIVATE -fsanitize=address)
         endif()
