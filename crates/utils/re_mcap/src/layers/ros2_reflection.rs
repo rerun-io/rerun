@@ -71,6 +71,42 @@ pub enum Ros2ReflectionError {
     Downcast(&'static str),
 }
 
+/// Minimal wrapper around [`StructBuilder`] that also holds the [`MessageSpecification`]
+struct MessageStructBuilder {
+    builder: StructBuilder,
+    spec: Arc<MessageSpecification>,
+}
+
+impl ArrayBuilder for MessageStructBuilder {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    fn into_box_any(self: Box<Self>) -> Box<dyn std::any::Any> {
+        self
+    }
+
+    fn len(&self) -> usize {
+        self.builder.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.builder.is_empty()
+    }
+
+    fn finish(&mut self) -> arrow::array::ArrayRef {
+        Arc::new(self.builder.finish())
+    }
+
+    fn finish_cloned(&self) -> arrow::array::ArrayRef {
+        Arc::new(self.builder.finish_cloned())
+    }
+}
+
 impl Ros2ReflectionMessageParser {
     fn new(num_rows: usize, message_schema: MessageSchema) -> anyhow::Result<Self> {
         let mut fields = Vec::new();
@@ -110,7 +146,7 @@ impl MessageParser for Ros2ReflectionMessageParser {
             // a field is missing from the message that we received.
             for (field_name, builder) in &mut self.fields {
                 if let Some(field_value) = message_fields.get(field_name) {
-                    append_value(builder.values(), field_value, &self.message_schema)?;
+                    append_value(builder.values(), field_value)?;
                     builder.append(true);
                 } else {
                     builder.append(false);
@@ -253,7 +289,6 @@ fn append_primitive_array(
 fn append_value(
     builder: &mut dyn ArrayBuilder,
     val: &Value,
-    schema: &MessageSchema,
 ) -> Result<(), Ros2ReflectionError> {
     match val {
         Value::Bool(x) => downcast_builder::<BooleanBuilder>(builder)?.append_value(*x),
@@ -271,41 +306,31 @@ fn append_value(
             downcast_builder::<StringBuilder>(builder)?.append_value(x.clone());
         }
         Value::Message(message_fields) => {
-            let struct_builder = downcast_builder::<StructBuilder>(builder)?;
+            let message_struct_builder = downcast_builder::<MessageStructBuilder>(builder)?;
+            let spec = &message_struct_builder.spec;
 
-            // For nested messages, we need to find the matching specification from dependencies
-            // Since we don't have type information here, we'll try to match by field names
-            let matching_spec = find_matching_message_spec(schema, message_fields);
-
-            if let Some(spec) = matching_spec {
-                // Use the specification field order to iterate through struct builder fields
-                for (i, spec_field) in spec.fields.iter().enumerate() {
-                    if let Some(field_builder) = struct_builder.field_builders_mut().get_mut(i) {
-                        if let Some(field_value) = message_fields.get(&spec_field.name) {
-                            append_value(field_builder, field_value, schema)?;
-                        } else {
-                            //TODO(gijsd): Field is missing in the message, append null
-                            re_log::warn_once!(
-                                "Field {} is missing in the message, appending null",
-                                spec_field.name
-                            );
-                        }
+            // Use the specification field order to iterate through struct builder fields
+            for (i, spec_field) in spec.fields.iter().enumerate() {
+                if let Some(field_builder) = message_struct_builder.builder.field_builders_mut().get_mut(i) {
+                    if let Some(field_value) = message_fields.get(&spec_field.name) {
+                        append_value(field_builder, field_value)?;
+                    } else {
+                        //TODO(gijsd): Field is missing in the message, append null
+                        re_log::warn_once!(
+                            "Field {} is missing in the message, appending null",
+                            spec_field.name
+                        );
                     }
                 }
-            } else {
-                re_log::warn_once!(
-                    "Could not find matching message specification for nested message with fields: {:?}",
-                    message_fields.keys().collect::<Vec<_>>()
-                );
             }
 
-            struct_builder.append(true);
+            message_struct_builder.builder.append(true);
         }
         Value::Array(vec) | Value::Sequence(vec) => {
             let list_builder = downcast_builder::<ListBuilder<Box<dyn ArrayBuilder>>>(builder)?;
 
             for val in vec {
-                append_value(list_builder.values(), val, schema)?;
+                append_value(list_builder.values(), val)?;
             }
             list_builder.append(true);
         }
@@ -317,23 +342,10 @@ fn append_value(
     Ok(())
 }
 
-fn find_matching_message_spec<'a>(
-    schema: &'a MessageSchema,
-    message_fields: &'a std::collections::BTreeMap<String, Value>,
-) -> Option<&'a MessageSpecification> {
-    schema.dependencies.iter().find(|spec| {
-        spec.fields.len() == message_fields.len()
-            && spec
-                .fields
-                .iter()
-                .all(|f| message_fields.contains_key(&f.name))
-    })
-}
-
 fn struct_builder_from_message_spec(
     spec: &MessageSpecification,
     dependencies: &[MessageSpecification],
-) -> anyhow::Result<StructBuilder> {
+) -> anyhow::Result<MessageStructBuilder> {
     let fields = spec
         .fields
         .iter()
@@ -348,7 +360,10 @@ fn struct_builder_from_message_spec(
     let (fields, field_builders): (Vec<Field>, Vec<Box<dyn ArrayBuilder>>) =
         fields.into_iter().unzip();
 
-    Ok(StructBuilder::new(fields, field_builders))
+    Ok(MessageStructBuilder {
+        builder: StructBuilder::new(fields, field_builders),
+        spec: Arc::new(spec.clone()),
+    })
 }
 
 fn arrow_builder_from_type(
