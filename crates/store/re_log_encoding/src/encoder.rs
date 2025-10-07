@@ -263,19 +263,10 @@ pub fn encode_as_bytes(
 }
 
 #[inline]
-pub fn local_raw_encoder() -> Result<Encoder<Vec<u8>>, EncodeError> {
-    Encoder::new(
-        CrateVersion::LOCAL,
-        EncodingOptions::PROTOBUF_COMPRESSED,
-        Vec::new(),
-    )
-}
-
-#[inline]
 pub fn encode_as_bytes_local(
     messages: impl Iterator<Item = ChunkResult<LogMsg>>,
 ) -> Result<Vec<u8>, EncodeError> {
-    let mut encoder = local_raw_encoder()?;
+    let mut encoder = Encoder::local()?;
     for message in messages {
         encoder.append(&message?)?;
     }
@@ -287,7 +278,7 @@ pub fn encode_as_bytes_local(
 pub fn encode_ref_as_bytes_local<'a>(
     messages: impl Iterator<Item = ChunkResult<&'a LogMsg>>,
 ) -> Result<Vec<u8>, EncodeError> {
-    let mut encoder = local_raw_encoder()?;
+    let mut encoder = Encoder::local()?;
     for message in messages {
         encoder.append(message?)?;
     }

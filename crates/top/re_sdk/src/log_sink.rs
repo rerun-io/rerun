@@ -2,9 +2,10 @@ use std::sync::Arc;
 use std::{fmt, time::Duration};
 
 use parking_lot::Mutex;
+
 use re_chunk::ChunkBatcherConfig;
 use re_grpc_client::write::{Client as MessageProxyClient, GrpcFlushError, Options};
-use re_log_encoding::encoder::{EncodeError, encode_as_bytes_local, local_raw_encoder};
+use re_log_encoding::encoder::{EncodeError, Encoder, encode_as_bytes_local};
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
 
 use crate::RecordingStream;
@@ -435,7 +436,7 @@ impl MemorySinkStorage {
     /// This automatically takes care of flushing the underlying [`crate::RecordingStream`].
     #[inline]
     pub fn concat_memory_sinks_as_bytes(sinks: &[&Self]) -> Result<Vec<u8>, EncodeError> {
-        let mut encoder = local_raw_encoder()?;
+        let mut encoder = Encoder::local()?;
 
         for sink in sinks {
             // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
