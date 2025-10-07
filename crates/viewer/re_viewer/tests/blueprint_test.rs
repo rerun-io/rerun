@@ -1,5 +1,4 @@
-// #![cfg(feature = "testing")]
-
+// Tests for saving/loading blueprints to/from a file.
 use std::path::Path;
 
 use re_chunk::{RowId, TimePoint};
