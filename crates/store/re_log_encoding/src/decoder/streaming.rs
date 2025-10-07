@@ -211,7 +211,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
 }
 
 /// `StreamingDecoder` relies on the underlying reader for the wakeup mechanism.
-/// The fact that we can have concatanated file or corrupted file ( / input stream) pushes us to keep
+/// The fact that we can have concatenated file or corrupted file ( / input stream) pushes us to keep
 /// the state of the decoder in the struct itself (through `unprocessed_bytes` and `expect_more_data`).
 impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
     type Item = Result<StreamingLogMsg, DecodeError>;

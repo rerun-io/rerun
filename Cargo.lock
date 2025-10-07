@@ -8896,7 +8896,9 @@ dependencies = [
  "re_sdk",
  "re_server",
  "re_uri",
+ "re_view_text_document",
  "re_viewer",
+ "re_viewport_blueprint",
  "tempfile",
  "tokio",
 ]
