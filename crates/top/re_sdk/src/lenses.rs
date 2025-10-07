@@ -1,13 +1,9 @@
-use op::{cast_component_batch, extract_field};
 use re_chunk::{
-    ArrowArray, Chunk, ChunkComponents, ChunkId, ComponentIdentifier, EntityPath,
-    external::arrow::{
-        array::ListArray, datatypes::DataType, error::ArrowError,
-        ipc::MessageHeaderUnionTableOffset,
-    },
+    Chunk, ChunkComponents, ChunkId, ComponentIdentifier, EntityPath,
+    external::arrow::{array::ListArray, datatypes::DataType, error::ArrowError},
 };
 use re_log_types::{EntityPathFilter, LogMsg, ResolvedEntityPathFilter};
-use re_types::{AsComponents, ComponentDescriptor, SerializedComponentColumn};
+use re_types::ComponentDescriptor;
 
 use crate::sink::LogSink;
 
@@ -20,7 +16,9 @@ pub struct LensesSink<S: LogSink> {
 }
 
 impl<S: LogSink> LensesSink<S> {
-    /// Create a new sink with the given lenses.
+    /// Creates a new sink without any lenses attached.
+    ///
+    /// Use [`Self::with_lens`] to add an additional lens to this sink.
     pub fn new(sink: S) -> Self {
         Self {
             sink,
@@ -44,7 +42,6 @@ impl<S: LogSink> LogSink for LensesSink<S> {
             LogMsg::ArrowMsg(store_id, arrow_msg) => match Chunk::from_arrow_msg(arrow_msg) {
                 Ok(chunk) => {
                     let new_chunks = self.registry.apply(&chunk);
-                    // TODO(grtlr): Should we use `self.sink.send_all` here?
                     for new_chunk in new_chunks {
                         match new_chunk.to_arrow_msg() {
                             Ok(arrow_msg) => {
@@ -80,111 +77,6 @@ impl<S: LogSink> LogSink for LensesSink<S> {
     }
 }
 
-// /// Provides a declarative interface for constructing lenses.
-// pub struct LensBuilder {
-//     /// The entity path to apply the transformation to.
-//     filter: EntityPathFilter,
-
-//     /// The component that we want to select.
-//     component: ComponentIdentifier,
-
-//     ops: Vec<(op::Op, ComponentDescriptor)>,
-// }
-
-// impl LensBuilder {
-//     /// Creates a new builder.
-//     ///
-//     /// The resulting lens will be applied to all components that are on entities matching the `filter`.
-//     pub fn new(filter: EntityPathFilter, component: impl Into<ComponentIdentifier>) -> Self {
-//         Self {
-//             filter,
-//             component: component.into(),
-//             ops: Default::default(),
-//         }
-//     }
-
-//     /// Manipulates the component and attaches a new [`ComponentDescriptor`].
-//     pub fn view_as(mut self, op: op::Op, descriptor: ComponentDescriptor) -> Self {
-//         self.ops.push((op, descriptor));
-//         self
-//     }
-
-//     /// Attaches a new [`ComponentDescriptor`].
-//     pub fn describe(self, descriptor: ComponentDescriptor) -> Self {
-//         self.view_as(op::nop(), descriptor)
-//     }
-
-//     /// Consumes the builder and constructs a [`Lens`].
-//     pub fn build(self) -> Lens {
-//         Lens::new(
-//             self.filter,
-//             self.component,
-//             move |list_array, entity_path| {
-//                 self.ops
-//                     .clone()
-//                     .into_iter()
-//                     .map(|(op, descriptor)| {
-//                         op.describe(entity_path.clone(), list_array.clone(), descriptor)
-//                             .unwrap()
-//                     })
-//                     .collect()
-//             },
-//         )
-//     }
-// }
-
-/// A transformed column result from applying a lens operation.
-///
-/// Contains the output of a lens transformation, including the new entity path,
-/// the serialized component data, and whether the data should be treated as static.
-#[derive(Debug)]
-pub struct TransformedColumn {
-    /// The entity path where this transformed column should be logged.
-    pub entity_path: EntityPath,
-    /// The serialized component column containing the transformed data.
-    pub column: SerializedComponentColumn,
-    /// Whether this column represents static data.
-    pub is_static: bool,
-}
-
-impl TransformedColumn {
-    /// Creates a new transformed column.
-    pub fn new(entity_path: EntityPath, column: SerializedComponentColumn) -> Self {
-        Self {
-            entity_path,
-            column,
-            is_static: false,
-        }
-    }
-
-    /// Creates a new static transformed column.
-    pub fn new_static(entity_path: EntityPath, column: SerializedComponentColumn) -> Self {
-        Self {
-            entity_path,
-            column,
-            is_static: true,
-        }
-    }
-}
-
-type LensFunc = Box<dyn Fn(ListArray, &EntityPath) -> Vec<TransformedColumn> + Send + Sync>;
-
-/// A lens that transforms component data from one form to another.
-///
-/// Lenses allow you to extract, transform, and restructure component data
-/// as it flows through the logging pipeline. They are applied to chunks
-/// that match the specified entity path filter and contain the target component.
-pub struct LensOld {
-    /// The entity path to apply the transformation to.
-    pub filter: ResolvedEntityPathFilter,
-
-    /// The component that we want to select.
-    pub component: ComponentIdentifier,
-
-    /// A closure that outputs a list of chunks
-    pub func: LensFunc,
-}
-
 #[derive(Default)]
 struct LensRegistry {
     lenses: Vec<LensN>,
@@ -209,276 +101,45 @@ impl LensRegistry {
     }
 }
 
-impl LensOld {
-    /// Creates a new lens with the specified filter, component, and transformation function.
-    ///
-    /// # Arguments
-    /// * `entity_path_filter` - Filter to match entity paths this lens should apply to
-    /// * `component` - The component identifier to transform
-    /// * `func` - Transformation function that takes a ListArray and EntityPath and returns transformed columns
-    pub fn new<F>(
-        entity_path_filter: EntityPathFilter,
-        component: impl Into<ComponentIdentifier>,
-        func: F,
-    ) -> Self
-    where
-        F: Fn(ListArray, &EntityPath) -> Vec<TransformedColumn> + Send + Sync + 'static,
-    {
-        Self {
-            filter: entity_path_filter.resolve_without_substitutions(),
-            component: component.into(),
-            func: Box::new(func),
-        }
-    }
-
-    fn apply(&self, chunk: &Chunk) -> Vec<Chunk> {
-        let found = chunk
-            .components()
-            .iter()
-            .find(|(descr, _array)| descr.component == self.component);
-
-        // TODO: This means we drop chunks that belong to the same entity but don't have the component.
-        let Some((_component_descr, list_array)) = found else {
-            return Default::default();
-        };
-
-        // TODO:
-        // * unwrap array
-        // * Guarantee that there is only one component descr
-        let mut builders = ahash::HashMap::default();
-        let results = (self.func)(list_array.clone(), chunk.entity_path());
-        for transformed in results {
-            let components = builders
-                .entry((transformed.entity_path, transformed.is_static))
-                .or_insert_with(ChunkComponents::default);
-
-            if components.contains_component(&transformed.column.descriptor) {
-                re_log::warn_once!(
-                    "Replacing duplicated component {}",
-                    transformed.column.descriptor.component
-                );
-            }
-
-            components.insert(transformed.column.descriptor, transformed.column.list_array);
-        }
-
-        builders
-            .into_iter()
-            .filter_map(|((entity_path, is_static), components)| {
-                let timelines = if is_static {
-                    Default::default()
-                } else {
-                    chunk.timelines().clone()
-                };
-
-                // TODO: In case of static, should we use sparse rows instead?
-                Chunk::from_auto_row_ids(ChunkId::new(), entity_path.clone(), timelines, components)
-                    .inspect_err(|err| {
-                        re_log::error_once!(
-                            "Failed to build chunk at entity path '{entity_path}': {err}"
-                        );
-                    })
-                    .ok()
-            })
-            .collect()
-    }
-}
-
-// /// Provides commonly used transformations of Arrow arrays.
-// ///
-// /// # Experimental
-// ///
-// /// This is an experimental API and may change in future releases.
+/// Provides commonly used transformations of Arrow arrays.
+///
+/// These operations should not be exposed publicly, but instead be wrapped by the [`Op`] abstraction.
 mod op {
-
-    //     // TODO(grtlr): Make this into proper objects, with APIs similar to Datafusion's UDFs.
+    // TODO(grtlr): Eventually we will want to make the types in here compatible with Datafusion UDFs.
 
     use std::sync::Arc;
 
     use re_chunk::{
-        ArrowArray, EntityPath,
+        ArrowArray as _,
         external::arrow::{
-            array::{
-                Float32Builder, Float64Builder, ListArray, ListBuilder, StructArray, StructBuilder,
-            },
+            array::{ListArray, StructArray},
             compute,
             datatypes::{DataType, Field},
         },
     };
-    use re_types::{ComponentDescriptor, SerializedComponentColumn};
 
-    use super::{Error, TransformedColumn};
+    use super::Error;
 
-    //     /// TODO
-    //     #[derive(Clone)]
-    //     pub struct Op {
-    //         view_fn: Arc<
-    //             dyn Fn(EntityPath, ListArray) -> Result<(EntityPath, ListArray), Error>
-    //                 // TODO: Proper error handling
-    //                 + Send
-    //                 + Sync,
-    //         >,
-    //         // set_fn: Arc<dyn Fn(EntityPath, ListArray, ComponentDescriptor) -> Result<TransformedColumn, Error> + Send + Sync;
-    //     }
+    /// Extracts a specific field from a struct component within a `ListArray`.
+    pub struct AccessField {
+        pub(super) field_name: String,
+    }
 
-    //     /// TODO
-    //     impl Op {
-    //         pub fn new<V>(view: V) -> Self
-    //         where
-    //             V: Fn(EntityPath, ListArray) -> Result<(EntityPath, ListArray), Error>
-    //                 + Send
-    //                 + Sync
-    //                 + 'static,y
-    //         {
-    //             Self {
-    //                 view_fn: Arc::new(view),
-    //             }
-    //         }
+    impl AccessField {
+        pub fn call(&self, list_array: ListArray) -> Result<ListArray, Error> {
+            let (field, offsets, values, nulls) = list_array.into_parts();
+            let struct_array = values
+                .as_any()
+                .downcast_ref::<StructArray>()
+                .ok_or_else(|| Error::TypeMismatch {
+                    actual: field.data_type().clone(),
+                    expected: "StructArray",
+                })?;
 
-    //         /// TODO
-    //         pub fn view(
-    //             &self,
-    //             entity_path: EntityPath,
-    //             list_array: ListArray,
-    //         ) -> Result<(EntityPath, ListArray), Error> {
-    //             (self.view_fn)(entity_path, list_array)
-    //         }
-
-    //         pub(super) fn describe(
-    //             self,
-    //             entity_path: EntityPath,
-    //             list_array: ListArray,
-    //             descriptor: ComponentDescriptor,
-    //         ) -> Result<TransformedColumn, Error> {
-    //             let (entity_path, list_array) = self.view(entity_path, list_array)?;
-    //             Ok(TransformedColumn {
-    //                 entity_path,
-    //                 column: SerializedComponentColumn {
-    //                     list_array,
-    //                     descriptor,
-    //                 },
-    //                 is_static: false,
-    //             })
-    //         }
-
-    //         pub fn and_then(self, other: Self) -> Self {
-    //             let view_fn = {
-    //                 let self_view = Arc::clone(&self.view_fn);
-    //                 let other_view = Arc::clone(&other.view_fn);
-    //                 move |entity_path, list_array| {
-    //                     let (entity_path, list_array) = self_view(entity_path, list_array)?;
-    //                     other_view(entity_path, list_array)
-    //                 }
-    //             };
-    //             Self {
-    //                 view_fn: Arc::new(view_fn),
-    //             }
-    //         }
-    //     }
-
-    //     /// Extracts a specific field from a struct component within a ListArray.
-    //     pub fn access_field(name: impl Into<String>) -> Op {
-    //         let name = name.into();
-    //         Op::new(move |entity_path, list_array| {
-    //             let (_, offsets, values, nulls) = list_array.into_parts();
-    //             let struct_array = values
-    //                 .as_any()
-    //                 .downcast_ref::<StructArray>()
-    //                 .ok_or_else(|| Error)?;
-    //             let column = struct_array.column_by_name(&name).ok_or_else(|| Error)?;
-    //             Ok((
-    //                 entity_path.join(&EntityPath::parse_forgiving(&name)),
-    //                 ListArray::new(
-    //                     Arc::new(Field::new_list_field(column.data_type().clone(), true)),
-    //                     offsets,
-    //                     column.clone(),
-    //                     nulls,
-    //                 ),
-    //             ))
-    //         })
-    //     }
-
-    //     /// Casts the inner array of a `ListArray` to a different data type.
-    //     pub fn cast(to_inner_type: DataType) -> Op {
-    //         Op::new(move |entity_path, list_array| {
-    //             let (_, offsets, ref array, nulls) = list_array.into_parts();
-    //             let res = compute::cast(array, &to_inner_type).map_err(|_| Error)?;
-    //             Ok((
-    //                 entity_path,
-    //                 ListArray::new(
-    //                     Arc::new(Field::new_list_field(res.data_type().clone(), true)),
-    //                     offsets,
-    //                     res,
-    //                     nulls,
-    //                 ),
-    //             ))
-    //         })
-    //     }
-
-    //     pub(super) fn nop() -> Op {
-    //         Op::new(move |entity_path, list_array| Ok((entity_path, list_array)))
-    //     }
-
-    //     #[test]
-    //     fn test_op_describe() {
-    //         let mut struct_column_builder = ListBuilder::new(StructBuilder::new(
-    //             [
-    //                 Arc::new(Field::new("a", DataType::Float32, true)),
-    //                 Arc::new(Field::new("b", DataType::Float64, true)),
-    //             ],
-    //             vec![
-    //                 Box::new(Float32Builder::new()),
-    //                 Box::new(Float64Builder::new()),
-    //             ],
-    //         ));
-
-    //         // row 0
-    //         struct_column_builder
-    //             .values()
-    //             .field_builder::<Float32Builder>(0)
-    //             .unwrap()
-    //             .append_value(0.0);
-    //         struct_column_builder
-    //             .values()
-    //             .field_builder::<Float64Builder>(1)
-    //             .unwrap()
-    //             .append_value(0.0);
-    //         struct_column_builder.values().append(true);
-    //         struct_column_builder.append(true);
-
-    //         let struct_list_array = struct_column_builder.finish();
-
-    //         let op = access_field("a").and_then(cast(DataType::Float64));
-    //         insta::assert_debug_snapshot!(
-    //             op.describe(
-    //                 EntityPath::parse_forgiving("test"),
-    //                 struct_list_array,
-    //                 ComponentDescriptor::partial("test")
-    //             )
-    //             .unwrap()
-    //         );
-    //     }
-
-    /// Extracts a specific field from a struct component within a ListArray.
-    ///
-    /// Takes a ListArray containing StructArrays and extracts the specified field,
-    /// returning a new ListArray containing only that field's data.
-    /// Returns an empty ListArray if the extraction fails.
-    pub fn extract_field(list_array: ListArray, column_name: &str) -> Result<ListArray, Error> {
-        let (field, offsets, values, nulls) = list_array.into_parts();
-        let struct_array = values
-            .as_any()
-            .downcast_ref::<StructArray>()
-            .ok_or_else(|| Error::TypeMismatch {
-                actual: field.data_type().clone(),
-                expected: "StructArray",
-            })?;
-
-        let column =
-            struct_array
-                .column_by_name(column_name)
+            let column = struct_array
+                .column_by_name(&self.field_name)
                 .ok_or_else(|| Error::MissingField {
-                    expected: column_name.to_owned(),
+                    expected: self.field_name.clone(),
                     found: struct_array
                         .fields()
                         .iter()
@@ -486,67 +147,80 @@ mod op {
                         .collect(),
                 })?;
 
-        Ok(ListArray::new(
-            Arc::new(Field::new_list_field(column.data_type().clone(), true)),
-            offsets,
-            column.clone(),
-            nulls,
-        ))
+            Ok(ListArray::new(
+                Arc::new(Field::new_list_field(column.data_type().clone(), true)),
+                offsets,
+                column.clone(),
+                nulls,
+            ))
+        }
     }
 
-    /// Casts the inner array of a ListArray to a different data type.
-    ///
-    /// Performs type casting on the component data within the ListArray,
-    /// preserving the list structure while changing the inner data type.
-    /// Returns an empty ListArray if the cast fails.
-    pub fn cast_component_batch(
-        list_array: ListArray,
-        to_inner_type: &DataType,
-    ) -> Result<ListArray, Error> {
-        let (_field, offsets, ref array, nulls) = list_array.into_parts();
-        let res = compute::cast(array, to_inner_type)?;
-        Ok(ListArray::new(
-            Arc::new(Field::new_list_field(res.data_type().clone(), true)),
-            offsets,
-            res,
-            nulls,
-        ))
+    /// Casts the `value_type` (inner array) of a `ListArray` to a different data type.
+    pub struct Cast {
+        pub(super) to_inner_type: DataType,
+    }
+
+    impl Cast {
+        pub fn call(&self, list_array: ListArray) -> Result<ListArray, Error> {
+            let (_field, offsets, ref array, nulls) = list_array.into_parts();
+            let res = compute::cast(array, &self.to_inner_type)?;
+            Ok(ListArray::new(
+                Arc::new(Field::new_list_field(res.data_type().clone(), true)),
+                offsets,
+                res,
+                nulls,
+            ))
+        }
     }
 }
+
+/// Different variants of errors that can happen when executing lenses.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[allow(missing_docs)]
     #[error("expected data type `{expected}` but found data type `{actual}`")]
     TypeMismatch {
         actual: DataType,
         expected: &'static str,
     },
+
+    #[allow(missing_docs)]
     #[error("missing field `{expected}, found {}`", found.join(", "))]
     MissingField {
         expected: String,
         found: Vec<String>,
     },
-    #[error(transparent)]
-    ArrowError(#[from] ArrowError),
 
+    #[allow(missing_docs)]
+    #[error(transparent)]
+    Arrow(#[from] ArrowError),
+
+    #[allow(missing_docs)]
     #[error(transparent)]
     Other(Box<dyn std::error::Error>),
 }
 
+/// Provides commonly used transformations of component columns.
+///
+/// Individual operations are wrapped to hide their implementation details.
 pub enum Op {
-    Cast { data_type: DataType },
-    AccessField { field_name: String },
+    Cast(op::Cast),
+    AccessField(op::AccessField),
     Func(Box<dyn Fn(ListArray) -> Result<ListArray, Error> + Sync + Send>),
 }
 
 impl Op {
     pub fn access_field(field_name: impl Into<String>) -> Self {
-        Self::AccessField {
+        Self::AccessField(op::AccessField {
             field_name: field_name.into(),
-        }
+        })
     }
 
     pub fn cast(data_type: DataType) -> Self {
-        Self::Cast { data_type }
+        Self::Cast(op::Cast {
+            to_inner_type: data_type,
+        })
     }
 
     // TODO: this should be improved
@@ -565,9 +239,9 @@ impl Op {
 impl Op {
     fn call(&self, list_array: ListArray) -> Result<ListArray, Error> {
         match self {
-            Op::Cast { data_type } => cast_component_batch(list_array, data_type),
-            Op::AccessField { field_name } => extract_field(list_array, field_name),
-            Op::Func(func) => func(list_array),
+            Self::Cast(op) => op.call(list_array),
+            Self::AccessField(op) => op.call(list_array),
+            Self::Func(func) => func(list_array),
         }
     }
 }
@@ -584,10 +258,11 @@ struct OutputColumn {
     is_static: bool,
 }
 
+/// Provides convenient function to create a [`Lens`].
 pub struct LensBuilder(LensN);
 
 impl LensBuilder {
-    pub fn new_for_column(
+    pub fn input_column(
         entity_path_filter: EntityPathFilter,
         component: impl Into<ComponentIdentifier>,
     ) -> Self {
@@ -600,7 +275,7 @@ impl LensBuilder {
         })
     }
 
-    pub fn add_output_column(
+    pub fn output_column(
         mut self,
         entity_path: impl Into<EntityPath>,
         component_descr: ComponentDescriptor,
@@ -616,7 +291,7 @@ impl LensBuilder {
         self
     }
 
-    pub fn add_static_output_column(
+    pub fn static_output_column(
         mut self,
         entity_path: impl Into<EntityPath>,
         component_descr: ComponentDescriptor,
@@ -637,21 +312,34 @@ impl LensBuilder {
     }
 }
 
+/// A lens that transforms component data from one form to another.
+///
+/// Lenses allow you to extract, transform, and restructure component data
+/// as it flows through the logging pipeline. They are applied to chunks
+/// that match the specified entity path filter and contain the target component.
+///
+/// # Assumptions
+///
+/// Works on component column within a chunk. Because what goes into a chunk
+/// is non-deterministic, and dependent on the batcher no assumptions should be
+/// made for values contained in each row of a column.
 pub struct LensN {
     input: InputColumn,
     outputs: Vec<OutputColumn>,
 }
 
 impl LensN {
-    pub fn for_column(
+    /// Returns a new [`LensBuilder`] with the given input column.
+    pub fn input_column(
         entity_path_filter: EntityPathFilter,
         component: impl Into<ComponentIdentifier>,
     ) -> LensBuilder {
-        LensBuilder::new_for_column(entity_path_filter, component)
+        LensBuilder::input_column(entity_path_filter, component)
     }
 }
 
 impl LensN {
+    /// Applies this lens and crates one or more chunks.
     fn apply(&self, chunk: &Chunk) -> Vec<Chunk> {
         let found = chunk
             .components()
@@ -717,8 +405,8 @@ mod test {
         TimeColumn, TimelineName,
         external::arrow::{
             array::{
-                Float32Builder, Float64Array, Float64Builder, Int32Builder, ListBuilder,
-                StringBuilder, StructBuilder,
+                Float32Builder, Float64Builder, Int32Builder, ListBuilder, StringBuilder,
+                StructBuilder,
             },
             datatypes::{DataType, Field},
         },
@@ -877,15 +565,15 @@ mod test {
         let original_chunk = nullability_chunk();
         println!("{original_chunk}");
 
-        let destructure = LensN {
-            input: InputColumn::new("nullability".parse().unwrap(), "structs"),
-            outputs: vec![OutputColumn {
-                entity_path: EntityPath::parse_forgiving("nullability/a"),
-                component_descr: Scalars::descriptor_scalars(),
-                ops: vec![Op::access_field("a"), Op::cast(DataType::Float64)],
-                is_static: false,
-            }],
-        };
+        let destructure =
+            LensN::input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
+                .output_column(
+                    "nullability/a",
+                    Scalars::descriptor_scalars(),
+                    [Op::access_field("a"), Op::cast(DataType::Float64)],
+                )
+                .build();
+
         let pipeline = LensRegistry {
             lenses: vec![destructure],
         };
@@ -902,15 +590,14 @@ mod test {
         let original_chunk = nullability_chunk();
         println!("{original_chunk}");
 
-        let destructure = LensN {
-            input: InputColumn::new("nullability".parse().unwrap(), "structs"),
-            outputs: vec![OutputColumn {
-                entity_path: EntityPath::parse_forgiving("nullability/b"),
-                component_descr: Scalars::descriptor_scalars(),
-                ops: vec![Op::access_field("b")],
-                is_static: false,
-            }],
-        };
+        let destructure =
+            LensN::input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
+                .output_column(
+                    "nullability/b",
+                    Scalars::descriptor_scalars(),
+                    [Op::access_field("b")],
+                )
+                .build();
 
         let pipeline = LensRegistry {
             lenses: vec![destructure],
@@ -946,23 +633,19 @@ mod test {
             Ok(builder.finish())
         };
 
-        let count = LensN {
-            input: InputColumn::new("nullability".parse().unwrap(), "strings"),
-            outputs: vec![
-                OutputColumn {
-                    entity_path: EntityPath::parse_forgiving("nullability/b_count"),
-                    component_descr: ComponentDescriptor::partial("counts"),
-                    ops: vec![Op::func(count_fn)],
-                    is_static: false,
-                },
-                OutputColumn {
-                    entity_path: EntityPath::parse_forgiving("nullability/b_count"),
-                    component_descr: ComponentDescriptor::partial("original"),
-                    ops: vec![],
-                    is_static: false,
-                },
-            ],
-        };
+        let count =
+            LensN::input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
+                .output_column(
+                    "nullability/b_count",
+                    ComponentDescriptor::partial("counts"),
+                    [Op::func(count_fn)],
+                )
+                .output_column(
+                    "nullability/b_count",
+                    ComponentDescriptor::partial("original"),
+                    [], // no operations
+                )
+                .build();
 
         let pipeline = LensRegistry {
             lenses: vec![count],
@@ -979,41 +662,31 @@ mod test {
     fn test_static_chunk_creation() {
         let original_chunk = nullability_chunk();
 
-        let static_fn_a = |_| {
-            let mut metadata_builder_a = ListBuilder::new(StringBuilder::new());
-            metadata_builder_a
-                .values()
-                .append_value("static_metadata_a");
-            metadata_builder_a.append(true);
-            Ok(metadata_builder_a.finish())
-        };
+        let mut metadata_builder_a = ListBuilder::new(StringBuilder::new());
+        metadata_builder_a
+            .values()
+            .append_value("static_metadata_a");
+        metadata_builder_a.append(true);
 
-        let static_fn_b = |_| {
-            let mut metadata_builder_b = ListBuilder::new(StringBuilder::new());
-            metadata_builder_b
-                .values()
-                .append_value("static_metadata_b");
-            metadata_builder_b.append(true);
-            Ok(metadata_builder_b.finish())
-        };
+        let mut metadata_builder_b = ListBuilder::new(StringBuilder::new());
+        metadata_builder_b
+            .values()
+            .append_value("static_metadata_b");
+        metadata_builder_b.append(true);
 
-        let static_lens = LensN {
-            input: InputColumn::new("nullability".parse().unwrap(), "strings"),
-            outputs: vec![
-                OutputColumn {
-                    entity_path: EntityPath::parse_forgiving("nullability/static"),
-                    component_descr: ComponentDescriptor::partial("static_metadata_a"),
-                    ops: vec![Op::func(static_fn_a)],
-                    is_static: true,
-                },
-                OutputColumn {
-                    entity_path: EntityPath::parse_forgiving("nullability/static"),
-                    component_descr: ComponentDescriptor::partial("static_metadata_b"),
-                    ops: vec![Op::func(static_fn_b)],
-                    is_static: true,
-                },
-            ],
-        };
+        let static_lens =
+            LensN::input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
+                .static_output_column(
+                    "nullability/static",
+                    ComponentDescriptor::partial("static_metadata_a"),
+                    [Op::constant(metadata_builder_a.finish())],
+                )
+                .static_output_column(
+                    "nullability/static",
+                    ComponentDescriptor::partial("static_metadata_b"),
+                    [Op::constant(metadata_builder_b.finish())],
+                )
+                .build();
 
         let pipeline = LensRegistry {
             lenses: vec![static_lens],

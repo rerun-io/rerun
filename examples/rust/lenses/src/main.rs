@@ -52,14 +52,14 @@ fn lens_flag() -> anyhow::Result<LensN> {
         .next()
         .unwrap();
 
-    let lens = LensN::for_column("/flag".parse()?, "com.Example.Flag:flag")
-        .add_output_column("/flag", Scalars::descriptor_scalars(), [Op::func(step_fn)])
-        .add_static_output_column(
+    let lens = LensN::input_column("/flag".parse()?, "com.Example.Flag:flag")
+        .output_column("/flag", Scalars::descriptor_scalars(), [Op::func(step_fn)])
+        .static_output_column(
             "/flag",
             series_points.descriptor,
             [Op::constant(series_points.list_array)],
         )
-        .add_static_output_column(
+        .static_output_column(
             "/flag",
             series_lines.descriptor,
             [Op::constant(series_lines.list_array)],
@@ -72,17 +72,17 @@ fn lens_flag() -> anyhow::Result<LensN> {
 fn main() -> anyhow::Result<()> {
     re_log::setup_logging();
 
-    let instruction = LensN::for_column("/instructions".parse()?, "com.Example.Instruction:text")
-        .add_output_column("instructions", TextDocument::descriptor_text(), [])
+    let instruction = LensN::input_column("/instructions".parse()?, "com.Example.Instruction:text")
+        .output_column("instructions", TextDocument::descriptor_text(), [])
         .build();
 
-    let destructure = LensN::for_column("/nested".parse()?, "com.Example.Nested:payload")
-        .add_output_column(
+    let destructure = LensN::input_column("/nested".parse()?, "com.Example.Nested:payload")
+        .output_column(
             "nested/a",
             Scalars::descriptor_scalars(),
-            [Op::access_field("a"), Op::cast(DataType::Float64)],
+            [Op::access_field("a"), Op::cast(DataType::Float32)],
         )
-        .add_output_column(
+        .output_column(
             "nested/b",
             Scalars::descriptor_scalars(),
             [Op::access_field("b")],
