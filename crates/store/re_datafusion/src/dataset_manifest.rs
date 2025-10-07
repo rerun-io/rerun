@@ -62,7 +62,7 @@ impl GrpcStreamToTable for DatasetManifestProvider {
                     .await
                     .map_err(|err| {
                         DataFusionError::External(
-                            format!("Couldn't get partition table schema: {err}").into(),
+                            format!("Couldn't get dataset manifest schema: {err}").into(),
                         )
                     })
             })
