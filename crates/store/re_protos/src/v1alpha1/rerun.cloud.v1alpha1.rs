@@ -921,62 +921,6 @@ impl ::prost::Name for DoGlobalMaintenanceResponse {
         "/rerun.cloud.v1alpha1.DoGlobalMaintenanceResponse".into()
     }
 }
-/// A task is a unit of work that can be submitted to the system
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Task {
-    /// Unique identifier for the task
-    #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<super::super::common::v1alpha1::TaskId>,
-    /// Type of the task
-    #[prost(string, tag = "2")]
-    pub task_type: ::prost::alloc::string::String,
-    /// Task-type dependant data necessary to de-serialize the task
-    #[prost(bytes = "bytes", tag = "3")]
-    pub task_data: ::prost::bytes::Bytes,
-}
-impl ::prost::Name for Task {
-    const NAME: &'static str = "Task";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.Task".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.Task".into()
-    }
-}
-/// `SubmitTasksRequest` is the request message for submitting tasks
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SubmitTasksRequest {
-    #[prost(message, repeated, tag = "1")]
-    pub tasks: ::prost::alloc::vec::Vec<Task>,
-}
-impl ::prost::Name for SubmitTasksRequest {
-    const NAME: &'static str = "SubmitTasksRequest";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.SubmitTasksRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.SubmitTasksRequest".into()
-    }
-}
-/// `SubmitTaskResponse` contains, for each submitted task
-/// its submission outcome, encoded as a `RecordBatch`
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SubmitTasksResponse {
-    #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
-}
-impl ::prost::Name for SubmitTasksResponse {
-    const NAME: &'static str = "SubmitTasksResponse";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.SubmitTasksResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.SubmitTasksResponse".into()
-    }
-}
 /// `QueryTasksRequest` is the request message for querying tasks status
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryTasksRequest {
