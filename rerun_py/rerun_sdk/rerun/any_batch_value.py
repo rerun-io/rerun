@@ -127,7 +127,7 @@ class AnyBatchValue(ComponentBatchLike):
     See also [rerun.AnyValues][].
     """
 
-    def __init__(self, descriptor: str | ComponentDescriptor, value: Any, drop_untyped_nones: bool = True) -> None:
+    def __init__(self, descriptor: str | ComponentDescriptor, value: Any, *, drop_untyped_nones: bool = True) -> None:
         """
         Construct a new AnyBatchValue.
 
@@ -181,7 +181,7 @@ class AnyBatchValue(ComponentBatchLike):
                 self.pa_array = value.as_arrow_array()
             else:
                 if pa_type is None:
-                    if value is None or isinstance(value, Sized) and len(value) == 0:
+                    if value is None or (isinstance(value, Sized) and len(value) == 0):
                         if not drop_untyped_nones:
                             raise ValueError(f"Cannot convert {value} to arrow array without an explicit type")
                     else:
@@ -248,5 +248,5 @@ class AnyBatchValue(ComponentBatchLike):
             previously logged with a type.
 
         """
-        inst = cls(descriptor, value, drop_untyped_nones)
+        inst = cls(descriptor, value, drop_untyped_nones=drop_untyped_nones)
         return ComponentColumn(descriptor, inst)

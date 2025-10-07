@@ -49,8 +49,12 @@ fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: 
             let time_range = db
                 .time_range_for(timeline.name())
                 .unwrap_or(AbsoluteTimeRange::EMPTY);
-            let time_ranges_ui =
-                TimeRangesUi::new(row_rect.x_range(), time_range.into(), &[time_range]);
+            let time_ranges_ui = TimeRangesUi::new(
+                row_rect.x_range(),
+                time_range.into(),
+                &[time_range],
+                &[AbsoluteTimeRange::EVERYTHING],
+            );
 
             b.iter(|| {
                 black_box(build_density_graph(

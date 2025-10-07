@@ -346,11 +346,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             re_chunk::LatestAtQuery::new(TimelineName::new(""), TimeInt::STATIC);
 
                         let component_descriptor = store
-                            .entity_component_descriptor(
-                                &descr.entity_path,
-                                descr.archetype,
-                                descr.component,
-                            )
+                            .entity_component_descriptor(&descr.entity_path, descr.component)
                             .into_iter()
                             .next()?;
 
@@ -1067,11 +1063,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         re_chunk::LatestAtQuery::new(state.filtered_index, *cur_index_value);
 
                     let component_descriptor = store
-                        .entity_component_descriptor(
-                            &descr.entity_path,
-                            descr.archetype,
-                            descr.component,
-                        )
+                        .entity_component_descriptor(&descr.entity_path, descr.component)
                         .into_iter()
                         .next()?;
 

@@ -12,6 +12,7 @@ import pyarrow as pa
 import pytest
 from datafusion import col, functions as f
 from rerun.catalog import CatalogClient
+from rerun_bindings import EntryKind
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -24,6 +25,9 @@ CATALOG_URL = f"rerun+http://{HOST}:{PORT}"
 DATASET_NAME = "dataset"
 
 DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "rrd" / "dataset"
+TABLE_FILEPATH = (
+    pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "table" / "lance" / "simple_datatypes"
+)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -112,6 +116,7 @@ class ServerInstance:
 @pytest.fixture(scope="module")
 def server_instance() -> Generator[ServerInstance, None, None]:
     assert DATASET_FILEPATH.is_dir()
+    assert TABLE_FILEPATH.is_dir()
 
     env = os.environ.copy()
     if "RUST_LOG" not in env:
@@ -119,7 +124,20 @@ def server_instance() -> Generator[ServerInstance, None, None]:
         env["RUST_LOG"] = "warning"
 
     # TODO(#11173): pick a free port
-    cmd = ["python", "-m", "rerun", "server", "--dataset", str(DATASET_FILEPATH)]
+    cmd = [
+        "python",
+        "-m",
+        "rerun",
+        "server",
+        "--dataset",
+        str(DATASET_FILEPATH),
+        "--table",
+        str(TABLE_FILEPATH),
+        "--table",
+        f"second_schema.second_table={TABLE_FILEPATH}",
+        "--table",
+        f"alternate_catalog.third_schema.third_table={TABLE_FILEPATH}",
+    ]
     server_process = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     try:
@@ -250,9 +268,8 @@ def test_tables_to_arrow_reader(server_instance: ServerInstance) -> None:
     for partition_batch in dataset.partition_table().to_arrow_reader():
         assert partition_batch.num_rows > 0
 
-    # TODO(tsaucer) Once OSS server supports table entries, uncomment this test
-    # for table_entry in client.table_entries()[0].to_arrow_reader():
-    #     assert table_entry.num_rows > 0
+    for table_entry in server_instance.client.table_entries()[0].to_arrow_reader():
+        assert table_entry.num_rows > 0
 
 
 def test_url_generation(server_instance: ServerInstance) -> None:
@@ -301,3 +318,78 @@ def test_query_view_from_schema(server_instance: ServerInstance) -> None:
                 index=local_index_column, contents={entry.entity_path: entry.component}
             ).df()
             assert contents.count() > 0
+
+
+def test_query_lance_table(server_instance: ServerInstance) -> None:
+    expected_table_name = "simple_datatypes"
+    entries_table_name = "__entries"
+
+    client = server_instance.client
+    assert expected_table_name in client.table_names()
+    assert entries_table_name in client.table_names()
+
+    entries = client.table_entries()
+    assert len(entries) == 4
+
+    tables = client.tables()
+    assert tables.collect()[0].num_rows == 3
+
+    table = client.get_table(name=expected_table_name)
+    assert table.collect()[0].num_rows > 0
+
+    entry = client.get_table_entry(name=expected_table_name)
+    assert entry.name == expected_table_name
+    assert entry.kind == EntryKind.TABLE
+
+
+def test_dataset_schema_comparison_self_consistent(server_instance: ServerInstance) -> None:
+    dataset = server_instance.dataset
+
+    schema_0 = dataset.schema()
+    schema_1 = dataset.schema()
+    set_diff = set(schema_0).symmetric_difference(schema_1)
+
+    assert len(set_diff) == 0, f"Schema iterator is not self-consistent: {set_diff}"
+    assert schema_0 == schema_1, "Schema is not self-consistent"
+
+
+def test_datafusion_catalog_get_tables(server_instance: ServerInstance) -> None:
+    ctx = server_instance.client.ctx
+
+    # Verify we have the catalog provider and schema provider
+    catalog_provider = ctx.catalog("datafusion")
+    assert catalog_provider is not None
+
+    schema_provider = catalog_provider.schema("public")
+    assert schema_provider is not None
+
+    # Note: as of DataFusion 50.0.0 this is not a DataFrame
+    # but rather a python object that describes the table.
+    table = schema_provider.table("simple_datatypes")
+    assert table is not None
+
+    schema_provider = catalog_provider.schema("second_schema")
+    assert schema_provider.table("second_table") is not None
+
+    catalog_provider = ctx.catalog("alternate_catalog")
+    schema_provider = catalog_provider.schema("third_schema")
+    assert schema_provider.table("third_table") is not None
+
+    # Get by table name since it should be in the default catalog/schema
+    df = ctx.table("simple_datatypes")
+    rb = df.collect()[0]
+    assert rb.num_rows > 0
+
+    # Get table by fully qualified name
+    df = ctx.table("datafusion.public.simple_datatypes")
+    rb = df.collect()[0]
+    assert rb.num_rows > 0
+
+    # Verify SQL parsing for catalog provider works as expected
+    df = ctx.sql("SELECT * FROM simple_datatypes")
+    rb = df.collect()[0]
+    assert rb.num_rows > 0
+
+    df = ctx.sql("SELECT * FROM datafusion.public.simple_datatypes")
+    rb = df.collect()[0]
+    assert rb.num_rows > 0

@@ -21,7 +21,6 @@ use crate::wasm_compat::make_future_send;
 
 #[derive(Clone)]
 pub struct TableEntryTableProvider {
-    //TODO(#10191): this should use a `ConnectionRegistryHandle` instead
     client: ConnectionClient,
     table: EntryIdOrName,
 
@@ -45,6 +44,10 @@ impl TableEntryTableProvider {
             table: table.into(),
             table_id: None,
         }
+    }
+
+    pub fn new_entry_list(client: ConnectionClient) -> Self {
+        Self::new(client, "__entries")
     }
 
     /// This is a convenience function

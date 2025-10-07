@@ -71,7 +71,7 @@ pub struct DataframePartitionStreamInner {
     client: ConnectionClient,
     chunk_infos: Vec<RecordBatch>,
 
-    chunk_tx: Option<Sender<ChunksWithPartition>>,
+    chunk_tx: Option<Sender<Result<ChunksWithPartition, re_redap_client::StreamError>>>,
     store_output_channel: Receiver<RecordBatch>,
     io_join_handle: Option<JoinHandle<Result<(), DataFusionError>>>,
 
@@ -227,13 +227,16 @@ impl PartitionStreamExec {
                     SortOptions::new(false, true),
                 ));
             }
-            vec![LexOrdering::new(physical_ordering)]
+            vec![
+                LexOrdering::new(physical_ordering)
+                    .expect("LexOrdering should return Some since input is not empty"),
+            ]
         } else {
             vec![]
         };
 
         let eq_properties =
-            EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), &orderings);
+            EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), orderings);
 
         let partition_in_output_schema = projection.map(|p| p.contains(&0)).unwrap_or(false);
 
@@ -322,13 +325,16 @@ async fn send_next_row(
 // TODO(#10781) - support for sending intermediate results/chunks
 #[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_store_cpu_worker_thread(
-    mut input_channel: Receiver<ChunksWithPartition>,
+    mut input_channel: Receiver<Result<ChunksWithPartition, re_redap_client::StreamError>>,
     output_channel: Sender<RecordBatch>,
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
 ) -> Result<(), DataFusionError> {
     let mut current_stores: Option<(String, ChunkStoreHandle, QueryHandle<StorageEngine>)> = None;
     while let Some(chunks_and_partition_ids) = input_channel.recv().await {
+        let chunks_and_partition_ids =
+            chunks_and_partition_ids.map_err(|err| exec_datafusion_err!("{err}"))?;
+
         for (chunk, partition_id) in chunks_and_partition_ids {
             let partition_id = partition_id
                 .ok_or_else(|| exec_datafusion_err!("Received chunk without a partition id"))?;
@@ -402,7 +408,7 @@ async fn chunk_store_cpu_worker_thread(
 async fn chunk_stream_io_loop(
     mut client: ConnectionClient,
     chunk_infos: Vec<RecordBatch>,
-    output_channel: Sender<ChunksWithPartition>,
+    output_channel: Sender<Result<ChunksWithPartition, re_redap_client::StreamError>>,
 ) -> Result<(), DataFusionError> {
     let chunk_infos = chunk_infos
         .into_iter()
@@ -435,7 +441,7 @@ async fn chunk_stream_io_loop(
             fetch_chunks_response_stream,
         );
 
-        while let Some(Ok(chunk_and_partition_id)) = chunk_stream.next().await {
+        while let Some(chunk_and_partition_id) = chunk_stream.next().await {
             if output_channel.send(chunk_and_partition_id).await.is_err() {
                 break;
             }

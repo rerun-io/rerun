@@ -100,13 +100,11 @@ impl FromStr for InstancePath {
         let DataPath {
             entity_path,
             instance,
-            component_descriptor,
+            component,
         } = DataPath::from_str(s)?;
 
-        if let Some(component_descriptor) = component_descriptor {
-            return Err(PathParseError::UnexpectedComponentDescriptor(
-                component_descriptor.into(),
-            ));
+        if let Some(component) = component {
+            return Err(PathParseError::UnexpectedComponent(component));
         }
 
         let instance = instance.unwrap_or(Instance::ALL);

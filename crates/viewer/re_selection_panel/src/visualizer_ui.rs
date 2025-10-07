@@ -298,7 +298,7 @@ fn visualizer_components(
                 };
 
                 re_data_ui::ComponentPathLatestAtResults {
-                    component_path: ComponentPath::new(entity_path, component_descr.clone()),
+                    component_path: ComponentPath::new(entity_path, component_descr.component),
                     unit: latest_at_unit,
                 }
                 .data_ui(ctx.viewer_ctx, ui, UiLayout::List, query, db);
@@ -334,7 +334,7 @@ fn visualizer_components(
                             re_data_ui::ComponentPathLatestAtResults {
                                 component_path: ComponentPath::new(
                                     data_result.entity_path.clone(),
-                                    component_descr.clone(),
+                                    component_descr.component,
                                 ),
                                 unit,
                             }

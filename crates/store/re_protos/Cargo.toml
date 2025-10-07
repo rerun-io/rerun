@@ -31,12 +31,15 @@ re_tuid.workspace = true
 
 # External
 arrow.workspace = true
+http.workspace = true
 jiff.workspace = true
+pin-project-lite.workspace = true
 prost-types.workspace = true
 prost.workspace = true
 pyo3 = { workspace = true, optional = true }
 serde.workspace = true
 thiserror.workspace = true
+tower.workspace = true
 url = { workspace = true, features = ["serde"] }
 
 # Native dependencies:

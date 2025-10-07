@@ -36,10 +36,7 @@ def test_scalar_axis() -> None:
         visible = cast("Optional[BoolLike]", visible)
 
         print(
-            f"rr.PlotLegend(\n"
-            f"    corner={corner!r}\n"  #
-            f"    visible={visible!r}\n"
-            f")",
+            f"rr.PlotLegend(\n    corner={corner!r}\n    visible={visible!r}\n)",
         )
         arch = rrb.PlotLegend(
             corner=corner,

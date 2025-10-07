@@ -19,7 +19,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::datatypes {
-    /// **Datatype**: A test of an enumate with specified values.
+    /// **Datatype**: A test of an enumerate with specified values.
     enum class ValuedEnum : uint8_t {
 
         /// One.

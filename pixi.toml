@@ -92,7 +92,7 @@ RERUN_DEV_ENVIRONMENT = "true"
 # - The python-dev feature is not included in the default environment because it can
 #   lead to unexpected (lengthy) Rerun build during environment creation.
 # - The cpp feature cannot be included in the default environment because
-#   it breaks compillation of the rerun client on linux. See: https://github.com/rerun-io/rerun/issues/6852
+#   it breaks compilation of the rerun client on linux. See: https://github.com/rerun-io/rerun/issues/6852
 default = ["base", "wheel-build"]
 
 # The py environment is for running any code with a dependency on the python `rerun-sdk`.
@@ -617,7 +617,7 @@ taplo = "=0.9.1"
 tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67"           # For displaying progress in various utility scripts.
 typing_extensions = ">4.5"
-typos = ">=1.16.20"
+typos = ">=1.37.2"
 gh = ">=2.79.0,<3"
 
 
@@ -740,7 +740,7 @@ av = "==14.2.0"
 # during the wheel-test task itself is otherwise painful.
 torch = "==2.8.0" # This must match the torch version in any package we install during `wheel-test`
 # DataFusion is needed to run integration tests, but it is an optional dependency for rerun sdk
-datafusion = "==48.0.0"
+datafusion = "==49.0.0"
 
 [feature.wheel-test.dependencies]
 pip = ">=23"
@@ -780,7 +780,7 @@ umap-learn = "==0.5.7"
 [feature.examples-common.pypi-dependencies]
 # External deps
 av = "==14.2.0"
-datafusion = "==48.0.0"
+datafusion = "==49.0.0"
 jupyter = ">=1.0"
 polars = ">=0.12.0"
 

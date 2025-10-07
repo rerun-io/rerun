@@ -297,7 +297,7 @@ impl ViewClassRegistry {
         )
     }
 
-    /// For each visualizer, the set of entities that have at least one matching indicator component.
+    /// For each visualizer, the set of entities that have at least one component with a matching archetype name.
     pub fn indicated_entities_per_visualizer(
         &self,
         store_id: &re_log_types::StoreId,

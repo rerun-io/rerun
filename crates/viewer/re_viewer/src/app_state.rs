@@ -3,10 +3,10 @@ use std::{borrow::Cow, str::FromStr as _};
 use ahash::HashMap;
 use egui::{Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
 
-use re_chunk::TimelineName;
+use re_chunk::{Timeline, TimelineName};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{AbsoluteTimeRangeF, LogMsg, StoreId, TableId};
+use re_log_types::{AbsoluteTimeRangeF, DataSourceMessage, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
 use re_smart_channel::ReceiveSet;
@@ -14,9 +14,10 @@ use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintUndoState, CommandSender,
-    ComponentUiRegistry, DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState,
-    RecordingConfig, SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
-    SystemCommandSender as _, TableStore, ViewClassRegistry, ViewStates, ViewerContext,
+    ComponentUiRegistry, DataQueryResult, DisplayMode, DragAndDropManager, GlobalContext,
+    IndicatedEntities, Item, MaybeVisualizableEntities, PerVisualizer, PlayState, RecordingConfig,
+    SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
+    SystemCommandSender as _, TableStore, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
     blueprint_timeline,
     open_url::{self, ViewerOpenUrl},
 };
@@ -30,6 +31,9 @@ use crate::{
 };
 
 const WATERMARK: bool = false; // Nice for recording media material
+
+#[cfg(feature = "testing")]
+pub type TestHookFn = Box<dyn FnOnce(&ViewerContext<'_>)>;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -64,6 +68,12 @@ pub struct AppState {
     pub(crate) open_url_modal: crate::ui::OpenUrlModal,
     #[serde(skip)]
     pub(crate) share_modal: crate::ui::ShareModal,
+
+    /// Test-only: single-shot callback to run at the end of the frame. Used in integration tests
+    /// to interact with the `ViewerContext`.
+    #[cfg(feature = "testing")]
+    #[serde(skip)]
+    pub(crate) test_hook: Option<TestHookFn>,
 
     /// A stack of display modes that represents tab-like navigation of the user.
     #[serde(skip)]
@@ -114,6 +124,9 @@ impl Default for AppState {
             view_states: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
+
+            #[cfg(feature = "testing")]
+            test_hook: None,
         }
     }
 }
@@ -168,7 +181,7 @@ impl AppState {
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
         view_class_registry: &ViewClassRegistry,
-        rx_log: &ReceiveSet<LogMsg>,
+        rx_log: &ReceiveSet<DataSourceMessage>,
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
         event_dispatcher: Option<&crate::event::ViewerEventDispatcher>,
@@ -278,7 +291,7 @@ impl AppState {
                     view_class_registry.indicated_entities_per_visualizer(recording.store_id());
 
                 // Execute the queries for every `View`
-                let mut query_results = {
+                let query_results = {
                     re_tracing::profile_scope!("query_results");
                     viewport_ui
                         .blueprint
@@ -359,39 +372,18 @@ impl AppState {
                 // Update the viewport. May spawn new views and handle queued requests (like screenshots).
                 viewport_ui.on_frame_start(&ctx);
 
-                for view in viewport_ui.blueprint.views.values() {
-                    if let Some(query_result) = query_results.get_mut(&view.id) {
-                        // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
-                        // Note that right now we determine *all* visualizable entities, not just the queried ones.
-                        // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                        let visualizable_entities = view
-                            .class(view_class_registry)
-                            .determine_visualizable_entities(
-                                &maybe_visualizable_entities_per_visualizer,
-                                recording,
-                                &view_class_registry
-                                    .new_visualizer_collection(view.class_identifier()),
-                                &view.space_origin,
-                            );
-
-                        let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
-                            view,
-                            view_class_registry,
-                            &maybe_visualizable_entities_per_visualizer,
-                            &visualizable_entities,
-                            &indicated_entities_per_visualizer,
-                        );
-
-                        resolver.update_overrides(
-                            store_context.blueprint,
-                            &blueprint_query,
-                            rec_cfg.time_ctrl.read().timeline(),
-                            view_class_registry,
-                            query_result,
-                            view_states,
-                        );
-                    }
-                }
+                let active_timeline = *rec_cfg.time_ctrl.read().timeline();
+                let query_results = update_overrides(
+                    store_context,
+                    query_results,
+                    view_class_registry,
+                    &viewport_ui.blueprint,
+                    &blueprint_query,
+                    &active_timeline,
+                    &maybe_visualizable_entities_per_visualizer,
+                    &indicated_entities_per_visualizer,
+                    view_states,
+                );
 
                 // We need to recreate the context to appease the borrow checker. It is a bit annoying, but
                 // it's just a bunch of refs so not really that big of a deal in practice.
@@ -678,6 +670,12 @@ impl AppState {
                 self.open_url_modal.ui(ui);
                 self.share_modal
                     .ui(&ctx, ui, startup_options.web_viewer_base_url().as_ref());
+
+                // Only in integration tests: call the test hook if any.
+                #[cfg(feature = "testing")]
+                if let Some(test_hook) = self.test_hook.take() {
+                    test_hook(&ctx);
+                }
             }
         }
 
@@ -760,6 +758,93 @@ impl AppState {
     }
 }
 
+/// Updates the query results for the given viewport UI.
+///
+/// Returns query results derived from the previous one.
+#[expect(clippy::too_many_arguments)]
+fn update_overrides(
+    store_context: &StoreContext<'_>,
+    mut query_results: HashMap<ViewId, DataQueryResult>,
+    view_class_registry: &ViewClassRegistry,
+    viewport_blueprint: &ViewportBlueprint,
+    blueprint_query: &LatestAtQuery,
+    active_timeline: &Timeline,
+    maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
+    indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    view_states: &mut ViewStates,
+) -> HashMap<ViewId, DataQueryResult> {
+    use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
+
+    struct OverridesUpdateTask<'a> {
+        view: &'a re_viewport_blueprint::ViewBlueprint,
+        view_state: &'a dyn re_viewer_context::ViewState,
+        query_result: DataQueryResult,
+    }
+
+    for view in viewport_blueprint.views.values() {
+        view_states.ensure_state_exists(view.id, view.class(view_class_registry));
+    }
+
+    let work_items = viewport_blueprint
+        .views
+        .values()
+        .filter_map(|view| {
+            query_results.remove(&view.id).map(|query_result| {
+                let view_state = view_states
+                    .get(view.id)
+                    .expect("View state should exist, we just called ensure_state_exists on it.");
+                OverridesUpdateTask {
+                    view,
+                    view_state,
+                    query_result,
+                }
+            })
+        })
+        .collect::<Vec<_>>();
+
+    work_items
+        .into_par_iter()
+        .map(
+            |OverridesUpdateTask {
+                 view,
+                 view_state,
+                 mut query_result,
+             }| {
+                // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
+                // Note that right now we determine *all* visualizable entities, not just the queried ones.
+                // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
+                let visualizable_entities = view
+                    .class(view_class_registry)
+                    .determine_visualizable_entities(
+                        maybe_visualizable_entities_per_visualizer,
+                        store_context.recording,
+                        &view_class_registry.new_visualizer_collection(view.class_identifier()),
+                        &view.space_origin,
+                    );
+
+                let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
+                    view,
+                    view_class_registry,
+                    maybe_visualizable_entities_per_visualizer,
+                    &visualizable_entities,
+                    indicated_entities_per_visualizer,
+                );
+
+                resolver.update_overrides(
+                    store_context.blueprint,
+                    blueprint_query,
+                    active_timeline,
+                    view_class_registry,
+                    &mut query_result,
+                    view_state,
+                );
+
+                (view.id, query_result)
+            },
+        )
+        .collect()
+}
+
 fn table_ui(
     ctx: &ViewerContext<'_>,
     runtime: &AsyncRuntimeHandle,
@@ -775,7 +860,7 @@ fn table_ui(
 fn move_time(
     ctx: &ViewerContext<'_>,
     recording: &EntityDb,
-    rx: &ReceiveSet<LogMsg>,
+    rx: &ReceiveSet<DataSourceMessage>,
     events: Option<&ViewerEventDispatcher>,
 ) {
     let dt = ctx.egui_ctx().input(|i| i.stable_dt);

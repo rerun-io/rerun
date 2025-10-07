@@ -24,7 +24,7 @@ static GLOBAL: AccountingAllocator<std::alloc::System> =
     AccountingAllocator::new(std::alloc::System);
 
 struct Channel {
-    log_tx: re_smart_channel::Sender<re_log_types::LogMsg>,
+    log_tx: re_smart_channel::Sender<re_log_types::DataSourceMessage>,
     table_tx: crossbeam::channel::Sender<re_log_types::TableMsg>,
 }
 
@@ -311,7 +311,7 @@ impl WebHandle {
                         use re_log_encoding::stream_rrd_from_http::HttpMessage;
                         match msg {
                             HttpMessage::LogMsg(msg) => {
-                                if tx.send(msg).is_ok() {
+                                if tx.send(msg.into()).is_ok() {
                                     ControlFlow::Continue(())
                                 } else {
                                     re_log::info_once!("Failed to dispatch log message to viewer.");
@@ -661,21 +661,24 @@ impl From<PanelState> for re_types::blueprint::components::PanelState {
 // Keep in sync with the `AppOptions` interface in `rerun_js/web-viewer/index.ts`.
 #[derive(Clone, Default, Deserialize)]
 pub struct AppOptions {
-    viewer_url: Option<String>,
-    url: Option<StringOrStringArray>,
     manifest_url: Option<String>,
     render_backend: Option<String>,
     video_decoder: Option<String>,
     hide_welcome_screen: Option<bool>,
+    // allow_fullscreen: Option<bool>, // Not serialized from js as it governs how the `fullscreen` option is used.
+    enable_history: Option<bool>,
+    // width: Option<String>, // Width & height aren't serialized and only used to configure the canvas.
+    // height: Option<String>,
+    fallback_token: Option<String>,
+
+    // Hidden `WebViewerOptions`
+    // ------------
+    viewer_base_url: Option<String>,
+    notebook: Option<bool>,
+    url: Option<StringOrStringArray>,
     panel_state_overrides: Option<PanelStateOverrides>,
     on_viewer_event: Option<Callback>,
     fullscreen: Option<FullscreenOptions>,
-    enable_history: Option<bool>,
-
-    notebook: Option<bool>,
-    persist: Option<bool>,
-
-    fallback_token: Option<String>,
 }
 
 // Keep in sync with the `FullscreenOptions` interface in `rerun_js/web-viewer/index.ts`
@@ -720,7 +723,7 @@ fn create_app(
     };
 
     let AppOptions {
-        viewer_url,
+        viewer_base_url,
         url,
         manifest_url,
         render_backend,
@@ -732,7 +735,6 @@ fn create_app(
         enable_history,
 
         notebook,
-        persist,
 
         fallback_token,
     } = app_options;
@@ -762,7 +764,7 @@ fn create_app(
             max_bytes: Some(2_500_000_000),
         },
         location: Some(cc.integration_info.web_info.location.clone()),
-        persist_state: persist.unwrap_or(true),
+        persist_state: true,
         is_in_notebook: notebook.unwrap_or(false),
         expect_data_soon: None,
         force_wgpu_backend: render_backend.clone(),
@@ -784,7 +786,7 @@ fn create_app(
         panel_state_overrides: panel_state_overrides.unwrap_or_default().into(),
 
         enable_history,
-        viewer_url,
+        viewer_base_url,
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
 

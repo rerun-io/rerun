@@ -40,6 +40,7 @@ class McapSchema(Archetype):
 
     def __init__(
         self: Any,
+        *,
         id: datatypes.UInt16Like,
         name: datatypes.Utf8Like,
         encoding: datatypes.Utf8Like,

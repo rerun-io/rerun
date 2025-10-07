@@ -100,7 +100,7 @@ class MediaTypeExt:
         ext = Path(path).suffix.lower()
 
         # Images
-        if ext == ".jpg" or ext == ".jpeg":
+        if ext in {".jpg", ".jpeg"}:
             return MediaType.JPEG
         elif ext == ".png":
             return MediaType.PNG

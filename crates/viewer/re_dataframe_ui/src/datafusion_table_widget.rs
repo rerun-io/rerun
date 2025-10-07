@@ -17,11 +17,13 @@ use re_log_types::{EntryId, TimelineName, Timestamp};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, icons};
-use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
+use re_viewer_context::{
+    AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, ViewerContext,
+};
 
 use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQueryResult};
 use crate::display_record_batch::DisplayColumn;
-use crate::filters::{Filter, FilterOperation, FilterState};
+use crate::filters::{ColumnFilter, FilterState};
 use crate::header_tooltip::column_header_tooltip_ui;
 use crate::table_blueprint::{
     ColumnBlueprint, EntryLinksSpec, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
@@ -380,10 +382,21 @@ impl<'a> DataFusionTableWidget<'a> {
         );
 
         if let Some(title) = title {
-            title_ui(ui, Some(&mut table_config), title, url, should_show_spinner);
+            title_ui(
+                ui,
+                viewer_ctx,
+                Some(&mut table_config),
+                title,
+                url,
+                should_show_spinner,
+            );
         }
 
-        filter_state.filter_bar_ui(ui, &mut new_blueprint);
+        filter_state.filter_bar_ui(
+            ui,
+            viewer_ctx.app_options().timestamp_format,
+            &mut new_blueprint,
+        );
 
         apply_table_style_fixes(ui.style_mut());
 
@@ -561,6 +574,7 @@ fn id_from_session_context_and_table(
 
 fn title_ui(
     ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
     table_config: Option<&mut TableConfig>,
     title: &str,
     url: Option<&str>,
@@ -584,7 +598,8 @@ fn title_ui(
                             .on_hover_text(url)
                             .clicked()
                     {
-                        ui.ctx().copy_text(url.into());
+                        ctx.command_sender()
+                            .send_system(SystemCommand::CopyViewerUrl(url.to_owned()));
                     }
 
                     if should_show_spinner {
@@ -700,8 +715,10 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                     // In the future, we'll probably need to be more fine-grained.
                                     #[expect(clippy::collapsible_if)]
                                     if column.blueprint.variant_ui.is_none()
-                                        && let Some(filter_op) =
-                                            FilterOperation::default_for_column(column_field)
+                                        && let Some(column_filter) =
+                                            ColumnFilter::default_for_column(Arc::clone(
+                                                column_field,
+                                            ))
                                     {
                                         if ui
                                             .icon_and_text_menu_item(
@@ -710,10 +727,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                             )
                                             .clicked()
                                         {
-                                            self.filter_state.push_new_filter(Filter::new(
-                                                column_physical_name.clone(),
-                                                filter_op,
-                                            ));
+                                            self.filter_state.push_new_filter(column_filter);
                                         }
                                     }
                                 });

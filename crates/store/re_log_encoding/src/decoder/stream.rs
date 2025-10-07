@@ -64,6 +64,9 @@ enum State {
     /// Compression is only applied to individual `ArrowMsg`s, instead of
     /// the entire stream.
     Message(crate::codec::file::MessageHeader),
+
+    /// Stop reading
+    Aborted,
 }
 
 impl StreamDecoder {
@@ -109,9 +112,31 @@ impl StreamDecoder {
     fn try_read_impl(&mut self) -> Result<Option<LogMsg>, DecodeError> {
         match self.state {
             State::StreamHeader => {
+                let is_first_header = self.chunks.num_read() == 0;
                 if let Some(header) = self.chunks.try_read(FileHeader::SIZE) {
+                    re_log::trace!(?header, "Decoding StreamHeader");
+
                     // header contains version and compression options
-                    let (version, options) = options_from_bytes(header)?;
+                    let (version, options) = match options_from_bytes(header) {
+                        Ok(ok) => ok,
+                        Err(err) => {
+                            // We expected a header, but didn't find one!
+                            if is_first_header {
+                                return Err(err);
+                            } else {
+                                re_log::error!("Trailing bytes in rrd stream: {header:?} ({err})");
+                                self.state = State::Aborted;
+                                return Ok(None);
+                            }
+                        }
+                    };
+
+                    re_log::trace!(
+                        version = version.to_string(),
+                        ?options,
+                        "Found Stream Header"
+                    );
+
                     self.version = Some(version);
                     self.options = options;
 
@@ -131,6 +156,9 @@ impl StreamDecoder {
                     .try_read(crate::codec::file::MessageHeader::SIZE_BYTES)
                 {
                     let header = crate::codec::file::MessageHeader::from_bytes(bytes)?;
+
+                    re_log::trace!(?header, "MessageHeader");
+
                     self.state = State::Message(header);
                     // we might have data left in the current chunk,
                     // immediately try to read the message content
@@ -139,22 +167,41 @@ impl StreamDecoder {
             }
             State::Message(header) => {
                 if let Some(bytes) = self.chunks.try_read(header.len as usize) {
+                    re_log::trace!(?header, "Read message");
+
                     let message = crate::codec::file::decoder::decode_bytes_to_app(
                         &mut self.app_id_cache,
                         header.kind,
                         bytes,
                     )?;
+
                     if let Some(mut message) = message {
+                        re_log::trace!(
+                            "LogMsg::{}",
+                            match message {
+                                LogMsg::SetStoreInfo { .. } => "SetStoreInfo",
+                                LogMsg::ArrowMsg { .. } => "ArrowMsg",
+                                LogMsg::BlueprintActivationCommand { .. } => {
+                                    "BlueprintActivationCommand"
+                                }
+                            }
+                        );
+
                         propagate_version(&mut message, self.version);
                         self.state = State::MessageHeader;
                         return Ok(Some(message));
                     } else {
+                        re_log::trace!("End of stream - expecting a new Streamheader");
+
                         // `None` means end of stream, but there might be concatenated streams,
                         // so try to read another one.
                         self.state = State::StreamHeader;
                         return self.try_read();
                     }
                 }
+            }
+            State::Aborted => {
+                return Ok(None);
             }
         }
 
@@ -182,6 +229,9 @@ struct ChunkBuffer {
 
     /// How many bytes of valid data are currently in `self.buffer`.
     buffer_fill: usize,
+
+    /// How many bytes have been read with [`Self::try_read`] so far?
+    num_read: usize,
 }
 
 impl ChunkBuffer {
@@ -190,6 +240,7 @@ impl ChunkBuffer {
             queue: VecDeque::with_capacity(16),
             buffer: Vec::with_capacity(1024),
             buffer_fill: 0,
+            num_read: 0,
         }
     }
 
@@ -198,6 +249,11 @@ impl ChunkBuffer {
             return;
         }
         self.queue.push_back(Chunk::new(chunk));
+    }
+
+    /// How many bytes have been read with [`Self::try_read`] so far?
+    fn num_read(&self) -> usize {
+        self.num_read
     }
 
     /// Attempt to read exactly `n` bytes out of the queued chunks.
@@ -239,7 +295,7 @@ impl ChunkBuffer {
             // followed by another call to `try_read(N)` with the same `N`
             // won't erroneously return the same bytes
             self.buffer_fill = 0;
-
+            self.num_read += n;
             Some(&self.buffer[..])
         } else {
             None
@@ -254,7 +310,7 @@ fn is_chunk_empty(chunk: &Chunk) -> bool {
 #[cfg(test)]
 mod tests {
     use re_chunk::RowId;
-    use re_log_types::{ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+    use re_log_types::{SetStoreInfo, StoreInfo};
 
     use crate::EncodingOptions;
     use crate::encoder::Encoder;
@@ -265,10 +321,8 @@ mod tests {
         LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *RowId::ZERO,
             info: StoreInfo {
-                store_id: StoreId::new(StoreKind::Recording, ApplicationId::unknown(), "test"),
-                cloned_from: None,
-                store_source: StoreSource::Unknown,
-                store_version: Some(CrateVersion::LOCAL),
+                store_version: Some(CrateVersion::LOCAL), // Encoder sets the crate version
+                ..StoreInfo::testing()
             },
         })
     }

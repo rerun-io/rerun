@@ -1,0 +1,30 @@
+---
+source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
+expression: test_results
+---
+TestResult {
+    filter: NullableBoolean(
+        NullableBooleanFilter(not IsNull),
+    ),
+    field: Field {
+        name: "column",
+        data_type: Boolean,
+        nullable: true,
+        dict_id: 0,
+        dict_is_ordered: false,
+        metadata: {},
+    },
+    unfiltered: BooleanArray
+    [
+      true,
+      true,
+      null,
+      false,
+    ],
+    filtered: BooleanArray
+    [
+      true,
+      true,
+      false,
+    ],
+}

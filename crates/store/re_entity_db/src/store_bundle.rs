@@ -16,9 +16,13 @@ pub enum StoreLoadError {
 // ---
 
 /// Stores many [`EntityDb`]s of recordings and blueprints.
+///
+/// The stores are kept and iterated in insertion order to allow the UI to display them by default
+/// in opening order.
 #[derive(Default)]
 pub struct StoreBundle {
-    recording_store: ahash::HashMap<StoreId, EntityDb>,
+    // `indexmap` is used to keep track of the insertion order.
+    recording_store: indexmap::IndexMap<StoreId, EntityDb>,
 }
 
 impl StoreBundle {
@@ -38,24 +42,18 @@ impl StoreBundle {
         Ok(slf)
     }
 
-    /// All loaded [`EntityDb`], both recordings and blueprints, in arbitrary order.
+    /// All loaded [`EntityDb`], both recordings and blueprints, in insertion order.
     pub fn entity_dbs(&self) -> impl Iterator<Item = &EntityDb> {
         self.recording_store.values()
     }
 
-    /// All loaded [`EntityDb`], both recordings and blueprints, in arbitrary order.
+    /// All loaded [`EntityDb`], both recordings and blueprints, in insertion order.
     pub fn entity_dbs_mut(&mut self) -> impl Iterator<Item = &mut EntityDb> {
         self.recording_store.values_mut()
     }
 
-    pub fn append(&mut self, mut other: Self) {
-        for (id, entity_db) in other.recording_store.drain() {
-            self.recording_store.insert(id, entity_db);
-        }
-    }
-
     pub fn remove(&mut self, id: &StoreId) -> Option<EntityDb> {
-        self.recording_store.remove(id)
+        self.recording_store.shift_remove(id)
     }
 
     // --
@@ -98,12 +96,10 @@ impl StoreBundle {
 
             blueprint_db.set_store_info(re_log_types::SetStoreInfo {
                 row_id: *re_chunk::RowId::new(),
-                info: re_log_types::StoreInfo {
-                    store_id: id.clone(),
-                    cloned_from: None,
-                    store_source: re_log_types::StoreSource::Other("viewer".to_owned()),
-                    store_version: Some(re_build_info::CrateVersion::LOCAL),
-                },
+                info: re_log_types::StoreInfo::new(
+                    id.clone(),
+                    re_log_types::StoreSource::Other("viewer".to_owned()),
+                ),
             });
 
             blueprint_db
@@ -115,18 +111,11 @@ impl StoreBundle {
             .insert(entity_db.store_id().clone(), entity_db);
     }
 
-    /// In no particular order.
+    /// In insertion order.
     pub fn recordings(&self) -> impl Iterator<Item = &EntityDb> {
         self.recording_store
             .values()
             .filter(|log| log.store_kind() == StoreKind::Recording)
-    }
-
-    /// In no particular order.
-    pub fn blueprints(&self) -> impl Iterator<Item = &EntityDb> {
-        self.recording_store
-            .values()
-            .filter(|log| log.store_kind() == StoreKind::Blueprint)
     }
 
     // --
@@ -135,9 +124,9 @@ impl StoreBundle {
         self.recording_store.retain(|_, db| f(db));
     }
 
-    /// In no particular order.
+    /// In insertion order.
     pub fn drain_entity_dbs(&mut self) -> impl Iterator<Item = EntityDb> + '_ {
-        self.recording_store.drain().map(|(_, store)| store)
+        self.recording_store.drain(..).map(|(_, store)| store)
     }
 
     // --

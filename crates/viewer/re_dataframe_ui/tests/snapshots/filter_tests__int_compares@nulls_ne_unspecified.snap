@@ -3,10 +3,12 @@ source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
 expression: test_results
 ---
 TestResult {
-    op: IntCompares {
-        operator: Ne,
-        value: None,
-    },
+    filter: Int(
+        IntFilter {
+            operator: Ne,
+            rhs_value: None,
+        },
+    ),
     field: Field {
         name: "column",
         data_type: Int64,

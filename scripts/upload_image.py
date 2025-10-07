@@ -352,14 +352,13 @@ def run(args: argparse.Namespace) -> None:
 
             object_name = uploader.upload_file(args.path)
             html_str = f"https://static.rerun.io/{object_name}"
-        else:
-            if args.path is None:
-                if args.name is None:
-                    raise RuntimeError("Name is required when uploading from clipboard")
-                else:
-                    html_str = uploader.upload_stack_from_clipboard(args.name)
+        elif args.path is None:
+            if args.name is None:
+                raise RuntimeError("Name is required when uploading from clipboard")
             else:
-                html_str = uploader.upload_stack_from_file(args.path, args.name)
+                html_str = uploader.upload_stack_from_clipboard(args.name)
+        else:
+            html_str = uploader.upload_stack_from_file(args.path, args.name)
 
     except RuntimeError as e:
         print(f"Error: {e.args[0]}", file=sys.stderr)

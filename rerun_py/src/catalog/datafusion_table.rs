@@ -10,7 +10,7 @@ use tracing::instrument;
 use crate::catalog::PyCatalogClientInternal;
 use crate::utils::get_tokio_runtime;
 
-#[pyclass(frozen, name = "DataFusionTable")]
+#[pyclass(frozen, name = "DataFusionTable")] // NOLINT: skip pyclass_eq, non-trivial implementation
 pub struct PyDataFusionTable {
     pub provider: Arc<dyn TableProvider + Send>,
     pub name: String,

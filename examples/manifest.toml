@@ -145,6 +145,8 @@ Showcase basic usage and specific features of Rerun.
 examples = [
   # display order, most interesting first
   "notebook",
+  "notebook_viewer",
+  "notebook_callbacks",
   "clock",
   "dna",
   "graphs",
@@ -182,6 +184,7 @@ examples = [
   "shared_recording",
   "spawn_viewer",
   "stdio",
+  "table_zoo",
   "template",
   "viewer_callbacks",
 ]

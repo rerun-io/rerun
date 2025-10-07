@@ -36,7 +36,7 @@ env:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "read"
@@ -70,7 +70,6 @@ jobs:
           environments: py-docs
 
       - name: Build via mkdocs
-        shell: bash
         run: |
           pixi run -e py-docs mkdocs build --strict -f rerun_py/mkdocs.yml
 
@@ -201,7 +200,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check spelling of entire workspace
-        uses: crate-ci/typos@v1.18.0
+        uses: crate-ci/typos@v1.37.3
 
   cpp-formatting:
     name: C++ formatting check

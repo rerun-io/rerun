@@ -33,7 +33,7 @@ env:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "read"
@@ -72,7 +72,6 @@ jobs:
   # NOTE: We don't want spurious failures caused by issues being closed, so this does not run on CI,
   # at least for the time being.
   # - name: Check for zombie TODOs
-  #   shell: bash
   #   run: |
   #     pixi run ./scripts/zombie_todos.py --token ${{ secrets.GITHUB_TOKEN }}
 
@@ -216,7 +215,7 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
       - name: Check spelling of entire workspace
-        uses: crate-ci/typos@v1.18.0
+        uses: crate-ci/typos@v1.37.3
 
   # ---------------------------------------------------------------------------
 

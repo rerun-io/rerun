@@ -377,6 +377,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                                         store_id: self.ctx.store_id().clone(),
                                         timeline: descr.timeline(),
                                         time: None,
+                                        pending: false,
                                     },
                                 );
                             }

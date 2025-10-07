@@ -35,6 +35,7 @@ ellipsis_reference = re.compile(r"&\.\.\.")
 ellipsis_bare = re.compile(r"^\s*\.\.\.\s*$")
 
 anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
+pyclass_start = re.compile(r"#\[pyclass\(")
 
 double_the = re.compile(r"\bthe the\b")
 double_word = re.compile(r" ([a-z]+) \1[ \.]")
@@ -145,7 +146,7 @@ def lint_line(
             return "It's 'GitHub', not 'github'"
 
     if re.search(r"[.a-zA-Z]  [a-zA-Z]", line):
-        if r"\n  " not in line:  # Allow `\n  `, which happens e.g. when markdown is embeedded in a string
+        if r"\n  " not in line:  # Allow `\n  `, which happens e.g. when markdown is embedded in a string
             return "Found double space"
 
     if double_the.search(line.lower()):
@@ -265,12 +266,12 @@ def lint_line(
 
     # Deref impls should be marked #[inline] or #[inline(always)].
     if "fn deref(&self)" in line or "fn deref_mut(&mut self)" in line:
-        if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
+        if prev_line_stripped not in {"#[inline]", "#[inline(always)]"}:
             return "Deref/DerefMut impls should be marked #[inline]"
 
     # Deref impls should be marked #[inline] or #[inline(always)].
     if "fn as_ref(&self)" in line or "fn borrow(&self)" in line:
-        if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
+        if prev_line_stripped not in {"#[inline]", "#[inline(always)]"}:
             return "as_ref/borrow implementations should be marked #[inline]"
 
     if any(
@@ -680,6 +681,109 @@ def lint_workspace_lints(cargo_file_content: str) -> str | None:
 
 # -----------------------------------------------------------------------------
 
+
+def lint_pyclass_eq(lines_in: list[str]) -> tuple[list[str], list[int]]:
+    """Only for Rust files. Check that #[pyclass(...)] declarations include 'eq'."""
+
+    errors: list[str] = []
+    error_linenumbers: list[int] = []
+
+    i = 0
+    while i < len(lines_in):
+        line = lines_in[i]
+        line_nr = i + 1
+
+        # Check if this line starts a pyclass declaration
+        if pyclass_start.search(line.strip()):
+            # Collect the entire pyclass declaration (it might span multiple lines)
+            pyclass_content = line
+            original_line_nr = line_nr
+
+            # Keep reading lines until we find the closing parenthesis
+            paren_count = line.count("(") - line.count(")")
+            j = i + 1
+
+            while paren_count > 0 and j < len(lines_in):
+                next_line = lines_in[j]
+                pyclass_content += next_line
+                paren_count += next_line.count("(") - next_line.count(")")
+                j += 1
+
+            # Check if 'eq' is present in the pyclass declaration
+            # Look for 'eq' as a standalone parameter (not part of another word)
+            if not re.search(r"\beq\b", pyclass_content):
+                errors.append(
+                    f"{original_line_nr}: #[pyclass(...)] should include 'eq' parameter for Python equality support"
+                )
+                error_linenumbers.append(original_line_nr)
+
+            # Move the index to after the pyclass declaration
+            i = j
+        else:
+            i += 1
+
+    return errors, error_linenumbers
+
+
+def test_lint_pyclass_eq() -> None:
+    """Test the lint_pyclass_eq function with various pyclass declarations."""
+
+    should_pass = [
+        # Simple pyclass with eq
+        "#[pyclass(eq)]",
+        # Multiple parameters including eq
+        "#[pyclass(frozen, eq, hash)]",
+        # eq in different position
+        "#[pyclass(eq, frozen)]",
+        # Multi-line pyclass with eq
+        "#[pyclass(\n    frozen,\n    eq,\n    hash\n)]",
+        # eq at the end
+        "#[pyclass(frozen, hash, eq)]",
+        # With module specification
+        '#[pyclass(eq, module = "rerun_bindings.rerun_bindings")]',
+        # Complex real-world example
+        """#[pyclass(
+            frozen,
+            eq,
+            hash,
+            name = "IndexColumnDescriptor",
+            module = "rerun_bindings.rerun_bindings"
+        )]""",
+    ]
+
+    should_error = [
+        # Missing eq parameter
+        "#[pyclass(frozen)]",
+        # Multiple parameters but no eq
+        "#[pyclass(frozen, hash)]",
+        # With module but no eq
+        '#[pyclass(module = "rerun_bindings.rerun_bindings")]',
+        # Multi-line without eq
+        "#[pyclass(\n    frozen,\n    hash\n)]",
+        # Complex example without eq
+        """#[pyclass(
+            frozen,
+            hash,
+            name = "IndexColumnDescriptor",
+            module = "rerun_bindings.rerun_bindings"
+        )]""",
+    ]
+
+    # Test cases that should pass (no errors)
+    for test_case in should_pass:
+        lines = test_case.split("\n")
+        errors, _ = lint_pyclass_eq(lines)
+        assert len(errors) == 0, f'expected "{test_case}" to pass, but got errors: {errors}'
+
+    # Test cases that should fail (produce errors)
+    for test_case in should_error:
+        lines = test_case.split("\n")
+        errors, _ = lint_pyclass_eq(lines)
+        assert len(errors) > 0, f'expected "{test_case}" to fail, but got no errors'
+
+
+# -----------------------------------------------------------------------------
+
 force_capitalized = [
     "2D",
     "3D",
@@ -1082,6 +1186,16 @@ def lint_file(filepath: str, args: Any) -> int:
             print(source.error(error))
         num_errors += len(errors)
 
+        # Check for pyclass eq parameter in rerun_py Rust files
+        if filepath.startswith("./rerun_py/") and filepath.endswith(".rs"):
+            pyclass_errors, error_lines = lint_pyclass_eq(source.lines)
+            valid_errors = 0
+            for error, line_number in zip(pyclass_errors, error_lines):
+                if not source.should_ignore(line_number):
+                    print(source.error(error))
+                    valid_errors += 1
+            num_errors += valid_errors
+
         if args.fix:
             source.rewrite(lines_out)
 
@@ -1145,8 +1259,7 @@ def lint_crate_docs() -> int:
         crate = cargo_toml.parent
         crate_name = crate.name
 
-        if crate_name in listed_crates:
-            del listed_crates[crate_name]
+        listed_crates.pop(crate_name, None)
 
         if not re.search(r"\b" + crate_name + r"\b", architecture_md):
             print(f"{architecture_md_file}: missing documentation for crate {crate.name}")
@@ -1165,6 +1278,7 @@ def main() -> None:
     test_lint_line()
     test_lint_vertical_spacing()
     test_lint_workspace_deps()
+    test_lint_pyclass_eq()
     test_is_emoji()
 
     parser = argparse.ArgumentParser(description="Lint code with custom linter.")

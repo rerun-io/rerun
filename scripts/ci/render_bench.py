@@ -231,10 +231,8 @@ def min_and_max(data: list[float]) -> tuple[float, float]:
     min_value = float("inf")
     max_value = float("-inf")
     for value in data:
-        if value < min_value:
-            min_value = value
-        if value > max_value:
-            max_value = value
+        min_value = min(min_value, value)
+        max_value = max(max_value, value)
     return (min_value, max_value)
 
 

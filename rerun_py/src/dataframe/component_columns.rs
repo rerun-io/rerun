@@ -119,10 +119,11 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
 ///     The component to select
 #[pyclass(
     frozen,
+    eq,
     name = "ComponentColumnSelector",
     module = "rerun_bindings.rerun_bindings"
 )]
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PyComponentColumnSelector(pub ComponentColumnSelector);
 
 #[pymethods]

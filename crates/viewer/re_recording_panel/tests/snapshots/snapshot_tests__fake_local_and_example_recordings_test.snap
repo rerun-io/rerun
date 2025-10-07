@@ -18,7 +18,7 @@ local_apps:
       - entity_db:
           kind: Recording
           application_id: test_app
-          recording_id: "00000000000000000000000000000000"
+          recording_id: test_recording
 local_tables: []
 example_apps:
   - app_id: rerun_example_dna

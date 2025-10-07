@@ -1,7 +1,9 @@
 //! Integration tests for rerun and the in memory server.
 
+mod kittest_harness_ext;
 mod test_data;
 
+pub use kittest_harness_ext::HarnessExt;
 use re_redap_client::{ClientConnectionError, ConnectionClient, ConnectionRegistry};
 use re_server::ServerHandle;
 use re_uri::external::url::Host;
@@ -21,6 +23,7 @@ impl TestServer {
             addr: "127.0.0.1".to_owned(),
             port,
             datasets: vec![],
+            tables: vec![],
         };
         let server_handle = args
             .create_server_handle()

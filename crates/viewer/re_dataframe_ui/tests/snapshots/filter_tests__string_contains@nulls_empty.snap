@@ -3,8 +3,11 @@ source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
 expression: test_results
 ---
 TestResult {
-    op: StringContains(
-        "",
+    filter: String(
+        StringFilter {
+            operator: Contains,
+            query: "",
+        },
     ),
     field: Field {
         name: "column",

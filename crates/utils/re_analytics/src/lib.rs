@@ -428,6 +428,7 @@ impl Properties for re_build_info::BuildInfo {
             is_in_rerun_workspace,
             target_triple,
             datetime,
+            is_debug_build,
         } = self;
 
         event.insert("features", features.to_string());
@@ -437,7 +438,7 @@ impl Properties for re_build_info::BuildInfo {
         event.insert("llvm_version", llvm_version.to_string());
         event.insert("target", target_triple.to_string());
         event.insert("build_date", datetime.to_string());
-        event.insert("debug", cfg!(debug_assertions)); // debug-build?
+        event.insert("debug", is_debug_build);
         event.insert("rerun_workspace", is_in_rerun_workspace);
     }
 }

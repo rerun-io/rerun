@@ -253,6 +253,7 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreInfo> for re_log_types::StoreInfo {
             cloned_from: None,
             store_source,
             store_version,
+            is_partial: false,
         })
     }
 }
@@ -335,21 +336,20 @@ mod tests {
 
     #[test]
     fn store_info_conversion() {
-        let store_info = re_log_types::StoreInfo {
-            store_id: re_log_types::StoreId::new(
+        let store_info = re_log_types::StoreInfo::new_unversioned(
+            re_log_types::StoreId::new(
                 re_log_types::StoreKind::Recording,
                 "test_app_id",
                 "test_recording_id",
             ),
-            cloned_from: None,
-            store_source: re_log_types::StoreSource::PythonSdk(re_log_types::PythonVersion {
+            re_log_types::StoreSource::PythonSdk(re_log_types::PythonVersion {
                 major: 3,
                 minor: 8,
                 patch: 0,
                 suffix: "a".to_owned(),
             }),
-            store_version: None,
-        };
+        );
+
         let proto_store_info: crate::log_msg::v1alpha1::StoreInfo = store_info.clone().into();
         let store_info2: re_log_types::StoreInfo = proto_store_info.try_into().unwrap();
         assert_eq!(store_info, store_info2);
@@ -359,21 +359,19 @@ mod tests {
     fn set_store_info_conversion() {
         let set_store_info = re_log_types::SetStoreInfo {
             row_id: re_tuid::Tuid::new(),
-            info: re_log_types::StoreInfo {
-                store_id: re_log_types::StoreId::new(
+            info: re_log_types::StoreInfo::new_unversioned(
+                re_log_types::StoreId::new(
                     re_log_types::StoreKind::Recording,
                     "test_app_id",
                     "test_recording_id",
                 ),
-                cloned_from: None,
-                store_source: re_log_types::StoreSource::PythonSdk(re_log_types::PythonVersion {
+                re_log_types::StoreSource::PythonSdk(re_log_types::PythonVersion {
                     major: 3,
                     minor: 8,
                     patch: 0,
                     suffix: "a".to_owned(),
                 }),
-                store_version: None,
-            },
+            ),
         };
         let proto_set_store_info: crate::log_msg::v1alpha1::SetStoreInfo =
             set_store_info.clone().into();

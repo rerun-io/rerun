@@ -165,8 +165,9 @@ exclude = [
   'https://www.figma.com/.*',
 
   # Temporarily down or not accessible.
-  'https://github.com/rerun-io/rerun/releases/download/prerelease', # Pre-release downloads may go down while a pre-release updates or pre-release CI partially breaks.
   'https://dl.acm.org/doi/10.1145/3638550.3643617',                 # We might be getting rate-limited here.
+  'https://forum.doom9.org/.*',
+  'https://github.com/rerun-io/rerun/releases/download/prerelease', # Pre-release downloads may go down while a pre-release updates or pre-release CI partially breaks.
   'https://wiki.ros.org/.*',                                        # Constant timeouts.
   'https://www.doxygen.nl/.*',                                      # Getting 403, but the links work.
 
