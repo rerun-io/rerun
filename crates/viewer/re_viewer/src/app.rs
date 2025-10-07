@@ -3311,10 +3311,8 @@ async fn async_save_dialog(
         return Ok(()); // aborted
     };
 
-    let bytes = re_log_encoding::encoder::encode_as_bytes(
-        rrd_version,
-        re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED,
-        messages,
-    )?;
+    let options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
+    let mut bytes = Vec::new();
+    re_log_encoding::Encoder::encode_into(rrd_version, options, messages, &mut bytes)?;
     file_handle.write(&bytes).await.context("Failed to save")
 }
