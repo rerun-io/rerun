@@ -93,6 +93,12 @@ pub enum StreamEntryError {
     #[error("Failed creating entry\nDetails:{0}")]
     Create(TonicStatusError),
 
+    #[error("Failed reading partition table scheme\nDetails:{0}")]
+    GetPartitionTableSchema(TonicStatusError),
+
+    #[error("Failed scanning the partition table \nDetails:{0}")]
+    ScanPartitionTable(TonicStatusError),
+
     #[error("Failed reading entry's partitions\nDetails:{0}")]
     ReadPartitions(TonicStatusError),
 

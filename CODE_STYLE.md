@@ -137,6 +137,7 @@ We make extensive use of snapshot testing. To work around non-deterministic valu
 println!("{:-}, value"); // The `-` option stands for redaction.
 ```
 
+Look for `f.sign_minus()` in the code for where we handle this.
 
 ## C++
 We use `clang-format` to enforce most style choices (see [`.clang-format`](.clang-format)).

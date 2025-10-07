@@ -161,6 +161,7 @@ class catch_and_log_exceptions:
     def __init__(
         self,
         context: str | None = None,
+        *,
         depth_to_user_code: int = 1,
         exception_return_value: Any = None,
         strict: bool | None = None,

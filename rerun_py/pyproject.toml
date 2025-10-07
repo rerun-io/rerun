@@ -155,6 +155,7 @@ lint.select = [
   "I",       # Isort
   "ISC",     # Ensure implicit string concat syntax
   "PIE",     # flake8-pic: various idomatic python lints
+  "PLR0917", # too-many-positional-parameters
   "PLW1514", # Force setting `encoding` for open calls. This is in order to prevent issues when opening utf8 files on windows where the default encoding may depend on the active locale. https://docs.astral.sh/ruff/rules/unspecified-encoding/
   "RUF",     # Ruff-specific rules
   "RUF027",  # Ensure that strings which look like format-strings have the `f` prefix
@@ -176,6 +177,9 @@ lint.unfixable = [
   "PLW1514", # Automatic fix for `encoding` doesn't do what we want - it queries the locale for the preferred encoding which is exactly what we want to avoid.
 ]
 
+[tool.ruff.lint.pylint]
+max-positional-args = 3
+
 [tool.ruff.lint.per-file-ignores]
 "*" = ["RUF012"] # TODO(emilk): consider enabling this
 
@@ -191,6 +195,23 @@ lint.unfixable = [
 "examples/python/notebook_neural_field_2d/neural_field_2d.ipynb" = [
   # Intentional use of  `σ`
   "RUF001",
+]
+
+"examples/*" = [
+  # We don't care about nice APIs in our examples:
+  "PLR0917",
+]
+"scripts/*" = [
+  # We don't care about nice APIs in our scripts:
+  "PLR0917",
+]
+"rerun_py/tests/*" = [
+  # We don't care about nice APIs in our tests:
+  "PLR0917",
+]
+"tests/python/*" = [
+  # We don't care about nice APIs in our tests:
+  "PLR0917",
 ]
 
 [tool.ruff.lint.isort]

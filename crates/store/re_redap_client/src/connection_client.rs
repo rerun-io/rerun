@@ -1,34 +1,32 @@
+use arrow::datatypes::Schema as ArrowSchema;
 use tokio_stream::StreamExt as _;
 use tonic::codegen::{Body, StdError};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
-use re_protos::external::prost::bytes::Bytes;
 use re_protos::{
     TypeConversionError,
     cloud::v1alpha1::{
-        CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, FindEntriesRequest,
-        ReadDatasetEntryRequest, ReadTableEntryRequest,
+        CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind, FindEntriesRequest,
+        GetPartitionTableSchemaRequest, GetPartitionTableSchemaResponse, ReadDatasetEntryRequest,
+        ReadTableEntryRequest, RegisterWithDatasetResponse, ScanPartitionTableRequest,
+        ScanPartitionTableResponse,
         ext::{
-            CreateDatasetEntryResponse, DatasetDetails, DatasetEntry, EntryDetails,
-            EntryDetailsUpdate, LanceTable, ProviderDetails as _, ReadDatasetEntryResponse,
-            ReadTableEntryResponse, RegisterTableResponse, TableEntry, UpdateDatasetEntryRequest,
-            UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
+            CreateDatasetEntryResponse, DataSource, DataSourceKind, DatasetDetails, DatasetEntry,
+            EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails as _,
+            ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse,
+            RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, TableEntry,
+            UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest,
+            UpdateEntryResponse,
         },
-    },
-    cloud::v1alpha1::{
-        RegisterWithDatasetResponse, ScanPartitionTableResponse,
-        ext::{DataSource, DataSourceKind, RegisterWithDatasetTaskDescriptor},
-    },
-    cloud::v1alpha1::{
-        ScanPartitionTableRequest, ext::RegisterWithDatasetRequest,
         rerun_cloud_service_client::RerunCloudServiceClient,
     },
     common::v1alpha1::{
         TaskId,
         ext::{IfDuplicateBehavior, PartitionId},
     },
+    external::prost::bytes::Bytes,
     headers::RerunHeadersInjectorExt as _,
     missing_field,
 };
@@ -205,6 +203,26 @@ where
         Ok(response.table_entry)
     }
 
+    //TODO(ab): accept entry name
+    pub async fn get_partition_table_schema(
+        &mut self,
+        entry_id: EntryId,
+    ) -> Result<ArrowSchema, StreamError> {
+        Ok(self
+            .inner()
+            .get_partition_table_schema(
+                tonic::Request::new(GetPartitionTableSchemaRequest {})
+                    .with_entry_id(entry_id)
+                    .map_err(|err| StreamEntryError::InvalidId(err.into()))?,
+            )
+            .await
+            .map_err(|err| StreamEntryError::GetPartitionTableSchema(err.into()))?
+            .into_inner()
+            .schema
+            .ok_or_else(|| missing_field!(GetPartitionTableSchemaResponse, "schema"))?
+            .try_into()?)
+    }
+
     /// Get a list of partition IDs for the given dataset entry ID.
     //TODO(ab): is there a way—and a reason—to not collect and instead return a stream?
     pub async fn get_dataset_partition_ids(
@@ -370,6 +388,23 @@ where
         Ok(response.table_entry)
     }
 
+    pub async fn get_chunks(
+        &mut self,
+        dataset_id: EntryId,
+        req: re_protos::cloud::v1alpha1::GetChunksRequest,
+    ) -> Result<tonic::Streaming<re_protos::cloud::v1alpha1::GetChunksResponse>, StreamError> {
+        Ok(self
+            .inner()
+            .get_chunks(
+                tonic::Request::new(req)
+                    .with_entry_id(dataset_id)
+                    .map_err(|err| StreamEntryError::InvalidId(err.into()))?,
+            )
+            .await
+            .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?
+            .into_inner())
+    }
+
     #[allow(clippy::fn_params_excessive_bools)]
     pub async fn do_maintenance(
         &mut self,
@@ -381,17 +416,20 @@ where
         unsafe_allow_recent_cleanup: bool,
     ) -> Result<(), StreamError> {
         self.inner()
-            .do_maintenance(tonic::Request::new(
-                re_protos::cloud::v1alpha1::ext::DoMaintenanceRequest {
-                    dataset_id: Some(dataset_id.into()),
-                    optimize_indexes,
-                    retrain_indexes,
-                    compact_fragments,
-                    cleanup_before,
-                    unsafe_allow_recent_cleanup,
-                }
-                .into(),
-            ))
+            .do_maintenance(
+                tonic::Request::new(
+                    re_protos::cloud::v1alpha1::ext::DoMaintenanceRequest {
+                        optimize_indexes,
+                        retrain_indexes,
+                        compact_fragments,
+                        cleanup_before,
+                        unsafe_allow_recent_cleanup,
+                    }
+                    .into(),
+                )
+                .with_entry_id(dataset_id)
+                .map_err(|err| StreamEntryError::InvalidId(err.into()))?,
+            )
             .await
             .map_err(|err| StreamEntryError::Maintenance(err.into()))?;
 
@@ -407,5 +445,17 @@ where
             .map_err(|err| StreamEntryError::Maintenance(err.into()))?;
 
         Ok(())
+    }
+
+    pub async fn get_table_names(&mut self) -> Result<Vec<String>, StreamError> {
+        Ok(self
+            .find_entries(re_protos::cloud::v1alpha1::EntryFilter {
+                entry_kind: Some(EntryKind::Table.into()),
+                ..Default::default()
+            })
+            .await?
+            .into_iter()
+            .map(|entry| entry.name.clone())
+            .collect())
     }
 }

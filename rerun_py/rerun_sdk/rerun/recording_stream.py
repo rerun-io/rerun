@@ -1360,6 +1360,7 @@ class RecordingStream:
         entity_path: str,
         indexes: Iterable[TimeColumnLike],
         columns: Iterable[ComponentColumn],
+        *,
         strict: bool | None = None,
     ) -> None:
         r"""
