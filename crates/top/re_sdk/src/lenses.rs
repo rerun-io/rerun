@@ -27,7 +27,7 @@ impl<S: LogSink> LensesSink<S> {
     }
 
     /// Adds a [`Lens`] to this sink.
-    pub fn with_lens(mut self, lens: LensN) -> Self {
+    pub fn with_lens(mut self, lens: Lens) -> Self {
         self.registry.lenses.push(lens);
         self
     }
@@ -79,11 +79,11 @@ impl<S: LogSink> LogSink for LensesSink<S> {
 
 #[derive(Default)]
 struct LensRegistry {
-    lenses: Vec<LensN>,
+    lenses: Vec<Lens>,
 }
 
 impl LensRegistry {
-    fn relevant(&self, chunk: &Chunk) -> impl Iterator<Item = &LensN> {
+    fn relevant(&self, chunk: &Chunk) -> impl Iterator<Item = &Lens> {
         self.lenses
             .iter()
             .filter(|lens| lens.input.entity_path_filter.matches(chunk.entity_path()))
@@ -205,29 +205,40 @@ pub enum Error {
 ///
 /// Individual operations are wrapped to hide their implementation details.
 pub enum Op {
-    Cast(op::Cast),
+    /// Extracts a specific field from a `StructArray`.
     AccessField(op::AccessField),
+
+    /// Efficiently casts a component to a new `DataType`.
+    Cast(op::Cast),
+
+    /// A user-defined arbitrary function to convert a component column.
     Func(Box<dyn Fn(ListArray) -> Result<ListArray, Error> + Sync + Send>),
 }
 
 impl Op {
+    /// Extracts a specific field from a `StructArray`.
     pub fn access_field(field_name: impl Into<String>) -> Self {
         Self::AccessField(op::AccessField {
             field_name: field_name.into(),
         })
     }
 
+    /// Efficiently casts a component to a new `DataType`.
     pub fn cast(data_type: DataType) -> Self {
         Self::Cast(op::Cast {
             to_inner_type: data_type,
         })
     }
 
-    // TODO: this should be improved
+    /// Ignores any input and returns a constant `ListArray`.
+    ///
+    /// Mostl commonly used with [`LensBuilder::static_output_column`].
+    /// When used in non-static columns this function will _not_ guarantee the correct amount of rows.
     pub fn constant(value: ListArray) -> Self {
         Self::func(move |_| Ok(value.clone()))
     }
 
+    /// A user-defined arbitrary function to convert a component column.
     pub fn func<F>(func: F) -> Self
     where
         F: Fn(ListArray) -> Result<ListArray, Error> + Send + Sync + 'static,
@@ -259,14 +270,15 @@ struct OutputColumn {
 }
 
 /// Provides convenient function to create a [`Lens`].
-pub struct LensBuilder(LensN);
+pub struct LensBuilder(Lens);
 
 impl LensBuilder {
+    /// The column on which this [`Lens`] will operate on.
     pub fn input_column(
         entity_path_filter: EntityPathFilter,
         component: impl Into<ComponentIdentifier>,
     ) -> Self {
-        Self(LensN {
+        Self(Lens {
             input: InputColumn {
                 entity_path_filter: entity_path_filter.resolve_without_substitutions(),
                 component: component.into(),
@@ -275,6 +287,7 @@ impl LensBuilder {
         })
     }
 
+    /// Can be used to define one or more output columns that are derived from the [`Self::input_column`].
     pub fn output_column(
         mut self,
         entity_path: impl Into<EntityPath>,
@@ -291,6 +304,7 @@ impl LensBuilder {
         self
     }
 
+    /// Can be used to define one or more output columns that are derived from the [`Self::input_column`].
     pub fn static_output_column(
         mut self,
         entity_path: impl Into<EntityPath>,
@@ -307,7 +321,8 @@ impl LensBuilder {
         self
     }
 
-    pub fn build(self) -> LensN {
+    // Finalizes this builder and returns the corresponding lens.
+    pub fn build(self) -> Lens {
         self.0
     }
 }
@@ -320,15 +335,15 @@ impl LensBuilder {
 ///
 /// # Assumptions
 ///
-/// Works on component column within a chunk. Because what goes into a chunk
-/// is non-deterministic, and dependent on the batcher no assumptions should be
-/// made for values contained in each row of a column.
-pub struct LensN {
+/// Works on component columns within a chunk. Because what goes into a chunk
+/// is non-deterministic, and dependent on the batcher, no assumptions should be
+/// made for values across rows.
+pub struct Lens {
     input: InputColumn,
     outputs: Vec<OutputColumn>,
 }
 
-impl LensN {
+impl Lens {
     /// Returns a new [`LensBuilder`] with the given input column.
     pub fn input_column(
         entity_path_filter: EntityPathFilter,
@@ -338,7 +353,7 @@ impl LensN {
     }
 }
 
-impl LensN {
+impl Lens {
     /// Applies this lens and crates one or more chunks.
     fn apply(&self, chunk: &Chunk) -> Vec<Chunk> {
         let found = chunk
@@ -346,7 +361,7 @@ impl LensN {
             .iter()
             .find(|(descr, _array)| descr.component == self.input.component);
 
-        // TODO: This means we drop chunks that belong to the same entity but don't have the component.
+        // This means we drop chunks that belong to the same entity but don't have the component.
         let Some((_component_descr, list_array)) = found else {
             return Default::default();
         };
@@ -566,7 +581,7 @@ mod test {
         println!("{original_chunk}");
 
         let destructure =
-            LensN::input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
+            Lens::input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
                 .output_column(
                     "nullability/a",
                     Scalars::descriptor_scalars(),
@@ -591,7 +606,7 @@ mod test {
         println!("{original_chunk}");
 
         let destructure =
-            LensN::input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
+            Lens::input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
                 .output_column(
                     "nullability/b",
                     Scalars::descriptor_scalars(),
@@ -633,19 +648,18 @@ mod test {
             Ok(builder.finish())
         };
 
-        let count =
-            LensN::input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
-                .output_column(
-                    "nullability/b_count",
-                    ComponentDescriptor::partial("counts"),
-                    [Op::func(count_fn)],
-                )
-                .output_column(
-                    "nullability/b_count",
-                    ComponentDescriptor::partial("original"),
-                    [], // no operations
-                )
-                .build();
+        let count = Lens::input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
+            .output_column(
+                "nullability/b_count",
+                ComponentDescriptor::partial("counts"),
+                [Op::func(count_fn)],
+            )
+            .output_column(
+                "nullability/b_count",
+                ComponentDescriptor::partial("original"),
+                [], // no operations
+            )
+            .build();
 
         let pipeline = LensRegistry {
             lenses: vec![count],
@@ -675,7 +689,7 @@ mod test {
         metadata_builder_b.append(true);
 
         let static_lens =
-            LensN::input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
+            Lens::input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
                 .static_output_column(
                     "nullability/static",
                     ComponentDescriptor::partial("static_metadata_a"),

@@ -7,11 +7,11 @@ use arrow::{
 use rerun::{
     DynamicArchetype, RecordingStream, Scalars, SeriesLines, SeriesPoints, TextDocument, TimeCell,
     external::re_log,
-    lenses::{LensN, LensesSink, Op},
+    lenses::{Lens, LensesSink, Op},
     sink::GrpcSink,
 };
 
-fn lens_flag() -> anyhow::Result<LensN> {
+fn lens_flag() -> anyhow::Result<Lens> {
     let step_fn = |list_array: ListArray| {
         let (_, offsets, values, nulls) = list_array.into_parts();
         let flag_array = values.as_any().downcast_ref::<StringArray>().unwrap();
@@ -52,7 +52,7 @@ fn lens_flag() -> anyhow::Result<LensN> {
         .next()
         .unwrap();
 
-    let lens = LensN::input_column("/flag".parse()?, "com.Example.Flag:flag")
+    let lens = Lens::input_column("/flag".parse()?, "com.Example.Flag:flag")
         .output_column("/flag", Scalars::descriptor_scalars(), [Op::func(step_fn)])
         .static_output_column(
             "/flag",
@@ -72,11 +72,11 @@ fn lens_flag() -> anyhow::Result<LensN> {
 fn main() -> anyhow::Result<()> {
     re_log::setup_logging();
 
-    let instruction = LensN::input_column("/instructions".parse()?, "com.Example.Instruction:text")
+    let instruction = Lens::input_column("/instructions".parse()?, "com.Example.Instruction:text")
         .output_column("instructions", TextDocument::descriptor_text(), [])
         .build();
 
-    let destructure = LensN::input_column("/nested".parse()?, "com.Example.Nested:payload")
+    let destructure = Lens::input_column("/nested".parse()?, "com.Example.Nested:payload")
         .output_column(
             "nested/a",
             Scalars::descriptor_scalars(),
