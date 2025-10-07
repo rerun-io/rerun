@@ -5,84 +5,88 @@ use arrow::{
     datatypes::{DataType, Field},
 };
 use rerun::{
-    DynamicArchetype, RecordingStream, Scalars, SerializedComponentColumn, SeriesLines,
-    SeriesPoints, TextDocument, TimeCell,
+    DynamicArchetype, RecordingStream, Scalars, SeriesLines, SeriesPoints, TextDocument, TimeCell,
     external::re_log,
-    lenses::{Lens, LensBuilder, LensesSink, TransformedColumn, op},
+    lenses::{LensN, LensesSink, Op},
     sink::GrpcSink,
 };
 
-fn lens_flag() -> anyhow::Result<Lens> {
-    Ok(Lens::new(
-        "/flag".parse()?,
-        "com.Example.Flag:flag",
-        |list_array, entity_path| {
-            let (_, offsets, values, nulls) = list_array.into_parts();
-            let flag_array = values.as_any().downcast_ref::<StringArray>().unwrap();
+fn lens_flag() -> anyhow::Result<LensN> {
+    let step_fn = |list_array: ListArray| {
+        let (_, offsets, values, nulls) = list_array.into_parts();
+        let flag_array = values.as_any().downcast_ref::<StringArray>().unwrap();
 
-            let scalar_array: Float64Array = flag_array
-                .iter()
-                .map(|s| {
-                    s.map(|v| match v {
-                        "ACTIVE" => 1.0,
-                        "INACTIVE" => 2.0,
-                        _ => 0.0,
-                    })
+        let scalar_array: Float64Array = flag_array
+            .iter()
+            .map(|s| {
+                s.map(|v| match v {
+                    "ACTIVE" => 1.0,
+                    "INACTIVE" => 2.0,
+                    _ => 0.0,
                 })
-                .collect();
+            })
+            .collect();
 
-            let list_array = ListArray::new(
-                Arc::new(Field::new_list_field(
-                    scalar_array.data_type().clone(),
-                    true,
-                )),
-                offsets,
-                Arc::new(scalar_array),
-                nulls,
-            );
+        Ok(ListArray::new(
+            Arc::new(Field::new_list_field(
+                scalar_array.data_type().clone(),
+                true,
+            )),
+            offsets,
+            Arc::new(scalar_array),
+            nulls,
+        ))
+    };
 
-            let series_points = SeriesPoints::new()
-                .with_marker_sizes([5.0])
-                .columns_of_unit_batches()
-                .unwrap()
-                .next()
-                .unwrap();
+    let series_points = SeriesPoints::new()
+        .with_marker_sizes([5.0])
+        .columns_of_unit_batches()
+        .unwrap()
+        .next()
+        .unwrap();
 
-            let series_lines = SeriesLines::new()
-                .with_widths([3.0])
-                .columns_of_unit_batches()
-                .unwrap()
-                .next()
-                .unwrap();
+    let series_lines = SeriesLines::new()
+        .with_widths([3.0])
+        .columns_of_unit_batches()
+        .unwrap()
+        .next()
+        .unwrap();
 
-            vec![
-                TransformedColumn::new(
-                    entity_path.clone(),
-                    SerializedComponentColumn {
-                        list_array,
-                        descriptor: Scalars::descriptor_scalars(),
-                    },
-                ),
-                TransformedColumn::new_static(entity_path.clone(), series_points),
-                TransformedColumn::new_static(entity_path.clone(), series_lines),
-            ]
-        },
-    ))
+    let lens = LensN::for_column("/flag".parse()?, "com.Example.Flag:flag")
+        .add_output_column("/flag", Scalars::descriptor_scalars(), [Op::func(step_fn)])
+        .add_static_output_column(
+            "/flag",
+            series_points.descriptor,
+            [Op::constant(series_points.list_array)],
+        )
+        .add_static_output_column(
+            "/flag",
+            series_lines.descriptor,
+            [Op::constant(series_lines.list_array)],
+        )
+        .build();
+
+    Ok(lens)
 }
 
 fn main() -> anyhow::Result<()> {
     re_log::setup_logging();
 
-    let instruction = LensBuilder::new("/instructions".parse()?, "com.Example.Instruction:text")
-        .describe(TextDocument::descriptor_text())
+    let instruction = LensN::for_column("/instructions".parse()?, "com.Example.Instruction:text")
+        .add_output_column("instructions", TextDocument::descriptor_text(), [])
         .build();
 
-    let destructure = LensBuilder::new("/nested".parse().unwrap(), "com.Example.Nested:payload")
-        .view_as(
-            op::access_field("a").and_then(op::cast(DataType::Float64)),
+    let destructure = LensN::for_column("/nested".parse()?, "com.Example.Nested:payload")
+        .add_output_column(
+            "nested/a",
             Scalars::descriptor_scalars(),
+            [Op::access_field("a"), Op::cast(DataType::Float64)],
         )
-        .view_as(op::access_field("b"), Scalars::descriptor_scalars())
+        .add_output_column(
+            "nested/b",
+            Scalars::descriptor_scalars(),
+            [Op::access_field("b")],
+        )
         .build();
 
     let lenses_sink = LensesSink::new(GrpcSink::default())
