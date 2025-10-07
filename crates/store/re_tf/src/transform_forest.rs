@@ -154,6 +154,31 @@ pub enum TransformFromToError {
     },
 }
 
+impl TransformFromToError {
+    fn no_path_between_target_and_source(target: &TargetInfo, source: &SourceInfo<'_>) -> Self {
+        Self::NoPathBetweenFrames {
+            target: target.id,
+            src: source.id,
+            target_root: target.root,
+            source_root: source.root,
+        }
+    }
+}
+
+/// Private utility struct for working with a target frame.
+struct TargetInfo {
+    id: EntityPathHash,
+    root: EntityPathHash,
+    target_from_root: glam::Affine3A,
+}
+
+/// Private utility struct for working with a source frame.
+struct SourceInfo<'a> {
+    id: EntityPathHash,
+    root: EntityPathHash,
+    root_from_source: &'a TransformInfo,
+}
+
 /// Properties of a pinhole transform tree root.
 ///
 /// Each pinhole forms its own subtree which may be embedded into a 3D space.
@@ -204,7 +229,7 @@ pub struct TransformForest {
     roots: IntMap<EntityPathHash, TransformTreeRootInfo>,
 
     /// All entities reachable from one of the tree roots.
-    transform_per_entity: IntMap<EntityPathHash, TransformInfo>,
+    root_from_entity: IntMap<EntityPathHash, TransformInfo>,
 }
 
 impl TransformForest {
@@ -226,7 +251,7 @@ impl TransformForest {
         let mut tree = Self {
             roots: std::iter::once((EntityPath::root().hash(), TransformTreeRootInfo::EntityRoot))
                 .collect(),
-            transform_per_entity: Default::default(),
+            root_from_entity: Default::default(),
         };
         tree.gather_descendants_transforms(
             entity_tree,
@@ -254,7 +279,7 @@ impl TransformForest {
         let root_from_parent = transform_root_from_parent.target_from_entity;
 
         let previous_transform = self
-            .transform_per_entity
+            .root_from_entity
             .insert(subtree.path.hash(), transform_root_from_parent);
         debug_assert!(previous_transform.is_none(), "Root was added already"); // TODO(andreas): Build out into cycle detection (cycles can't _yet_ happen)
 
@@ -337,10 +362,10 @@ impl TransformForest {
         sources: impl Iterator<Item = EntityPathHash>,
         lookup_image_plane_distance: &dyn Fn(EntityPathHash) -> f32,
     ) -> impl Iterator<Item = (EntityPathHash, Result<TransformInfo, TransformFromToError>)> {
-        // We're looking for common root between source and target.
+        // We're looking for a common root between source and target.
         // We start by looking up the target's tree root.
 
-        let Some(root_from_target) = self.transform_per_entity.get(&target) else {
+        let Some(root_from_target) = self.root_from_entity.get(&target) else {
             return itertools::Either::Left(sources.map(move |source| {
                 (
                     source,
@@ -349,8 +374,8 @@ impl TransformForest {
             }));
         };
 
-        // Invert `root_from_target` to get `target_from_root`.
-        let (target_root, target_from_root) = {
+        // Invert `root_from_target` to get `target.from_root`.
+        let target = {
             let TransformInfo {
                 root: target_root,
                 target_from_entity: root_from_entity,
@@ -360,81 +385,90 @@ impl TransformForest {
                 target_from_archetype: _,
             } = &root_from_target;
 
-            (*target_root, root_from_entity.inverse())
+            TargetInfo {
+                id: target,
+                root: *target_root,
+                target_from_root: root_from_entity.inverse(),
+            }
         };
 
         itertools::Either::Right(sources.map(move |source| {
-            let Some(root_from_source) = self.transform_per_entity.get(&source) else {
+            let Some(root_from_source) = self.root_from_entity.get(&source) else {
                 return (
                     source,
                     Err(TransformFromToError::UnknownSourceFrame(source)),
                 );
             };
 
-            let source_root = root_from_source.root;
+            let source = SourceInfo {
+                id: source,
+                root: root_from_source.root,
+                root_from_source,
+            };
 
             // Common case: both source & target share the same root.
-            if source_root == target_root {
+            let result = if source.root == target.root {
                 // TODO: fast track for root being target.
                 // target_from_source = target_from_reference * root_from_source
-                let target_from_source = root_from_source.left_multiply(target_from_root);
-                (source, Ok(target_from_source))
+                let target_from_source = root_from_source.left_multiply(target.target_from_root);
+                Ok(target_from_source)
             }
             // There might be a connection via a pinhole making this 2D in 3D.
             else if let Some(TransformTreeRootInfo::Pinhole(pinhole_tree_root)) =
-                self.roots.get(&source_root)
+                self.roots.get(&source.root)
             {
-                let PinholeTreeRoot {
-                    parent_tree_root,
-                    pinhole_projection,
-                    parent_root_from_pinhole_root: root_from_pinhole3d,
-                } = pinhole_tree_root;
-
-                if *parent_tree_root != target_root {
-                    return (
-                        source,
-                        Err(TransformFromToError::NoPathBetweenFrames {
-                            target,
-                            src: source,
-                            target_root,
-                            source_root,
-                        }),
-                    );
-                }
-
-                // Rename for clarification:
-                let pinhole2d_from_source = root_from_source;
-
-                // There's a connection via a pinhole making this 2D in 3D.
-                // We can transform into the target space!
-                let pinhole_image_plane_distance = lookup_image_plane_distance(source_root);
-
-                // TODO: Locally cache pinhole transform?
-                let pinhole3d_from_pinhole2d = pinhole2d_image_plane_from_pinhole3d(
-                    pinhole_projection,
-                    pinhole_image_plane_distance,
-                );
-                let target_from_pinhole2d =
-                    target_from_root * root_from_pinhole3d * pinhole3d_from_pinhole2d;
-
-                // target_from_source = target_from_pinhole2d * pinhole2d_from_source
-                let target_from_source = pinhole2d_from_source.left_multiply(target_from_pinhole2d);
-                (source, Ok(target_from_source))
+                from_2d_source_to_3d_target(
+                    &target,
+                    &source,
+                    pinhole_tree_root,
+                    lookup_image_plane_distance,
+                )
             }
             // Disconnected, we can't transform into the target space.
             else {
-                (
-                    source,
-                    Err(TransformFromToError::NoPathBetweenFrames {
-                        target,
-                        src: source,
-                        target_root,
-                        source_root,
-                    }),
-                )
-            }
+                Err(TransformFromToError::no_path_between_target_and_source(
+                    &target, &source,
+                ))
+            };
+
+            (source.id, result)
         }))
     }
+}
+
+fn from_2d_source_to_3d_target(
+    target: &TargetInfo,
+    source: &SourceInfo<'_>,
+    pinhole_tree_root: &PinholeTreeRoot,
+    lookup_image_plane_distance: &dyn Fn(EntityPathHash) -> f32,
+) -> Result<TransformInfo, TransformFromToError> {
+    let PinholeTreeRoot {
+        parent_tree_root,
+        pinhole_projection,
+        parent_root_from_pinhole_root: root_from_pinhole3d,
+    } = pinhole_tree_root;
+
+    if *parent_tree_root != target.root {
+        return Err(TransformFromToError::no_path_between_target_and_source(
+            target, source,
+        ));
+    }
+
+    // Rename for clarification:
+    let pinhole2d_from_source = source.root_from_source;
+
+    // There's a connection via a pinhole making this 2D in 3D.
+    // We can transform into the target space!
+    let pinhole_image_plane_distance = lookup_image_plane_distance(source.root);
+
+    // TODO: Locally cache pinhole transform?
+    let pinhole3d_from_pinhole2d =
+        pinhole2d_image_plane_from_pinhole3d(pinhole_projection, pinhole_image_plane_distance);
+    let target_from_pinhole2d =
+        target.target_from_root * root_from_pinhole3d * pinhole3d_from_pinhole2d;
+
+    // target_from_source = target_from_pinhole2d * pinhole2d_from_source
+    Ok(pinhole2d_from_source.left_multiply(target_from_pinhole2d))
 }
 
 fn left_multiply_smallvec1_of_transforms(
