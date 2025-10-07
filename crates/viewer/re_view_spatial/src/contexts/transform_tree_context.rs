@@ -56,7 +56,7 @@ impl ViewContextSystem for TransformTreeContext {
 
     fn execute(
         &mut self,
-        _ctx: &re_viewer_context::ViewContext<'_>,
+        ctx: &re_viewer_context::ViewContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
         static_execution_result: &ViewContextSystemStaticExecResult,
     ) {
@@ -74,7 +74,7 @@ impl ViewContextSystem for TransformTreeContext {
             )
             .collect();
 
-        // TODO: image plane distance patching.
+        self.patch_image_planes(ctx);
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -95,9 +95,50 @@ impl TransformTreeContext {
     pub fn reference_path(&self) -> EntityPathHash {
         self.reference_path
     }
+
+    /// Scale the transform info by the image plane distance of their parent pinhole.
+    ///
+    /// Doing this late-stage allows us to have image plane distance be scene dependent
+    /// (both via heuristics & blueprint overrides)
+    fn patch_image_planes(&mut self, ctx: &ViewContext<'_>) {
+        let mut image_plane_distance_cache = IntMap::default();
+        let data_result_tree = &ctx.query_result.tree;
+        let latest_at_query = &ctx.current_query();
+
+        for result in self.transform_infos.values_mut() {
+            let Ok(transform_info) = result else {
+                continue;
+            };
+            let Some(twod_in_threed_info) = &mut transform_info.twod_in_threed_info else {
+                continue;
+            };
+
+            let parent_pinhole = twod_in_threed_info.parent_pinhole.hash(); // TODO: can we make parentpinhole a hash?
+            let parent_pinhole_image_plane_distance = *image_plane_distance_cache
+                .entry(parent_pinhole)
+                .or_insert_with(|| {
+                    lookup_image_plane_distance(
+                        ctx,
+                        data_result_tree,
+                        parent_pinhole,
+                        latest_at_query,
+                    )
+                });
+
+            // Scale transforms according to the image plane distance.
+            *transform_info = transform_info.right_multiply(
+                glam::Affine3A::from_translation(glam::Vec3::new(
+                    0.0,
+                    0.0,
+                    parent_pinhole_image_plane_distance - 1.0,
+                )) * glam::Affine3A::from_scale(glam::Vec3::splat(
+                    parent_pinhole_image_plane_distance,
+                )),
+            );
+        }
+    }
 }
 
-// TODO: still needed.
 fn lookup_image_plane_distance(
     ctx: &ViewContext<'_>,
     data_result_tree: &DataResultTree,
