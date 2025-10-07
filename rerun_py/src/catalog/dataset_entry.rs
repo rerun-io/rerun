@@ -13,7 +13,7 @@ use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
-use re_datafusion::{DatsetManifestProvider, PartitionTableProvider, SearchResultsTableProvider};
+use re_datafusion::{DatasetManifestProvider, PartitionTableProvider, SearchResultsTableProvider};
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{StoreId, StoreKind};
 use re_protos::{
@@ -174,7 +174,7 @@ impl PyDatasetEntry {
         let dataset_id = super_.details.id;
 
         let provider = wait_for_future(self_.py(), async move {
-            DatsetManifestProvider::new(connection.client().await?, dataset_id)
+            DatasetManifestProvider::new(connection.client().await?, dataset_id)
                 .into_provider()
                 .await
                 .map_err(to_py_err)

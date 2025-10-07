@@ -1257,7 +1257,7 @@ pub struct CreateDatasetEntryRequest {
     /// Name of the dataset entry to create.
     ///
     /// The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
-    /// with the same name already exists, the request will fail.
+    /// with the same name already exists, the request will fail. Entry names ending with `__manifest` are reserved.
     #[prost(string, optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     /// If specified, create the entry using this specific ID. Use at your own risk.
@@ -1353,10 +1353,10 @@ impl ::prost::Name for UpdateDatasetEntryResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterTableRequest {
-    /// Name of the table entry to create.
+    /// Name of the dataset entry to create.
     ///
     /// The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
-    /// with the same name already exists, the request will fail.
+    /// with the same name already exists, the request will fail. Entry names ending with `__manifest` are reserved.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// Information about the table to register.

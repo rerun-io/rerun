@@ -21,12 +21,12 @@ use crate::wasm_compat::make_future_send;
 
 //TODO(ab): deduplicate from PartitionTableProvider
 #[derive(Clone)]
-pub struct DatsetManifestProvider {
+pub struct DatasetManifestProvider {
     client: ConnectionClient,
     dataset_id: EntryId,
 }
 
-impl std::fmt::Debug for DatsetManifestProvider {
+impl std::fmt::Debug for DatasetManifestProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DatasetManifestProvider")
             .field("dataset_id", &self.dataset_id)
@@ -34,7 +34,7 @@ impl std::fmt::Debug for DatsetManifestProvider {
     }
 }
 
-impl DatsetManifestProvider {
+impl DatasetManifestProvider {
     pub fn new(client: ConnectionClient, dataset_id: EntryId) -> Self {
         Self { client, dataset_id }
     }
@@ -46,7 +46,7 @@ impl DatsetManifestProvider {
 }
 
 #[async_trait]
-impl GrpcStreamToTable for DatsetManifestProvider {
+impl GrpcStreamToTable for DatasetManifestProvider {
     type GrpcStreamData = ScanDatasetManifestResponse;
 
     #[instrument(skip(self), err)]
