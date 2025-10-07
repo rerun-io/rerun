@@ -30,4 +30,12 @@ bincode.workspace = true
 mimalloc.workspace = true
 parking_lot.workspace = true
 serde = { workspace = true, features = ["derive"] }
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time", "net", "io-util", "sync", "signal"] }
+tokio = { workspace = true, features = [
+  "io-util",
+  "macros",
+  "net",
+  "rt-multi-thread",
+  "signal",
+  "sync",
+  "time",
+] }
