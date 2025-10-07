@@ -451,7 +451,7 @@ impl MemorySinkStorage {
 
         encoder.finish()?;
 
-        Ok(encoder.into_inner())
+        encoder.into_inner()
     }
 
     /// Drain the stored messages and return them as an in-memory RRD.

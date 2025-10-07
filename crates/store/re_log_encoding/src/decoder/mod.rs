@@ -485,7 +485,7 @@ mod tests {
     use super::*;
     use crate::Compression;
     use crate::codec::arrow::encode_arrow;
-    use crate::encoder::DroppableEncoder;
+    use crate::encoder::Encoder;
 
     pub fn fake_log_messages() -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
@@ -676,7 +676,7 @@ mod tests {
         for options in options {
             let mut file = vec![];
 
-            let mut encoder = DroppableEncoder::new(rrd_version, options, &mut file).unwrap();
+            let mut encoder = Encoder::new(rrd_version, options, &mut file).unwrap();
             for message in messages.clone() {
                 encoder
                     .append_proto(message)
@@ -735,7 +735,7 @@ mod tests {
         for options in options {
             let mut file = vec![];
 
-            let mut encoder = DroppableEncoder::new(rrd_version, options, &mut file).unwrap();
+            let mut encoder = Encoder::new(rrd_version, options, &mut file).unwrap();
             for message in out_of_order_messages.clone() {
                 encoder
                     .append_proto(message)
@@ -824,23 +824,28 @@ mod tests {
             let messages = fake_log_messages();
 
             // (2 encoders as each encoder writes a file header)
-            let writer = std::io::Cursor::new(&mut data);
-            let mut encoder1 =
-                crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
-            for message in &messages {
-                encoder1.append(message).unwrap();
+            {
+                let writer = std::io::Cursor::new(&mut data);
+                let mut encoder1 =
+                    crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+                for message in &messages {
+                    encoder1.append(message).unwrap();
+                }
+                encoder1.finish().unwrap();
             }
-            encoder1.finish().unwrap();
 
             let written = data.len() as u64;
-            let mut writer = std::io::Cursor::new(&mut data);
-            writer.set_position(written);
-            let mut encoder2 =
-                crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
-            for message in &messages {
-                encoder2.append(message).unwrap();
+
+            {
+                let mut writer = std::io::Cursor::new(&mut data);
+                writer.set_position(written);
+                let mut encoder2 =
+                    crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+                for message in &messages {
+                    encoder2.append(message).unwrap();
+                }
+                encoder2.finish().unwrap();
             }
-            encoder2.finish().unwrap();
 
             let decoder =
                 Decoder::new_concatenated(std::io::BufReader::new(data.as_slice())).unwrap();

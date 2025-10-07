@@ -330,15 +330,14 @@ mod tests {
     fn test_data(options: EncodingOptions, n: usize) -> (Vec<LogMsg>, Vec<u8>) {
         let messages: Vec<_> = (0..n).map(|_| fake_log_msg()).collect();
 
-        let mut buffer = Vec::new();
-        let mut encoder = Encoder::new(CrateVersion::LOCAL, options, &mut buffer).unwrap();
+        let mut encoder = Encoder::new(CrateVersion::LOCAL, options, vec![]).unwrap();
         for message in &messages {
             encoder.append(message).unwrap();
         }
 
         encoder.finish().unwrap();
 
-        (messages, buffer)
+        (messages, encoder.into_inner().unwrap())
     }
 
     macro_rules! assert_message_ok {

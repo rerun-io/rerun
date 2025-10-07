@@ -1,7 +1,7 @@
 use std::{collections::BTreeSet, fs::File, io::BufWriter, sync::mpsc::Receiver};
 
 use clap::Subcommand;
-use re_log_encoding::encoder::DroppableEncoder;
+use re_log_encoding::encoder::Encoder;
 use re_log_types::{LogMsg, RecordingId};
 use re_mcap::{LayerIdentifier, SelectedLayers};
 use re_sdk::{
@@ -132,7 +132,7 @@ fn process_mcap<W: std::io::Write>(
     let mut topics = BTreeSet::new();
     let options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
     let version = re_build_info::CrateVersion::LOCAL;
-    let mut encoder = DroppableEncoder::new(version, options, writer)?;
+    let mut encoder = Encoder::new(version, options, writer)?;
 
     while let Ok(res) = receiver.recv() {
         num_total_msgs += 1;
