@@ -347,7 +347,7 @@ where
 {
     let Some(values) = array.downcast_array_ref::<ArrowPrimitiveArray<P>>() else {
         if cfg!(debug_assertions) {
-            panic!("downcast failed for {component_descriptor}, data discarded");
+            panic!("[DEBUG ASSERT] downcast failed for {component_descriptor}, data discarded");
         } else {
             re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
         }
