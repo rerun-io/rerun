@@ -18,7 +18,7 @@ pub trait ViewContextSystem: Send + Sync {
     /// Executes once per active _type_ of `ViewContextSystem`, independent of the view's state, query, blueprint properties etc.
     ///
     /// This is run each frame once per type of view context system if the context system is used by any view.
-    /// Afterwards, the such mutated context system instance gets a call to [`ViewContextSystem::execute`] for each view instance.
+    /// The returned [`ViewContextSystemStaticExecResult`] is then passed to [`ViewContextSystem::execute`] for each view instance.
     ///
     /// Use this to perform any operations that are shared across all views that use this system,
     /// independent of their state, query, blueprint properties etc.
@@ -30,9 +30,6 @@ pub trait ViewContextSystem: Send + Sync {
     }
 
     /// Queries the chunk store and performs data conversions to make it ready for consumption by scene elements.
-    ///
-    /// `self` is guaranteed to have had [`ViewContextSystem::execute_static`] invoked on it before this is called.
-    /// The execution result is what is then passed on to visualizer systems.
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
