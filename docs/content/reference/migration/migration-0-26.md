@@ -35,3 +35,37 @@ The DataFusion FFI that we rely on for user defined functions and
 table providers requires users to upgrade their `datafusion-python`
 version to 49.0.0. This only impacts customers who use the
 DataFusion tables provided through the `CatalogClient`.
+
+
+## Partition table changes and new dataset manifest
+
+The partition table used to contain a lot of information about the underlying layers (of which there may be several per partition).
+This caused unnecessary noise and some tooling problems due to the complex Arrow schema.
+
+To address that, the partition table as been simplified with multiple columns removed and a few others renamed.
+In parallel, a new dataset manifest table is now available (`dataset_entry.manifest()`).
+This table contains one row per layer (i.e. possibly multiple rows per partition) and provide a rich low-level view on the contents of a dataset.
+
+#### Partition table
+ 
+- `rerun_partition_id`: partition id (string)
+- `rerun_layer_names`: layer names (list of strings, one value per layer)
+- `rerun_storage_urls`: layer storage urls (list of strings, one value per layer)
+- `rerun_last_updated_at`: last update of the partition (nanoseconds timestamp)
+- `rerun_num_chunks`: total number of chunks in the partition (uint64)
+- `rerun_size_bytes`: total number of bytes for the partition (uint64)
+- `property:*`: properties columns derived from the partition data
+
+
+#### Dataset manifest columns
+
+- `rerun_layer_name`: layer name (string)
+- `rerun_partition_id`: partition id (string)
+- `rerun_storage_url`: layer storage url (string)
+- `rerun_layer_type`: layer type (string)
+- `rerun_registration_time`: registration time (nanoseconds timestamp)
+- `rerun_last_updated_at`: last update of the layer (nanoseconds timestamp)
+- `rerun_num_chunks`: number of chunks in the layer (uint64)
+- `rerun_size_bytes`: number of bytes for the layer (uint64)
+- `rerun_schema_sha256`: sha256 of the layer schema (fixed width binary, size = 32 bytes)
+- `property:*`: properties columns derived from the layer data
