@@ -3,7 +3,7 @@ source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
 expression: test_results
 ---
 TestResult {
-    op: String(
+    filter: String(
         StringFilter {
             operator: DoesNotContain,
             query: "ab",
@@ -13,7 +13,7 @@ TestResult {
         name: "column",
         data_type: List(
             Field {
-                name: "item",
+                name: "column",
                 data_type: Utf8,
                 nullable: false,
                 dict_id: 0,

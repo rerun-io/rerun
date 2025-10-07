@@ -242,3 +242,50 @@ rustflags = [
     "split-debuginfo=packed",
 ]
 ```
+
+### Python build variables (macOS or linux)
+
+When building the python package you can greatly speed up your rebuilding
+by defining a `PYO3_CONFIG_FILE` environment variable pointing to a file
+that contains your build environment. You will need to update this file if
+there are major changes to your build, including when there are version
+changes in the [PyO3](https://pyo3.rs/) dependencies.
+
+To set this variable, first run the following command:
+
+```shell
+PYO3_PRINT_CONFIG=1 cargo build
+```
+
+It should include an output similar to the following:
+
+```
+implementation=CPython
+version=3.9
+shared=true
+abi3=true
+lib_name=python3.12
+lib_dir=/opt/homebrew/opt/python@3.12/Frameworks/Python.framework/Versions/3.12/lib
+executable=/Users/myusername/src/datafusion-python/.venv/bin/python
+pointer_width=64
+build_flags=
+suppress_build_script_link_lines=false
+```
+
+Copy the output in your terminal into a file and set this environment variable.
+
+```shell
+export PYO3_CONFIG_FILE="/Users/myusername/some/path/pyo3_build.config"
+```
+
+If you are using VS Code for your IDE you may need to set these variables in
+your settings:
+
+```json
+"rust-analyzer.cargo.extraEnv": {
+    "PYO3_CONFIG_FILE": "/Users/myusername/some/path/pyo3_build.config"
+},
+"rust-analyzer.runnables.extraEnv": {
+    "PYO3_CONFIG_FILE": "/Users/myusername/some/path/pyo3_build.config"
+}
+```

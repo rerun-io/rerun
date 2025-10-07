@@ -3,7 +3,7 @@ use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_ui::UiExt as _;
 use re_viewer_context::VariantName;
 
-use crate::filters::Filter;
+use crate::filters::ColumnFilter;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortDirection {
@@ -86,7 +86,7 @@ pub struct TableBlueprint {
     pub prefilter: Option<datafusion::logical_expr::Expr>,
 
     /// Filters specified by the user in the UI.
-    pub filters: Vec<Filter>,
+    pub column_filters: Vec<ColumnFilter>,
 }
 
 /// The blueprint for a specific column.

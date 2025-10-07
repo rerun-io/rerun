@@ -5,7 +5,7 @@ fn is_safe_filename_char(c: char) -> bool {
 }
 
 /// Replace "dangerous" characters by a safe one.
-pub fn santitize_file_name(file_name: &str) -> String {
+pub fn sanitize_file_name(file_name: &str) -> String {
     file_name.replace(|c: char| !is_safe_filename_char(c), "-")
 }
 
@@ -23,7 +23,7 @@ impl CommandSender {
     ) {
         re_tracing::profile_function!();
 
-        let file_name = santitize_file_name(file_name);
+        let file_name = sanitize_file_name(file_name);
 
         #[cfg(target_arch = "wasm32")]
         {

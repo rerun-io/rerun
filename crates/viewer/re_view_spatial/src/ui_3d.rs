@@ -8,6 +8,7 @@ use re_renderer::{
     LineDrawableBuilder, Size,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
 };
+use re_tf::{image_view_coordinates, query_view_coordinates_at_closest_ancestor};
 use re_types::{
     blueprint::{
         archetypes::{Background, EyeControls3D, LineGrid3D},
@@ -31,10 +32,9 @@ use crate::{
     SpatialView3D,
     scene_bounding_boxes::SceneBoundingBoxes,
     space_camera_3d::SpaceCamera3D,
-    transform_cache::query_view_coordinates_at_closest_ancestor,
     ui::{SpatialViewState, create_labels},
     view_kind::SpatialViewKind,
-    visualizers::{CamerasVisualizer, collect_ui_labels, image_view_coordinates},
+    visualizers::{CamerasVisualizer, collect_ui_labels},
 };
 
 use super::eye::{Eye, ViewEye};
@@ -271,7 +271,7 @@ impl View3DState {
         }
     }
 
-    /// The taregt mode will be ignored, and the mode of the current eye will be kept unchanged.
+    /// The target mode will be ignored, and the mode of the current eye will be kept unchanged.
     fn interpolate_to_view_eye(&mut self, mut target: ViewEye) {
         if let Some(view_eye) = &self.view_eye {
             target.set_kind(view_eye.kind());

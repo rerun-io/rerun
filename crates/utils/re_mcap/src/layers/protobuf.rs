@@ -547,32 +547,6 @@ mod test {
         chunks
     }
 
-    /// Wrapper to help with creating nicely formatted chunks to use with `insta`.
-    struct ChunkRedacted<'a>(&'a Chunk);
-
-    impl std::fmt::Display for ChunkRedacted<'_> {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let batch = self.0.to_record_batch().map_err(|err| {
-                re_log::error_once!("couldn't display Chunk: {err}");
-                std::fmt::Error
-            })?;
-            re_format_arrow::format_record_batch_opts(
-                &batch,
-                &re_format_arrow::RecordBatchFormatOpts {
-                    transposed: false,
-                    width: f.width(),
-                    include_metadata: true,
-                    include_column_metadata: true,
-                    trim_field_names: true,
-                    trim_metadata_keys: true,
-                    trim_metadata_values: true,
-                    redact_non_deterministic: true,
-                },
-            )
-            .fmt(f)
-        }
-    }
-
     #[test]
     fn two_simple_rows() {
         // Writing to the MCAP buffer.
@@ -615,9 +589,6 @@ mod test {
         let chunks = run_layer(&summary, buffer.as_slice());
         assert_eq!(chunks.len(), 1);
 
-        insta::assert_snapshot!(
-            "two_simple_rows",
-            format!("{:240}", ChunkRedacted(&chunks[0]))
-        );
+        insta::assert_snapshot!("two_simple_rows", format!("{:-240}", &chunks[0]));
     }
 }

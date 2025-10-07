@@ -14,18 +14,13 @@
 //! - We always consider the physical timestamp to be UTC, even with the time zone is `None`.
 //! - We ignore the time zone hint and use instead our global [`TimestampFormat`] for display.
 
-use std::any::Any;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr as _;
-use std::sync::Arc;
 
-use arrow::array::{ArrayRef, BooleanArray, ListArray, as_list_array};
-use arrow::datatypes::{DataType, TimeUnit};
-use datafusion::common::{Column, Result as DataFusionResult, exec_err};
-use datafusion::logical_expr::{
-    ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, Expr, ScalarFunctionArgs,
-    ScalarUDF, ScalarUDFImpl, Signature, TypeSignature, Volatility, col, not,
-};
+use arrow::array::{ArrayRef, BooleanArray};
+use arrow::datatypes::{DataType, Field, TimeUnit};
+use datafusion::common::{Result as DataFusionResult, exec_err};
+use datafusion::logical_expr::{Expr, TypeSignature, col, not};
 use jiff::{RoundMode, Timestamp, TimestampRound, ToSpan as _};
 use strum::VariantArray as _;
 
@@ -35,7 +30,7 @@ use re_types_core::datatypes::TimeInt;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, SyntaxHighlighting, UiExt as _};
 
-use super::{FilterUiAction, TimestampFormatted, parse_timestamp};
+use super::{Filter, FilterError, FilterUdf, FilterUiAction, TimestampFormatted, parse_timestamp};
 
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq)]
 enum TimestampFilterKind {
@@ -178,14 +173,13 @@ impl TimestampFilter {
         self.operator = TimestampOperator::IsNot;
         self
     }
-
-    pub fn operator(&self) -> TimestampOperator {
-        self.operator
-    }
 }
 
 impl SyntaxHighlighting for TimestampFormatted<'_, TimestampFilter> {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        builder.append_keyword(&self.inner.operator.to_string());
+        builder.append_keyword(" ");
+
         let low_bound = self
             .inner
             .low_bound_timestamp
@@ -221,12 +215,13 @@ impl SyntaxHighlighting for TimestampFormatted<'_, TimestampFilter> {
     }
 }
 
-impl TimestampFilter {
-    pub fn popup_ui(
+impl Filter for TimestampFilter {
+    fn popup_ui(
         &mut self,
         ui: &mut egui::Ui,
-        column_name: &str,
         timestamp_format: TimestampFormat,
+        column_name: &str,
+        _popup_just_opened: bool,
     ) -> FilterUiAction {
         ui.horizontal(|ui| {
             ui.label(
@@ -388,20 +383,19 @@ impl TimestampFilter {
         action
     }
 
-    pub fn on_commit(&mut self) {
+    fn on_commit(&mut self) {
         self.low_bound_timestamp.invalidate_timestamp_string();
         self.high_bound_timestamp.invalidate_timestamp_string();
     }
 
-    /// Convert to an [`Expr`].
-    pub fn as_filter_expression(&self, column: &Column) -> Expr {
-        let udf = ScalarUDF::new_from_impl(TimestampFilterUdf::new(self.into()));
-        let expr = udf.call(vec![col(column.clone())]);
+    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
+        let udf = ResolvedTimestampFilter::from(self).as_scalar_udf();
+        let expr = udf.call(vec![col(field.name().clone())]);
 
-        match self.operator {
+        Ok(match self.operator {
             TimestampOperator::Is => expr,
             TimestampOperator::IsNot => not(expr.clone()).or(expr.is_null()),
-        }
+        })
     }
 }
 
@@ -749,47 +743,18 @@ fn day_range_to_timestamp_range(
     )
 }
 
-/// Custom UDF for evaluating some timestamp filters.
-#[derive(Debug, Clone)]
-struct TimestampFilterUdf {
-    filter: ResolvedTimestampFilter,
-    signature: Signature,
-}
+impl FilterUdf for ResolvedTimestampFilter {
+    const PRIMITIVE_SIGNATURE: TypeSignature = TypeSignature::Any(1);
 
-impl TimestampFilterUdf {
-    fn new(filter: ResolvedTimestampFilter) -> Self {
-        let signature = Signature::one_of(
-            vec![
-                TypeSignature::Any(1),
-                TypeSignature::ArraySignature(ArrayFunctionSignature::Array {
-                    arguments: vec![ArrayFunctionArgument::Array],
-                    array_coercion: None,
-                }),
-            ],
-            Volatility::Immutable,
-        );
-
-        Self { filter, signature }
+    fn name(&self) -> &'static str {
+        "timestamp"
     }
 
-    /// Check if the provided _primitive_ type is valid.
     fn is_valid_primitive_input_type(data_type: &DataType) -> bool {
         match data_type {
             _data_type if _data_type == &TimeInt::arrow_datatype() => true,
             DataType::Timestamp(_, _) => true,
             _ => false,
-        }
-    }
-
-    fn is_valid_input_type(data_type: &DataType) -> bool {
-        match data_type {
-            DataType::List(field) | DataType::ListView(field) => {
-                // Note: we do not support double nested types
-                Self::is_valid_primitive_input_type(field.data_type())
-            }
-
-            //TODO(ab): support other containers
-            _ => Self::is_valid_primitive_input_type(data_type),
         }
     }
 
@@ -806,122 +771,26 @@ impl TimestampFilterUdf {
 
         match array.data_type() {
             _data_type if _data_type == &TimeInt::arrow_datatype() => {
-                timestamp_case!(apply_nanoseconds, as_int64_array, self.filter)
+                timestamp_case!(apply_nanoseconds, as_int64_array, self)
             }
 
             DataType::Timestamp(TimeUnit::Second, _) => {
-                timestamp_case!(apply_seconds, as_timestamp_second_array, self.filter)
+                timestamp_case!(apply_seconds, as_timestamp_second_array, self)
             }
             DataType::Timestamp(TimeUnit::Millisecond, _) => {
-                timestamp_case!(
-                    apply_milliseconds,
-                    as_timestamp_millisecond_array,
-                    self.filter
-                )
+                timestamp_case!(apply_milliseconds, as_timestamp_millisecond_array, self)
             }
             DataType::Timestamp(TimeUnit::Microsecond, _) => {
-                timestamp_case!(
-                    apply_microseconds,
-                    as_timestamp_microsecond_array,
-                    self.filter
-                )
+                timestamp_case!(apply_microseconds, as_timestamp_microsecond_array, self)
             }
             DataType::Timestamp(TimeUnit::Nanosecond, _) => {
-                timestamp_case!(
-                    apply_nanoseconds,
-                    as_timestamp_nanosecond_array,
-                    self.filter
-                )
+                timestamp_case!(apply_nanoseconds, as_timestamp_nanosecond_array, self)
             }
 
             _ => {
                 exec_err!("Unsupported data type {}", array.data_type())
             }
         }
-    }
-
-    fn invoke_list_array(&self, list_array: &ListArray) -> DataFusionResult<BooleanArray> {
-        // TODO(ab): we probably should do this in two steps:
-        // 1) Convert the list array to a bool array (with same offsets and nulls)
-        // 2) Apply the ANY (or, in the future, another) semantics to "merge" each row's instances
-        //    into the final bool.
-        // TODO(ab): duplicated code with the other UDF, pliz unify.
-        list_array
-            .iter()
-            .map(|maybe_row| {
-                maybe_row.map(|row| {
-                    // Note: we know this is a primitive array because we explicitly disallow nested
-                    // lists or other containers.
-                    let element_results = self.invoke_primitive_array(&row)?;
-
-                    // `ANY` semantics happening here
-                    Ok(element_results
-                        .iter()
-                        .map(|x| x.unwrap_or(false))
-                        .find(|x| *x)
-                        .unwrap_or(false))
-                })
-            })
-            .map(|x| x.transpose())
-            .collect::<DataFusionResult<BooleanArray>>()
-    }
-}
-
-impl ScalarUDFImpl for TimestampFilterUdf {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn name(&self) -> &'static str {
-        "timestamp_filter"
-    }
-
-    fn signature(&self) -> &Signature {
-        &self.signature
-    }
-
-    fn return_type(&self, arg_types: &[DataType]) -> DataFusionResult<DataType> {
-        if arg_types.len() != 1 {
-            return exec_err!(
-                "expected a single column of input, received {}",
-                arg_types.len()
-            );
-        }
-
-        if Self::is_valid_input_type(&arg_types[0]) {
-            Ok(DataType::Boolean)
-        } else {
-            exec_err!(
-                "input data type {} not supported for timestamp filter",
-                arg_types[0]
-            )
-        }
-    }
-
-    fn invoke_with_args(&self, args: ScalarFunctionArgs) -> DataFusionResult<ColumnarValue> {
-        let ColumnarValue::Array(input_array) = &args.args[0] else {
-            return exec_err!("expected array inputs, not scalar values");
-        };
-
-        let results = match input_array.data_type() {
-            DataType::List(_field) => {
-                let array = as_list_array(input_array);
-                self.invoke_list_array(array)?
-            }
-
-            DataType::Timestamp(_, _) | DataType::Int64 => {
-                self.invoke_primitive_array(input_array)?
-            }
-
-            _ => {
-                return exec_err!(
-                    "DataType not implemented for FilterKindUdf: {}",
-                    input_array.data_type()
-                );
-            }
-        };
-
-        Ok(ColumnarValue::Array(Arc::new(results)))
     }
 }
 
@@ -1082,21 +951,23 @@ mod tests {
     #[test]
     fn test_last_24_hours_filter() {
         let filter = ResolvedTimestampFilter::Last24Hours;
-        let now = Timestamp::now();
+
+        // Note: this test doesn't attempt to test close to the limits, because it can become
+        // flaky with slow execution time. This is also why we are calling `Timestamp::now()` again
+        // for each assert.
 
         // Should accept timestamps within the last 24 hours
-        assert!(filter.apply(now));
-        assert!(filter.apply(now.checked_sub(1.hours()).unwrap()));
-        assert!(filter.apply(now.checked_sub(12.hours()).unwrap()));
-        assert!(filter.apply(now.checked_sub(23.hours()).unwrap()));
+        assert!(filter.apply(Timestamp::now()));
+        assert!(filter.apply(Timestamp::now().checked_sub(1.hours()).unwrap()));
+        assert!(filter.apply(Timestamp::now().checked_sub(12.hours()).unwrap()));
+        assert!(filter.apply(Timestamp::now().checked_sub(23.hours()).unwrap()));
 
         // Should reject timestamps older than 24 hours
-        assert!(!filter.apply(now.checked_sub(25.hours()).unwrap()));
-        assert!(!filter.apply(now.checked_sub(48.hours()).unwrap()));
+        assert!(!filter.apply(Timestamp::now().checked_sub(25.hours()).unwrap()));
+        assert!(!filter.apply(Timestamp::now().checked_sub(48.hours()).unwrap()));
 
         // Should reject future timestamps
-        assert!(!filter.apply(now.checked_add(1.seconds()).unwrap()));
-        assert!(!filter.apply(now.checked_add(1.hours()).unwrap()));
+        assert!(!filter.apply(Timestamp::now().checked_add(1.hours()).unwrap()));
     }
 
     #[test]

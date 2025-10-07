@@ -20,7 +20,7 @@ use re_viewer_context::{
     StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
     ViewClassRegistry, ViewClassRegistryError, command_channel,
     open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url},
-    santitize_file_name,
+    sanitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
 };
 
@@ -1631,7 +1631,7 @@ impl App {
             } else {
                 format!("{}-{}", store.application_id(), store.recording_id())
             }
-            .pipe(|name| santitize_file_name(&name))
+            .pipe(|name| sanitize_file_name(&name))
             .pipe(|stem| format!("{stem}.rrd"));
 
             let file_path = folder.join(file_name.clone());
@@ -2009,25 +2009,26 @@ impl App {
             );
         }
 
-        // TODO(cmc): we have to keep grabbing and releasing entity_db because everything references
-        // everything and some of it is mutable and some not… it's really not pretty, but it
-        // does the job for now.
-
         let msg_will_add_new_store = matches!(&msg, LogMsg::SetStoreInfo(..))
             && !store_hub.store_bundle().contains(store_id);
 
-        let was_empty = {
-            let entity_db = store_hub.entity_db_mut(store_id);
-            if entity_db.data_source.is_none() {
-                entity_db.data_source = Some((*channel_source).clone());
-            }
-            entity_db.is_empty()
-        };
+        let entity_db = store_hub.entity_db_mut(store_id);
+        if entity_db.data_source.is_none() {
+            entity_db.data_source = Some((*channel_source).clone());
+        }
 
-        match store_hub.entity_db_mut(store_id).add(msg) {
+        let was_empty = entity_db.is_empty();
+        let entity_db_add_result = entity_db.add(msg);
+
+        // Downgrade to read-only, so we can access caches.
+        let entity_db = store_hub
+            .entity_db(store_id)
+            .expect("Just queried it mutable and that was fine.");
+
+        match entity_db_add_result {
             Ok(store_events) => {
                 if let Some(caches) = store_hub.active_caches() {
-                    caches.on_store_events(&store_events);
+                    caches.on_store_events(&store_events, entity_db);
                 }
 
                 self.validate_loaded_events(&store_events);
@@ -2037,8 +2038,6 @@ impl App {
                 re_log::error_once!("Failed to add incoming msg: {err}");
             }
         }
-
-        let entity_db = store_hub.entity_db_mut(store_id);
 
         if was_empty && !entity_db.is_empty() {
             // Hack: we cannot go to a specific timeline or entity until we know about it.
@@ -3180,7 +3179,7 @@ fn save_recording(
         .recording_info_property::<re_types::components::Name>(
             &re_types::archetypes::RecordingInfo::descriptor_name(),
         ) {
-        format!("{}.rrd", santitize_file_name(&recording_name))
+        format!("{}.rrd", sanitize_file_name(&recording_name))
     } else {
         "data.rrd".to_owned()
     };

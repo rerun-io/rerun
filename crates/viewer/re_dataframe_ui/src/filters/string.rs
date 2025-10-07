@@ -1,23 +1,18 @@
-use std::any::Any;
 use std::fmt::Formatter;
 use std::sync::Arc;
 
-use arrow::array::{
-    ArrayRef, BooleanArray, Datum, LargeStringArray, ListArray, StringArray, StringViewArray,
-    as_list_array,
-};
+use arrow::array::{ArrayRef, BooleanArray, Datum, LargeStringArray, StringArray, StringViewArray};
 use arrow::datatypes::{DataType, Field};
-use datafusion::common::{Column, Result as DataFusionResult, exec_err};
+use datafusion::common::{Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
-    ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, Expr, ScalarFunctionArgs,
-    ScalarUDF, ScalarUDFImpl, Signature, TypeSignature, Volatility, col, lit, not,
+    ColumnarValue, Expr, ScalarFunctionArgs, TypeSignature, col, lit, not,
 };
 use strum::VariantArray as _;
 
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
-use super::{FilterUiAction, action_from_text_edit_response};
+use super::{Filter, FilterError, FilterUdf, FilterUiAction, action_from_text_edit_response};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum::VariantArray)]
 pub enum StringOperator {
@@ -47,6 +42,8 @@ pub struct StringFilter {
 
 impl SyntaxHighlighting for StringFilter {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        builder.append_keyword(&self.operator.to_string());
+        builder.append_keyword(" ");
         builder.append_string_value(&self.query);
     }
 }
@@ -58,34 +55,33 @@ impl StringFilter {
             query: query.into(),
         }
     }
+}
 
-    pub fn operator(&self) -> StringOperator {
-        self.operator
-    }
-
-    pub fn as_filter_expression(&self, column: &Column) -> Expr {
+impl Filter for StringFilter {
+    fn as_filter_expression(&self, field: &Field) -> Result<Expr, FilterError> {
         if self.query.is_empty() {
-            return lit(true);
+            return Ok(lit(true));
         }
 
-        let udf = ScalarUDF::new_from_impl(StringFilterUdf::new(self));
-        let expr = udf.call(vec![col(column.clone())]);
+        let udf = self.as_scalar_udf();
+        let expr = udf.call(vec![col(field.name().clone())]);
 
         // The udf treats `DoesNotContains` in the same way as `Contains`, so we must apply an
         // outer `NOT` (or null) operation. This way, both operators yield complementary results.
         let apply_should_invert_expression_semantics =
-            self.operator() == StringOperator::DoesNotContain;
+            self.operator == StringOperator::DoesNotContain;
 
-        if apply_should_invert_expression_semantics {
+        Ok(if apply_should_invert_expression_semantics {
             not(expr.clone()).or(expr.is_null())
         } else {
             expr
-        }
+        })
     }
 
-    pub fn popup_ui(
+    fn popup_ui(
         &mut self,
         ui: &mut egui::Ui,
+        _timestamp_format: re_log_types::TimestampFormat,
         column_name: &str,
         popup_just_opened: bool,
     ) -> FilterUiAction {
@@ -132,46 +128,15 @@ pub fn is_supported_string_datatype(data_type: &DataType) -> bool {
     )
 }
 
-/// Custom UDF for performing filtering on a column of strings, with support for list columns.
-///
-/// This UDF converts both the haystack and the needle to lowercase before performing the queries.
-#[derive(Debug, Clone)]
-struct StringFilterUdf {
-    needle: String,
-    operator: StringOperator,
-    signature: Signature,
-}
+impl FilterUdf for StringFilter {
+    const PRIMITIVE_SIGNATURE: TypeSignature = TypeSignature::String(1);
 
-impl StringFilterUdf {
-    fn new(filter: &StringFilter) -> Self {
-        let signature = Signature::one_of(
-            vec![
-                TypeSignature::String(1),
-                TypeSignature::ArraySignature(ArrayFunctionSignature::Array {
-                    arguments: vec![ArrayFunctionArgument::Array],
-                    array_coercion: None,
-                }),
-            ],
-            Volatility::Immutable,
-        );
-
-        Self {
-            needle: filter.query.to_lowercase(),
-            operator: filter.operator,
-            signature,
-        }
+    fn name(&self) -> &'static str {
+        "string"
     }
 
-    fn is_valid_input_type(data_type: &DataType) -> bool {
-        match data_type {
-            DataType::List(field) | DataType::ListView(field) => {
-                // Note: we do not support double nested types
-                is_supported_string_datatype(field.data_type())
-            }
-
-            //TODO(ab): support other containers
-            _ => is_supported_string_datatype(data_type),
-        }
+    fn is_valid_primitive_input_type(data_type: &DataType) -> bool {
+        is_supported_string_datatype(data_type)
     }
 
     fn invoke_primitive_array(&self, array: &ArrayRef) -> DataFusionResult<BooleanArray> {
@@ -202,10 +167,11 @@ impl StringFilterUdf {
         };
 
         // make a scalar needle of the right datatype
+        let lowercase_query = self.query.to_lowercase();
         let needle: Box<dyn Datum> = match haystack_array.data_type() {
-            DataType::Utf8 => Box::new(StringArray::new_scalar(self.needle.clone())),
-            DataType::LargeUtf8 => Box::new(LargeStringArray::new_scalar(self.needle.clone())),
-            DataType::Utf8View => Box::new(StringViewArray::new_scalar(self.needle.clone())),
+            DataType::Utf8 => Box::new(StringArray::new_scalar(lowercase_query.clone())),
+            DataType::LargeUtf8 => Box::new(LargeStringArray::new_scalar(lowercase_query.clone())),
+            DataType::Utf8View => Box::new(StringViewArray::new_scalar(lowercase_query.clone())),
 
             _ => return exec_err!("Unsupported data type {}", haystack_array.data_type()),
         };
@@ -223,89 +189,5 @@ impl StringFilterUdf {
                 Ok(arrow::compute::ends_with(haystack_array, needle.as_ref())?)
             }
         }
-    }
-
-    fn invoke_list_array(&self, list_array: &ListArray) -> DataFusionResult<BooleanArray> {
-        // TODO(ab): we probably should do this in two steps:
-        // 1) Convert the list array to a bool array (with same offsets and nulls)
-        // 2) Apply the ANY (or, in the future, another) semantics to "merge" each row's instances
-        //    into the final bool.
-        // TODO(ab): duplicated code with the other UDF, pliz unify.
-        list_array
-            .iter()
-            .map(|maybe_row| {
-                maybe_row.map(|row| {
-                    // Note: we know this is a primitive array because we explicitly disallow nested
-                    // lists or other containers.
-                    let element_results = self.invoke_primitive_array(&row)?;
-
-                    // `ANY` semantics happening here
-                    Ok(element_results
-                        .iter()
-                        .map(|x| x.unwrap_or(false))
-                        .find(|x| *x)
-                        .unwrap_or(false))
-                })
-            })
-            .map(|x| x.transpose())
-            .collect::<DataFusionResult<BooleanArray>>()
-    }
-}
-
-impl ScalarUDFImpl for StringFilterUdf {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn name(&self) -> &'static str {
-        "string_filter"
-    }
-
-    fn signature(&self) -> &Signature {
-        &self.signature
-    }
-
-    fn return_type(&self, arg_types: &[DataType]) -> DataFusionResult<DataType> {
-        if arg_types.len() != 1 {
-            return exec_err!(
-                "expected a single column of input, received {}",
-                arg_types.len()
-            );
-        }
-
-        if Self::is_valid_input_type(&arg_types[0]) {
-            Ok(DataType::Boolean)
-        } else {
-            exec_err!(
-                "input data type {} not supported for string filter",
-                arg_types[0]
-            )
-        }
-    }
-
-    fn invoke_with_args(&self, args: ScalarFunctionArgs) -> DataFusionResult<ColumnarValue> {
-        let ColumnarValue::Array(input_array) = &args.args[0] else {
-            return exec_err!("expected array inputs, not scalar values");
-        };
-
-        let results = match input_array.data_type() {
-            DataType::List(_) | DataType::ListView(_) => {
-                let array = as_list_array(input_array);
-                self.invoke_list_array(array)?
-            }
-
-            data_type if is_supported_string_datatype(data_type) => {
-                self.invoke_primitive_array(input_array)?
-            }
-
-            _ => {
-                return exec_err!(
-                    "DataType not implemented for StringFilterUdf: {}",
-                    input_array.data_type()
-                );
-            }
-        };
-
-        Ok(ColumnarValue::Array(Arc::new(results)))
     }
 }

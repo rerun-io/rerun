@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
-
+use std::str::FromStr;
 #[cfg(unix)]
 use tokio::signal::unix::{SignalKind, signal};
 #[cfg(windows)]
@@ -23,12 +23,40 @@ pub struct Args {
     pub port: u16,
 
     /// Load a directory of RRD as dataset (can be specified multiple times).
+    /// You can specify only a path or provide a name such as
+    /// `-d my_dataset=./path/to/files`
     #[clap(long = "dataset", short = 'd')]
-    pub datasets: Vec<PathBuf>,
+    pub datasets: Vec<NamedPath>,
 
     /// Load a lance file as a table (can be specified multiple times).
+    /// You can specify only a path or provide a name such as
+    /// `-t my_table=./path/to/table`
     #[clap(long = "table", short = 't')]
-    pub tables: Vec<PathBuf>,
+    pub tables: Vec<NamedPath>,
+}
+
+#[derive(Debug, Clone)]
+pub struct NamedPath {
+    pub name: Option<String>,
+    pub path: PathBuf,
+}
+
+impl FromStr for NamedPath {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Some((name, path)) = s.split_once('=') {
+            Ok(Self {
+                name: Some(name.to_owned()),
+                path: PathBuf::from(path),
+            })
+        } else {
+            Ok(Self {
+                name: None,
+                path: PathBuf::from(s),
+            })
+        }
+    }
 }
 
 impl Args {

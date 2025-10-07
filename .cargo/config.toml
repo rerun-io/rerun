@@ -20,3 +20,8 @@ IS_IN_RERUN_WORKSPACE = "yes"
 # https://docs.rs/getrandom/latest/getrandom/#webassembly-support
 [target.wasm32-unknown-unknown]
 rustflags = ['--cfg=web_sys_unstable_apis', '--cfg=getrandom_backend="wasm_js"']
+
+# Use rust-lld on Windows due problems with large debug symbols.
+# See https://github.com/rust-lang/rust/issues/141626
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld"

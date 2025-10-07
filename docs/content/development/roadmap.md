@@ -5,7 +5,7 @@ order: 0
 Rerun is building a data management and visualization engine for multimodal data that changes over time.
 We aim to make it fast, simple to use, and easy to adapt and integrate into your existing workflows.
 
-Open an issue or pull request on [GitHub](https://github.com/rerun-io/rerun) or join us on [Discord](https://discord.gg/PXtCgFBSmH) to let the community know what you'd like to see.
+Open an issue or pull request on [GitHub](https://github.com/rerun-io/rerun) or join us on [Discord](https://discord.gg/PXtCgFBSmH) to let the community know what you'd like to see. Or if you're open for a conversation, [sign up here](https://rerun.io/feedback).
 
 
 This page is meant to give an high level overview of ongoing and planned work. This roadmap is subject to change; GitHub will be the most authoritative source for active development.

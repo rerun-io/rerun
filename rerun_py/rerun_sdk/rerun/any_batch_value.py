@@ -127,7 +127,7 @@ class AnyBatchValue(ComponentBatchLike):
     See also [rerun.AnyValues][].
     """
 
-    def __init__(self, descriptor: str | ComponentDescriptor, value: Any, drop_untyped_nones: bool = True) -> None:
+    def __init__(self, descriptor: str | ComponentDescriptor, value: Any, *, drop_untyped_nones: bool = True) -> None:
         """
         Construct a new AnyBatchValue.
 
@@ -248,5 +248,5 @@ class AnyBatchValue(ComponentBatchLike):
             previously logged with a type.
 
         """
-        inst = cls(descriptor, value, drop_untyped_nones)
+        inst = cls(descriptor, value, drop_untyped_nones=drop_untyped_nones)
         return ComponentColumn(descriptor, inst)

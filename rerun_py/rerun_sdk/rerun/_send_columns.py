@@ -247,6 +247,7 @@ def send_columns(
     entity_path: str,
     indexes: Iterable[TimeColumnLike],
     columns: Iterable[ComponentColumn],
+    *,
     recording: RecordingStream | None = None,
     strict: bool | None = None,  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
 ) -> None:

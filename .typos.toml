@@ -175,6 +175,8 @@ extend-ignore-re = [
   "cros_codecs",
   "cros-codecs",
 
+  "Secur32", # Referring to `Secur32.dll` on Windows.
+
   "muh_scalars", # Weird name introduced in `crates/viewer/re_view_time_series/tests/basic.rs` introduced in https://github.com/rerun-io/rerun/pull/10713
 
   "isse", # Name

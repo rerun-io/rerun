@@ -25,6 +25,7 @@ __all__ = ["AffixFuzzer1"]
 class AffixFuzzer1(Archetype):
     def __init__(
         self: Any,
+        *,
         fuzz1001: datatypes.AffixFuzzer1Like,
         fuzz1002: datatypes.AffixFuzzer1Like,
         fuzz1003: datatypes.AffixFuzzer1Like,
