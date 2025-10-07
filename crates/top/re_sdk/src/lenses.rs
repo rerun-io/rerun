@@ -520,8 +520,8 @@ mod test {
         TimeColumn, TimelineName,
         external::arrow::{
             array::{
-                Float32Builder, Float64Builder, Int32Builder, ListBuilder, StringBuilder,
-                StructBuilder,
+                Float32Builder, Float64Array, Float64Builder, Int32Builder, ListBuilder,
+                StringBuilder, StructBuilder,
             },
             datatypes::{DataType, Field},
         },
@@ -868,5 +868,56 @@ mod test {
 
         let chunk = &res[0];
         insta::assert_snapshot!("single_static", format!("{chunk:-240}"));
+    }
+
+    #[test]
+    fn test_archtype_from_column() {
+        let mut f64_column_builder = ListBuilder::new(Float64Builder::new());
+
+        // row 0
+        f64_column_builder.values().append_value(0.0);
+        f64_column_builder.append(true);
+
+        // row 1
+        f64_column_builder.values().append_value(1.0);
+        f64_column_builder.append(true);
+
+        // row 2
+        f64_column_builder.append(true); // empty list
+
+        // row 3
+        f64_column_builder.values().append_value(3.0);
+        f64_column_builder.append(true);
+
+        // row 4
+        f64_column_builder.append(false); // null
+
+        // row 5
+        f64_column_builder.values().append_value(5.0);
+        f64_column_builder.append(true);
+
+        // row 6
+        f64_column_builder.values().append_null();
+        f64_column_builder.append(true);
+
+        let f64_column = f64_column_builder.finish();
+
+        let value_array = f64_column
+            .values()
+            .as_any()
+            .downcast_ref::<Float64Array>()
+            .unwrap();
+
+        // dbg!(&value_array);
+
+        let lengths = dbg!(value_array.offsets().lengths().collect::<Vec<_>>());
+
+        let archetype = Scalars::new(value_array.iter().filter_map(|x| x)).columns(lengths);
+
+        let archetype = archetype.unwrap().collect::<Vec<_>>();
+
+        dbg!(archetype);
+
+        assert!(false);
     }
 }
