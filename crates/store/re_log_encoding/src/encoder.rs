@@ -84,6 +84,23 @@ impl Encoder<Vec<u8>> {
             Vec::new(),
         )
     }
+
+    /// All-in-one helper to encode a stream of [`LogMsg`]s into an actual RRD stream.
+    ///
+    /// Returns the encoded data in a newly allocated vector.
+    pub fn encode(
+        version: CrateVersion,
+        options: EncodingOptions,
+        messages: impl Iterator<Item = ChunkResult<impl Borrow<LogMsg>>>,
+    ) -> Result<Vec<u8>, EncodeError> {
+        re_tracing::profile_function!();
+        let mut encoder = Self::new(version, options, vec![])?;
+        for message in messages {
+            encoder.append(message?.borrow())?;
+        }
+        encoder.finish()?;
+        encoder.into_inner()
+    }
 }
 
 impl<W: std::io::Write> Encoder<W> {
@@ -236,20 +253,6 @@ impl<W: std::io::Write> std::ops::Drop for Encoder<W> {
             re_log::warn!("encoder couldn't be finished: {err}");
         }
     }
-}
-
-pub fn encode_as_bytes(
-    version: CrateVersion,
-    options: EncodingOptions,
-    messages: impl Iterator<Item = ChunkResult<LogMsg>>,
-) -> Result<Vec<u8>, EncodeError> {
-    re_tracing::profile_function!();
-    let mut encoder = Encoder::new(version, options, vec![])?;
-    for message in messages {
-        encoder.append(&message?)?;
-    }
-    encoder.finish()?;
-    encoder.into_inner()
 }
 
 #[inline]
