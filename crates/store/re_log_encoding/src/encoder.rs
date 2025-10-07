@@ -98,6 +98,10 @@ impl<W: std::io::Write> Encoder<W> {
 
     /// Returns the size in bytes of the encoded data.
     pub fn append(&mut self, message: &LogMsg) -> Result<u64, EncodeError> {
+        if self.is_finished {
+            return Err(EncodeError::AlreadyFinished);
+        }
+
         let Some(w) = self.write.as_mut() else {
             return Err(EncodeError::AlreadyUnwrapped);
         };
@@ -118,6 +122,10 @@ impl<W: std::io::Write> Encoder<W> {
 
     /// Returns the size in bytes of the encoded data.
     pub fn append_proto(&mut self, message: LogMsgProto) -> Result<u64, EncodeError> {
+        if self.is_finished {
+            return Err(EncodeError::AlreadyFinished);
+        }
+
         let Some(w) = self.write.as_mut() else {
             return Err(EncodeError::AlreadyUnwrapped);
         };
@@ -145,6 +153,10 @@ impl<W: std::io::Write> Encoder<W> {
     /// * Concatenated RRD file streams (e.g. `cat *.rrd | rerun -`).
     #[inline]
     pub fn finish(&mut self) -> Result<(), EncodeError> {
+        if self.is_finished {
+            return Ok(());
+        }
+
         let Some(w) = self.write.as_mut() else {
             return Err(EncodeError::AlreadyUnwrapped);
         };
@@ -158,6 +170,9 @@ impl<W: std::io::Write> Encoder<W> {
                 .encode(w)?;
             }
         }
+
+        self.is_finished = true;
+
         Ok(())
     }
 
@@ -180,9 +195,12 @@ impl<W: std::io::Write> Encoder<W> {
 // But I don't want to change any flushing behavior at the moment, so I'll keep it that way for now.
 impl<W: std::io::Write> std::ops::Drop for Encoder<W> {
     fn drop(&mut self) {
-        if !self.is_finished
-            && let Err(err) = self.finish()
-        {
+        if self.write.is_none() {
+            // Already unwrapped: nothing to see here.
+            return;
+        }
+
+        if let Err(err) = self.finish() {
             re_log::warn!("encoder couldn't be finished: {err}");
         }
     }
