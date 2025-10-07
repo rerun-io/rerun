@@ -239,22 +239,6 @@ impl<W: std::io::Write> std::ops::Drop for Encoder<W> {
 }
 
 /// Returns the size in bytes of the encoded data.
-pub fn encode(
-    version: CrateVersion,
-    options: EncodingOptions,
-    messages: impl Iterator<Item = ChunkResult<LogMsg>>,
-    write: &mut impl std::io::Write,
-) -> Result<u64, EncodeError> {
-    re_tracing::profile_function!();
-    let mut encoder = Encoder::new(version, options, write)?;
-    let mut size_bytes = 0;
-    for message in messages {
-        size_bytes += encoder.append(&message?)?;
-    }
-    Ok(size_bytes)
-}
-
-/// Returns the size in bytes of the encoded data.
 pub fn encode_ref<'a>(
     version: CrateVersion,
     options: EncodingOptions,
