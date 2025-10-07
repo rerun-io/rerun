@@ -98,11 +98,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/c4945bdef6cdcf99bf37a05480d19be23bfd2b7f/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/c4945bdef6cdcf99bf37a05480d19be23bfd2b7f/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/c4945bdef6cdcf99bf37a05480d19be23bfd2b7f/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/c4945bdef6cdcf99bf37a05480d19be23bfd2b7f/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/c4945bdef6cdcf99bf37a05480d19be23bfd2b7f/1200w.png">
+  <img src="https://static.rerun.io/crates/61660a3e8357cd6261f329c8fe15d5c5a1c6f087/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/61660a3e8357cd6261f329c8fe15d5c5a1c6f087/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/61660a3e8357cd6261f329c8fe15d5c5a1c6f087/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/61660a3e8357cd6261f329c8fe15d5c5a1c6f087/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/61660a3e8357cd6261f329c8fe15d5c5a1c6f087/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -120,20 +120,20 @@ Update instructions:
 
 ### SDK/CLI/Wasm top-level crates
 
-| Crate                | Description                          |
-|----------------------|--------------------------------------|
-| rerun-cli            | Rerun native CLI binary crate        |
-| Rerun                | Rerun Rust SDK and Viewer shim crate |
-| rerun_c              | Rerun C SDK                          |
-| rerun_py             | Rerun Python SDK                     |
-| re_sdk               | Rerun logging SDK                    |
+| Crate     | Description                          |
+| --------- | ------------------------------------ |
+| rerun-cli | Rerun native CLI binary crate        |
+| Rerun     | Rerun Rust SDK and Viewer shim crate |
+| rerun_c   | Rerun C SDK                          |
+| rerun_py  | Rerun Python SDK                     |
+| re_sdk    | Rerun logging SDK                    |
 
 ### Viewer crates
 
 ##### UI crates
 
 | Crate                 | Description                                                                                                |
-|-----------------------|------------------------------------------------------------------------------------------------------------|
+| --------------------- | ---------------------------------------------------------------------------------------------------------- |
 | re_arrow_ui           | Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting.                   |
 | re_blueprint_tree     | The UI for the blueprint tree in the left panel.                                                           |
 | re_redap_browser      | The UI and communication to implement the in-viewer redap server browser.                                  |
@@ -159,20 +159,20 @@ Update instructions:
 
 ##### UI support crates
 
-| Crate                  | Description                                                          |
-|------------------------|----------------------------------------------------------------------|
-| re_context_menu        | Support crate for context menu and actions.                          |
-| re_data_ui             | Provides UI elements for Rerun component data for the Rerun Viewer.  |
-| re_renderer            | A wgpu-based renderer for all your visualization needs.              |
-| re_renderer_examples   | Examples for re_renderer                                             |
-| re_ui                  | Rerun GUI theme and helpers, built around egui                       |
-| re_viewer_context      | Rerun Viewer state that is shared with the viewer's code components. |
-| re_viewport_blueprint  | The data model description of the viewport panel.                    |
+| Crate                 | Description                                                          |
+| --------------------- | -------------------------------------------------------------------- |
+| re_context_menu       | Support crate for context menu and actions.                          |
+| re_data_ui            | Provides UI elements for Rerun component data for the Rerun Viewer.  |
+| re_renderer           | A wgpu-based renderer for all your visualization needs.              |
+| re_renderer_examples  | Examples for re_renderer                                             |
+| re_ui                 | Rerun GUI theme and helpers, built around egui                       |
+| re_viewer_context     | Rerun Viewer state that is shared with the viewer's code components. |
+| re_viewport_blueprint | The data model description of the viewport panel.                    |
 
 ### Application-level store
 
 | Crate           | Description                                                     |
-|-----------------|-----------------------------------------------------------------|
+| --------------- | --------------------------------------------------------------- |
 | re_dataframe    | The Rerun public data APIs.                                     |
 | re_datafusion   | DataFusion interfaces to Rerun gRPC queries                     |
 | re_entity_db    | In-memory storage of Rerun entities                             |
@@ -186,7 +186,7 @@ Update instructions:
 ### Low-level store
 
 | Crate           | Description                                                                                   |
-|-----------------|-----------------------------------------------------------------------------------------------|
+| --------------- | --------------------------------------------------------------------------------------------- |
 | re_chunk        | A chunk of Rerun data, encoded using Arrow. Used for logging, transport, storage and compute. |
 | re_chunk_store  | An in-memory time series database for Rerun log data, based on Apache Arrow.                  |
 | re_format_arrow | Formatting of Apache Arrow tables.                                                            |
@@ -197,7 +197,7 @@ Update instructions:
 ### Data flow
 
 | Crate                | Description                                                       |
-|----------------------|-------------------------------------------------------------------|
+| -------------------- | ----------------------------------------------------------------- |
 | re_redap_client      | Official client for the Rerun Data Protocol                       |
 | re_data_loader       | Handles loading of Rerun data from file using data loader plugins |
 | re_data_source       | Handles loading of Rerun data from different sources              |
@@ -208,7 +208,7 @@ Update instructions:
 ### Build support
 
 | Crate             | Description                                                      |
-|-------------------|------------------------------------------------------------------|
+| ----------------- | ---------------------------------------------------------------- |
 | re_build_info     | Information about the build. Use together with re_build_tools    |
 | re_build_tools    | build.rs helpers for generating build info                       |
 | re_dev_tools      | Various tools for Rerun development. Each tool has a subcommand. |
@@ -218,7 +218,7 @@ Update instructions:
 ### Utilities
 
 | Crate              | Description                                                                          |
-|--------------------|--------------------------------------------------------------------------------------|
+| ------------------ | ------------------------------------------------------------------------------------ |
 | re_analytics       | Rerun's analytics SDK                                                                |
 | re_arrow_util      | Helpers for working with arrow                                                       |
 | re_auth            | Authentication and authorization helpers                                             |
@@ -244,10 +244,10 @@ Update instructions:
 
 ### Test crates
 
-| Crate              | Description                                                   |
-|--------------------|---------------------------------------------------------------|
-| re_test_context    | Provides a test context that builds on `re_viewer_context.    |
-| re_test_viewport   | Extends the `re_test_context` with viewport-related features. |
+| Crate            | Description                                                   |
+| ---------------- | ------------------------------------------------------------- |
+| re_test_context  | Provides a test context that builds on `re_viewer_context.    |
+| re_test_viewport | Extends the `re_test_context` with viewport-related features. |
 
 ### Dependencies and docs
 
