@@ -1,5 +1,7 @@
 //! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
 
+use std::borrow::Borrow;
+
 use re_build_info::CrateVersion;
 use re_chunk::{ChunkError, ChunkResult};
 use re_log_types::LogMsg;
@@ -198,6 +200,26 @@ impl<W: std::io::Write> Encoder<W> {
     #[inline]
     pub fn into_inner(mut self) -> Result<W, EncodeError> {
         self.write.take().ok_or(EncodeError::AlreadyUnwrapped)
+    }
+}
+
+impl<W: std::io::Write> Encoder<W> {
+    /// All-in-one helper to encode a stream of [`LogMsg`]s into an actual RRD stream.
+    ///
+    /// Returns the size in bytes of the encoded data.
+    pub fn encode_into(
+        version: CrateVersion,
+        options: EncodingOptions,
+        messages: impl Iterator<Item = ChunkResult<impl Borrow<LogMsg>>>,
+        write: &mut W,
+    ) -> Result<u64, EncodeError> {
+        re_tracing::profile_function!();
+        let mut encoder = Encoder::new(version, options, write)?;
+        let mut size_bytes = 0;
+        for message in messages {
+            size_bytes += encoder.append(message?.borrow())?;
+        }
+        Ok(size_bytes)
     }
 }
 
