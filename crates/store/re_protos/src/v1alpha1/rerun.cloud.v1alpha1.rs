@@ -1353,7 +1353,7 @@ impl ::prost::Name for UpdateDatasetEntryResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterTableRequest {
-    /// Name of the dataset entry to create.
+    /// Name of the table entry to create.
     ///
     /// The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
     /// with the same name already exists, the request will fail. Entry names ending with `__manifest` are reserved.
