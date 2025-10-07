@@ -1264,9 +1264,10 @@ impl ScanPartitionTableResponse {
     }
 
     pub fn data(&self) -> Result<&DataframePart, TypeConversionError> {
-        Ok(self.data.as_ref().ok_or_else(|| {
-            missing_field!(crate::cloud::v1alpha1::ScanPartitionTableResponse, "data")
-        })?)
+        Ok(self
+            .data
+            .as_ref()
+            .ok_or_else(|| missing_field!(Self, "data"))?)
     }
 }
 
@@ -1335,9 +1336,10 @@ impl ScanDatasetManifestResponse {
     }
 
     pub fn data(&self) -> Result<&DataframePart, TypeConversionError> {
-        Ok(self.data.as_ref().ok_or_else(|| {
-            missing_field!(crate::cloud::v1alpha1::ScanPartitionTableResponse, "data")
-        })?)
+        Ok(self
+            .data
+            .as_ref()
+            .ok_or_else(|| missing_field!(Self, "data"))?)
     }
 }
 
