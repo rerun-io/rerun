@@ -1,3 +1,7 @@
+mod app_testing_ext;
+
+#[cfg(feature = "testing")]
+pub use app_testing_ext::AppTestingExt;
 use egui_kittest::Harness;
 use re_build_info::build_info;
 
@@ -6,11 +10,17 @@ use crate::{
     customize_eframe_and_setup_renderer,
 };
 
+#[derive(Default)]
+pub struct HarnessOptions {
+    pub window_size: Option<egui::Vec2>,
+}
+
 /// Convenience function for creating a kittest harness of the viewer App.
-pub fn viewer_harness() -> Harness<'static, App> {
+pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
+    let window_size = options.window_size.unwrap_or(egui::vec2(1024., 768.));
     Harness::builder()
         .wgpu()
-        .with_size(egui::vec2(1500., 1000.))
+        .with_size(window_size)
         .build_eframe(|cc| {
             cc.egui_ctx.set_os(egui::os::OperatingSystem::Nix);
             customize_eframe_and_setup_renderer(cc).expect("Failed to customize eframe");
