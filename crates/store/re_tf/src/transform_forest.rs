@@ -392,6 +392,9 @@ impl TransformForest {
             }
         };
 
+        // Query type of target's root for later.
+        let target_root_info = self.roots.get(&target.root);
+
         itertools::Either::Right(sources.map(move |source| {
             let Some(root_from_source) = self.root_from_entity.get(&source) else {
                 return (
@@ -412,6 +415,11 @@ impl TransformForest {
                 // target_from_source = target_from_reference * root_from_source
                 let target_from_source = root_from_source.left_multiply(target.target_from_root);
                 Ok(target_from_source)
+            }
+            // There might be a connection via a pinhole making this 3D in 2D.
+            else if let Some(TransformTreeRootInfo::Pinhole(pinhole_tree_root)) = target_root_info
+            {
+                from_3d_source_to_2d_target(&target, &source, pinhole_tree_root)
             }
             // There might be a connection via a pinhole making this 2D in 3D.
             else if let Some(TransformTreeRootInfo::Pinhole(pinhole_tree_root)) =
@@ -439,15 +447,17 @@ impl TransformForest {
 fn from_2d_source_to_3d_target(
     target: &TargetInfo,
     source: &SourceInfo<'_>,
-    pinhole_tree_root: &PinholeTreeRoot,
+    source_pinhole_tree_root: &PinholeTreeRoot,
     lookup_image_plane_distance: &dyn Fn(EntityPathHash) -> f32,
 ) -> Result<TransformInfo, TransformFromToError> {
     let PinholeTreeRoot {
         parent_tree_root,
         pinhole_projection,
         parent_root_from_pinhole_root: root_from_pinhole3d,
-    } = pinhole_tree_root;
+    } = source_pinhole_tree_root;
 
+    // `root` here is the target's root!
+    // We call the source's root `pinhole3d` to distinguish it.
     if *parent_tree_root != target.root {
         return Err(TransformFromToError::no_path_between_target_and_source(
             target, source,
@@ -455,20 +465,63 @@ fn from_2d_source_to_3d_target(
     }
 
     // Rename for clarification:
-    let pinhole2d_from_source = source.root_from_source;
+    let image_plane_from_source = source.root_from_source;
 
     // There's a connection via a pinhole making this 2D in 3D.
     // We can transform into the target space!
     let pinhole_image_plane_distance = lookup_image_plane_distance(source.root);
 
     // TODO: Locally cache pinhole transform?
-    let pinhole3d_from_pinhole2d =
-        pinhole2d_image_plane_from_pinhole3d(pinhole_projection, pinhole_image_plane_distance);
-    let target_from_pinhole2d =
-        target.target_from_root * root_from_pinhole3d * pinhole3d_from_pinhole2d;
+    let pinhole3d_from_image_plane =
+        pinhole3d_from_image_plane(pinhole_projection, pinhole_image_plane_distance);
+    let target_from_image_plane =
+        target.target_from_root * root_from_pinhole3d * pinhole3d_from_image_plane;
 
-    // target_from_source = target_from_pinhole2d * pinhole2d_from_source
-    Ok(pinhole2d_from_source.left_multiply(target_from_pinhole2d))
+    // target_from_source = target_from_image_plane * image_plane_from_source
+    Ok(image_plane_from_source.left_multiply(target_from_image_plane))
+}
+
+fn from_3d_source_to_2d_target(
+    target: &TargetInfo,
+    source: &SourceInfo<'_>,
+    target_pinhole_tree_root: &PinholeTreeRoot,
+) -> Result<TransformInfo, TransformFromToError> {
+    let PinholeTreeRoot {
+        parent_tree_root,
+        pinhole_projection,
+        parent_root_from_pinhole_root: root_from_pinhole3d,
+    } = target_pinhole_tree_root;
+
+    // `root` here is the source's root!
+    // We call the target's root `pinhole3d` to distinguish it.
+    if *parent_tree_root != source.root {
+        return Err(TransformFromToError::no_path_between_target_and_source(
+            target, source,
+        ));
+    }
+
+    // Rename for clarification:
+    let target_from_image_plane = target.target_from_root;
+
+    // TODO(#1025):
+    // There's no meaningful image plane distance for 3D->2D views.
+    let pinhole_image_plane_distance = 500.0;
+    // Currently our 2D views require us to invert the `pinhole2d_image_plane_from_pinhole3d` matrix.
+    // This builds a relationship between the 2D plane and the 3D world, when actually the 2D plane
+    // should have infinite depth!
+    // The inverse of this matrix *is* working for this, but quickly runs into precision issues.
+    // See also `ui_2d.rs#setup_target_config`
+
+    // TODO: Locally cache pinhole transform?
+    let pinhole3d_from_image_plane =
+        pinhole3d_from_image_plane(pinhole_projection, pinhole_image_plane_distance);
+    let image_plane_from_pinhole3d = pinhole3d_from_image_plane.inverse();
+    let pinhole3d_from_root = root_from_pinhole3d.inverse();
+    let target_from_root =
+        target_from_image_plane * image_plane_from_pinhole3d * pinhole3d_from_root;
+
+    // target_from_source = target_from_root * root_from_source
+    Ok(source.root_from_source.left_multiply(target_from_root))
 }
 
 fn left_multiply_smallvec1_of_transforms(
@@ -531,7 +584,7 @@ fn compute_root_from_archetype(
         .unwrap_or_default()
 }
 
-fn pinhole2d_image_plane_from_pinhole3d(
+fn pinhole3d_from_image_plane(
     resolved_pinhole_projection: &ResolvedPinholeProjection,
     pinhole_image_plane_distance: f32,
 ) -> glam::Affine3A {
@@ -567,14 +620,6 @@ fn pinhole2d_image_plane_from_pinhole3d(
 
     // Above calculation is nice for a certain kind of visualizing a projected image plane,
     // but the image plane distance is arbitrary and there might be other, better visualizations!
-
-    // TODO(#1025):
-    // As such we don't ever want to invert this matrix!
-    // However, currently our 2D views require us to do exactly that since we're forced to
-    // build a relationship between the 2D plane and the 3D world, when actually the 2D plane
-    // should have infinite depth!
-    // The inverse of this matrix *is* working for this, but quickly runs into precision issues.
-    // See also `ui_2d.rs#setup_target_config`
 }
 
 /// Resolved transforms at an entity.
