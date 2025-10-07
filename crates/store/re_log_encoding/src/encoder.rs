@@ -37,6 +37,9 @@ pub enum EncodeError {
     #[error("Called append on already finished encoder")]
     AlreadyFinished,
 
+    #[error("Called append on already unwrapped encoder")]
+    AlreadyUnwrapped,
+
     #[error("Missing field: {0}")]
     MissingField(&'static str),
 }
@@ -54,77 +57,21 @@ impl From<ChunkError> for EncodeError {
 
 // ----------------------------------------------------------------------------
 
-/// An [`Encoder`] that properly closes the stream on drop.
-///
-/// When dropped, it will automatically insert an end-of-stream marker, if that wasn't already done manually.
-pub struct DroppableEncoder<W: std::io::Write> {
-    encoder: Encoder<W>,
-
-    /// Tracks whether the end-of-stream marker has been written out already.
-    is_finished: bool,
-}
-
-impl<W: std::io::Write> DroppableEncoder<W> {
-    #[inline]
-    pub fn new(
-        version: CrateVersion,
-        options: EncodingOptions,
-        write: W,
-    ) -> Result<Self, EncodeError> {
-        Ok(Self {
-            encoder: Encoder::new(version, options, write)?,
-            is_finished: false,
-        })
-    }
-
-    /// Returns the size in bytes of the encoded data.
-    #[inline]
-    pub fn append(&mut self, message: &LogMsg) -> Result<u64, EncodeError> {
-        self.encoder.append(message)
-    }
-
-    /// Returns the size in bytes of the encoded data.
-    #[inline]
-    pub fn append_proto(&mut self, message: LogMsgProto) -> Result<u64, EncodeError> {
-        self.encoder.append_proto(message)
-    }
-
-    #[inline]
-    pub fn finish(&mut self) -> Result<(), EncodeError> {
-        if !self.is_finished {
-            self.encoder.finish()?;
-        }
-
-        self.is_finished = true;
-
-        Ok(())
-    }
-
-    #[inline]
-    pub fn flush_blocking(&mut self) -> std::io::Result<()> {
-        self.encoder.flush_blocking()
-    }
-}
-
-impl<W: std::io::Write> std::ops::Drop for DroppableEncoder<W> {
-    fn drop(&mut self) {
-        if !self.is_finished
-            && let Err(err) = self.finish()
-        {
-            re_log::warn!("encoder couldn't be finished: {err}");
-        }
-    }
-}
-
 /// Encode a stream of [`LogMsg`] into an `.rrd` file.
 ///
-/// Prefer [`DroppableEncoder`] if possible, make sure to call [`Encoder::finish`] when appropriate
-/// otherwise.
+/// When dropped, it will automatically insert an end-of-stream marker, if that wasn't already done manually.
 pub struct Encoder<W: std::io::Write> {
     serializer: Serializer,
     compression: Compression,
-    write: W,
+
+    /// Optional so that we can `take()` it in `into_inner`, while still being allowed to implement `Drop`.
+    write: Option<W>,
+
+    /// So we don't ever successfully write partial messages.
     scratch: Vec<u8>,
+
+    /// Tracks whether the end-of-stream marker has been written out already.
+    is_finished: bool,
 }
 
 impl<W: std::io::Write> Encoder<W> {
@@ -143,13 +90,18 @@ impl<W: std::io::Write> Encoder<W> {
         Ok(Self {
             serializer: options.serializer,
             compression: options.compression,
-            write,
+            write: Some(write),
             scratch: Vec::new(),
+            is_finished: false,
         })
     }
 
     /// Returns the size in bytes of the encoded data.
     pub fn append(&mut self, message: &LogMsg) -> Result<u64, EncodeError> {
+        let Some(w) = self.write.as_mut() else {
+            return Err(EncodeError::AlreadyUnwrapped);
+        };
+
         re_tracing::profile_function!();
 
         self.scratch.clear();
@@ -157,8 +109,7 @@ impl<W: std::io::Write> Encoder<W> {
             Serializer::Protobuf => {
                 encoder::encode(&mut self.scratch, message, self.compression)?;
 
-                self.write
-                    .write_all(&self.scratch)
+                w.write_all(&self.scratch)
                     .map(|_| self.scratch.len() as _)
                     .map_err(EncodeError::Write)
             }
@@ -167,6 +118,10 @@ impl<W: std::io::Write> Encoder<W> {
 
     /// Returns the size in bytes of the encoded data.
     pub fn append_proto(&mut self, message: LogMsgProto) -> Result<u64, EncodeError> {
+        let Some(w) = self.write.as_mut() else {
+            return Err(EncodeError::AlreadyUnwrapped);
+        };
+
         re_tracing::profile_function!();
 
         self.scratch.clear();
@@ -174,38 +129,62 @@ impl<W: std::io::Write> Encoder<W> {
             Serializer::Protobuf => {
                 encoder::encode_proto(&mut self.scratch, message)?;
 
-                self.write
-                    .write_all(&self.scratch)
+                w.write_all(&self.scratch)
                     .map(|_| self.scratch.len() as _)
                     .map_err(EncodeError::Write)
             }
         }
     }
 
-    // NOTE: This cannot be done in a `Drop` implementation because of `Self::into_inner` which
-    // does a partial move.
+    /// Appends an end-of-stream marker to the encoded bytes. Does not flush.
+    ///
+    /// This is idempotent. This is called automatically on drop.
+    ///
+    /// This end-of-stream marker is currently (seemingly?) relied on for:
+    /// * Tail mode (where the Viewer continuously poll reads from a file on disk).
+    /// * Concatenated RRD file streams (e.g. `cat *.rrd | rerun -`).
     #[inline]
     pub fn finish(&mut self) -> Result<(), EncodeError> {
+        let Some(w) = self.write.as_mut() else {
+            return Err(EncodeError::AlreadyUnwrapped);
+        };
+
         match self.serializer {
             Serializer::Protobuf => {
                 file::MessageHeader {
                     kind: file::MessageKind::End,
                     len: 0,
                 }
-                .encode(&mut self.write)?;
+                .encode(w)?;
             }
         }
         Ok(())
     }
 
     #[inline]
-    pub fn flush_blocking(&mut self) -> std::io::Result<()> {
-        self.write.flush()
+    pub fn flush_blocking(&mut self) -> Result<(), EncodeError> {
+        let Some(w) = self.write.as_mut() else {
+            return Err(EncodeError::AlreadyUnwrapped);
+        };
+
+        Ok(w.flush()?)
     }
 
     #[inline]
-    pub fn into_inner(self) -> W {
-        self.write
+    pub fn into_inner(mut self) -> Result<W, EncodeError> {
+        self.write.take().ok_or(EncodeError::AlreadyUnwrapped)
+    }
+}
+
+// TODO(cmc): It seems a bit suspicious to me that we send an EOS marker on drop, but don't flush.
+// But I don't want to change any flushing behavior at the moment, so I'll keep it that way for now.
+impl<W: std::io::Write> std::ops::Drop for Encoder<W> {
+    fn drop(&mut self) {
+        if !self.is_finished
+            && let Err(err) = self.finish()
+        {
+            re_log::warn!("encoder couldn't be finished: {err}");
+        }
     }
 }
 
@@ -217,7 +196,7 @@ pub fn encode(
     write: &mut impl std::io::Write,
 ) -> Result<u64, EncodeError> {
     re_tracing::profile_function!();
-    let mut encoder = DroppableEncoder::new(version, options, write)?;
+    let mut encoder = Encoder::new(version, options, write)?;
     let mut size_bytes = 0;
     for message in messages {
         size_bytes += encoder.append(&message?)?;
@@ -233,7 +212,7 @@ pub fn encode_ref<'a>(
     write: &mut impl std::io::Write,
 ) -> Result<u64, EncodeError> {
     re_tracing::profile_function!();
-    let mut encoder = DroppableEncoder::new(version, options, write)?;
+    let mut encoder = Encoder::new(version, options, write)?;
     let mut size_bytes = 0;
     for message in messages {
         size_bytes += encoder.append(message?)?;
@@ -247,18 +226,17 @@ pub fn encode_as_bytes(
     messages: impl Iterator<Item = ChunkResult<LogMsg>>,
 ) -> Result<Vec<u8>, EncodeError> {
     re_tracing::profile_function!();
-    let mut bytes: Vec<u8> = vec![];
-    let mut encoder = Encoder::new(version, options, &mut bytes)?;
+    let mut encoder = Encoder::new(version, options, vec![])?;
     for message in messages {
         encoder.append(&message?)?;
     }
     encoder.finish()?;
-    Ok(bytes)
+    encoder.into_inner()
 }
 
 #[inline]
-pub fn local_encoder() -> Result<DroppableEncoder<Vec<u8>>, EncodeError> {
-    DroppableEncoder::new(
+pub fn local_encoder() -> Result<Encoder<Vec<u8>>, EncodeError> {
+    Encoder::new(
         CrateVersion::LOCAL,
         EncodingOptions::PROTOBUF_COMPRESSED,
         Vec::new(),
@@ -283,7 +261,7 @@ pub fn encode_as_bytes_local(
         encoder.append(&message?)?;
     }
     encoder.finish()?;
-    Ok(encoder.into_inner())
+    encoder.into_inner()
 }
 
 #[inline]
@@ -295,5 +273,5 @@ pub fn encode_ref_as_bytes_local<'a>(
         encoder.append(message?)?;
     }
     encoder.finish()?;
-    Ok(encoder.into_inner())
+    encoder.into_inner()
 }
