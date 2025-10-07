@@ -1,10 +1,10 @@
 //! Test that 2D content can be added to a 3D space and vice versa.
 
-use re_log_types::TimePoint;
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_log_types::{EntityPathFilter, TimePoint};
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::{RowId, archetypes, components};
-use re_viewer_context::ViewClass as _;
+use re_viewer_context::{RecommendedView, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;
 
 fn setup_scene(test_context: &mut TestContext) {
@@ -70,7 +70,7 @@ fn setup_scene(test_context: &mut TestContext) {
 }
 
 #[test]
-pub fn test_twod_in_threed() {
+pub fn test_2d_in_3d() {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     setup_scene(&mut test_context);
@@ -90,14 +90,36 @@ pub fn test_twod_in_threed() {
             });
         });
 
-    // TODO: test
-    test_context
-        .save_recording_to_file("D:/dev/rerun-io/rerun/test.rrd")
-        .unwrap();
+    harness.run();
+    harness.snapshot("2d_in_3d");
+}
+
+#[test]
+pub fn test_3d_in_2d() {
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
+
+    setup_scene(&mut test_context);
+
+    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        let view = ViewBlueprint::new(
+            re_view_spatial::SpatialView2D::identifier(),
+            RecommendedView {
+                origin: "camera".into(),
+                query_filter: EntityPathFilter::all(),
+            },
+        );
+        blueprint.add_view_at_root(view)
+    });
+
+    let mut harness = test_context
+        .setup_kittest_for_rendering()
+        .with_size(egui::vec2(400.0, 300.0))
+        .build_ui(|ui| {
+            test_context.run_ui(ui, |ctx, ui| {
+                test_context.ui_for_single_view(ui, ctx, view_id);
+            });
+        });
 
     harness.run();
-    harness.snapshot_options(
-        "2d_in_3d",
-        &SnapshotOptions::new(), // TODO: calibrate
-    );
+    harness.snapshot("3d_in_2d");
 }
