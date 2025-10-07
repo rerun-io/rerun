@@ -233,6 +233,8 @@ pub struct TransformsForEntity {
 pub struct ResolvedPinholeProjection {
     pub image_from_camera: components::PinholeProjection,
 
+    pub resolution: Option<components::Resolution>,
+
     /// View coordinates at this pinhole camera.
     ///
     /// This is needed to orient 2D in 3D and 3D in 2D the right way around
@@ -1132,6 +1134,13 @@ fn query_and_resolve_pinhole_projection_at_entity(
         )
         .map(|(_index, image_from_camera)| ResolvedPinholeProjection {
             image_from_camera,
+            resolution: entity_db
+                .latest_at_component::<components::Resolution>(
+                    entity_path,
+                    query,
+                    &archetypes::Pinhole::descriptor_resolution(),
+                )
+                .map(|(_index, resolution)| resolution),
             view_coordinates: {
                 query_view_coordinates(entity_path, entity_db, query)
                     .unwrap_or(archetypes::Pinhole::DEFAULT_CAMERA_XYZ)
@@ -1590,7 +1599,7 @@ mod tests {
                 .with_archetype(
                     RowId::new(),
                     TimePoint::default(),
-                    &archetypes::Pinhole::new(image_from_camera_prior),
+                    &archetypes::Pinhole::new(image_from_camera_prior).with_resolution([1.0, 1.0]),
                 )
                 .build()
                 .unwrap();
@@ -1598,7 +1607,7 @@ mod tests {
                 .with_archetype(
                     RowId::new(),
                     TimePoint::default(),
-                    &archetypes::Pinhole::new(image_from_camera_final),
+                    &archetypes::Pinhole::new(image_from_camera_final).with_resolution([2.0, 2.0]),
                 )
                 .build()
                 .unwrap();
@@ -1632,6 +1641,7 @@ mod tests {
                 transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), TimeInt::MIN)),
                 Some(&ResolvedPinholeProjection {
                     image_from_camera: image_from_camera_final,
+                    resolution: Some([2.0, 2.0].into()),
                     view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
                 })
             );
@@ -1643,6 +1653,7 @@ mod tests {
                 transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), 1)),
                 Some(&ResolvedPinholeProjection {
                     image_from_camera: image_from_camera_final,
+                    resolution: Some([2.0, 2.0].into()),
                     view_coordinates: components::ViewCoordinates::BLU,
                 })
             );
@@ -1656,6 +1667,7 @@ mod tests {
                 transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), 123)),
                 Some(&ResolvedPinholeProjection {
                     image_from_camera: image_from_camera_final,
+                    resolution: Some([2.0, 2.0].into()),
                     view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
                 })
             );
@@ -1728,6 +1740,7 @@ mod tests {
                 transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), 1)),
                 Some(&ResolvedPinholeProjection {
                     image_from_camera,
+                    resolution: None,
                     view_coordinates: components::ViewCoordinates::BLU,
                 })
             );
@@ -2099,6 +2112,7 @@ mod tests {
             transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 1)),
             Some(&ResolvedPinholeProjection {
                 image_from_camera,
+                resolution: None,
                 view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
             })
         );
@@ -2106,6 +2120,7 @@ mod tests {
             transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 2)),
             Some(&ResolvedPinholeProjection {
                 image_from_camera,
+                resolution: None,
                 view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
             })
         );
@@ -2113,6 +2128,7 @@ mod tests {
             transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 3)),
             Some(&ResolvedPinholeProjection {
                 image_from_camera,
+                resolution: None,
                 view_coordinates: components::ViewCoordinates::BLU,
             })
         );

@@ -104,17 +104,17 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             else {
                 continue;
             };
-            let world_from_obj = if let Some(twod_in_threed_info) =
-                &transform_info.twod_in_threed_info
+            let world_from_obj = if let Some(pinhole_tree_root_info) =
+                transforms.pinhole_tree_root_info(transform_info.tree_root())
             {
-                if twod_in_threed_info.parent_pinhole != data_result.entity_path {
+                if transform_info.tree_root() != data_result.entity_path.hash() {
                     // We're inside a 2D space. But this is a 3D transform.
                     // Something is wrong here and this is not the right place to report it.
                     // Better just don't draw the axis!
                     continue;
                 } else {
                     // Don't apply the from-2D transform, stick with the last known 3D.
-                    twod_in_threed_info.reference_from_pinhole_entity
+                    pinhole_tree_root_info.parent_root_from_pinhole_root
                 }
             } else {
                 transform_info

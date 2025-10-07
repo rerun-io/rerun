@@ -1,3 +1,4 @@
+use glam::Affine3A;
 use nohash_hasher::IntMap;
 use vec1::smallvec_v1::SmallVec1;
 
@@ -11,63 +12,57 @@ use crate::{
     TransformResolutionCache, image_view_coordinates,
 };
 
-// TODO(andreas): this struct is comically large for what we're doing here. Need to refactor this to make it smaller & more efficient.
+/// Transform from an entity towards a given root.
 #[derive(Clone, Debug)]
 pub struct TransformInfo {
-    /// The transform from the entity to the reference space.
+    /// Root this transform belongs to.
+    ///
+    /// ⚠️ This is the root of the tree this transform belongs to,
+    /// not necessarily what the transform transforms into.
+    root: EntityPathHash,
+
+    /// The transform from the entity to the root's space.
     ///
     /// ⚠️ Does not include per instance poses! ⚠️
     /// Include 3D-from-2D / 2D-from-3D pinhole transform if present.
-    reference_from_entity: glam::Affine3A,
+    target_from_entity: glam::Affine3A,
 
     /// List of transforms per instance including poses.
     ///
-    /// If no poses are present, this is always the same as `reference_from_entity`.
+    /// If no poses are present, this is always the same as `root_from_entity`.
     /// (also implying that in this case there is only a single element).
     /// If there are poses there may be more than one element.
     ///
     /// Does not take into account archetype specific transforms.
-    reference_from_instances_overall: SmallVec1<[glam::Affine3A; 1]>,
+    target_from_instances_overall: SmallVec1<[glam::Affine3A; 1]>,
 
-    /// Like [`Self::reference_from_instances_overall`] but _on top_ also has archetype specific transforms applied
+    /// Like [`Self::root_from_instances_overall`] but _on top_ also has archetype specific transforms applied
     /// if there are any present.
-    reference_from_archetype: IntMap<ArchetypeName, SmallVec1<[glam::Affine3A; 1]>>,
-
-    /// If this entity is under (!) a pinhole camera, this contains additional information.
-    ///
-    /// TODO(#2663, #1025): Going forward we should have separate transform hierarchies for 2D (i.e. projected) and 3D,
-    /// which would remove the need for this.
-    pub twod_in_threed_info: Option<TwoDInThreeDTransformInfo>,
-}
-
-#[derive(Clone, Debug)]
-pub struct TwoDInThreeDTransformInfo {
-    /// Pinhole camera ancestor (may be this entity itself).
-    ///
-    /// None indicates that this entity is under the eye camera with no Pinhole camera in-between.
-    /// Some indicates that the entity is under a pinhole camera at the given entity path that is not at the root of the view.
-    pub parent_pinhole: EntityPath,
-
-    /// The last 3D from 3D transform at the pinhole camera, before the pinhole transformation itself.
-    pub reference_from_pinhole_entity: glam::Affine3A,
-}
-
-impl Default for TransformInfo {
-    fn default() -> Self {
-        Self {
-            reference_from_entity: glam::Affine3A::IDENTITY,
-            reference_from_instances_overall: SmallVec1::new(glam::Affine3A::IDENTITY),
-            reference_from_archetype: Default::default(),
-            twod_in_threed_info: None,
-        }
-    }
+    target_from_archetype: IntMap<ArchetypeName, SmallVec1<[glam::Affine3A; 1]>>,
 }
 
 impl TransformInfo {
+    fn new_root(root: EntityPathHash) -> Self {
+        Self {
+            root,
+            target_from_entity: glam::Affine3A::IDENTITY,
+            target_from_instances_overall: SmallVec1::new(glam::Affine3A::IDENTITY),
+            target_from_archetype: Default::default(),
+        }
+    }
+
+    /// Returns the root of the tree this transform belongs to.
+    ///
+    /// This is **not** necessarily the transform's target space.
+    #[inline]
+    pub fn tree_root(&self) -> EntityPathHash {
+        self.root
+    }
+
     /// Warns that multiple transforms within the entity are not supported.
     #[inline]
     fn warn_on_per_instance_transform(&self, entity_name: &EntityPath, archetype: ArchetypeName) {
-        if self.reference_from_instances_overall.len() > 1 {
+        if self.target_from_instances_overall.len() > 1 {
             re_log::warn_once!(
                 "There are multiple poses for entity {entity_name:?}. {archetype:?} supports only one transform per entity. Using the first one."
             );
@@ -83,10 +78,10 @@ impl TransformInfo {
     ) -> glam::Affine3A {
         self.warn_on_per_instance_transform(entity_name, archetype);
 
-        if let Some(transform) = self.reference_from_archetype.get(&archetype) {
+        if let Some(transform) = self.target_from_archetype.get(&archetype) {
             *transform.first()
         } else {
-            *self.reference_from_instances_overall.first()
+            *self.target_from_instances_overall.first()
         }
     }
 
@@ -96,10 +91,10 @@ impl TransformInfo {
         &self,
         archetype: ArchetypeName,
     ) -> &SmallVec1<[glam::Affine3A; 1]> {
-        if let Some(transform) = self.reference_from_archetype.get(&archetype) {
+        if let Some(transform) = self.target_from_archetype.get(&archetype) {
             transform
         } else {
-            &self.reference_from_instances_overall
+            &self.target_from_instances_overall
         }
     }
 
@@ -108,14 +103,12 @@ impl TransformInfo {
     /// Or in other words:
     /// `reference_from_source = self`
     /// `target_from_source = target_from_reference * reference_from_source`
-    ///
-    /// ⚠️ does not affect 2D-in-3D information, leaving it unaffected entirely.
     pub fn left_multiply(&self, target_from_reference: glam::Affine3A) -> Self {
         let Self {
-            reference_from_entity: reference_from_source,
-            reference_from_instances_overall: reference_from_source_instances_overall,
-            reference_from_archetype: reference_from_source_archetypes,
-            twod_in_threed_info: twod_in_threed_info_source,
+            root,
+            target_from_entity: reference_from_source,
+            target_from_instances_overall: reference_from_source_instances_overall,
+            target_from_archetype: reference_from_source_archetypes,
         } = self;
 
         let target_from_source = target_from_reference * reference_from_source;
@@ -134,10 +127,10 @@ impl TransformInfo {
             .collect();
 
         Self {
-            reference_from_entity: target_from_source,
-            reference_from_instances_overall: target_from_source_instances_overall,
-            reference_from_archetype: target_from_source_archetypes,
-            twod_in_threed_info: twod_in_threed_info_source.clone(),
+            root: *root,
+            target_from_entity: target_from_source,
+            target_from_instances_overall: target_from_source_instances_overall,
+            target_from_archetype: target_from_source_archetypes,
         }
     }
 }
@@ -149,12 +142,49 @@ pub enum TransformFromToError {
 
     #[error("No transform relationships about the source frame {0:?} are known")]
     UnknownSourceFrame(EntityPathHash),
-    // TODO(RR-2514): Can't happen yet since for now everything is connected to the root.
-    // #[error("There's no path between {target:?} and {source:?}")]
-    // NoPathBetweenFrames {
-    //     target: EntityPathHash,
-    //     source: EntityPathHash,
-    // },
+
+    #[error(
+        "There's no path between {target:?} and {src:?}. The target's root is {target_root:?}, the source's root is {source_root:?}"
+    )]
+    NoPathBetweenFrames {
+        target: EntityPathHash,
+        src: EntityPathHash, // Can't name this `source` for some strange procmacro reasons
+        target_root: EntityPathHash,
+        source_root: EntityPathHash,
+    },
+}
+
+/// Properties of a pinhole transform tree root.
+///
+/// Each pinhole forms its own subtree which may be embedded into a 3D space.
+/// Everything at and below the pinhole tree root is considered to be 2D,
+/// everything above is considered to be 3D.
+#[derive(Clone, Debug)]
+pub struct PinholeTreeRoot {
+    /// The tree root of the parent of this pinhole.
+    pub parent_tree_root: EntityPathHash,
+
+    /// Pinhole projection that defines how 2D objects are transformed in this space.
+    pub pinhole_projection: ResolvedPinholeProjection,
+
+    /// Transforms the 2D subtree into its parent 3D space.
+    pub parent_root_from_pinhole_root: glam::Affine3A,
+}
+
+/// Properties of a transform root.
+///
+/// [`TransformForest`] tries to identify all roots.
+#[derive(Clone, Debug)]
+pub enum TransformTreeRootInfo {
+    /// This is the root of the entity path tree.
+    EntityRoot,
+
+    /// The tree root is an entity path with a pinhole transformation,
+    /// thus marking a 3D to 2D transition.
+    Pinhole(PinholeTreeRoot),
+    //
+    // TODO(andreas): Something like this will eventually come up:
+    //TransformFrameRoot,
 }
 
 /// Provides transforms from any transform frame to a root transform frame for a given time & timeline.
@@ -167,14 +197,17 @@ pub enum TransformFromToError {
 ///    * TODO(#6743): blueprint overrides aren't respected yet
 /// * the query time
 ///    * TODO(#723): ranges aren't taken into account yet
-// TODO(andreas): This has to become a `TransformForest` as we move on to arbitrary graphs.
-#[derive(Clone)]
-pub struct TransformTree {
-    /// All entities reachable from the root.
+// TODO: update docs a bit
+#[derive(Default, Clone)]
+pub struct TransformForest {
+    /// All known tree roots.
+    roots: IntMap<EntityPathHash, TransformTreeRootInfo>,
+
+    /// All entities reachable from one of the tree roots.
     transform_per_entity: IntMap<EntityPathHash, TransformInfo>,
 }
 
-impl TransformTree {
+impl TransformForest {
     /// Determines transforms for all entities relative to a space path which serves as the "reference".
     /// I.e. the resulting transforms are "reference from scene"
     ///
@@ -191,13 +224,16 @@ impl TransformTree {
         let transforms = transform_cache.transforms_for_timeline(time_query.timeline());
 
         let mut tree = Self {
+            roots: std::iter::once((EntityPath::root().hash(), TransformTreeRootInfo::EntityRoot))
+                .collect(),
             transform_per_entity: Default::default(),
         };
         tree.gather_descendants_transforms(
             entity_tree,
             time_query,
             // Ignore potential pinhole camera at the root of the view, since it is regarded as being "above" this root.
-            TransformInfo::default(),
+            // TODO(andreas): Should we warn about that?
+            TransformInfo::new_root(EntityPath::root().hash()),
             transforms,
         );
 
@@ -205,52 +241,83 @@ impl TransformTree {
     }
 }
 
-impl TransformTree {
+impl TransformForest {
     #[allow(clippy::too_many_arguments)]
     fn gather_descendants_transforms(
         &mut self,
         subtree: &EntityTree,
         query: &LatestAtQuery,
-        transform: TransformInfo,
+        transform_root_from_parent: TransformInfo,
         transforms_for_timeline: &CachedTransformsForTimeline,
     ) {
-        let twod_in_threed_info = transform.twod_in_threed_info.clone();
-        let reference_from_parent = transform.reference_from_entity;
-        match self.transform_per_entity.entry(subtree.path.hash()) {
-            std::collections::hash_map::Entry::Occupied(_) => {
-                return;
-            }
-            std::collections::hash_map::Entry::Vacant(e) => {
-                e.insert(transform);
-            }
-        }
+        let root = transform_root_from_parent.root;
+        let root_from_parent = transform_root_from_parent.target_from_entity;
+
+        let previous_transform = self
+            .transform_per_entity
+            .insert(subtree.path.hash(), transform_root_from_parent);
+        debug_assert!(previous_transform.is_none(), "Root was added already"); // TODO(andreas): Build out into cycle detection (cycles can't _yet_ happen)
 
         for child_tree in subtree.children.values() {
             let child_path = &child_tree.path;
 
-            let mut encountered_pinhole = twod_in_threed_info
-                .as_ref()
-                .map(|info| info.parent_pinhole.clone());
+            let transforms_at_entity = transforms_at(child_path, query, transforms_for_timeline);
 
-            let transforms_at_entity = transforms_at(
-                child_path,
-                query,
-                &mut encountered_pinhole,
-                transforms_for_timeline,
+            let root_from_child =
+                root_from_parent * transforms_at_entity.parent_from_entity_tree_transform;
+
+            // Did we encounter a pinhole and need to create a new subspace?
+            // TODO: report nested pinholes
+            let (root, root_from_entity) =
+                if let Some(pinhole_projection) = transforms_at_entity.pinhole_projection {
+                    let new_root = child_path.hash();
+                    let new_root_info = TransformTreeRootInfo::Pinhole(PinholeTreeRoot {
+                        parent_tree_root: root,
+                        pinhole_projection: pinhole_projection.clone(),
+                        parent_root_from_pinhole_root: root_from_child,
+                    });
+
+                    let previous_root = self.roots.insert(new_root, new_root_info);
+                    debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(andreas): Build out into cycle detection (cycles can't _yet_ happen)
+
+                    (new_root, Affine3A::IDENTITY)
+                } else {
+                    (root, root_from_child)
+                };
+
+            // Collect & compute poses.
+            let root_from_instances_overall = compute_root_from_instances_overall(
+                root_from_entity,
+                transforms_at_entity.entity_from_instance_poses,
             );
-            let new_transform = transform_info_for_downward_propagation(
-                child_path,
-                reference_from_parent,
-                twod_in_threed_info.clone(),
-                &transforms_at_entity,
+            let root_from_archetype = compute_root_from_archetype(
+                root_from_entity,
+                transforms_at_entity.entity_from_instance_poses,
             );
+
+            let transform_root_from_child = TransformInfo {
+                root,
+                target_from_entity: root_from_entity,
+                target_from_instances_overall: root_from_instances_overall,
+                target_from_archetype: root_from_archetype,
+            };
 
             self.gather_descendants_transforms(
                 child_tree,
                 query,
-                new_transform,
+                transform_root_from_child,
                 transforms_for_timeline,
             );
+        }
+    }
+
+    /// Returns the properties of the pinhole tree root at the given entity path if the entity's root is a pinhole tree root.
+    #[inline]
+    pub fn pinhole_tree_root_info(&self, root: EntityPathHash) -> Option<&PinholeTreeRoot> {
+        if let TransformTreeRootInfo::Pinhole(pinhole_tree_root) = self.roots.get(&root)? {
+            Some(pinhole_tree_root)
+        } else {
+            None
         }
     }
 
@@ -259,14 +326,21 @@ impl TransformTree {
     /// `target`: The frame into which to transform.
     /// `sources`: The frames from which to transform.
     ///
+    /// If the target's root & sources are connected with a pinhole camera,
+    /// we'll transform it according to the image plane distance.
+    ///
     /// Returns an iterator of results, one for each source.
     /// If the target frame is not known at all, returns [`TransformFromToError::UnknownTargetFrame`] for every source.
     pub fn transform_from_to(
         &self,
         target: EntityPathHash,
         sources: impl Iterator<Item = EntityPathHash>,
+        lookup_image_plane_distance: &dyn Fn(EntityPathHash) -> f32,
     ) -> impl Iterator<Item = (EntityPathHash, Result<TransformInfo, TransformFromToError>)> {
-        let Some(reference_from_target) = self.transform_per_entity.get(&target) else {
+        // We're looking for common root between source and target.
+        // We start by looking up the target's tree root.
+
+        let Some(root_from_target) = self.transform_per_entity.get(&target) else {
             return itertools::Either::Left(sources.map(move |source| {
                 (
                     source,
@@ -275,33 +349,90 @@ impl TransformTree {
             }));
         };
 
-        // Invert `reference_from_target` to get `target_from_reference`.
-        let target_from_reference = {
+        // Invert `root_from_target` to get `target_from_root`.
+        let (target_root, target_from_root) = {
             let TransformInfo {
-                reference_from_entity,
+                root: target_root,
+                target_from_entity: root_from_entity,
                 // Don't care about instance transforms on the target frame, as they don't tree-propagate.
-                reference_from_instances_overall: _,
+                target_from_instances_overall: _,
                 // Don't care about archetype specific transforms on the target frame, as they don't tree-propagate.
-                reference_from_archetype: _,
-                // It's called "2D in 3D", therefore the inverse would be "3D in 2D".
-                // Which could be valuable information, but not something we're capturing right now!
-                twod_in_threed_info: _,
-            } = &reference_from_target;
+                target_from_archetype: _,
+            } = &root_from_target;
 
-            reference_from_entity.inverse()
+            (*target_root, root_from_entity.inverse())
         };
 
         itertools::Either::Right(sources.map(move |source| {
-            let Some(reference_from_source) = self.transform_per_entity.get(&source) else {
+            let Some(root_from_source) = self.transform_per_entity.get(&source) else {
                 return (
                     source,
                     Err(TransformFromToError::UnknownSourceFrame(source)),
                 );
             };
 
-            // target_from_source = target_from_reference * reference_from_source
-            let target_from_source = reference_from_source.left_multiply(target_from_reference);
-            (source, Ok(target_from_source))
+            let source_root = root_from_source.root;
+
+            // Common case: both source & target share the same root.
+            if source_root == target_root {
+                // TODO: fast track for root being target.
+                // target_from_source = target_from_reference * root_from_source
+                let target_from_source = root_from_source.left_multiply(target_from_root);
+                (source, Ok(target_from_source))
+            }
+            // There might be a connection via a pinhole making this 2D in 3D.
+            else if let Some(TransformTreeRootInfo::Pinhole(pinhole_tree_root)) =
+                self.roots.get(&source_root)
+            {
+                let PinholeTreeRoot {
+                    parent_tree_root,
+                    pinhole_projection,
+                    parent_root_from_pinhole_root: root_from_pinhole3d,
+                } = pinhole_tree_root;
+
+                if *parent_tree_root != target_root {
+                    return (
+                        source,
+                        Err(TransformFromToError::NoPathBetweenFrames {
+                            target,
+                            src: source,
+                            target_root,
+                            source_root,
+                        }),
+                    );
+                }
+
+                // Rename for clarification:
+                let pinhole2d_from_source = root_from_source;
+
+                // There's a connection via a pinhole making this 2D in 3D.
+                // We can transform into the target space!
+                let pinhole_image_plane_distance = lookup_image_plane_distance(source_root);
+
+                // TODO: Locally cache pinhole transform?
+                let pinhole3d_from_pinhole2d = pinhole2d_image_plane_from_pinhole3d(
+                    pinhole_projection,
+                    pinhole_image_plane_distance,
+                );
+                let target_from_pinhole2d =
+                    target_from_root * root_from_pinhole3d * pinhole3d_from_pinhole2d;
+
+                // target_from_source = target_from_pinhole2d * pinhole2d_from_source
+                let target_from_source = pinhole2d_from_source.left_multiply(target_from_pinhole2d);
+                (source, Ok(target_from_source))
+            }
+            // Disconnected, we can't transform into the target space.
+            else {
+                (
+                    source,
+                    Err(TransformFromToError::NoPathBetweenFrames {
+                        target,
+                        src: source,
+                        target_root,
+                        source_root,
+                    }),
+                )
+            }
         }))
     }
 }
@@ -317,37 +448,36 @@ fn left_multiply_smallvec1_of_transforms(
     }
     target_from_source
 }
-}
 
-fn compute_reference_from_instances(
-    reference_from_entity: glam::Affine3A,
+fn compute_root_from_instances(
+    root_from_entity: glam::Affine3A,
     instance_from_poses: &[glam::Affine3A],
 ) -> SmallVec1<[glam::Affine3A; 1]> {
     let Ok(mut reference_from_poses) =
         SmallVec1::<[glam::Affine3A; 1]>::try_from_slice(instance_from_poses)
     else {
-        return SmallVec1::new(reference_from_entity);
+        return SmallVec1::new(root_from_entity);
     };
 
     // Until now `reference_from_poses` is actually `reference_from_entity`.
     for reference_from_pose in &mut reference_from_poses {
         let entity_from_pose = *reference_from_pose;
-        *reference_from_pose = reference_from_entity * entity_from_pose;
+        *reference_from_pose = root_from_entity * entity_from_pose;
     }
     reference_from_poses
 }
 
-fn compute_references_from_instances_overall(
+fn compute_root_from_instances_overall(
     reference_from_entity: glam::Affine3A,
     pose_transforms: Option<&PoseTransformArchetypeMap>,
 ) -> SmallVec1<[glam::Affine3A; 1]> {
-    compute_reference_from_instances(
+    compute_root_from_instances(
         reference_from_entity,
         pose_transforms.map_or(&[], |poses| &poses.instance_from_overall_poses),
     )
 }
 
-fn compute_reference_from_archetype(
+fn compute_root_from_archetype(
     reference_from_entity: glam::Affine3A,
     entity_from_instance_poses: Option<&PoseTransformArchetypeMap>,
 ) -> IntMap<ArchetypeName, SmallVec1<[glam::Affine3A; 1]>> {
@@ -359,7 +489,7 @@ fn compute_reference_from_archetype(
                 .map(|(archetype, poses)| {
                     (
                         *archetype,
-                        compute_reference_from_instances(reference_from_entity, poses),
+                        compute_root_from_instances(reference_from_entity, poses),
                     )
                 })
                 .collect()
@@ -367,59 +497,13 @@ fn compute_reference_from_archetype(
         .unwrap_or_default()
 }
 
-/// Compute transform info for when we walk down the tree from the reference.
-fn transform_info_for_downward_propagation(
-    current_path: &EntityPath,
-    reference_from_parent: glam::Affine3A,
-    mut twod_in_threed_info: Option<TwoDInThreeDTransformInfo>,
-    transforms_at_entity: &TransformsAtEntity<'_>,
-) -> TransformInfo {
-    let mut reference_from_entity = reference_from_parent;
-
-    // Apply tree transform.
-    reference_from_entity *= transforms_at_entity.parent_from_entity_tree_transform;
-
-    // Apply 2D->3D transform if present.
-    if let Some(entity_from_2d_pinhole_content) =
-        transforms_at_entity.instance_from_pinhole_image_plane
-    {
-        // Should have bailed out already earlier.
-        debug_assert!(
-            twod_in_threed_info.is_none(),
-            "2D->3D transform already set, this should be unreachable."
-        );
-
-        twod_in_threed_info = Some(TwoDInThreeDTransformInfo {
-            parent_pinhole: current_path.clone(),
-            reference_from_pinhole_entity: reference_from_entity,
-        });
-        reference_from_entity *= entity_from_2d_pinhole_content;
-    }
-
-    // Collect & compute poses.
-    let reference_from_instances_overall = compute_references_from_instances_overall(
-        reference_from_entity,
-        transforms_at_entity.entity_from_instance_poses,
-    );
-    let reference_from_archetype = compute_reference_from_archetype(
-        reference_from_entity,
-        transforms_at_entity.entity_from_instance_poses,
-    );
-
-    TransformInfo {
-        reference_from_entity,
-        reference_from_instances_overall,
-        reference_from_archetype,
-        twod_in_threed_info,
-    }
-}
-
-fn transform_from_pinhole_with_image_plane(
+fn pinhole2d_image_plane_from_pinhole3d(
     resolved_pinhole_projection: &ResolvedPinholeProjection,
     pinhole_image_plane_distance: f32,
 ) -> glam::Affine3A {
     let ResolvedPinholeProjection {
         image_from_camera,
+        resolution: _,
         view_coordinates,
     } = resolved_pinhole_projection;
 
@@ -464,13 +548,12 @@ fn transform_from_pinhole_with_image_plane(
 struct TransformsAtEntity<'a> {
     parent_from_entity_tree_transform: glam::Affine3A,
     entity_from_instance_poses: Option<&'a PoseTransformArchetypeMap>,
-    instance_from_pinhole_image_plane: Option<glam::Affine3A>,
+    pinhole_projection: Option<&'a ResolvedPinholeProjection>,
 }
 
 fn transforms_at<'a>(
     entity_path: &EntityPath,
     query: &LatestAtQuery,
-    encountered_pinhole: &mut Option<EntityPath>,
     transforms_for_timeline: &'a CachedTransformsForTimeline,
 ) -> TransformsAtEntity<'a> {
     // This is called very frequently, don't put a profile scope here.
@@ -481,31 +564,15 @@ fn transforms_at<'a>(
 
     let parent_from_entity_tree_transform = entity_transforms.latest_at_tree_transform(query);
     let entity_from_instance_poses = entity_transforms.latest_at_instance_poses_all(query);
-    let instance_from_pinhole_image_plane =
-        entity_transforms
-            .latest_at_pinhole(query)
-            .map(|resolved_pinhole_projection| {
-                transform_from_pinhole_with_image_plane(
-                    resolved_pinhole_projection,
-                    1.0, // TODO: I think we can just scale this later...
-                )
-            });
+    let pinhole_projection = entity_transforms.latest_at_pinhole(query);
 
-    let transforms_at_entity = TransformsAtEntity {
+    TransformsAtEntity {
         parent_from_entity_tree_transform,
         entity_from_instance_poses,
-        instance_from_pinhole_image_plane,
-    };
-
-    // Handle pinhole encounters.
-    if transforms_at_entity
-        .instance_from_pinhole_image_plane
-        .is_some()
-    {
-        *encountered_pinhole = Some(entity_path.clone());
+        pinhole_projection,
     }
-
-    transforms_at_entity
 }
 
 // TODO: unit tests?
+// TODO: need 2d in 3d tests. don't think we have any
+// TODO: need 3d in 2d tests. don't think we have any
