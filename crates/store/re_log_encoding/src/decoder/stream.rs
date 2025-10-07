@@ -172,11 +172,20 @@ impl StreamDecoder {
                 if let Some(bytes) = self.byte_chunks.try_read(header.len as usize) {
                     re_log::trace!(?header, "Read message");
 
-                    let message = crate::codec::file::decoder::decode_bytes_to_app(
+                    let message = match crate::codec::file::decoder::decode_bytes_to_app(
                         &mut self.app_id_cache,
                         header.kind,
                         bytes,
-                    )?;
+                    ) {
+                        Ok(msg) => msg,
+                        Err(err) => {
+                            // We successfully parsed a header, but decided to drop the message altogether.
+                            // We must go back to looking for headers, or the decoder will just be stuck in a dead
+                            // state forever.
+                            self.state = State::MessageHeader;
+                            return Err(err);
+                        }
+                    };
 
                     if let Some(mut message) = message {
                         re_log::trace!(
