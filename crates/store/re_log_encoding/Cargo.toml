@@ -21,6 +21,7 @@ all-features = true
 
 [features]
 default = []
+# TODO: I am always very wary of `testing` feature flags. can this go?
 testing = []
 
 ## Enable loading data from an .rrd file.
