@@ -3,6 +3,7 @@
 #[cfg(feature = "decoder")]
 pub mod decoder;
 
+// TODO: go private
 #[cfg(feature = "encoder")]
 pub mod encoder;
 

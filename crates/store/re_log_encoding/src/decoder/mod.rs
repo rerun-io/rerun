@@ -643,7 +643,7 @@ mod tests {
 
         for options in options {
             let mut file = vec![];
-            crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut file)
+            crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut file)
                 .unwrap();
 
             let decoded_messages = Decoder::new(&mut file.as_slice())
@@ -787,7 +787,7 @@ mod tests {
 
         for options in options {
             let mut file = vec![];
-            crate::encoder::encode_ref(
+            crate::Encoder::encode_into(
                 rrd_version,
                 options,
                 out_of_order_messages.iter().map(Ok),
