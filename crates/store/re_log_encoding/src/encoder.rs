@@ -74,6 +74,16 @@ pub struct Encoder<W: std::io::Write> {
     is_finished: bool,
 }
 
+impl Encoder<Vec<u8>> {
+    pub fn local() -> Result<Self, EncodeError> {
+        Self::new(
+            CrateVersion::LOCAL,
+            EncodingOptions::PROTOBUF_COMPRESSED,
+            Vec::new(),
+        )
+    }
+}
+
 impl<W: std::io::Write> Encoder<W> {
     pub fn new(
         version: CrateVersion,
@@ -250,15 +260,6 @@ pub fn encode_as_bytes(
     }
     encoder.finish()?;
     encoder.into_inner()
-}
-
-#[inline]
-pub fn local_encoder() -> Result<Encoder<Vec<u8>>, EncodeError> {
-    Encoder::new(
-        CrateVersion::LOCAL,
-        EncodingOptions::PROTOBUF_COMPRESSED,
-        Vec::new(),
-    )
 }
 
 #[inline]
