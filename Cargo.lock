@@ -9001,6 +9001,7 @@ dependencies = [
  "re_chunk",
  "re_log",
  "re_log_types",
+ "re_ros_msg",
  "re_tracing",
  "re_types",
  "serde",
@@ -9311,6 +9312,15 @@ dependencies = [
  "web-time",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "re_ros_msg"
+version = "0.26.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "serde",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
