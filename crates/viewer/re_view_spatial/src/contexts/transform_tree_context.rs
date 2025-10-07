@@ -4,7 +4,7 @@ use re_types::{archetypes, components::ImagePlaneDistance};
 use re_view::DataResultQuery as _;
 use re_viewer_context::{DataResultTree, IdentifiedViewSystem, ViewContext, ViewContextSystem};
 
-use crate::visualizers::CamerasVisualizer;
+use crate::{caches::TransformDatabaseStoreCache, visualizers::CamerasVisualizer};
 
 #[derive(Clone, Default)]
 pub struct TransformTreeContext(re_tf::TransformTree);
@@ -21,6 +21,14 @@ impl ViewContextSystem for TransformTreeContext {
         ctx: &re_viewer_context::ViewContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
+        let recording = ctx.recording();
+
+        // Arc-read lock, so we don't have to hold a lock on the caches for any longer than needed.
+        // (Determining entity transforms could take a while, and we don't want to block other threads from doing work with the caches!)
+        let caches = ctx.viewer_ctx.store_context.caches;
+        let transform_cache = caches
+            .entry(|c: &mut TransformDatabaseStoreCache| c.read_lock_transform_cache(recording));
+
         let query_result = ctx.viewer_ctx.lookup_query_result(query.view_id);
         let data_result_tree = &query_result.tree;
 
@@ -28,7 +36,7 @@ impl ViewContextSystem for TransformTreeContext {
 
         let time_query = query.latest_at_query();
         self.0
-            .execute(ctx.recording(), &time_query, &|entity_path| {
+            .execute(recording, &transform_cache, &time_query, &|entity_path| {
                 lookup_image_plane_distance(ctx, data_result_tree, entity_path, &time_query)
             });
     }

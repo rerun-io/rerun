@@ -6,7 +6,7 @@ use re_viewer_context::{
     ImageInfo, StoredBlobCacheKey, gpu_bridge::texture_creation_desc_from_color_image,
 };
 
-use crate::{mesh_cache::AnyMesh, visualizers::entity_iterator::clamped_vec_or};
+use crate::{caches::AnyMesh, visualizers::entity_iterator::clamped_vec_or};
 
 #[derive(Debug, Clone)]
 pub struct NativeAsset3D<'a> {
