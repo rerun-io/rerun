@@ -5,7 +5,7 @@ use parking_lot::Mutex;
 
 use re_chunk::ChunkBatcherConfig;
 use re_grpc_client::write::{Client as MessageProxyClient, GrpcFlushError, Options};
-use re_log_encoding::encoder::{EncodeError, Encoder, encode_as_bytes_local};
+use re_log_encoding::encoder::{EncodeError, Encoder};
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
 
 use crate::RecordingStream;
@@ -467,7 +467,7 @@ impl MemorySinkStorage {
         let mut inner = self.inner.lock();
         inner.has_been_used = true;
 
-        encode_as_bytes_local(std::mem::take(&mut inner.msgs).into_iter().map(Ok))
+        Encoder::encode(std::mem::take(&mut inner.msgs).into_iter().map(Ok))
     }
 
     #[inline]

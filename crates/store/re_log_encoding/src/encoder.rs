@@ -254,15 +254,3 @@ impl<W: std::io::Write> std::ops::Drop for Encoder<W> {
         }
     }
 }
-
-#[inline]
-pub fn encode_as_bytes_local(
-    messages: impl Iterator<Item = ChunkResult<LogMsg>>,
-) -> Result<Vec<u8>, EncodeError> {
-    let mut encoder = Encoder::local()?;
-    for message in messages {
-        encoder.append(&message?)?;
-    }
-    encoder.finish()?;
-    encoder.into_inner()
-}
