@@ -1,10 +1,9 @@
 <!--[metadata]
-title = "Transform recording stream example"
+title = "Lenses example"
+channel = "main"
 -->
 
-<!-- TODO: -->
-
-Demonstrates how to transform log messages before forwarding them to the sink the SDK.
+Demonstrates how to use lenses to transform log messages before forwarding them to an underlying sink.
 ```bash
 cargo run -p lenses
 ```

@@ -14,7 +14,3 @@ rerun = { path = "../../../crates/top/rerun", features = [
 
 anyhow.workspace = true
 arrow.workspace = true
-clap = { workspace = true, features = ["derive"] }
-
-[dev-dependencies]
-insta.workspace = true

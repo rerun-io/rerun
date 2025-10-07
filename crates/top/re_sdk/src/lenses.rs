@@ -121,6 +121,7 @@ mod op {
     use super::Error;
 
     /// Extracts a specific field from a struct component within a `ListArray`.
+    #[derive(Debug)]
     pub struct AccessField {
         pub(super) field_name: String,
     }
@@ -157,6 +158,7 @@ mod op {
     }
 
     /// Casts the `value_type` (inner array) of a `ListArray` to a different data type.
+    #[derive(Debug)]
     pub struct Cast {
         pub(super) to_inner_type: DataType,
     }
@@ -213,6 +215,16 @@ pub enum Op {
 
     /// A user-defined arbitrary function to convert a component column.
     Func(Box<dyn Fn(ListArray) -> Result<ListArray, Error> + Sync + Send>),
+}
+
+impl std::fmt::Debug for Op {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::AccessField(inner) => f.debug_tuple("AccessField").field(inner).finish(),
+            Self::Cast(inner) => f.debug_tuple("Cast").field(inner).finish(),
+            Self::Func(_) => f.debug_tuple("Func").field(&"<function>").finish(),
+        }
+    }
 }
 
 impl Op {
@@ -378,12 +390,19 @@ impl Lens {
 
             let mut list_array_result = list_array.clone();
             for op in &output.ops {
-                if let Ok(result) = op.call(list_array_result) {
-                    list_array_result = result;
-                } else {
-                    // TODO: context!
-                    re_log::error!("failed");
-                    return vec![];
+                match op.call(list_array_result) {
+                    Ok(result) => {
+                        list_array_result = result;
+                    }
+                    Err(err) => {
+                        re_log::error!(
+                            "Lens operation '{:?}' failed for output column '{}' on entity '{}': {err}",
+                            op,
+                            output.entity_path,
+                            output.component_descr.component
+                        );
+                        return vec![];
+                    }
                 }
             }
 
@@ -399,7 +418,7 @@ impl Lens {
                     chunk.timelines().clone()
                 };
 
-                // TODO: In case of static, should we use sparse rows instead?
+                // TODO(grtlr): In case of static, should we use sparse rows instead?
                 Chunk::from_auto_row_ids(ChunkId::new(), entity_path.clone(), timelines, components)
                     .inspect_err(|err| {
                         re_log::error_once!(
