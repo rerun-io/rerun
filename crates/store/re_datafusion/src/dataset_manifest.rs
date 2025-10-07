@@ -96,7 +96,7 @@ impl GrpcStreamToTable for DatasetManifestProvider {
         response
             .data
             .ok_or(DataFusionError::Execution(
-                "DataFrame missing from PartitionList response".to_owned(),
+                "DataFrame missing from DatasetManifest response".to_owned(),
             ))?
             .decode()
             .map_err(|err| DataFusionError::External(Box::new(err)))
