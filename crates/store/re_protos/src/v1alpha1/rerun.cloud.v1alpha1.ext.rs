@@ -1182,14 +1182,26 @@ pub struct RegisterWithDatasetTaskDescriptor {
 
 impl ScanPartitionTableResponse {
     pub const PARTITION_ID: &str = "rerun_partition_id";
-    pub const LAYERS: &str = "rerun_layers";
+
+    /// Layer names for this partition, one per layer.
+    ///
+    /// Should have the same length as [`Self::STORAGE_URLS`].
+    pub const LAYER_NAMES: &str = "rerun_layer_names";
+
+    /// Storage URLs for this partition, one per layer.
+    ///
+    /// Should have the same length as [`Self::LAYER_NAMES`].
     pub const STORAGE_URLS: &str = "rerun_storage_urls";
     pub const LAST_UPDATED_AT: &str = "rerun_last_updated_at";
+
+    /// Total number of chunks for this partition.
     pub const NUM_CHUNKS: &str = "rerun_num_chunks";
+
+    /// Total size in bytes for this partition.
     pub const SIZE_BYTES: &str = "rerun_size_bytes";
 
-    pub fn layers_inner_field() -> FieldRef {
-        Arc::new(Field::new(Self::LAYERS, DataType::Utf8, false))
+    pub fn layer_names_inner_field() -> FieldRef {
+        Arc::new(Field::new(Self::LAYER_NAMES, DataType::Utf8, false))
     }
 
     pub fn storage_urls_inner_field() -> FieldRef {
@@ -1200,8 +1212,8 @@ impl ScanPartitionTableResponse {
         vec![
             Field::new(Self::PARTITION_ID, DataType::Utf8, false),
             Field::new(
-                Self::LAYERS,
-                DataType::List(Self::layers_inner_field()),
+                Self::LAYER_NAMES,
+                DataType::List(Self::layer_names_inner_field()),
                 false,
             ),
             Field::new(
@@ -1226,7 +1238,7 @@ impl ScanPartitionTableResponse {
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
         partition_ids: Vec<String>,
-        layers: Vec<Vec<String>>,
+        layer_names: Vec<Vec<String>>,
         storage_urls: Vec<Vec<String>>,
         last_updated_at: Vec<i64>,
         num_chunks: Vec<u64>,
@@ -1235,14 +1247,14 @@ impl ScanPartitionTableResponse {
         let row_count = partition_ids.len();
         let schema = Arc::new(Self::schema());
 
-        let mut layers_builder =
-            ListBuilder::new(StringBuilder::new()).with_field(Self::layers_inner_field());
+        let mut layer_names_builder =
+            ListBuilder::new(StringBuilder::new()).with_field(Self::layer_names_inner_field());
 
-        for mut inner_vec in layers {
+        for mut inner_vec in layer_names {
             for layer_name in inner_vec.drain(..) {
-                layers_builder.values().append_value(layer_name)
+                layer_names_builder.values().append_value(layer_name)
             }
-            layers_builder.append(true);
+            layer_names_builder.append(true);
         }
 
         let mut urls_builder =
@@ -1257,7 +1269,7 @@ impl ScanPartitionTableResponse {
 
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(partition_ids)),
-            Arc::new(layers_builder.finish()),
+            Arc::new(layer_names_builder.finish()),
             Arc::new(urls_builder.finish()),
             Arc::new(TimestampNanosecondArray::from(last_updated_at)),
             Arc::new(UInt64Array::from(num_chunks)),
@@ -1286,7 +1298,12 @@ impl ScanDatasetManifestResponse {
     pub const PARTITION_ID: &str = "rerun_partition_id";
     pub const STORAGE_URL: &str = "rerun_storage_url";
     pub const LAYER_TYPE: &str = "rerun_layer_type";
+
+    /// Time at which the layer was initially registered.
     pub const REGISTRATION_TIME: &str = "rerun_registration_time";
+
+    /// When was this row of the manifest modified last?
+    pub const LAST_UPDATED_AT: &str = "rerun_last_updated_at";
     pub const NUM_CHUNKS: &str = "rerun_num_chunks";
     pub const SIZE_BYTES: &str = "rerun_size_bytes";
     pub const SCHEMA_SHA256: &str = "rerun_schema_sha256";
@@ -1299,6 +1316,11 @@ impl ScanDatasetManifestResponse {
             Field::new(Self::LAYER_TYPE, DataType::Utf8, false),
             Field::new(
                 Self::REGISTRATION_TIME,
+                DataType::Timestamp(TimeUnit::Nanosecond, None),
+                false,
+            ),
+            Field::new(
+                Self::LAST_UPDATED_AT,
                 DataType::Timestamp(TimeUnit::Nanosecond, None),
                 false,
             ),
@@ -1319,6 +1341,7 @@ impl ScanDatasetManifestResponse {
         storage_urls: Vec<String>,
         layer_types: Vec<String>,
         registration_times: Vec<i64>,
+        last_updated_at_times: Vec<i64>,
         num_chunks: Vec<u64>,
         size_bytes: Vec<u64>,
         schema_sha256s: Vec<[u8; 32]>,
@@ -1332,6 +1355,7 @@ impl ScanDatasetManifestResponse {
             Arc::new(StringArray::from(storage_urls)),
             Arc::new(StringArray::from(layer_types)),
             Arc::new(TimestampNanosecondArray::from(registration_times)),
+            Arc::new(TimestampNanosecondArray::from(last_updated_at_times)),
             Arc::new(UInt64Array::from(num_chunks)),
             Arc::new(UInt64Array::from(size_bytes)),
             Arc::new(
