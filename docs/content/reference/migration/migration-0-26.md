@@ -47,7 +47,7 @@ In parallel, a new dataset manifest table is now available (`dataset_entry.manif
 This table contains one row per layer (i.e. possibly multiple rows per partition) and provide a rich low-level view on the contents of a dataset.
 
 #### Partition table
- 
+
 - `rerun_partition_id`: partition id (string)
 - `rerun_layer_names`: layer names (list of strings, one value per layer)
 - `rerun_storage_urls`: layer storage urls (list of strings, one value per layer)
