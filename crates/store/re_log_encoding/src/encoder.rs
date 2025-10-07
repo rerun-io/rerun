@@ -87,14 +87,14 @@ impl Encoder<Vec<u8>> {
 
     /// All-in-one helper to encode a stream of [`LogMsg`]s into an actual RRD stream.
     ///
+    /// This always uses the local version and its default encoding options.
+    ///
     /// Returns the encoded data in a newly allocated vector.
     pub fn encode(
-        version: CrateVersion,
-        options: EncodingOptions,
         messages: impl Iterator<Item = ChunkResult<impl Borrow<LogMsg>>>,
     ) -> Result<Vec<u8>, EncodeError> {
         re_tracing::profile_function!();
-        let mut encoder = Self::new(version, options, vec![])?;
+        let mut encoder = Self::local()?;
         for message in messages {
             encoder.append(message?.borrow())?;
         }
@@ -262,18 +262,6 @@ pub fn encode_as_bytes_local(
     let mut encoder = Encoder::local()?;
     for message in messages {
         encoder.append(&message?)?;
-    }
-    encoder.finish()?;
-    encoder.into_inner()
-}
-
-#[inline]
-pub fn encode_ref_as_bytes_local<'a>(
-    messages: impl Iterator<Item = ChunkResult<&'a LogMsg>>,
-) -> Result<Vec<u8>, EncodeError> {
-    let mut encoder = Encoder::local()?;
-    for message in messages {
-        encoder.append(message?)?;
     }
     encoder.finish()?;
     encoder.into_inner()
