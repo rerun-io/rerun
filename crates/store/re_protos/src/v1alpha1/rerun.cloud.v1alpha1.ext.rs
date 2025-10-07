@@ -3,6 +3,7 @@ use std::sync::Arc;
 use arrow::array::{
     FixedSizeBinaryArray, ListBuilder, RecordBatchOptions, StringBuilder, UInt64Array,
 };
+use arrow::datatypes::FieldRef;
 use arrow::{
     array::{Array, ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
     datatypes::{DataType, Field, Schema, TimeUnit},
@@ -1187,21 +1188,25 @@ impl ScanPartitionTableResponse {
     pub const NUM_CHUNKS: &str = "rerun_num_chunks";
     pub const SIZE_BYTES: &str = "rerun_size_bytes";
 
+    pub fn layers_inner_field() -> FieldRef {
+        Arc::new(Field::new(Self::LAYERS, DataType::Utf8, false))
+    }
+
+    pub fn storage_urls_inner_field() -> FieldRef {
+        Arc::new(Field::new(Self::STORAGE_URLS, DataType::Utf8, false))
+    }
+
     pub fn fields() -> Vec<Field> {
         vec![
             Field::new(Self::PARTITION_ID, DataType::Utf8, false),
             Field::new(
                 Self::LAYERS,
-                DataType::List(Arc::new(Field::new(Self::LAYERS, DataType::Utf8, false))),
+                DataType::List(Self::layers_inner_field()),
                 false,
             ),
             Field::new(
                 Self::STORAGE_URLS,
-                DataType::List(Arc::new(Field::new(
-                    Self::STORAGE_URLS,
-                    DataType::Utf8,
-                    false,
-                ))),
+                DataType::List(Self::storage_urls_inner_field()),
                 false,
             ),
             Field::new(
@@ -1230,8 +1235,8 @@ impl ScanPartitionTableResponse {
         let row_count = partition_ids.len();
         let schema = Arc::new(Self::schema());
 
-        let mut layers_builder = ListBuilder::new(StringBuilder::new())
-            .with_field(Arc::new(Field::new(Self::LAYERS, DataType::Utf8, false)));
+        let mut layers_builder =
+            ListBuilder::new(StringBuilder::new()).with_field(Self::layers_inner_field());
 
         for mut inner_vec in layers {
             for layer_name in inner_vec.drain(..) {
@@ -1240,9 +1245,8 @@ impl ScanPartitionTableResponse {
             layers_builder.append(true);
         }
 
-        let mut urls_builder = ListBuilder::new(StringBuilder::new()).with_field(Arc::new(
-            Field::new(Self::STORAGE_URLS, DataType::Utf8, false),
-        ));
+        let mut urls_builder =
+            ListBuilder::new(StringBuilder::new()).with_field(Self::storage_urls_inner_field());
 
         for mut inner_vec in storage_urls {
             for layer_name in inner_vec.drain(..) {
