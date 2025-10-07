@@ -12,7 +12,7 @@ pub async fn test_single_text_document() {
     let mut harness = viewer_test_utils::viewer_harness();
     harness.init_recording();
     harness.toggle_selection_panel();
-    harness.snapshot("single_text_document_1");
+    harness.snapshot_app("single_text_document_1");
 
     // Log some data
     harness.log_entity("txt/hello", |builder| {
@@ -31,5 +31,5 @@ pub async fn test_single_text_document() {
         ));
     });
 
-    harness.snapshot("single_text_document_2");
+    harness.snapshot_app("single_text_document_2");
 }

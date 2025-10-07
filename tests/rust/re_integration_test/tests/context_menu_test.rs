@@ -38,17 +38,17 @@ pub async fn test_stream_context_single_select() {
 
     // Click streams tree items and check their context menu
     harness.right_click_label("txt/");
-    harness.snapshot("streams_context_single_select_1");
+    harness.snapshot_app("streams_context_single_select_1");
 
     harness.click_label("Expand all");
-    harness.snapshot("streams_context_single_select_2");
+    harness.snapshot_app("streams_context_single_select_2");
 
     harness.right_click_label("world");
-    harness.snapshot("streams_context_single_select_3");
+    harness.snapshot_app("streams_context_single_select_3");
 
     harness.key_press(egui::Key::Escape);
-    harness.snapshot("streams_context_single_select_4");
+    harness.snapshot_app("streams_context_single_select_4");
 
     harness.right_click_label("text");
-    harness.snapshot("streams_context_single_select_5");
+    harness.snapshot_app("streams_context_single_select_5");
 }

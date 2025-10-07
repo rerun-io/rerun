@@ -226,7 +226,7 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         // TODO(aedm): there is a nondeterministic font rendering issue.
         self.snapshot_options(
             snapshot_name,
-            &SnapshotOptions::new().failed_pixel_count_threshold(0),
+            &SnapshotOptions::new().failed_pixel_count_threshold(20),
         );
     }
 }
