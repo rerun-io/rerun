@@ -600,7 +600,6 @@ mod tests_legacy {
 
     use crate::Compression;
     use crate::Encoder;
-    use crate::codec::arrow::encode_arrow;
 
     use super::*;
 
@@ -665,7 +664,9 @@ mod tests_legacy {
     fn legacy_fake_log_messages() -> Vec<LogMsgProto> {
         fake_log_messages()
             .into_iter()
-            .map(log_msg_to_proto)
+            .map(|msg| {
+                crate::protobuf_conversions::log_msg_to_proto(msg, Compression::Off).unwrap()
+            })
             .map(|mut log_msg| {
                 match &mut log_msg.msg {
                     None => panic!("Unexpected `LogMsg` without payload"),
@@ -710,49 +711,6 @@ mod tests_legacy {
                 log_msg
             })
             .collect()
-    }
-
-    fn log_msg_to_proto(message: LogMsg) -> LogMsgProto {
-        use re_protos::log_msg::v1alpha1::{
-            ArrowMsg, BlueprintActivationCommand, Encoding, SetStoreInfo,
-        };
-
-        let msg: proto::log_msg::Msg = match message {
-            LogMsg::SetStoreInfo(set_store_info) => {
-                let set_store_info: SetStoreInfo = set_store_info.clone().into();
-                proto::log_msg::Msg::SetStoreInfo(set_store_info)
-            }
-            LogMsg::ArrowMsg(store_id, in_arrow_msg) => {
-                let re_log_types::ArrowMsg {
-                    chunk_id,
-                    batch,
-                    on_release: _,
-                } = &in_arrow_msg;
-
-                let payload =
-                    encode_arrow(batch, Compression::Off).expect("compression should succeed");
-
-                let arrow_msg = ArrowMsg {
-                    store_id: Some(store_id.clone().into()),
-                    chunk_id: Some((*chunk_id).into()),
-                    compression: proto::Compression::None as i32,
-                    uncompressed_size: payload.uncompressed_size as i32,
-                    encoding: Encoding::ArrowIpc as i32,
-                    payload: payload.data.into(),
-                    is_static: re_sorbet::is_static_chunk(batch),
-                };
-
-                proto::log_msg::Msg::ArrowMsg(arrow_msg)
-            }
-            LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
-                let blueprint_activation_command: BlueprintActivationCommand =
-                    blueprint_activation_command.clone().into();
-
-                proto::log_msg::Msg::BlueprintActivationCommand(blueprint_activation_command)
-            }
-        };
-
-        LogMsgProto { msg: Some(msg) }
     }
 
     #[test]
