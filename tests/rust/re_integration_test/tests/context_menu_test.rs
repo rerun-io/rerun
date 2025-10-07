@@ -1,4 +1,4 @@
-use re_integration_test::HarnessExt as _;
+use re_integration_test::{HarnessExt as _, PanelStates};
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
 use re_view_text_document::TextDocumentView;
@@ -11,7 +11,11 @@ use re_viewport_blueprint::ViewBlueprint;
 pub async fn test_stream_context_single_select() {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
     harness.init_recording();
-    harness.toggle_selection_panel();
+    harness.set_panel_states(PanelStates {
+        blueprint_panel_open: true,
+        selection_panel_open: false,
+        time_panel_open: true,
+    });
 
     // Log some data
     harness.log_entity("txt/hello/world", |builder| {

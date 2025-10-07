@@ -8895,6 +8895,7 @@ dependencies = [
  "re_redap_client",
  "re_sdk",
  "re_server",
+ "re_ui",
  "re_uri",
  "re_view_text_document",
  "re_viewer",
