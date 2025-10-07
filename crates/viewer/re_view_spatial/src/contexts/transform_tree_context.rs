@@ -101,7 +101,7 @@ impl TransformTreeContext {
 fn lookup_image_plane_distance(
     ctx: &ViewContext<'_>,
     data_result_tree: &DataResultTree,
-    entity_path: &EntityPath,
+    entity_path: EntityPathHash,
     query: &LatestAtQuery,
 ) -> f32 {
     data_result_tree

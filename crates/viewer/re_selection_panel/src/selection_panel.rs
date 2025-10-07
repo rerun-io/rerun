@@ -323,7 +323,7 @@ impl SelectionPanel {
                     let query_result = ctx.lookup_query_result(*view_id);
                     let data_result = query_result
                         .tree
-                        .lookup_result_by_path(entity_path)
+                        .lookup_result_by_path(entity_path.hash())
                         .cloned();
 
                     if let Some(data_result) = &data_result
@@ -552,7 +552,7 @@ fn entity_selection_ui(
     let query_result = ctx.lookup_query_result(*view_id);
     let data_result = query_result
         .tree
-        .lookup_result_by_path(entity_path)
+        .lookup_result_by_path(entity_path.hash())
         .cloned();
 
     if let Some(view) = viewport.view(view_id) {
@@ -769,7 +769,8 @@ fn list_existing_data_blueprints(
     ui: &mut egui::Ui,
     instance_path: &InstancePath,
 ) {
-    let views_with_path = viewport.views_containing_entity_path(ctx, &instance_path.entity_path);
+    let views_with_path =
+        viewport.views_containing_entity_path(ctx, instance_path.entity_path.hash());
 
     let (query, db) = guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
 

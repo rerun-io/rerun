@@ -15,7 +15,7 @@ use smallvec::SmallVec;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
-use re_log_types::EntityPathSubs;
+use re_log_types::{EntityPathHash, EntityPathSubs};
 use re_types::blueprint::{
     archetypes as blueprint_archetypes,
     components::{AutoLayout, AutoViews, RootContainer, ViewMaximized},
@@ -746,7 +746,7 @@ impl ViewportBlueprint {
     pub fn views_containing_entity_path(
         &self,
         ctx: &ViewerContext<'_>,
-        path: &EntityPath,
+        path: EntityPathHash,
     ) -> Vec<ViewId> {
         self.views
             .iter()

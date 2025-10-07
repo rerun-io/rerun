@@ -88,7 +88,7 @@ pub fn picking(
         let query_result = ctx.lookup_query_result(query.view_id);
         let Some(data_result) = query_result
             .tree
-            .lookup_result_by_path(&instance_path.entity_path)
+            .lookup_result_by_path(instance_path.entity_path.hash())
         else {
             // No data result for this entity means it's no longer on screen.
             continue;

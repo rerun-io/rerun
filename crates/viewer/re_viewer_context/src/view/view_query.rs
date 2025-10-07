@@ -114,7 +114,7 @@ impl DataResult {
             let parent_visibility = self
                 .entity_path
                 .parent()
-                .and_then(|parent_path| data_result_tree.lookup_result_by_path(&parent_path))
+                .and_then(|parent_path| data_result_tree.lookup_result_by_path(parent_path.hash()))
                 .is_none_or(|data_result| data_result.is_visible());
 
             if parent_visibility == new_value {
@@ -149,7 +149,7 @@ impl DataResult {
             let parent_interactivity = self
                 .entity_path
                 .parent()
-                .and_then(|parent_path| data_result_tree.lookup_result_by_path(&parent_path))
+                .and_then(|parent_path| data_result_tree.lookup_result_by_path(parent_path.hash()))
                 .is_none_or(|data_result| data_result.is_interactive());
 
             if parent_interactivity == new_value {
