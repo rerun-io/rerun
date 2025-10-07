@@ -18,6 +18,8 @@ use super::DecodeError;
 ///
 /// Byte chunks are given to the stream via [`StreamDecoder::push_byte_chunk`], and messages are read
 /// back via [`StreamDecoder::try_read`].
+//
+// TODO(cmc): explain when you'd use this over StreamingDecoder and vice-versa.
 pub struct StreamDecoder {
     /// The Rerun version used to encode the RRD data.
     ///
@@ -46,7 +48,7 @@ pub struct StreamDecoder {
 /// |           |
 /// ---Message<--
 /// ```
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum State {
     /// The beginning of the stream.
     ///
@@ -573,5 +575,400 @@ mod tests {
         buffer.push(data.to_vec());
         assert_eq!(data, buffer.try_read(4).unwrap());
         assert_eq!(None, buffer.try_read(4));
+    }
+}
+
+// Legacy tests from the old decoder implementation.
+#[cfg(all(test, feature = "decoder", feature = "encoder"))]
+mod tests_legacy {
+    #![allow(clippy::unwrap_used)] // acceptable for tests
+
+    use re_build_info::CrateVersion;
+    use re_chunk::RowId;
+    use re_log_types::{SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+    use re_protos::log_msg::v1alpha1 as proto;
+    use re_protos::log_msg::v1alpha1::LogMsg as LogMsgProto;
+
+    use crate::Compression;
+    use crate::Encoder;
+    use crate::codec::arrow::encode_arrow;
+
+    use super::*;
+
+    fn decoder_into_iter(mut decoder: StreamDecoder) -> impl Iterator<Item = LogMsg> {
+        std::iter::from_fn(move || {
+            let msg = decoder.try_read().unwrap();
+
+            if msg.is_none() && decoder.state == State::StreamHeader {
+                // We're _really_ done, we're not just filtering out some message lacking an app ID.
+                return None;
+            }
+
+            Some(msg)
+        })
+        .flatten()
+    }
+
+    pub fn fake_log_messages() -> Vec<LogMsg> {
+        let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
+
+        let arrow_msg = re_chunk::Chunk::builder("test_entity")
+            .with_archetype(
+                re_chunk::RowId::new(),
+                re_log_types::TimePoint::default().with(
+                    re_log_types::Timeline::new_sequence("blueprint"),
+                    re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
+                ),
+                &re_types::blueprint::archetypes::Background::new(
+                    re_types::blueprint::components::BackgroundKind::SolidColor,
+                )
+                .with_color([255, 0, 0]),
+            )
+            .build()
+            .unwrap()
+            .to_arrow_msg()
+            .unwrap();
+
+        vec![
+            LogMsg::SetStoreInfo(SetStoreInfo {
+                row_id: *RowId::new(),
+                info: StoreInfo::new(
+                    store_id.clone(),
+                    StoreSource::RustSdk {
+                        rustc_version: String::new(),
+                        llvm_version: String::new(),
+                    },
+                ),
+            }),
+            LogMsg::ArrowMsg(store_id.clone(), arrow_msg),
+            LogMsg::BlueprintActivationCommand(re_log_types::BlueprintActivationCommand {
+                blueprint_id: store_id,
+                make_active: true,
+                make_default: true,
+            }),
+        ]
+    }
+
+    /// Convert the test log message to their proto version and tweak them so that:
+    /// - `StoreId` do not have an `ApplicationId`
+    /// - `StoreInfo` does have an `ApplicationId`
+    #[expect(deprecated)]
+    fn legacy_fake_log_messages() -> Vec<LogMsgProto> {
+        fake_log_messages()
+            .into_iter()
+            .map(log_msg_to_proto)
+            .map(|mut log_msg| {
+                match &mut log_msg.msg {
+                    None => panic!("Unexpected `LogMsg` without payload"),
+
+                    Some(proto::log_msg::Msg::SetStoreInfo(set_store_info)) => {
+                        if let Some(store_info) = &mut set_store_info.info {
+                            let Some(mut store_id) = store_info.store_id.clone() else {
+                                panic!("Unexpected missing `StoreId`");
+                            };
+
+                            // this should be a non-legacy proto
+                            assert_eq!(store_info.application_id, None);
+                            assert!(store_id.application_id.is_some());
+
+                            // turn this into a legacy proto
+                            store_info.application_id = store_id.application_id;
+                            store_id.application_id = None;
+                            store_info.store_id = Some(store_id);
+                        } else {
+                            panic!("Unexpected missing `store_info`")
+                        }
+                    }
+                    Some(
+                        proto::log_msg::Msg::ArrowMsg(proto::ArrowMsg { store_id, .. })
+                        | proto::log_msg::Msg::BlueprintActivationCommand(
+                            proto::BlueprintActivationCommand {
+                                blueprint_id: store_id,
+                                ..
+                            },
+                        ),
+                    ) => {
+                        let mut legacy_store_id =
+                            store_id.clone().expect("messages should have store ids");
+                        assert!(legacy_store_id.application_id.is_some());
+
+                        // make legacy
+                        legacy_store_id.application_id = None;
+                        *store_id = Some(legacy_store_id);
+                    }
+                }
+
+                log_msg
+            })
+            .collect()
+    }
+
+    fn log_msg_to_proto(message: LogMsg) -> LogMsgProto {
+        use re_protos::log_msg::v1alpha1::{
+            ArrowMsg, BlueprintActivationCommand, Encoding, SetStoreInfo,
+        };
+
+        let msg: proto::log_msg::Msg = match message {
+            LogMsg::SetStoreInfo(set_store_info) => {
+                let set_store_info: SetStoreInfo = set_store_info.clone().into();
+                proto::log_msg::Msg::SetStoreInfo(set_store_info)
+            }
+            LogMsg::ArrowMsg(store_id, in_arrow_msg) => {
+                let re_log_types::ArrowMsg {
+                    chunk_id,
+                    batch,
+                    on_release: _,
+                } = &in_arrow_msg;
+
+                let payload =
+                    encode_arrow(batch, Compression::Off).expect("compression should succeed");
+
+                let arrow_msg = ArrowMsg {
+                    store_id: Some(store_id.clone().into()),
+                    chunk_id: Some((*chunk_id).into()),
+                    compression: proto::Compression::None as i32,
+                    uncompressed_size: payload.uncompressed_size as i32,
+                    encoding: Encoding::ArrowIpc as i32,
+                    payload: payload.data.into(),
+                    is_static: re_sorbet::is_static_chunk(batch),
+                };
+
+                proto::log_msg::Msg::ArrowMsg(arrow_msg)
+            }
+            LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
+                let blueprint_activation_command: BlueprintActivationCommand =
+                    blueprint_activation_command.clone().into();
+
+                proto::log_msg::Msg::BlueprintActivationCommand(blueprint_activation_command)
+            }
+        };
+
+        LogMsgProto { msg: Some(msg) }
+    }
+
+    #[test]
+    fn test_encode_decode() {
+        let rrd_version = CrateVersion::LOCAL;
+
+        let messages = fake_log_messages();
+
+        let options = [
+            EncodingOptions {
+                compression: Compression::Off,
+                serializer: Serializer::Protobuf,
+            },
+            EncodingOptions {
+                compression: Compression::LZ4,
+                serializer: Serializer::Protobuf,
+            },
+        ];
+
+        for options in options {
+            let mut file = vec![];
+            crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut file)
+                .unwrap();
+
+            let mut decoder = StreamDecoder::new();
+            decoder.push_byte_chunk(file);
+
+            let decoded_messages: Vec<_> = decoder_into_iter(decoder).collect();
+            similar_asserts::assert_eq!(decoded_messages, messages);
+        }
+    }
+
+    /// Test that legacy messages (aka `StoreId` without an application id) are properly decoded.
+    #[test]
+    fn test_decode_legacy() {
+        let rrd_version = CrateVersion::LOCAL;
+
+        let messages = legacy_fake_log_messages();
+
+        let options = [
+            EncodingOptions {
+                compression: Compression::Off,
+                serializer: Serializer::Protobuf,
+            },
+            EncodingOptions {
+                compression: Compression::LZ4,
+                serializer: Serializer::Protobuf,
+            },
+        ];
+
+        for options in options {
+            let mut file = vec![];
+
+            let mut encoder = Encoder::new(rrd_version, options, &mut file).unwrap();
+            for message in messages.clone() {
+                encoder
+                    .append_proto(message)
+                    .expect("encoding should succeed");
+            }
+            drop(encoder);
+
+            let mut decoder = StreamDecoder::new();
+            decoder.push_byte_chunk(file);
+
+            let decoded_messages: Vec<_> = decoder_into_iter(decoder).collect();
+            assert_eq!(decoded_messages.len(), messages.len());
+        }
+    }
+
+    /// Test that legacy messages (aka `StoreId` without an application id) that arrive _before_
+    /// a `SetStoreInfo` are dropped without failing.
+    #[test]
+    fn test_decode_legacy_out_of_order() {
+        let rrd_version = CrateVersion::LOCAL;
+
+        let messages = legacy_fake_log_messages();
+
+        // ensure the test data is as we expect
+        let orig_message_count = messages.len();
+        assert_eq!(orig_message_count, 3);
+        assert!(matches!(
+            messages[0].msg,
+            Some(proto::log_msg::Msg::SetStoreInfo(..))
+        ));
+        assert!(matches!(
+            messages[1].msg,
+            Some(proto::log_msg::Msg::ArrowMsg(..))
+        ));
+        assert!(matches!(
+            messages[2].msg,
+            Some(proto::log_msg::Msg::BlueprintActivationCommand(..))
+        ));
+
+        let options = [
+            EncodingOptions {
+                compression: Compression::Off,
+                serializer: Serializer::Protobuf,
+            },
+            EncodingOptions {
+                compression: Compression::LZ4,
+                serializer: Serializer::Protobuf,
+            },
+        ];
+
+        // make out-of-order messages
+        let mut out_of_order_messages = vec![messages[1].clone(), messages[2].clone()];
+        out_of_order_messages.extend(messages);
+
+        for options in options {
+            let mut file = vec![];
+
+            let mut encoder = Encoder::new(rrd_version, options, &mut file).unwrap();
+            for message in out_of_order_messages.clone() {
+                encoder
+                    .append_proto(message)
+                    .expect("encoding should succeed");
+            }
+            drop(encoder);
+
+            let mut decoder = StreamDecoder::new();
+            decoder.push_byte_chunk(file);
+
+            let decoded_messages: Vec<_> = decoder_into_iter(decoder).collect();
+            assert_eq!(decoded_messages.len(), orig_message_count);
+        }
+    }
+
+    /// Test that non-legacy message streams do not rely on the `SetStoreInfo` message to arrive first.
+    #[test]
+    fn test_decode_out_of_order() {
+        let rrd_version = CrateVersion::LOCAL;
+
+        let messages = fake_log_messages();
+
+        // ensure the test data is as we expect
+        let orig_message_count = messages.len();
+        assert_eq!(orig_message_count, 3);
+        assert!(matches!(messages[0], LogMsg::SetStoreInfo { .. }));
+        assert!(matches!(messages[1], LogMsg::ArrowMsg { .. }));
+        assert!(matches!(
+            messages[2],
+            LogMsg::BlueprintActivationCommand { .. }
+        ));
+
+        let options = [
+            EncodingOptions {
+                compression: Compression::Off,
+                serializer: Serializer::Protobuf,
+            },
+            EncodingOptions {
+                compression: Compression::LZ4,
+                serializer: Serializer::Protobuf,
+            },
+        ];
+
+        // make out-of-order messages
+        let mut out_of_order_messages = vec![messages[1].clone(), messages[2].clone()];
+        out_of_order_messages.extend(messages);
+
+        for options in options {
+            let mut file = vec![];
+            crate::Encoder::encode_into(
+                rrd_version,
+                options,
+                out_of_order_messages.iter().map(Ok),
+                &mut file,
+            )
+            .unwrap();
+
+            let mut decoder = StreamDecoder::new();
+            decoder.push_byte_chunk(file);
+
+            let decoded_messages: Vec<_> = decoder_into_iter(decoder).collect();
+            similar_asserts::assert_eq!(decoded_messages, out_of_order_messages);
+        }
+    }
+
+    #[test]
+    fn test_concatenated_streams() {
+        let options = [
+            EncodingOptions {
+                compression: Compression::Off,
+                serializer: Serializer::Protobuf,
+            },
+            EncodingOptions {
+                compression: Compression::LZ4,
+                serializer: Serializer::Protobuf,
+            },
+        ];
+
+        for options in options {
+            let mut data = vec![];
+
+            // write "2 files" i.e. 2 streams that end with end-of-stream marker
+            let messages = fake_log_messages();
+
+            // (2 encoders as each encoder writes a file header)
+            {
+                let writer = std::io::Cursor::new(&mut data);
+                let mut encoder1 =
+                    crate::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+                for message in &messages {
+                    encoder1.append(message).unwrap();
+                }
+                encoder1.finish().unwrap();
+            }
+
+            let written = data.len() as u64;
+
+            {
+                let mut writer = std::io::Cursor::new(&mut data);
+                writer.set_position(written);
+                let mut encoder2 =
+                    crate::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+                for message in &messages {
+                    encoder2.append(message).unwrap();
+                }
+                encoder2.finish().unwrap();
+            }
+
+            let mut decoder = StreamDecoder::new();
+            decoder.push_byte_chunk(data);
+
+            let decoded_messages: Vec<_> = decoder_into_iter(decoder).collect();
+            similar_asserts::assert_eq!(decoded_messages, [messages.clone(), messages].concat());
+        }
     }
 }
