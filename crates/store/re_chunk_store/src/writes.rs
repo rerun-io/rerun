@@ -382,11 +382,12 @@ impl ChunkStore {
                 && old_typ != list_array.value_type()
             {
                 re_log::warn_once!(
-                    "Component '{}' with component type '{}' in entity '{}' changed type from {old_typ:?} to {:?}",
+                    "Component '{}' with component type '{}' on entity '{}' changed type from {} to {}",
                     component_descr.component,
                     component_type,
                     chunk.entity_path(),
-                    list_array.value_type()
+                    re_arrow_util::format_data_type(&old_typ),
+                    re_arrow_util::format_data_type(&list_array.value_type())
                 );
             }
 
