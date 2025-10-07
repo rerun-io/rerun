@@ -53,7 +53,7 @@ pub trait HarnessExt {
     // Takes a snapshot of the current app state with good-enough snapshot options.
     fn snapshot_app(&mut self, snapshot_name: &str);
 
-    // Prints the current viewer state. Don't merge code that calls this.
+    // Prints the current viewer state.
     #[allow(unused)]
     fn debug_viewer_state(&mut self);
 

@@ -4,12 +4,12 @@ use re_sdk::log::RowId;
 use re_view_text_document::TextDocumentView;
 use re_viewer::external::re_types;
 use re_viewer::external::re_viewer_context::ViewClass as _;
-use re_viewer::viewer_test_utils;
+use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_single_text_document() {
-    let mut harness = viewer_test_utils::viewer_harness();
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
     harness.init_recording();
     harness.toggle_selection_panel();
     harness.snapshot_app("single_text_document_1");
