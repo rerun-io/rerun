@@ -102,6 +102,44 @@ impl TransformInfo {
             &self.reference_from_instances_overall
         }
     }
+
+    /// Multiplies all transforms from the left by `target_from_reference`
+    ///
+    /// Or in other words:
+    /// `reference_from_source = self`
+    /// `target_from_source = target_from_reference * reference_from_source`
+    ///
+    /// ⚠️ does not affect 2D-in-3D information, leaving it unaffected entirely.
+    pub fn left_multiply(&self, target_from_reference: glam::Affine3A) -> Self {
+        let Self {
+            reference_from_entity: reference_from_source,
+            reference_from_instances_overall: reference_from_source_instances_overall,
+            reference_from_archetype: reference_from_source_archetypes,
+            twod_in_threed_info: twod_in_threed_info_source,
+        } = self;
+
+        let target_from_source = target_from_reference * reference_from_source;
+        let target_from_source_instances_overall = left_multiply_smallvec1_of_transforms(
+            target_from_reference,
+            reference_from_source_instances_overall,
+        );
+        let target_from_source_archetypes = reference_from_source_archetypes
+            .iter()
+            .map(|(archetype, transforms)| {
+                (
+                    *archetype,
+                    left_multiply_smallvec1_of_transforms(target_from_reference, transforms),
+                )
+            })
+            .collect();
+
+        Self {
+            reference_from_entity: target_from_source,
+            reference_from_instances_overall: target_from_source_instances_overall,
+            reference_from_archetype: target_from_source_archetypes,
+            twod_in_threed_info: twod_in_threed_info_source.clone(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, thiserror::Error)]
@@ -261,56 +299,24 @@ impl TransformTree {
                 );
             };
 
-            // TODO: special case for source == target?
-
-            // Conceptually:
             // target_from_source = target_from_reference * reference_from_source
-
-            let TransformInfo {
-                reference_from_entity: reference_from_source,
-                reference_from_instances_overall: reference_from_source_instances_overall,
-                reference_from_archetype: reference_from_source_archetypes,
-                twod_in_threed_info: twod_in_threed_info_source,
-            } = reference_from_source;
-
-            let target_from_source = target_from_reference * reference_from_source;
-            let target_from_source_instances_overall = multiply_smallvec1_of_transforms(
-                target_from_reference,
-                reference_from_source_instances_overall,
-            );
-            let target_from_source_archetypes = reference_from_source_archetypes
-                .iter()
-                .map(|(archetype, transforms)| {
-                    (
-                        *archetype,
-                        multiply_smallvec1_of_transforms(target_from_reference, transforms),
-                    )
-                })
-                .collect();
-
-            (
-                source,
-                Ok(TransformInfo {
-                    reference_from_entity: target_from_source,
-                    reference_from_instances_overall: target_from_source_instances_overall,
-                    reference_from_archetype: target_from_source_archetypes,
-                    twod_in_threed_info: twod_in_threed_info_source.clone(),
-                }),
-            )
+            let target_from_source = reference_from_source.left_multiply(target_from_reference);
+            (source, Ok(target_from_source))
         }))
     }
 }
 
-fn multiply_smallvec1_of_transforms(
+fn left_multiply_smallvec1_of_transforms(
     target_from_reference: glam::Affine3A,
     reference_from_source: &SmallVec1<[glam::Affine3A; 1]>,
 ) -> SmallVec1<[glam::Affine3A; 1]> {
     // Easiest to deal with SmallVec1 in-place.
-    let mut target_from_source_archetypes = reference_from_source.clone();
-    for transform in &mut target_from_source_archetypes {
+    let mut target_from_source = reference_from_source.clone();
+    for transform in &mut target_from_source {
         *transform = target_from_reference * *transform;
     }
-    target_from_source_archetypes
+    target_from_source
+}
 }
 
 fn compute_reference_from_instances(
