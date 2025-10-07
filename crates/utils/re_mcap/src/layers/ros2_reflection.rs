@@ -286,10 +286,7 @@ fn append_primitive_array(
     }
 }
 
-fn append_value(
-    builder: &mut dyn ArrayBuilder,
-    val: &Value,
-) -> Result<(), Ros2ReflectionError> {
+fn append_value(builder: &mut dyn ArrayBuilder, val: &Value) -> Result<(), Ros2ReflectionError> {
     match val {
         Value::Bool(x) => downcast_builder::<BooleanBuilder>(builder)?.append_value(*x),
         Value::I8(x) => downcast_builder::<Int8Builder>(builder)?.append_value(*x),
@@ -311,7 +308,11 @@ fn append_value(
 
             // Use the specification field order to iterate through struct builder fields
             for (i, spec_field) in spec.fields.iter().enumerate() {
-                if let Some(field_builder) = message_struct_builder.builder.field_builders_mut().get_mut(i) {
+                if let Some(field_builder) = message_struct_builder
+                    .builder
+                    .field_builders_mut()
+                    .get_mut(i)
+                {
                     if let Some(field_value) = message_fields.get(&spec_field.name) {
                         append_value(field_builder, field_value)?;
                     } else {
