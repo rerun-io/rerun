@@ -3,7 +3,7 @@ use crate::{Objects, Reporter, codegen::Target};
 /// A high-level representation of the contents of a flatbuffer docstring.
 #[derive(Debug, Clone, Default)]
 pub struct Docs {
-    /// All docmentation lines, including the leading tag, if any.
+    /// All documentation lines, including the leading tag, if any.
     ///
     /// If the tag is the empty string, it means the line is untagged.
     ///

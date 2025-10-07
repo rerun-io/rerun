@@ -20,7 +20,7 @@ use re_viewer_context::{
     StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
     ViewClassRegistry, ViewClassRegistryError, command_channel,
     open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url},
-    santitize_file_name,
+    sanitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
 };
 
@@ -1631,7 +1631,7 @@ impl App {
             } else {
                 format!("{}-{}", store.application_id(), store.recording_id())
             }
-            .pipe(|name| santitize_file_name(&name))
+            .pipe(|name| sanitize_file_name(&name))
             .pipe(|stem| format!("{stem}.rrd"));
 
             let file_path = folder.join(file_name.clone());
@@ -3179,7 +3179,7 @@ fn save_recording(
         .recording_info_property::<re_types::components::Name>(
             &re_types::archetypes::RecordingInfo::descriptor_name(),
         ) {
-        format!("{}.rrd", santitize_file_name(&recording_name))
+        format!("{}.rrd", sanitize_file_name(&recording_name))
     } else {
         "data.rrd".to_owned()
     };
