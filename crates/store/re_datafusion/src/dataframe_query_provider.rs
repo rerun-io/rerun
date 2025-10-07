@@ -33,7 +33,7 @@ use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
 };
 use re_log_types::{ApplicationId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::{DATASET_MANIFEST_ID_FIELD_NAME, FetchChunksRequest};
+use re_protos::cloud::v1alpha1::{FetchChunksRequest, ScanPartitionTableResponse};
 use re_redap_client::ConnectionClient;
 use re_sorbet::{ColumnDescriptor, ColumnSelector};
 
@@ -201,10 +201,10 @@ impl PartitionStreamExec {
         let orderings = if projected_schema
             .fields()
             .iter()
-            .any(|f| f.name().as_str() == DATASET_MANIFEST_ID_FIELD_NAME)
+            .any(|f| f.name().as_str() == ScanPartitionTableResponse::PARTITION_ID)
         {
-            let partition_col =
-                Arc::new(Column::new(DATASET_MANIFEST_ID_FIELD_NAME, 0)) as Arc<dyn PhysicalExpr>;
+            let partition_col = Arc::new(Column::new(ScanPartitionTableResponse::PARTITION_ID, 0))
+                as Arc<dyn PhysicalExpr>;
             let order_col = sort_index
                 .and_then(|index| {
                     let index_name = index.as_str();
@@ -242,7 +242,10 @@ impl PartitionStreamExec {
 
         let output_partitioning = if partition_in_output_schema {
             Partitioning::Hash(
-                vec![Arc::new(Column::new(DATASET_MANIFEST_ID_FIELD_NAME, 0))],
+                vec![Arc::new(Column::new(
+                    ScanPartitionTableResponse::PARTITION_ID,
+                    0,
+                ))],
                 num_partitions,
             )
         } else {
@@ -303,7 +306,7 @@ async fn send_next_row(
 
     let batch_schema = Arc::new(prepend_string_column_schema(
         &query_schema,
-        DATASET_MANIFEST_ID_FIELD_NAME,
+        ScanPartitionTableResponse::PARTITION_ID,
     ));
 
     let batch = RecordBatch::try_new_with_options(
