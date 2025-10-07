@@ -1,3 +1,5 @@
+use nohash_hasher::IntMap;
+
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, EntityPathHash};
 use re_types::{archetypes, components::ImagePlaneDistance};
@@ -9,8 +11,23 @@ use re_viewer_context::{
 
 use crate::{caches::TransformDatabaseStoreCache, visualizers::CamerasVisualizer};
 
-#[derive(Clone, Default)]
-pub struct TransformTreeContext(re_tf::TransformTree);
+// TODO: docs
+
+#[derive(Clone)]
+pub struct TransformTreeContext {
+    transform_infos:
+        IntMap<EntityPathHash, Result<re_tf::TransformInfo, re_tf::TransformFromToError>>,
+    reference_path: EntityPathHash,
+}
+
+impl Default for TransformTreeContext {
+    fn default() -> Self {
+        Self {
+            transform_infos: Default::default(),
+            reference_path: EntityPath::root().hash(),
+        }
+    }
+}
 
 impl IdentifiedViewSystem for TransformTreeContext {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
@@ -18,31 +35,46 @@ impl IdentifiedViewSystem for TransformTreeContext {
     }
 }
 
+struct TransformTreeContextStaticExecResult {
+    transform_tree: re_tf::TransformTree,
+}
+
 impl ViewContextSystem for TransformTreeContext {
+    fn execute_static(
+        ctx: &re_viewer_context::ViewerContext<'_>,
+    ) -> ViewContextSystemStaticExecResult {
+        let caches = ctx.store_context.caches;
+        let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+            c.read_lock_transform_cache(ctx.recording())
+        });
+
+        let transform_tree =
+            re_tf::TransformTree::new(ctx.recording(), &transform_cache, &ctx.current_query());
+
+        Box::new(TransformTreeContextStaticExecResult { transform_tree })
+    }
+
     fn execute(
         &mut self,
-        ctx: &re_viewer_context::ViewContext<'_>,
+        _ctx: &re_viewer_context::ViewContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
-        _static_execution_result: &ViewContextSystemStaticExecResult,
+        static_execution_result: &ViewContextSystemStaticExecResult,
     ) {
-        let recording = ctx.recording();
+        self.reference_path = query.space_origin.hash();
 
-        // Arc-read lock, so we don't have to hold a lock on the caches for any longer than needed.
-        // (Determining entity transforms could take a while, and we don't want to block other threads from doing work with the caches!)
-        let caches = ctx.viewer_ctx.store_context.caches;
-        let transform_cache = caches
-            .entry(|c: &mut TransformDatabaseStoreCache| c.read_lock_transform_cache(recording));
+        let transform_tree = &static_execution_result
+            .downcast_ref::<TransformTreeContextStaticExecResult>()
+            .expect("Unexpected static execution result type")
+            .transform_tree;
 
-        let query_result = ctx.viewer_ctx.lookup_query_result(query.view_id);
-        let data_result_tree = &query_result.tree;
+        self.transform_infos = transform_tree
+            .transform_from_to(
+                self.reference_path,
+                query.iter_all_entities().map(|e| e.hash()),
+            )
+            .collect();
 
-        self.0.set_reference_path(query.space_origin.clone());
-
-        let time_query = query.latest_at_query();
-        self.0
-            .execute(recording, &transform_cache, &time_query, &|entity_path| {
-                lookup_image_plane_distance(ctx, data_result_tree, entity_path, &time_query)
-            });
+        // TODO: image plane distance patching.
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -56,15 +88,16 @@ impl TransformTreeContext {
         &self,
         entity_path: EntityPathHash,
     ) -> Option<&re_tf::TransformInfo> {
-        self.0.transform_info_for_entity(entity_path)
+        self.transform_infos.get(&entity_path)?.as_ref().ok()
     }
 
     #[inline]
-    pub fn reference_path(&self) -> &EntityPath {
-        self.0.reference_path()
+    pub fn reference_path(&self) -> EntityPathHash {
+        self.reference_path
     }
 }
 
+// TODO: still needed.
 fn lookup_image_plane_distance(
     ctx: &ViewContext<'_>,
     data_result_tree: &DataResultTree,
