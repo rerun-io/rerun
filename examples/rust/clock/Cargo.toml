@@ -12,5 +12,5 @@ rerun = { path = "../../../crates/top/rerun", features = [
   "clap",
 ] }
 
-anyhow = "1.0"
-clap = { version = "4.0", features = ["derive"] }
+anyhow.workspace = true
+clap = { workspace = true, features = ["derive"] }
