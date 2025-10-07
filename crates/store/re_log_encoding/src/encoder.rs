@@ -91,7 +91,7 @@ impl Encoder<Vec<u8>> {
     ///
     /// Returns the encoded data in a newly allocated vector.
     pub fn encode(
-        messages: impl Iterator<Item = ChunkResult<impl Borrow<LogMsg>>>,
+        messages: impl IntoIterator<Item = ChunkResult<impl Borrow<LogMsg>>>,
     ) -> Result<Vec<u8>, EncodeError> {
         re_tracing::profile_function!();
         let mut encoder = Self::local()?;
@@ -227,7 +227,7 @@ impl<W: std::io::Write> Encoder<W> {
     pub fn encode_into(
         version: CrateVersion,
         options: EncodingOptions,
-        messages: impl Iterator<Item = ChunkResult<impl Borrow<LogMsg>>>,
+        messages: impl IntoIterator<Item = ChunkResult<impl Borrow<LogMsg>>>,
         write: &mut W,
     ) -> Result<u64, EncodeError> {
         re_tracing::profile_function!();
