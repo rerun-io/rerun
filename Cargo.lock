@@ -8896,7 +8896,9 @@ dependencies = [
  "re_sdk",
  "re_server",
  "re_uri",
+ "re_view_text_document",
  "re_viewer",
+ "re_viewport_blueprint",
  "tempfile",
  "tokio",
 ]
@@ -8999,6 +9001,7 @@ dependencies = [
  "re_chunk",
  "re_log",
  "re_log_types",
+ "re_ros_msg",
  "re_tracing",
  "re_types",
  "serde",
@@ -9309,6 +9312,15 @@ dependencies = [
  "web-time",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "re_ros_msg"
+version = "0.26.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "serde",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -10093,6 +10105,7 @@ dependencies = [
  "re_selection_panel",
  "re_smart_channel",
  "re_test_context",
+ "re_test_viewport",
  "re_time_panel",
  "re_tracing",
  "re_types",
@@ -10120,6 +10133,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "tap",
+ "tempfile",
  "thiserror 1.0.69",
  "tokio",
  "url",

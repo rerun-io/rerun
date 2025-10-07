@@ -25,6 +25,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
 version = "0.1.0"                                                              # TODO(emilk): sync version with `Cargo.toml` with help from `crates.py`
+requires-pixi = ">=0.55.0"                                                     # Make sure to keep this in sync with the version on our CI jobs!
 
 [system-requirements]
 macos = "11.0" # needed for some reason otherwise fails to resolve mediapipe package
@@ -92,7 +93,7 @@ RERUN_DEV_ENVIRONMENT = "true"
 # - The python-dev feature is not included in the default environment because it can
 #   lead to unexpected (lengthy) Rerun build during environment creation.
 # - The cpp feature cannot be included in the default environment because
-#   it breaks compillation of the rerun client on linux. See: https://github.com/rerun-io/rerun/issues/6852
+#   it breaks compilation of the rerun client on linux. See: https://github.com/rerun-io/rerun/issues/6852
 default = ["base", "wheel-build"]
 
 # The py environment is for running any code with a dependency on the python `rerun-sdk`.
@@ -617,7 +618,7 @@ taplo = "=0.9.1"
 tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67"           # For displaying progress in various utility scripts.
 typing_extensions = ">4.5"
-typos = ">=1.16.20"
+typos = ">=1.37.2"
 gh = ">=2.79.0,<3"
 
 

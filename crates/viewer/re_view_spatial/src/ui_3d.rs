@@ -271,7 +271,7 @@ impl View3DState {
         }
     }
 
-    /// The taregt mode will be ignored, and the mode of the current eye will be kept unchanged.
+    /// The target mode will be ignored, and the mode of the current eye will be kept unchanged.
     fn interpolate_to_view_eye(&mut self, mut target: ViewEye) {
         if let Some(view_eye) = &self.view_eye {
             target.set_kind(view_eye.kind());
