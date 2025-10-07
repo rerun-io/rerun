@@ -128,7 +128,20 @@ def server_instance() -> Generator[ServerInstance, None, None]:
 
     catalog_url = f"rerun+http://{HOST}:{port}"
 
-    cmd = ["python", "-m", "rerun", "server", "--dataset", str(DATASET_FILEPATH), "--table", str(TABLE_FILEPATH)]
+    cmd = [
+        "python",
+        "-m",
+        "rerun",
+        "server",
+        "--dataset",
+        str(DATASET_FILEPATH),
+        "--table",
+        str(TABLE_FILEPATH),
+        "--table",
+        f"second_schema.second_table={TABLE_FILEPATH}",
+        "--table",
+        f"alternate_catalog.third_schema.third_table={TABLE_FILEPATH}",
+    ]
     server_process = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     try:
