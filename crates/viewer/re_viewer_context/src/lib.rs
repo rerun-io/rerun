@@ -40,7 +40,10 @@ mod visitor_flow_control;
 pub use re_global_context::*;
 
 pub use self::{
-    annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos},
+    annotations::{
+        AnnotationContextStoreSubscriber, AnnotationMap, Annotations, ResolvedAnnotationInfo,
+        ResolvedAnnotationInfos,
+    },
     async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend},
     blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
     cache::{
@@ -86,10 +89,10 @@ pub use self::{
         PropertyOverrides, RecommendedView, SmallVisualizerSet, SystemExecutionOutput, ViewClass,
         ViewClassExt, ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry,
         ViewClassRegistryError, ViewContext, ViewContextCollection, ViewContextSystem,
-        ViewEntityHighlight, ViewHighlights, ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics,
-        ViewState, ViewStateExt, ViewStates, ViewSystemExecutionError, ViewSystemIdentifier,
-        ViewSystemRegistrator, VisualizableFilterContext, VisualizerCollection,
-        VisualizerQueryInfo, VisualizerSystem,
+        ViewContextSystemStaticExecResult, ViewEntityHighlight, ViewHighlights, ViewOutlineMasks,
+        ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates,
+        ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
+        VisualizableFilterContext, VisualizerCollection, VisualizerQueryInfo, VisualizerSystem,
     },
     viewer_context::{RecordingConfig, ViewerContext},
     visitor_flow_control::VisitorControlFlow,

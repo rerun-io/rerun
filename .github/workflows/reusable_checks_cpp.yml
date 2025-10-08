@@ -70,10 +70,10 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         if: ${{ github.event_name != 'pull_request' || matrix.pr_ci != false }}
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
           environments: cpp
 
       - name: Set up Rust

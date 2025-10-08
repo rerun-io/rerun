@@ -312,8 +312,8 @@ mod tests {
     use re_chunk::RowId;
     use re_log_types::{SetStoreInfo, StoreInfo};
 
+    use crate::Encoder;
     use crate::EncodingOptions;
-    use crate::encoder::Encoder;
 
     use super::*;
 
@@ -330,15 +330,16 @@ mod tests {
     fn test_data(options: EncodingOptions, n: usize) -> (Vec<LogMsg>, Vec<u8>) {
         let messages: Vec<_> = (0..n).map(|_| fake_log_msg()).collect();
 
-        let mut buffer = Vec::new();
-        let mut encoder = Encoder::new(CrateVersion::LOCAL, options, &mut buffer).unwrap();
-        for message in &messages {
-            encoder.append(message).unwrap();
-        }
+        let mut data = Vec::new();
+        Encoder::encode_into(
+            CrateVersion::LOCAL,
+            options,
+            messages.clone().into_iter().map(Ok),
+            &mut data,
+        )
+        .unwrap();
 
-        encoder.finish().unwrap();
-
-        (messages, buffer)
+        (messages, data)
     }
 
     macro_rules! assert_message_ok {

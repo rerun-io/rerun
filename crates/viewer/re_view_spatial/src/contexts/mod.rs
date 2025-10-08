@@ -28,6 +28,9 @@ pub fn register_spatial_contexts(
 ) -> Result<(), ViewClassRegistryError> {
     system_registry.register_context_system::<TransformTreeContext>()?;
     system_registry.register_context_system::<EntityDepthOffsets>()?;
+
     system_registry.register_context_system::<AnnotationSceneContext>()?;
+    re_viewer_context::AnnotationContextStoreSubscriber::subscription_handle(); // Needed by `AnnotationSceneContext`
+
     Ok(())
 }
