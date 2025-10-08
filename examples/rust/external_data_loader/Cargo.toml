@@ -11,5 +11,5 @@ rerun = { path = "../../../crates/top/rerun", default-features = false, features
   "sdk",
 ] }
 
-anyhow = "1.0"
-argh = "0.1"
+anyhow.workspace = true
+argh.workspace = true
