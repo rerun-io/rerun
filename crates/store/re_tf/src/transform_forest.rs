@@ -36,7 +36,7 @@ pub struct TransformInfo {
     /// Does not take into account archetype specific transforms.
     target_from_instances_overall: SmallVec1<[glam::Affine3A; 1]>,
 
-    /// Like [`Self::root_from_instances_overall`] but _on top_ also has archetype specific transforms applied
+    /// Like [`Self::target_from_instances_overall`] but _on top_ also has archetype specific transforms applied
     /// if there are any present.
     target_from_archetype: IntMap<ArchetypeName, SmallVec1<[glam::Affine3A; 1]>>,
 }
