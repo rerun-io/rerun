@@ -70,7 +70,7 @@ pub type StreamDecoderTransport = StreamDecoder<re_protos::log_msg::v1alpha1::lo
 /// A type alias for a [`StreamDecoder`] that decodes all the way from raw bytes to
 /// application-level types (i.e. even Arrow layers are decoded).
 ///
-/// See also [`StreamDecoderTransport`].
+/// See also [`StreamDecoderApp`].
 pub type StreamDecoderApp = StreamDecoder<re_log_types::LogMsg>;
 
 /// The stream decoder is a state machine which ingests byte chunks and outputs messages once it
