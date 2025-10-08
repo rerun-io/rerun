@@ -182,6 +182,7 @@ impl Lens {
             .collect()
     }
 }
+
 /// Provides convenient function to create a [`Lens`].
 pub struct LensBuilder(Lens);
 
