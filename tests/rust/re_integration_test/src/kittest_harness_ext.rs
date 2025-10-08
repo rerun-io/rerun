@@ -10,7 +10,7 @@ use re_sdk::{
     },
     log::Chunk,
 };
-use re_ui::{UICommand, UICommandSender};
+use re_ui::{UICommand, UICommandSender as _};
 use re_viewer::{
     AppBlueprint, SystemCommand, SystemCommandSender as _,
     external::{
