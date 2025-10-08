@@ -1650,12 +1650,6 @@ impl TryFrom<QueryTasksRequest> for crate::cloud::v1alpha1::QueryTasksRequest {
     fn try_from(
         value: QueryTasksRequest,
     ) -> Result<crate::cloud::v1alpha1::QueryTasksRequest, Self::Error> {
-        if value.task_ids.is_empty() {
-            return Err(missing_field!(
-                crate::cloud::v1alpha1::QueryTasksRequest,
-                "task_ids"
-            ));
-        }
         Ok(Self {
             ids: value.task_ids,
         })
