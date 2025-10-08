@@ -45,13 +45,16 @@ random.seed(42)
 def log_lattice(num_nodes: int) -> None:
     coordinates = itertools.product(range(num_nodes), range(num_nodes))
 
-    nodes, colors = zip(*[
-        (
-            str(i),
-            rr.components.Color([round((x / (num_nodes - 1)) * 255), round((y / (num_nodes - 1)) * 255), 0, 255]),
-        )
-        for i, (x, y) in enumerate(coordinates)
-    ])
+    nodes, colors = zip(
+        *[
+            (
+                str(i),
+                rr.components.Color([round((x / (num_nodes - 1)) * 255), round((y / (num_nodes - 1)) * 255), 0, 255]),
+            )
+            for i, (x, y) in enumerate(coordinates)
+        ],
+        strict=False,
+    )
 
     rr.log(
         "lattice",

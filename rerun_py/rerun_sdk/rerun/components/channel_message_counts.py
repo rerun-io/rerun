@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -65,13 +65,13 @@ class ChannelMessageCounts(ComponentMixin):
 
 
 if TYPE_CHECKING:
-    ChannelMessageCountsLike = Union[ChannelMessageCounts, dict[int, int]]
+    ChannelMessageCountsLike = ChannelMessageCounts | dict[int, int]
 else:
     ChannelMessageCountsLike = Any
 
-ChannelMessageCountsArrayLike = Union[
-    ChannelMessageCounts, Sequence[ChannelMessageCountsLike], dict[int, int], Sequence[dict[int, int]]
-]
+ChannelMessageCountsArrayLike = (
+    ChannelMessageCounts | Sequence[ChannelMessageCountsLike] | dict[int, int] | Sequence[dict[int, int]]
+)
 
 
 class ChannelMessageCountsBatch(BaseBatch[ChannelMessageCountsArrayLike], ComponentBatchMixin):

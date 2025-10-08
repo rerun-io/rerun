@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -51,8 +51,10 @@ class GraphType(Enum):
         return self.name
 
 
-GraphTypeLike = Union[GraphType, Literal["Directed", "Undirected", "directed", "undirected"], int]
-GraphTypeArrayLike = Union[GraphTypeLike, Sequence[GraphTypeLike]]
+GraphTypeLike = GraphType | Literal["Directed", "Undirected", "directed", "undirected"] | int
+GraphTypeArrayLike = (
+    GraphType | Literal["Directed", "Undirected", "directed", "undirected"] | int | Sequence[GraphTypeLike]
+)
 
 
 class GraphTypeBatch(BaseBatch[GraphTypeArrayLike], ComponentBatchMixin):

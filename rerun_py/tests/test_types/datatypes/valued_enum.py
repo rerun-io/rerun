@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 from rerun._baseclasses import (
@@ -55,8 +55,13 @@ class ValuedEnum(Enum):
         return self.name
 
 
-ValuedEnumLike = Union[ValuedEnum, Literal["One", "TheAnswer", "Three", "Two", "one", "theanswer", "three", "two"], int]
-ValuedEnumArrayLike = Union[ValuedEnumLike, Sequence[ValuedEnumLike]]
+ValuedEnumLike = ValuedEnum | Literal["One", "TheAnswer", "Three", "Two", "one", "theanswer", "three", "two"] | int
+ValuedEnumArrayLike = (
+    ValuedEnum
+    | Literal["One", "TheAnswer", "Three", "Two", "one", "theanswer", "three", "two"]
+    | int
+    | Sequence[ValuedEnumLike]
+)
 
 
 class ValuedEnumBatch(BaseBatch[ValuedEnumArrayLike]):

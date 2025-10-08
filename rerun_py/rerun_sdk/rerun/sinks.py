@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 import rerun_bindings as bindings
 from rerun_bindings import (
@@ -31,7 +31,7 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
     return bindings.is_enabled()  # type: ignore[no-any-return]
 
 
-LogSinkLike = Union[GrpcSink, FileSink]
+LogSinkLike = GrpcSink | FileSink
 
 
 def set_sinks(

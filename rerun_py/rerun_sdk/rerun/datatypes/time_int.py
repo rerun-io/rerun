@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -42,14 +42,11 @@ class TimeInt(TimeIntExt):
 
 
 if TYPE_CHECKING:
-    TimeIntLike = Union[TimeInt, int]
+    TimeIntLike = TimeInt | int
 else:
     TimeIntLike = Any
 
-TimeIntArrayLike = Union[
-    TimeInt,
-    Sequence[TimeIntLike],
-]
+TimeIntArrayLike = TimeInt | Sequence[TimeIntLike]
 
 
 class TimeIntBatch(BaseBatch[TimeIntArrayLike]):

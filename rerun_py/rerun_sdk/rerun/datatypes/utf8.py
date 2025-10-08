@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -40,11 +40,11 @@ class Utf8:
 
 
 if TYPE_CHECKING:
-    Utf8Like = Union[Utf8, str]
+    Utf8Like = Utf8 | str
 else:
     Utf8Like = Any
 
-Utf8ArrayLike = Union[Utf8, Sequence[Utf8Like], str, Sequence[str], npt.ArrayLike]
+Utf8ArrayLike = Utf8 | Sequence[Utf8Like] | str | Sequence[str] | npt.ArrayLike
 
 
 class Utf8Batch(BaseBatch[Utf8ArrayLike]):

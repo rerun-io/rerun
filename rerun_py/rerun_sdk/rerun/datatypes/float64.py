@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -45,13 +45,13 @@ class Float64:
 
 
 if TYPE_CHECKING:
-    Float64Like = Union[Float64, float]
+    Float64Like = Float64 | float
 else:
     Float64Like = Any
 
-Float64ArrayLike = Union[
-    Float64, Sequence[Float64Like], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
-]
+Float64ArrayLike = (
+    Float64 | Sequence[Float64Like] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[float]] | Sequence[float]
+)
 
 
 class Float64Batch(BaseBatch[Float64ArrayLike]):

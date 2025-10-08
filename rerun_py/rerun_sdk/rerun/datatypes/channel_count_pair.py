@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -68,14 +68,11 @@ class ChannelCountPair(ChannelCountPairExt):
 
 
 if TYPE_CHECKING:
-    ChannelCountPairLike = Union[ChannelCountPair, tuple[datatypes.UInt16Like, datatypes.UInt64Like]]
+    ChannelCountPairLike = ChannelCountPair | tuple[datatypes.UInt16Like, datatypes.UInt64Like]
 else:
     ChannelCountPairLike = Any
 
-ChannelCountPairArrayLike = Union[
-    ChannelCountPair,
-    Sequence[ChannelCountPairLike],
-]
+ChannelCountPairArrayLike = ChannelCountPair | Sequence[ChannelCountPairLike]
 
 
 class ChannelCountPairBatch(BaseBatch[ChannelCountPairArrayLike]):

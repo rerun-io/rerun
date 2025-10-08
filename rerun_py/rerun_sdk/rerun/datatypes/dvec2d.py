@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -47,13 +47,13 @@ class DVec2D(DVec2DExt):
 
 
 if TYPE_CHECKING:
-    DVec2DLike = Union[DVec2D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]
+    DVec2DLike = DVec2D | npt.NDArray[Any] | npt.ArrayLike | Sequence[float]
 else:
     DVec2DLike = Any
 
-DVec2DArrayLike = Union[
-    DVec2D, Sequence[DVec2DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
-]
+DVec2DArrayLike = (
+    DVec2D | Sequence[DVec2DLike] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[float]] | Sequence[float]
+)
 
 
 class DVec2DBatch(BaseBatch[DVec2DArrayLike]):

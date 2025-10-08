@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Union
+from typing import TYPE_CHECKING, Any, Literal
 
 import pyarrow as pa
 from attrs import define, field
@@ -57,17 +57,8 @@ class TimeRangeBoundary(TimeRangeBoundaryExt):
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    TimeRangeBoundaryLike = Union[
-        TimeRangeBoundary,
-        None,
-        datatypes.TimeInt,
-    ]
-    TimeRangeBoundaryArrayLike = Union[
-        TimeRangeBoundary,
-        None,
-        datatypes.TimeInt,
-        Sequence[TimeRangeBoundaryLike],
-    ]
+    TimeRangeBoundaryLike = TimeRangeBoundary | None | datatypes.TimeInt
+    TimeRangeBoundaryArrayLike = TimeRangeBoundary | None | datatypes.TimeInt | Sequence[TimeRangeBoundaryLike]
 else:
     TimeRangeBoundaryLike = Any
     TimeRangeBoundaryArrayLike = Any

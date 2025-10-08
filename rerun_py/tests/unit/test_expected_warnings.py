@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING
 
 import pytest
 import rerun as rr
 from rerun.error_utils import RerunWarning
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 rr.init("rerun_example_exceptions", spawn=False)
 # Make sure strict mode isn't leaking in from another context
