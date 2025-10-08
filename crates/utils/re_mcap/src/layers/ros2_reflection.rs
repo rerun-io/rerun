@@ -153,7 +153,7 @@ impl MessageParser for Ros2ReflectionMessageParser {
                 }
             }
         } else {
-            return Err(anyhow::anyhow!("Expected message value, got {:?}", value));
+            return Err(anyhow::anyhow!("Expected message value, got {value:?}"));
         }
 
         Ok(())
@@ -385,7 +385,7 @@ fn arrow_builder_from_type(
         Type::Complex(complex_type) => {
             // Look up the message spec in dependencies
             let spec = resolve_complex_type(complex_type, dependencies).ok_or_else(|| {
-                anyhow::anyhow!("Could not resolve complex type: {:?}", complex_type)
+                anyhow::anyhow!("Could not resolve complex type: {complex_type:?}")
             })?;
             Box::new(struct_builder_from_message_spec(spec, dependencies)?)
         }
@@ -424,7 +424,7 @@ fn datatype_from_type(
         },
         Type::Complex(complex_type) => {
             let spec = resolve_complex_type(complex_type, dependencies).ok_or_else(|| {
-                anyhow::anyhow!("Could not resolve complex type: {:?}", complex_type)
+                anyhow::anyhow!("Could not resolve complex type: {complex_type:?}")
             })?;
             let fields = spec
                 .fields
