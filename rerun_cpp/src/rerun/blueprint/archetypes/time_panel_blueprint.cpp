@@ -15,7 +15,7 @@ namespace rerun::blueprint::archetypes {
             ComponentBatch::empty<rerun::blueprint::components::TimelineName>(Descriptor_timeline)
                 .value_or_throw();
         archetype.time =
-            ComponentBatch::empty<rerun::blueprint::components::TimeCell>(Descriptor_time)
+            ComponentBatch::empty<rerun::blueprint::components::TimeInt>(Descriptor_time)
                 .value_or_throw();
         return archetype;
     }

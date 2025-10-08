@@ -15,9 +15,9 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::{
-    AppOptions, AsyncRuntimeHandle, BlueprintContext, BlueprintUndoState, CommandReceiver,
-    CommandSender, ComponentUiRegistry, DisplayMode, Item, NeedsRepaint, RecordingOrTable,
-    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
+    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
+    ComponentUiRegistry, DisplayMode, Item, NeedsRepaint, RecordingOrTable, StorageContext,
+    StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
     ViewClassRegistry, ViewClassRegistryError, command_channel,
     open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url},
     santitize_file_name,
@@ -28,6 +28,7 @@ use re_viewer_context::{
 use crate::{
     AppState,
     app_blueprint::{AppBlueprint, PanelStateOverrides},
+    app_blueprint_ctx::AppBlueprintCtx,
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
     event::ViewerEventDispatcher,
@@ -462,6 +463,65 @@ impl App {
         self.rx_log.add(rx);
     }
 
+    /// Update the active [`TimeControl`]. And if the blueprint inspection
+    /// panel is open, also open that time control.
+    fn move_time(&mut self) {
+        if let Some(store_hub) = &self.store_hub {
+            if let Some(store_id) = store_hub.active_store_id()
+                && let Some(blueprint) =
+                    store_hub.active_blueprint_for_app(store_id.application_id())
+            {
+                let default_blueprint =
+                    store_hub.default_blueprint_for_app(store_id.application_id());
+
+                let blueprint_query =
+                    re_chunk::LatestAtQuery::latest(re_viewer_context::blueprint_timeline());
+
+                let bp_ctx = AppBlueprintCtx {
+                    command_sender: &self.command_sender,
+                    current_blueprint: blueprint,
+                    default_blueprint,
+                    blueprint_query,
+                };
+
+                let dt = self.egui_ctx.input(|i| i.stable_dt);
+                if let Some(recording) = store_hub.active_recording() {
+                    // Are we still connected to the data source for the current store?
+                    let more_data_is_coming = if let Some(store_source) = &recording.data_source {
+                        self.rx_log
+                            .sources()
+                            .iter()
+                            .any(|s| s.as_ref() == store_source)
+                    } else {
+                        false
+                    };
+
+                    let time_ctrl = self.state.time_control_mut(recording, &bp_ctx);
+
+                    let response = time_ctrl.update(
+                        recording.times_per_timeline(),
+                        dt,
+                        more_data_is_coming,
+                        true,
+                        Some(&bp_ctx),
+                    );
+
+                    handle_time_ctrl_event(recording, self.event_dispatcher.as_ref(), &response);
+                }
+
+                if self.app_options().inspect_blueprint_timeline {
+                    _ = self.state.blueprint_time_control.update(
+                        bp_ctx.current_blueprint.times_per_timeline(),
+                        dt,
+                        true,
+                        false,
+                        None::<&AppBlueprintCtx<'_>>,
+                    );
+                }
+            }
+        }
+    }
+
     #[allow(clippy::needless_pass_by_ref_mut)]
     pub fn add_table_receiver(&mut self, rx: crossbeam::channel::Receiver<TableMsg>) {
         // Make sure we wake up when a message is sent.
@@ -855,15 +915,15 @@ impl App {
                 let db = store_hub.entity_db_mut(&store_id);
 
                 // No need to clear undo buffer if we're just appending static data.
+                //
+                // It would be nice to be able to undo edits to a recording, but
+                // we haven't implemented that yet.
                 if store_id.is_blueprint() && chunks.iter().any(|c| !c.is_static()) {
                     self.state
                         .blueprint_undo_state
                         .entry(store_id)
                         .or_default()
                         .clear_redo_buffer(db);
-                } else {
-                    // It would be nice to be able to undo edits to a recording, but
-                    // we haven't implemented that yet.
                 }
 
                 for chunk in chunks {
@@ -2718,7 +2778,7 @@ impl eframe::App for App {
 
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.
-        move_time(self);
+        self.move_time();
 
         // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability
         let mut store_hub = self
@@ -3309,31 +3369,7 @@ async fn async_save_dialog(
     file_handle.write(&bytes).await.context("Failed to save")
 }
 
-pub struct AppBlueprintCtx<'a> {
-    pub command_sender: &'a CommandSender,
-    pub current_blueprint: &'a EntityDb,
-    pub default_blueprint: Option<&'a EntityDb>,
-    pub blueprint_query: re_chunk::LatestAtQuery,
-}
-
-impl BlueprintContext for AppBlueprintCtx<'_> {
-    fn command_sender(&self) -> &CommandSender {
-        self.command_sender
-    }
-
-    fn current_blueprint(&self) -> &EntityDb {
-        self.current_blueprint
-    }
-
-    fn default_blueprint(&self) -> Option<&EntityDb> {
-        self.default_blueprint
-    }
-
-    fn blueprint_query(&self) -> &re_chunk::LatestAtQuery {
-        &self.blueprint_query
-    }
-}
-
+/// Propegates [`TimeControlResponse`] to [`ViewerEventDispatcher`].
 fn handle_time_ctrl_event(
     recording: &EntityDb,
     events: Option<&ViewerEventDispatcher>,
@@ -3353,60 +3389,5 @@ fn handle_time_ctrl_event(
 
     if let Some(time) = response.time_change {
         events.on_time_update(recording, time);
-    }
-}
-
-fn move_time(app: &mut App) {
-    if let Some(store_hub) = &app.store_hub {
-        if let Some(store_id) = store_hub.active_store_id()
-            && let Some(blueprint) = store_hub.active_blueprint_for_app(store_id.application_id())
-        {
-            let default_blueprint = store_hub.default_blueprint_for_app(store_id.application_id());
-
-            let blueprint_query =
-                re_chunk::LatestAtQuery::latest(re_viewer_context::blueprint_timeline());
-
-            let bp_ctx = AppBlueprintCtx {
-                command_sender: &app.command_sender,
-                current_blueprint: blueprint,
-                default_blueprint,
-                blueprint_query,
-            };
-
-            let dt = app.egui_ctx.input(|i| i.stable_dt);
-            if let Some(recording) = store_hub.active_recording() {
-                // Are we still connected to the data source for the current store?
-                let more_data_is_coming = if let Some(store_source) = &recording.data_source {
-                    app.rx_log
-                        .sources()
-                        .iter()
-                        .any(|s| s.as_ref() == store_source)
-                } else {
-                    false
-                };
-
-                let time_ctrl = app.state.time_control_mut(recording, &bp_ctx);
-
-                let response = time_ctrl.update(
-                    recording.times_per_timeline(),
-                    dt,
-                    more_data_is_coming,
-                    true,
-                    Some(&bp_ctx),
-                );
-
-                handle_time_ctrl_event(recording, app.event_dispatcher.as_ref(), &response);
-            }
-
-            if app.app_options().inspect_blueprint_timeline {
-                _ = app.state.blueprint_time_control.update(
-                    bp_ctx.current_blueprint.times_per_timeline(),
-                    dt,
-                    true,
-                    false,
-                    None::<&AppBlueprintCtx<'_>>,
-                );
-            }
-        }
     }
 }

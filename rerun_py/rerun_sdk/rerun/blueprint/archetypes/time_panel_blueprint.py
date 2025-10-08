@@ -136,10 +136,10 @@ class TimePanelBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    time: blueprint_components.TimeCellBatch | None = field(
+    time: blueprint_components.TimeIntBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=blueprint_components.TimeCellBatch._converter,  # type: ignore[misc]
+        converter=blueprint_components.TimeIntBatch._converter,  # type: ignore[misc]
     )
     # What time the time cursor should be on.
     #

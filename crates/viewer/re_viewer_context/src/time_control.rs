@@ -45,14 +45,14 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
         self.save_static_blueprint_component(
             time_panel_blueprint_entity_path(),
             &TimePanelBlueprint::descriptor_time(),
-            &re_types::blueprint::components::TimeCell(time.as_i64().into()),
+            &re_types::blueprint::components::TimeInt(time.as_i64().into()),
         );
     }
 
     fn get_time(&self) -> Option<TimeInt> {
         let (_, time) = self
             .current_blueprint()
-            .latest_at_component_quiet::<re_types::blueprint::components::TimeCell>(
+            .latest_at_component_quiet::<re_types::blueprint::components::TimeInt>(
                 &time_panel_blueprint_entity_path(),
                 self.blueprint_query(),
                 &TimePanelBlueprint::descriptor_time(),

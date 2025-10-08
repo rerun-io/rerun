@@ -33,5 +33,5 @@ table TimePanelBlueprint (
   timeline: rerun.blueprint.components.TimelineName ("attr.rerun.component_optional", nullable, order: 2000);
 
   /// What time the time cursor should be on.
-  time: rerun.blueprint.components.TimeCell ("attr.rerun.component_optional", nullable, order: 2100);
+  time: rerun.blueprint.components.TimeInt ("attr.rerun.component_optional", nullable, order: 2100);
 }

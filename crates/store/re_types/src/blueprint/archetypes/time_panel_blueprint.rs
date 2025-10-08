@@ -61,13 +61,13 @@ impl TimePanelBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::time`].
     ///
-    /// The corresponding component is [`crate::blueprint::components::TimeCell`].
+    /// The corresponding component is [`crate::blueprint::components::TimeInt`].
     #[inline]
     pub fn descriptor_time() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.blueprint.archetypes.TimePanelBlueprint".into()),
             component: "TimePanelBlueprint:time".into(),
-            component_type: Some("rerun.blueprint.components.TimeCell".into()),
+            component_type: Some("rerun.blueprint.components.TimeInt".into()),
         }
     }
 }
@@ -200,7 +200,7 @@ impl TimePanelBlueprint {
                 Self::descriptor_timeline(),
             )),
             time: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::TimeCell::arrow_empty(),
+                crate::blueprint::components::TimeInt::arrow_empty(),
                 Self::descriptor_time(),
             )),
         }
@@ -228,7 +228,7 @@ impl TimePanelBlueprint {
 
     /// What time the time cursor should be on.
     #[inline]
-    pub fn with_time(mut self, time: impl Into<crate::blueprint::components::TimeCell>) -> Self {
+    pub fn with_time(mut self, time: impl Into<crate::blueprint::components::TimeInt>) -> Self {
         self.time = try_serialize_field(Self::descriptor_time(), [time]);
         self
     }

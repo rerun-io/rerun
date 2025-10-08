@@ -327,13 +327,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <TimeCell as Component>::name(),
+            <TimeInt as Component>::name(),
             ComponentReflection {
                 docstring_md: "A reference to a time.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
-                datatype: TimeCell::arrow_datatype(),
-                verify_arrow_array: TimeCell::verify_arrow_array,
+                datatype: TimeInt::arrow_datatype(),
+                verify_arrow_array: TimeInt::verify_arrow_array,
             },
         ),
         (
@@ -3809,7 +3809,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection {
                         name: "time",
                         display_name: "Time",
-                        component_type: "rerun.blueprint.components.TimeCell".into(),
+                        component_type: "rerun.blueprint.components.TimeInt".into(),
                         docstring_md: "What time the time cursor should be on.",
                         is_required: false,
                     },
