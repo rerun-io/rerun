@@ -463,7 +463,7 @@ impl App {
         self.rx_log.add(rx);
     }
 
-    /// Update the active [`TimeControl`]. And if the blueprint inspection
+    /// Update the active [`re_viewer_context::TimeControl`]. And if the blueprint inspection
     /// panel is open, also open that time control.
     fn move_time(&mut self) {
         if let Some(store_hub) = &self.store_hub {
@@ -3446,7 +3446,7 @@ async fn async_save_dialog(
     file_handle.write(&bytes).await.context("Failed to save")
 }
 
-/// Propagates [`TimeControlResponse`] to [`ViewerEventDispatcher`].
+/// Propagates [`re_viewer_context::TimeControlResponse`] to [`ViewerEventDispatcher`].
 fn handle_time_ctrl_event(
     recording: &EntityDb,
     events: Option<&ViewerEventDispatcher>,
