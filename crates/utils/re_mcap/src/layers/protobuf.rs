@@ -254,8 +254,7 @@ fn append_value(
                 .append_value(value.name());
 
             // Second field is "value" (Int32)
-            downcast_err::<Int32Builder>(field_builders[1].as_mut(), val)?
-                .append_value(*x);
+            downcast_err::<Int32Builder>(field_builders[1].as_mut(), val)?.append_value(*x);
 
             struct_builder.append(true);
         }
@@ -327,11 +326,10 @@ fn arrow_field_from(descr: &FieldDescriptor) -> Field {
     // Add extension metadata for enum types
     if matches!(descr.kind(), Kind::Enum(_)) {
         field = field.with_metadata(
-            [(
+            std::iter::once((
                 "ARROW:extension:name".to_owned(),
                 "rerun.datatypes.ProtobufEnum".to_owned(),
-            )]
-            .into_iter()
+            ))
             .collect(),
         );
     }

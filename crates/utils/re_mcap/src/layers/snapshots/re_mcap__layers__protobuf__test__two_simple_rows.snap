@@ -1,6 +1,6 @@
 ---
 source: crates/utils/re_mcap/src/layers/protobuf.rs
-expression: "format!(\"{:240}\", ChunkRedacted(&chunks[0]))"
+expression: "format!(\"{:-240}\", &chunks[0])"
 ---
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                                                                                          │
@@ -12,15 +12,15 @@ expression: "format!(\"{:240}\", ChunkRedacted(&chunks[0]))"
 │ ┌─────────────────────────────────────┬─────────────────────────────┬─────────────────────────────┬───────────────────────────────────┬────────────────────────────────────┬─────────────────────────────────────┐ │
 │ │ RowId                               ┆ log_time                    ┆ publish_time                ┆ com.example.Person:id             ┆ com.example.Person:name            ┆ com.example.Person:status           │ │
 │ │ ---                                 ┆ ---                         ┆ ---                         ┆ ---                               ┆ ---                                ┆ ---                                 │ │
-│ │ type: FixedSizeBinary[16]           ┆ type: nullable Duration(ns) ┆ type: nullable Duration(ns) ┆ type: nullable List[nullable i32] ┆ type: nullable List[nullable Utf8] ┆ type: nullable List[nullable Utf8]  │ │
-│ │ ARROW:extension:metadata:           ┆ index_name: log_time        ┆ index_name: publish_time    ┆ archetype: com.example.Person     ┆ archetype: com.example.Person      ┆ archetype: com.example.Person       │ │
-│ │ {"namespace":"row"}                 ┆ is_sorted: true             ┆ is_sorted: true             ┆ component: com.example.Person:id  ┆ component: com.example.Person:name ┆ component:                          │ │
-│ │ ARROW:extension:name: TUID          ┆ kind: index                 ┆ kind: index                 ┆ kind: data                        ┆ kind: data                         ┆ com.example.Person:status           │ │
-│ │ is_sorted: true                     ┆                             ┆                             ┆                                   ┆                                    ┆ kind: data                          │ │
-│ │ kind: control                       ┆                             ┆                             ┆                                   ┆                                    ┆                                     │ │
+│ │ type: FixedSizeBinary[16]           ┆ type: nullable Duration(ns) ┆ type: nullable Duration(ns) ┆ type: nullable List[nullable i32] ┆ type: nullable List[nullable Utf8] ┆ type: nullable List[nullable        │ │
+│ │ ARROW:extension:metadata:           ┆ index_name: log_time        ┆ index_name: publish_time    ┆ archetype: com.example.Person     ┆ archetype: com.example.Person      ┆ Struct[2]]                          │ │
+│ │ {"namespace":"row"}                 ┆ is_sorted: true             ┆ is_sorted: true             ┆ component: com.example.Person:id  ┆ component: com.example.Person:name ┆ archetype: com.example.Person       │ │
+│ │ ARROW:extension:name: TUID          ┆ kind: index                 ┆ kind: index                 ┆ kind: data                        ┆ kind: data                         ┆ component:                          │ │
+│ │ is_sorted: true                     ┆                             ┆                             ┆                                   ┆                                    ┆ com.example.Person:status           │ │
+│ │ kind: control                       ┆                             ┆                             ┆                                   ┆                                    ┆ kind: data                          │ │
 │ ╞═════════════════════════════════════╪═════════════════════════════╪═════════════════════════════╪═══════════════════════════════════╪════════════════════════════════════╪═════════════════════════════════════╡ │
-│ │ row_[**REDACTED**]                  ┆ PT0.000000042S              ┆ PT0.000000042S              ┆ [0]                               ┆ [Bob]                              ┆ [INACTIVE]                          │ │
+│ │ row_[**REDACTED**]                  ┆ PT0.000000042S              ┆ PT0.000000042S              ┆ [0]                               ┆ [Bob]                              ┆ [{name: INACTIVE, value: 2}]        │ │
 │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ row_[**REDACTED**]                  ┆ PT0.000000043S              ┆ PT0.000000043S              ┆ [123]                             ┆ [Alice]                            ┆ [UNKNOWN]                           │ │
+│ │ row_[**REDACTED**]                  ┆ PT0.000000043S              ┆ PT0.000000043S              ┆ [123]                             ┆ [Alice]                            ┆ [{name: UNKNOWN, value: 0}]         │ │
 │ └─────────────────────────────────────┴─────────────────────────────┴─────────────────────────────┴───────────────────────────────────┴────────────────────────────────────┴─────────────────────────────────────┘ │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
