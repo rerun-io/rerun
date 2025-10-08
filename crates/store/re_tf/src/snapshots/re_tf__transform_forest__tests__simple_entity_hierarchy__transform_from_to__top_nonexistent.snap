@@ -1,0 +1,54 @@
+---
+source: crates/store/re_tf/src/transform_forest.rs
+expression: "pretty_print_enity_path_hashes_in(transform_forest.transform_from_to(target.hash(),\nsources.iter().map(|s| s.hash()), &|_| { 1.0 }).collect::<Vec<_>>(),\n&all_entity_paths)"
+---
+[
+    (
+        /,
+        Err(
+            UnknownTargetFrame(
+                /top/nonexistent,
+            ),
+        ),
+    ),
+    (
+        /top,
+        Err(
+            UnknownTargetFrame(
+                /top/nonexistent,
+            ),
+        ),
+    ),
+    (
+        /top/pinhole,
+        Err(
+            UnknownTargetFrame(
+                /top/nonexistent,
+            ),
+        ),
+    ),
+    (
+        /top/child3d,
+        Err(
+            UnknownTargetFrame(
+                /top/nonexistent,
+            ),
+        ),
+    ),
+    (
+        /top/nonexistent,
+        Err(
+            UnknownTargetFrame(
+                /top/nonexistent,
+            ),
+        ),
+    ),
+    (
+        /top/pinhole/child2d,
+        Err(
+            UnknownTargetFrame(
+                /top/nonexistent,
+            ),
+        ),
+    ),
+]

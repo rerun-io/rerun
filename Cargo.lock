@@ -9533,6 +9533,7 @@ dependencies = [
  "ahash",
  "bitflags 2.9.4",
  "glam",
+ "insta",
  "itertools 0.14.0",
  "nohash-hasher",
  "re_chunk_store",

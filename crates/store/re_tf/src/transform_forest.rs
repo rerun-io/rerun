@@ -13,7 +13,7 @@ use crate::{
 };
 
 /// Transform from an entity towards a given root.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TransformInfo {
     /// Root this transform belongs to.
     ///
@@ -135,7 +135,7 @@ impl TransformInfo {
     }
 }
 
-#[derive(Clone, Debug, thiserror::Error)]
+#[derive(Clone, Debug, thiserror::Error, PartialEq, Eq)]
 pub enum TransformFromToError {
     #[error("No transform relationships about the target frame {0:?} are known")]
     UnknownTargetFrame(EntityPathHash),
@@ -184,7 +184,7 @@ struct SourceInfo<'a> {
 /// Each pinhole forms its own subtree which may be embedded into a 3D space.
 /// Everything at and below the pinhole tree root is considered to be 2D,
 /// everything above is considered to be 3D.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PinholeTreeRoot {
     /// The tree root of the parent of this pinhole.
     pub parent_tree_root: EntityPathHash,
@@ -199,7 +199,7 @@ pub struct PinholeTreeRoot {
 /// Properties of a transform root.
 ///
 /// [`TransformForest`] tries to identify all roots.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TransformTreeRootInfo {
     /// This is the root of the entity path tree.
     EntityRoot,
@@ -327,6 +327,14 @@ impl TransformForest {
                 transforms_for_timeline,
             );
         }
+    }
+
+    /// Returns the properties of the transform tree root at the given entity path.
+    ///
+    /// If the identifier is not known as a transform tree root, returns [`None`].
+    #[inline]
+    pub fn root_info(&self, root: EntityPathHash) -> Option<&TransformTreeRootInfo> {
+        self.roots.get(&root)
     }
 
     /// Returns the properties of the pinhole tree root at the given entity path if the entity's root is a pinhole tree root.
@@ -645,6 +653,206 @@ fn transforms_at<'a>(
     }
 }
 
-// TODO: unit tests?
-// TODO: need 2d in 3d tests. don't think we have any
-// TODO: need 3d in 2d tests. don't think we have any
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use re_chunk_store::Chunk;
+    use re_entity_db::EntityDb;
+    use re_log_types::{StoreInfo, TimePoint, TimelineName};
+    use re_types::{RowId, archetypes};
+
+    use super::*;
+
+    fn test_pinhole() -> archetypes::Pinhole {
+        archetypes::Pinhole::from_focal_length_and_resolution([1.0, 2.0], [100.0, 200.0])
+    }
+
+    /// A test scene that relies exclusively on the entity hierarchy.
+    ///
+    /// We're using relatively basic transforms here as we assume that resolving transforms have been tested on [`TransformResolutionCache`] already.
+    /// Similarly, since [`TransformForest`] does not yet mantain anything over time, we're using static timeing instead.
+    /// TODO(RR-2510): add another scene (or extension) where we override transforms on select entities
+    /// TODO(RR-2511): add a scene with frame relationships
+    fn entity_hierarchy_test_scene() -> EntityDb {
+        let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
+        entity_db
+            .add_chunk(&Arc::new(
+                Chunk::builder(EntityPath::from("top"))
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::STATIC,
+                        &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0]),
+                    )
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::STATIC,
+                        // Add some instance transforms - we need to make sure they don't propagate.
+                        &archetypes::InstancePoses3D::new()
+                            .with_translations([[10.0, 0.0, 0.0], [20.0, 0.0, 0.0]]),
+                    )
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::STATIC,
+                        // Add some boxes - its centers are handled treated like special instance transforms.
+                        &archetypes::Boxes3D::update_fields()
+                            .with_centers([[0.0, 10.0, 0.0], [0.0, 20.0, 0.0]]),
+                    )
+                    .build()
+                    .unwrap(),
+            ))
+            .unwrap();
+        entity_db
+            .add_chunk(&Arc::new(
+                Chunk::builder(EntityPath::from("top/pinhole"))
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::STATIC,
+                        &archetypes::Transform3D::from_translation([0.0, 1.0, 0.0]),
+                    )
+                    .with_archetype(RowId::new(), TimePoint::STATIC, &test_pinhole())
+                    .build()
+                    .unwrap(),
+            ))
+            .unwrap();
+
+        entity_db
+            .add_chunk(&Arc::new(
+                Chunk::builder(EntityPath::from("top/pinhole/child2d"))
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::STATIC,
+                        &archetypes::Transform3D::from_translation([2.0, 0.0, 0.0]),
+                    )
+                    .build()
+                    .unwrap(),
+            ))
+            .unwrap();
+        entity_db
+            .add_chunk(&Arc::new(
+                Chunk::builder(EntityPath::from("top/child3d"))
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::STATIC,
+                        &archetypes::Transform3D::from_translation([0.0, 0.0, 1.0]),
+                    )
+                    .build()
+                    .unwrap(),
+            ))
+            .unwrap();
+
+        entity_db
+    }
+
+    fn pretty_print_enity_path_hashes_in<T: std::fmt::Debug>(
+        obj: T,
+        paths: &[EntityPath],
+    ) -> String {
+        let mut result = format!("{obj:#?}");
+        for path in paths {
+            result = result.replace(&format!("{:#?}", path.hash()), &format!("{path:#?}"));
+        }
+        result
+    }
+
+    #[test]
+    fn test_simple_entity_hierarchy() {
+        let test_scene = entity_hierarchy_test_scene();
+        let mut transform_cache = TransformResolutionCache::default();
+        transform_cache.add_chunks(
+            &test_scene,
+            test_scene.storage_engine().store().iter_chunks(),
+        );
+
+        let query = LatestAtQuery::latest(TimelineName::log_tick());
+        let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+
+        let all_entity_paths = test_scene
+            .entity_paths()
+            .into_iter()
+            .cloned()
+            .chain([EntityPath::root(), EntityPath::from("top/nonexistent")])
+            .collect::<Vec<_>>();
+
+        // Check that we get the expected roots.
+        {
+            assert_eq!(
+                transform_forest.root_info(EntityPath::root().hash()),
+                Some(&TransformTreeRootInfo::EntityRoot)
+            );
+            // Pinhole roots are a bit more complex. Let's use `insta` to verify.
+            insta::assert_snapshot!(
+                "simple_entity_hierarchy__root_info_pinhole",
+                pretty_print_enity_path_hashes_in(
+                    transform_forest.root_info(EntityPath::from("top/pinhole").hash()),
+                    &all_entity_paths
+                )
+            );
+            // .. but it's hard to reason about the parent root id, so let's verify that just to be sure.
+            assert_eq!(
+                transform_forest
+                    .pinhole_tree_root_info(EntityPath::from("top/pinhole").hash())
+                    .unwrap()
+                    .parent_tree_root,
+                EntityPath::root().hash()
+            );
+            assert_eq!(transform_forest.roots.len(), 2);
+        }
+
+        // Perform some tree queries.
+        let targets = [
+            EntityPath::root(),
+            EntityPath::from("top"),
+            EntityPath::from("top/pinhole"),
+            EntityPath::from("top/nonexistent"),
+            EntityPath::from("top/pinhole/child2d"),
+        ];
+        let sources = [
+            EntityPath::root(),
+            EntityPath::from("top"),
+            EntityPath::from("top/pinhole"),
+            EntityPath::from("top/child3d"),
+            EntityPath::from("top/nonexistent"),
+            EntityPath::from("top/pinhole/child2d"),
+        ];
+
+        for target in &targets {
+            let name = if target == &EntityPath::root() {
+                "_root".to_owned()
+            } else {
+                target.to_string().replace('/', "_")
+            };
+
+            let result = transform_forest
+                .transform_from_to(target.hash(), sources.iter().map(|s| s.hash()), &|_| 1.0)
+                .collect::<Vec<_>>();
+
+            // If the target exists, it should have an identity transform.
+            // (this is covered by the snapshot below as well, but its a basic sanity check I wanted to call out)
+            let target_result = result
+                .iter()
+                .find(|(key, _)| *key == target.hash())
+                .unwrap();
+            if let Ok(target_result) = &target_result.1 {
+                assert!(target_result.target_from_entity == glam::Affine3A::IDENTITY);
+            } else {
+                assert_eq!(
+                    target_result.1,
+                    Err(TransformFromToError::UnknownTargetFrame(target.hash()))
+                );
+            }
+
+            insta::assert_snapshot!(
+                format!("simple_entity_hierarchy__transform_from_to_{}", name),
+                pretty_print_enity_path_hashes_in(
+                    transform_forest
+                        .transform_from_to(target.hash(), sources.iter().map(|s| s.hash()), &|_| {
+                            1.0
+                        })
+                        .collect::<Vec<_>>(),
+                    &all_entity_paths
+                )
+            );
+        }
+    }
+}
