@@ -3,6 +3,9 @@ use std::{any::Any, pin::Pin, sync::Arc};
 use async_trait::async_trait;
 
 use arrow::{array::RecordBatch, datatypes::SchemaRef};
+use datafusion::common::not_impl_err;
+use datafusion::logical_expr::TableProviderFilterPushDown;
+use datafusion::logical_expr::dml::InsertOp;
 use datafusion::{
     catalog::{Session, TableProvider},
     error::{DataFusionError, Result as DataFusionResult},
@@ -30,6 +33,24 @@ pub trait GrpcStreamToTable:
     async fn send_streaming_request(
         &mut self,
     ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>>;
+
+    fn supports_filters_pushdown(
+        &self,
+        filters: &[&Expr],
+    ) -> DataFusionResult<Vec<TableProviderFilterPushDown>> {
+        Ok(vec![
+            TableProviderFilterPushDown::Unsupported;
+            filters.len()
+        ])
+    }
+
+    async fn insert_into(
+        &self,
+        _input: Arc<dyn ExecutionPlan>,
+        _insert_op: InsertOp,
+    ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
+        not_impl_err!("Insert into not implemented for this table")
+    }
 }
 
 #[derive(Debug)]
@@ -82,6 +103,22 @@ where
             None,
         )
         .map(|e| Arc::new(e) as Arc<dyn ExecutionPlan>)
+    }
+
+    fn supports_filters_pushdown(
+        &self,
+        filters: &[&Expr],
+    ) -> DataFusionResult<Vec<TableProviderFilterPushDown>> {
+        self.client.supports_filters_pushdown(filters)
+    }
+
+    async fn insert_into(
+        &self,
+        _state: &dyn Session,
+        input: Arc<dyn ExecutionPlan>,
+        insert_op: InsertOp,
+    ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
+        self.client.insert_into(input, insert_op).await
     }
 }
 
