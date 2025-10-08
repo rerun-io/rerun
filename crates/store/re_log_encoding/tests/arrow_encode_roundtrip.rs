@@ -39,10 +39,8 @@ fn encode_roundtrip() {
     let messages = [LogMsg::ArrowMsg(store_id, arrow_msg)];
 
     let encoded = Encoder::encode(messages.iter().cloned().map(Ok)).unwrap();
-    let decoded: Vec<_> = {
-        let mut decoder = StreamDecoderApp::new();
-        decoder.push_byte_chunk(encoded);
-        std::iter::from_fn(move || decoder.try_read().unwrap()).collect()
-    };
+    let decoded: Vec<_> = StreamDecoderApp::decode_lazy(encoded.as_slice())
+        .map(Result::unwrap)
+        .collect();
     similar_asserts::assert_eq!(decoded, messages, "Failed to roundtrip chunk");
 }
