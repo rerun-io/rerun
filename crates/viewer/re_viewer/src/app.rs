@@ -474,8 +474,12 @@ impl App {
                 let default_blueprint =
                     store_hub.default_blueprint_for_app(store_id.application_id());
 
-                let blueprint_query =
-                    re_chunk::LatestAtQuery::latest(re_viewer_context::blueprint_timeline());
+                let blueprint_query = self
+                    .state
+                    .get_blueprint_query_for_viewer(blueprint)
+                    .unwrap_or(re_chunk::LatestAtQuery::latest(
+                        re_viewer_context::blueprint_timeline(),
+                    ));
 
                 let bp_ctx = AppBlueprintCtx {
                     command_sender: &self.command_sender,
@@ -517,6 +521,18 @@ impl App {
                         false,
                         None::<&AppBlueprintCtx<'_>>,
                     );
+
+                    let undo_state = self
+                        .state
+                        .blueprint_undo_state
+                        .entry(blueprint.store_id().clone())
+                        .or_default();
+                    // Apply changes to the blueprint time to the undo-state:
+                    if self.state.blueprint_time_control.play_state() == PlayState::Following {
+                        undo_state.redo_all();
+                    } else if let Some(time) = self.state.blueprint_time_control.time_int() {
+                        undo_state.set_redo_time(time);
+                    }
                 }
             }
         }
@@ -921,9 +937,19 @@ impl App {
                 if store_id.is_blueprint() && chunks.iter().any(|c| !c.is_static()) {
                     self.state
                         .blueprint_undo_state
-                        .entry(store_id)
+                        .entry(store_id.clone())
                         .or_default()
                         .clear_redo_buffer(db);
+
+                    if self.app_options().inspect_blueprint_timeline {
+                        self.command_sender
+                            .send_system(SystemCommand::TimeControlCommands {
+                                store_id,
+                                time_commands: vec![TimeControlCommand::SetPlayState(
+                                    PlayState::Following,
+                                )],
+                            });
+                    }
                 }
 
                 for chunk in chunks {
@@ -937,19 +963,69 @@ impl App {
             }
 
             SystemCommand::UndoBlueprint { blueprint_id } => {
+                let inspect_blueprint_timeline = self.app_options().inspect_blueprint_timeline;
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
-                self.state
+                let undo_state = self
+                    .state
                     .blueprint_undo_state
-                    .entry(blueprint_id)
-                    .or_default()
-                    .undo(blueprint_db);
+                    .entry(blueprint_id.clone())
+                    .or_default();
+
+                undo_state.undo(blueprint_db);
+
+                // Update blueprint inspector timeline.
+                if inspect_blueprint_timeline {
+                    if let Some(redo_time) = undo_state.redo_time() {
+                        self.command_sender
+                            .send_system(SystemCommand::TimeControlCommands {
+                                store_id: blueprint_id,
+                                time_commands: vec![
+                                    TimeControlCommand::SetPlayState(PlayState::Paused),
+                                    TimeControlCommand::SetTime(redo_time.into()),
+                                ],
+                            });
+                    } else {
+                        self.command_sender
+                            .send_system(SystemCommand::TimeControlCommands {
+                                store_id: blueprint_id,
+                                time_commands: vec![TimeControlCommand::SetPlayState(
+                                    PlayState::Following,
+                                )],
+                            });
+                    }
+                }
             }
             SystemCommand::RedoBlueprint { blueprint_id } => {
-                self.state
+                let inspect_blueprint_timeline = self.app_options().inspect_blueprint_timeline;
+                let undo_state = self
+                    .state
                     .blueprint_undo_state
-                    .entry(blueprint_id)
-                    .or_default()
-                    .redo();
+                    .entry(blueprint_id.clone())
+                    .or_default();
+
+                undo_state.redo();
+
+                // Update blueprint inspector timeline.
+                if inspect_blueprint_timeline {
+                    if let Some(redo_time) = undo_state.redo_time() {
+                        self.command_sender
+                            .send_system(SystemCommand::TimeControlCommands {
+                                store_id: blueprint_id,
+                                time_commands: vec![
+                                    TimeControlCommand::SetPlayState(PlayState::Paused),
+                                    TimeControlCommand::SetTime(redo_time.into()),
+                                ],
+                            });
+                    } else {
+                        self.command_sender
+                            .send_system(SystemCommand::TimeControlCommands {
+                                store_id: blueprint_id,
+                                time_commands: vec![TimeControlCommand::SetPlayState(
+                                    PlayState::Following,
+                                )],
+                            });
+                    }
+                }
             }
 
             SystemCommand::DropEntity(blueprint_id, entity_path) => {
@@ -2631,8 +2707,12 @@ impl App {
 
         let default_blueprint = hub.default_blueprint_for_app(recording_id.application_id());
 
-        let blueprint_query =
-            re_chunk::LatestAtQuery::latest(re_viewer_context::blueprint_timeline());
+        let blueprint_query = self
+            .state
+            .get_blueprint_query_for_viewer(blueprint)
+            .unwrap_or(re_chunk::LatestAtQuery::latest(
+                re_viewer_context::blueprint_timeline(),
+            ));
 
         Some(AppBlueprintCtx {
             command_sender: &self.command_sender,

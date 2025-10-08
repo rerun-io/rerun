@@ -10,7 +10,7 @@ use egui::{Color32, NumExt as _, Rangef, Rect, Shape, Tooltip, epaint::Vertex, l
 use re_chunk_store::{Chunk, RangeQuery};
 use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimelineName};
 use re_ui::UiExt as _;
-use re_viewer_context::{Item, UiLayout, ViewerContext};
+use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
 use crate::{
     recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber,
@@ -414,7 +414,7 @@ fn smooth(density: &[f32]) -> Vec<f32> {
 pub fn data_density_graph_ui(
     data_density_graph_painter: &mut DataDensityGraphPainter,
     ctx: &ViewerContext<'_>,
-    time_ctrl: &re_viewer_context::TimeControl,
+    time_ctrl: &TimeControl,
     db: &re_entity_db::EntityDb,
     time_area_painter: &egui::Painter,
     ui: &egui::Ui,
@@ -648,7 +648,7 @@ impl Default for DensityGraphBuilderConfig {
 fn show_row_ids_tooltip(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    time_ctrl: &re_viewer_context::TimeControl,
+    time_ctrl: &TimeControl,
     db: &re_entity_db::EntityDb,
     item: &TimePanelItem,
     at_time: TimeInt,

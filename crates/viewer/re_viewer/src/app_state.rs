@@ -26,8 +26,8 @@ use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
 use crate::{
-    StartupOptions, app::AppBlueprintCtx, app_blueprint::AppBlueprint, navigation::Navigation,
-    open_url_description::ViewerOpenUrlDescription, ui::settings_screen_ui,
+    StartupOptions, app_blueprint::AppBlueprint, app_blueprint_ctx::AppBlueprintCtx,
+    navigation::Navigation, open_url_description::ViewerOpenUrlDescription, ui::settings_screen_ui,
 };
 
 const WATERMARK: bool = false; // Nice for recording media material
@@ -479,15 +479,6 @@ impl AppState {
                             .bottom_panel_frame()
                             .fill(ui.tokens().blueprint_time_panel_bg_fill),
                     );
-
-                    {
-                        // Apply changes to the blueprint time to the undo-state:
-                        if blueprint_time_control.play_state() == PlayState::Following {
-                            undo_state.redo_all();
-                        } else if let Some(time) = blueprint_time_control.time_int() {
-                            undo_state.set_redo_time(time);
-                        }
-                    }
                 }
 
                 // TODO(grtlr): We override the app blueprint, until we have proper blueprint support for tables.
@@ -768,6 +759,28 @@ impl AppState {
                 .entry(blueprint.store_id().clone())
                 .or_default();
             undo_state.blueprint_query()
+        }
+    }
+
+    /// Returns the blueprint query that should be used for generating the current
+    /// layout of the viewer.
+    ///
+    /// If `inspect_blueprint_timeline` is enabled, we use the time selection from the
+    /// blueprint `time_ctrl`. Otherwise, we use a latest query from the blueprint timeline.
+    pub fn get_blueprint_query_for_viewer(&self, blueprint: &EntityDb) -> Option<LatestAtQuery> {
+        if self.app_options.inspect_blueprint_timeline {
+            if self.blueprint_time_control.play_state() == PlayState::Following {
+                // Special-case just to make sure we include stuff added in this frame
+                Some(LatestAtQuery::latest(
+                    re_viewer_context::blueprint_timeline(),
+                ))
+            } else {
+                Some(self.blueprint_time_control.current_query().clone())
+            }
+        } else {
+            self.blueprint_undo_state
+                .get(blueprint.store_id())
+                .map(|undo_state| undo_state.blueprint_query())
         }
     }
 }

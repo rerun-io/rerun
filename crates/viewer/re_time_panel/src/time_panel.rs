@@ -22,7 +22,7 @@ use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::time_control_command::{TimeControlCommand, TimeView};
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext, SystemCommand,
-    SystemCommandSender as _, UiLayout, ViewerContext, VisitorControlFlow,
+    SystemCommandSender as _, TimeControl, UiLayout, ViewerContext, VisitorControlFlow,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -194,7 +194,7 @@ impl TimePanel {
         ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
         entity_db: &re_entity_db::EntityDb,
-        time_ctrl: &re_viewer_context::TimeControl,
+        time_ctrl: &TimeControl,
         ui: &mut egui::Ui,
         state: PanelState,
         mut panel_frame: egui::Frame,
@@ -284,7 +284,7 @@ impl TimePanel {
     pub fn show_expanded_with_header(
         &mut self,
         ctx: &ViewerContext<'_>,
-        time_ctrl: &re_viewer_context::TimeControl,
+        time_ctrl: &TimeControl,
         viewport_blueprint: &ViewportBlueprint,
         entity_db: &EntityDb,
         ui: &mut Ui,
@@ -340,7 +340,7 @@ impl TimePanel {
         &mut self,
         entity_db: &re_entity_db::EntityDb,
         ctx: &ViewerContext<'_>,
-        time_ctrl: &re_viewer_context::TimeControl,
+        time_ctrl: &TimeControl,
         ui: &mut egui::Ui,
         time_commands: &mut Vec<TimeControlCommand>,
     ) {
@@ -408,7 +408,7 @@ impl TimePanel {
     fn expanded_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
-        time_ctrl: &re_viewer_context::TimeControl,
+        time_ctrl: &TimeControl,
         viewport_blueprint: &ViewportBlueprint,
         entity_db: &re_entity_db::EntityDb,
         ui: &mut egui::Ui,
@@ -634,7 +634,7 @@ impl TimePanel {
     fn tree_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
-        time_ctrl: &re_viewer_context::TimeControl,
+        time_ctrl: &TimeControl,
         viewport_blueprint: &ViewportBlueprint,
         entity_db: &re_entity_db::EntityDb,
         time_area_response: &egui::Response,
@@ -688,7 +688,7 @@ impl TimePanel {
     fn show_entity(
         &mut self,
         ctx: &ViewerContext<'_>,
-        time_ctrl: &re_viewer_context::TimeControl,
+        time_ctrl: &TimeControl,
         viewport_blueprint: &ViewportBlueprint,
         streams_tree_data: &StreamsTreeData,
         entity_db: &re_entity_db::EntityDb,
@@ -853,7 +853,7 @@ impl TimePanel {
     fn show_entity_contents(
         &mut self,
         ctx: &ViewerContext<'_>,
-        time_ctrl: &re_viewer_context::TimeControl,
+        time_ctrl: &TimeControl,
         viewport_blueprint: &ViewportBlueprint,
         streams_tree_data: &StreamsTreeData,
         entity_db: &re_entity_db::EntityDb,
@@ -1305,7 +1305,7 @@ impl TimePanel {
     fn top_row_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
-        time_ctrl: &re_viewer_context::TimeControl,
+        time_ctrl: &TimeControl,
         entity_db: &re_entity_db::EntityDb,
         ui: &mut egui::Ui,
         time_commands: &mut Vec<TimeControlCommand>,
@@ -1380,7 +1380,7 @@ impl TimePanel {
         &mut self,
         ui: &mut egui::Ui,
         ctx: &ViewerContext<'_>,
-        time_ctrl: &re_viewer_context::TimeControl,
+        time_ctrl: &TimeControl,
         entity_db: &re_entity_db::EntityDb,
         time_commands: &mut Vec<TimeControlCommand>,
     ) {
@@ -1471,7 +1471,7 @@ impl TimePanel {
     fn current_time_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
-        time_ctrl: &re_viewer_context::TimeControl,
+        time_ctrl: &TimeControl,
         ui: &mut egui::Ui,
         time_commands: &mut Vec<TimeControlCommand>,
     ) {
@@ -1598,7 +1598,7 @@ fn help_button(ui: &mut egui::Ui) {
 // ----------------------------------------------------------------------------
 
 fn initialize_time_ranges_ui(
-    time_ctrl: &re_viewer_context::TimeControl,
+    time_ctrl: &TimeControl,
     entity_db: &re_entity_db::EntityDb,
     x_range: Rangef,
     mut time_view: Option<TimeView>,
@@ -1875,7 +1875,7 @@ fn interact_with_streams_rect(
 fn copy_timeline_properties_context_menu(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
-    time_ctrl: &re_viewer_context::TimeControl,
+    time_ctrl: &TimeControl,
     hovered_time: TimeReal,
 ) {
     let mut url = ViewerOpenUrl::from_context(ctx);
@@ -1954,7 +1954,7 @@ fn time_marker_ui(
     time_ranges_ui: &TimeRangesUi,
     ui: &egui::Ui,
     ctx: &ViewerContext<'_>,
-    time_ctrl: &re_viewer_context::TimeControl,
+    time_ctrl: &TimeControl,
     time_area_response: Option<&egui::Response>,
     time_area_painter: &egui::Painter,
     timeline_rect: &Rect,
