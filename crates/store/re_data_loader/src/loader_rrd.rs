@@ -397,7 +397,6 @@ mod tests {
         encoder.flush_blocking().expect("failed to flush messages");
 
         let reader = RetryableFileReader::new(&rrd_file_path).unwrap();
-        // TODO(cmc): wouldn't have to look for EOS if we supported unmarked concatenated streams.
         let wait_for_eos = true;
         let mut decoder = StreamDecoder::decode_eager_with_opts(reader, wait_for_eos).unwrap();
 

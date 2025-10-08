@@ -153,7 +153,10 @@ impl<T: FileEncoded> StreamDecoder<T> {
     /// Same as [`Self::decode_lazy`], with extra options.
     ///
     /// * `wait_for_eos`: if true, the decoder will always wait for an end-of-stream marker before
-    ///   calling it a day, even if the underlying reader has nothing to yield.
+    ///   calling it a day, even if the underlying reader has already reached its EOF state (…for now).
+    ///   This only really makes sense when running in tail mode (see `RetryableFileReader`), otherwise
+    ///   we'd rather terminate early when a potentially short-circuited (and therefore lacking a proper
+    ///   end-of-stream marker) RRD stream indicates EOF.
     pub fn decode_lazy_with_opts<R: std::io::BufRead>(
         reader: R,
         wait_for_eos: bool,
@@ -189,7 +192,10 @@ impl<T: FileEncoded> StreamDecoder<T> {
     /// Same as [`Self::decode_eager`], with extra options.
     ///
     /// * `wait_for_eos`: if true, the decoder will always wait for an end-of-stream marker before
-    ///   calling it a day, even if the underlying reader has nothing to yield.
+    ///   calling it a day, even if the underlying reader has already reached its EOF state (…for now).
+    ///   This only really makes sense when running in tail mode (see `RetryableFileReader`), otherwise
+    ///   we'd rather terminate early when a potentially short-circuited (and therefore lacking a proper
+    ///   end-of-stream marker) RRD stream indicates EOF.
     pub fn decode_eager_with_opts<R: std::io::BufRead>(
         reader: R,
         wait_for_eos: bool,
@@ -291,11 +297,26 @@ impl<T: FileEncoded> StreamDecoder<T> {
             }
 
             State::MessageHeader => {
-                if let Some(bytes) = self
-                    .byte_chunks
-                    .try_read(crate::codec::file::MessageHeader::SIZE_BYTES)
-                {
-                    let header = crate::codec::file::MessageHeader::from_bytes(bytes)?;
+                let mut peeked = [0u8; crate::codec::file::MessageHeader::SIZE_BYTES];
+                if self.byte_chunks.try_peek(&mut peeked) == peeked.len() {
+                    let header = match crate::codec::file::MessageHeader::from_bytes(&peeked) {
+                        Ok(header) => header,
+
+                        Err(DecodeError::Codec(crate::codec::CodecError::UnknownMessageHeader)) => {
+                            // We failed to decode a `MessageHeader`: it might be because the
+                            // stream is corrupt, or it might be because it just switched to a
+                            // different, concatenated recording without having the courtesy of
+                            // announcing it via an EOS marker.
+                            self.state = State::StreamHeader;
+                            return self.try_read();
+                        }
+
+                        err @ Err(_) => err?,
+                    };
+
+                    self.byte_chunks
+                        .try_read(crate::codec::file::MessageHeader::SIZE_BYTES)
+                        .expect("reading cannot fail if peeking worked");
 
                     re_log::trace!(?header, "MessageHeader");
 
@@ -321,10 +342,6 @@ impl<T: FileEncoded> StreamDecoder<T> {
                         }
                     };
 
-                    // TODO(cmc): This means that this currently only supports concatenated streams iff
-                    // they carry EOS markers, while (one of) the legacy decoders supported them no
-                    // matter what.
-
                     if let Some(mut message) = message {
                         re_log::trace!("Decoded new message");
 
@@ -334,8 +351,8 @@ impl<T: FileEncoded> StreamDecoder<T> {
                     } else {
                         re_log::trace!("End of stream - expecting a new Streamheader");
 
-                        // `None` means end of stream, but there might be concatenated streams,
-                        // so try to read another one.
+                        // `None` means an end-of-stream marker was hit, but there might be another concatenated
+                        // stream behind, so try to start all over again.
                         self.state = State::StreamHeader;
                         return self.try_read();
                     }
@@ -359,7 +376,11 @@ pub struct StreamDecoderIterator<T: FileEncoded, R: std::io::BufRead> {
     reader: R,
 
     /// If true, the decoder will always wait for an end-of-stream marker before calling it a day,
-    /// even if the underlying reader has nothing to yield.
+    /// even if the underlying reader has already reached its EOF state (…for now).
+    ///
+    /// This only really makes sense when running in tail mode (see `RetryableFileReader`),
+    /// otherwise we'd rather terminate early when a potentially short-circuited (and therefore
+    /// lacking a proper end-of-stream marker) RRD stream indicates EOF.
     wait_for_eos: bool,
 
     /// See [`StreamDecoder::decode_eager`] for more information.
@@ -397,7 +418,7 @@ impl<T: FileEncoded, R: std::io::BufRead> std::iter::Iterator for StreamDecoderI
                         // more messages, so go on for now.
                         Ok(Some(msg)) => return Some(Ok(msg)),
 
-                        // …and we're not expecting concatenated streams, so just leave.
+                        // …and we don't want to explicitly wait around for more to come, so just leave.
                         Ok(None) if !self.wait_for_eos => return None,
 
                         // …and the underlying decoder already considers that it's done (i.e. it's
@@ -516,6 +537,40 @@ impl ByteChunkBuffer {
         } else {
             None
         }
+    }
+
+    /// Attempt to peek exactly `n` bytes from of the queued byte chunks.
+    ///
+    /// Returns the number of bytes that could successfully be peeked, and therefore copied into `out`.
+    /// The returned value is guaranteed to never exceed `out.len`.
+    fn try_peek(&self, out: &mut [u8]) -> usize {
+        use std::io::Write as _;
+
+        let target_len = out.len();
+
+        let mut out = std::io::Cursor::new(out);
+        let mut n = 0;
+
+        // `try_read` will never read from the active buffer if `n` changes, so we must emulate the
+        // same behavior.
+        if target_len == self.buffer.len() {
+            n += out
+                .write(&self.buffer[..self.buffer_fill])
+                .expect("memcpy, cannot fail");
+        }
+
+        for byte_chunk in &self.queue {
+            if n == target_len {
+                return n;
+            }
+
+            let pos = byte_chunk.position() as usize;
+            n += out
+                .write(&byte_chunk.get_ref()[pos..])
+                .expect("memcpy, cannot fail");
+        }
+
+        n
     }
 }
 
@@ -1149,7 +1204,7 @@ mod tests_legacy {
         for options in options {
             let mut data = vec![];
 
-            // write "2 files" i.e. 2 streams that end with end-of-stream marker
+            // write "2 files" i.e. 2 streams that end with end-of-stream markers
             let messages = fake_log_messages();
 
             // (2 encoders as each encoder writes a file header)
@@ -1179,6 +1234,50 @@ mod tests_legacy {
             let decoded_messages: Vec<_> = StreamDecoderApp::decode_lazy(data.as_slice())
                 .map(Result::unwrap)
                 .collect();
+            similar_asserts::assert_eq!(decoded_messages, [messages.clone(), messages].concat());
+        }
+
+        // Same thing, but this time without EOS markers.
+        for options in options {
+            let mut data = vec![];
+
+            // write "2 files" i.e. 2 streams that do not end with end-of-stream markers
+            let messages = fake_log_messages();
+
+            // (2 encoders as each encoder writes a file header)
+            {
+                let writer = std::io::Cursor::new(&mut data);
+                let mut encoder1 =
+                    crate::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+                for message in &messages {
+                    encoder1.append(message).unwrap();
+                }
+
+                // Intentionally leak it so we don't include the EOS marker on drop.
+                #[expect(clippy::mem_forget)]
+                std::mem::forget(encoder1);
+            }
+
+            let written = data.len() as u64;
+
+            {
+                let mut writer = std::io::Cursor::new(&mut data);
+                writer.set_position(written);
+                let mut encoder2 =
+                    crate::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+                for message in &messages {
+                    encoder2.append(message).unwrap();
+                }
+
+                // Intentionally leak it so we don't include the EOS marker on drop.
+                #[expect(clippy::mem_forget)]
+                std::mem::forget(encoder2);
+            }
+
+            let decoded_messages: Vec<_> = StreamDecoderApp::decode_lazy(data.as_slice())
+                .map(Result::unwrap)
+                .collect();
+            assert_eq!(messages.len() * 2, decoded_messages.len());
             similar_asserts::assert_eq!(decoded_messages, [messages.clone(), messages].concat());
         }
     }

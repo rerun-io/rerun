@@ -107,12 +107,8 @@ fn read_any_rrd_streams_from_file_or_stdin<
                 // stdin
 
                 let stdin = std::io::BufReader::new(std::io::stdin().lock());
-                let wait_for_eos = true;
                 let mut decoder =
-                    re_log_encoding::decoder::stream::StreamDecoder::decode_lazy_with_opts(
-                        stdin,
-                        wait_for_eos,
-                    );
+                    re_log_encoding::decoder::stream::StreamDecoder::decode_lazy(stdin);
 
                 for res in &mut decoder {
                     let res = res.context("couldn't decode message from stdin -- skipping");
