@@ -6,9 +6,7 @@ use re_log_types::{
 };
 use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
-use re_protos::cloud::v1alpha1::{FetchChunksRequest, QueryDatasetRequest};
-use re_protos::common::v1alpha1::{ScanParameters, ext::PartitionId};
-use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_protos::common::v1alpha1::ext::PartitionId;
 use re_uri::{Origin, TimeSelection};
 
 use tokio_stream::{Stream, StreamExt as _};
@@ -373,91 +371,6 @@ pub async fn stream_blueprint_and_partition_from_server(
     Ok(())
 }
 
-pub type FetchChunksResponseStream = std::pin::Pin<
-    Box<
-        dyn Stream<Item = Result<re_protos::cloud::v1alpha1::FetchChunksResponse, tonic::Status>>
-            + Send,
-    >,
->;
-
-/// Fetches all chunks for a specified partition. You can include/exclude static/temporal chunks.
-pub async fn fetch_partition_chunks(
-    client: &mut ConnectionClient,
-    dataset_id: EntryId,
-    partition_id: PartitionId,
-    exclude_static_data: bool,
-    exclude_temporal_data: bool,
-    query: Option<re_protos::cloud::v1alpha1::Query>,
-) -> Result<FetchChunksResponseStream, StreamError> {
-    let fields_of_interest = [
-        "chunk_partition_id",
-        "chunk_id",
-        "rerun_partition_layer",
-        "chunk_key",
-    ]
-    .into_iter()
-    .map(String::from)
-    .collect::<Vec<_>>();
-
-    let query_request = QueryDatasetRequest {
-        partition_ids: vec![partition_id.into()],
-        chunk_ids: vec![],
-        entity_paths: vec![],
-        select_all_entity_paths: true,
-        fuzzy_descriptors: vec![],
-        exclude_static_data,
-        exclude_temporal_data,
-        query,
-        scan_parameters: Some(ScanParameters {
-            columns: fields_of_interest,
-            ..Default::default()
-        }),
-    };
-
-    let response_stream = client
-        .inner()
-        .query_dataset(
-            tonic::Request::new(query_request)
-                .with_entry_id(dataset_id)
-                .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?,
-        )
-        .await
-        .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?
-        .into_inner();
-
-    let chunk_info_batches = response_stream
-        .collect::<Vec<_>>()
-        .await
-        .into_iter()
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?
-        .into_iter()
-        .map(|resp| {
-            resp.data.ok_or(crate::StreamError::MissingData(
-                "missing data in QueryDatasetResponse".to_owned(),
-            ))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    if chunk_info_batches.is_empty() {
-        let empty_stream = tokio_stream::empty();
-        return Ok(Box::pin(empty_stream));
-    }
-
-    let fetch_chunks_request = FetchChunksRequest {
-        chunk_infos: chunk_info_batches,
-    };
-
-    let fetch_chunks_response_stream = client
-        .inner()
-        .fetch_chunks(fetch_chunks_request)
-        .await
-        .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?
-        .into_inner();
-
-    Ok(Box::pin(fetch_chunks_response_stream))
-}
-
 /// Low-level function to stream data as a chunk store from a server.
 #[expect(clippy::too_many_arguments)]
 async fn stream_partition_from_server(
@@ -472,46 +385,46 @@ async fn stream_partition_from_server(
 ) -> Result<(), StreamError> {
     let exclude_static_data = false;
     let exclude_temporal_data = true;
-    let static_chunk_stream = fetch_partition_chunks(
-        client,
-        dataset_id,
-        partition_id.clone(),
-        exclude_static_data,
-        exclude_temporal_data,
-        None,
-    )
-    .await?;
+    let static_chunk_stream = client
+        .fetch_partition_chunks(
+            dataset_id,
+            partition_id.clone(),
+            exclude_static_data,
+            exclude_temporal_data,
+            None,
+        )
+        .await?;
 
     let exclude_static_data = true;
     let exclude_temporal_data = false;
-    let temporal_chunk_stream = fetch_partition_chunks(
-        client,
-        dataset_id,
-        partition_id,
-        exclude_static_data,
-        exclude_temporal_data,
-        time_range.clone().map(|time_range| {
-            Query {
-                range: Some(QueryRange {
-                    index: time_range.timeline.name().to_string(),
-                    index_range: time_range.clone().into(),
-                }),
-                latest_at: Some(QueryLatestAt {
-                    index: Some(time_range.timeline.name().to_string()),
-                    at: time_range.range.min(),
-                }),
-                columns_always_include_everything: false,
-                columns_always_include_chunk_ids: false,
-                columns_always_include_byte_offsets: false,
-                columns_always_include_entity_paths: false,
-                columns_always_include_static_indexes: false,
-                columns_always_include_global_indexes: false,
-                columns_always_include_component_indexes: false,
-            }
-            .into()
-        }),
-    )
-    .await?;
+    let temporal_chunk_stream = client
+        .fetch_partition_chunks(
+            dataset_id,
+            partition_id,
+            exclude_static_data,
+            exclude_temporal_data,
+            time_range.clone().map(|time_range| {
+                Query {
+                    range: Some(QueryRange {
+                        index: time_range.timeline.name().to_string(),
+                        index_range: time_range.clone().into(),
+                    }),
+                    latest_at: Some(QueryLatestAt {
+                        index: Some(time_range.timeline.name().to_string()),
+                        at: time_range.range.min(),
+                    }),
+                    columns_always_include_everything: false,
+                    columns_always_include_chunk_ids: false,
+                    columns_always_include_byte_offsets: false,
+                    columns_always_include_entity_paths: false,
+                    columns_always_include_static_indexes: false,
+                    columns_always_include_global_indexes: false,
+                    columns_always_include_component_indexes: false,
+                }
+                .into()
+            }),
+        )
+        .await?;
 
     let store_id = store_info.store_id.clone();
 

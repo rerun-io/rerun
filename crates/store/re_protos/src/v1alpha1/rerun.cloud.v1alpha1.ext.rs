@@ -11,7 +11,7 @@ use re_chunk::TimelineName;
 use re_log_types::{EntityPath, EntryId, TimeInt};
 use re_sorbet::ComponentColumnDescriptor;
 
-use crate::cloud::v1alpha1::{EntryKind, QueryTasksResponse};
+use crate::cloud::v1alpha1::{EntryKind, QueryDatasetResponse, QueryTasksResponse};
 use crate::cloud::v1alpha1::{
     GetDatasetSchemaResponse, RegisterWithDatasetResponse, ScanPartitionTableResponse,
     VectorDistanceMetric,
@@ -120,6 +120,19 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
         })
     }
 }
+
+// --- QueryDatasetResponse ---
+
+impl QueryDatasetResponse {
+    pub const PARTITION_ID: &str = "chunk_partition_id";
+    pub const CHUNK_ID: &str = "chunk_id";
+    pub const PARTITION_LAYER: &str = RegisterWithDatasetResponse::PARTITION_LAYER;
+    pub const CHUNK_KEY: &str = "chunk_key";
+    pub const CHUNK_IS_STATIC: &str = "chunk_is_static";
+    pub const CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
+}
+
+// --- DoMaintenanceRequest ---
 
 #[derive(Debug, Clone)]
 pub struct DoMaintenanceRequest {

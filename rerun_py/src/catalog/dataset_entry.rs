@@ -362,16 +362,16 @@ impl PyDatasetEntry {
             let mut client = connection.client().await?;
             let exclude_static_data = false;
             let exclude_temporal_data = false;
-            let response_stream = re_redap_client::fetch_partition_chunks(
-                &mut client,
-                dataset_id,
-                partition_id.clone().into(),
-                exclude_static_data,
-                exclude_temporal_data,
-                None,
-            )
-            .await
-            .map_err(to_py_err)?;
+            let response_stream = client
+                .fetch_partition_chunks(
+                    dataset_id,
+                    partition_id.clone().into(),
+                    exclude_static_data,
+                    exclude_temporal_data,
+                    None,
+                )
+                .await
+                .map_err(to_py_err)?;
 
             let mut chunks_stream =
                 fetch_chunks_response_to_chunk_and_partition_id(response_stream);
