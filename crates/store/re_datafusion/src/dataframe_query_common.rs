@@ -23,11 +23,15 @@ use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
-use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
-use re_protos::cloud::v1alpha1::{GetDatasetSchemaRequest, QueryDatasetRequest};
-use re_protos::common::v1alpha1::ext::ScanParameters;
-use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_protos::{
+    cloud::v1alpha1::{
+        GetDatasetSchemaRequest, QueryDatasetRequest, QueryDatasetResponse,
+        ScanPartitionTableResponse,
+        ext::{Query, QueryLatestAt, QueryRange},
+    },
+    common::v1alpha1::ext::ScanParameters,
+    headers::RerunHeadersInjectorExt as _,
+};
 use re_redap_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind, ComponentColumnSelector};
 use re_uri::Origin;
@@ -106,10 +110,10 @@ impl DataframeQueryTableProvider {
         let query = query_from_query_expression(query_expression);
 
         let fields_of_interest = [
-            "chunk_partition_id",
-            "chunk_id",
-            "rerun_partition_layer",
-            "chunk_key",
+            QueryDatasetResponse::PARTITION_ID,
+            QueryDatasetResponse::CHUNK_ID,
+            QueryDatasetResponse::PARTITION_LAYER,
+            QueryDatasetResponse::CHUNK_KEY,
         ]
         .into_iter()
         .map(String::from)
@@ -168,7 +172,7 @@ impl DataframeQueryTableProvider {
 
         let schema = Arc::new(prepend_string_column_schema(
             &schema,
-            DATASET_MANIFEST_ID_FIELD_NAME,
+            ScanPartitionTableResponse::FIELD_PARTITION_ID,
         ));
 
         Ok(Self {
@@ -346,7 +350,7 @@ fn compute_schema_for_query(
     // Create the actual filter to apply to the column descriptors
     let filter = ChunkStore::create_component_filter_from_query(query_expression);
 
-    // When we call GetChunks we will not return row_id, so we only select indices and
+    // When we call QueryDataset we will not return row_id, so we only select indices and
     // components from the column descriptors.
     let filtered_fields = column_descriptors
         .filter_components(filter)

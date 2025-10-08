@@ -585,88 +585,6 @@ def test_lint_vertical_spacing() -> None:
 # -----------------------------------------------------------------------------
 
 
-re_workspace_dep = re.compile(r"workspace\s*=\s*(true|false)")
-
-
-def lint_workspace_deps(lines_in: list[str]) -> tuple[list[str], list[str]]:
-    """Only for Cargo files."""
-
-    errors = []
-    lines_out = []
-
-    for line_nr, line in enumerate(lines_in):
-        line_nr = line_nr + 1
-
-        if re_workspace_dep.search(line):
-            errors.append(f"{line_nr}: Rust examples should never depend on workspace information (`{line.strip()}`)")
-            lines_out.append("\n")
-
-        lines_out.append(line)
-
-    return errors, lines_out
-
-
-def test_lint_workspace_deps() -> None:
-    assert re_workspace_dep.search("workspace=true")
-    assert re_workspace_dep.search("workspace=false")
-    assert re_workspace_dep.search('xxx = { xxx: "yyy", workspace = true }')
-    assert re_workspace_dep.search('xxx = { xxx: "yyy", workspace = false }')
-
-    should_pass = [
-        "hello world",
-        """
-        [package]
-        name = "clock"
-        version = "0.6.0-alpha.0"
-        edition = "2024"
-        rust-version = "1.88"
-        license = "MIT OR Apache-2.0"
-        publish = false
-
-        [dependencies]
-        rerun = { path = "../../../crates/top/rerun", features = ["web_viewer"] }
-
-        anyhow = "1.0"
-        clap = { version = "4.0", features = ["derive"] }
-        glam = "0.30"
-        """,
-    ]
-
-    should_fail = [
-        """
-        [package]
-        name = "objectron"
-        version.workspace = true
-        edition.workspace = true
-        rust-version.workspace = true
-        license.workspace = true
-        publish = false
-
-        [dependencies]
-        rerun = { workspace = true, features = ["web_viewer"] }
-
-        anyhow.workspace = true
-        clap = { workspace = true, features = ["derive"] }
-        glam.workspace = true
-        prost = "0.11"
-
-        [build-dependencies]
-        prost-build = "0.11"
-        """,
-    ]
-
-    for code in should_pass:
-        errors, _ = lint_workspace_deps(code.split("\n"))
-        assert len(errors) == 0, f"expected this to pass:\n{code}\ngot: {errors}"
-
-    for code in should_fail:
-        errors, _ = lint_workspace_deps(code.split("\n"))
-        assert len(errors) > 0, f"expected this to fail:\n{code}"
-
-
-# -----------------------------------------------------------------------------
-
-
 workspace_lints = re.compile(r"\[lints\]\nworkspace\s*=\s*true")
 
 
@@ -1211,16 +1129,6 @@ def lint_file(filepath: str, args: Any) -> int:
         elif 0 < num_errors:
             print(f"Run with --fix to automatically fix {num_errors} errors.")
 
-    if filepath.startswith("./examples/rust") and filepath.endswith("Cargo.toml"):
-        errors, lines_out = lint_workspace_deps(source.lines)
-
-        for error in errors:
-            print(source.error(error))
-        num_errors += len(errors)
-
-        if args.fix:
-            source.rewrite(lines_out)
-
     if not filepath.startswith("./examples/rust") and filepath != "./Cargo.toml" and filepath.endswith("Cargo.toml"):
         error = lint_workspace_lints(source.content)
 
@@ -1277,7 +1185,6 @@ def main() -> None:
     test_split_words()
     test_lint_line()
     test_lint_vertical_spacing()
-    test_lint_workspace_deps()
     test_lint_pyclass_eq()
     test_is_emoji()
 

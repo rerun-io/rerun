@@ -11,8 +11,7 @@ import psutil
 import pyarrow as pa
 import pytest
 from datafusion import col, functions as f
-from rerun.catalog import CatalogClient
-from rerun_bindings import EntryKind
+from rerun.catalog import CatalogClient, EntryKind
 
 if TYPE_CHECKING:
     from collections.abc import Generator

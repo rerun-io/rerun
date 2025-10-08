@@ -38,7 +38,7 @@ fn encode_log_msgs(
     encoding_options: re_log_encoding::EncodingOptions,
 ) -> Vec<u8> {
     let mut bytes = vec![];
-    re_log_encoding::encoder::encode_ref(
+    re_log_encoding::Encoder::encode_into(
         re_build_info::CrateVersion::LOCAL,
         encoding_options,
         messages.iter().map(Ok),
