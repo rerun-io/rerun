@@ -412,10 +412,13 @@ impl TransformForest {
 
             // Common case: both source & target share the same root.
             let result = if source.root == target.root {
-                // TODO: fast track for root being target.
-                // target_from_source = target_from_reference * root_from_source
-                let target_from_source = root_from_source.left_multiply(target.target_from_root);
-                Ok(target_from_source)
+                if source.root == target.id {
+                    // Fast track for source's root being the target.
+                    Ok(source.root_from_source.clone())
+                } else {
+                    // target_from_source = target_from_reference * root_from_source
+                    Ok(root_from_source.left_multiply(target.target_from_root))
+                }
             }
             // There might be a connection via a pinhole making this 3D in 2D.
             else if let Some(TransformTreeRootInfo::Pinhole(pinhole_tree_root)) = target_root_info
