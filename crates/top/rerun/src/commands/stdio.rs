@@ -48,6 +48,9 @@ pub fn read_rrd_streams_from_file_or_stdin(
 /// Asynchronously decodes potentially multiplexed RRD streams from the given `paths`, or standard
 /// input if none are specified.
 ///
+/// This only decodes from raw bytes up to transport-level types (i.e. Protobuf payloads are
+/// decoded, but Arrow data is never touched).
+///
 /// This function returns 2 channels:
 /// * The first channel contains both the successfully decoded data, if any, as well as any
 ///   errors faced during processing.
@@ -58,6 +61,13 @@ pub fn read_rrd_streams_from_file_or_stdin(
 /// It is up to the user to decide whether and when to stop.
 ///
 /// This function is capable of decoding multiple independent recordings from a single stream.
+//
+// TODO(#10730): if the legacy `StoreId` migration is removed from `Decoder`, this would break
+// the ability for this function to use pre-0.25 rrds. If we want to keep the ability to migrate
+// here, then the pre-#10730 app id caching mechanism must somehow be ported here.
+// TODO(ab): For pre-0.25 legacy data with `StoreId` missing their application id, the migration
+// in `Decoder` requires `SetStoreInfo` to arrive before the corresponding `ArrowMsg`. Ideally
+// this tool would cache orphan `ArrowMsg` until a matching `SetStoreInfo` arrives.
 pub fn read_raw_rrd_streams_from_file_or_stdin(
     paths: &[String],
 ) -> (
