@@ -621,33 +621,30 @@ impl App {
         let display_mode = self.state.navigation.peek();
         let selection = self.state.selection_state.selected_items();
 
-        let Ok(url) = ViewerOpenUrl::from_context_expanded(
-            store_hub,
-            display_mode,
-            time_ctrl.as_deref(),
-            selection,
-        )
-        .map(|mut url| {
-            // We don't want to update the url while playing, so we use the last paused time.
-            if let Some(fragment) = url.fragment_mut() {
-                fragment.when = time_ctrl.as_deref().and_then(|time_ctrl| {
-                    Some((
-                        *time_ctrl.timeline().name(),
-                        re_log_types::TimeCell {
-                            typ: time_ctrl.time_type(),
-                            value: time_ctrl.last_paused_time()?.floor().into(),
-                        },
-                    ))
-                });
-            }
-            // We don't want the time range in the web url, as that actually leads
-            // to a subset of the current data! And is not in the fragment so
-            // would be added to history.
-            url.clear_time_range();
-            url
-        })
-        // History entries expect the url parameter, not the full url, therefore don't pass a base url.
-        .and_then(|url| url.sharable_url(None)) else {
+        let Ok(url) =
+            ViewerOpenUrl::from_context_expanded(store_hub, display_mode, time_ctrl, selection)
+                .map(|mut url| {
+                    // We don't want to update the url while playing, so we use the last paused time.
+                    if let Some(fragment) = url.fragment_mut() {
+                        fragment.when = time_ctrl.and_then(|time_ctrl| {
+                            Some((
+                                *time_ctrl.timeline().name(),
+                                re_log_types::TimeCell {
+                                    typ: time_ctrl.time_type(),
+                                    value: time_ctrl.last_paused_time()?.floor().into(),
+                                },
+                            ))
+                        });
+                    }
+                    // We don't want the time range in the web url, as that actually leads
+                    // to a subset of the current data! And is not in the fragment so
+                    // would be added to history.
+                    url.clear_time_range();
+                    url
+                })
+                // History entries expect the url parameter, not the full url, therefore don't pass a base url.
+                .and_then(|url| url.sharable_url(None))
+        else {
             return;
         };
 
