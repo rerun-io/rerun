@@ -1,206 +1,28 @@
-use re_chunk::{
-    Chunk, ChunkComponents, ChunkId, ComponentIdentifier, EntityPath,
-    external::arrow::{array::ListArray, datatypes::DataType, error::ArrowError},
-};
-use re_log_types::{EntityPathFilter, LogMsg, ResolvedEntityPathFilter};
+//! Private module with the AST-like definitions of lenses.
+//!
+//! **Note**: Apart from high-level entry points (like [`Op`] and [`Lens`],
+//! we should not leak these elements into the public API. This allows us to
+//! evolve the definition of lenses over time, if requirements change.
+
+use arrow::{array::ListArray, datatypes::DataType};
+
+use re_chunk::{Chunk, ChunkComponents, ChunkId, ComponentIdentifier, EntityPath};
+use re_log_types::EntityPathFilter;
 use re_types::ComponentDescriptor;
 
-use crate::sink::LogSink;
+use super::{Error, op};
 
-/// A sink which can transform a `LogMsg` and forward the result to an underlying backing `LogSink`.
-///
-/// The sink will only forward components that are matched by a lens specified via [`Self::with_lens`].
-pub struct LensesSink<S: LogSink> {
-    sink: S,
-    registry: LensRegistry,
+pub struct InputColumn {
+    pub entity_path_filter: EntityPathFilter,
+    pub component: ComponentIdentifier,
 }
 
-impl<S: LogSink> LensesSink<S> {
-    /// Creates a new sink without any lenses attached.
-    ///
-    /// Use [`Self::with_lens`] to add an additional lens to this sink.
-    pub fn new(sink: S) -> Self {
-        Self {
-            sink,
-            registry: Default::default(),
-        }
-    }
-
-    /// Adds a [`Lens`] to this sink.
-    pub fn with_lens(mut self, lens: Lens) -> Self {
-        self.registry.lenses.push(lens);
-        self
-    }
-}
-
-impl<S: LogSink> LogSink for LensesSink<S> {
-    fn send(&self, msg: re_log_types::LogMsg) {
-        match &msg {
-            LogMsg::SetStoreInfo(_) | LogMsg::BlueprintActivationCommand(_) => {
-                self.sink.send(msg);
-            }
-            LogMsg::ArrowMsg(store_id, arrow_msg) => match Chunk::from_arrow_msg(arrow_msg) {
-                Ok(chunk) => {
-                    let new_chunks = self.registry.apply(&chunk);
-                    for new_chunk in new_chunks {
-                        match new_chunk.to_arrow_msg() {
-                            Ok(arrow_msg) => {
-                                self.sink
-                                    .send(LogMsg::ArrowMsg(store_id.clone(), arrow_msg));
-                            }
-                            Err(err) => {
-                                re_log::error_once!(
-                                    "failed to create log message from chunk: {err}"
-                                );
-                            }
-                        }
-                    }
-                }
-
-                Err(err) => {
-                    re_log::error_once!("Failed to convert arrow message to chunk: {err}");
-                    self.sink.send(msg);
-                }
-            },
-        }
-    }
-
-    fn flush_blocking(
-        &self,
-        timeout: std::time::Duration,
-    ) -> Result<(), crate::sink::SinkFlushError> {
-        self.sink.flush_blocking(timeout)
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-#[derive(Default)]
-struct LensRegistry {
-    lenses: Vec<Lens>,
-}
-
-impl LensRegistry {
-    fn relevant(&self, chunk: &Chunk) -> impl Iterator<Item = &Lens> {
-        self.lenses
-            .iter()
-            .filter(|lens| lens.input.entity_path_filter.matches(chunk.entity_path()))
-    }
-
-    /// Applies all relevant lenses to a chunk and returns the transformed chunks.
-    ///
-    /// This will only transform component columns that match registered lenses.
-    /// Other component columns are dropped. To retain original data, use identity
-    /// lenses or multi-sink configurations.
-    pub fn apply(&self, chunk: &Chunk) -> Vec<Chunk> {
-        self.relevant(chunk)
-            .flat_map(|transform| transform.apply(chunk))
-            .collect()
-    }
-}
-
-/// Provides commonly used transformations of Arrow arrays.
-///
-/// These operations should not be exposed publicly, but instead be wrapped by the [`Op`] abstraction.
-mod op {
-    // TODO(grtlr): Eventually we will want to make the types in here compatible with Datafusion UDFs.
-
-    use std::sync::Arc;
-
-    use re_chunk::{
-        ArrowArray as _,
-        external::arrow::{
-            array::{ListArray, StructArray},
-            compute,
-            datatypes::{DataType, Field},
-        },
-    };
-
-    use super::Error;
-
-    /// Extracts a specific field from a struct component within a `ListArray`.
-    #[derive(Debug)]
-    pub struct AccessField {
-        pub(super) field_name: String,
-    }
-
-    impl AccessField {
-        pub fn call(&self, list_array: ListArray) -> Result<ListArray, Error> {
-            let (field, offsets, values, nulls) = list_array.into_parts();
-            let struct_array = values
-                .as_any()
-                .downcast_ref::<StructArray>()
-                .ok_or_else(|| Error::TypeMismatch {
-                    actual: field.data_type().clone(),
-                    expected: "StructArray",
-                })?;
-
-            let column = struct_array
-                .column_by_name(&self.field_name)
-                .ok_or_else(|| Error::MissingField {
-                    expected: self.field_name.clone(),
-                    found: struct_array
-                        .fields()
-                        .iter()
-                        .map(|f| f.name().clone())
-                        .collect(),
-                })?;
-
-            Ok(ListArray::new(
-                Arc::new(Field::new_list_field(column.data_type().clone(), true)),
-                offsets,
-                column.clone(),
-                nulls,
-            ))
-        }
-    }
-
-    /// Casts the `value_type` (inner array) of a `ListArray` to a different data type.
-    #[derive(Debug)]
-    pub struct Cast {
-        pub(super) to_inner_type: DataType,
-    }
-
-    impl Cast {
-        pub fn call(&self, list_array: ListArray) -> Result<ListArray, Error> {
-            let (_field, offsets, ref array, nulls) = list_array.into_parts();
-            let res = compute::cast(array, &self.to_inner_type)?;
-            Ok(ListArray::new(
-                Arc::new(Field::new_list_field(res.data_type().clone(), true)),
-                offsets,
-                res,
-                nulls,
-            ))
-        }
-    }
-}
-
-/// Different variants of errors that can happen when executing lenses.
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[allow(missing_docs)]
-    #[error("expected data type `{expected}` but found data type `{actual}`")]
-    TypeMismatch {
-        actual: DataType,
-        expected: &'static str,
-    },
-
-    #[allow(missing_docs)]
-    #[error("missing field `{expected}, found {}`", found.join(", "))]
-    MissingField {
-        expected: String,
-        found: Vec<String>,
-    },
-
-    #[allow(missing_docs)]
-    #[error(transparent)]
-    Arrow(#[from] ArrowError),
-
-    #[allow(missing_docs)]
-    #[error(transparent)]
-    Other(Box<dyn std::error::Error>),
+pub struct OutputColumn {
+    pub entity_path: EntityPath,
+    pub component_descr: ComponentDescriptor,
+    pub ops: Vec<Op>,
+    // TODO(grtlr): It would be much nicer if static could be inferred from the output of the operations?
+    pub is_static: bool,
 }
 
 /// Provides commonly used transformations of component columns.
@@ -269,93 +91,11 @@ impl Op {
     }
 }
 
-/// Private module with the AST-like definitions of lenses.
-///
-/// **Note**: We should not leak those into the public API interface,
-/// so that we can evolve the definition of lenses over time, if requirements
-/// change.
-mod ast {
-    use super::{
-        ComponentDescriptor, ComponentIdentifier, EntityPath, Op, ResolvedEntityPathFilter,
-    };
-
-    pub(super) struct InputColumn {
-        pub entity_path_filter: ResolvedEntityPathFilter,
-        pub component: ComponentIdentifier,
-    }
-
-    pub(super) struct OutputColumn {
-        pub entity_path: EntityPath,
-        pub component_descr: ComponentDescriptor,
-        pub ops: Vec<Op>,
-        // TODO(grtlr): It would be much nicer if static could be inferred from the output of the operations?
-        pub is_static: bool,
-    }
-}
-
-/// Provides convenient function to create a [`Lens`].
-pub struct LensBuilder(Lens);
-
-impl LensBuilder {
-    /// The column on which this [`Lens`] will operate on.
-    pub fn input_column(
-        entity_path_filter: EntityPathFilter,
-        component: impl Into<ComponentIdentifier>,
-    ) -> Self {
-        Self(Lens {
-            input: ast::InputColumn {
-                entity_path_filter: entity_path_filter.resolve_without_substitutions(),
-                component: component.into(),
-            },
-            outputs: vec![],
-        })
-    }
-
-    /// Can be used to define one or more output columns that are derived from the [`Self::input_column`].
-    pub fn output_column(
-        mut self,
-        entity_path: impl Into<EntityPath>,
-        component_descr: ComponentDescriptor,
-        ops: impl IntoIterator<Item = Op>,
-    ) -> Self {
-        let column = ast::OutputColumn {
-            entity_path: entity_path.into(),
-            component_descr,
-            ops: ops.into_iter().collect(),
-            is_static: false,
-        };
-        self.0.outputs.push(column);
-        self
-    }
-
-    /// Can be used to define one or more output columns that are derived from the [`Self::input_column`].
-    pub fn static_output_column(
-        mut self,
-        entity_path: impl Into<EntityPath>,
-        component_descr: ComponentDescriptor,
-        ops: impl IntoIterator<Item = Op>,
-    ) -> Self {
-        let column = ast::OutputColumn {
-            entity_path: entity_path.into(),
-            component_descr,
-            ops: ops.into_iter().collect(),
-            is_static: true,
-        };
-        self.0.outputs.push(column);
-        self
-    }
-
-    /// Finalizes this builder and returns the corresponding lens.
-    pub fn build(self) -> Lens {
-        self.0
-    }
-}
-
 /// A lens that transforms component data from one form to another.
 ///
-/// Lenses allow you to extract, transform, and restructure component data
-/// as it flows through the logging pipeline. They are applied to chunks
-/// that match the specified entity path filter and contain the target component.
+/// Lenses allow you to extract, transform, and restructure component data. They
+/// are applied to chunks that match the specified entity path filter and contain
+/// the target component.
 ///
 /// # Assumptions
 ///
@@ -363,17 +103,17 @@ impl LensBuilder {
 /// is non-deterministic, and dependent on the batcher, no assumptions should be
 /// made for values across rows.
 pub struct Lens {
-    input: ast::InputColumn,
-    outputs: Vec<ast::OutputColumn>,
+    input: InputColumn,
+    outputs: Vec<OutputColumn>,
 }
 
 impl Lens {
     /// Returns a new [`LensBuilder`] with the given input column.
-    pub fn input_column(
+    pub fn for_input_column(
         entity_path_filter: EntityPathFilter,
         component: impl Into<ComponentIdentifier>,
     ) -> LensBuilder {
-        LensBuilder::input_column(entity_path_filter, component)
+        LensBuilder::for_input_column(entity_path_filter, component)
     }
 }
 
@@ -439,6 +179,97 @@ impl Lens {
                     })
                     .ok()
             })
+            .collect()
+    }
+}
+/// Provides convenient function to create a [`Lens`].
+pub struct LensBuilder(Lens);
+
+impl LensBuilder {
+    /// The column on which this [`Lens`] will operate on.
+    ///
+    /// For now, no substitutions will be performed on [`EntityPathFilter`].
+    pub fn for_input_column(
+        entity_path_filter: EntityPathFilter,
+        component: impl Into<ComponentIdentifier>,
+    ) -> Self {
+        Self(Lens {
+            input: InputColumn {
+                entity_path_filter,
+                component: component.into(),
+            },
+            outputs: vec![],
+        })
+    }
+
+    /// Can be used to define one or more output columns that are derived from the [`Self::input_column`].
+    pub fn add_output_column(
+        mut self,
+        entity_path: impl Into<EntityPath>,
+        component_descr: ComponentDescriptor,
+        ops: impl IntoIterator<Item = Op>,
+    ) -> Self {
+        let column = OutputColumn {
+            entity_path: entity_path.into(),
+            component_descr,
+            ops: ops.into_iter().collect(),
+            is_static: false,
+        };
+        self.0.outputs.push(column);
+        self
+    }
+
+    /// Can be used to define one or more output columns that are derived from the [`Self::input_column`].
+    pub fn add_static_output_column(
+        mut self,
+        entity_path: impl Into<EntityPath>,
+        component_descr: ComponentDescriptor,
+        ops: impl IntoIterator<Item = Op>,
+    ) -> Self {
+        let column = OutputColumn {
+            entity_path: entity_path.into(),
+            component_descr,
+            ops: ops.into_iter().collect(),
+            is_static: true,
+        };
+        self.0.outputs.push(column);
+        self
+    }
+
+    /// Finalizes this builder and returns the corresponding lens.
+    pub fn build(self) -> Lens {
+        self.0
+    }
+}
+
+#[derive(Default)]
+pub struct LensRegistry {
+    lenses: Vec<Lens>,
+}
+
+impl LensRegistry {
+    pub fn add_lens(&mut self, lens: Lens) {
+        self.lenses.push(lens);
+    }
+
+    fn relevant(&self, chunk: &Chunk) -> impl Iterator<Item = &Lens> {
+        self.lenses.iter().filter(|lens| {
+            lens.input
+                .entity_path_filter
+                .clone()
+                .resolve_without_substitutions()
+                .matches(chunk.entity_path())
+        })
+    }
+
+    /// Applies all relevant lenses to a chunk and returns the transformed chunks.
+    ///
+    /// This will only transform component columns that match registered lenses.
+    /// Other component columns are dropped. To retain original data, use identity
+    /// lenses or multi-sink configurations.
+    pub fn apply(&self, chunk: &Chunk) -> Vec<Chunk> {
+        self.relevant(chunk)
+            .flat_map(|transform| transform.apply(chunk))
             .collect()
     }
 }
@@ -612,8 +443,8 @@ mod test {
         println!("{original_chunk}");
 
         let destructure =
-            Lens::input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
-                .output_column(
+            Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
+                .add_output_column(
                     "nullability/a",
                     Scalars::descriptor_scalars(),
                     [Op::access_field("a"), Op::cast(DataType::Float64)],
@@ -637,8 +468,8 @@ mod test {
         println!("{original_chunk}");
 
         let destructure =
-            Lens::input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
-                .output_column(
+            Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
+                .add_output_column(
                     "nullability/b",
                     Scalars::descriptor_scalars(),
                     [Op::access_field("b")],
@@ -679,18 +510,19 @@ mod test {
             Ok(builder.finish())
         };
 
-        let count = Lens::input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
-            .output_column(
-                "nullability/b_count",
-                ComponentDescriptor::partial("counts"),
-                [Op::func(count_fn)],
-            )
-            .output_column(
-                "nullability/b_count",
-                ComponentDescriptor::partial("original"),
-                [], // no operations
-            )
-            .build();
+        let count =
+            Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
+                .add_output_column(
+                    "nullability/b_count",
+                    ComponentDescriptor::partial("counts"),
+                    [Op::func(count_fn)],
+                )
+                .add_output_column(
+                    "nullability/b_count",
+                    ComponentDescriptor::partial("original"),
+                    [], // no operations
+                )
+                .build();
 
         let pipeline = LensRegistry {
             lenses: vec![count],
@@ -720,13 +552,13 @@ mod test {
         metadata_builder_b.append(true);
 
         let static_lens =
-            Lens::input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
-                .static_output_column(
+            Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
+                .add_static_output_column(
                     "nullability/static",
                     ComponentDescriptor::partial("static_metadata_a"),
                     [Op::constant(metadata_builder_a.finish())],
                 )
-                .static_output_column(
+                .add_static_output_column(
                     "nullability/static",
                     ComponentDescriptor::partial("static_metadata_b"),
                     [Op::constant(metadata_builder_b.finish())],

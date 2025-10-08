@@ -1,0 +1,74 @@
+//! Provides commonly used transformations of Arrow arrays.
+//!
+//! These operations should not be exposed publicly, but instead be wrapped by the [`crate::ast::Op`] abstraction.
+
+// TODO(grtlr): Eventually we will want to make the types in here compatible with Datafusion UDFs.
+
+use std::sync::Arc;
+
+use re_chunk::{
+    ArrowArray as _,
+    external::arrow::{
+        array::{ListArray, StructArray},
+        compute,
+        datatypes::{DataType, Field},
+    },
+};
+
+use super::Error;
+
+/// Extracts a specific field from a struct component within a `ListArray`.
+#[derive(Debug)]
+pub struct AccessField {
+    pub(super) field_name: String,
+}
+
+impl AccessField {
+    pub fn call(&self, list_array: ListArray) -> Result<ListArray, Error> {
+        let (field, offsets, values, nulls) = list_array.into_parts();
+        let struct_array = values
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .ok_or_else(|| Error::TypeMismatch {
+                actual: field.data_type().clone(),
+                expected: "StructArray",
+            })?;
+
+        let column = struct_array
+            .column_by_name(&self.field_name)
+            .ok_or_else(|| Error::MissingField {
+                expected: self.field_name.clone(),
+                found: struct_array
+                    .fields()
+                    .iter()
+                    .map(|f| f.name().clone())
+                    .collect(),
+            })?;
+
+        Ok(ListArray::new(
+            Arc::new(Field::new_list_field(column.data_type().clone(), true)),
+            offsets,
+            column.clone(),
+            nulls,
+        ))
+    }
+}
+
+/// Casts the `value_type` (inner array) of a `ListArray` to a different data type.
+#[derive(Debug)]
+pub struct Cast {
+    pub(super) to_inner_type: DataType,
+}
+
+impl Cast {
+    pub fn call(&self, list_array: ListArray) -> Result<ListArray, Error> {
+        let (_field, offsets, ref array, nulls) = list_array.into_parts();
+        let res = compute::cast(array, &self.to_inner_type)?;
+        Ok(ListArray::new(
+            Arc::new(Field::new_list_field(res.data_type().clone(), true)),
+            offsets,
+            res,
+            nulls,
+        ))
+    }
+}
