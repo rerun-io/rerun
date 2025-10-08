@@ -1,7 +1,7 @@
 use std::{fs::File, io::BufWriter};
 
 use crossbeam::channel::Receiver;
-use re_log_encoding::encoder::Encoder;
+use re_log_encoding::Encoder;
 use re_protos::{
     common::v1alpha1::ApplicationId,
     log_msg::v1alpha1::{

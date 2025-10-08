@@ -1,5 +1,7 @@
 //! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
 
+use std::borrow::Borrow;
+
 use re_build_info::CrateVersion;
 use re_chunk::{ChunkError, ChunkResult};
 use re_log_types::LogMsg;
@@ -72,6 +74,33 @@ pub struct Encoder<W: std::io::Write> {
 
     /// Tracks whether the end-of-stream marker has been written out already.
     is_finished: bool,
+}
+
+impl Encoder<Vec<u8>> {
+    pub fn local() -> Result<Self, EncodeError> {
+        Self::new(
+            CrateVersion::LOCAL,
+            EncodingOptions::PROTOBUF_COMPRESSED,
+            Vec::new(),
+        )
+    }
+
+    /// All-in-one helper to encode a stream of [`LogMsg`]s into an actual RRD stream.
+    ///
+    /// This always uses the local version and its default encoding options.
+    ///
+    /// Returns the encoded data in a newly allocated vector.
+    pub fn encode(
+        messages: impl IntoIterator<Item = ChunkResult<impl Borrow<LogMsg>>>,
+    ) -> Result<Vec<u8>, EncodeError> {
+        re_tracing::profile_function!();
+        let mut encoder = Self::local()?;
+        for message in messages {
+            encoder.append(message?.borrow())?;
+        }
+        encoder.finish()?;
+        encoder.into_inner()
+    }
 }
 
 impl<W: std::io::Write> Encoder<W> {
@@ -191,6 +220,26 @@ impl<W: std::io::Write> Encoder<W> {
     }
 }
 
+impl<W: std::io::Write> Encoder<W> {
+    /// All-in-one helper to encode a stream of [`LogMsg`]s into an actual RRD stream.
+    ///
+    /// Returns the size in bytes of the encoded data.
+    pub fn encode_into(
+        version: CrateVersion,
+        options: EncodingOptions,
+        messages: impl IntoIterator<Item = ChunkResult<impl Borrow<LogMsg>>>,
+        write: &mut W,
+    ) -> Result<u64, EncodeError> {
+        re_tracing::profile_function!();
+        let mut encoder = Encoder::new(version, options, write)?;
+        let mut size_bytes = 0;
+        for message in messages {
+            size_bytes += encoder.append(message?.borrow())?;
+        }
+        Ok(size_bytes)
+    }
+}
+
 // TODO(cmc): It seems a bit suspicious to me that we send an EOS marker on drop, but don't flush.
 // But I don't want to change any flushing behavior at the moment, so I'll keep it that way for now.
 impl<W: std::io::Write> std::ops::Drop for Encoder<W> {
@@ -204,92 +253,4 @@ impl<W: std::io::Write> std::ops::Drop for Encoder<W> {
             re_log::warn!("encoder couldn't be finished: {err}");
         }
     }
-}
-
-/// Returns the size in bytes of the encoded data.
-pub fn encode(
-    version: CrateVersion,
-    options: EncodingOptions,
-    messages: impl Iterator<Item = ChunkResult<LogMsg>>,
-    write: &mut impl std::io::Write,
-) -> Result<u64, EncodeError> {
-    re_tracing::profile_function!();
-    let mut encoder = Encoder::new(version, options, write)?;
-    let mut size_bytes = 0;
-    for message in messages {
-        size_bytes += encoder.append(&message?)?;
-    }
-    Ok(size_bytes)
-}
-
-/// Returns the size in bytes of the encoded data.
-pub fn encode_ref<'a>(
-    version: CrateVersion,
-    options: EncodingOptions,
-    messages: impl Iterator<Item = ChunkResult<&'a LogMsg>>,
-    write: &mut impl std::io::Write,
-) -> Result<u64, EncodeError> {
-    re_tracing::profile_function!();
-    let mut encoder = Encoder::new(version, options, write)?;
-    let mut size_bytes = 0;
-    for message in messages {
-        size_bytes += encoder.append(message?)?;
-    }
-    Ok(size_bytes)
-}
-
-pub fn encode_as_bytes(
-    version: CrateVersion,
-    options: EncodingOptions,
-    messages: impl Iterator<Item = ChunkResult<LogMsg>>,
-) -> Result<Vec<u8>, EncodeError> {
-    re_tracing::profile_function!();
-    let mut encoder = Encoder::new(version, options, vec![])?;
-    for message in messages {
-        encoder.append(&message?)?;
-    }
-    encoder.finish()?;
-    encoder.into_inner()
-}
-
-#[inline]
-pub fn local_encoder() -> Result<Encoder<Vec<u8>>, EncodeError> {
-    Encoder::new(
-        CrateVersion::LOCAL,
-        EncodingOptions::PROTOBUF_COMPRESSED,
-        Vec::new(),
-    )
-}
-
-#[inline]
-pub fn local_raw_encoder() -> Result<Encoder<Vec<u8>>, EncodeError> {
-    Encoder::new(
-        CrateVersion::LOCAL,
-        EncodingOptions::PROTOBUF_COMPRESSED,
-        Vec::new(),
-    )
-}
-
-#[inline]
-pub fn encode_as_bytes_local(
-    messages: impl Iterator<Item = ChunkResult<LogMsg>>,
-) -> Result<Vec<u8>, EncodeError> {
-    let mut encoder = local_raw_encoder()?;
-    for message in messages {
-        encoder.append(&message?)?;
-    }
-    encoder.finish()?;
-    encoder.into_inner()
-}
-
-#[inline]
-pub fn encode_ref_as_bytes_local<'a>(
-    messages: impl Iterator<Item = ChunkResult<&'a LogMsg>>,
-) -> Result<Vec<u8>, EncodeError> {
-    let mut encoder = local_raw_encoder()?;
-    for message in messages {
-        encoder.append(message?)?;
-    }
-    encoder.finish()?;
-    encoder.into_inner()
 }

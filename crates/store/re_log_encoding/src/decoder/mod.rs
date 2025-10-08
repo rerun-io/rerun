@@ -484,8 +484,8 @@ mod tests {
 
     use super::*;
     use crate::Compression;
+    use crate::Encoder;
     use crate::codec::arrow::encode_arrow;
-    use crate::encoder::Encoder;
 
     pub fn fake_log_messages() -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
@@ -643,7 +643,7 @@ mod tests {
 
         for options in options {
             let mut file = vec![];
-            crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut file)
+            crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut file)
                 .unwrap();
 
             let decoded_messages = Decoder::new(&mut file.as_slice())
@@ -787,7 +787,7 @@ mod tests {
 
         for options in options {
             let mut file = vec![];
-            crate::encoder::encode_ref(
+            crate::Encoder::encode_into(
                 rrd_version,
                 options,
                 out_of_order_messages.iter().map(Ok),
@@ -827,7 +827,7 @@ mod tests {
             {
                 let writer = std::io::Cursor::new(&mut data);
                 let mut encoder1 =
-                    crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+                    crate::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
                 for message in &messages {
                     encoder1.append(message).unwrap();
                 }
@@ -840,7 +840,7 @@ mod tests {
                 let mut writer = std::io::Cursor::new(&mut data);
                 writer.set_position(written);
                 let mut encoder2 =
-                    crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+                    crate::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
                 for message in &messages {
                     encoder2.append(message).unwrap();
                 }
