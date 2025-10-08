@@ -49,8 +49,7 @@ fn setup_scene(test_context: &mut TestContext) {
                     re_types::datatypes::ColorModel::RGB,
                     Array::<u8, _>::zeros((2, 3, 3).f()),
                 )
-                .expect("failed to create image")
-                .with_opacity(0.5),
+                .expect("failed to create image"),
             )
     });
     test_context.log_entity("camera/points", |builder| {
