@@ -42,7 +42,7 @@ DataFusion tables provided through the `CatalogClient`.
 The partition table used to contain a lot of information about the underlying layers (of which there may be several per partition).
 This caused unnecessary noise and some tooling problems due to the complex Arrow schema.
 
-To address that, the partition table as been simplified with multiple columns removed and a few others renamed.
+To address that, the partition table has been simplified with multiple columns removed and a few others renamed.
 In parallel, a new dataset manifest table is now available (`dataset_entry.manifest()`).
 This table contains one row per layer (i.e. possibly multiple rows per partition) and provide a rich low-level view on the contents of a dataset.
 
