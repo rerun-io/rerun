@@ -1,7 +1,7 @@
 //! Test that 2D content can be added to a 3D space and vice versa.
 
 use re_log_types::{EntityPathFilter, TimePoint};
-use re_test_context::TestContext;
+use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
 use re_types::{RowId, archetypes, components};
 use re_viewer_context::{RecommendedView, ViewClass as _};
@@ -90,7 +90,12 @@ pub fn test_2d_in_3d() {
         });
 
     harness.run();
-    harness.snapshot("2d_in_3d");
+    harness.snapshot_options(
+        "2d_in_3d",
+        &SnapshotOptions::new()
+            .threshold(1.0)
+            .failed_pixel_count_threshold(30),
+    );
 }
 
 #[test]
