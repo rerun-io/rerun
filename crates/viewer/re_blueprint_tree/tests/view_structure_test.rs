@@ -11,12 +11,14 @@ use re_blueprint_tree::BlueprintTree;
 use re_blueprint_tree::data::BlueprintTreeData;
 use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
-use re_log_types::{EntityPath, TimelineName, build_frame_nr};
+use re_log_types::{EntityPath, build_frame_nr};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::archetypes::Points3D;
 use re_ui::filter_widget::FilterState;
-use re_viewer_context::{RecommendedView, TimeBlueprintExt as _, ViewClass as _, ViewId};
+use re_viewer_context::{
+    RecommendedView, ViewClass as _, ViewId, time_control_command::TimeControlCommand,
+};
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 const VIEW_ID: &str = "this-is-a-view-id";
@@ -183,9 +185,10 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
     }
 
     // set the current timeline to the timeline where data was logged to
-    test_context.with_blueprint_ctx(|ctx| {
-        ctx.set_timeline(TimelineName::new("frame_nr"));
-    });
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
+    );
 
     let mut harness = test_context
         .setup_kittest_for_rendering()
@@ -207,7 +210,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
                 blueprint_tree.show(viewer_ctx, &blueprint, ui);
             });
 
-            test_context.handle_system_commands();
+            test_context.handle_system_commands(ui.ctx());
         });
 
     harness.run();

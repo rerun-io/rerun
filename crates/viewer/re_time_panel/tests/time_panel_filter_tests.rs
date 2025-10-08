@@ -130,20 +130,21 @@ fn run_time_panel_and_save_snapshot(
                     &LatestAtQuery::latest(blueprint_timeline()),
                 );
 
-                let mut time_ctrl = viewer_ctx.rec_cfg.time_ctrl.read().clone();
+                let mut time_commands = Vec::new();
 
                 time_panel.show_expanded_with_header(
                     viewer_ctx,
+                    viewer_ctx.time_ctrl,
                     &blueprint,
                     viewer_ctx.recording(),
-                    &mut time_ctrl,
                     ui,
+                    &mut time_commands,
                 );
 
-                *viewer_ctx.rec_cfg.time_ctrl.write() = time_ctrl;
+                test_context.send_time_commands(viewer_ctx.store_id().clone(), time_commands);
             });
 
-            test_context.handle_system_commands();
+            test_context.handle_system_commands(ui.ctx());
         });
 
     harness.run();

@@ -6,12 +6,13 @@ use egui_kittest::{OsThreshold, SnapshotOptions};
 use re_blueprint_tree::BlueprintTree;
 use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
-use re_log_types::{TimelineName, build_frame_nr};
+use re_log_types::build_frame_nr;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::archetypes::Points3D;
 use re_viewer_context::{
-    CollapseScope, RecommendedView, TimeBlueprintExt as _, ViewClass as _, ViewId,
+    CollapseScope, RecommendedView, ViewClass as _, ViewId,
+    time_control_command::TimeControlCommand,
 };
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
@@ -63,9 +64,10 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
         let mut blueprint_tree = BlueprintTree::default();
 
         // set the current timeline to the timeline where data was logged to
-        test_context.with_blueprint_ctx(|ctx| {
-            ctx.set_timeline(TimelineName::new("frame_nr"));
-        });
+        test_context.send_time_commands(
+            test_context.active_store_id(),
+            [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
+        );
 
         let mut harness = test_context
             .setup_kittest_for_rendering()
@@ -87,7 +89,7 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
                     blueprint_tree.show(viewer_ctx, &blueprint, ui);
                 });
 
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
         harness.run();
@@ -191,9 +193,10 @@ fn run_blueprint_panel_and_save_snapshot(
     snapshot_name: &str,
 ) {
     // set the current timeline to the timeline where data was logged to
-    test_context.with_blueprint_ctx(|ctx| {
-        ctx.set_timeline(TimelineName::new("frame_nr"));
-    });
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
+    );
 
     let mut harness = test_context
         .setup_kittest_for_rendering()
@@ -208,7 +211,7 @@ fn run_blueprint_panel_and_save_snapshot(
                 blueprint_tree.show(viewer_ctx, &blueprint, ui);
             });
 
-            test_context.handle_system_commands();
+            test_context.handle_system_commands(ui.ctx());
         });
 
     harness.run();

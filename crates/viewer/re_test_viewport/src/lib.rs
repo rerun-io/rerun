@@ -74,7 +74,7 @@ impl TestContextExt for TestContext {
                     viewport_blueprint.save_to_blueprint_store(ctx);
                 });
 
-                self.handle_system_commands();
+                self.handle_system_commands(egui_ctx);
 
                 // Reload the blueprint store and execute all view queries.
                 let blueprint_query = self.blueprint_query.clone();
@@ -125,7 +125,7 @@ impl TestContextExt for TestContext {
                             resolver.update_overrides(
                                 ctx.store_context.blueprint,
                                 ctx.blueprint_query,
-                                ctx.rec_cfg.time_ctrl.read().timeline(),
+                                ctx.time_ctrl.timeline(),
                                 ctx.view_class_registry(),
                                 &mut data_query_result,
                                 &mut self.view_states.lock(),
@@ -172,7 +172,7 @@ impl TestContextExt for TestContext {
             self.ui_for_single_view(ui, ctx, view_id);
         });
 
-        self.handle_system_commands();
+        self.handle_system_commands(ui.ctx());
     }
 
     fn run_view_ui_and_save_snapshot(

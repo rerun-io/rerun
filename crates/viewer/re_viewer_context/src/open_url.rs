@@ -203,11 +203,10 @@ pub struct OpenUrlOptions {
 
 impl ViewerOpenUrl {
     pub fn from_context(ctx: &ViewerContext<'_>) -> anyhow::Result<Self> {
-        let time_ctrl = ctx.rec_cfg.time_ctrl.read();
         Self::from_context_expanded(
             ctx.storage_context.hub,
             ctx.display_mode(),
-            Some(&time_ctrl),
+            Some(ctx.time_ctrl),
             ctx.selection(),
         )
     }

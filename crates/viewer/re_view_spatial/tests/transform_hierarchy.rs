@@ -1,8 +1,8 @@
 use re_chunk_store::RowId;
-use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
+use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{TimeBlueprintExt as _, ViewClass as _, ViewId};
+use re_viewer_context::{ViewClass as _, ViewId, time_control_command::TimeControlCommand};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
@@ -10,6 +10,11 @@ pub fn test_transform_hierarchy() {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     let timeline_step = Timeline::new_sequence("step");
+
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline(*timeline_step.name())],
+    );
 
     // The Rerun logo obj's convention is y up.
     test_context.log_entity("/", |builder| {
@@ -162,10 +167,6 @@ fn run_view_ui_and_save_snapshot(
     name: &str,
     size: egui::Vec2,
 ) {
-    test_context.with_blueprint_ctx(|ctx| {
-        ctx.set_timeline(*timeline.name());
-    });
-
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(size)
@@ -197,13 +198,17 @@ fn run_view_ui_and_save_snapshot(
         });
         harness.run_steps(8);
 
-        let mut success = true;
+        let mut errors = Vec::new();
         for time in 0..=7 {
             let name = format!("{name}_{}_{time}", timeline.name());
 
-            test_context.with_blueprint_ctx(|ctx| {
-                ctx.set_time(TimeInt::saturated_temporal_i64(time as i64));
-            });
+            test_context.send_time_commands(
+                test_context.active_store_id(),
+                [
+                    TimeControlCommand::SetActiveTimeline(*timeline.name()),
+                    TimeControlCommand::SetTime((time as i64).into()),
+                ],
+            );
 
             harness.run_steps(8);
 
@@ -213,10 +218,17 @@ fn run_view_ui_and_save_snapshot(
                 (size.x * size.y * broken_pixels_fraction).round() as usize,
             );
 
-            if harness.try_snapshot_options(&name, &options).is_err() {
-                success = false;
+            if let Err(err) = harness.try_snapshot_options(&name, &options) {
+                errors.push(err);
             }
         }
-        assert!(success, "one or more snapshots failed");
+
+        if !errors.is_empty() {
+            for err in errors {
+                eprintln!("{err}");
+            }
+
+            panic!("one or more snapshots failed");
+        }
     }
 }

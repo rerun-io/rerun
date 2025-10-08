@@ -1,7 +1,7 @@
 #![expect(clippy::unwrap_used)] // It's a test!
 
 use re_chunk_store::RowId;
-use re_log_types::{NonMinI64, TimeInt, TimePoint};
+use re_log_types::TimePoint;
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
 use re_types::{
@@ -10,7 +10,7 @@ use re_types::{
     datatypes,
 };
 use re_video::{VideoCodec, VideoDataDescription};
-use re_viewer_context::{TimeBlueprintExt as _, ViewClass as _};
+use re_viewer_context::{ViewClass as _, time_control_command::TimeControlCommand};
 use re_viewport_blueprint::ViewBlueprint;
 
 fn workspace_dir() -> std::path::PathBuf {
@@ -286,11 +286,13 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
         // Using a single harness for all frames - we want to make sure that we use the same decoder,
         // not tearing down the video player!
         let desired_seek_ns = seek_location.get_time_ns(&frame_timestamps_nanos);
-        test_context.with_blueprint_ctx(|ctx| {
-            ctx.set_time(TimeInt::from_nanos(
-                NonMinI64::new(desired_seek_ns).unwrap(),
-            ));
-        });
+        test_context.send_time_commands(
+            test_context.active_store_id(),
+            [
+                TimeControlCommand::SetActiveTimeline(*timeline.name()),
+                TimeControlCommand::SetTime(desired_seek_ns.into()),
+            ],
+        );
 
         // Video decoding happens in a different thread, so it's important that we give it time
         // and don't busy loop.

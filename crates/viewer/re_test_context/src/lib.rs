@@ -7,12 +7,15 @@ use std::sync::atomic::AtomicBool;
 
 use ahash::HashMap;
 use egui::os::OperatingSystem;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
-use re_global_context::{AppOptions, DisplayMode, Item, SystemCommandSender as _};
+use re_global_context::{
+    AppOptions, DisplayMode, Item, SystemCommandSender as _,
+    time_control_command::TimeControlCommand,
+};
 use re_log_types::{
     EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind,
     external::re_tuid::Tuid,
@@ -23,9 +26,9 @@ use re_ui::Help;
 
 use re_viewer_context::{
     ApplicationSelectionState, BlueprintContext, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DataQueryResult, GlobalContext, ItemCollection, RecordingConfig, StoreHub,
-    SystemCommand, TimeBlueprintExt as _, ViewClass, ViewClassRegistry, ViewId, ViewStates,
-    ViewerContext, blueprint_timeline, command_channel,
+    ComponentUiRegistry, DataQueryResult, GlobalContext, ItemCollection, NeedsRepaint, StoreHub,
+    SystemCommand, TimeControl, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
+    blueprint_timeline, command_channel,
 };
 
 pub mod external {
@@ -59,8 +62,8 @@ pub struct TestContext {
     pub selection_state: Mutex<ApplicationSelectionState>,
     pub focused_item: Mutex<Option<re_viewer_context::Item>>,
 
-    // Arc to make it easy to modify the time cursor at runtime (i.e. while the harness is running).
-    pub recording_config: Arc<RecordingConfig>,
+    // RwLock so we can have `handle_system_commands` take an immutable reference to self.
+    pub time_ctrl: RwLock<TimeControl>,
     pub view_states: Mutex<ViewStates>,
 
     // Populating this in `run` would pull in too many dependencies into the test harness for now.
@@ -186,7 +189,7 @@ impl TestContext {
 
         let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
 
-        let recording_config = {
+        let time_ctrl = {
             let ctx = TestBlueprintCtx {
                 command_sender: &command_sender,
                 current_blueprint: store_hub
@@ -200,9 +203,7 @@ impl TestContext {
                 blueprint_query: &blueprint_query,
             };
 
-            // ctx.set_timeline("log_tick".into());
-
-            RecordingConfig::from_blueprint(&ctx)
+            TimeControl::from_blueprint(&ctx)
         };
 
         let component_ui_registry = ComponentUiRegistry::new();
@@ -216,7 +217,7 @@ impl TestContext {
             view_class_registry: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
-            recording_config: Arc::new(recording_config),
+            time_ctrl: RwLock::new(time_ctrl),
             view_states: Default::default(),
             blueprint_query,
             query_results: Default::default(),
@@ -339,18 +340,15 @@ fn init_shared_renderer_setup() -> SharedWgpuResources {
 
 impl TestContext {
     /// Used to get a context with helper functions to write & read from blueprints.
-    pub fn with_blueprint_ctx<R>(&self, f: impl FnOnce(TestBlueprintCtx<'_>) -> R) -> R {
-        fn with_blueprint_ctx_inner<R>(
-            this: &TestContext,
-            f: impl FnOnce(TestBlueprintCtx<'_>) -> R,
-        ) -> R {
-            let store_hub = this
-                .store_hub
-                .try_lock()
-                .expect("Failed to get lock for blueprint ctx");
+    pub fn with_blueprint_ctx<R>(&self, f: impl FnOnce(TestBlueprintCtx<'_>, &StoreHub) -> R) -> R {
+        let store_hub = self
+            .store_hub
+            .try_lock()
+            .expect("Failed to get lock for blueprint ctx");
 
-            f(TestBlueprintCtx {
-                command_sender: &this.command_sender,
+        f(
+            TestBlueprintCtx {
+                command_sender: &self.command_sender,
                 current_blueprint: store_hub
                     .active_blueprint()
                     .expect("The test context should always have an active blueprint"),
@@ -359,23 +357,28 @@ impl TestContext {
                         .active_app()
                         .expect("The test context should always have an active app"),
                 ),
-                blueprint_query: &this.blueprint_query,
-            })
+                blueprint_query: &self.blueprint_query,
+            },
+            &store_hub,
+        )
+    }
+
+    /// Helper function to send a [`SystemCommand::TimeControlCommands`] command
+    /// with the current store id.
+    pub fn send_time_commands(
+        &self,
+        store_id: StoreId,
+        commands: impl IntoIterator<Item = TimeControlCommand>,
+    ) {
+        let commands: Vec<_> = commands.into_iter().collect();
+
+        if !commands.is_empty() {
+            self.command_sender
+                .send_system(SystemCommand::TimeControlCommands {
+                    store_id,
+                    time_commands: commands,
+                });
         }
-
-        let r = with_blueprint_ctx_inner(self, f);
-
-        // Handle system commands directly after updating blueprints to write it to the store.
-        self.handle_system_commands();
-
-        with_blueprint_ctx_inner(self, |ctx| {
-            self.recording_config
-                .time_ctrl
-                .write()
-                .update_from_blueprint(&ctx, None);
-        });
-
-        r
     }
 
     pub fn setup_kittest_for_rendering(&self) -> egui_kittest::HarnessBuilder<()> {
@@ -396,7 +399,7 @@ impl TestContext {
 
     /// Timeline the recording config is using by default.
     pub fn active_timeline(&self) -> re_chunk::Timeline {
-        *self.recording_config.time_ctrl.read().timeline()
+        *self.time_ctrl.read().timeline()
     }
 
     pub fn active_blueprint(&mut self) -> &mut EntityDb {
@@ -511,18 +514,13 @@ impl TestContext {
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &self.query_results,
-            rec_cfg: &self.recording_config,
-            blueprint_cfg: &Default::default(),
+            time_ctrl: &self.time_ctrl.read(),
+            blueprint_time_ctrl: &Default::default(),
             selection_state: &selection_state,
             blueprint_query: &self.blueprint_query,
             focused_item: &focused_item,
             drag_and_drop_manager: &drag_and_drop_manager,
         };
-
-        self.recording_config
-            .time_ctrl
-            .write()
-            .update_from_blueprint(&ctx, Some(store_context.recording.times_per_timeline()));
 
         func(&ctx);
 
@@ -638,16 +636,18 @@ impl TestContext {
 
         if let Some((timeline, timecell)) = when {
             self.command_sender
-                .send_system(SystemCommand::SetActiveTime {
+                .send_system(SystemCommand::TimeControlCommands {
                     store_id,
-                    timeline,
-                    time: Some(timecell.value.into()),
+                    time_commands: vec![
+                        TimeControlCommand::SetActiveTimeline(timeline),
+                        TimeControlCommand::SetTime(timecell.value.into()),
+                    ],
                 });
         }
     }
 
     /// Best-effort attempt to meaningfully handle some of the system commands.
-    pub fn handle_system_commands(&self) {
+    pub fn handle_system_commands(&self, egui_ctx: &egui::Context) {
         while let Some(command) = self.command_receiver.recv_system() {
             let mut handled = true;
             let command_name = format!("{command:?}");
@@ -692,35 +692,32 @@ impl TestContext {
                     *self.focused_item.lock() = Some(item);
                 }
 
-                SystemCommand::SetActiveTime {
-                    store_id: rec_id,
-                    timeline,
-                    time,
+                SystemCommand::TimeControlCommands {
+                    store_id,
+                    time_commands,
                 } => {
-                    assert_eq!(
-                        &rec_id,
-                        self.store_hub.lock().active_recording().unwrap().store_id()
-                    );
-                    self.with_blueprint_ctx(|ctx| {
-                        ctx.set_timeline(timeline);
+                    self.with_blueprint_ctx(|blueprint_ctx, hub| {
+                        let mut time_ctrl = self.time_ctrl.write();
+                        let times_per_timeline = hub
+                            .store_bundle()
+                            .get(&store_id)
+                            .expect("Invalid store id in `SystemCommand::TimeControlCommands`")
+                            .times_per_timeline();
 
-                        if let Some(time) = time {
-                            ctx.set_time(time);
+                        let blueprint_ctx =
+                            Some(&blueprint_ctx).filter(|_| store_id.is_recording());
+
+                        // We can ignore the response in the test context.
+                        let res = time_ctrl.handle_time_commands(
+                            blueprint_ctx,
+                            times_per_timeline,
+                            &time_commands,
+                        );
+
+                        if res.needs_repaint == NeedsRepaint::Yes {
+                            egui_ctx.request_repaint();
                         }
                     });
-                }
-
-                SystemCommand::AddValidTimeRange {
-                    store_id: rec_id,
-                    timeline,
-                    time_range,
-                } => {
-                    assert_eq!(
-                        &rec_id,
-                        self.store_hub.lock().active_recording().unwrap().store_id()
-                    );
-                    let mut time_ctrl = self.recording_config.time_ctrl.write();
-                    time_ctrl.mark_time_range_valid(timeline, time_range);
                 }
 
                 // not implemented
@@ -739,8 +736,7 @@ impl TestContext {
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
                 | SystemCommand::CloseAllEntries
-                | SystemCommand::ShowNotification { .. }
-                | SystemCommand::SetLoopSelection { .. } => handled = false,
+                | SystemCommand::ShowNotification { .. } => handled = false,
 
                 #[cfg(debug_assertions)]
                 SystemCommand::EnableInspectBlueprintTimeline(_) => handled = false,

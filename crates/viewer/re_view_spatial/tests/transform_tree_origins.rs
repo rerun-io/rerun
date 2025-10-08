@@ -207,7 +207,7 @@ fn run_view_ui_and_save_snapshot(
                 test_context.ui_for_single_view(ui, ctx, view_id);
             });
 
-            test_context.handle_system_commands();
+            test_context.handle_system_commands(ui.ctx());
         });
 
     harness.snapshot_options(

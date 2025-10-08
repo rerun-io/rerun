@@ -9,7 +9,10 @@ use re_types::{
 };
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{TimeDragValue, UiExt as _};
-use re_viewer_context::{BlueprintContext as _, QueryRange, ViewClass, ViewState, ViewerContext};
+use re_viewer_context::{
+    BlueprintContext as _, QueryRange, ViewClass, ViewState, ViewerContext,
+    time_control_command::TimeControlCommand,
+};
 use re_viewport_blueprint::{ViewBlueprint, entity_path_for_view_property};
 
 pub fn visible_time_range_ui_for_view(
@@ -32,7 +35,7 @@ pub fn visible_time_range_ui_for_view(
     let query_range = view.query_range(
         ctx.store_context.blueprint,
         ctx.blueprint_query,
-        ctx.rec_cfg.time_ctrl.read().timeline(),
+        ctx.time_ctrl.timeline(),
         ctx.view_class_registry(),
         view_state,
     );
@@ -71,7 +74,7 @@ fn visible_time_range_ui(
         )
         .unwrap_or_default();
 
-    let timeline_name = *ctx.rec_cfg.time_ctrl.read().timeline().name();
+    let timeline_name = *ctx.time_ctrl.timeline().name();
     let mut has_individual_range = visible_time_ranges
         .iter()
         .any(|range| range.timeline.as_str() == timeline_name.as_str());
@@ -158,7 +161,7 @@ fn query_range_ui(
     has_individual_time_range: &mut bool,
     is_view: bool,
 ) {
-    let time_ctrl = ctx.rec_cfg.time_ctrl.read().clone();
+    let time_ctrl = &ctx.time_ctrl;
     let timeline = *time_ctrl.timeline();
     let time_type = timeline.typ();
 
@@ -258,7 +261,7 @@ Notes:
     {
         let absolute_time_range =
             AbsoluteTimeRange::from_relative_time_range(time_range, current_time);
-        ctx.rec_cfg.time_ctrl.write().highlighted_range = Some(absolute_time_range);
+        ctx.send_time_commands([TimeControlCommand::HighlightRange(absolute_time_range)]);
     }
 }
 

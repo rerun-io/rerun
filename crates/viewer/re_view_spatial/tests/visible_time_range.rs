@@ -3,12 +3,14 @@
 #![expect(clippy::unnecessary_fallible_conversions)]
 
 use re_chunk_store::RowId;
-use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
+use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, Timeline};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::{Archetype as _, archetypes::Points2D, datatypes::VisibleTimeRange};
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::{BlueprintContext as _, TimeBlueprintExt as _, ViewClass as _, ViewId};
+use re_viewer_context::{
+    BlueprintContext as _, ViewClass as _, ViewId, time_control_command::TimeControlCommand,
+};
 use re_viewport_blueprint::ViewBlueprint;
 
 fn intra_timestamp_data(test_context: &mut TestContext) {
@@ -104,9 +106,10 @@ fn intra_timestamp_data(test_context: &mut TestContext) {
         )
     });
 
-    test_context.with_blueprint_ctx(|ctx| {
-        ctx.set_timeline(*timeline.name());
-    });
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
+    );
 }
 
 #[test]
@@ -224,9 +227,13 @@ fn visible_timerange_data(test_context: &mut TestContext) {
         }
     }
 
-    test_context.with_blueprint_ctx(|ctx| {
-        ctx.set_timeline_and_time(*timeline.name(), TimeInt::from_secs(4.5));
-    });
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [
+            TimeControlCommand::SetActiveTimeline(*timeline.name()),
+            TimeControlCommand::SetTime(TimeReal::from_secs(4.5)),
+        ],
+    );
 }
 
 #[test]

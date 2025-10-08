@@ -78,7 +78,7 @@ pub fn execute_systems_for_view<'a>(
         });
     }
 
-    let current_query = ctx.rec_cfg.time_ctrl.read().current_query();
+    let current_query = ctx.time_ctrl.current_query();
     let query = re_viewer_context::ViewQuery {
         view_id: view.id,
         space_origin: &view.space_origin,

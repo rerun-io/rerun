@@ -16,13 +16,13 @@ use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintContext, BlueprintUndoState, CommandReceiver,
-    CommandSender, ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig,
-    RecordingOrTable, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _,
-    TableStore, TimeBlueprintExt as _, ViewClass, ViewClassRegistry, ViewClassRegistryError,
-    command_channel,
+    CommandSender, ComponentUiRegistry, DisplayMode, Item, NeedsRepaint, RecordingOrTable,
+    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
+    ViewClassRegistry, ViewClassRegistryError, command_channel,
     open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url},
     santitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
+    time_control_command::{PlayState, TimeControlCommand},
 };
 
 use crate::{
@@ -33,17 +33,6 @@ use crate::{
     event::ViewerEventDispatcher,
     startup_options::StartupOptions,
 };
-
-// ----------------------------------------------------------------------------
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-enum TimeControlCommand {
-    TogglePlayPause,
-    StepBack,
-    StepForward,
-    Restart,
-    Follow,
-}
 
 // ----------------------------------------------------------------------------
 
@@ -549,10 +538,9 @@ impl App {
             return;
         }
 
-        let rec_cfg = store_hub
+        let time_ctrl = store_hub
             .active_recording()
-            .and_then(|db| self.state.recording_config(db.store_id()));
-        let time_ctrl = rec_cfg.as_ref().map(|cfg| cfg.time_ctrl.read());
+            .and_then(|db| self.state.time_control(db.store_id()));
 
         let display_mode = self.state.navigation.peek();
         let selection = self.state.selection_state.selected_items();
@@ -628,6 +616,51 @@ impl App {
         egui_ctx: &egui::Context,
     ) {
         match cmd {
+            SystemCommand::TimeControlCommands {
+                store_id,
+                time_commands,
+            } => {
+                if let Some(target_store) = store_hub.store_bundle().get(&store_id) {
+                    let (time_ctrl, blueprint_ctx) = if store_id.is_blueprint() {
+                        (&mut self.state.blueprint_time_control, None)
+                    } else if let Some(target_blueprint) =
+                        store_hub.active_blueprint_for_app(store_id.application_id())
+                    {
+                        let blueprint_query =
+                            self.state.blueprint_query_for_viewer(target_blueprint);
+
+                        let ctx = AppBlueprintCtx {
+                            command_sender: &self.command_sender,
+                            current_blueprint: target_blueprint,
+                            default_blueprint: store_hub
+                                .default_blueprint_for_app(store_id.application_id()),
+                            blueprint_query,
+                        };
+
+                        (self.state.time_control_mut(target_store, &ctx), Some(ctx))
+                    } else {
+                        return;
+                    };
+
+                    let response = time_ctrl.handle_time_commands(
+                        blueprint_ctx.as_ref(),
+                        target_store.times_per_timeline(),
+                        &time_commands,
+                    );
+
+                    if response.needs_repaint == NeedsRepaint::Yes {
+                        self.egui_ctx.request_repaint();
+                    }
+
+                    if !store_id.is_blueprint() {
+                        handle_time_ctrl_event(
+                            target_store,
+                            self.event_dispatcher.as_ref(),
+                            &response,
+                        );
+                    }
+                }
+            }
             SystemCommand::SetUrlFragment { store_id, fragment } => {
                 // This adds new system commands, which will be handled later in the loop.
                 self.go_to_dataset_data(store_id, fragment);
@@ -911,68 +944,6 @@ impl App {
                 egui_ctx.request_repaint(); // Make sure we actually see the new selection.
             }
 
-            SystemCommand::SetActiveTime {
-                store_id,
-                timeline,
-                time,
-            } => {
-                if let Some(blueprint_ctx) =
-                    active_blueprint_ctx(&mut self.state, &self.command_sender, store_hub)
-                {
-                    blueprint_ctx.set_timeline(timeline);
-
-                    if let Some(time) = time {
-                        blueprint_ctx.set_time(time);
-                    }
-
-                    if let Some(rec_cfg) = self.recording_config_mut(store_hub, &store_id) {
-                        let mut time_ctrl = rec_cfg.time_ctrl.write();
-                        time_ctrl.pause();
-                    }
-                } else {
-                    re_log::debug!(
-                        "SystemCommand::SetActiveTime ignored: unknown store ID '{store_id:?}'"
-                    );
-                }
-            }
-
-            SystemCommand::SetLoopSelection {
-                store_id,
-                timeline,
-                time_range,
-            } => {
-                if let Some(blueprint_ctx) =
-                    active_blueprint_ctx(&mut self.state, &self.command_sender, store_hub)
-                {
-                    blueprint_ctx.set_timeline(*timeline.name());
-
-                    if let Some(rec_cfg) = self.recording_config_mut(store_hub, &store_id) {
-                        let mut guard = rec_cfg.time_ctrl.write();
-                        guard.set_loop_selection(time_range);
-                        guard.set_looping(re_viewer_context::Looping::Selection);
-                    }
-                } else {
-                    re_log::debug!(
-                        "SystemCommand::SetLoopSelection ignored: unknown store ID '{store_id:?}'"
-                    );
-                }
-            }
-
-            SystemCommand::AddValidTimeRange {
-                store_id,
-                timeline,
-                time_range,
-            } => {
-                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &store_id) {
-                    let mut time_ctrl = rec_cfg.time_ctrl.write();
-                    time_ctrl.mark_time_range_valid(timeline, time_range);
-                } else {
-                    re_log::debug!(
-                        "SystemCommand::AddValidTimeRange ignored: unknown store ID '{store_id:?}'"
-                    );
-                }
-            }
-
             SystemCommand::SetFocus(item) => {
                 self.state.focused_item = Some(item);
             }
@@ -1022,23 +993,17 @@ impl App {
                     url: url.to_string(),
                     follow: *follow,
                 };
-                let Some(blueprint_ctx) =
-                    active_blueprint_ctx(&mut self.state, &self.command_sender, store_hub)
-                else {
-                    return;
-                };
 
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     if let Some(entity_db) = store_hub.find_recording_store_by_source(&new_source) {
                         if *follow {
-                            let rec_cfg =
-                                self.state.recording_config_mut(entity_db, &blueprint_ctx);
-                            let time_ctrl = rec_cfg.time_ctrl.get_mut();
-                            time_ctrl.set_play_state(
-                                entity_db.times_per_timeline(),
-                                PlayState::Following,
-                                &blueprint_ctx,
-                            );
+                            self.command_sender
+                                .send_system(SystemCommand::TimeControlCommands {
+                                    store_id: entity_db.store_id().clone(),
+                                    time_commands: vec![TimeControlCommand::SetPlayState(
+                                        PlayState::Following,
+                                    )],
+                                });
                         }
 
                         let store_id = entity_db.store_id().clone();
@@ -1160,10 +1125,12 @@ impl App {
 
         if let Some((timeline, timecell)) = when {
             self.command_sender
-                .send_system(SystemCommand::SetActiveTime {
+                .send_system(SystemCommand::TimeControlCommands {
                     store_id,
-                    timeline,
-                    time: Some(timecell.value.into()),
+                    time_commands: vec![
+                        TimeControlCommand::SetActiveTimeline(timeline),
+                        TimeControlCommand::SetTime(timecell.value.into()),
+                    ],
                 });
         }
     }
@@ -1486,19 +1453,51 @@ impl App {
             }
 
             UICommand::PlaybackTogglePlayPause => {
-                self.run_time_control_command(store_context, TimeControlCommand::TogglePlayPause);
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::TogglePlayPause],
+                        });
+                }
             }
             UICommand::PlaybackFollow => {
-                self.run_time_control_command(store_context, TimeControlCommand::Follow);
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::SetPlayState(
+                                PlayState::Following,
+                            )],
+                        });
+                }
             }
             UICommand::PlaybackStepBack => {
-                self.run_time_control_command(store_context, TimeControlCommand::StepBack);
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::StepTimeBack],
+                        });
+                }
             }
             UICommand::PlaybackStepForward => {
-                self.run_time_control_command(store_context, TimeControlCommand::StepForward);
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::StepTimeForward],
+                        });
+                }
             }
             UICommand::PlaybackRestart => {
-                self.run_time_control_command(store_context, TimeControlCommand::Restart);
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::Restart],
+                        });
+                }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -1543,7 +1542,7 @@ impl App {
                 let rec_cfg = storage_context
                     .hub
                     .active_store_id()
-                    .and_then(|id| self.state.recording_configs.get(id));
+                    .and_then(|id| self.state.time_controls.get(id));
                 if let Err(err) = self.state.share_modal.open(
                     storage_context.hub,
                     display_mode,
@@ -1564,12 +1563,10 @@ impl App {
                 match ViewerOpenUrl::from_display_mode(storage_context.hub, display_mode) {
                     Ok(mut url) => {
                         if let Some(time_range) = url.time_range_mut() {
-                            let rec_cfg = storage_context
+                            let time_ctrl = storage_context
                                 .hub
                                 .active_store_id()
-                                .and_then(|id| self.state.recording_config(id));
-
-                            let time_ctrl = rec_cfg.as_ref().map(|cfg| cfg.time_ctrl.read());
+                                .and_then(|id| self.state.time_control(id));
 
                             if let Some(time_ctrl) = &time_ctrl
                                 && let Some(loop_selection) = time_ctrl.loop_selection()
@@ -1676,48 +1673,6 @@ impl App {
                     res
                 })
                 .ok_or_log_error_once();
-        }
-    }
-
-    fn run_time_control_command(
-        &mut self,
-        store_context: Option<&StoreContext<'_>>,
-        command: TimeControlCommand,
-    ) {
-        let Some((entity_db, blueprint_ctx)) = store_context.as_ref().map(|ctx| {
-            (
-                ctx.recording,
-                AppBlueprintCtx {
-                    command_sender: &self.command_sender,
-                    current_blueprint: ctx.blueprint,
-                    default_blueprint: ctx.default_blueprint,
-                    blueprint_query: self.state.blueprint_query_for_viewer(ctx.blueprint),
-                },
-            )
-        }) else {
-            return;
-        };
-        let rec_cfg = self.state.recording_config_mut(entity_db, &blueprint_ctx);
-        let time_ctrl = rec_cfg.time_ctrl.get_mut();
-
-        let times_per_timeline = entity_db.times_per_timeline();
-
-        match command {
-            TimeControlCommand::TogglePlayPause => {
-                time_ctrl.toggle_play_pause(times_per_timeline, &blueprint_ctx);
-            }
-            TimeControlCommand::Follow => {
-                time_ctrl.set_play_state(times_per_timeline, PlayState::Following, &blueprint_ctx);
-            }
-            TimeControlCommand::StepBack => {
-                time_ctrl.step_time_back(times_per_timeline, &blueprint_ctx);
-            }
-            TimeControlCommand::StepForward => {
-                time_ctrl.step_time_fwd(times_per_timeline, &blueprint_ctx);
-            }
-            TimeControlCommand::Restart => {
-                time_ctrl.restart(times_per_timeline, &blueprint_ctx);
-            }
         }
     }
 
@@ -2194,10 +2149,12 @@ impl App {
                 time_range,
             } => {
                 self.command_sender
-                    .send_system(SystemCommand::AddValidTimeRange {
+                    .send_system(SystemCommand::TimeControlCommands {
                         store_id,
-                        timeline,
-                        time_range,
+                        time_commands: vec![TimeControlCommand::AddValidTimeRange {
+                            timeline,
+                            time_range,
+                        }],
                     });
             }
 
@@ -2366,22 +2323,6 @@ impl App {
 
     pub fn recording_db(&self) -> Option<&EntityDb> {
         self.store_hub.as_ref()?.active_recording()
-    }
-
-    pub fn recording_config_mut(
-        &mut self,
-        store_hub: &StoreHub,
-        store_id: &StoreId,
-    ) -> Option<&mut RecordingConfig> {
-        if let Some(entity_db) = store_hub.store_bundle().get(store_id)
-            && let Some(blueprint_ctx) =
-                active_blueprint_ctx(&mut self.state, &self.command_sender, store_hub)
-        {
-            Some(self.state.recording_config_mut(entity_db, &blueprint_ctx))
-        } else {
-            re_log::debug!("Failed to find recording '{store_id:?}' in store hub");
-            None
-        }
     }
 
     // NOTE: Relying on `self` is dangerous, as this is called during a time where some internal
@@ -2774,6 +2715,10 @@ impl eframe::App for App {
                 crate::history::go_forward();
             }
         }
+
+        // We move the time at the very start of the frame,
+        // so that we always show the latest data when we're in "follow" mode.
+        move_time(self);
 
         // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability
         let mut store_hub = self
@@ -3389,23 +3334,79 @@ impl BlueprintContext for AppBlueprintCtx<'_> {
     }
 }
 
-/// Build a helper struct to interact with the active blueprint.
-pub fn active_blueprint_ctx<'a>(
-    app_state: &mut AppState,
-    command_sender: &'a CommandSender,
-    hub: &'a StoreHub,
-) -> Option<AppBlueprintCtx<'a>> {
-    let active_app = hub.active_app()?;
-    let current_blueprint = hub.active_blueprint_for_app(active_app)?;
+fn handle_time_ctrl_event(
+    recording: &EntityDb,
+    events: Option<&ViewerEventDispatcher>,
+    response: &re_viewer_context::TimeControlResponse,
+) {
+    let Some(events) = events else {
+        return;
+    };
 
-    let default_blueprint = hub.default_blueprint_for_app(active_app);
+    if let Some(playing) = response.playing_change {
+        events.on_play_state_change(recording, playing);
+    }
 
-    let blueprint_query = app_state.blueprint_query_for_viewer(current_blueprint);
+    if let Some((timeline, time)) = response.timeline_change {
+        events.on_timeline_change(recording, timeline, time);
+    }
 
-    Some(AppBlueprintCtx {
-        command_sender,
-        current_blueprint,
-        default_blueprint,
-        blueprint_query,
-    })
+    if let Some(time) = response.time_change {
+        events.on_time_update(recording, time);
+    }
+}
+
+fn move_time(app: &mut App) {
+    if let Some(store_hub) = &app.store_hub {
+        if let Some(store_id) = store_hub.active_store_id()
+            && let Some(blueprint) = store_hub.active_blueprint_for_app(store_id.application_id())
+        {
+            let default_blueprint = store_hub.default_blueprint_for_app(store_id.application_id());
+
+            let blueprint_query =
+                re_chunk::LatestAtQuery::latest(re_viewer_context::blueprint_timeline());
+
+            let bp_ctx = AppBlueprintCtx {
+                command_sender: &app.command_sender,
+                current_blueprint: blueprint,
+                default_blueprint,
+                blueprint_query,
+            };
+
+            let dt = app.egui_ctx.input(|i| i.stable_dt);
+            if let Some(recording) = store_hub.active_recording() {
+                // Are we still connected to the data source for the current store?
+                let more_data_is_coming = if let Some(store_source) = &recording.data_source {
+                    app.rx_log
+                        .sources()
+                        .iter()
+                        .any(|s| s.as_ref() == store_source)
+                } else {
+                    false
+                };
+
+                let time_ctrl = app.state.time_control_mut(recording, &bp_ctx);
+
+                let response = time_ctrl.update(
+                    recording.times_per_timeline(),
+                    dt,
+                    more_data_is_coming,
+                    true,
+                    Some(&bp_ctx),
+                );
+
+                handle_time_ctrl_event(recording, app.event_dispatcher.as_ref(), &response);
+            }
+
+            if app.app_options().inspect_blueprint_timeline {
+                _ = app.state.blueprint_time_control.update(
+                    bp_ctx.current_blueprint.times_per_timeline(),
+                    dt,
+                    true,
+                    false,
+                    None::<&AppBlueprintCtx<'_>>,
+                );
+            }
+        }
+    }
 }

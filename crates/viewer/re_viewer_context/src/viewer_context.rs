@@ -1,10 +1,10 @@
 use ahash::HashMap;
 use arrow::array::ArrayRef;
-use parking_lot::RwLock;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
+use re_global_context::time_control_command::TimeControlCommand;
 use re_global_context::{DisplayMode, SystemCommand};
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
@@ -17,9 +17,7 @@ use crate::{
     SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId,
     query_context::DataQueryResult,
 };
-use crate::{
-    BlueprintContext, BlueprintTimeControl, GlobalContext, Item, StorageContext, StoreHub,
-};
+use crate::{GlobalContext, Item, StorageContext, StoreHub};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -49,10 +47,10 @@ pub struct ViewerContext<'a> {
     pub query_results: &'a HashMap<ViewId, DataQueryResult>,
 
     /// UI config for the current recording (found in [`EntityDb`]).
-    pub rec_cfg: &'a RecordingConfig,
+    pub time_ctrl: &'a TimeControl,
 
     /// UI config for the current blueprint.
-    pub blueprint_cfg: &'a RecordingConfig<BlueprintTimeControl>,
+    pub blueprint_time_ctrl: &'a TimeControl,
 
     /// The blueprint query used for resolving blueprint in this frame
     pub blueprint_query: &'a LatestAtQuery,
@@ -207,7 +205,21 @@ impl ViewerContext<'_> {
     }
 
     pub fn current_query(&self) -> re_chunk_store::LatestAtQuery {
-        self.rec_cfg.time_ctrl.read().current_query()
+        self.time_ctrl.current_query()
+    }
+
+    /// Helper function to send a [`SystemCommand::TimeControlCommands`] command
+    /// with the current store id.
+    pub fn send_time_commands(&self, commands: impl IntoIterator<Item = TimeControlCommand>) {
+        let commands: Vec<_> = commands.into_iter().collect();
+
+        if !commands.is_empty() {
+            self.command_sender()
+                .send_system(SystemCommand::TimeControlCommands {
+                    store_id: self.store_id().clone(),
+                    time_commands: commands,
+                });
+        }
     }
 
     /// Consistently handle the selection, hover, drag start interactions for a given set of items.
@@ -419,23 +431,5 @@ impl ViewerContext<'_> {
     pub fn revert_to_default_display_mode(&self) {
         self.command_sender()
             .send_system(SystemCommand::ResetDisplayMode);
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// UI config for the current recording (found in [`EntityDb`]).
-#[derive(Default, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
-pub struct RecordingConfig<Tc = TimeControl> {
-    /// The current time of the time panel, how fast it is moving, etc.
-    pub time_ctrl: RwLock<Tc>,
-}
-
-impl RecordingConfig {
-    pub fn from_blueprint(blueprint_ctx: &impl BlueprintContext) -> Self {
-        Self {
-            time_ctrl: RwLock::new(TimeControl::from_blueprint(blueprint_ctx)),
-        }
     }
 }

@@ -768,7 +768,7 @@ mod tests {
             resolver.update_overrides(
                 ctx.blueprint_db(),
                 ctx.blueprint_query,
-                ctx.rec_cfg.time_ctrl.read().timeline(),
+                ctx.time_ctrl.timeline(),
                 ctx.view_class_registry(),
                 &mut query_result,
                 &mut view_states,

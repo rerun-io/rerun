@@ -13,9 +13,9 @@ use re_types::{
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer_context::time_control_command::TimeControlCommand;
 use re_viewer_context::{
-    HoverHighlight, Item, SystemCommand, SystemCommandSender as _, TimeBlueprintExt as _, UiLayout,
-    ViewId, ViewerContext,
+    HoverHighlight, Item, SystemCommand, SystemCommandSender as _, UiLayout, ViewId, ViewerContext,
 };
 
 use super::DataUi as _;
@@ -227,14 +227,11 @@ pub fn guess_query_and_db_for_selected_entity<'a>(
         && ctx.store_context.blueprint.is_logged_entity(entity_path)
     {
         (
-            ctx.blueprint_cfg.time_ctrl.read().current_query(),
+            ctx.blueprint_time_ctrl.current_query(),
             ctx.store_context.blueprint,
         )
     } else {
-        (
-            ctx.rec_cfg.time_ctrl.read().current_query(),
-            ctx.recording(),
-        )
+        (ctx.time_ctrl.current_query(), ctx.recording())
     }
 }
 
@@ -487,11 +484,7 @@ pub fn time_button(
     timeline_name: &TimelineName,
     value: TimeInt,
 ) -> egui::Response {
-    let is_selected = ctx
-        .rec_cfg
-        .time_ctrl
-        .read()
-        .is_time_selected(timeline_name, value);
+    let is_selected = ctx.time_ctrl.is_time_selected(timeline_name, value);
 
     let typ = ctx.recording().timeline_type(timeline_name);
 
@@ -500,8 +493,11 @@ pub fn time_button(
         typ.format(value, ctx.app_options().timestamp_format),
     );
     if response.clicked() {
-        ctx.set_timeline_and_time(*timeline_name, value);
-        ctx.rec_cfg.time_ctrl.write().pause();
+        ctx.send_time_commands([
+            TimeControlCommand::SetActiveTimeline(*timeline_name),
+            TimeControlCommand::SetTime(value.into()),
+            TimeControlCommand::Pause,
+        ]);
     }
     response
 }
@@ -520,15 +516,16 @@ pub fn timeline_button_to(
     text: impl Into<egui::WidgetText>,
     timeline_name: &TimelineName,
 ) -> egui::Response {
-    let is_selected = ctx.rec_cfg.time_ctrl.read().timeline().name() == timeline_name;
+    let is_selected = ctx.time_ctrl.timeline().name() == timeline_name;
 
     let response = ui
         .selectable_label(is_selected, text)
         .on_hover_text("Click to switch to this timeline");
     if response.clicked() {
-        ctx.set_timeline(*timeline_name);
-        let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
-        time_ctrl.pause();
+        ctx.send_time_commands([
+            TimeControlCommand::SetActiveTimeline(*timeline_name),
+            TimeControlCommand::Pause,
+        ]);
     }
     response
 }

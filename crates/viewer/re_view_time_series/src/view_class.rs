@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 
 use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_nanos;
-use re_log_types::{EntityPath, NonMinI64, TimeInt};
+use re_log_types::{EntityPath, TimeInt};
 use re_types::{
     ComponentBatch as _, View as _, ViewClassIdentifier,
     archetypes::{SeriesLines, SeriesPoints},
@@ -24,10 +24,10 @@ use re_view::{
 use re_viewer_context::{
     BlueprintContext as _, IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities,
     PerVisualizer, QueryRange, RecommendedView, SmallVisualizerSet, SystemExecutionOutput,
-    TimeBlueprintExt as _, TypedComponentFallbackProvider, ViewClass, ViewClassExt as _,
-    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities, external::re_entity_db::InstancePath,
+    TypedComponentFallbackProvider, ViewClass, ViewClassExt as _, ViewClassRegistryError,
+    ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    external::re_entity_db::InstancePath, time_control_command::TimeControlCommand,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -393,14 +393,9 @@ impl ViewClass for TimeSeriesView {
         )?;
         let y_zoom_lock = y_zoom_lock.0.0;
 
-        let (current_time, time_type, timeline) = {
-            // Avoid holding the lock for long
-            let time_ctrl = ctx.rec_cfg.time_ctrl.read();
-            let current_time = time_ctrl.time_i64();
-            let time_type = time_ctrl.time_type();
-            let timeline = *time_ctrl.timeline();
-            (current_time, time_type, timeline)
-        };
+        let current_time = ctx.time_ctrl.time_i64();
+        let time_type = ctx.time_ctrl.time_type();
+        let timeline = *ctx.time_ctrl.timeline();
 
         let timeline_name = timeline.name().to_string();
 
@@ -547,12 +542,11 @@ impl ViewClass for TimeSeriesView {
             if plot_ui.response().secondary_clicked()
                 && let Some(pointer) = plot_ui.pointer_coordinate()
             {
-                ctx.set_time(NonMinI64::saturating_from_i64(
-                    pointer.x as i64 + time_offset,
-                ));
-
-                let mut time_ctrl_write = ctx.rec_cfg.time_ctrl.write();
-                time_ctrl_write.pause();
+                let time = re_log_types::TimeReal::from(pointer.x as i64 + time_offset);
+                ctx.send_time_commands([
+                    TimeControlCommand::SetTime(time),
+                    TimeControlCommand::Pause,
+                ]);
             }
 
             plot_double_clicked = plot_ui.response().double_clicked();
@@ -671,10 +665,10 @@ impl ViewClass for TimeSeriesView {
                 // Avoid frame-delay:
                 time_x = pointer_pos.x;
 
-                ctx.set_time(TimeInt::saturated_temporal_i64(new_time));
-
-                let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
-                time_ctrl.pause();
+                ctx.send_time_commands([
+                    TimeControlCommand::SetTime(new_time.into()),
+                    TimeControlCommand::Pause,
+                ]);
 
                 state.is_dragging_time_cursor = true;
             }

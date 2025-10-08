@@ -4,7 +4,9 @@ use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
 use re_types::{Archetype as _, archetypes};
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::{BlueprintContext as _, TimeBlueprintExt as _, ViewClass as _, ViewId};
+use re_viewer_context::{
+    BlueprintContext as _, ViewClass as _, ViewId, time_control_command::TimeControlCommand,
+};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
@@ -115,8 +117,6 @@ fn run_view_ui_and_save_snapshot(
     name: &str,
     size: egui::Vec2,
 ) {
-    let (timeline, _) = build_frame_nr(42);
-
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(size)
@@ -135,10 +135,14 @@ fn run_view_ui_and_save_snapshot(
         let mut success = true;
         for frame_nr in 42..=46 {
             {
-                let (_, time) = build_frame_nr(frame_nr);
-                test_context.with_blueprint_ctx(|ctx| {
-                    ctx.set_timeline_and_time(*timeline.name(), time);
-                });
+                let (timeline, time) = build_frame_nr(frame_nr);
+                test_context.send_time_commands(
+                    test_context.active_store_id(),
+                    [
+                        TimeControlCommand::SetActiveTimeline(*timeline.name()),
+                        TimeControlCommand::SetTime(time.into()),
+                    ],
+                );
             }
 
             harness.run_steps(8);

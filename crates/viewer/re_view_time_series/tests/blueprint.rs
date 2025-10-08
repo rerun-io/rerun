@@ -8,7 +8,9 @@ use re_types::{
     blueprint, components,
 };
 use re_view_time_series::TimeSeriesView;
-use re_viewer_context::{BlueprintContext as _, TimeBlueprintExt as _, ViewClass as _, ViewId};
+use re_viewer_context::{
+    BlueprintContext as _, ViewClass as _, ViewId, time_control_command::TimeControlCommand,
+};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
 #[test]
@@ -28,9 +30,10 @@ pub fn test_blueprint_overrides_and_defaults_with_time_series() {
         });
     }
 
-    test_context.with_blueprint_ctx(|ctx| {
-        ctx.set_timeline(*timeline.name());
-    });
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
+    );
 
     let view_id = setup_blueprint(&mut test_context);
     test_context.run_view_ui_and_save_snapshot(
