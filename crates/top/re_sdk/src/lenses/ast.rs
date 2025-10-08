@@ -66,7 +66,7 @@ impl Op {
 
     /// Ignores any input and returns a constant `ListArray`.
     ///
-    /// Mostl commonly used with [`LensBuilder::static_output_column`].
+    /// Mostl commonly used with [`LensBuilder::add_static_output_column`].
     /// When used in non-static columns this function will _not_ guarantee the correct amount of rows.
     pub fn constant(value: ListArray) -> Self {
         Self::func(move |_| Ok(value.clone()))
@@ -203,7 +203,8 @@ impl LensBuilder {
         })
     }
 
-    /// Can be used to define one or more output columns that are derived from the [`Self::input_column`].
+    /// Can be used to define one or more output columns that are derived from the
+    /// component specified via [`Self::for_input_column`].
     pub fn add_output_column(
         mut self,
         entity_path: impl Into<EntityPath>,
@@ -220,7 +221,10 @@ impl LensBuilder {
         self
     }
 
-    /// Can be used to define one or more output columns that are derived from the [`Self::input_column`].
+    /// Can be used to define one or more static output columns that are derived from the
+    /// component specified via [`Self::for_input_column`].
+    ///
+    /// In most cases, static columns should have a single row only.
     pub fn add_static_output_column(
         mut self,
         entity_path: impl Into<EntityPath>,
