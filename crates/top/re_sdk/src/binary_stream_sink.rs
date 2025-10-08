@@ -3,7 +3,7 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 
 use re_log::ResultExt as _;
-use re_log_encoding::encoder::encode_as_bytes_local;
+use re_log_encoding::Encoder;
 use re_log_types::LogMsg;
 
 use crate::sink::LogSink;
@@ -42,7 +42,7 @@ impl BinaryStreamStorage {
             return None;
         }
 
-        encode_as_bytes_local(inner.drain(..).map(Ok)).ok_or_log_error()
+        Encoder::encode(inner.drain(..).map(Ok)).ok_or_log_error()
     }
 
     /// Flush the batcher and log encoder to guarantee that all logged messages

@@ -68,7 +68,7 @@ pub fn encode_to_file(
         .with_context(|| format!("Failed to create file at {path:?}"))?;
 
     let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
-    re_log_encoding::encoder::encode(version, encoding_options, messages, &mut file)
+    re_log_encoding::Encoder::encode_into(version, encoding_options, messages, &mut file)
         .map(|_| ())
         .context("Message encode")
 }

@@ -29,6 +29,7 @@ impl ViewContextSystem for EntityDepthOffsets {
         &mut self,
         ctx: &re_viewer_context::ViewContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
+        _static_execution_result: &re_viewer_context::ViewContextSystemStaticExecResult,
     ) {
         let mut entities_per_draw_order = BTreeMap::new();
         for (visualizer, draw_order_descriptor) in visualizers_processing_draw_order() {

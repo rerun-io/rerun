@@ -23,7 +23,7 @@ impl MessageKind {
 }
 
 #[allow(dead_code)] // used behind feature flag
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct MessageHeader {
     pub(crate) kind: MessageKind,
     pub(crate) len: u64,

@@ -98,7 +98,7 @@ impl DataframePartitionStream {
                 chunks_and_partition_ids.map_err(|err| exec_datafusion_err!("{err}"))?;
 
             let _span = tracing::trace_span!(
-                "get_chunks::batch_insert",
+                "fetch_chunks::batch_insert",
                 num_chunks = chunks_and_partition_ids.len()
             )
             .entered();

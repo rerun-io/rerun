@@ -25,7 +25,8 @@ use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_protos::{
     cloud::v1alpha1::{
-        GetDatasetSchemaRequest, QueryDatasetRequest, ScanPartitionTableResponse,
+        GetDatasetSchemaRequest, QueryDatasetRequest, QueryDatasetResponse,
+        ScanPartitionTableResponse,
         ext::{Query, QueryLatestAt, QueryRange},
     },
     common::v1alpha1::ext::ScanParameters,
@@ -109,10 +110,10 @@ impl DataframeQueryTableProvider {
         let query = query_from_query_expression(query_expression);
 
         let fields_of_interest = [
-            "chunk_partition_id",
-            "chunk_id",
-            "rerun_partition_layer",
-            "chunk_key",
+            QueryDatasetResponse::PARTITION_ID,
+            QueryDatasetResponse::CHUNK_ID,
+            QueryDatasetResponse::PARTITION_LAYER,
+            QueryDatasetResponse::CHUNK_KEY,
         ]
         .into_iter()
         .map(String::from)
@@ -349,7 +350,7 @@ fn compute_schema_for_query(
     // Create the actual filter to apply to the column descriptors
     let filter = ChunkStore::create_component_filter_from_query(query_expression);
 
-    // When we call GetChunks we will not return row_id, so we only select indices and
+    // When we call QueryDataset we will not return row_id, so we only select indices and
     // components from the column descriptors.
     let filtered_fields = column_descriptors
         .filter_components(filter)

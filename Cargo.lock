@@ -10170,6 +10170,7 @@ dependencies = [
  "ndarray",
  "nohash-hasher",
  "parking_lot",
+ "rayon",
  "re_arrow_ui",
  "re_arrow_util",
  "re_byte_size",

@@ -473,7 +473,7 @@ mod tests {
 
         for options in options {
             let mut data = vec![];
-            crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut data)
+            crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut data)
                 .unwrap();
 
             // We cut the input file by one byte to simulate a corrupted file and check that we don't end up in an infinite loop
@@ -517,7 +517,7 @@ mod tests {
 
         for options in options {
             let mut data = vec![];
-            crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut data)
+            crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut data)
                 .unwrap();
 
             let buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data));
@@ -557,7 +557,7 @@ mod tests {
 
         for options in options {
             let mut data = vec![];
-            crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut data)
+            crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut data)
                 .unwrap();
 
             let buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data.clone()));

@@ -148,7 +148,7 @@ pub fn annotations(
 ) -> std::sync::Arc<re_viewer_context::Annotations> {
     re_tracing::profile_function!();
     let mut annotation_map = re_viewer_context::AnnotationMap::default();
-    annotation_map.load(ctx, query, std::iter::once(entity_path));
+    annotation_map.load(ctx, query);
     annotation_map.find(entity_path)
 }
 

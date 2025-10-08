@@ -1,20 +1,18 @@
 use arrow::datatypes::Schema as ArrowSchema;
-use tokio_stream::StreamExt as _;
+use tokio_stream::{Stream, StreamExt as _};
 use tonic::codegen::{Body, StdError};
 
-use crate::{StreamEntryError, StreamError};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
-
 use re_protos::{
     TypeConversionError,
     cloud::v1alpha1::{
-        CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind, FindEntriesRequest,
-        GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-        GetPartitionTableSchemaRequest, GetPartitionTableSchemaResponse, ReadDatasetEntryRequest,
-        ReadTableEntryRequest, RegisterWithDatasetResponse, ScanPartitionTableRequest,
-        ScanPartitionTableResponse,
+        CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind, FetchChunksRequest,
+        FindEntriesRequest, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
+        GetPartitionTableSchemaRequest, GetPartitionTableSchemaResponse, QueryDatasetRequest,
+        QueryDatasetResponse, ReadDatasetEntryRequest, ReadTableEntryRequest,
+        RegisterWithDatasetResponse, ScanPartitionTableRequest, ScanPartitionTableResponse,
         ext::{
             CreateDatasetEntryResponse, DataSource, DataSourceKind, DatasetDetails, DatasetEntry,
             EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails as _,
@@ -26,13 +24,22 @@ use re_protos::{
         rerun_cloud_service_client::RerunCloudServiceClient,
     },
     common::v1alpha1::{
-        TaskId,
+        ScanParameters, TaskId,
         ext::{IfDuplicateBehavior, PartitionId},
     },
     external::prost::bytes::Bytes,
     headers::RerunHeadersInjectorExt as _,
     missing_field,
 };
+
+use crate::{StreamEntryError, StreamError};
+
+pub type FetchChunksResponseStream = std::pin::Pin<
+    Box<
+        dyn Stream<Item = Result<re_protos::cloud::v1alpha1::FetchChunksResponse, tonic::Status>>
+            + Send,
+    >,
+>;
 
 /// Expose an ergonomic API over the gRPC redap client.
 ///
@@ -290,6 +297,85 @@ where
             .try_into()?)
     }
 
+    /// Fetches all chunks for a specified partition. You can include/exclude static/temporal chunks.
+    /// TODO(zehiko) We should also expose query and fetch separately
+    pub async fn fetch_partition_chunks(
+        &mut self,
+        dataset_id: EntryId,
+        partition_id: PartitionId,
+        exclude_static_data: bool,
+        exclude_temporal_data: bool,
+        query: Option<re_protos::cloud::v1alpha1::Query>,
+    ) -> Result<FetchChunksResponseStream, StreamError> {
+        let fields_of_interest = [
+            QueryDatasetResponse::PARTITION_ID,
+            QueryDatasetResponse::CHUNK_ID,
+            QueryDatasetResponse::PARTITION_LAYER,
+            QueryDatasetResponse::CHUNK_KEY,
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect::<Vec<_>>();
+
+        let query_request = QueryDatasetRequest {
+            partition_ids: vec![partition_id.into()],
+            chunk_ids: vec![],
+            entity_paths: vec![],
+            select_all_entity_paths: true,
+            fuzzy_descriptors: vec![],
+            exclude_static_data,
+            exclude_temporal_data,
+            query,
+            scan_parameters: Some(ScanParameters {
+                columns: fields_of_interest,
+                ..Default::default()
+            }),
+        };
+
+        let response_stream = self
+            .inner()
+            .query_dataset(
+                tonic::Request::new(query_request)
+                    .with_entry_id(dataset_id)
+                    .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?,
+            )
+            .await
+            .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?
+            .into_inner();
+
+        let chunk_info_batches = response_stream
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?
+            .into_iter()
+            .map(|resp| {
+                resp.data.ok_or(crate::StreamError::MissingData(
+                    "missing data in QueryDatasetResponse".to_owned(),
+                ))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        if chunk_info_batches.is_empty() {
+            let empty_stream = tokio_stream::empty();
+            return Ok(Box::pin(empty_stream));
+        }
+
+        let fetch_chunks_request = FetchChunksRequest {
+            chunk_infos: chunk_info_batches,
+        };
+
+        let fetch_chunks_response_stream = self
+            .inner()
+            .fetch_chunks(fetch_chunks_request)
+            .await
+            .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?
+            .into_inner();
+
+        Ok(Box::pin(fetch_chunks_response_stream))
+    }
+
     /// Initiate registration of the provided recording URIs with a dataset and return the
     /// corresponding task descriptors.
     ///
@@ -407,23 +493,6 @@ where
             .try_into()?;
 
         Ok(response.table_entry)
-    }
-
-    pub async fn get_chunks(
-        &mut self,
-        dataset_id: EntryId,
-        req: re_protos::cloud::v1alpha1::GetChunksRequest,
-    ) -> Result<tonic::Streaming<re_protos::cloud::v1alpha1::GetChunksResponse>, StreamError> {
-        Ok(self
-            .inner()
-            .get_chunks(
-                tonic::Request::new(req)
-                    .with_entry_id(dataset_id)
-                    .map_err(|err| StreamEntryError::InvalidId(err.into()))?,
-            )
-            .await
-            .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?
-            .into_inner())
     }
 
     #[allow(clippy::fn_params_excessive_bools)]
