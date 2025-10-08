@@ -23,7 +23,7 @@ use crate::common::v1alpha1::{
     ComponentDescriptor, DataframePart, TaskId,
     ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
 };
-use crate::{TypeConversionError, missing_field};
+use crate::{TypeConversionError, invalid_field, missing_field};
 
 // --- RegisterWithDatasetRequest ---
 
@@ -1602,6 +1602,57 @@ impl From<ComponentColumnDescriptor> for crate::cloud::v1alpha1::IndexColumn {
                 component_type: value.component_type.map(|c| c.full_name().to_owned()),
             }),
         }
+    }
+}
+
+// --- Tasks ---
+
+pub struct QueryTasksOnCompletionRequest {
+    pub task_ids: Vec<TaskId>,
+    pub timeout: std::time::Duration,
+}
+
+pub struct QueryTasksRequest {
+    pub task_ids: Vec<TaskId>,
+}
+
+impl TryFrom<QueryTasksOnCompletionRequest>
+    for crate::cloud::v1alpha1::QueryTasksOnCompletionRequest
+{
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: QueryTasksOnCompletionRequest,
+    ) -> Result<crate::cloud::v1alpha1::QueryTasksOnCompletionRequest, Self::Error> {
+        if value.task_ids.is_empty() {
+            return Err(missing_field!(
+                crate::cloud::v1alpha1::QueryTasksOnCompletionRequest,
+                "task_ids"
+            ));
+        }
+        let timeout: prost_types::Duration = value.timeout.try_into().map_err(|err| {
+            invalid_field!(
+                crate::cloud::v1alpha1::QueryTasksOnCompletionRequest,
+                "timeout",
+                err
+            )
+        })?;
+        Ok(Self {
+            ids: value.task_ids,
+            timeout: Some(timeout),
+        })
+    }
+}
+
+impl TryFrom<QueryTasksRequest> for crate::cloud::v1alpha1::QueryTasksRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: QueryTasksRequest,
+    ) -> Result<crate::cloud::v1alpha1::QueryTasksRequest, Self::Error> {
+        Ok(Self {
+            ids: value.task_ids,
+        })
     }
 }
 

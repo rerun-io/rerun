@@ -10548,7 +10548,6 @@ dependencies = [
  "mimalloc",
  "numpy",
  "parking_lot",
- "prost-types",
  "pyo3",
  "pyo3-build-config",
  "rand 0.8.5",
