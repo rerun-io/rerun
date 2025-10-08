@@ -3446,7 +3446,7 @@ async fn async_save_dialog(
     file_handle.write(&bytes).await.context("Failed to save")
 }
 
-/// Propegates [`TimeControlResponse`] to [`ViewerEventDispatcher`].
+/// Propagates [`TimeControlResponse`] to [`ViewerEventDispatcher`].
 fn handle_time_ctrl_event(
     recording: &EntityDb,
     events: Option<&ViewerEventDispatcher>,

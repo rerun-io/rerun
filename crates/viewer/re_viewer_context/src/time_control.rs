@@ -560,7 +560,7 @@ impl TimeControl {
 
                 true
             }
-            TimeControlCommand::ClearHighlighedRange => {
+            TimeControlCommand::ClearHighlightedRange => {
                 self.highlighted_range = None;
 
                 true

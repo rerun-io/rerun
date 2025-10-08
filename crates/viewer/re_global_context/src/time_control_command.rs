@@ -53,7 +53,7 @@ impl From<AbsoluteTimeRange> for TimeView {
 #[derive(Debug)]
 pub enum TimeControlCommand {
     HighlightRange(AbsoluteTimeRange),
-    ClearHighlighedRange,
+    ClearHighlightedRange,
 
     /// Reset the active timeline to instead be automatically assigned.
     ResetActiveTimeline,
@@ -81,7 +81,7 @@ pub enum TimeControlCommand {
     /// Set the current loop selection without enabling looping.
     SetLoopSelection(AbsoluteTimeRange),
 
-    /// Rmeove the current loop selection.
+    /// Remove the current loop selection.
     ///
     /// If the current loop mode is selection, turns off looping.
     RemoveLoopSelection,
@@ -95,7 +95,7 @@ pub enum TimeControlCommand {
     /// Reset the range of time we are currently zoomed in on.
     ///
     /// The view will instead fall back to the default which is
-    /// showing all recieved data.
+    /// showing all received data.
     ResetTimeView,
 
     /// Mark up a time range as valid.
