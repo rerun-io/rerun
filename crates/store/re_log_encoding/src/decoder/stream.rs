@@ -806,21 +806,6 @@ mod tests_legacy {
 
     use super::*;
 
-    // TODO: remove in favor of the new thing though
-    fn decoder_into_iter(mut decoder: StreamDecoder<LogMsg>) -> impl Iterator<Item = LogMsg> {
-        std::iter::from_fn(move || {
-            let msg = decoder.try_read().unwrap();
-
-            if msg.is_none() && decoder.state == State::StreamHeader {
-                // We're _really_ done, we're not just filtering out some message lacking an app ID.
-                return None;
-            }
-
-            Some(msg)
-        })
-        .flatten()
-    }
-
     pub fn fake_log_messages() -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
 
@@ -917,7 +902,6 @@ mod tests_legacy {
             .collect()
     }
 
-    // TODO: put these tests somewhere else (that's kinda the most basic/important test ye?)
     impl<W: std::io::Write> Encoder<W> {
         /// Like [`Self::encode_into`], but intentionally omits the end-of-stream marker, for
         /// testing purposes.
@@ -969,10 +953,9 @@ mod tests_legacy {
             crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut file)
                 .unwrap();
 
-            let mut decoder = StreamDecoderApp::new();
-            decoder.push_byte_chunk(file);
-
-            let decoded_messages: Vec<_> = decoder_into_iter(decoder).collect();
+            let decoded_messages: Vec<_> = StreamDecoderApp::decode_lazy(file.as_slice())
+                .map(Result::unwrap)
+                .collect();
             similar_asserts::assert_eq!(decoded_messages, messages);
         }
 
@@ -1037,10 +1020,9 @@ mod tests_legacy {
             }
             drop(encoder);
 
-            let mut decoder = StreamDecoderApp::new();
-            decoder.push_byte_chunk(file);
-
-            let decoded_messages: Vec<_> = decoder_into_iter(decoder).collect();
+            let decoded_messages: Vec<_> = StreamDecoderApp::decode_lazy(file.as_slice())
+                .map(Result::unwrap)
+                .collect();
             assert_eq!(decoded_messages.len(), messages.len());
         }
     }
@@ -1095,10 +1077,9 @@ mod tests_legacy {
             }
             drop(encoder);
 
-            let mut decoder = StreamDecoderApp::new();
-            decoder.push_byte_chunk(file);
-
-            let decoded_messages: Vec<_> = decoder_into_iter(decoder).collect();
+            let decoded_messages: Vec<_> = StreamDecoderApp::decode_lazy(file.as_slice())
+                .map(Result::unwrap)
+                .collect();
             assert_eq!(decoded_messages.len(), orig_message_count);
         }
     }
@@ -1145,10 +1126,9 @@ mod tests_legacy {
             )
             .unwrap();
 
-            let mut decoder = StreamDecoderApp::new();
-            decoder.push_byte_chunk(file);
-
-            let decoded_messages: Vec<_> = decoder_into_iter(decoder).collect();
+            let decoded_messages: Vec<_> = StreamDecoderApp::decode_lazy(file.as_slice())
+                .map(Result::unwrap)
+                .collect();
             similar_asserts::assert_eq!(decoded_messages, out_of_order_messages);
         }
     }
@@ -1196,10 +1176,9 @@ mod tests_legacy {
                 encoder2.finish().unwrap();
             }
 
-            let mut decoder = StreamDecoderApp::new();
-            decoder.push_byte_chunk(data);
-
-            let decoded_messages: Vec<_> = decoder_into_iter(decoder).collect();
+            let decoded_messages: Vec<_> = StreamDecoderApp::decode_lazy(data.as_slice())
+                .map(Result::unwrap)
+                .collect();
             similar_asserts::assert_eq!(decoded_messages, [messages.clone(), messages].concat());
         }
     }
