@@ -245,7 +245,19 @@ fn append_value(
             let value = enum_descriptor
                 .get_value(*x)
                 .ok_or_else(|| ProtobufError::UnknownEnumNumber(*x))?;
-            downcast_err::<StringBuilder>(builder, val)?.append_value(value.name());
+
+            let struct_builder = downcast_err::<StructBuilder>(builder, val)?;
+            let field_builders = struct_builder.field_builders_mut();
+
+            // First field is "name" (String)
+            downcast_err::<StringBuilder>(field_builders[0].as_mut(), val)?
+                .append_value(value.name());
+
+            // Second field is "value" (Int32)
+            downcast_err::<Int32Builder>(field_builders[1].as_mut(), val)?
+                .append_value(*x);
+
+            struct_builder.append(true);
         }
     }
 
@@ -287,11 +299,18 @@ fn arrow_builder_from_field(descr: &FieldDescriptor) -> Box<dyn ArrayBuilder> {
             Box::new(struct_builder_from_message(&message_descriptor)) as Box<dyn ArrayBuilder>
         }
         Kind::Enum(_) => {
-            // TODO(grtlr): It would be great to improve our `enum` support. Using `Utf8`
-            // means a lot of excess memory / storage usage. Ideally we would use something
-            // like `StringDictionary`, but it's not clear right now how this works with
-            // `dyn ArrayBuilder` and sharing entries across lists.
-            Box::new(StringBuilder::new())
+            // Create a struct with "name" (String) and "value" (Int32) fields.
+            // We can't use `DictionaryArray` because `concat` does not re-key, and there
+            // could be protobuf schema evolution with different enum values across chunks.
+            let fields = Fields::from(vec![
+                Field::new("name", DataType::Utf8, false),
+                Field::new("value", DataType::Int32, false),
+            ]);
+            let field_builders: Vec<Box<dyn ArrayBuilder>> = vec![
+                Box::new(StringBuilder::new()),
+                Box::new(Int32Builder::new()),
+            ];
+            Box::new(StructBuilder::new(fields, field_builders))
         }
     };
 
@@ -303,7 +322,21 @@ fn arrow_builder_from_field(descr: &FieldDescriptor) -> Box<dyn ArrayBuilder> {
 }
 
 fn arrow_field_from(descr: &FieldDescriptor) -> Field {
-    Field::new(descr.name(), datatype_from(descr), true)
+    let mut field = Field::new(descr.name(), datatype_from(descr), true);
+
+    // Add extension metadata for enum types
+    if matches!(descr.kind(), Kind::Enum(_)) {
+        field = field.with_metadata(
+            [(
+                "ARROW:extension:name".to_owned(),
+                "rerun.datatypes.ProtobufEnum".to_owned(),
+            )]
+            .into_iter()
+            .collect(),
+        );
+    }
+
+    field
 }
 
 fn datatype_from(descr: &FieldDescriptor) -> DataType {
@@ -325,8 +358,13 @@ fn datatype_from(descr: &FieldDescriptor) -> DataType {
             DataType::Struct(fields)
         }
         Kind::Enum(_) => {
-            // TODO(grtlr): Explanation see above.
-            DataType::Utf8
+            // Struct with "name" (String) and "value" (Int32) fields.
+            // See comment in arrow_builder_from_field for why we use a struct.
+            let fields = Fields::from(vec![
+                Field::new("name", DataType::Utf8, false),
+                Field::new("value", DataType::Int32, false),
+            ]);
+            DataType::Struct(fields)
         }
     };
 
