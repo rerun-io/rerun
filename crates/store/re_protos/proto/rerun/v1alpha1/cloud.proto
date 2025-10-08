@@ -46,7 +46,9 @@ service RerunCloudService {
 
   /* Write data */
 
-  // Register new partitions with the Dataset
+  // Register new partitions with the Dataset.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (RegisterWithDatasetResponse) {}
 
   // Write chunks to one or more partitions.
@@ -71,22 +73,45 @@ service RerunCloudService {
   // Inspect the contents of the partition table.
   //
   // The data will follow the schema returned by `GetPartitionTableSchema`.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc ScanPartitionTable(ScanPartitionTableRequest) returns (stream ScanPartitionTableResponse) {}
+
+  // Returns the schema of the dataset manifest.
+  //
+  // To inspect the data of the dataset manifest, which is guaranteed to match the schema returned by
+  // this endpoint, check out `ScanDatasetManifest`.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc GetDatasetManifestSchema(GetDatasetManifestSchemaRequest) returns (GetDatasetManifestSchemaResponse) {}
+
+  // Inspect the contents of the dataset manifest.
+  //
+  // The data will follow the schema returned by `GetDatasetManifestSchema`.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc ScanDatasetManifest(ScanDatasetManifestRequest) returns (stream ScanDatasetManifestResponse) {}
 
   // Returns the schema of the dataset.
   //
   // This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
   // entities and components present in the dataset.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc GetDatasetSchema(GetDatasetSchemaRequest) returns (GetDatasetSchemaResponse) {}
 
   /* Indexing */
 
   // Creates a custom index for a specific column (vector search, full-text search, etc).
+  //
+  // This endpoint requires the standard dataset headers.
   rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
 
   /* Queries */
 
   // Search a previously created index.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc SearchDataset(SearchDatasetRequest) returns (stream SearchDatasetResponse) {}
 
   // Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
@@ -100,20 +125,12 @@ service RerunCloudService {
   // * Latest-at, range and dataframe queries.
   // * Arbitrary Lance filters.
   //
-  // To fetch the actual chunks themselves, see `GetChunks`.
+  // To fetch the actual chunks themselves, see `FetchChunks`.
   //
   // Passing chunk IDs to this method effectively acts as a IF_EXIST filter.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc QueryDataset(QueryDatasetRequest) returns (stream QueryDatasetResponse) {}
-
-  // Perform Rerun-native queries on a dataset, returning the underlying chunks.
-  //
-  // These Rerun-native queries include:
-  // * Filtering by specific partition and chunk IDs.
-  // * Latest-at, range and dataframe queries.
-  // * Arbitrary Lance filters.
-  //
-  // To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
-  rpc GetChunks(GetChunksRequest) returns (stream GetChunksResponse) {}
 
   // Fetch specific chunks from Rerun Cloud. In a 2-step query process, result of 1st phase,
   // that is, the result of `QueryDataset` should include all the necessary information to send
@@ -146,6 +163,8 @@ service RerunCloudService {
   // --- Utilities ---
 
   // Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {}
 
   // Run global maintenance operations on the platform: this includes optimization
@@ -251,7 +270,25 @@ message ScanPartitionTableRequest {
 }
 
 message ScanPartitionTableResponse {
-  // Partitions metadata as arrow RecordBatch
+  // Partitions metadata as Arrow RecordBatch.
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message GetDatasetManifestSchemaRequest {}
+
+message GetDatasetManifestSchemaResponse {
+  rerun.common.v1alpha1.Schema schema = 1;
+}
+
+message ScanDatasetManifestRequest {
+  // A list of column names to be projected server-side.
+  //
+  // All of them if left empty.
+  repeated string columns = 3;
+}
+
+message ScanDatasetManifestResponse {
+  // The contents of the dataset manifest (i.e. information about layers) as Arrow RecordBatch.
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
@@ -514,62 +551,6 @@ message QueryRange {
   reserved "fuzzy_descriptors";
 }
 
-message GetChunksRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-
-  // Client can specify from which partitions to get chunks. If left unspecified (empty list),
-  // data from all partition (that match other query parameters) will be included.
-  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
-
-  // Client can specify chunk ids to include. If left unspecified (empty list),
-  // all chunks (that match other query parameters) will be included.
-  repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
-
-  // Which entity paths are we interested in? Leave empty, and set `select_all_entity_paths`,
-  // in order to query all of them.
-  repeated rerun.common.v1alpha1.EntityPath entity_paths = 4;
-
-  // If set, the query will cover all existing entity paths.
-  //
-  // `entity_paths` must be empty, otherwise an error will be raised.
-  //
-  // Truth table:
-  // ```text
-  // select_all_entity_paths | entity_paths   | result
-  // ------------------------+----------------+--------
-  // false                   | []             | valid query, empty results (no entity paths selected)
-  // false                   | ['foo', 'bar'] | valid query, 'foo' & 'bar' selected
-  // true                    | []             | valid query, all entity paths selected
-  // true                    | ['foo', 'bar'] | invalid query, error
-  // ```
-  bool select_all_entity_paths = 6;
-
-  // Which components are we interested in?
-  //
-  // If left unspecified, all existing components are considered of interest.
-  //
-  // This will perform a basic fuzzy match on the available columns' descriptors.
-  // The fuzzy logic is a simple case-sensitive `contains()` query.
-  // For example, given a `log_tick__SeriesLines:width` index, all of the following
-  // would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
-  repeated string fuzzy_descriptors = 9;
-
-  // If set, static data will be excluded from the results.
-  bool exclude_static_data = 7;
-
-  // If set, temporal data will be excluded from the results.
-  bool exclude_temporal_data = 8;
-
-  // Query details
-  Query query = 5;
-}
-
-message GetChunksResponse {
-  // Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
-  // cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
-  repeated rerun.log_msg.v1alpha1.ArrowMsg chunks = 1;
-}
-
 message FetchChunksRequest {
   // Information about the chunks to fetch. These dataframes have to include the following columns:
   // * `chunk_id` - Chunk unique identifier
@@ -609,8 +590,6 @@ message ScanTableResponse {
 // --- Maintenance ---
 
 message DoMaintenanceRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-
   // Optimize all builtin and user-defined indexes on this dataset.
   //
   // This merges all individual index deltas back in the main index, improving runtime performance
@@ -645,6 +624,9 @@ message DoMaintenanceRequest {
   //
   // ⚠️ Do not ever use this unless you know exactly what you're doing. Improper use will lead to data loss.
   bool unsafe_allow_recent_cleanup = 5;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message DoMaintenanceResponse {
@@ -760,7 +742,7 @@ message CreateDatasetEntryRequest {
   // Name of the dataset entry to create.
   //
   // The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
-  // with the same name already exists, the request will fail.
+  // with the same name already exists, the request will fail. Entry names ending with `__manifest` are reserved.
   optional string name = 1;
 
   // If specified, create the entry using this specific ID. Use at your own risk.
@@ -805,7 +787,7 @@ message RegisterTableRequest {
   // Name of the table entry to create.
   //
   // The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
-  // with the same name already exists, the request will fail.
+  // with the same name already exists, the request will fail. Entry names ending with `__manifest` are reserved.
   string name = 1;
 
   // Information about the table to register.

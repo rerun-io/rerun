@@ -211,7 +211,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
 }
 
 /// `StreamingDecoder` relies on the underlying reader for the wakeup mechanism.
-/// The fact that we can have concatanated file or corrupted file ( / input stream) pushes us to keep
+/// The fact that we can have concatenated file or corrupted file ( / input stream) pushes us to keep
 /// the state of the decoder in the struct itself (through `unprocessed_bytes` and `expect_more_data`).
 impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
     type Item = Result<StreamingLogMsg, DecodeError>;
@@ -473,7 +473,7 @@ mod tests {
 
         for options in options {
             let mut data = vec![];
-            crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut data)
+            crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut data)
                 .unwrap();
 
             // We cut the input file by one byte to simulate a corrupted file and check that we don't end up in an infinite loop
@@ -517,7 +517,7 @@ mod tests {
 
         for options in options {
             let mut data = vec![];
-            crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut data)
+            crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut data)
                 .unwrap();
 
             let buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data));
@@ -557,7 +557,7 @@ mod tests {
 
         for options in options {
             let mut data = vec![];
-            crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut data)
+            crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut data)
                 .unwrap();
 
             let buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data.clone()));

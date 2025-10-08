@@ -20,7 +20,7 @@ pub use self::{
         CommandReceiver, CommandSender, SystemCommand, SystemCommandSender, command_channel,
     },
     contents::{Contents, ContentsName, blueprint_id_to_tile_id},
-    file_dialog::santitize_file_name,
+    file_dialog::sanitize_file_name,
     item::{Item, resolve_mono_instance_path, resolve_mono_instance_path_item},
     item_collection::{ItemCollection, ItemContext},
     recording_or_table::RecordingOrTable,

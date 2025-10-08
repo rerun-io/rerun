@@ -4,8 +4,8 @@ use pyo3::{Bound, PyAny, PyResult, pyclass, pymethods};
 
 use re_format_arrow::{RecordBatchFormatOpts, format_record_batch_opts};
 
-#[pyclass(name = "RerunHtmlTable")]
-#[derive(Clone)]
+#[pyclass(eq, name = "RerunHtmlTable")]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PyRerunHtmlTable {
     max_width: Option<usize>,
     max_height: Option<usize>,

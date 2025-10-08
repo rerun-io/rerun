@@ -129,7 +129,7 @@ pub fn test_draw_order() {
             )
         });
 
-        // 2D arrow sandwitched across
+        // 2D arrow sandwiched across
         test_context.log_entity("2d_layering/arrow2d_between", |builder| {
             builder.with_archetype(
                 RowId::new(),

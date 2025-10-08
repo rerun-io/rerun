@@ -13,7 +13,7 @@ use super::{
 };
 use crate::catalog::to_py_err;
 
-#[pyclass(module = "rerun_bindings.rerun_bindings")]
+#[pyclass(module = "rerun_bindings.rerun_bindings")] // NOLINT: skip pyclass_eq, non-trivial implementation
 pub struct SchemaIterator {
     iter: std::vec::IntoIter<PyObject>,
 }
@@ -29,8 +29,8 @@ impl SchemaIterator {
     }
 }
 
-#[pyclass(frozen, name = "Schema", module = "rerun_bindings.rerun_bindings")]
-#[derive(Clone)]
+#[pyclass(frozen, eq, name = "Schema", module = "rerun_bindings.rerun_bindings")]
+#[derive(Clone, PartialEq, Eq)]
 //TODO(#9457): improve this object and use it for `Dataset.schema()`.
 pub struct PySchema {
     pub schema: SorbetColumnDescriptors,

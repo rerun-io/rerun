@@ -291,6 +291,11 @@ impl StoreHub {
         self.store_bundle.entry(store_id)
     }
 
+    /// Read-only access to a [`EntityDb`] by id
+    pub fn entity_db(&self, store_id: &StoreId) -> Option<&EntityDb> {
+        self.store_bundle.get(store_id)
+    }
+
     // ---------------------
     // Add and remove stores
 
@@ -755,7 +760,7 @@ impl StoreHub {
             .total_size_bytes;
 
         if let Some(caches) = self.caches_per_recording.get_mut(&store_id) {
-            caches.on_store_events(&store_events);
+            caches.on_store_events(&store_events, entity_db);
         }
 
         // No point keeping an empty recording around.
@@ -842,7 +847,7 @@ impl StoreHub {
                 if !store_events.is_empty() {
                     re_log::debug!("Garbage-collected blueprint store");
                     if let Some(caches) = self.caches_per_recording.get_mut(blueprint_id) {
-                        caches.on_store_events(&store_events);
+                        caches.on_store_events(&store_events, blueprint);
                     }
                 }
 
@@ -904,38 +909,49 @@ impl StoreHub {
     fn try_to_load_persisted_blueprint(&mut self, app_id: &ApplicationId) -> anyhow::Result<()> {
         re_tracing::profile_function!();
 
-        let Some(loader) = &self.persistence.loader else {
-            return Ok(());
-        };
+        if let Some(loader) = &self.persistence.loader
+            && let Some(bundle) = (loader)(app_id)?
+        {
+            self.load_blueprint_store(bundle, app_id)?;
+        }
 
-        if let Some(mut bundle) = (loader)(app_id)? {
-            for store in bundle.drain_entity_dbs() {
-                match store.store_kind() {
-                    StoreKind::Recording => {
-                        anyhow::bail!(
-                            "Found a recording in a blueprint file: {:?}",
-                            store.store_id()
-                        );
-                    }
-                    StoreKind::Blueprint => {}
+        Ok(())
+    }
+
+    /// Load a blueprint and make it active for the given `ApplicationId`.
+    pub fn load_blueprint_store(
+        &mut self,
+        mut blueprint_bundle: StoreBundle,
+        app_id: &ApplicationId,
+    ) -> anyhow::Result<()> {
+        re_tracing::profile_function!();
+
+        for store in blueprint_bundle.drain_entity_dbs() {
+            match store.store_kind() {
+                StoreKind::Recording => {
+                    anyhow::bail!(
+                        "Found a recording in a blueprint file: {:?}",
+                        store.store_id()
+                    );
                 }
-
-                if store.application_id() != app_id {
-                    anyhow::bail!("Found app_id {}; expected {app_id}", store.application_id());
-                }
-
-                // We found the blueprint we were looking for; make it active.
-                // borrow-checker won't let us just call `self.set_blueprint_for_app_id`
-                re_log::debug!(
-                    "Activating new blueprint {:?} for {app_id}; loaded from disk",
-                    store.store_id(),
-                );
-                self.active_blueprint_by_app_id
-                    .insert(app_id.clone(), store.store_id().clone());
-                self.blueprint_last_save
-                    .insert(store.store_id().clone(), store.generation());
-                self.store_bundle.insert(store);
+                StoreKind::Blueprint => {}
             }
+
+            if store.application_id() != app_id {
+                anyhow::bail!("Found app_id {}; expected {app_id}", store.application_id());
+            }
+
+            // We found the blueprint we were looking for; make it active.
+            // borrow-checker won't let us just call `self.set_blueprint_for_app_id`
+            re_log::debug!(
+                "Activating new blueprint {:?} for {app_id}.",
+                store.store_id(),
+            );
+            self.active_blueprint_by_app_id
+                .insert(app_id.clone(), store.store_id().clone());
+            self.blueprint_last_save
+                .insert(store.store_id().clone(), store.generation());
+            self.store_bundle.insert(store);
         }
 
         Ok(())

@@ -24,7 +24,7 @@ enum EnumTest: ubyte {
     Back,
 }
 
-/// A test of an enumate with specified values.
+/// A test of an enumerate with specified values.
 enum ValuedEnum: ubyte {
     /// Invalid value. Won't show up in generated types.
     Invalid = 0,

@@ -124,12 +124,12 @@ impl VisualizerEntitySubscriber {
             .map(|mapping| &mapping.maybe_visualizable_entities)
     }
 
-    /// List of entities that at some point in time had any of the indicator components advertised by this visualizer.
+    /// List of entities that at some point in time had a component of an archetypes matching the visualizer's query.
     ///
     /// Useful for quickly evaluating basic "should this visualizer apply by default"-heuristic.
     /// Does *not* imply that any of the given entities is also in the (maybe-)visualizable-set!
     ///
-    /// If the visualizer has no indicator components, this list will contain all entities in the store.
+    /// If the visualizer has no archetypes, this list will contain all entities in the store.
     pub fn indicated_entities(&self, store: &StoreId) -> Option<&IndicatedEntities> {
         self.per_store_mapping
             .get(store)

@@ -72,15 +72,16 @@ re_dataframe = { path = "crates/store/re_dataframe", version = "=0.26.0-alpha.1"
 re_datafusion = { path = "crates/store/re_datafusion", version = "=0.26.0-alpha.1", default-features = false }
 re_entity_db = { path = "crates/store/re_entity_db", version = "=0.26.0-alpha.1", default-features = false }
 re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.26.0-alpha.1", default-features = false }
-re_redap_client = { path = "crates/store/re_redap_client", version = "=0.26.0-alpha.1", default-features = false }
 re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.26.0-alpha.1", default-features = false }
 re_grpc_server = { path = "crates/store/re_grpc_server", version = "=0.26.0-alpha.1", default-features = false }
-re_protos = { path = "crates/store/re_protos", version = "=0.26.0-alpha.1", default-features = false }
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.26.0-alpha.1", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.26.0-alpha.1", default-features = false }
+re_protos = { path = "crates/store/re_protos", version = "=0.26.0-alpha.1", default-features = false }
 re_query = { path = "crates/store/re_query", version = "=0.26.0-alpha.1", default-features = false }
+re_redap_client = { path = "crates/store/re_redap_client", version = "=0.26.0-alpha.1", default-features = false }
 re_server = { path = "crates/store/re_server", version = "=0.26.0-alpha.1", default-features = false }
 re_sorbet = { path = "crates/store/re_sorbet", version = "=0.26.0-alpha.1", default-features = false }
+re_tf = { path = "crates/store/re_tf", version = "=0.26.0-alpha.1", default-features = false }
 re_types = { path = "crates/store/re_types", version = "=0.26.0-alpha.1", default-features = false }
 re_types_core = { path = "crates/store/re_types_core", version = "=0.26.0-alpha.1", default-features = false }
 
@@ -105,6 +106,7 @@ re_log = { path = "crates/utils/re_log", version = "=0.26.0-alpha.1", default-fe
 re_mcap = { path = "crates/utils/re_mcap", version = "=0.26.0-alpha.1", default-features = false }
 re_memory = { path = "crates/utils/re_memory", version = "=0.26.0-alpha.1", default-features = false }
 re_perf_telemetry = { path = "crates/utils/re_perf_telemetry", version = "=0.26.0-alpha.1", default-features = false }
+re_ros_msg = { path = "crates/utils/re_ros_msg", version = "=0.26.0-alpha.1", default-features = false }
 re_smart_channel = { path = "crates/utils/re_smart_channel", version = "=0.26.0-alpha.1", default-features = false }
 re_span = { path = "crates/utils/re_span", version = "=0.26.0-alpha.1", default-features = false }
 re_string_interner = { path = "crates/utils/re_string_interner", version = "=0.26.0-alpha.1", default-features = false }
@@ -164,12 +166,7 @@ eframe = { version = "0.32.3", default-features = false, features = [
   "wayland",
   "x11",
 ] }
-egui = { version = "0.32.3", features = [
-  "callstack",
-  "color-hex",
-  "log",
-  "rayon",
-] }
+egui = { version = "0.32.3", features = ["callstack", "color-hex", "rayon"] }
 egui_commonmark = { version = "0.21", default-features = false }
 egui_dnd = { version = "0.13" }
 egui_extras = { version = "0.32.3", features = [
@@ -184,7 +181,7 @@ egui_table = "0.4" # https://github.com/rerun-io/egui_table
 egui_tiles = "0.13" # https://github.com/rerun-io/egui_tiles
 egui-wgpu = "0.32.3"
 emath = "0.32.3"
-walkers = "0.43"
+walkers = "0.45"
 
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
@@ -311,8 +308,9 @@ profiling = { version = "1.0.12", default-features = false }
 prometheus-client = "0.24"
 prost = "0.13.3"
 prost-build = "0.13.3"
-prost-types = "0.13.3"
 prost-reflect = "0.15.3"
+prost-types = "0.13.3"
+protoc-prebuilt = "0.3"
 puffin = "0.19.1"
 puffin_http = "0.16"
 pyo3 = "0.24.1"
@@ -409,7 +407,7 @@ webbrowser = "1.0"
 winit = { version = "0.30.12", default-features = false }
 # TODO(andreas): Try to get rid of `fragile-send-sync-non-atomic-wasm`. This requires re_renderer being aware of single-thread restriction on resources.
 # See also https://gpuweb.github.io/gpuweb/explainer/#multithreading-transfer (unsolved part of the Spec as of writing!)
-wgpu = { version = "26.0.1", default-features = false, features = [
+wgpu = { version = "27.0.0", default-features = false, features = [
   # Backends (see https://docs.rs/wgpu/latest/wgpu/#feature-flags)
   "gles",
   "metal",
@@ -457,51 +455,61 @@ debug = false
 "re_byte_size".debug = true
 "re_capabilities".debug = true
 "re_case".debug = true
-"re_chunk".debug = true
-"re_chunk_store".debug = true
 "re_chunk_store_ui".debug = true
+"re_chunk_store".debug = true
+"re_chunk".debug = true
 "re_component_ui".debug = true
 "re_context_menu".debug = true
 "re_crash_handler".debug = true
 "re_data_loader".debug = true
 "re_data_source".debug = true
 "re_data_ui".debug = true
-"re_dataframe".debug = true
 "re_dataframe_ui".debug = true
+"re_dataframe".debug = true
 "re_datafusion".debug = true
 "re_dev_tools".debug = true
 "re_entity_db".debug = true
 "re_error".debug = true
-"re_format".debug = true
 "re_format_arrow".debug = true
-"re_redap_client".debug = true
+"re_format".debug = true
+"re_global_context".debug = true
+"re_grpc_client".debug = true
 "re_grpc_server".debug = true
 "re_int_histogram".debug = true
-"re_log".debug = true
+"re_integration_test".debug = true
 "re_log_encoding".debug = true
 "re_log_types".debug = true
+"re_log".debug = true
+"re_mcap".debug = true
 "re_memory".debug = true
-"re_protos".debug = true
+"re_perf_telemetry".debug = true
 "re_protos_builder".debug = true
+"re_protos".debug = true
 "re_query".debug = true
+"re_recording_panel".debug = true
 "re_redap_browser".debug = true
-"re_renderer".debug = true
+"re_redap_client".debug = true
 "re_renderer_examples".debug = true
+"re_renderer".debug = true
 "re_sdk".debug = true
 "re_selection_panel".debug = true
+"re_server".debug = true
 "re_smart_channel".debug = true
 "re_sorbet".debug = true
+"re_span".debug = true
 "re_string_interner".debug = true
+"re_test_context".debug = true
+"re_test_viewport".debug = true
+"re_tf".debug = true
 "re_time_panel".debug = true
 "re_tracing".debug = true
 "re_tuid".debug = true
-"re_types".debug = true
 "re_types_builder".debug = true
 "re_types_core".debug = true
+"re_types".debug = true
 "re_ui".debug = true
 "re_uri".debug = true
 "re_video".debug = true
-"re_view".debug = true
 "re_view_bar_chart".debug = true
 "re_view_dataframe".debug = true
 "re_view_graph".debug = true
@@ -511,12 +519,12 @@ debug = false
 "re_view_text_document".debug = true
 "re_view_text_log".debug = true
 "re_view_time_series".debug = true
-"re_viewer".debug = true
+"re_view".debug = true
 "re_viewer_context".debug = true
-"re_viewport".debug = true
+"re_viewer".debug = true
 "re_viewport_blueprint".debug = true
+"re_viewport".debug = true
 "re_web_viewer_server".debug = true
-
 
 # panic = "abort" leads to better optimizations and smaller binaries (and is the default in Wasm anyways),
 # but it also means backtraces don't work with the `backtrace` library (https://github.com/rust-lang/backtrace-rs/issues/397).

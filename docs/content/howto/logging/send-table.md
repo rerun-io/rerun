@@ -125,4 +125,4 @@ As this is an experimental API, there are several limitations to be aware of:
 
 The `send_table` API is still evolving and we plan to tackle all of the limitations mentioned above.
 
-We welcome your feedback and suggestions as we continue to improve this feature!
+We welcome your [feedback and suggestions](https://rerun.io/feedback) as we continue to improve this feature!

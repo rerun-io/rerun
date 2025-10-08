@@ -4,6 +4,7 @@ mod catalog_client;
 mod connection_handle;
 mod dataframe_query;
 mod dataframe_rendering;
+mod datafusion_catalog;
 mod datafusion_table;
 mod dataset_entry;
 mod entry;

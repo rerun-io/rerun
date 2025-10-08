@@ -22,4 +22,4 @@ glam.workspace = true
 itertools.workspace = true
 ndarray.workspace = true
 ndarray-rand.workspace = true
-rand.workspace = true
+rand = { workspace = true, features = ["std"] }

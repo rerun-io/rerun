@@ -145,6 +145,8 @@ Showcase basic usage and specific features of Rerun.
 examples = [
   # display order, most interesting first
   "notebook",
+  "notebook_viewer",
+  "notebook_callbacks",
   "clock",
   "dna",
   "graphs",

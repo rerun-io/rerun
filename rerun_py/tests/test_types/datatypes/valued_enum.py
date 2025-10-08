@@ -20,7 +20,7 @@ from enum import Enum
 
 
 class ValuedEnum(Enum):
-    """**Datatype**: A test of an enumate with specified values."""
+    """**Datatype**: A test of an enumerate with specified values."""
 
     One = 1
     """One."""

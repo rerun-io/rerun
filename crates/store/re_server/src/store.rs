@@ -1,3 +1,9 @@
+use std::{
+    collections::{BTreeSet, HashMap, hash_map::Entry},
+    path::Path,
+    sync::Arc,
+};
+
 use arrow::array::{
     ArrayRef, Int32Array, RecordBatchOptions, StringArray, TimestampNanosecondArray,
 };
@@ -9,26 +15,21 @@ use datafusion::error::DataFusionError;
 use itertools::Itertools as _;
 use jiff::Timestamp;
 use lance::datafusion::LanceTableProvider;
-use re_entity_db::{EntityDb, StoreBundle};
-use re_log_types::external::re_tuid::Tuid;
-use re_log_types::external::re_types_core::{ComponentBatch as _, Loggable as _};
+
+use re_byte_size::SizeBytes as _;
+use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_types::{EntryId, StoreKind};
-use re_protos::cloud::v1alpha1::SystemTableKind;
-use re_protos::cloud::v1alpha1::ext::{ProviderDetails as _, SystemTable};
 use re_protos::{
-    cloud::v1alpha1::ScanPartitionTableResponse,
     cloud::v1alpha1::{
-        EntryKind,
-        ext::{DatasetEntry, EntryDetails, TableEntry},
+        EntryKind, ScanPartitionTableResponse, SystemTableKind,
+        ext::{DatasetEntry, EntryDetails, ProviderDetails as _, SystemTable, TableEntry},
     },
     common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
 };
-use std::sync::Arc;
-use std::{
-    collections::{BTreeSet, HashMap, hash_map::Entry},
-    fs::File,
-    path::Path,
-};
+use re_tuid::Tuid;
+use re_types_core::{ComponentBatch as _, Loggable as _};
+
+use crate::entrypoint::NamedPath;
 
 const ENTRIES_TABLE_NAME: &str = "__entries";
 
@@ -49,6 +50,9 @@ pub enum Error {
 
     #[error(transparent)]
     DataFusionError(#[from] datafusion::error::DataFusionError),
+
+    #[error("Error loading RRD: {0}")]
+    RrdLoadingError(anyhow::Error),
 }
 
 impl From<Error> for tonic::Status {
@@ -61,12 +65,13 @@ impl From<Error> for tonic::Status {
             }
             Error::EntryIdNotFound(id) => Self::not_found(format!("Entry ID not found: {id}")),
             Error::DataFusionError(err) => Self::internal(format!("DataFusion error: {err:#}")),
+            Error::RrdLoadingError(err) => Self::internal(format!("{err:#}")),
         }
     }
 }
 
 pub struct Partition {
-    entity_db: EntityDb,
+    store_handle: ChunkStoreHandle,
     registration_time: jiff::Timestamp,
 }
 
@@ -116,7 +121,7 @@ impl Dataset {
 
     pub fn schema(&self) -> arrow::error::Result<Schema> {
         let schemas = self.partitions.values().map(|partition| {
-            let columns = partition.entity_db.storage_engine().store().schema();
+            let columns = partition.store_handle.read().schema();
             let fields = columns.arrow_fields();
             Schema::new_with_metadata(fields, HashMap::default())
         });
@@ -129,47 +134,53 @@ impl Dataset {
     }
 
     pub fn partition_table(&self) -> arrow::error::Result<RecordBatch> {
-        let (partition_ids, registration_times): (Vec<_>, Vec<_>) = self
-            .partitions
-            .iter()
-            .map(|(store_id, partition)| {
-                (
-                    store_id.to_string(),
-                    partition.registration_time.as_nanosecond() as i64,
-                )
-            })
-            .unzip();
+        let (partition_ids, last_updated_at, num_chunks, size_bytes): (
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+        ) = itertools::multiunzip(self.partitions.iter().map(|(store_id, partition)| {
+            let store = partition.store_handle.read();
+            let size_bytes: u64 = store
+                .iter_chunks()
+                .map(|chunk| chunk.heap_size_bytes())
+                .sum();
 
-        let partition_types = vec!["rrd".to_owned(); partition_ids.len()];
+            (
+                store_id.to_string(),
+                partition.registration_time.as_nanosecond() as i64,
+                store.num_chunks() as u64,
+                size_bytes,
+            )
+        }));
+
+        let layers = vec![vec!["base".to_owned()]; partition_ids.len()];
 
         let storage_urls = partition_ids
             .iter()
-            .map(|partition_id| format!("memory:///{}/{partition_id}", self.id))
+            .map(|partition_id| vec![format!("memory:///{}/{partition_id}", self.id)])
             .collect();
-
-        let partition_manifest_updated_ats = vec![None; partition_ids.len()];
-        let partition_manifest_urls = vec![None; partition_ids.len()];
 
         ScanPartitionTableResponse::create_dataframe(
             partition_ids,
-            partition_types,
+            layers,
             storage_urls,
-            registration_times,
-            partition_manifest_updated_ats,
-            partition_manifest_urls,
+            last_updated_at,
+            num_chunks,
+            size_bytes,
         )
     }
 
-    pub fn partition(&self, partition_id: &PartitionId) -> Option<&EntityDb> {
-        self.partitions.get(partition_id).map(|p| &p.entity_db)
+    pub fn partition_store_handle(&self, partition_id: &PartitionId) -> Option<&ChunkStoreHandle> {
+        self.partitions.get(partition_id).map(|p| &p.store_handle)
     }
 
-    pub fn add_partition(&mut self, partition_id: PartitionId, entity_db: EntityDb) {
+    pub fn add_partition(&mut self, partition_id: PartitionId, store_handle: ChunkStoreHandle) {
         re_log::debug!(?partition_id, "add_partition");
         self.partitions.insert(
             partition_id,
             Partition {
-                entity_db,
+                store_handle,
                 registration_time: jiff::Timestamp::now(),
             },
         );
@@ -182,12 +193,13 @@ impl Dataset {
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<BTreeSet<PartitionId>, Error> {
         re_log::info!("Loading RRD: {}", path.display());
-        let mut contents = StoreBundle::from_rrd(File::open(path)?)?;
+        let contents =
+            ChunkStore::handle_from_rrd_filepath(&ChunkStoreConfig::CHANGELOG_DISABLED, path)
+                .map_err(Error::RrdLoadingError)?;
 
         let mut new_partition_ids = BTreeSet::default();
 
-        for entity_db in contents.drain_entity_dbs() {
-            let store_id = entity_db.store_id();
+        for (store_id, chunk_store) in contents {
             if !store_id.is_recording() {
                 continue;
             }
@@ -198,7 +210,7 @@ impl Dataset {
                 Entry::Vacant(entry) => {
                     new_partition_ids.insert(partition_id);
                     entry.insert(Partition {
-                        entity_db,
+                        store_handle: chunk_store,
                         registration_time: jiff::Timestamp::now(),
                     });
                 }
@@ -206,7 +218,7 @@ impl Dataset {
                     IfDuplicateBehavior::Overwrite => {
                         re_log::info!("Overwriting {partition_id}");
                         entry.insert(Partition {
-                            entity_db,
+                            store_handle: chunk_store,
                             registration_time: jiff::Timestamp::now(),
                         });
                     }
@@ -299,10 +311,10 @@ impl InMemoryStore {
     /// Load a directory of RRDs.
     pub fn load_directory_as_dataset(
         &mut self,
-        directory: &std::path::Path,
+        named_path: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<(), Error> {
-        let directory = directory.canonicalize()?;
+        let directory = named_path.path.canonicalize()?;
         if !directory.is_dir() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
@@ -311,10 +323,13 @@ impl InMemoryStore {
             .into());
         }
 
-        let entry_name = directory
-            .file_name()
-            .expect("the directory should have a name and the path was canonicalized")
-            .to_string_lossy();
+        let entry_name = match &named_path.name {
+            Some(name) => name.into(),
+            None => directory
+                .file_name()
+                .expect("the directory should have a name and the path was canonicalized")
+                .to_string_lossy(),
+        };
 
         let dataset = self
             .create_dataset(&entry_name)
@@ -340,10 +355,10 @@ impl InMemoryStore {
 
     pub async fn load_directory_as_table(
         &mut self,
-        directory: &std::path::Path,
+        named_path: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<(), Error> {
-        let directory = directory.canonicalize()?;
+        let directory = named_path.path.canonicalize()?;
         if !directory.is_dir() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
@@ -352,10 +367,13 @@ impl InMemoryStore {
             .into());
         }
 
-        let entry_name = directory
-            .file_name()
-            .expect("the directory should have a name and the path was canonicalized")
-            .to_string_lossy();
+        let entry_name = match &named_path.name {
+            Some(name) => name.into(),
+            None => directory
+                .file_name()
+                .expect("the directory should have a name and the path was canonicalized")
+                .to_string_lossy(),
+        };
 
         // Verify it is a valid lance table
         let path = directory.to_str().ok_or(std::io::Error::new(
