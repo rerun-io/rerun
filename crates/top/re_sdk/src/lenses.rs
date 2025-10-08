@@ -287,6 +287,7 @@ mod ast {
         pub entity_path: EntityPath,
         pub component_descr: ComponentDescriptor,
         pub ops: Vec<Op>,
+        // TODO(grtlr): It would be much nicer if static could be infered from the output of the operations?
         pub is_static: bool,
     }
 }

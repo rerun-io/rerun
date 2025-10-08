@@ -80,7 +80,7 @@ fn main() -> anyhow::Result<()> {
         .output_column(
             "nested/a",
             Scalars::descriptor_scalars(),
-            [Op::access_field("a"), Op::cast(DataType::Float32)],
+            [Op::access_field("a"), Op::cast(DataType::Float64)],
         )
         .output_column(
             "nested/b",
