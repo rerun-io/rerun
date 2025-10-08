@@ -182,7 +182,7 @@ impl ::prost::Name for ScanPartitionTableRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ScanPartitionTableResponse {
-    /// Partitions metadata as arrow RecordBatch
+    /// Partitions metadata as Arrow RecordBatch.
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
@@ -194,6 +194,67 @@ impl ::prost::Name for ScanPartitionTableResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.ScanPartitionTableResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct GetDatasetManifestSchemaRequest {}
+impl ::prost::Name for GetDatasetManifestSchemaRequest {
+    const NAME: &'static str = "GetDatasetManifestSchemaRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetDatasetManifestSchemaRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetDatasetManifestSchemaRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetDatasetManifestSchemaResponse {
+    #[prost(message, optional, tag = "1")]
+    pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
+}
+impl ::prost::Name for GetDatasetManifestSchemaResponse {
+    const NAME: &'static str = "GetDatasetManifestSchemaResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetDatasetManifestSchemaResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetDatasetManifestSchemaResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScanDatasetManifestRequest {
+    /// A list of column names to be projected server-side.
+    ///
+    /// All of them if left empty.
+    #[prost(string, repeated, tag = "3")]
+    pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ScanDatasetManifestRequest {
+    const NAME: &'static str = "ScanDatasetManifestRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ScanDatasetManifestRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ScanDatasetManifestRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScanDatasetManifestResponse {
+    /// The contents of the dataset manifest (i.e. information about layers) as Arrow RecordBatch.
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for ScanDatasetManifestResponse {
+    const NAME: &'static str = "ScanDatasetManifestResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ScanDatasetManifestResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ScanDatasetManifestResponse".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -1120,7 +1181,7 @@ pub struct CreateDatasetEntryRequest {
     /// Name of the dataset entry to create.
     ///
     /// The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
-    /// with the same name already exists, the request will fail.
+    /// with the same name already exists, the request will fail. Entry names ending with `__manifest` are reserved.
     #[prost(string, optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     /// If specified, create the entry using this specific ID. Use at your own risk.
@@ -1219,7 +1280,7 @@ pub struct RegisterTableRequest {
     /// Name of the table entry to create.
     ///
     /// The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
-    /// with the same name already exists, the request will fail.
+    /// with the same name already exists, the request will fail. Entry names ending with `__manifest` are reserved.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// Information about the table to register.
@@ -1955,6 +2016,59 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
+        /// Returns the schema of the dataset manifest.
+        ///
+        /// To inspect the data of the dataset manifest, which is guaranteed to match the schema returned by
+        /// this endpoint, check out `ScanDatasetManifest`.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        pub async fn get_dataset_manifest_schema(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetDatasetManifestSchemaRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetDatasetManifestSchemaResponse>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetDatasetManifestSchema",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "GetDatasetManifestSchema",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Inspect the contents of the dataset manifest.
+        ///
+        /// The data will follow the schema returned by `GetDatasetManifestSchema`.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        pub async fn scan_dataset_manifest(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ScanDatasetManifestRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::ScanDatasetManifestResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/ScanDatasetManifest",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "ScanDatasetManifest",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
         /// Returns the schema of the dataset.
         ///
         /// This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
@@ -2349,6 +2463,33 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::ScanPartitionTableRequest>,
         ) -> std::result::Result<tonic::Response<Self::ScanPartitionTableStream>, tonic::Status>;
+        /// Returns the schema of the dataset manifest.
+        ///
+        /// To inspect the data of the dataset manifest, which is guaranteed to match the schema returned by
+        /// this endpoint, check out `ScanDatasetManifest`.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        async fn get_dataset_manifest_schema(
+            &self,
+            request: tonic::Request<super::GetDatasetManifestSchemaRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetDatasetManifestSchemaResponse>,
+            tonic::Status,
+        >;
+        /// Server streaming response type for the ScanDatasetManifest method.
+        type ScanDatasetManifestStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::ScanDatasetManifestResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        /// Inspect the contents of the dataset manifest.
+        ///
+        /// The data will follow the schema returned by `GetDatasetManifestSchema`.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        async fn scan_dataset_manifest(
+            &self,
+            request: tonic::Request<super::ScanDatasetManifestRequest>,
+        ) -> std::result::Result<tonic::Response<Self::ScanDatasetManifestStream>, tonic::Status>;
         /// Returns the schema of the dataset.
         ///
         /// This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
@@ -3049,6 +3190,96 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = ScanPartitionTableSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetDatasetManifestSchema" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetDatasetManifestSchemaSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::GetDatasetManifestSchemaRequest>
+                        for GetDatasetManifestSchemaSvc<T>
+                    {
+                        type Response = super::GetDatasetManifestSchemaResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetDatasetManifestSchemaRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::get_dataset_manifest_schema(
+                                    &inner, request,
+                                )
+                                .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetDatasetManifestSchemaSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/ScanDatasetManifest" => {
+                    #[allow(non_camel_case_types)]
+                    struct ScanDatasetManifestSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ServerStreamingService<super::ScanDatasetManifestRequest>
+                        for ScanDatasetManifestSvc<T>
+                    {
+                        type Response = super::ScanDatasetManifestResponse;
+                        type ResponseStream = T::ScanDatasetManifestStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ScanDatasetManifestRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::scan_dataset_manifest(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ScanDatasetManifestSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

@@ -96,6 +96,9 @@ pub enum StreamEntryError {
     #[error("Failed reading partition table scheme\nDetails:{0}")]
     GetPartitionTableSchema(TonicStatusError),
 
+    #[error("Failed reading layer table scheme\nDetails:{0}")]
+    GetDatasetManifestSchema(TonicStatusError),
+
     #[error("Failed scanning the partition table \nDetails:{0}")]
     ScanPartitionTable(TonicStatusError),
 

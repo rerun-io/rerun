@@ -16,6 +16,7 @@ use itertools::Itertools as _;
 use jiff::Timestamp;
 use lance::datafusion::LanceTableProvider;
 
+use re_byte_size::SizeBytes as _;
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_types::{EntryId, StoreKind};
 use re_protos::{
@@ -133,34 +134,40 @@ impl Dataset {
     }
 
     pub fn partition_table(&self) -> arrow::error::Result<RecordBatch> {
-        let (partition_ids, registration_times): (Vec<_>, Vec<_>) = self
-            .partitions
-            .iter()
-            .map(|(store_id, partition)| {
-                (
-                    store_id.to_string(),
-                    partition.registration_time.as_nanosecond() as i64,
-                )
-            })
-            .unzip();
+        let (partition_ids, last_updated_at, num_chunks, size_bytes): (
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+        ) = itertools::multiunzip(self.partitions.iter().map(|(store_id, partition)| {
+            let store = partition.store_handle.read();
+            let size_bytes: u64 = store
+                .iter_chunks()
+                .map(|chunk| chunk.heap_size_bytes())
+                .sum();
 
-        let partition_types = vec!["rrd".to_owned(); partition_ids.len()];
+            (
+                store_id.to_string(),
+                partition.registration_time.as_nanosecond() as i64,
+                store.num_chunks() as u64,
+                size_bytes,
+            )
+        }));
+
+        let layers = vec![vec!["base".to_owned()]; partition_ids.len()];
 
         let storage_urls = partition_ids
             .iter()
-            .map(|partition_id| format!("memory:///{}/{partition_id}", self.id))
+            .map(|partition_id| vec![format!("memory:///{}/{partition_id}", self.id)])
             .collect();
-
-        let partition_manifest_updated_ats = vec![None; partition_ids.len()];
-        let partition_manifest_urls = vec![None; partition_ids.len()];
 
         ScanPartitionTableResponse::create_dataframe(
             partition_ids,
-            partition_types,
+            layers,
             storage_urls,
-            registration_times,
-            partition_manifest_updated_ats,
-            partition_manifest_urls,
+            last_updated_at,
+            num_chunks,
+            size_bytes,
         )
     }
 

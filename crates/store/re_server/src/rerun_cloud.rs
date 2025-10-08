@@ -10,7 +10,7 @@ use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
 use tokio_stream::StreamExt as _;
-use tonic::{Code, Status};
+use tonic::{Code, Request, Response, Status};
 
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
@@ -19,9 +19,10 @@ use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
         DeleteEntryResponse, EntryDetails, EntryKind, FetchTaskOutputRequest,
-        FetchTaskOutputResponse, GetDatasetSchemaResponse, GetPartitionTableSchemaResponse,
-        QueryDatasetResponse, QueryTasksOnCompletionRequest, QueryTasksRequest, QueryTasksResponse,
-        RegisterTableRequest, RegisterTableResponse, RegisterWithDatasetResponse,
+        FetchTaskOutputResponse, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
+        GetDatasetSchemaResponse, GetPartitionTableSchemaResponse, QueryDatasetResponse,
+        QueryTasksOnCompletionRequest, QueryTasksRequest, QueryTasksResponse, RegisterTableRequest,
+        RegisterTableResponse, RegisterWithDatasetResponse, ScanDatasetManifestRequest,
         ScanPartitionTableResponse, ScanTableResponse,
         ext::{self, CreateDatasetEntryResponse, ReadDatasetEntryResponse, ReadTableEntryResponse},
         rerun_cloud_service_server::RerunCloudService,
@@ -162,6 +163,7 @@ macro_rules! decl_stream {
 decl_stream!(FetchChunksResponseStream<manifest:FetchChunksResponse>);
 decl_stream!(QueryDatasetResponseStream<manifest:QueryDatasetResponse>);
 decl_stream!(ScanPartitionTableResponseStream<manifest:ScanPartitionTableResponse>);
+decl_stream!(ScanDatasetManifestResponseStream<manifest:ScanDatasetManifestResponse>);
 decl_stream!(SearchDatasetResponseStream<manifest:SearchDatasetResponse>);
 decl_stream!(ScanTableResponseStream<rerun_cloud:ScanTableResponse>);
 decl_stream!(QueryTasksOnCompletionResponseStream<tasks:QueryTasksOnCompletionResponse>);
@@ -660,6 +662,28 @@ impl RerunCloudService for RerunCloudHandler {
 
         Ok(tonic::Response::new(
             Box::pin(stream) as Self::ScanPartitionTableStream
+        ))
+    }
+
+    type ScanDatasetManifestStream = ScanDatasetManifestResponseStream;
+
+    async fn get_dataset_manifest_schema(
+        &self,
+        _request: Request<GetDatasetManifestSchemaRequest>,
+    ) -> Result<Response<GetDatasetManifestSchemaResponse>, Status> {
+        //TODO(RR-2482)
+        Err(tonic::Status::unimplemented(
+            "get_dataset_manifest_schema not implemented",
+        ))
+    }
+
+    async fn scan_dataset_manifest(
+        &self,
+        _request: Request<ScanDatasetManifestRequest>,
+    ) -> Result<Response<Self::ScanDatasetManifestStream>, Status> {
+        //TODO(RR-2482)
+        Err(tonic::Status::unimplemented(
+            "scan_dataset_manifest not implemented",
         ))
     }
 

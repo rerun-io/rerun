@@ -9,8 +9,9 @@ use re_protos::{
     TypeConversionError,
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind, FetchChunksRequest,
-        FindEntriesRequest, GetPartitionTableSchemaRequest, GetPartitionTableSchemaResponse,
-        QueryDatasetRequest, QueryDatasetResponse, ReadDatasetEntryRequest, ReadTableEntryRequest,
+        FindEntriesRequest, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
+        GetPartitionTableSchemaRequest, GetPartitionTableSchemaResponse, QueryDatasetRequest,
+        QueryDatasetResponse, ReadDatasetEntryRequest, ReadTableEntryRequest,
         RegisterWithDatasetResponse, ScanPartitionTableRequest, ScanPartitionTableResponse,
         ext::{
             CreateDatasetEntryResponse, DataSource, DataSourceKind, DatasetDetails, DatasetEntry,
@@ -236,7 +237,7 @@ where
         &mut self,
         entry_id: EntryId,
     ) -> Result<Vec<PartitionId>, StreamError> {
-        const COLUMN_NAME: &str = ScanPartitionTableResponse::PARTITION_ID;
+        const COLUMN_NAME: &str = ScanPartitionTableResponse::FIELD_PARTITION_ID;
 
         let mut stream = self
             .inner()
@@ -274,6 +275,26 @@ where
         }
 
         Ok(partition_ids)
+    }
+
+    //TODO(ab): accept entry name
+    pub async fn get_dataset_manifest_schema(
+        &mut self,
+        entry_id: EntryId,
+    ) -> Result<ArrowSchema, StreamError> {
+        Ok(self
+            .inner()
+            .get_dataset_manifest_schema(
+                tonic::Request::new(GetDatasetManifestSchemaRequest {})
+                    .with_entry_id(entry_id)
+                    .map_err(|err| StreamEntryError::InvalidId(err.into()))?,
+            )
+            .await
+            .map_err(|err| StreamEntryError::GetDatasetManifestSchema(err.into()))?
+            .into_inner()
+            .schema
+            .ok_or_else(|| missing_field!(GetDatasetManifestSchemaResponse, "schema"))?
+            .try_into()?)
     }
 
     /// Fetches all chunks for a specified partition. You can include/exclude static/temporal chunks.
