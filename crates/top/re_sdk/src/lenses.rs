@@ -268,6 +268,7 @@ impl Op {
         }
     }
 }
+
 /// Private module with the AST-like definitions of lenses.
 ///
 /// **Note**: We should not leak those into the public API interface,
