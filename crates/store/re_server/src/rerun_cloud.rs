@@ -495,12 +495,6 @@ impl RerunCloudService for RerunCloudHandler {
                 kind,
             } = source;
 
-            if layer != DataSource::DEFAULT_LAYER {
-                return Err(tonic::Status::unimplemented(format!(
-                    "register_with_dataset: only 'base' layer is implemented, got {layer:?}"
-                )));
-            }
-
             if kind != ext::DataSourceKind::Rrd {
                 return Err(tonic::Status::unimplemented(
                     "register_with_dataset: only RRD data sources are implemented",
@@ -508,12 +502,13 @@ impl RerunCloudService for RerunCloudHandler {
             }
 
             if let Ok(rrd_path) = storage_url.to_file_path() {
-                let new_partition_ids = dataset.load_rrd(&rrd_path, None, on_duplicate)?;
+                let new_partition_ids = dataset.load_rrd(&rrd_path, Some(&layer), on_duplicate)?;
 
                 for partition_id in new_partition_ids {
                     partition_ids.push(partition_id.to_string());
                     partition_layers.push(layer.clone());
                     partition_types.push("rrd".to_owned());
+                    // TODO(RR-2289): this should probably be a memory address
                     storage_urls.push(storage_url.to_string());
                     task_ids.push("<DUMMY TASK ID>".to_owned());
                 }
