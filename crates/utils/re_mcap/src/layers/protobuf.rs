@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use arrow::{
     array::{
         ArrayBuilder, BinaryBuilder, BooleanBuilder, FixedSizeListBuilder, Float32Builder,
@@ -20,7 +18,7 @@ use crate::{Error, LayerIdentifier, MessageLayer};
 
 struct ProtobufMessageParser {
     message_descriptor: MessageDescriptor,
-    fields: BTreeMap<String, FixedSizeListBuilder<Box<dyn ArrayBuilder>>>,
+    builder: FixedSizeListBuilder<StructBuilder>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -47,9 +45,6 @@ enum ProtobufError {
     #[error("unknown enum number {0}")]
     UnknownEnumNumber(i32),
 
-    #[error("unknown field name {0}")]
-    UnknownFieldName(String),
-
     #[error("type {0} is not supported yet")]
     UnsupportedType(&'static str),
 
@@ -59,19 +54,6 @@ enum ProtobufError {
 
 impl ProtobufMessageParser {
     fn new(num_rows: usize, message_descriptor: MessageDescriptor) -> Self {
-        let mut fields = BTreeMap::new();
-
-        // We recursively build up the Arrow builders for this particular message.
-        for field_descr in message_descriptor.fields() {
-            let name = field_descr.name().to_owned();
-            let builder = arrow_builder_from_field(&field_descr);
-            fields.insert(
-                name,
-                FixedSizeListBuilder::with_capacity(builder, 1, num_rows),
-            );
-            re_log::trace!("Added Arrow builder for fields: {}", field_descr.name());
-        }
-
         if message_descriptor.oneofs().len() > 0 {
             re_log::warn_once!(
                 "`oneof` in schema {} is not supported yet.",
@@ -84,9 +66,12 @@ impl ProtobufMessageParser {
             );
         }
 
+        let struct_builder = struct_builder_from_message(&message_descriptor);
+        let builder = FixedSizeListBuilder::with_capacity(struct_builder, 1, num_rows);
+
         Self {
             message_descriptor,
-            fields,
+            builder,
         }
     }
 }
@@ -103,21 +88,30 @@ impl MessageParser for ProtobufMessageParser {
                 },
             )?;
 
-        // We always need to make sure to iterate over all our builders, adding null values whenever
-        // a field is missing from the message that we received.
-        for (field, builder) in &mut self.fields {
-            if let Some(val) = dynamic_message.get_field_by_name(field.as_str()) {
+        let struct_builder = self.builder.values();
+
+        for (ith_arrow_field, field_builder) in
+            struct_builder.field_builders_mut().iter_mut().enumerate()
+        {
+            // Protobuf fields are 1-indexed, so we need to map the i-th builder.
+            let protobuf_number = ith_arrow_field as u32 + 1;
+
+            if let Some(val) = dynamic_message.get_field_by_number(protobuf_number) {
                 let field = dynamic_message
                     .descriptor()
-                    .get_field_by_name(field)
-                    .ok_or_else(|| ProtobufError::UnknownFieldName(field.to_owned()))?;
-                append_value(builder.values(), &field, val.as_ref())?;
-                builder.append(true);
+                    .get_field(protobuf_number)
+                    .ok_or_else(|| ProtobufError::MissingField {
+                        field: protobuf_number,
+                    })?;
+                append_value(field_builder, &field, val.as_ref())?;
                 re_log::trace!("Field {}: Finished writing to builders", field.full_name());
             } else {
-                builder.append(false);
+                append_null_to_builder(field_builder)?;
             }
         }
+
+        struct_builder.append(true);
+        self.builder.append(true);
 
         Ok(())
     }
@@ -129,23 +123,19 @@ impl MessageParser for ProtobufMessageParser {
 
         let Self {
             message_descriptor,
-            fields,
+            mut builder,
         } = *self;
 
         let message_chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
             entity_path,
             timelines,
-            fields
-                .into_iter()
-                .map(|(field, mut builder)| {
-                    (
-                        ComponentDescriptor::partial(field)
-                            .with_builtin_archetype(message_descriptor.full_name()),
-                        builder.finish().into(),
-                    )
-                })
-                .collect(),
+            std::iter::once((
+                ComponentDescriptor::partial("message")
+                    .with_builtin_archetype(message_descriptor.full_name()),
+                builder.finish().into(),
+            ))
+            .collect(),
         )
         .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
@@ -164,6 +154,41 @@ fn downcast_err<'a, T: std::any::Any>(
             actual: val.clone(),
         }
     })
+}
+
+fn append_null_to_builder(builder: &mut dyn ArrayBuilder) -> Result<(), ProtobufError> {
+    // Try to append null by downcasting to known builder types
+    if let Some(b) = builder.as_any_mut().downcast_mut::<BooleanBuilder>() {
+        b.append_null();
+    } else if let Some(b) = builder.as_any_mut().downcast_mut::<Int32Builder>() {
+        b.append_null();
+    } else if let Some(b) = builder.as_any_mut().downcast_mut::<Int64Builder>() {
+        b.append_null();
+    } else if let Some(b) = builder.as_any_mut().downcast_mut::<UInt32Builder>() {
+        b.append_null();
+    } else if let Some(b) = builder.as_any_mut().downcast_mut::<UInt64Builder>() {
+        b.append_null();
+    } else if let Some(b) = builder.as_any_mut().downcast_mut::<Float32Builder>() {
+        b.append_null();
+    } else if let Some(b) = builder.as_any_mut().downcast_mut::<Float64Builder>() {
+        b.append_null();
+    } else if let Some(b) = builder.as_any_mut().downcast_mut::<StringBuilder>() {
+        b.append_null();
+    } else if let Some(b) = builder.as_any_mut().downcast_mut::<BinaryBuilder>() {
+        b.append_null();
+    } else if let Some(b) = builder.as_any_mut().downcast_mut::<StructBuilder>() {
+        b.append_null();
+    } else if let Some(b) = builder
+        .as_any_mut()
+        .downcast_mut::<ListBuilder<Box<dyn ArrayBuilder>>>()
+    {
+        b.append_null();
+    } else {
+        return Err(ProtobufError::UnsupportedType(
+            "Unknown builder type for append_null",
+        ));
+    }
+    Ok(())
 }
 
 fn append_value(
