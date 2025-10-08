@@ -212,17 +212,10 @@ pub enum TransformTreeRootInfo {
     //TransformFrameRoot,
 }
 
-/// Provides transforms from any transform frame to a root transform frame for a given time & timeline.
+/// Analyzes & propagates the transform graph of a recording at a given time & timeline.
 ///
-/// This information can then be used to relatively quickly resolve transforms to a given reference transform frame
-/// should such a connection exist.
-///
-/// The resulting transforms are dependent on:
-/// * tree, pose, pinhole and view-coordinates transforms components as logged to the data store. See [`TransformResolutionCache`] for more details.
-///    * TODO(#6743): blueprint overrides aren't respected yet
-/// * the query time
-///    * TODO(#723): ranges aren't taken into account yet
-// TODO: update docs a bit
+/// Identifies different transform trees present in the recording and computes transforms relative to their roots,
+/// such that arbitrary transforms within the tree can be resolved (relatively) quickly.
 #[derive(Default, Clone)]
 pub struct TransformForest {
     /// All known tree roots.

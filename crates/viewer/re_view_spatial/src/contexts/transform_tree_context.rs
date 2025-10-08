@@ -12,8 +12,10 @@ use re_viewer_context::{
 
 use crate::{caches::TransformDatabaseStoreCache, visualizers::CamerasVisualizer};
 
-// TODO: docs
-
+/// Provides a transform tree for the view & time it operates on.
+///
+/// Will do the necessary bulk processing of transform information and make it available
+/// for quick lookups by visualizers.
 #[derive(Clone)]
 pub struct TransformTreeContext {
     transform_forest: Arc<re_tf::TransformForest>,
