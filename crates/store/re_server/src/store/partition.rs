@@ -31,6 +31,12 @@ impl Partition {
         }
     }
 
+    pub fn iter_layers(&self) -> impl Iterator<Item = (&str, &Layer)> {
+        self.layers
+            .iter()
+            .map(|(layer_name, layer)| (layer_name.as_str(), layer))
+    }
+
     pub fn layer(&self, layer_name: &str) -> Option<&Layer> {
         self.layers.get(layer_name)
     }
@@ -50,9 +56,5 @@ impl Partition {
 
     pub fn size_bytes(&self) -> u64 {
         self.layers.values().map(|layer| layer.size_bytes()).sum()
-    }
-
-    pub fn iter_store_handles(&self) -> impl Iterator<Item = &ChunkStoreHandle> {
-        self.layers.values().map(|layer| layer.store_handle())
     }
 }

@@ -1,11 +1,15 @@
+use std::collections::HashMap;
+
+use arrow::datatypes::Schema;
+use arrow::error::ArrowError;
+use sha2::Digest as _;
+
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreHandle;
 
 #[derive(Clone)]
 pub struct Layer {
     store_handle: ChunkStoreHandle,
-
-    #[expect(dead_code)]
     registration_time: jiff::Timestamp,
 }
 
@@ -18,6 +22,21 @@ impl Layer {
         &self.store_handle
     }
 
+    pub fn registration_time(&self) -> jiff::Timestamp {
+        self.registration_time
+    }
+
+    pub fn last_updated_at(&self) -> jiff::Timestamp {
+        //TODO(ab): change this if we ever mutate a layer somehow?
+        self.registration_time
+    }
+
+    #[expect(clippy::unused_self)]
+    pub fn layer_type(&self) -> &'static str {
+        //TODO(ab): what should that actually be?
+        "rrd"
+    }
+
     pub fn num_chunks(&self) -> u64 {
         self.store_handle.read().num_chunks() as u64
     }
@@ -28,6 +47,29 @@ impl Layer {
             .iter_chunks()
             .map(|chunk| chunk.heap_size_bytes())
             .sum()
+    }
+
+    pub fn schema(&self) -> Schema {
+        let fields = self.store_handle.read().schema().arrow_fields();
+        Schema::new_with_metadata(fields, HashMap::default())
+    }
+
+    pub fn schema_sha256(&self) -> Result<[u8; 32], ArrowError> {
+        let schema = self.schema();
+        let partition_schema_ipc = {
+            let mut schema_ipc = Vec::new();
+            arrow::ipc::writer::StreamWriter::try_new(&mut schema_ipc, &schema)?;
+            schema_ipc
+        };
+
+        let mut hash = [0u8; 32];
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(&partition_schema_ipc);
+        hasher.finalize_into(sha2::digest::generic_array::GenericArray::from_mut_slice(
+            &mut hash,
+        ));
+
+        Ok(hash)
     }
 }
 

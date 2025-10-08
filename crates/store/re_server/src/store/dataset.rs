@@ -3,12 +3,13 @@ use std::path::Path;
 
 use arrow::array::RecordBatch;
 use arrow::datatypes::Schema;
+use arrow::error::ArrowError;
 
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_types::{EntryId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
-        EntryKind, ScanPartitionTableResponse,
+        EntryKind, ScanDatasetManifestResponse, ScanPartitionTableResponse,
         ext::{DataSource, DatasetEntry, EntryDetails},
     },
     common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
@@ -74,56 +75,113 @@ impl Dataset {
         }
     }
 
-    pub fn iter_store_handles(&self) -> impl Iterator<Item = &ChunkStoreHandle> {
+    pub fn iter_layers(&self) -> impl Iterator<Item = &Layer> {
         self.partitions
             .values()
-            .flat_map(|partition| partition.iter_store_handles())
+            .flat_map(|partition| partition.iter_layers().map(|(_, layer)| layer))
     }
 
     pub fn schema(&self) -> arrow::error::Result<Schema> {
-        let schemas = self.iter_store_handles().map(|store_handle| {
-            let fields = store_handle.read().schema().arrow_fields();
-
-            //TODO(ab): why is that needed again?
-            Schema::new_with_metadata(fields, HashMap::default())
-        });
-
-        Schema::try_merge(schemas)
+        Schema::try_merge(self.iter_layers().map(|layer| layer.schema()))
     }
 
     pub fn partition_ids(&self) -> impl Iterator<Item = PartitionId> {
         self.partitions.keys().cloned()
     }
 
+    //TODO(RR-2604): add support for property columns
     pub fn partition_table(&self) -> arrow::error::Result<RecordBatch> {
-        let (partition_ids, last_updated_at, num_chunks, size_bytes): (
+        let (partition_ids, last_updated_at, num_chunks, size_bytes, layer_names, storage_urls): (
+            Vec<_>,
+            Vec<_>,
             Vec<_>,
             Vec<_>,
             Vec<_>,
             Vec<_>,
         ) = itertools::multiunzip(self.partitions.iter().map(|(partition_id, partition)| {
+            let (layer_names, storage_urls): (Vec<_>, Vec<_>) =
+                itertools::multiunzip(partition.iter_layers().map(|(layer_name, _)| {
+                    (
+                        layer_name.to_owned(),
+                        format!("memory:///{}/{partition_id}/{layer_name}", self.id),
+                    )
+                }));
+
             (
                 partition_id.to_string(),
                 partition.last_updated_at().as_nanosecond() as i64,
                 partition.num_chunks(),
                 partition.size_bytes(),
+                layer_names,
+                storage_urls,
             )
         }));
 
-        let layers = vec![vec![DataSource::DEFAULT_LAYER.to_owned()]; partition_ids.len()];
-
-        let storage_urls = partition_ids
-            .iter()
-            .map(|partition_id| vec![format!("memory:///{}/{partition_id}", self.id)])
-            .collect();
-
         ScanPartitionTableResponse::create_dataframe(
             partition_ids,
-            layers,
+            layer_names,
             storage_urls,
             last_updated_at,
             num_chunks,
             size_bytes,
+        )
+    }
+
+    pub fn dataset_manifest(&self) -> arrow::error::Result<RecordBatch> {
+        let (
+            layer_names,
+            partition_ids,
+            storage_urls,
+            layer_types,
+            registration_times,
+            last_updated_at,
+            num_chunks,
+            size_bytes,
+            schema_sha256s,
+        ): (
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+        ) = itertools::process_results(
+            self.partitions
+                .iter()
+                .flat_map(|(partition_id, partition)| {
+                    let partition_id = partition_id.to_string();
+                    partition.iter_layers().map(
+                        move |(layer_name, layer)| -> Result<_, ArrowError> {
+                            Ok((
+                                layer_name.to_owned(),
+                                partition_id.clone(),
+                                format!("memory:///{}/{partition_id}/{layer_name}", self.id),
+                                layer.layer_type().to_owned(),
+                                layer.registration_time().as_nanosecond() as i64,
+                                layer.last_updated_at().as_nanosecond() as i64,
+                                layer.num_chunks(),
+                                layer.size_bytes(),
+                                layer.schema_sha256()?,
+                            ))
+                        },
+                    )
+                }),
+            |iter| itertools::multiunzip(iter),
+        )?;
+
+        ScanDatasetManifestResponse::create_dataframe(
+            layer_names,
+            partition_ids,
+            storage_urls,
+            layer_types,
+            registration_times,
+            last_updated_at,
+            num_chunks,
+            size_bytes,
+            schema_sha256s,
         )
     }
 

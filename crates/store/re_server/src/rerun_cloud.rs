@@ -16,16 +16,18 @@ use re_byte_size::SizeBytes as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::ext::DataSource;
 use re_protos::{
     cloud::v1alpha1::{
-        DeleteEntryResponse, EntryDetails, EntryKind, GetDatasetManifestSchemaRequest,
-        GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse,
-        GetPartitionTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionRequest,
-        QueryTasksRequest, QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
-        RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanPartitionTableResponse,
-        ScanTableResponse,
-        ext::{self, CreateDatasetEntryResponse, ReadDatasetEntryResponse, ReadTableEntryResponse},
+        DeleteEntryResponse, EntryDetails, EntryKind, FetchTaskOutputRequest,
+        FetchTaskOutputResponse, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
+        GetDatasetSchemaResponse, GetPartitionTableSchemaResponse, QueryDatasetResponse,
+        QueryTasksOnCompletionRequest, QueryTasksRequest, QueryTasksResponse, RegisterTableRequest,
+        RegisterTableResponse, RegisterWithDatasetResponse, ScanDatasetManifestRequest,
+        ScanDatasetManifestResponse, ScanPartitionTableResponse, ScanTableResponse,
+        ext::{
+            self, CreateDatasetEntryResponse, DataSource, ReadDatasetEntryResponse,
+            ReadTableEntryResponse,
+        },
         rerun_cloud_service_server::RerunCloudService,
     },
     common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId},
@@ -535,6 +537,8 @@ impl RerunCloudService for RerunCloudHandler {
         ))
     }
 
+    // TODO(RR-2017): This endpoint is in need of a deep redesign. For now it defaults to
+    // overwriting the "base" layer.
     async fn write_chunks(
         &self,
         request: tonic::Request<tonic::Streaming<re_protos::cloud::v1alpha1::WriteChunksRequest>>,
@@ -594,7 +598,6 @@ impl RerunCloudService for RerunCloudHandler {
 
         #[expect(clippy::iter_over_hash_type)]
         for (entity_path, chunk_store) in chunk_stores {
-            //TODO(RR-2482)
             dataset.add_layer(
                 entity_path,
                 DataSource::DEFAULT_LAYER.to_owned(),
@@ -621,6 +624,7 @@ impl RerunCloudService for RerunCloudHandler {
         // check that the dataset exists before returning
         _ = get_entry_id_from_headers(&store, &request)?;
 
+        //TODO(RR-2604): add support for property columns
         Ok(tonic::Response::new(GetPartitionTableSchemaResponse {
             schema: Some(
                 (&ScanPartitionTableResponse::schema())
@@ -672,25 +676,64 @@ impl RerunCloudService for RerunCloudHandler {
         ))
     }
 
-    type ScanDatasetManifestStream = ScanDatasetManifestResponseStream;
-
     async fn get_dataset_manifest_schema(
         &self,
-        _request: Request<GetDatasetManifestSchemaRequest>,
+        request: Request<GetDatasetManifestSchemaRequest>,
     ) -> Result<Response<GetDatasetManifestSchemaResponse>, Status> {
-        //TODO(RR-2482)
-        Err(tonic::Status::unimplemented(
-            "get_dataset_manifest_schema not implemented",
-        ))
+        let store = self.store.read().await;
+
+        // check that the dataset exists before returning
+        _ = get_entry_id_from_headers(&store, &request)?;
+
+        //TODO(RR-2604): add support for property columns
+        Ok(tonic::Response::new(GetDatasetManifestSchemaResponse {
+            schema: Some(
+                (&ScanDatasetManifestResponse::schema())
+                    .try_into()
+                    .map_err(|err| {
+                        tonic::Status::internal(format!(
+                            "unable to serialize Arrow schema: {err:#}"
+                        ))
+                    })?,
+            ),
+        }))
     }
+
+    type ScanDatasetManifestStream = ScanDatasetManifestResponseStream;
 
     async fn scan_dataset_manifest(
         &self,
-        _request: Request<ScanDatasetManifestRequest>,
+        request: Request<ScanDatasetManifestRequest>,
     ) -> Result<Response<Self::ScanDatasetManifestStream>, Status> {
-        //TODO(RR-2482)
-        Err(tonic::Status::unimplemented(
-            "scan_dataset_manifest not implemented",
+        let store = self.store.read().await;
+        let entry_id = get_entry_id_from_headers(&store, &request)?;
+
+        let request = request.into_inner();
+        if !request.columns.is_empty() {
+            return Err(tonic::Status::unimplemented(
+                "scan_partition_table: column projection not implemented",
+            ));
+        }
+
+        let dataset = store.dataset(entry_id).ok_or_else(|| {
+            tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
+        })?;
+
+        let record_batch = dataset.dataset_manifest().map_err(|err| {
+            tonic::Status::internal(format!("Unable to read partition table: {err:#}"))
+        })?;
+
+        let stream = futures::stream::once(async move {
+            record_batch
+                .encode()
+                .map(|data| ScanDatasetManifestResponse { data: Some(data) })
+                .map_err(|err| {
+                    tonic::Status::internal(format!("failed encoding metadata: {err:#}"))
+                })
+        });
+
+        Ok(tonic::Response::new(
+            Box::pin(stream) as Self::ScanDatasetManifestStream
         ))
     }
 
