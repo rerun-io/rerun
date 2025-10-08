@@ -1,6 +1,6 @@
 //! Provides commonly used transformations of Arrow arrays.
 //!
-//! These operations should not be exposed publicly, but instead be wrapped by the [`crate::ast::Op`] abstraction.
+//! These operations should not be exposed publicly, but instead be wrapped by the [`super::ast::Op`] abstraction.
 
 // TODO(grtlr): Eventually we will want to make the types in here compatible with Datafusion UDFs.
 
