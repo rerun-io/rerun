@@ -3,7 +3,6 @@ use std::io::Cursor;
 use std::io::Read as _;
 
 use re_build_info::CrateVersion;
-use re_log_types::LogMsg;
 
 use crate::EncodingOptions;
 use crate::FileHeader;
@@ -13,14 +12,75 @@ use crate::decoder::options_from_bytes;
 
 use super::DecodeError;
 
+// ---
+
+// TODO(cmc): This trait will be vastly improved and documented in a follow up that completely
+// revamps how codecs are defined and organized. For now, it's just undocumented bare minimum to
+// make `StreamDecoder` work everywhere.
+
+pub trait FileEncoded: Sized {
+    fn decode(
+        app_id_injector: &mut impl crate::ApplicationIdInjector,
+        message_kind: crate::codec::file::MessageKind,
+        buf: &[u8],
+    ) -> Result<Option<Self>, DecodeError>;
+
+    fn propagate_version(&mut self, version: Option<CrateVersion>) {
+        _ = self;
+        _ = version;
+    }
+}
+
+impl FileEncoded for re_log_types::LogMsg {
+    fn decode(
+        app_id_injector: &mut impl crate::ApplicationIdInjector,
+        message_kind: crate::codec::file::MessageKind,
+        buf: &[u8],
+    ) -> Result<Option<Self>, DecodeError> {
+        crate::codec::file::decoder::decode_bytes_to_app(app_id_injector, message_kind, buf)
+    }
+
+    fn propagate_version(&mut self, version: Option<CrateVersion>) {
+        if let Self::SetStoreInfo(msg) = self {
+            // Propagate the protocol version from the header into the `StoreInfo` so that all
+            // parts of the app can easily access it.
+            msg.info.store_version = version;
+        }
+    }
+}
+
+impl FileEncoded for re_protos::log_msg::v1alpha1::log_msg::Msg {
+    fn decode(
+        _app_id_injector: &mut impl crate::ApplicationIdInjector,
+        message_kind: crate::codec::file::MessageKind,
+        buf: &[u8],
+    ) -> Result<Option<Self>, DecodeError> {
+        crate::codec::file::decoder::decode_bytes_to_transport(message_kind, buf)
+    }
+}
+
+// ---
+
+/// A type alias for a [`StreamDecoder`] that only decodes from raw bytes up to transport-level
+/// types (i.e. Protobuf payloads are decoded, but Arrow data is never touched).
+///
+/// See also [`StreamDecoderTransport`].
+pub type StreamDecoderTransport = StreamDecoder<re_protos::log_msg::v1alpha1::log_msg::Msg>;
+
+/// A type alias for a [`StreamDecoder`] that decodes all the way from raw bytes to
+/// application-level types (i.e. even Arrow layers are decoded).
+///
+/// See also [`StreamDecoderTransport`].
+pub type StreamDecoderApp = StreamDecoder<re_log_types::LogMsg>;
+
 /// The stream decoder is a state machine which ingests byte chunks and outputs messages once it
 /// has enough data to deserialize one.
 ///
-/// Byte chunks are given to the stream via [`StreamDecoder::push_byte_chunk`], and messages are read
-/// back via [`StreamDecoder::try_read`].
+/// Byte chunks are given to the stream via [`StreamDecoderApp::push_byte_chunk`], and messages are read
+/// back via [`StreamDecoderApp::try_read`].
 //
 // TODO(cmc): explain when you'd use this over StreamingDecoder and vice-versa.
-pub struct StreamDecoder {
+pub struct StreamDecoder<T: FileEncoded> {
     /// The Rerun version used to encode the RRD data.
     ///
     /// `None` until a Rerun header has been processed.
@@ -36,6 +96,8 @@ pub struct StreamDecoder {
 
     /// The application id cache used for migrating old data.
     app_id_cache: CachingApplicationIdInjector,
+
+    _decodable: std::marker::PhantomData<T>,
 }
 
 ///
@@ -67,11 +129,86 @@ enum State {
     /// Compression is only applied to individual `ArrowMsg`s, instead of the entire stream.
     Message(crate::codec::file::MessageHeader),
 
-    /// Stop reading
+    /// Stop reading.
     Aborted,
 }
 
-impl StreamDecoder {
+impl<T: FileEncoded> StreamDecoder<T> {
+    /// Instantiates a new lazy decoding iterator on top of the given buffered reader.
+    ///
+    /// This does not perform any IO until the returned iterator is polled. I.e. this will not
+    /// fail if the reader doesn't even contain valid RRD data.
+    ///
+    /// This takes a `BufRead` instead of a `Read` because:
+    /// * This guarantees this will never run on non-buffered input.
+    /// * This lets the end-user in control of the buffering, which prevents unfortunately stacked
+    ///   buffers (and thus exploding memory usage and copies).
+    ///
+    /// See also [`Self::decode_lazy_with_opts`].
+    pub fn decode_lazy<R: std::io::BufRead>(reader: R) -> StreamDecoderIterator<T, R> {
+        let wait_for_eos = false;
+        Self::decode_lazy_with_opts(reader, wait_for_eos)
+    }
+
+    /// Same as [`Self::decode_lazy`], with extra options.
+    ///
+    /// * `wait_for_eos`: if true, the decoder will always wait for an end-of-stream marker before
+    ///   calling it a day, even if the underlying reader has nothing to yield.
+    pub fn decode_lazy_with_opts<R: std::io::BufRead>(
+        reader: R,
+        wait_for_eos: bool,
+    ) -> StreamDecoderIterator<T, R> {
+        let decoder = Self::new();
+        StreamDecoderIterator {
+            decoder,
+            reader,
+            wait_for_eos,
+            first_msg: None,
+        }
+    }
+
+    /// Instantiates a new eager decoding iterator on top of the given buffered reader.
+    ///
+    /// This will perform a first decoding pass immediately. This allows this constructor to fail
+    /// synchronously if the underlying reader doesn't even contain valid RRD data at all (e.g. magic
+    /// bytes are not present).
+    ///
+    /// This takes a `BufRead` instead of a `Read` because:
+    /// * This guarantees this will never run on non-buffered input.
+    /// * This lets the end-user in control of the buffering, which prevents unfortunately stacked
+    ///   buffers (and thus exploding memory usage and copies).
+    ///
+    /// See also [`Self::decode_eager_with_opts`].
+    pub fn decode_eager<R: std::io::BufRead>(
+        reader: R,
+    ) -> Result<StreamDecoderIterator<T, R>, DecodeError> {
+        let wait_for_eos = false;
+        Self::decode_eager_with_opts(reader, wait_for_eos)
+    }
+
+    /// Same as [`Self::decode_eager`], with extra options.
+    ///
+    /// * `wait_for_eos`: if true, the decoder will always wait for an end-of-stream marker before
+    ///   calling it a day, even if the underlying reader has nothing to yield.
+    pub fn decode_eager_with_opts<R: std::io::BufRead>(
+        reader: R,
+        wait_for_eos: bool,
+    ) -> Result<StreamDecoderIterator<T, R>, DecodeError> {
+        let decoder = Self::new();
+        let mut it = StreamDecoderIterator {
+            decoder,
+            reader,
+            wait_for_eos,
+            first_msg: None,
+        };
+
+        it.first_msg = it.next().transpose()?;
+
+        Ok(it)
+    }
+}
+
+impl<T: FileEncoded> StreamDecoder<T> {
     #[expect(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
@@ -81,6 +218,7 @@ impl StreamDecoder {
             byte_chunks: ByteChunkBuffer::new(),
             state: State::StreamHeader,
             app_id_cache: CachingApplicationIdInjector::default(),
+            _decodable: std::marker::PhantomData::<T>,
         }
     }
 
@@ -91,7 +229,7 @@ impl StreamDecoder {
 
     /// Read the next message in the stream, dropping messages missing application id that cannot
     /// be migrated (because they arrived before `SetStoreInfo`).
-    pub fn try_read(&mut self) -> Result<Option<LogMsg>, DecodeError> {
+    pub fn try_read(&mut self) -> Result<Option<T>, DecodeError> {
         //TODO(#10730): remove this if/when we remove the legacy `StoreId` migration.
         loop {
             let result = self.try_read_impl();
@@ -111,7 +249,7 @@ impl StreamDecoder {
     }
 
     /// Read the next message in the stream.
-    fn try_read_impl(&mut self) -> Result<Option<LogMsg>, DecodeError> {
+    fn try_read_impl(&mut self) -> Result<Option<T>, DecodeError> {
         match self.state {
             State::StreamHeader => {
                 let is_first_header = self.byte_chunks.num_read() == 0;
@@ -172,11 +310,7 @@ impl StreamDecoder {
                 if let Some(bytes) = self.byte_chunks.try_read(header.len as usize) {
                     re_log::trace!(?header, "Read message");
 
-                    let message = match crate::codec::file::decoder::decode_bytes_to_app(
-                        &mut self.app_id_cache,
-                        header.kind,
-                        bytes,
-                    ) {
+                    let message = match T::decode(&mut self.app_id_cache, header.kind, bytes) {
                         Ok(msg) => msg,
                         Err(err) => {
                             // We successfully parsed a header, but decided to drop the message altogether.
@@ -187,19 +321,14 @@ impl StreamDecoder {
                         }
                     };
 
-                    if let Some(mut message) = message {
-                        re_log::trace!(
-                            "LogMsg::{}",
-                            match message {
-                                LogMsg::SetStoreInfo { .. } => "SetStoreInfo",
-                                LogMsg::ArrowMsg { .. } => "ArrowMsg",
-                                LogMsg::BlueprintActivationCommand { .. } => {
-                                    "BlueprintActivationCommand"
-                                }
-                            }
-                        );
+                    // TODO(cmc): This means that this currently only supports concatenated streams iff
+                    // they carry EOS markers, while (one of) the legacy decoders supported them no
+                    // matter what.
 
-                        propagate_version(&mut message, self.version);
+                    if let Some(mut message) = message {
+                        re_log::trace!("Decoded new message");
+
+                        message.propagate_version(self.version);
                         self.state = State::MessageHeader;
                         return Ok(Some(message));
                     } else {
@@ -212,6 +341,7 @@ impl StreamDecoder {
                     }
                 }
             }
+
             State::Aborted => {
                 return Ok(None);
             }
@@ -221,13 +351,84 @@ impl StreamDecoder {
     }
 }
 
-fn propagate_version(message: &mut LogMsg, version: Option<CrateVersion>) {
-    if let re_log_types::LogMsg::SetStoreInfo(msg) = message {
-        // Propagate the protocol version from the header into the `StoreInfo` so that all
-        // parts of the app can easily access it.
-        msg.info.store_version = version;
+// ---
+
+/// Iteratively decodes the contents of an arbitrary buffered reader.
+pub struct StreamDecoderIterator<T: FileEncoded, R: std::io::BufRead> {
+    decoder: StreamDecoder<T>,
+    reader: R,
+
+    /// If true, the decoder will always wait for an end-of-stream marker before calling it a day,
+    /// even if the underlying reader has nothing to yield.
+    wait_for_eos: bool,
+
+    /// See [`StreamDecoder::decode_eager`] for more information.
+    first_msg: Option<T>,
+}
+
+impl<T: FileEncoded, R: std::io::BufRead> StreamDecoderIterator<T, R> {
+    pub fn num_bytes_processed(&self) -> u64 {
+        self.decoder.byte_chunks.num_read() as _
     }
 }
+
+impl<T: FileEncoded, R: std::io::BufRead> std::iter::Iterator for StreamDecoderIterator<T, R> {
+    type Item = Result<T, DecodeError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(first_msg) = self.first_msg.take() {
+            // The iterator was eagerly initialized so make sure to return the first message if there's any.
+            return Some(Ok(first_msg));
+        }
+
+        loop {
+            match self.decoder.try_read() {
+                Ok(Some(msg)) => return Some(Ok(msg)),
+                Ok(None) => {}
+                Err(err) => return Some(Err(err)),
+            }
+
+            match self.reader.fill_buf() {
+                // EOF
+                Ok([]) => {
+                    // There's nothing more to read…
+                    match self.decoder.try_read() {
+                        // …but we still have enough buffered that we can still manage to decode
+                        // more messages, so go on for now.
+                        Ok(Some(msg)) => return Some(Ok(msg)),
+
+                        // …and we're not expecting concatenated streams, so just leave.
+                        Ok(None) if !self.wait_for_eos => return None,
+
+                        // …and the underlying decoder already considers that it's done (i.e. it's
+                        // waiting for a whole new stream to begin): time to stop.
+                        Ok(None) if self.decoder.state == State::StreamHeader => {
+                            return None;
+                        }
+
+                        // …but the underlying decoder doesn't believe it's done yet (i.e. it's still
+                        // waiting for an EOS marker to show up): we continue.
+                        Ok(None) => {}
+
+                        Err(err) => return Some(Err(err)),
+                    }
+                }
+
+                Ok(buf) => {
+                    self.decoder.push_byte_chunk(buf.to_vec());
+                    let len = buf.len(); // borrowck limitation
+                    self.reader.consume(len);
+                }
+
+                Err(err) if err.kind() == std::io::ErrorKind::Interrupted => {}
+
+                Err(err) => return Some(Err(err.into())),
+            }
+        }
+    }
+}
+
+// ---
 
 /// A bunch of contiguous bytes.
 type ByteChunk = Cursor<Vec<u8>>;
@@ -321,6 +522,8 @@ impl ByteChunkBuffer {
 fn is_byte_chunk_empty(byte_chunk: &ByteChunk) -> bool {
     byte_chunk.position() >= byte_chunk.get_ref().len() as u64
 }
+
+// ---
 
 #[cfg(test)]
 mod tests {
