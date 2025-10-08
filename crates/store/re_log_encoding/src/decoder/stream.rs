@@ -2,21 +2,22 @@ use std::collections::VecDeque;
 use std::io::Cursor;
 use std::io::Read as _;
 
+use re_build_info::CrateVersion;
+use re_log_types::LogMsg;
+
 use crate::EncodingOptions;
 use crate::FileHeader;
 use crate::Serializer;
 use crate::app_id_injector::CachingApplicationIdInjector;
 use crate::decoder::options_from_bytes;
-use re_build_info::CrateVersion;
-use re_log_types::LogMsg;
 
 use super::DecodeError;
 
-/// The stream decoder is a state machine which ingests byte chunks
-/// and outputs messages once it has enough data to deserialize one.
+/// The stream decoder is a state machine which ingests byte chunks and outputs messages once it
+/// has enough data to deserialize one.
 ///
-/// Chunks are given to the stream via `StreamDecoder::push_chunk`,
-/// and messages are read back via `StreamDecoder::try_read`.
+/// Byte chunks are given to the stream via [`StreamDecoder::push_byte_chunk`], and messages are read
+/// back via [`StreamDecoder::try_read`].
 pub struct StreamDecoder {
     /// The Rerun version used to encode the RRD data.
     ///
@@ -25,10 +26,10 @@ pub struct StreamDecoder {
 
     options: EncodingOptions,
 
-    /// Incoming chunks are stored here
-    chunks: ChunkBuffer,
+    /// Incoming byte chunks are stored here.
+    byte_chunks: ByteChunkBuffer,
 
-    /// The stream state
+    /// The stream state.
     state: State,
 
     /// The application id cache used for migrating old data.
@@ -49,11 +50,11 @@ pub struct StreamDecoder {
 enum State {
     /// The beginning of the stream.
     ///
-    /// The stream header contains the magic bytes (e.g. `RRF2`),
-    /// the encoded version, and the encoding options.
+    /// The stream header contains the magic bytes (e.g. `RRF2`), the encoded version, and the
+    /// encoding options.
     ///
-    /// After the stream header is read once, the state machine
-    /// will only ever switch between `MessageHeader` and `Message`
+    /// After the stream header is read once, the state machine will only ever switch between
+    /// `MessageHeader` and `Message`
     StreamHeader,
 
     /// The beginning of a Protobuf message.
@@ -61,8 +62,7 @@ enum State {
 
     /// The message content, serialized using `Protobuf`.
     ///
-    /// Compression is only applied to individual `ArrowMsg`s, instead of
-    /// the entire stream.
+    /// Compression is only applied to individual `ArrowMsg`s, instead of the entire stream.
     Message(crate::codec::file::MessageHeader),
 
     /// Stop reading
@@ -74,17 +74,17 @@ impl StreamDecoder {
     pub fn new() -> Self {
         Self {
             version: None,
-            // Note: `options` are filled in once we read `FileHeader`,
-            // so this value does not matter.
+            // Note: `options` are filled in once we read `FileHeader`, so this value does not matter.
             options: EncodingOptions::PROTOBUF_UNCOMPRESSED,
-            chunks: ChunkBuffer::new(),
+            byte_chunks: ByteChunkBuffer::new(),
             state: State::StreamHeader,
             app_id_cache: CachingApplicationIdInjector::default(),
         }
     }
 
-    pub fn push_chunk(&mut self, chunk: Vec<u8>) {
-        self.chunks.push(chunk);
+    /// Feed a bunch of bytes to the decoding state machine.
+    pub fn push_byte_chunk(&mut self, byte_chunk: Vec<u8>) {
+        self.byte_chunks.push(byte_chunk);
     }
 
     /// Read the next message in the stream, dropping messages missing application id that cannot
@@ -112,8 +112,8 @@ impl StreamDecoder {
     fn try_read_impl(&mut self) -> Result<Option<LogMsg>, DecodeError> {
         match self.state {
             State::StreamHeader => {
-                let is_first_header = self.chunks.num_read() == 0;
-                if let Some(header) = self.chunks.try_read(FileHeader::SIZE) {
+                let is_first_header = self.byte_chunks.num_read() == 0;
+                if let Some(header) = self.byte_chunks.try_read(FileHeader::SIZE) {
                     re_log::trace!(?header, "Decoding StreamHeader");
 
                     // header contains version and compression options
@@ -144,15 +144,15 @@ impl StreamDecoder {
                         Serializer::Protobuf => self.state = State::MessageHeader,
                     }
 
-                    // we might have data left in the current chunk,
-                    // immediately try to read length of the next message
+                    // we might have data left in the current byte chunk, immediately try to read
+                    // length of the next message.
                     return self.try_read();
                 }
             }
 
             State::MessageHeader => {
                 if let Some(bytes) = self
-                    .chunks
+                    .byte_chunks
                     .try_read(crate::codec::file::MessageHeader::SIZE_BYTES)
                 {
                     let header = crate::codec::file::MessageHeader::from_bytes(bytes)?;
@@ -160,13 +160,14 @@ impl StreamDecoder {
                     re_log::trace!(?header, "MessageHeader");
 
                     self.state = State::Message(header);
-                    // we might have data left in the current chunk,
-                    // immediately try to read the message content
+                    // we might have data left in the current byte chunk, immediately try to read
+                    // the message content.
                     return self.try_read();
                 }
             }
+
             State::Message(header) => {
-                if let Some(bytes) = self.chunks.try_read(header.len as usize) {
+                if let Some(bytes) = self.byte_chunks.try_read(header.len as usize) {
                     re_log::trace!(?header, "Read message");
 
                     let message = crate::codec::file::decoder::decode_bytes_to_app(
@@ -217,14 +218,15 @@ fn propagate_version(message: &mut LogMsg, version: Option<CrateVersion>) {
     }
 }
 
-type Chunk = Cursor<Vec<u8>>;
+/// A bunch of contiguous bytes.
+type ByteChunk = Cursor<Vec<u8>>;
 
-struct ChunkBuffer {
-    /// Any incoming chunks are queued until they are emptied
-    queue: VecDeque<Chunk>,
+struct ByteChunkBuffer {
+    /// Any incoming byte chunks are queued until they are emptied.
+    queue: VecDeque<ByteChunk>,
 
-    /// This buffer is used as scratch space for any read bytes,
-    /// so that we can return a contiguous slice from `try_read`.
+    /// This buffer is used as scratch space for any read bytes, so that we can return a contiguous
+    /// slice from `try_read`.
     buffer: Vec<u8>,
 
     /// How many bytes of valid data are currently in `self.buffer`.
@@ -234,7 +236,7 @@ struct ChunkBuffer {
     num_read: usize,
 }
 
-impl ChunkBuffer {
+impl ByteChunkBuffer {
     fn new() -> Self {
         Self {
             queue: VecDeque::with_capacity(16),
@@ -244,11 +246,11 @@ impl ChunkBuffer {
         }
     }
 
-    fn push(&mut self, chunk: Vec<u8>) {
-        if chunk.is_empty() {
+    fn push(&mut self, byte_chunk: Vec<u8>) {
+        if byte_chunk.is_empty() {
             return;
         }
-        self.queue.push_back(Chunk::new(chunk));
+        self.queue.push_back(ByteChunk::new(byte_chunk));
     }
 
     /// How many bytes have been read with [`Self::try_read`] so far?
@@ -256,7 +258,7 @@ impl ChunkBuffer {
         self.num_read
     }
 
-    /// Attempt to read exactly `n` bytes out of the queued chunks.
+    /// Attempt to read exactly `n` bytes out of the queued byte chunks.
     ///
     /// Returns `None` if there is not enough data to return a slice of `n` bytes.
     ///
@@ -276,13 +278,15 @@ impl ChunkBuffer {
         // try to read some bytes from the front of the queue,
         // until either:
         // - we've read enough to return a slice of `n` bytes
-        // - we run out of chunks to read
-        // while also discarding any empty chunks
+        // - we run out of byte chunks to read
+        // while also discarding any empty byte chunks
         while self.buffer_fill != n {
-            if let Some(chunk) = self.queue.front_mut() {
+            if let Some(byte_chunk) = self.queue.front_mut() {
                 let remainder = &mut self.buffer[self.buffer_fill..];
-                self.buffer_fill += chunk.read(remainder).expect("failed to read from chunk");
-                if is_chunk_empty(chunk) {
+                self.buffer_fill += byte_chunk
+                    .read(remainder)
+                    .expect("failed to read from byte chunk");
+                if is_byte_chunk_empty(byte_chunk) {
                     self.queue.pop_front();
                 }
             } else {
@@ -303,8 +307,8 @@ impl ChunkBuffer {
     }
 }
 
-fn is_chunk_empty(chunk: &Chunk) -> bool {
-    chunk.position() >= chunk.get_ref().len() as u64
+fn is_byte_chunk_empty(byte_chunk: &ByteChunk) -> bool {
+    byte_chunk.position() >= byte_chunk.get_ref().len() as u64
 }
 
 #[cfg(test)]
@@ -381,7 +385,7 @@ mod tests {
 
         assert_message_incomplete!(decoder.try_read());
 
-        decoder.push_chunk(data);
+        decoder.push_byte_chunk(data);
 
         let decoded_messages: Vec<_> = (0..16)
             .map(|_| assert_message_ok!(decoder.try_read()))
@@ -398,8 +402,8 @@ mod tests {
 
         assert_message_incomplete!(decoder.try_read());
 
-        for chunk in data.chunks(1) {
-            decoder.push_chunk(chunk.to_vec());
+        for byte_chunk in data.chunks(1) {
+            decoder.push_byte_chunk(byte_chunk.to_vec());
         }
 
         let decoded_messages: Vec<_> = (0..16)
@@ -419,8 +423,8 @@ mod tests {
 
         assert_message_incomplete!(decoder.try_read());
 
-        decoder.push_chunk(data1);
-        decoder.push_chunk(data2);
+        decoder.push_byte_chunk(data1);
+        decoder.push_byte_chunk(data2);
 
         let decoded_messages: Vec<_> = (0..32)
             .map(|_| assert_message_ok!(decoder.try_read()))
@@ -437,7 +441,7 @@ mod tests {
 
         assert_message_incomplete!(decoder.try_read());
 
-        decoder.push_chunk(data);
+        decoder.push_byte_chunk(data);
 
         let decoded_messages: Vec<_> = (0..16)
             .map(|_| assert_message_ok!(decoder.try_read()))
@@ -454,8 +458,8 @@ mod tests {
 
         assert_message_incomplete!(decoder.try_read());
 
-        for chunk in data.chunks(1) {
-            decoder.push_chunk(chunk.to_vec());
+        for byte_chunk in data.chunks(1) {
+            decoder.push_byte_chunk(byte_chunk.to_vec());
         }
 
         let decoded_messages: Vec<_> = (0..16)
@@ -474,11 +478,11 @@ mod tests {
 
         // keep pushing 3 chunks of 16 bytes at a time, and attempting to read messages
         // until there are no more chunks
-        let mut chunks = data.chunks(16).peekable();
-        while chunks.peek().is_some() {
+        let mut byte_chunks = data.chunks(16).peekable();
+        while byte_chunks.peek().is_some() {
             for _ in 0..3 {
-                if let Some(chunk) = chunks.next() {
-                    decoder.push_chunk(chunk.to_vec());
+                if let Some(byte_chunk) = byte_chunks.next() {
+                    decoder.push_byte_chunk(byte_chunk.to_vec());
                 } else {
                     break;
                 }
@@ -494,7 +498,7 @@ mod tests {
 
     #[test]
     fn stream_irregular_chunks_protobuf() {
-        // this attempts to stress-test `try_read` with chunks of various sizes
+        // this attempts to stress-test `try_read` with byte chunks of various sizes
 
         let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
         let mut data = Cursor::new(data);
@@ -502,7 +506,7 @@ mod tests {
         let mut decoder = StreamDecoder::new();
         let mut decoded_messages = vec![];
 
-        // read chunks 2xN bytes at a time, where `N` comes from a regular pattern
+        // read byte chunks 2xN bytes at a time, where `N` comes from a regular pattern
         // this is slightly closer to using random numbers while still being
         // fully deterministic
 
@@ -514,7 +518,7 @@ mod tests {
             for _ in 0..2 {
                 let n = data.read(&mut temp[..pattern[pattern_index]]).unwrap();
                 pattern_index = (pattern_index + 1) % pattern.len();
-                decoder.push_chunk(temp[..n].to_vec());
+                decoder.push_byte_chunk(temp[..n].to_vec());
             }
 
             while let Some(message) = decoder.try_read().unwrap() {
@@ -527,9 +531,9 @@ mod tests {
 
     #[test]
     fn chunk_buffer_read_single_chunk() {
-        // reading smaller `n` from multiple larger chunks
+        // reading smaller `n` from multiple larger byte chunks
 
-        let mut buffer = ChunkBuffer::new();
+        let mut buffer = ByteChunkBuffer::new();
 
         let data = &[0, 1, 2, 3, 4];
         assert_eq!(None, buffer.try_read(1));
@@ -541,16 +545,16 @@ mod tests {
 
     #[test]
     fn chunk_buffer_read_multi_chunk() {
-        // reading a large `n` from multiple smaller chunks
+        // reading a large `n` from multiple smaller byte chunks
 
-        let mut buffer = ChunkBuffer::new();
+        let mut buffer = ByteChunkBuffer::new();
 
-        let chunks: &[&[u8]] = &[&[0, 1, 2], &[3, 4]];
+        let byte_chunks: &[&[u8]] = &[&[0, 1, 2], &[3, 4]];
 
         assert_eq!(None, buffer.try_read(1));
-        buffer.push(chunks[0].to_vec());
+        buffer.push(byte_chunks[0].to_vec());
         assert_eq!(None, buffer.try_read(5));
-        buffer.push(chunks[1].to_vec());
+        buffer.push(byte_chunks[1].to_vec());
         assert_eq!(Some(&[0, 1, 2, 3, 4][..]), buffer.try_read(5));
         assert_eq!(None, buffer.try_read(1));
     }
@@ -559,7 +563,7 @@ mod tests {
     fn chunk_buffer_read_same_n() {
         // reading the same `n` multiple times should not return the same bytes
 
-        let mut buffer = ChunkBuffer::new();
+        let mut buffer = ByteChunkBuffer::new();
 
         let data = &[0, 1, 2, 3];
         buffer.push(data.to_vec());
