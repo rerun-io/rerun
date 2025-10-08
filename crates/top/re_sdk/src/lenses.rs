@@ -268,17 +268,27 @@ impl Op {
         }
     }
 }
+/// Private module with the AST-like definitions of lenses.
+///
+/// **Note**: We should not leak those into the public API interface,
+/// so that we can evolve the definition of lenses over time, if requirements
+/// change.
+mod ast {
+    use super::{
+        ComponentDescriptor, ComponentIdentifier, EntityPath, Op, ResolvedEntityPathFilter,
+    };
 
-struct InputColumn {
-    entity_path_filter: ResolvedEntityPathFilter,
-    component: ComponentIdentifier,
-}
+    pub(super) struct InputColumn {
+        pub entity_path_filter: ResolvedEntityPathFilter,
+        pub component: ComponentIdentifier,
+    }
 
-struct OutputColumn {
-    entity_path: EntityPath,
-    component_descr: ComponentDescriptor,
-    ops: Vec<Op>,
-    is_static: bool,
+    pub(super) struct OutputColumn {
+        pub entity_path: EntityPath,
+        pub component_descr: ComponentDescriptor,
+        pub ops: Vec<Op>,
+        pub is_static: bool,
+    }
 }
 
 /// Provides convenient function to create a [`Lens`].
@@ -291,7 +301,7 @@ impl LensBuilder {
         component: impl Into<ComponentIdentifier>,
     ) -> Self {
         Self(Lens {
-            input: InputColumn {
+            input: ast::InputColumn {
                 entity_path_filter: entity_path_filter.resolve_without_substitutions(),
                 component: component.into(),
             },
@@ -306,7 +316,7 @@ impl LensBuilder {
         component_descr: ComponentDescriptor,
         ops: impl IntoIterator<Item = Op>,
     ) -> Self {
-        let column = OutputColumn {
+        let column = ast::OutputColumn {
             entity_path: entity_path.into(),
             component_descr,
             ops: ops.into_iter().collect(),
@@ -323,7 +333,7 @@ impl LensBuilder {
         component_descr: ComponentDescriptor,
         ops: impl IntoIterator<Item = Op>,
     ) -> Self {
-        let column = OutputColumn {
+        let column = ast::OutputColumn {
             entity_path: entity_path.into(),
             component_descr,
             ops: ops.into_iter().collect(),
@@ -351,8 +361,8 @@ impl LensBuilder {
 /// is non-deterministic, and dependent on the batcher, no assumptions should be
 /// made for values across rows.
 pub struct Lens {
-    input: InputColumn,
-    outputs: Vec<OutputColumn>,
+    input: ast::InputColumn,
+    outputs: Vec<ast::OutputColumn>,
 }
 
 impl Lens {
