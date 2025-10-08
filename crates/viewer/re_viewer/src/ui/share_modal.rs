@@ -124,7 +124,7 @@ impl ShareModal {
             ui.ctx(),
             || ModalWrapper::new("Share"),
             |ui| {
-                let panel_max_height = (ui.ctx().screen_rect().height() - 100.0)
+                let panel_max_height = (ui.ctx().content_rect().height() - 100.0)
                     .at_least(0.0)
                     .at_most(640.0);
                 ui.set_max_height(panel_max_height);

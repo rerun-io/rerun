@@ -236,21 +236,12 @@ fn create_egui_renderstate() -> egui_wgpu::RenderState {
     };
 
     let compatible_surface = None;
-    // `re_renderer`'s individual views (managed each by a `ViewBuilder`) have MSAA,
-    // but egui's final target doesn't - re_renderer resolves and copies into egui in `ViewBuilder::composite`.
-    let msaa_samples = 1;
-    // Similarly, depth is handled by re_renderer.
-    let depth_format = None;
-    // Disable dithering in order to not unnecessarily add a source of noise & variance between renderers.
-    let dithering = false;
 
     let render_state = pollster::block_on(egui_wgpu::RenderState::create(
         &config,
         &shared_wgpu_setup.instance,
         compatible_surface,
-        depth_format,
-        msaa_samples,
-        dithering,
+        egui_wgpu::RendererOptions::PREDICTABLE,
     ))
     .expect("Failed to set up egui_wgpu::RenderState");
 
@@ -712,7 +703,7 @@ impl TestContext {
         let messages = recording_entity_db.to_messages(None);
 
         let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
-        re_log_encoding::encoder::encode(
+        re_log_encoding::Encoder::encode_into(
             re_build_info::CrateVersion::LOCAL,
             encoding_options,
             messages,
@@ -733,7 +724,7 @@ impl TestContext {
         let messages = blueprint_entity_db.to_messages(None);
 
         let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
-        re_log_encoding::encoder::encode(
+        re_log_encoding::Encoder::encode_into(
             re_build_info::CrateVersion::LOCAL,
             encoding_options,
             messages,

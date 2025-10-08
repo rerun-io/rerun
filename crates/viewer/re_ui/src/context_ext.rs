@@ -162,7 +162,7 @@ pub trait ContextExt {
             egui::SizeHint::Scale(1.0.ord()),
         ) {
             let rect = Align2::RIGHT_BOTTOM
-                .align_size_within_rect(texture.size, self.ctx().screen_rect())
+                .align_size_within_rect(texture.size, self.ctx().content_rect())
                 .translate(-Vec2::splat(16.0));
             let mut mesh = Mesh::with_texture(texture.id);
             let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));

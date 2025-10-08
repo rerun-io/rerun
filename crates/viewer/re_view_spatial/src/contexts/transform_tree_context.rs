@@ -2,7 +2,10 @@ use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, EntityPathHash};
 use re_types::{archetypes, components::ImagePlaneDistance};
 use re_view::DataResultQuery as _;
-use re_viewer_context::{DataResultTree, IdentifiedViewSystem, ViewContext, ViewContextSystem};
+use re_viewer_context::{
+    DataResultTree, IdentifiedViewSystem, ViewContext, ViewContextSystem,
+    ViewContextSystemStaticExecResult,
+};
 
 use crate::{caches::TransformDatabaseStoreCache, visualizers::CamerasVisualizer};
 
@@ -20,6 +23,7 @@ impl ViewContextSystem for TransformTreeContext {
         &mut self,
         ctx: &re_viewer_context::ViewContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
+        _static_execution_result: &ViewContextSystemStaticExecResult,
     ) {
         let recording = ctx.recording();
 

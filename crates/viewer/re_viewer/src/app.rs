@@ -3019,7 +3019,7 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
     );
 
     painter.rect_stroke(
-        egui_ctx.screen_rect(),
+        egui_ctx.content_rect(),
         tokens.native_window_corner_radius(),
         egui_ctx.tokens().native_frame_stroke,
         egui::StrokeKind::Inside,
@@ -3047,7 +3047,7 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
         let painter =
             egui_ctx.layer_painter(LayerId::new(Order::Foreground, Id::new("file_drop_target")));
 
-        let screen_rect = egui_ctx.screen_rect();
+        let screen_rect = egui_ctx.content_rect();
         painter.rect_filled(
             screen_rect,
             0.0,
@@ -3311,10 +3311,8 @@ async fn async_save_dialog(
         return Ok(()); // aborted
     };
 
-    let bytes = re_log_encoding::encoder::encode_as_bytes(
-        rrd_version,
-        re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED,
-        messages,
-    )?;
+    let options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
+    let mut bytes = Vec::new();
+    re_log_encoding::Encoder::encode_into(rrd_version, options, messages, &mut bytes)?;
     file_handle.write(&bytes).await.context("Failed to save")
 }
