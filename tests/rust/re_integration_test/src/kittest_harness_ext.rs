@@ -46,9 +46,13 @@ pub trait HarnessExt {
         build_chunk: impl FnOnce(ChunkBuilder) -> ChunkBuilder,
     );
 
+    // Finds the nth node with a given label
+    fn get_nth_label<'a>(&'a mut self, label: &'a str, index: usize) -> egui_kittest::Node<'a>;
+
     // Clicks a node in the UI by its label.
     fn click_label(&mut self, label: &str);
     fn right_click_label(&mut self, label: &str);
+    fn right_click_nth_label(&mut self, label: &str, index: usize);
 
     // Takes a snapshot of the current app state with good-enough snapshot options.
     fn snapshot_app(&mut self, snapshot_name: &str);
@@ -197,6 +201,21 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
 
     fn right_click_label(&mut self, label: &str) {
         self.get_by_label(label).click_secondary();
+        self.run_ok();
+    }
+
+    fn get_nth_label<'a>(&'a mut self, label: &'a str, index: usize) -> egui_kittest::Node<'a> {
+        let mut nodes = self.get_all_by_label(label).collect::<Vec<_>>();
+        assert!(
+            index < nodes.len(),
+            "Failed to find label '{label}' #{index}, there are only {} nodes:\n{nodes:#?}",
+            nodes.len()
+        );
+        nodes.swap_remove(index)
+    }
+
+    fn right_click_nth_label(&mut self, label: &str, index: usize) {
+        self.get_nth_label(label, index).click_secondary();
         self.run_ok();
     }
 
