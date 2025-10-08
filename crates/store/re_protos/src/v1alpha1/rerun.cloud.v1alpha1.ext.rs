@@ -1192,6 +1192,8 @@ impl ScanPartitionTableResponse {
     ///
     /// Should have the same length as [`Self::LAYER_NAMES`].
     pub const STORAGE_URLS: &str = "rerun_storage_urls";
+
+    /// Keeps track of most recent time any layer belonging to this partition was updated in any way.
     pub const LAST_UPDATED_AT: &str = "rerun_last_updated_at";
 
     /// Total number of chunks for this partition.
