@@ -528,7 +528,7 @@ fn is_byte_chunk_empty(byte_chunk: &ByteChunk) -> bool {
 #[cfg(test)]
 mod tests {
     use re_chunk::RowId;
-    use re_log_types::{SetStoreInfo, StoreInfo};
+    use re_log_types::{LogMsg, SetStoreInfo, StoreInfo};
 
     use crate::Encoder;
     use crate::EncodingOptions;
@@ -595,7 +595,7 @@ mod tests {
     fn stream_whole_chunks_uncompressed_protobuf() {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
 
-        let mut decoder = StreamDecoder::new();
+        let mut decoder = StreamDecoderApp::new();
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -612,7 +612,7 @@ mod tests {
     fn stream_byte_chunks_uncompressed_protobuf() {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
 
-        let mut decoder = StreamDecoder::new();
+        let mut decoder = StreamDecoderApp::new();
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -633,7 +633,7 @@ mod tests {
         let (input2, data2) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
         let input = input1.into_iter().chain(input2).collect::<Vec<_>>();
 
-        let mut decoder = StreamDecoder::new();
+        let mut decoder = StreamDecoderApp::new();
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -651,7 +651,7 @@ mod tests {
     fn stream_whole_chunks_compressed_protobuf() {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
 
-        let mut decoder = StreamDecoder::new();
+        let mut decoder = StreamDecoderApp::new();
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -668,7 +668,7 @@ mod tests {
     fn stream_byte_chunks_compressed_protobuf() {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
 
-        let mut decoder = StreamDecoder::new();
+        let mut decoder = StreamDecoderApp::new();
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -687,7 +687,7 @@ mod tests {
     fn stream_3x16_chunks_protobuf() {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
 
-        let mut decoder = StreamDecoder::new();
+        let mut decoder = StreamDecoderApp::new();
         let mut decoded_messages = vec![];
 
         // keep pushing 3 chunks of 16 bytes at a time, and attempting to read messages
@@ -717,7 +717,7 @@ mod tests {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
         let mut data = Cursor::new(data);
 
-        let mut decoder = StreamDecoder::new();
+        let mut decoder = StreamDecoderApp::new();
         let mut decoded_messages = vec![];
 
         // read byte chunks 2xN bytes at a time, where `N` comes from a regular pattern
@@ -797,7 +797,7 @@ mod tests_legacy {
 
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
-    use re_log_types::{SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+    use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
     use re_protos::log_msg::v1alpha1 as proto;
     use re_protos::log_msg::v1alpha1::LogMsg as LogMsgProto;
 
@@ -806,7 +806,8 @@ mod tests_legacy {
 
     use super::*;
 
-    fn decoder_into_iter(mut decoder: StreamDecoder) -> impl Iterator<Item = LogMsg> {
+    // TODO: remove in favor of the new thing though
+    fn decoder_into_iter(mut decoder: StreamDecoder<LogMsg>) -> impl Iterator<Item = LogMsg> {
         std::iter::from_fn(move || {
             let msg = decoder.try_read().unwrap();
 
@@ -916,6 +917,35 @@ mod tests_legacy {
             .collect()
     }
 
+    // TODO: put these tests somewhere else (that's kinda the most basic/important test ye?)
+    impl<W: std::io::Write> Encoder<W> {
+        /// Like [`Self::encode_into`], but intentionally omits the end-of-stream marker, for
+        /// testing purposes.
+        fn encode_into_without_eos(
+            version: CrateVersion,
+            options: EncodingOptions,
+            messages: impl IntoIterator<Item = re_chunk::ChunkResult<impl std::borrow::Borrow<LogMsg>>>,
+            write: &mut W,
+        ) -> Result<u64, crate::EncodeError> {
+            re_tracing::profile_function!();
+            let mut encoder = Encoder::new(version, options, write)?;
+            let mut size_bytes = 0;
+            for message in messages {
+                size_bytes += encoder.append(message?.borrow())?;
+            }
+
+            {
+                encoder.flush_blocking()?;
+
+                // Intentionally leak it so we don't include the EOS marker on drop.
+                #[expect(clippy::mem_forget)]
+                std::mem::forget(encoder);
+            }
+
+            Ok(size_bytes)
+        }
+    }
+
     #[test]
     fn test_encode_decode() {
         let rrd_version = CrateVersion::LOCAL;
@@ -933,15 +963,47 @@ mod tests_legacy {
             },
         ];
 
+        // Low-level
         for options in options {
             let mut file = vec![];
             crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut file)
                 .unwrap();
 
-            let mut decoder = StreamDecoder::new();
+            let mut decoder = StreamDecoderApp::new();
             decoder.push_byte_chunk(file);
 
             let decoded_messages: Vec<_> = decoder_into_iter(decoder).collect();
+            similar_asserts::assert_eq!(decoded_messages, messages);
+        }
+
+        // Iterator
+        for options in options {
+            let mut file = vec![];
+            crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut file)
+                .unwrap();
+
+            let reader = std::io::BufReader::new(file.as_slice());
+            let decoded_messages: Vec<_> = StreamDecoderApp::decode_lazy(reader)
+                .map(Result::unwrap)
+                .collect();
+            similar_asserts::assert_eq!(decoded_messages, messages);
+        }
+
+        // Iterator: no EOS marker
+        for options in options {
+            let mut file = vec![];
+            crate::Encoder::encode_into_without_eos(
+                rrd_version,
+                options,
+                messages.iter().map(Ok),
+                &mut file,
+            )
+            .unwrap();
+
+            let reader = std::io::BufReader::new(file.as_slice());
+            let decoded_messages: Vec<_> = StreamDecoderApp::decode_lazy(reader)
+                .map(Result::unwrap)
+                .collect();
             similar_asserts::assert_eq!(decoded_messages, messages);
         }
     }
@@ -975,7 +1037,7 @@ mod tests_legacy {
             }
             drop(encoder);
 
-            let mut decoder = StreamDecoder::new();
+            let mut decoder = StreamDecoderApp::new();
             decoder.push_byte_chunk(file);
 
             let decoded_messages: Vec<_> = decoder_into_iter(decoder).collect();
@@ -1033,7 +1095,7 @@ mod tests_legacy {
             }
             drop(encoder);
 
-            let mut decoder = StreamDecoder::new();
+            let mut decoder = StreamDecoderApp::new();
             decoder.push_byte_chunk(file);
 
             let decoded_messages: Vec<_> = decoder_into_iter(decoder).collect();
@@ -1083,7 +1145,7 @@ mod tests_legacy {
             )
             .unwrap();
 
-            let mut decoder = StreamDecoder::new();
+            let mut decoder = StreamDecoderApp::new();
             decoder.push_byte_chunk(file);
 
             let decoded_messages: Vec<_> = decoder_into_iter(decoder).collect();
@@ -1134,7 +1196,7 @@ mod tests_legacy {
                 encoder2.finish().unwrap();
             }
 
-            let mut decoder = StreamDecoder::new();
+            let mut decoder = StreamDecoderApp::new();
             decoder.push_byte_chunk(data);
 
             let decoded_messages: Vec<_> = decoder_into_iter(decoder).collect();

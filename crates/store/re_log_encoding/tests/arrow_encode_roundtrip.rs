@@ -1,7 +1,7 @@
 use similar_asserts::assert_eq;
 
 use re_chunk::{Chunk, RowId, TimePoint, Timeline};
-use re_log_encoding::{Encoder, decoder::decode_bytes};
+use re_log_encoding::{Encoder, decoder::stream::StreamDecoderApp};
 use re_log_types::{LogMsg, StoreId};
 use re_types::archetypes::Points3D;
 
@@ -39,6 +39,10 @@ fn encode_roundtrip() {
     let messages = [LogMsg::ArrowMsg(store_id, arrow_msg)];
 
     let encoded = Encoder::encode(messages.iter().cloned().map(Ok)).unwrap();
-    let decoded = decode_bytes(&encoded).unwrap();
+    let decoded: Vec<_> = {
+        let mut decoder = StreamDecoderApp::new();
+        decoder.push_byte_chunk(encoded);
+        std::iter::from_fn(move || decoder.try_read().unwrap()).collect()
+    };
     similar_asserts::assert_eq!(decoded, messages, "Failed to roundtrip chunk");
 }
