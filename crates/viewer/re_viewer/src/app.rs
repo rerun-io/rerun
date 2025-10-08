@@ -3019,7 +3019,7 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
     );
 
     painter.rect_stroke(
-        egui_ctx.screen_rect(),
+        egui_ctx.content_rect(),
         tokens.native_window_corner_radius(),
         egui_ctx.tokens().native_frame_stroke,
         egui::StrokeKind::Inside,
@@ -3047,7 +3047,7 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
         let painter =
             egui_ctx.layer_painter(LayerId::new(Order::Foreground, Id::new("file_drop_target")));
 
-        let screen_rect = egui_ctx.screen_rect();
+        let screen_rect = egui_ctx.content_rect();
         painter.rect_filled(
             screen_rect,
             0.0,
