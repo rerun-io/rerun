@@ -81,8 +81,7 @@ fn log_messages() {
     }
 
     fn decode_log_msg(mut bytes: &[u8]) -> LogMsg {
-        let mut messages = re_log_encoding::decoder::Decoder::new(&mut bytes)
-            .unwrap()
+        let mut messages = re_log_encoding::decoder::stream::StreamDecoder::decode_lazy(&mut bytes)
             .collect::<Result<Vec<LogMsg>, _>>()
             .unwrap();
         assert!(bytes.is_empty());

@@ -7,7 +7,12 @@ use re_smart_channel::Sender;
 /// are handled asynchronously (as in: they're logged).
 pub fn load_stdin(tx: Sender<DataSourceMessage>) -> anyhow::Result<()> {
     let stdin = std::io::BufReader::new(std::io::stdin());
-    let decoder = re_log_encoding::decoder::Decoder::new_concatenated(stdin)?;
+
+    let wait_for_eos = true;
+    let decoder = re_log_encoding::decoder::stream::StreamDecoderApp::decode_eager_with_opts(
+        stdin,
+        wait_for_eos,
+    )?;
 
     rayon::spawn(move || {
         re_tracing::profile_scope!("stdin");

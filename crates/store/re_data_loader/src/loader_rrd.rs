@@ -1,4 +1,4 @@
-use re_log_encoding::decoder::Decoder;
+use re_log_encoding::decoder::stream::StreamDecoder;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crossbeam::channel::Receiver;
@@ -50,7 +50,7 @@ impl crate::DataLoader for RrdLoader {
                     .with_context(|| format!("Failed to open file {filepath:?}"))?;
                 let file = std::io::BufReader::new(file);
 
-                let decoder = Decoder::new(file)?;
+                let messages = StreamDecoder::decode_eager(file)?;
 
                 // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
                 std::thread::Builder::new()
@@ -62,7 +62,7 @@ impl crate::DataLoader for RrdLoader {
                             decode_and_stream(
                                 &filepath,
                                 &tx,
-                                decoder,
+                                messages,
                                 settings
                                     .opened_store_id
                                     .as_ref()
@@ -81,7 +81,7 @@ impl crate::DataLoader for RrdLoader {
                 let retryable_reader = RetryableFileReader::new(&filepath).with_context(|| {
                     format!("failed to create retryable file reader for {filepath:?}")
                 })?;
-                let decoder = Decoder::new(retryable_reader)?;
+                let messages = StreamDecoder::decode_eager(retryable_reader)?;
 
                 // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
                 std::thread::Builder::new()
@@ -90,7 +90,7 @@ impl crate::DataLoader for RrdLoader {
                         let filepath = filepath.clone();
                         move || {
                             decode_and_stream(
-                                &filepath, &tx, decoder,
+                                &filepath, &tx, messages,
                                 // Never use import semantics for .rrd files
                                 None, None,
                             );
@@ -120,15 +120,7 @@ impl crate::DataLoader for RrdLoader {
         }
 
         let contents = std::io::Cursor::new(contents);
-        let decoder = match re_log_encoding::decoder::Decoder::new(contents) {
-            Ok(decoder) => decoder,
-            Err(err) => match err {
-                // simply not interested
-                re_log_encoding::decoder::DecodeError::NotAnRrd { .. }
-                | re_log_encoding::decoder::DecodeError::Options(_) => return Ok(()),
-                _ => return Err(err.into()),
-            },
-        };
+        let messages = re_log_encoding::decoder::stream::StreamDecoder::decode_eager(contents)?;
 
         // * We never want to patch blueprints' store IDs, only their app IDs.
         // * We neer use import semantics at all for .rrd files.
@@ -145,7 +137,7 @@ impl crate::DataLoader for RrdLoader {
         decode_and_stream(
             &filepath,
             &tx,
-            decoder,
+            messages,
             forced_application_id,
             forced_recording_id,
         );
@@ -154,22 +146,29 @@ impl crate::DataLoader for RrdLoader {
     }
 }
 
-fn decode_and_stream<R: std::io::Read>(
+fn decode_and_stream(
     filepath: &std::path::Path,
     tx: &std::sync::mpsc::Sender<crate::LoadedData>,
-    decoder: Decoder<R>,
+    msgs: impl Iterator<Item = Result<re_log_types::LogMsg, re_log_encoding::decoder::DecodeError>>,
     forced_application_id: Option<&ApplicationId>,
     forced_recording_id: Option<&String>,
 ) {
     re_tracing::profile_function!(filepath.display().to_string());
 
-    for msg in decoder {
+    for msg in msgs {
         let msg = match msg {
             Ok(msg) => msg,
-            Err(err) => {
-                re_log::warn_once!("Failed to decode message in {filepath:?}: {err}");
-                continue;
-            }
+
+            Err(err) => match err {
+                // simply not interested
+                re_log_encoding::decoder::DecodeError::NotAnRrd { .. }
+                | re_log_encoding::decoder::DecodeError::Options(_) => return,
+
+                _ => {
+                    re_log::warn_once!("Failed to decode message in {filepath:?}: {err}");
+                    continue;
+                }
+            },
         };
 
         let msg = if forced_application_id.is_some() || forced_recording_id.is_some() {
@@ -296,6 +295,17 @@ impl std::io::Read for RetryableFileReader {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+impl std::io::BufRead for RetryableFileReader {
+    fn fill_buf(&mut self) -> std::io::Result<&[u8]> {
+        self.reader.fill_buf()
+    }
+
+    fn consume(&mut self, amount: usize) {
+        self.reader.consume(amount);
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 impl RetryableFileReader {
     fn block_until_file_changes(&self) -> std::io::Result<usize> {
         loop {
@@ -328,6 +338,8 @@ impl RetryableFileReader {
 
 #[cfg(test)]
 mod tests {
+    use itertools::Itertools as _;
+
     use re_chunk::RowId;
     use re_log_encoding::Encoder;
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
@@ -379,34 +391,29 @@ mod tests {
         }
 
         let messages = (0..5).map(|_| new_message()).collect::<Vec<_>>();
-
         for m in &messages {
             encoder.append(m).expect("failed to append message");
         }
         encoder.flush_blocking().expect("failed to flush messages");
 
         let reader = RetryableFileReader::new(&rrd_file_path).unwrap();
-        let mut decoder = Decoder::new(reader).unwrap();
-
-        // we should be able to read 5 messages that we wrote
-        let decoded_messages = (0..5)
-            .map(|_| decoder.next().unwrap().unwrap())
-            .collect::<Vec<_>>();
-        assert_eq!(messages, decoded_messages);
+        let (decoded_messages_tx, decoded_messages_rx) = crossbeam::channel::unbounded();
 
         // as we're using retryable reader, we should be able to read more messages that we're now going to append
-        let decoder_handle = std::thread::Builder::new()
+        std::thread::Builder::new()
             .name("background decoder".into())
             .spawn(move || {
-                let mut remaining = Vec::new();
-                for msg in decoder {
-                    let msg = msg.unwrap();
-                    remaining.push(msg);
+                for msg in StreamDecoder::decode_lazy(reader).map(Result::unwrap) {
+                    decoded_messages_tx.send(msg).unwrap();
                 }
-
-                remaining
             })
             .unwrap();
+
+        // we should be able to read 5 messages that we wrote
+        let decoded_messages = std::iter::from_fn(|| decoded_messages_rx.recv().ok())
+            .take(5)
+            .collect_vec();
+        assert_eq!(messages, decoded_messages);
 
         // append more messages to the file
         let more_messages = (0..100).map(|_| new_message()).collect::<Vec<_>>();
@@ -420,9 +427,11 @@ mod tests {
         // Note that this test is not entirely representative of the real usecase of having reader and writer on
         // different processes, since file read/write visibility across processes may behave differently.
         encoder.finish().expect("failed to finish encoder");
+        encoder.flush_blocking().expect("failed to flush messages");
         drop(encoder);
 
-        let remaining_messages = decoder_handle.join().unwrap();
+        let remaining_messages = decoded_messages_rx.iter().collect_vec();
+        assert_eq!(more_messages.len(), remaining_messages.len());
         assert_eq!(more_messages, remaining_messages);
 
         // Drop explicitly to make sure that rustc doesn't drop it earlier.
