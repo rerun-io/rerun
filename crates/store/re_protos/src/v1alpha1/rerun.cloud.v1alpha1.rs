@@ -182,7 +182,7 @@ impl ::prost::Name for ScanPartitionTableRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ScanPartitionTableResponse {
-    /// Partitions metadata as arrow RecordBatch
+    /// Partitions metadata as Arrow RecordBatch.
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
@@ -243,7 +243,7 @@ impl ::prost::Name for ScanDatasetManifestRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ScanDatasetManifestResponse {
-    /// Layer metadata as arrow RecordBatch
+    /// The contents of the dataset manifest (i.e. information about layers) as Arrow RecordBatch.
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }

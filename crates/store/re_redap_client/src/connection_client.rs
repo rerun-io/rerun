@@ -230,7 +230,7 @@ where
         &mut self,
         entry_id: EntryId,
     ) -> Result<Vec<PartitionId>, StreamError> {
-        const COLUMN_NAME: &str = ScanPartitionTableResponse::PARTITION_ID;
+        const COLUMN_NAME: &str = ScanPartitionTableResponse::FIELD_PARTITION_ID;
 
         let mut stream = self
             .inner()

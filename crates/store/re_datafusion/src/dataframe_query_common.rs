@@ -171,7 +171,7 @@ impl DataframeQueryTableProvider {
 
         let schema = Arc::new(prepend_string_column_schema(
             &schema,
-            ScanPartitionTableResponse::PARTITION_ID,
+            ScanPartitionTableResponse::FIELD_PARTITION_ID,
         ));
 
         Ok(Self {

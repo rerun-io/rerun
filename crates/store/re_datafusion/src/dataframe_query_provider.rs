@@ -201,10 +201,12 @@ impl PartitionStreamExec {
         let orderings = if projected_schema
             .fields()
             .iter()
-            .any(|f| f.name().as_str() == ScanPartitionTableResponse::PARTITION_ID)
+            .any(|f| f.name().as_str() == ScanPartitionTableResponse::FIELD_PARTITION_ID)
         {
-            let partition_col = Arc::new(Column::new(ScanPartitionTableResponse::PARTITION_ID, 0))
-                as Arc<dyn PhysicalExpr>;
+            let partition_col = Arc::new(Column::new(
+                ScanPartitionTableResponse::FIELD_PARTITION_ID,
+                0,
+            )) as Arc<dyn PhysicalExpr>;
             let order_col = sort_index
                 .and_then(|index| {
                     let index_name = index.as_str();
@@ -243,7 +245,7 @@ impl PartitionStreamExec {
         let output_partitioning = if partition_in_output_schema {
             Partitioning::Hash(
                 vec![Arc::new(Column::new(
-                    ScanPartitionTableResponse::PARTITION_ID,
+                    ScanPartitionTableResponse::FIELD_PARTITION_ID,
                     0,
                 ))],
                 num_partitions,
@@ -306,7 +308,7 @@ async fn send_next_row(
 
     let batch_schema = Arc::new(prepend_string_column_schema(
         &query_schema,
-        ScanPartitionTableResponse::PARTITION_ID,
+        ScanPartitionTableResponse::FIELD_PARTITION_ID,
     ));
 
     let batch = RecordBatch::try_new_with_options(

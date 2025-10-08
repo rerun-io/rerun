@@ -282,13 +282,11 @@ message ScanPartitionTableRequest {
 }
 
 message ScanPartitionTableResponse {
-  // Partitions metadata as arrow RecordBatch
+  // Partitions metadata as Arrow RecordBatch.
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
-message GetDatasetManifestSchemaRequest {
-  reserved "dataset_id";
-}
+message GetDatasetManifestSchemaRequest {}
 
 message GetDatasetManifestSchemaResponse {
   rerun.common.v1alpha1.Schema schema = 1;
@@ -299,13 +297,10 @@ message ScanDatasetManifestRequest {
   //
   // All of them if left empty.
   repeated string columns = 3;
-
-  reserved "dataset_id";
-  reserved "scan_parameters";
 }
 
 message ScanDatasetManifestResponse {
-  // Layer metadata as arrow RecordBatch
+  // The contents of the dataset manifest (i.e. information about layers) as Arrow RecordBatch.
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 

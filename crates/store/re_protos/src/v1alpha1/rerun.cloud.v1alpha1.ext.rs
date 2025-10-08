@@ -1181,57 +1181,58 @@ pub struct RegisterWithDatasetTaskDescriptor {
 // --- ScanPartitionTableResponse --
 
 impl ScanPartitionTableResponse {
-    pub const PARTITION_ID: &str = "rerun_partition_id";
+    pub const FIELD_PARTITION_ID: &str = "rerun_partition_id";
 
     /// Layer names for this partition, one per layer.
     ///
-    /// Should have the same length as [`Self::STORAGE_URLS`].
-    pub const LAYER_NAMES: &str = "rerun_layer_names";
+    /// Should have the same length as [`Self::FIELD_STORAGE_URLS`].
+    pub const FIELD_LAYER_NAMES: &str = "rerun_layer_names";
 
     /// Storage URLs for this partition, one per layer.
     ///
-    /// Should have the same length as [`Self::LAYER_NAMES`].
-    pub const STORAGE_URLS: &str = "rerun_storage_urls";
+    /// Should have the same length as [`Self::FIELD_LAYER_NAMES`].
+    pub const FIELD_STORAGE_URLS: &str = "rerun_storage_urls";
 
-    /// Keeps track of most recent time any layer belonging to this partition was updated in any way.
-    pub const LAST_UPDATED_AT: &str = "rerun_last_updated_at";
+    /// Keeps track of the most recent time any layer belonging to this partition was updated in any
+    /// way.
+    pub const FIELD_LAST_UPDATED_AT: &str = "rerun_last_updated_at";
 
     /// Total number of chunks for this partition.
-    pub const NUM_CHUNKS: &str = "rerun_num_chunks";
+    pub const FIELD_NUM_CHUNKS: &str = "rerun_num_chunks";
 
     /// Total size in bytes for this partition.
-    pub const SIZE_BYTES: &str = "rerun_size_bytes";
+    pub const FIELD_SIZE_BYTES: &str = "rerun_size_bytes";
 
-    pub fn layer_names_inner_field() -> FieldRef {
-        Arc::new(Field::new(Self::LAYER_NAMES, DataType::Utf8, false))
+    pub fn field_layer_names_inner() -> FieldRef {
+        Arc::new(Field::new(Self::FIELD_LAYER_NAMES, DataType::Utf8, false))
     }
 
-    pub fn storage_urls_inner_field() -> FieldRef {
-        Arc::new(Field::new(Self::STORAGE_URLS, DataType::Utf8, false))
+    pub fn field_storage_urls_inner() -> FieldRef {
+        Arc::new(Field::new(Self::FIELD_STORAGE_URLS, DataType::Utf8, false))
     }
 
     // NOTE: changing this method is a breaking change for implementation (aka it at least breaks
     // tests in `dataplatform`)
     pub fn fields() -> Vec<Field> {
         vec![
-            Field::new(Self::PARTITION_ID, DataType::Utf8, false),
+            Field::new(Self::FIELD_PARTITION_ID, DataType::Utf8, false),
             Field::new(
-                Self::LAYER_NAMES,
-                DataType::List(Self::layer_names_inner_field()),
+                Self::FIELD_LAYER_NAMES,
+                DataType::List(Self::field_layer_names_inner()),
                 false,
             ),
             Field::new(
-                Self::STORAGE_URLS,
-                DataType::List(Self::storage_urls_inner_field()),
+                Self::FIELD_STORAGE_URLS,
+                DataType::List(Self::field_storage_urls_inner()),
                 false,
             ),
             Field::new(
-                Self::LAST_UPDATED_AT,
+                Self::FIELD_LAST_UPDATED_AT,
                 DataType::Timestamp(TimeUnit::Nanosecond, None),
                 false,
             ),
-            Field::new(Self::NUM_CHUNKS, DataType::UInt64, false),
-            Field::new(Self::SIZE_BYTES, DataType::UInt64, false),
+            Field::new(Self::FIELD_NUM_CHUNKS, DataType::UInt64, false),
+            Field::new(Self::FIELD_SIZE_BYTES, DataType::UInt64, false),
         ]
     }
 
@@ -1252,7 +1253,7 @@ impl ScanPartitionTableResponse {
         let schema = Arc::new(Self::schema());
 
         let mut layer_names_builder =
-            ListBuilder::new(StringBuilder::new()).with_field(Self::layer_names_inner_field());
+            ListBuilder::new(StringBuilder::new()).with_field(Self::field_layer_names_inner());
 
         for mut inner_vec in layer_names {
             for layer_name in inner_vec.drain(..) {
@@ -1262,7 +1263,7 @@ impl ScanPartitionTableResponse {
         }
 
         let mut urls_builder =
-            ListBuilder::new(StringBuilder::new()).with_field(Self::storage_urls_inner_field());
+            ListBuilder::new(StringBuilder::new()).with_field(Self::field_storage_urls_inner());
 
         for mut inner_vec in storage_urls {
             for layer_name in inner_vec.drain(..) {
@@ -1298,41 +1299,45 @@ impl ScanPartitionTableResponse {
 // --- ScanDatasetManifestResponse --
 
 impl ScanDatasetManifestResponse {
-    pub const LAYER_NAME: &str = "rerun_layer_name";
-    pub const PARTITION_ID: &str = "rerun_partition_id";
-    pub const STORAGE_URL: &str = "rerun_storage_url";
-    pub const LAYER_TYPE: &str = "rerun_layer_type";
+    pub const FIELD_LAYER_NAME: &str = "rerun_layer_name";
+    pub const FIELD_PARTITION_ID: &str = "rerun_partition_id";
+    pub const FIELD_STORAGE_URL: &str = "rerun_storage_url";
+    pub const FIELD_LAYER_TYPE: &str = "rerun_layer_type";
 
     /// Time at which the layer was initially registered.
-    pub const REGISTRATION_TIME: &str = "rerun_registration_time";
+    pub const FIELD_REGISTRATION_TIME: &str = "rerun_registration_time";
 
     /// When was this row of the manifest modified last?
-    pub const LAST_UPDATED_AT: &str = "rerun_last_updated_at";
-    pub const NUM_CHUNKS: &str = "rerun_num_chunks";
-    pub const SIZE_BYTES: &str = "rerun_size_bytes";
-    pub const SCHEMA_SHA256: &str = "rerun_schema_sha256";
+    pub const FIELD_LAST_UPDATED_AT: &str = "rerun_last_updated_at";
+    pub const FIELD_NUM_CHUNKS: &str = "rerun_num_chunks";
+    pub const FIELD_SIZE_BYTES: &str = "rerun_size_bytes";
+    pub const FIELD_SCHEMA_SHA256: &str = "rerun_schema_sha256";
 
     // NOTE: changing this method is a breaking change for implementation (aka it at least breaks
     // tests in `dataplatform`)
     pub fn fields() -> Vec<Field> {
         vec![
-            Field::new(Self::LAYER_NAME, DataType::Utf8, false),
-            Field::new(Self::PARTITION_ID, DataType::Utf8, false),
-            Field::new(Self::STORAGE_URL, DataType::Utf8, false),
-            Field::new(Self::LAYER_TYPE, DataType::Utf8, false),
+            Field::new(Self::FIELD_LAYER_NAME, DataType::Utf8, false),
+            Field::new(Self::FIELD_PARTITION_ID, DataType::Utf8, false),
+            Field::new(Self::FIELD_STORAGE_URL, DataType::Utf8, false),
+            Field::new(Self::FIELD_LAYER_TYPE, DataType::Utf8, false),
             Field::new(
-                Self::REGISTRATION_TIME,
+                Self::FIELD_REGISTRATION_TIME,
                 DataType::Timestamp(TimeUnit::Nanosecond, None),
                 false,
             ),
             Field::new(
-                Self::LAST_UPDATED_AT,
+                Self::FIELD_LAST_UPDATED_AT,
                 DataType::Timestamp(TimeUnit::Nanosecond, None),
                 false,
             ),
-            Field::new(Self::NUM_CHUNKS, DataType::UInt64, false),
-            Field::new(Self::SIZE_BYTES, DataType::UInt64, false),
-            Field::new(Self::SCHEMA_SHA256, DataType::FixedSizeBinary(32), false),
+            Field::new(Self::FIELD_NUM_CHUNKS, DataType::UInt64, false),
+            Field::new(Self::FIELD_SIZE_BYTES, DataType::UInt64, false),
+            Field::new(
+                Self::FIELD_SCHEMA_SHA256,
+                DataType::FixedSizeBinary(32),
+                false,
+            ),
         ]
     }
 
