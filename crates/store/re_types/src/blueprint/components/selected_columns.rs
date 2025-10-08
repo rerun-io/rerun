@@ -19,66 +19,33 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __SelectedColumnsMarker;
+
 /// **Component**: Describe a component column to be selected in the dataframe view.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct SelectedColumns(pub crate::blueprint::datatypes::SelectedColumns);
+pub type SelectedColumns =
+    crate::WrapperComponent<crate::blueprint::datatypes::SelectedColumns, __SelectedColumnsMarker>;
 
-impl ::re_types_core::WrapperComponent for SelectedColumns {
-    type Datatype = crate::blueprint::datatypes::SelectedColumns;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn SelectedColumns(v: crate::blueprint::datatypes::SelectedColumns) -> SelectedColumns {
+    crate::WrapperComponent::<crate::blueprint::datatypes::SelectedColumns, __SelectedColumnsMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for SelectedColumns {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.SelectedColumns".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(SelectedColumns);
 
 impl<T: Into<crate::blueprint::datatypes::SelectedColumns>> From<T> for SelectedColumns {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::blueprint::datatypes::SelectedColumns> for SelectedColumns {
-    #[inline]
-    fn borrow(&self) -> &crate::blueprint::datatypes::SelectedColumns {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for SelectedColumns {
-    type Target = crate::blueprint::datatypes::SelectedColumns;
-
-    #[inline]
-    fn deref(&self) -> &crate::blueprint::datatypes::SelectedColumns {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for SelectedColumns {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::SelectedColumns {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for SelectedColumns {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::datatypes::SelectedColumns>::is_pod()
+        SelectedColumns(v.into())
     }
 }

@@ -19,69 +19,32 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __NearClipPlaneMarker;
+
 /// **Component**: Distance to the near clip plane used for `Spatial2DView`.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct NearClipPlane(
-    /// Distance to the near clip plane in 3D scene units.
-    pub crate::datatypes::Float32,
-);
+pub type NearClipPlane = crate::WrapperComponent<crate::datatypes::Float32, __NearClipPlaneMarker>;
 
-impl ::re_types_core::WrapperComponent for NearClipPlane {
-    type Datatype = crate::datatypes::Float32;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn NearClipPlane(v: crate::datatypes::Float32) -> NearClipPlane {
+    crate::WrapperComponent::<crate::datatypes::Float32, __NearClipPlaneMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for NearClipPlane {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.NearClipPlane".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(NearClipPlane);
 
 impl<T: Into<crate::datatypes::Float32>> From<T> for NearClipPlane {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Float32> for NearClipPlane {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for NearClipPlane {
-    type Target = crate::datatypes::Float32;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for NearClipPlane {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for NearClipPlane {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float32>::is_pod()
+        NearClipPlane(v.into())
     }
 }

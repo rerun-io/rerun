@@ -11,7 +11,7 @@ impl Position2D {
     /// Create a new position.
     #[inline]
     pub const fn new(x: f32, y: f32) -> Self {
-        Self(Vec2D::new(x, y))
+        Position2D(Vec2D::new(x, y))
     }
 
     /// The x coordinate, i.e. index 0
@@ -58,6 +58,6 @@ impl From<Position2D> for mint::Point2<f32> {
 impl From<mint::Point2<f32>> for Position2D {
     #[inline]
     fn from(position: mint::Point2<f32>) -> Self {
-        Self(Vec2D([position.x, position.y]))
+        Position2D(Vec2D([position.x, position.y]))
     }
 }

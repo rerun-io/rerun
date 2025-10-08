@@ -19,64 +19,30 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __Range1DMarker;
+
 /// **Component**: A 1D range, specifying a lower and upper bound.
-#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct Range1D(pub crate::datatypes::Range1D);
+pub type Range1D = crate::WrapperComponent<crate::datatypes::Range1D, __Range1DMarker>;
 
-impl ::re_types_core::WrapperComponent for Range1D {
-    type Datatype = crate::datatypes::Range1D;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn Range1D(v: crate::datatypes::Range1D) -> Range1D {
+    crate::WrapperComponent::<crate::datatypes::Range1D, __Range1DMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for Range1D {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.Range1D".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(Range1D);
 
 impl<T: Into<crate::datatypes::Range1D>> From<T> for Range1D {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Range1D> for Range1D {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Range1D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Range1D {
-    type Target = crate::datatypes::Range1D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Range1D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Range1D {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Range1D {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Range1D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Range1D>::is_pod()
+        Range1D(v.into())
     }
 }

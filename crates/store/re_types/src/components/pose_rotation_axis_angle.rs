@@ -19,67 +19,36 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __PoseRotationAxisAngleMarker;
+
 /// **Component**: 3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.
 ///
 /// If normalization of the rotation axis fails the rotation is treated as an invalid transform, unless the
 /// angle is zero in which case it is treated as an identity.
-#[derive(Clone, Debug, Default, Copy, PartialEq)]
-#[repr(transparent)]
-pub struct PoseRotationAxisAngle(pub crate::datatypes::RotationAxisAngle);
+pub type PoseRotationAxisAngle =
+    crate::WrapperComponent<crate::datatypes::RotationAxisAngle, __PoseRotationAxisAngleMarker>;
 
-impl ::re_types_core::WrapperComponent for PoseRotationAxisAngle {
-    type Datatype = crate::datatypes::RotationAxisAngle;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn PoseRotationAxisAngle(
+    v: crate::datatypes::RotationAxisAngle,
+) -> PoseRotationAxisAngle {
+    crate::WrapperComponent::<crate::datatypes::RotationAxisAngle, __PoseRotationAxisAngleMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for PoseRotationAxisAngle {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.PoseRotationAxisAngle".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(PoseRotationAxisAngle);
 
 impl<T: Into<crate::datatypes::RotationAxisAngle>> From<T> for PoseRotationAxisAngle {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::RotationAxisAngle> for PoseRotationAxisAngle {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::RotationAxisAngle {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for PoseRotationAxisAngle {
-    type Target = crate::datatypes::RotationAxisAngle;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::RotationAxisAngle {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for PoseRotationAxisAngle {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::RotationAxisAngle {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for PoseRotationAxisAngle {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::RotationAxisAngle>::is_pod()
+        PoseRotationAxisAngle(v.into())
     }
 }

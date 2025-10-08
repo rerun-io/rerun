@@ -19,69 +19,33 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __VisualBounds2DMarker;
+
 /// **Component**: Visual bounds in 2D space used for `Spatial2DView`.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct VisualBounds2D(
-    /// X and y ranges that should be visible.
-    pub crate::datatypes::Range2D,
-);
+pub type VisualBounds2D =
+    crate::WrapperComponent<crate::datatypes::Range2D, __VisualBounds2DMarker>;
 
-impl ::re_types_core::WrapperComponent for VisualBounds2D {
-    type Datatype = crate::datatypes::Range2D;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn VisualBounds2D(v: crate::datatypes::Range2D) -> VisualBounds2D {
+    crate::WrapperComponent::<crate::datatypes::Range2D, __VisualBounds2DMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for VisualBounds2D {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.VisualBounds2D".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(VisualBounds2D);
 
 impl<T: Into<crate::datatypes::Range2D>> From<T> for VisualBounds2D {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Range2D> for VisualBounds2D {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Range2D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for VisualBounds2D {
-    type Target = crate::datatypes::Range2D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Range2D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for VisualBounds2D {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Range2D {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for VisualBounds2D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Range2D>::is_pod()
+        VisualBounds2D(v.into())
     }
 }

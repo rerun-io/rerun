@@ -19,64 +19,30 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __Vector3DMarker;
+
 /// **Component**: A vector in 3D space.
-#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct Vector3D(pub crate::datatypes::Vec3D);
+pub type Vector3D = crate::WrapperComponent<crate::datatypes::Vec3D, __Vector3DMarker>;
 
-impl ::re_types_core::WrapperComponent for Vector3D {
-    type Datatype = crate::datatypes::Vec3D;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn Vector3D(v: crate::datatypes::Vec3D) -> Vector3D {
+    crate::WrapperComponent::<crate::datatypes::Vec3D, __Vector3DMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for Vector3D {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.Vector3D".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(Vector3D);
 
 impl<T: Into<crate::datatypes::Vec3D>> From<T> for Vector3D {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Vec3D> for Vector3D {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Vec3D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Vector3D {
-    type Target = crate::datatypes::Vec3D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Vec3D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Vector3D {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec3D {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Vector3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Vec3D>::is_pod()
+        Vector3D(v.into())
     }
 }

@@ -19,68 +19,31 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __CountMarker;
+
 /// **Component**: A generic count value.
 ///
 /// Used for counting various entities like messages, schemas, channels, etc.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(transparent)]
-pub struct Count(pub crate::datatypes::UInt64);
+pub type Count = crate::WrapperComponent<crate::datatypes::UInt64, __CountMarker>;
 
-impl ::re_types_core::WrapperComponent for Count {
-    type Datatype = crate::datatypes::UInt64;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn Count(v: crate::datatypes::UInt64) -> Count {
+    crate::WrapperComponent::<crate::datatypes::UInt64, __CountMarker>(v, std::marker::PhantomData)
+}
 
+impl ::re_types_core::Component for Count {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.Count".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(Count);
 
 impl<T: Into<crate::datatypes::UInt64>> From<T> for Count {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::UInt64> for Count {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::UInt64 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Count {
-    type Target = crate::datatypes::UInt64;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::UInt64 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Count {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt64 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Count {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::UInt64>::is_pod()
+        Count(v.into())
     }
 }

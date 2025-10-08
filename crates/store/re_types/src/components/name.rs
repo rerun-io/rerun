@@ -19,64 +19,27 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __NameMarker;
+
 /// **Component**: A display name, typically for an entity or a item like a plot series.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(transparent)]
-pub struct Name(pub crate::datatypes::Utf8);
+pub type Name = crate::WrapperComponent<crate::datatypes::Utf8, __NameMarker>;
 
-impl ::re_types_core::WrapperComponent for Name {
-    type Datatype = crate::datatypes::Utf8;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn Name(v: crate::datatypes::Utf8) -> Name {
+    crate::WrapperComponent::<crate::datatypes::Utf8, __NameMarker>(v, std::marker::PhantomData)
+}
 
+impl ::re_types_core::Component for Name {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.Name".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(Name);
 
 impl<T: Into<crate::datatypes::Utf8>> From<T> for Name {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Utf8> for Name {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Name {
-    type Target = crate::datatypes::Utf8;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Name {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Name {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod()
+        Name(v.into())
     }
 }

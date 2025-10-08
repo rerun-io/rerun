@@ -19,67 +19,33 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __MediaTypeMarker;
+
 /// **Component**: A standardized media type (RFC2046, formerly known as MIME types), encoded as a string.
 ///
 /// The complete reference of officially registered media types is maintained by the IANA and can be
 /// consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[repr(transparent)]
-pub struct MediaType(pub crate::datatypes::Utf8);
+pub type MediaType = crate::WrapperComponent<crate::datatypes::Utf8, __MediaTypeMarker>;
 
-impl ::re_types_core::WrapperComponent for MediaType {
-    type Datatype = crate::datatypes::Utf8;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn MediaType(v: crate::datatypes::Utf8) -> MediaType {
+    crate::WrapperComponent::<crate::datatypes::Utf8, __MediaTypeMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for MediaType {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.MediaType".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(MediaType);
 
 impl<T: Into<crate::datatypes::Utf8>> From<T> for MediaType {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Utf8> for MediaType {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for MediaType {
-    type Target = crate::datatypes::Utf8;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for MediaType {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for MediaType {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod()
+        MediaType(v.into())
     }
 }

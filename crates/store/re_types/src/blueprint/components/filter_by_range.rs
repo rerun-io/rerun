@@ -19,66 +19,33 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __FilterByRangeMarker;
+
 /// **Component**: Configuration for a filter-by-range feature of the dataframe view.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct FilterByRange(pub crate::blueprint::datatypes::FilterByRange);
+pub type FilterByRange =
+    crate::WrapperComponent<crate::blueprint::datatypes::FilterByRange, __FilterByRangeMarker>;
 
-impl ::re_types_core::WrapperComponent for FilterByRange {
-    type Datatype = crate::blueprint::datatypes::FilterByRange;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn FilterByRange(v: crate::blueprint::datatypes::FilterByRange) -> FilterByRange {
+    crate::WrapperComponent::<crate::blueprint::datatypes::FilterByRange, __FilterByRangeMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for FilterByRange {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.FilterByRange".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(FilterByRange);
 
 impl<T: Into<crate::blueprint::datatypes::FilterByRange>> From<T> for FilterByRange {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::blueprint::datatypes::FilterByRange> for FilterByRange {
-    #[inline]
-    fn borrow(&self) -> &crate::blueprint::datatypes::FilterByRange {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for FilterByRange {
-    type Target = crate::blueprint::datatypes::FilterByRange;
-
-    #[inline]
-    fn deref(&self) -> &crate::blueprint::datatypes::FilterByRange {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for FilterByRange {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::FilterByRange {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for FilterByRange {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::datatypes::FilterByRange>::is_pod()
+        FilterByRange(v.into())
     }
 }

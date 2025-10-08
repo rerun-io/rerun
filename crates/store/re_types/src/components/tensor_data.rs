@@ -19,6 +19,9 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __TensorDataMarker;
+
 /// **Component**: An N-dimensional array of numbers.
 ///
 /// The number of dimensions and their respective lengths is specified by the `shape` field.
@@ -27,63 +30,26 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// These dimensions are combined with an index to look up values from the `buffer` field,
 /// which stores a contiguous array of typed values.
-#[derive(Clone, Debug, Default, PartialEq)]
-#[repr(transparent)]
-pub struct TensorData(pub crate::datatypes::TensorData);
+pub type TensorData = crate::WrapperComponent<crate::datatypes::TensorData, __TensorDataMarker>;
 
-impl ::re_types_core::WrapperComponent for TensorData {
-    type Datatype = crate::datatypes::TensorData;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn TensorData(v: crate::datatypes::TensorData) -> TensorData {
+    crate::WrapperComponent::<crate::datatypes::TensorData, __TensorDataMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for TensorData {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.TensorData".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(TensorData);
 
 impl<T: Into<crate::datatypes::TensorData>> From<T> for TensorData {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::TensorData> for TensorData {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::TensorData {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for TensorData {
-    type Target = crate::datatypes::TensorData;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::TensorData {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for TensorData {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::TensorData {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TensorData {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::TensorData>::is_pod()
+        TensorData(v.into())
     }
 }

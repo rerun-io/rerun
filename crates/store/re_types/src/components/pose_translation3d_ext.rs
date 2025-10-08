@@ -21,7 +21,7 @@ impl PoseTranslation3D {
     /// Create a new translation.
     #[inline]
     pub const fn new(x: f32, y: f32, z: f32) -> Self {
-        Self(Vec3D::new(x, y, z))
+        PoseTranslation3D(Vec3D::new(x, y, z))
     }
 
     /// The x coordinate, i.e. index 0

@@ -19,68 +19,32 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __GridColumnsMarker;
+
 /// **Component**: How many columns a grid container should have.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct GridColumns(
-    /// The number of columns.
-    pub crate::datatypes::UInt32,
-);
+pub type GridColumns = crate::WrapperComponent<crate::datatypes::UInt32, __GridColumnsMarker>;
 
-impl ::re_types_core::WrapperComponent for GridColumns {
-    type Datatype = crate::datatypes::UInt32;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn GridColumns(v: crate::datatypes::UInt32) -> GridColumns {
+    crate::WrapperComponent::<crate::datatypes::UInt32, __GridColumnsMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for GridColumns {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.GridColumns".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(GridColumns);
 
 impl<T: Into<crate::datatypes::UInt32>> From<T> for GridColumns {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::UInt32> for GridColumns {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::UInt32 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for GridColumns {
-    type Target = crate::datatypes::UInt32;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::UInt32 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for GridColumns {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt32 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for GridColumns {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::UInt32>::is_pod()
+        GridColumns(v.into())
     }
 }

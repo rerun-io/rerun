@@ -19,6 +19,9 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __GammaCorrectionMarker;
+
 /// **Component**: A gamma correction value to be used with a scalar value or color.
 ///
 /// Used to adjust the gamma of a color or scalar value between 0 and 1 before rendering.
@@ -26,63 +29,27 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Must be a positive number.
 /// Defaults to 1.0 unless otherwise specified.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct GammaCorrection(pub crate::datatypes::Float32);
+pub type GammaCorrection =
+    crate::WrapperComponent<crate::datatypes::Float32, __GammaCorrectionMarker>;
 
-impl ::re_types_core::WrapperComponent for GammaCorrection {
-    type Datatype = crate::datatypes::Float32;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn GammaCorrection(v: crate::datatypes::Float32) -> GammaCorrection {
+    crate::WrapperComponent::<crate::datatypes::Float32, __GammaCorrectionMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for GammaCorrection {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.GammaCorrection".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(GammaCorrection);
 
 impl<T: Into<crate::datatypes::Float32>> From<T> for GammaCorrection {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Float32> for GammaCorrection {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for GammaCorrection {
-    type Target = crate::datatypes::Float32;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for GammaCorrection {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for GammaCorrection {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float32>::is_pod()
+        GammaCorrection(v.into())
     }
 }

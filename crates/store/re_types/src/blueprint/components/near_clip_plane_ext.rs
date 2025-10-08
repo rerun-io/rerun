@@ -6,6 +6,6 @@ impl Default for NearClipPlane {
     #[inline]
     fn default() -> Self {
         // Default near clip plane to reasonable distance for common cameras
-        Self(Float32(0.1))
+        NearClipPlane(Float32(0.1))
     }
 }

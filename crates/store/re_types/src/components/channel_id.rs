@@ -19,66 +19,32 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __ChannelIdMarker;
+
 /// **Component**: A 16-bit ID representing an MCAP channel.
 ///
 /// Used to identify specific channels within an MCAP file.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(transparent)]
-pub struct ChannelId(pub crate::datatypes::UInt16);
+pub type ChannelId = crate::WrapperComponent<crate::datatypes::UInt16, __ChannelIdMarker>;
 
-impl ::re_types_core::WrapperComponent for ChannelId {
-    type Datatype = crate::datatypes::UInt16;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn ChannelId(v: crate::datatypes::UInt16) -> ChannelId {
+    crate::WrapperComponent::<crate::datatypes::UInt16, __ChannelIdMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for ChannelId {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.ChannelId".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(ChannelId);
 
 impl<T: Into<crate::datatypes::UInt16>> From<T> for ChannelId {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::UInt16> for ChannelId {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::UInt16 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ChannelId {
-    type Target = crate::datatypes::UInt16;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::UInt16 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ChannelId {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt16 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ChannelId {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::UInt16>::is_pod()
+        ChannelId(v.into())
     }
 }

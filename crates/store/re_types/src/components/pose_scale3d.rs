@@ -19,68 +19,34 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __PoseScale3DMarker;
+
 /// **Component**: A 3D scale factor that doesn't propagate in the transform hierarchy.
 ///
 /// A scale of 1.0 means no scaling.
 /// A scale of 2.0 means doubling the size.
 /// Each component scales along the corresponding axis.
-#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct PoseScale3D(pub crate::datatypes::Vec3D);
+pub type PoseScale3D = crate::WrapperComponent<crate::datatypes::Vec3D, __PoseScale3DMarker>;
 
-impl ::re_types_core::WrapperComponent for PoseScale3D {
-    type Datatype = crate::datatypes::Vec3D;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn PoseScale3D(v: crate::datatypes::Vec3D) -> PoseScale3D {
+    crate::WrapperComponent::<crate::datatypes::Vec3D, __PoseScale3DMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for PoseScale3D {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.PoseScale3D".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(PoseScale3D);
 
 impl<T: Into<crate::datatypes::Vec3D>> From<T> for PoseScale3D {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Vec3D> for PoseScale3D {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Vec3D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for PoseScale3D {
-    type Target = crate::datatypes::Vec3D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Vec3D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for PoseScale3D {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec3D {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for PoseScale3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Vec3D>::is_pod()
+        PoseScale3D(v.into())
     }
 }

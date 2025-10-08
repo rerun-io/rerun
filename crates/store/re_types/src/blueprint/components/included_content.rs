@@ -19,71 +19,33 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __IncludedContentMarker;
+
 /// **Component**: All the contents in the container.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
-pub struct IncludedContent(
-    /// List of the contents by [`datatypes::EntityPath`][crate::datatypes::EntityPath].
-    ///
-    /// This must be a path in the blueprint store.
-    /// Typically structure as `<blueprint_registry>/<uuid>`.
-    pub crate::datatypes::EntityPath,
-);
+pub type IncludedContent =
+    crate::WrapperComponent<crate::datatypes::EntityPath, __IncludedContentMarker>;
 
-impl ::re_types_core::WrapperComponent for IncludedContent {
-    type Datatype = crate::datatypes::EntityPath;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn IncludedContent(v: crate::datatypes::EntityPath) -> IncludedContent {
+    crate::WrapperComponent::<crate::datatypes::EntityPath, __IncludedContentMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for IncludedContent {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.IncludedContent".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(IncludedContent);
 
 impl<T: Into<crate::datatypes::EntityPath>> From<T> for IncludedContent {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::EntityPath> for IncludedContent {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::EntityPath {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for IncludedContent {
-    type Target = crate::datatypes::EntityPath;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::EntityPath {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for IncludedContent {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::EntityPath {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for IncludedContent {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::EntityPath>::is_pod()
+        IncludedContent(v.into())
     }
 }

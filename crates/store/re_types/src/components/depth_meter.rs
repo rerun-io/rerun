@@ -19,6 +19,9 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __DepthMeterMarker;
+
 /// **Component**: The world->depth map scaling factor.
 ///
 /// This measures how many depth map units are in a world unit.
@@ -29,63 +32,26 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// In 3D views on the other hand, this affects where the points of the point cloud are placed.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct DepthMeter(pub crate::datatypes::Float32);
+pub type DepthMeter = crate::WrapperComponent<crate::datatypes::Float32, __DepthMeterMarker>;
 
-impl ::re_types_core::WrapperComponent for DepthMeter {
-    type Datatype = crate::datatypes::Float32;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn DepthMeter(v: crate::datatypes::Float32) -> DepthMeter {
+    crate::WrapperComponent::<crate::datatypes::Float32, __DepthMeterMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for DepthMeter {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.DepthMeter".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(DepthMeter);
 
 impl<T: Into<crate::datatypes::Float32>> From<T> for DepthMeter {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Float32> for DepthMeter {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for DepthMeter {
-    type Target = crate::datatypes::Float32;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for DepthMeter {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for DepthMeter {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float32>::is_pod()
+        DepthMeter(v.into())
     }
 }

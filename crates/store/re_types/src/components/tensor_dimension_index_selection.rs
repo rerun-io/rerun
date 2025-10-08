@@ -19,68 +19,37 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __TensorDimensionIndexSelectionMarker;
+
 /// **Component**: Specifies a concrete index on a tensor dimension.
-#[derive(Clone, Debug, Hash, Copy, PartialEq, Eq, Default)]
-#[repr(transparent)]
-pub struct TensorDimensionIndexSelection(pub crate::datatypes::TensorDimensionIndexSelection);
+pub type TensorDimensionIndexSelection = crate::WrapperComponent<
+    crate::datatypes::TensorDimensionIndexSelection,
+    __TensorDimensionIndexSelectionMarker,
+>;
 
-impl ::re_types_core::WrapperComponent for TensorDimensionIndexSelection {
-    type Datatype = crate::datatypes::TensorDimensionIndexSelection;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn TensorDimensionIndexSelection(
+    v: crate::datatypes::TensorDimensionIndexSelection,
+) -> TensorDimensionIndexSelection {
+    crate::WrapperComponent::<
+        crate::datatypes::TensorDimensionIndexSelection,
+        __TensorDimensionIndexSelectionMarker,
+    >(v, std::marker::PhantomData)
+}
 
+impl ::re_types_core::Component for TensorDimensionIndexSelection {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.TensorDimensionIndexSelection".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(TensorDimensionIndexSelection);
 
 impl<T: Into<crate::datatypes::TensorDimensionIndexSelection>> From<T>
     for TensorDimensionIndexSelection
 {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::TensorDimensionIndexSelection>
-    for TensorDimensionIndexSelection
-{
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::TensorDimensionIndexSelection {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for TensorDimensionIndexSelection {
-    type Target = crate::datatypes::TensorDimensionIndexSelection;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::TensorDimensionIndexSelection {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for TensorDimensionIndexSelection {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::TensorDimensionIndexSelection {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TensorDimensionIndexSelection {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::TensorDimensionIndexSelection>::is_pod()
+        TensorDimensionIndexSelection(v.into())
     }
 }

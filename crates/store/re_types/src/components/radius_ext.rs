@@ -4,10 +4,10 @@ use super::Radius;
 
 impl Radius {
     /// Zero radius.
-    pub const ZERO: Self = Self(Float32(0.0));
+    pub const ZERO: Self = Radius(Float32(0.0));
 
     /// Radius of length 1 in ui points.
-    pub const ONE_UI_POINTS: Self = Self(Float32(-1.0));
+    pub const ONE_UI_POINTS: Self = Radius(Float32(-1.0));
 }
 
 impl Default for Radius {
@@ -27,7 +27,7 @@ impl Radius {
             0.0 <= radius_in_scene_units,
             "Bad radius: {radius_in_scene_units}"
         );
-        Self(Float32(radius_in_scene_units))
+        Radius(Float32(radius_in_scene_units))
     }
 
     /// Creates a new radius in ui points.
@@ -39,7 +39,7 @@ impl Radius {
             0.0 <= radius_in_ui_points,
             "Bad radius: {radius_in_ui_points}"
         );
-        Self(Float32(-radius_in_ui_points))
+        Radius(Float32(-radius_in_ui_points))
     }
 
     /// If this radius is in scene units, returns the radius in scene units.

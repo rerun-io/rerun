@@ -19,65 +19,32 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __ResolutionMarker;
+
 /// **Component**: Pixel resolution width & height, e.g. of a camera sensor.
 ///
 /// Typically in integer units, but for some use cases floating point may be used.
-#[derive(Clone, Debug, Copy, PartialEq)]
-pub struct Resolution(pub crate::datatypes::Vec2D);
+pub type Resolution = crate::WrapperComponent<crate::datatypes::Vec2D, __ResolutionMarker>;
 
-impl ::re_types_core::WrapperComponent for Resolution {
-    type Datatype = crate::datatypes::Vec2D;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn Resolution(v: crate::datatypes::Vec2D) -> Resolution {
+    crate::WrapperComponent::<crate::datatypes::Vec2D, __ResolutionMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for Resolution {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.Resolution".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(Resolution);
 
 impl<T: Into<crate::datatypes::Vec2D>> From<T> for Resolution {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Vec2D> for Resolution {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Vec2D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Resolution {
-    type Target = crate::datatypes::Vec2D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Vec2D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Resolution {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec2D {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Resolution {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Vec2D>::is_pod()
+        Resolution(v.into())
     }
 }

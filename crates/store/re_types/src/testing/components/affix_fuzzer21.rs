@@ -19,62 +19,29 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct AffixFuzzer21(pub crate::testing::datatypes::AffixFuzzer21);
+#[doc(hidden)]
+pub struct __AffixFuzzer21Marker;
+pub type AffixFuzzer21 =
+    crate::WrapperComponent<crate::testing::datatypes::AffixFuzzer21, __AffixFuzzer21Marker>;
 
-impl ::re_types_core::WrapperComponent for AffixFuzzer21 {
-    type Datatype = crate::testing::datatypes::AffixFuzzer21;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn AffixFuzzer21(v: crate::testing::datatypes::AffixFuzzer21) -> AffixFuzzer21 {
+    crate::WrapperComponent::<crate::testing::datatypes::AffixFuzzer21, __AffixFuzzer21Marker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for AffixFuzzer21 {
     #[inline]
     fn name() -> ComponentType {
         "rerun.testing.components.AffixFuzzer21".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(AffixFuzzer21);
 
 impl<T: Into<crate::testing::datatypes::AffixFuzzer21>> From<T> for AffixFuzzer21 {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::testing::datatypes::AffixFuzzer21> for AffixFuzzer21 {
-    #[inline]
-    fn borrow(&self) -> &crate::testing::datatypes::AffixFuzzer21 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for AffixFuzzer21 {
-    type Target = crate::testing::datatypes::AffixFuzzer21;
-
-    #[inline]
-    fn deref(&self) -> &crate::testing::datatypes::AffixFuzzer21 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for AffixFuzzer21 {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::testing::datatypes::AffixFuzzer21 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AffixFuzzer21 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::testing::datatypes::AffixFuzzer21>::is_pod()
+        AffixFuzzer21(v.into())
     }
 }

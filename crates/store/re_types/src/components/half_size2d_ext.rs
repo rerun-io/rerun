@@ -6,7 +6,7 @@ impl HalfSize2D {
     /// Create a new half-extent from half-width and half-height.
     #[inline]
     pub const fn new(half_width: f32, half_height: f32) -> Self {
-        Self(Vec2D::new(half_width, half_height))
+        HalfSize2D(Vec2D::new(half_width, half_height))
     }
 
     /// Width of a box using this half-extent.
@@ -68,6 +68,6 @@ impl From<HalfSize2D> for mint::Vector2<f32> {
 impl Default for HalfSize2D {
     #[inline]
     fn default() -> Self {
-        Self(Vec2D::ONE)
+        HalfSize2D(Vec2D::ONE)
     }
 }

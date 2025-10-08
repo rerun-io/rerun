@@ -2,10 +2,10 @@ use super::Vector2D;
 
 impl Vector2D {
     /// The zero vector, i.e. the additive identity.
-    pub const ZERO: Self = Self(crate::datatypes::Vec2D::ZERO);
+    pub const ZERO: Self = Vector2D(crate::datatypes::Vec2D::ZERO);
 
     /// `[1, 1]`, i.e. the multiplicative identity.
-    pub const ONE: Self = Self(crate::datatypes::Vec2D::ONE);
+    pub const ONE: Self = Vector2D(crate::datatypes::Vec2D::ONE);
 }
 
 #[cfg(feature = "glam")]

@@ -19,64 +19,30 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __SchemaIdMarker;
+
 /// **Component**: A 16-bit unique identifier for a schema within the MCAP file.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(transparent)]
-pub struct SchemaId(pub crate::datatypes::UInt16);
+pub type SchemaId = crate::WrapperComponent<crate::datatypes::UInt16, __SchemaIdMarker>;
 
-impl ::re_types_core::WrapperComponent for SchemaId {
-    type Datatype = crate::datatypes::UInt16;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn SchemaId(v: crate::datatypes::UInt16) -> SchemaId {
+    crate::WrapperComponent::<crate::datatypes::UInt16, __SchemaIdMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for SchemaId {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.SchemaId".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(SchemaId);
 
 impl<T: Into<crate::datatypes::UInt16>> From<T> for SchemaId {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::UInt16> for SchemaId {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::UInt16 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for SchemaId {
-    type Target = crate::datatypes::UInt16;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::UInt16 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for SchemaId {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt16 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for SchemaId {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::UInt16>::is_pod()
+        SchemaId(v.into())
     }
 }

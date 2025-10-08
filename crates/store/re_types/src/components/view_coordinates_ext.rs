@@ -10,7 +10,7 @@ use super::ViewCoordinates;
 impl ViewCoordinates {
     /// Construct a new `ViewCoordinates` from an array of [`ViewDir`]s.
     pub const fn new(x: ViewDir, y: ViewDir, z: ViewDir) -> Self {
-        Self(datatypes::ViewCoordinates([x as u8, y as u8, z as u8]))
+        ViewCoordinates(datatypes::ViewCoordinates([x as u8, y as u8, z as u8]))
     }
 
     /// Chooses a coordinate system based on just an up-axis.
@@ -274,7 +274,7 @@ impl Default for ViewCoordinates {
 macro_rules! define_coordinates {
     ($docstring:literal, $name:ident => ($x:ident, $y:ident, $z:ident) ) => {
         #[doc = $docstring]
-        pub const $name: Self = Self(datatypes::ViewCoordinates([
+        pub const $name: Self = ViewCoordinates(datatypes::ViewCoordinates([
             ViewDir::$x as u8,
             ViewDir::$y as u8,
             ViewDir::$z as u8,

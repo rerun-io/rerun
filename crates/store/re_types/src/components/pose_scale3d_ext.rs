@@ -6,14 +6,14 @@ impl PoseScale3D {
     /// Scale the same amount along all axis.
     #[inline]
     pub fn uniform(value: f32) -> Self {
-        Self(Vec3D([value, value, value]))
+        PoseScale3D(Vec3D([value, value, value]))
     }
 }
 
 impl From<f32> for PoseScale3D {
     #[inline]
     fn from(value: f32) -> Self {
-        Self(crate::datatypes::Vec3D([value, value, value]))
+        PoseScale3D(crate::datatypes::Vec3D([value, value, value]))
     }
 }
 
@@ -31,6 +31,6 @@ impl From<PoseScale3D> for glam::Affine3A {
 impl Default for PoseScale3D {
     #[inline]
     fn default() -> Self {
-        Self(crate::datatypes::Vec3D([1.0, 1.0, 1.0]))
+        PoseScale3D(crate::datatypes::Vec3D([1.0, 1.0, 1.0]))
     }
 }

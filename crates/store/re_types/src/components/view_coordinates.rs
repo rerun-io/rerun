@@ -19,6 +19,9 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __ViewCoordinatesMarker;
+
 /// **Component**: How we interpret the coordinate system of an entity/space.
 ///
 /// For instance: What is "up"? What does the Z axis mean?
@@ -39,66 +42,27 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///  * Back = 6
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct ViewCoordinates(
-    /// The directions of the [x, y, z] axes.
-    pub crate::datatypes::ViewCoordinates,
-);
+pub type ViewCoordinates =
+    crate::WrapperComponent<crate::datatypes::ViewCoordinates, __ViewCoordinatesMarker>;
 
-impl ::re_types_core::WrapperComponent for ViewCoordinates {
-    type Datatype = crate::datatypes::ViewCoordinates;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn ViewCoordinates(v: crate::datatypes::ViewCoordinates) -> ViewCoordinates {
+    crate::WrapperComponent::<crate::datatypes::ViewCoordinates, __ViewCoordinatesMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for ViewCoordinates {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.ViewCoordinates".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(ViewCoordinates);
 
 impl<T: Into<crate::datatypes::ViewCoordinates>> From<T> for ViewCoordinates {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::ViewCoordinates> for ViewCoordinates {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::ViewCoordinates {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ViewCoordinates {
-    type Target = crate::datatypes::ViewCoordinates;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::ViewCoordinates {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ViewCoordinates {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::ViewCoordinates {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ViewCoordinates {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::ViewCoordinates>::is_pod()
+        ViewCoordinates(v.into())
     }
 }

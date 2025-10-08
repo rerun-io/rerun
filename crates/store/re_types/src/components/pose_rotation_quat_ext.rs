@@ -5,10 +5,10 @@ impl PoseRotationQuat {
     ///
     /// Keep in mind that logging an identity rotation is different from logging no rotation at all
     /// in thus far that it will write data to the store.
-    pub const IDENTITY: Self = Self(crate::datatypes::Quaternion::IDENTITY);
+    pub const IDENTITY: Self = PoseRotationQuat(crate::datatypes::Quaternion::IDENTITY);
 
     /// A rotation that represents an invalid transform.
-    pub const INVALID: Self = Self(crate::datatypes::Quaternion::INVALID);
+    pub const INVALID: Self = PoseRotationQuat(crate::datatypes::Quaternion::INVALID);
 }
 
 #[cfg(feature = "glam")]

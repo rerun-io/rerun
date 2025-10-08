@@ -10,7 +10,7 @@ impl Default for FilterByRange {
 impl FilterByRange {
     /// Create a new range filter with the provided time boundaries.
     pub fn new(start: TimeInt, end: TimeInt) -> Self {
-        Self(crate::blueprint::datatypes::FilterByRange {
+        FilterByRange(crate::blueprint::datatypes::FilterByRange {
             start: start.into(),
             end: end.into(),
         })

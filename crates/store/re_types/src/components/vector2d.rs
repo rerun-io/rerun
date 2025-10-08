@@ -19,64 +19,30 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __Vector2DMarker;
+
 /// **Component**: A vector in 2D space.
-#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct Vector2D(pub crate::datatypes::Vec2D);
+pub type Vector2D = crate::WrapperComponent<crate::datatypes::Vec2D, __Vector2DMarker>;
 
-impl ::re_types_core::WrapperComponent for Vector2D {
-    type Datatype = crate::datatypes::Vec2D;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn Vector2D(v: crate::datatypes::Vec2D) -> Vector2D {
+    crate::WrapperComponent::<crate::datatypes::Vec2D, __Vector2DMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for Vector2D {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.Vector2D".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(Vector2D);
 
 impl<T: Into<crate::datatypes::Vec2D>> From<T> for Vector2D {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Vec2D> for Vector2D {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Vec2D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Vector2D {
-    type Target = crate::datatypes::Vec2D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Vec2D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Vector2D {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec2D {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Vector2D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Vec2D>::is_pod()
+        Vector2D(v.into())
     }
 }

@@ -19,69 +19,35 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __VideoSampleMarker;
+
 /// **Component**: Video sample data (also known as "video chunk").
 ///
 /// Each video sample must contain enough data for exactly one video frame
 /// (this restriction may be relaxed in the future for some codecs).
 ///
 /// Keyframes may require additional data, for details see [`components::VideoCodec`][crate::components::VideoCodec].
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct VideoSample(pub crate::datatypes::Blob);
+pub type VideoSample = crate::WrapperComponent<crate::datatypes::Blob, __VideoSampleMarker>;
 
-impl ::re_types_core::WrapperComponent for VideoSample {
-    type Datatype = crate::datatypes::Blob;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn VideoSample(v: crate::datatypes::Blob) -> VideoSample {
+    crate::WrapperComponent::<crate::datatypes::Blob, __VideoSampleMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for VideoSample {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.VideoSample".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(VideoSample);
 
 impl<T: Into<crate::datatypes::Blob>> From<T> for VideoSample {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Blob> for VideoSample {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Blob {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for VideoSample {
-    type Target = crate::datatypes::Blob;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Blob {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for VideoSample {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Blob {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for VideoSample {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Blob>::is_pod()
+        VideoSample(v.into())
     }
 }

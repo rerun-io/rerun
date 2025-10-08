@@ -19,6 +19,9 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __Texcoord2DMarker;
+
 /// **Component**: A 2D texture UV coordinate.
 ///
 /// Texture coordinates specify a position on a 2D texture.
@@ -35,63 +38,26 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// This is the same convention as in Vulkan/Metal/DX12/WebGPU, but (!) unlike OpenGL,
 /// which places the origin at the bottom-left.
-#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct Texcoord2D(pub crate::datatypes::Vec2D);
+pub type Texcoord2D = crate::WrapperComponent<crate::datatypes::Vec2D, __Texcoord2DMarker>;
 
-impl ::re_types_core::WrapperComponent for Texcoord2D {
-    type Datatype = crate::datatypes::Vec2D;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn Texcoord2D(v: crate::datatypes::Vec2D) -> Texcoord2D {
+    crate::WrapperComponent::<crate::datatypes::Vec2D, __Texcoord2DMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for Texcoord2D {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.Texcoord2D".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(Texcoord2D);
 
 impl<T: Into<crate::datatypes::Vec2D>> From<T> for Texcoord2D {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Vec2D> for Texcoord2D {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Vec2D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Texcoord2D {
-    type Target = crate::datatypes::Vec2D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Vec2D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Texcoord2D {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec2D {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Texcoord2D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Vec2D>::is_pod()
+        Texcoord2D(v.into())
     }
 }

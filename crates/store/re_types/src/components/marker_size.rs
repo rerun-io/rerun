@@ -19,64 +19,30 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __MarkerSizeMarker;
+
 /// **Component**: Radius of a marker of a point in e.g. a 2D plot, measured in UI points.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct MarkerSize(pub crate::datatypes::Float32);
+pub type MarkerSize = crate::WrapperComponent<crate::datatypes::Float32, __MarkerSizeMarker>;
 
-impl ::re_types_core::WrapperComponent for MarkerSize {
-    type Datatype = crate::datatypes::Float32;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn MarkerSize(v: crate::datatypes::Float32) -> MarkerSize {
+    crate::WrapperComponent::<crate::datatypes::Float32, __MarkerSizeMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for MarkerSize {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.MarkerSize".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(MarkerSize);
 
 impl<T: Into<crate::datatypes::Float32>> From<T> for MarkerSize {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Float32> for MarkerSize {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for MarkerSize {
-    type Target = crate::datatypes::Float32;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for MarkerSize {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for MarkerSize {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float32>::is_pod()
+        MarkerSize(v.into())
     }
 }

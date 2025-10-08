@@ -19,68 +19,34 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __ForceDistanceMarker;
+
 /// **Component**: The target distance between two nodes.
 ///
 /// This is helpful to scale the layout, for example if long labels are involved.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default, Copy, PartialEq)]
-#[repr(transparent)]
-pub struct ForceDistance(pub crate::datatypes::Float64);
+pub type ForceDistance = crate::WrapperComponent<crate::datatypes::Float64, __ForceDistanceMarker>;
 
-impl ::re_types_core::WrapperComponent for ForceDistance {
-    type Datatype = crate::datatypes::Float64;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn ForceDistance(v: crate::datatypes::Float64) -> ForceDistance {
+    crate::WrapperComponent::<crate::datatypes::Float64, __ForceDistanceMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for ForceDistance {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.ForceDistance".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(ForceDistance);
 
 impl<T: Into<crate::datatypes::Float64>> From<T> for ForceDistance {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Float64> for ForceDistance {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float64 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ForceDistance {
-    type Target = crate::datatypes::Float64;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Float64 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ForceDistance {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float64 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ForceDistance {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float64>::is_pod()
+        ForceDistance(v.into())
     }
 }

@@ -19,64 +19,30 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __GraphNodeMarker;
+
 /// **Component**: A string-based ID representing a node in a graph.
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[repr(transparent)]
-pub struct GraphNode(pub crate::datatypes::Utf8);
+pub type GraphNode = crate::WrapperComponent<crate::datatypes::Utf8, __GraphNodeMarker>;
 
-impl ::re_types_core::WrapperComponent for GraphNode {
-    type Datatype = crate::datatypes::Utf8;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn GraphNode(v: crate::datatypes::Utf8) -> GraphNode {
+    crate::WrapperComponent::<crate::datatypes::Utf8, __GraphNodeMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for GraphNode {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.GraphNode".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(GraphNode);
 
 impl<T: Into<crate::datatypes::Utf8>> From<T> for GraphNode {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Utf8> for GraphNode {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for GraphNode {
-    type Target = crate::datatypes::Utf8;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for GraphNode {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for GraphNode {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod()
+        GraphNode(v.into())
     }
 }

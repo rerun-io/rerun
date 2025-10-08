@@ -19,66 +19,32 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __InteractiveMarker;
+
 /// **Component**: Whether the entity can be interacted with.
 ///
 /// Non interactive components are still visible, but mouse interactions in the view are disabled.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(transparent)]
-pub struct Interactive(pub crate::datatypes::Bool);
+pub type Interactive = crate::WrapperComponent<crate::datatypes::Bool, __InteractiveMarker>;
 
-impl ::re_types_core::WrapperComponent for Interactive {
-    type Datatype = crate::datatypes::Bool;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn Interactive(v: crate::datatypes::Bool) -> Interactive {
+    crate::WrapperComponent::<crate::datatypes::Bool, __InteractiveMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for Interactive {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.Interactive".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(Interactive);
 
 impl<T: Into<crate::datatypes::Bool>> From<T> for Interactive {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Bool> for Interactive {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Bool {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Interactive {
-    type Target = crate::datatypes::Bool;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Bool {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Interactive {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Interactive {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Bool>::is_pod()
+        Interactive(v.into())
     }
 }

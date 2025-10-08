@@ -19,6 +19,9 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __TransformMat3x3Marker;
+
 /// **Component**: A 3x3 transformation matrix Matrix.
 ///
 /// 3x3 matrixes are able to represent any affine transformation in 3D space,
@@ -32,63 +35,27 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// row 1 | flat_columns[1] flat_columns[4] flat_columns[7]
 /// row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
 /// ```
-#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct TransformMat3x3(pub crate::datatypes::Mat3x3);
+pub type TransformMat3x3 =
+    crate::WrapperComponent<crate::datatypes::Mat3x3, __TransformMat3x3Marker>;
 
-impl ::re_types_core::WrapperComponent for TransformMat3x3 {
-    type Datatype = crate::datatypes::Mat3x3;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn TransformMat3x3(v: crate::datatypes::Mat3x3) -> TransformMat3x3 {
+    crate::WrapperComponent::<crate::datatypes::Mat3x3, __TransformMat3x3Marker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for TransformMat3x3 {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.TransformMat3x3".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(TransformMat3x3);
 
 impl<T: Into<crate::datatypes::Mat3x3>> From<T> for TransformMat3x3 {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Mat3x3> for TransformMat3x3 {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Mat3x3 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for TransformMat3x3 {
-    type Target = crate::datatypes::Mat3x3;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Mat3x3 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for TransformMat3x3 {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Mat3x3 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TransformMat3x3 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Mat3x3>::is_pod()
+        TransformMat3x3(v.into())
     }
 }

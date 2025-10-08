@@ -19,68 +19,35 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __ForceIterationsMarker;
+
 /// **Component**: Specifies how often this force should be applied per iteration.
 ///
 /// Increasing this parameter can lead to better results at the cost of longer computation time.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default, Copy, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct ForceIterations(pub crate::datatypes::UInt64);
+pub type ForceIterations =
+    crate::WrapperComponent<crate::datatypes::UInt64, __ForceIterationsMarker>;
 
-impl ::re_types_core::WrapperComponent for ForceIterations {
-    type Datatype = crate::datatypes::UInt64;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn ForceIterations(v: crate::datatypes::UInt64) -> ForceIterations {
+    crate::WrapperComponent::<crate::datatypes::UInt64, __ForceIterationsMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for ForceIterations {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.ForceIterations".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(ForceIterations);
 
 impl<T: Into<crate::datatypes::UInt64>> From<T> for ForceIterations {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::UInt64> for ForceIterations {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::UInt64 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ForceIterations {
-    type Target = crate::datatypes::UInt64;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::UInt64 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ForceIterations {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt64 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ForceIterations {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::UInt64>::is_pod()
+        ForceIterations(v.into())
     }
 }

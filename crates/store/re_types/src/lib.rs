@@ -308,3 +308,6 @@ pub use rotation3d::Rotation3D;
 
 #[cfg(feature = "testing")]
 pub mod testing;
+
+mod wrapper_component;
+pub use wrapper_component::WrapperComponent;

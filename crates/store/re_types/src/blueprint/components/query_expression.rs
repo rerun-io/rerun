@@ -19,6 +19,9 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __QueryExpressionMarker;
+
 /// **Component**: An individual query expression used to filter a set of [`datatypes::EntityPath`][crate::datatypes::EntityPath]s.
 ///
 /// Each expression is either an inclusion or an exclusion expression.
@@ -31,63 +34,26 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Other uses of `*` are not (yet) supported.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(transparent)]
-pub struct QueryExpression(pub crate::datatypes::Utf8);
+pub type QueryExpression = crate::WrapperComponent<crate::datatypes::Utf8, __QueryExpressionMarker>;
 
-impl ::re_types_core::WrapperComponent for QueryExpression {
-    type Datatype = crate::datatypes::Utf8;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn QueryExpression(v: crate::datatypes::Utf8) -> QueryExpression {
+    crate::WrapperComponent::<crate::datatypes::Utf8, __QueryExpressionMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for QueryExpression {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.QueryExpression".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(QueryExpression);
 
 impl<T: Into<crate::datatypes::Utf8>> From<T> for QueryExpression {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Utf8> for QueryExpression {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for QueryExpression {
-    type Target = crate::datatypes::Utf8;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for QueryExpression {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for QueryExpression {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod()
+        QueryExpression(v.into())
     }
 }

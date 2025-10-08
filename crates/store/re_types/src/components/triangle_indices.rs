@@ -19,64 +19,31 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __TriangleIndicesMarker;
+
 /// **Component**: The three indices of a triangle in a triangle mesh.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct TriangleIndices(pub crate::datatypes::UVec3D);
+pub type TriangleIndices =
+    crate::WrapperComponent<crate::datatypes::UVec3D, __TriangleIndicesMarker>;
 
-impl ::re_types_core::WrapperComponent for TriangleIndices {
-    type Datatype = crate::datatypes::UVec3D;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn TriangleIndices(v: crate::datatypes::UVec3D) -> TriangleIndices {
+    crate::WrapperComponent::<crate::datatypes::UVec3D, __TriangleIndicesMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for TriangleIndices {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.TriangleIndices".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(TriangleIndices);
 
 impl<T: Into<crate::datatypes::UVec3D>> From<T> for TriangleIndices {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::UVec3D> for TriangleIndices {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::UVec3D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for TriangleIndices {
-    type Target = crate::datatypes::UVec3D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::UVec3D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for TriangleIndices {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::UVec3D {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TriangleIndices {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::UVec3D>::is_pod()
+        TriangleIndices(v.into())
     }
 }

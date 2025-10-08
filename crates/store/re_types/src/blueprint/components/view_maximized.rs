@@ -19,65 +19,32 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __ViewMaximizedMarker;
+
 /// **Component**: Whether a view is maximized.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
-pub struct ViewMaximized(pub crate::datatypes::Uuid);
+pub type ViewMaximized = crate::WrapperComponent<crate::datatypes::Uuid, __ViewMaximizedMarker>;
 
-impl ::re_types_core::WrapperComponent for ViewMaximized {
-    type Datatype = crate::datatypes::Uuid;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn ViewMaximized(v: crate::datatypes::Uuid) -> ViewMaximized {
+    crate::WrapperComponent::<crate::datatypes::Uuid, __ViewMaximizedMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for ViewMaximized {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.ViewMaximized".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(ViewMaximized);
 
 impl<T: Into<crate::datatypes::Uuid>> From<T> for ViewMaximized {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Uuid> for ViewMaximized {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Uuid {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ViewMaximized {
-    type Target = crate::datatypes::Uuid;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Uuid {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ViewMaximized {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Uuid {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ViewMaximized {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Uuid>::is_pod()
+        ViewMaximized(v.into())
     }
 }

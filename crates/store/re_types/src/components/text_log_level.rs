@@ -19,6 +19,9 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __TextLogLevelMarker;
+
 /// **Component**: The severity level of a text log message.
 ///
 /// Recommended to be one of:
@@ -28,63 +31,26 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// * `"INFO"`
 /// * `"DEBUG"`
 /// * `"TRACE"`
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(transparent)]
-pub struct TextLogLevel(pub crate::datatypes::Utf8);
+pub type TextLogLevel = crate::WrapperComponent<crate::datatypes::Utf8, __TextLogLevelMarker>;
 
-impl ::re_types_core::WrapperComponent for TextLogLevel {
-    type Datatype = crate::datatypes::Utf8;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn TextLogLevel(v: crate::datatypes::Utf8) -> TextLogLevel {
+    crate::WrapperComponent::<crate::datatypes::Utf8, __TextLogLevelMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for TextLogLevel {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.TextLogLevel".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(TextLogLevel);
 
 impl<T: Into<crate::datatypes::Utf8>> From<T> for TextLogLevel {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Utf8> for TextLogLevel {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for TextLogLevel {
-    type Target = crate::datatypes::Utf8;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for TextLogLevel {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TextLogLevel {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod()
+        TextLogLevel(v.into())
     }
 }

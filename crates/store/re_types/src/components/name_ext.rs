@@ -41,6 +41,6 @@ impl Default for Name {
     fn default() -> Self {
         // Instead of an empty string, put a placeholder there to make it easier to spot
         // the missing name when shown in the viewer.
-        Self("<name>".into())
+        Name("<name>".into())
     }
 }

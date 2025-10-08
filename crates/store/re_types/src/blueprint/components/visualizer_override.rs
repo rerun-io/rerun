@@ -19,71 +19,35 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __VisualizerOverrideMarker;
+
 /// **Component**: Single visualizer override the visualizers for an entity.
 ///
 /// For details see [`archetypes::VisualizerOverrides`][crate::blueprint::archetypes::VisualizerOverrides].
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
-#[repr(transparent)]
-pub struct VisualizerOverride(
-    /// Names of a visualizer that should be active.
-    pub crate::datatypes::Utf8,
-);
+pub type VisualizerOverride =
+    crate::WrapperComponent<crate::datatypes::Utf8, __VisualizerOverrideMarker>;
 
-impl ::re_types_core::WrapperComponent for VisualizerOverride {
-    type Datatype = crate::datatypes::Utf8;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn VisualizerOverride(v: crate::datatypes::Utf8) -> VisualizerOverride {
+    crate::WrapperComponent::<crate::datatypes::Utf8, __VisualizerOverrideMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for VisualizerOverride {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.VisualizerOverride".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(VisualizerOverride);
 
 impl<T: Into<crate::datatypes::Utf8>> From<T> for VisualizerOverride {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Utf8> for VisualizerOverride {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for VisualizerOverride {
-    type Target = crate::datatypes::Utf8;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for VisualizerOverride {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for VisualizerOverride {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod()
+        VisualizerOverride(v.into())
     }
 }

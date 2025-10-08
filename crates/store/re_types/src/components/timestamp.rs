@@ -19,66 +19,32 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __TimestampMarker;
+
 /// **Component**: When the recording started.
 ///
 /// Should be an absolute time, i.e. relative to Unix Epoch.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(transparent)]
-pub struct Timestamp(pub crate::datatypes::TimeInt);
+pub type Timestamp = crate::WrapperComponent<crate::datatypes::TimeInt, __TimestampMarker>;
 
-impl ::re_types_core::WrapperComponent for Timestamp {
-    type Datatype = crate::datatypes::TimeInt;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn Timestamp(v: crate::datatypes::TimeInt) -> Timestamp {
+    crate::WrapperComponent::<crate::datatypes::TimeInt, __TimestampMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for Timestamp {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.Timestamp".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(Timestamp);
 
 impl<T: Into<crate::datatypes::TimeInt>> From<T> for Timestamp {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::TimeInt> for Timestamp {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::TimeInt {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Timestamp {
-    type Target = crate::datatypes::TimeInt;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::TimeInt {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Timestamp {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::TimeInt {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Timestamp {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::TimeInt>::is_pod()
+        Timestamp(v.into())
     }
 }

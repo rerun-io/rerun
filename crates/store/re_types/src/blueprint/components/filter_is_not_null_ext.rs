@@ -13,7 +13,7 @@ impl FilterIsNotNull {
             ),
         };
 
-        Self(datatype)
+        FilterIsNotNull(datatype)
     }
 
     /// Is the filter active?

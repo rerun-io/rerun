@@ -19,64 +19,27 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __TextMarker;
+
 /// **Component**: A string of text, e.g. for labels and text documents.
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(transparent)]
-pub struct Text(pub crate::datatypes::Utf8);
+pub type Text = crate::WrapperComponent<crate::datatypes::Utf8, __TextMarker>;
 
-impl ::re_types_core::WrapperComponent for Text {
-    type Datatype = crate::datatypes::Utf8;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn Text(v: crate::datatypes::Utf8) -> Text {
+    crate::WrapperComponent::<crate::datatypes::Utf8, __TextMarker>(v, std::marker::PhantomData)
+}
 
+impl ::re_types_core::Component for Text {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.Text".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(Text);
 
 impl<T: Into<crate::datatypes::Utf8>> From<T> for Text {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Utf8> for Text {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Text {
-    type Target = crate::datatypes::Utf8;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Text {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Text {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod()
+        Text(v.into())
     }
 }

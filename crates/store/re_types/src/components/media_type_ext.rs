@@ -59,13 +59,13 @@ impl MediaType {
     /// `text/plain`
     #[inline]
     pub fn plain_text() -> Self {
-        Self(Self::TEXT.into())
+        MediaType(Self::TEXT.into())
     }
 
     /// `text/markdown`
     #[inline]
     pub fn markdown() -> Self {
-        Self(Self::MARKDOWN.into())
+        MediaType(Self::MARKDOWN.into())
     }
 
     // -------------------------------------------------------
@@ -74,13 +74,13 @@ impl MediaType {
     /// `image/jpeg`
     #[inline]
     pub fn jpeg() -> Self {
-        Self(Self::JPEG.into())
+        MediaType(Self::JPEG.into())
     }
 
     /// `image/png`
     #[inline]
     pub fn png() -> Self {
-        Self(Self::PNG.into())
+        MediaType(Self::PNG.into())
     }
 
     // -------------------------------------------------------
@@ -89,25 +89,25 @@ impl MediaType {
     /// `model/gltf+json`
     #[inline]
     pub fn gltf() -> Self {
-        Self(Self::GLTF.into())
+        MediaType(Self::GLTF.into())
     }
 
     /// `model/gltf-binary`
     #[inline]
     pub fn glb() -> Self {
-        Self(Self::GLB.into())
+        MediaType(Self::GLB.into())
     }
 
     /// `model/obj`
     #[inline]
     pub fn obj() -> Self {
-        Self(Self::OBJ.into())
+        MediaType(Self::OBJ.into())
     }
 
     /// `model/stl`
     #[inline]
     pub fn stl() -> Self {
-        Self(Self::STL.into())
+        MediaType(Self::STL.into())
     }
 
     // -------------------------------------------------------
@@ -116,7 +116,7 @@ impl MediaType {
     /// `video/mp4`
     #[inline]
     pub fn mp4() -> Self {
-        Self(Self::MP4.into())
+        MediaType(Self::MP4.into())
     }
 }
 
@@ -247,7 +247,7 @@ impl Default for MediaType {
     fn default() -> Self {
         // https://www.rfc-editor.org/rfc/rfc2046.txt
         // "The "octet-stream" subtype is used to indicate that a body contains arbitrary binary data."
-        Self("application/octet-stream".into())
+        MediaType("application/octet-stream".into())
     }
 }
 

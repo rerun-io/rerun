@@ -19,69 +19,35 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __DrawOrderMarker;
+
 /// **Component**: Draw order of 2D elements. Higher values are drawn on top of lower values.
 ///
 /// An entity can have only a single draw order component.
 /// Within an entity draw order is governed by the order of the components.
 ///
 /// Draw order for entities with the same draw order is generally undefined.
-#[derive(Clone, Debug, Copy)]
-#[repr(transparent)]
-pub struct DrawOrder(pub crate::datatypes::Float32);
+pub type DrawOrder = crate::WrapperComponent<crate::datatypes::Float32, __DrawOrderMarker>;
 
-impl ::re_types_core::WrapperComponent for DrawOrder {
-    type Datatype = crate::datatypes::Float32;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn DrawOrder(v: crate::datatypes::Float32) -> DrawOrder {
+    crate::WrapperComponent::<crate::datatypes::Float32, __DrawOrderMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for DrawOrder {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.DrawOrder".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(DrawOrder);
 
 impl<T: Into<crate::datatypes::Float32>> From<T> for DrawOrder {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Float32> for DrawOrder {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for DrawOrder {
-    type Target = crate::datatypes::Float32;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for DrawOrder {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for DrawOrder {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float32>::is_pod()
+        DrawOrder(v.into())
     }
 }

@@ -8,7 +8,7 @@ impl LatLon {
     /// Create a new position.
     #[inline]
     pub const fn new(lat: f64, lon: f64) -> Self {
-        Self(DVec2D::new(lat, lon))
+        LatLon(DVec2D::new(lat, lon))
     }
 
     /// The latitude.

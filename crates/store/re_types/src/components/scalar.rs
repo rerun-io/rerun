@@ -19,66 +19,32 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __ScalarMarker;
+
 /// **Component**: A scalar value, encoded as a 64-bit floating point.
 ///
 /// Used for time series plots.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct Scalar(pub crate::datatypes::Float64);
+pub type Scalar = crate::WrapperComponent<crate::datatypes::Float64, __ScalarMarker>;
 
-impl ::re_types_core::WrapperComponent for Scalar {
-    type Datatype = crate::datatypes::Float64;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn Scalar(v: crate::datatypes::Float64) -> Scalar {
+    crate::WrapperComponent::<crate::datatypes::Float64, __ScalarMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for Scalar {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.Scalar".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(Scalar);
 
 impl<T: Into<crate::datatypes::Float64>> From<T> for Scalar {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Float64> for Scalar {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float64 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Scalar {
-    type Target = crate::datatypes::Float64;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Float64 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Scalar {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float64 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Scalar {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float64>::is_pod()
+        Scalar(v.into())
     }
 }

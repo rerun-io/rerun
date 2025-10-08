@@ -19,6 +19,9 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __Plane3DMarker;
+
 /// **Component**: An infinite 3D plane represented by a unit normal vector and a distance.
 ///
 /// Any point P on the plane fulfills the equation `dot(xyz, P) - d = 0`,
@@ -28,63 +31,26 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Note: although the normal will be passed through to the
 /// datastore as provided, when used in the Viewer, planes will always be normalized.
 /// I.e. the plane with xyz = (2, 0, 0), d = 1 is equivalent to xyz = (1, 0, 0), d = 0.5
-#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct Plane3D(pub crate::datatypes::Plane3D);
+pub type Plane3D = crate::WrapperComponent<crate::datatypes::Plane3D, __Plane3DMarker>;
 
-impl ::re_types_core::WrapperComponent for Plane3D {
-    type Datatype = crate::datatypes::Plane3D;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn Plane3D(v: crate::datatypes::Plane3D) -> Plane3D {
+    crate::WrapperComponent::<crate::datatypes::Plane3D, __Plane3DMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for Plane3D {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.Plane3D".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(Plane3D);
 
 impl<T: Into<crate::datatypes::Plane3D>> From<T> for Plane3D {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Plane3D> for Plane3D {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Plane3D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Plane3D {
-    type Target = crate::datatypes::Plane3D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Plane3D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Plane3D {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Plane3D {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Plane3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Plane3D>::is_pod()
+        Plane3D(v.into())
     }
 }

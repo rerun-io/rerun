@@ -19,64 +19,27 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __LatLonMarker;
+
 /// **Component**: A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
-#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct LatLon(pub crate::datatypes::DVec2D);
+pub type LatLon = crate::WrapperComponent<crate::datatypes::DVec2D, __LatLonMarker>;
 
-impl ::re_types_core::WrapperComponent for LatLon {
-    type Datatype = crate::datatypes::DVec2D;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn LatLon(v: crate::datatypes::DVec2D) -> LatLon {
+    crate::WrapperComponent::<crate::datatypes::DVec2D, __LatLonMarker>(v, std::marker::PhantomData)
+}
 
+impl ::re_types_core::Component for LatLon {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.LatLon".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(LatLon);
 
 impl<T: Into<crate::datatypes::DVec2D>> From<T> for LatLon {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::DVec2D> for LatLon {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::DVec2D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for LatLon {
-    type Target = crate::datatypes::DVec2D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::DVec2D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for LatLon {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::DVec2D {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for LatLon {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::DVec2D>::is_pod()
+        LatLon(v.into())
     }
 }

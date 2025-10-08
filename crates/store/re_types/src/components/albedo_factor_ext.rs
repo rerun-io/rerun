@@ -5,6 +5,6 @@ use super::AlbedoFactor;
 impl Default for AlbedoFactor {
     #[inline]
     fn default() -> Self {
-        Self(Rgba32::WHITE)
+        AlbedoFactor(Rgba32::WHITE)
     }
 }

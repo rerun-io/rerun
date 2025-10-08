@@ -19,6 +19,9 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __PinholeProjectionMarker;
+
 /// **Component**: Camera projection, from image coordinates to view coordinates.
 ///
 /// Child from parent.
@@ -30,62 +33,27 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///    0.0  1496.1  744.5
 ///    0.0     0.0    1.0
 /// ```
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
-pub struct PinholeProjection(pub crate::datatypes::Mat3x3);
+pub type PinholeProjection =
+    crate::WrapperComponent<crate::datatypes::Mat3x3, __PinholeProjectionMarker>;
 
-impl ::re_types_core::WrapperComponent for PinholeProjection {
-    type Datatype = crate::datatypes::Mat3x3;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn PinholeProjection(v: crate::datatypes::Mat3x3) -> PinholeProjection {
+    crate::WrapperComponent::<crate::datatypes::Mat3x3, __PinholeProjectionMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for PinholeProjection {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.PinholeProjection".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(PinholeProjection);
 
 impl<T: Into<crate::datatypes::Mat3x3>> From<T> for PinholeProjection {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Mat3x3> for PinholeProjection {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Mat3x3 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for PinholeProjection {
-    type Target = crate::datatypes::Mat3x3;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Mat3x3 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for PinholeProjection {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Mat3x3 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for PinholeProjection {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Mat3x3>::is_pod()
+        PinholeProjection(v.into())
     }
 }

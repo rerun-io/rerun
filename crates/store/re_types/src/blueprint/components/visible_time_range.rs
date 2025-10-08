@@ -19,68 +19,35 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __VisibleTimeRangeMarker;
+
 /// **Component**: The range of values on a given timeline that will be included in a view's query.
 ///
 /// Refer to `VisibleTimeRanges` archetype for more information.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct VisibleTimeRange(pub crate::datatypes::VisibleTimeRange);
+pub type VisibleTimeRange =
+    crate::WrapperComponent<crate::datatypes::VisibleTimeRange, __VisibleTimeRangeMarker>;
 
-impl ::re_types_core::WrapperComponent for VisibleTimeRange {
-    type Datatype = crate::datatypes::VisibleTimeRange;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn VisibleTimeRange(v: crate::datatypes::VisibleTimeRange) -> VisibleTimeRange {
+    crate::WrapperComponent::<crate::datatypes::VisibleTimeRange, __VisibleTimeRangeMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for VisibleTimeRange {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.VisibleTimeRange".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(VisibleTimeRange);
 
 impl<T: Into<crate::datatypes::VisibleTimeRange>> From<T> for VisibleTimeRange {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::VisibleTimeRange> for VisibleTimeRange {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::VisibleTimeRange {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for VisibleTimeRange {
-    type Target = crate::datatypes::VisibleTimeRange;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::VisibleTimeRange {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for VisibleTimeRange {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::VisibleTimeRange {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for VisibleTimeRange {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::VisibleTimeRange>::is_pod()
+        VisibleTimeRange(v.into())
     }
 }

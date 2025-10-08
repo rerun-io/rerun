@@ -19,69 +19,35 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __HalfSize3DMarker;
+
 /// **Component**: Half-size (radius) of a 3D box.
 ///
 /// Measured in its local coordinate system.
 ///
 /// The box extends both in negative and positive direction along each axis.
 /// Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
-#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct HalfSize3D(pub crate::datatypes::Vec3D);
+pub type HalfSize3D = crate::WrapperComponent<crate::datatypes::Vec3D, __HalfSize3DMarker>;
 
-impl ::re_types_core::WrapperComponent for HalfSize3D {
-    type Datatype = crate::datatypes::Vec3D;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn HalfSize3D(v: crate::datatypes::Vec3D) -> HalfSize3D {
+    crate::WrapperComponent::<crate::datatypes::Vec3D, __HalfSize3DMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for HalfSize3D {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.HalfSize3D".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(HalfSize3D);
 
 impl<T: Into<crate::datatypes::Vec3D>> From<T> for HalfSize3D {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Vec3D> for HalfSize3D {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Vec3D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for HalfSize3D {
-    type Target = crate::datatypes::Vec3D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Vec3D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for HalfSize3D {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec3D {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for HalfSize3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Vec3D>::is_pod()
+        HalfSize3D(v.into())
     }
 }

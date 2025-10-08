@@ -11,7 +11,7 @@ impl Position3D {
     /// Create a new position.
     #[inline]
     pub const fn new(x: f32, y: f32, z: f32) -> Self {
-        Self(Vec3D::new(x, y, z))
+        Position3D(Vec3D::new(x, y, z))
     }
 
     /// The x coordinate, i.e. index 0
@@ -57,6 +57,6 @@ impl From<Position3D> for mint::Point3<f32> {
 impl From<mint::Point3<f32>> for Position3D {
     #[inline]
     fn from(position: mint::Point3<f32>) -> Self {
-        Self(Vec3D([position.x, position.y, position.z]))
+        Position3D(Vec3D([position.x, position.y, position.z]))
     }
 }

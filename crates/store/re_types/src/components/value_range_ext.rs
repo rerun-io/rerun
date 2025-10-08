@@ -7,7 +7,7 @@ impl ValueRange {
     /// Create a new range.
     #[inline]
     pub fn new(start: f64, end: f64) -> Self {
-        Self(datatypes::Range1D([start, end]))
+        ValueRange(datatypes::Range1D([start, end]))
     }
 
     /// The start of the range.

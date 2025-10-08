@@ -14,6 +14,6 @@ impl Default for ViewerRecommendationHash {
     fn default() -> Self {
         // Not a great default either way and we don't need it in the ui really.
         // But making an exception to the rule of having a default for all components just for this one isn't worth it.
-        Self(0.into())
+        ViewerRecommendationHash(0.into())
     }
 }

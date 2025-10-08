@@ -25,7 +25,7 @@ impl ImageBuffer {
             );
         }
 
-        (Self(bytes.into()), image_format)
+        (ImageBuffer(bytes.into()), image_format)
     }
 
     /// Construct an image buffer & image format from something that can be turned into a [`image::DynamicImage`].

@@ -11,6 +11,6 @@ impl std::fmt::Display for Scalar {
 impl Default for Scalar {
     #[inline]
     fn default() -> Self {
-        Self(Float64(0.0))
+        Scalar(Float64(0.0))
     }
 }

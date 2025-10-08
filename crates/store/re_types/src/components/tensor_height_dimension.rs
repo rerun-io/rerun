@@ -19,64 +19,35 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __TensorHeightDimensionMarker;
+
 /// **Component**: Specifies which dimension to use for height.
-#[derive(Clone, Debug, Hash, Copy, PartialEq, Eq, Default)]
-#[repr(transparent)]
-pub struct TensorHeightDimension(pub crate::datatypes::TensorDimensionSelection);
+pub type TensorHeightDimension = crate::WrapperComponent<
+    crate::datatypes::TensorDimensionSelection,
+    __TensorHeightDimensionMarker,
+>;
 
-impl ::re_types_core::WrapperComponent for TensorHeightDimension {
-    type Datatype = crate::datatypes::TensorDimensionSelection;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn TensorHeightDimension(
+    v: crate::datatypes::TensorDimensionSelection,
+) -> TensorHeightDimension {
+    crate::WrapperComponent::<
+        crate::datatypes::TensorDimensionSelection,
+        __TensorHeightDimensionMarker,
+    >(v, std::marker::PhantomData)
+}
 
+impl ::re_types_core::Component for TensorHeightDimension {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.TensorHeightDimension".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(TensorHeightDimension);
 
 impl<T: Into<crate::datatypes::TensorDimensionSelection>> From<T> for TensorHeightDimension {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::TensorDimensionSelection> for TensorHeightDimension {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::TensorDimensionSelection {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for TensorHeightDimension {
-    type Target = crate::datatypes::TensorDimensionSelection;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::TensorDimensionSelection {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for TensorHeightDimension {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::TensorDimensionSelection {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TensorHeightDimension {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::TensorDimensionSelection>::is_pod()
+        TensorHeightDimension(v.into())
     }
 }

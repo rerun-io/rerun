@@ -19,67 +19,30 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __ColorMarker;
+
 /// **Component**: An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 ///
 /// The color is stored as a 32-bit integer, where the most significant
 /// byte is `R` and the least significant byte is `A`.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct Color(pub crate::datatypes::Rgba32);
+pub type Color = crate::WrapperComponent<crate::datatypes::Rgba32, __ColorMarker>;
 
-impl ::re_types_core::WrapperComponent for Color {
-    type Datatype = crate::datatypes::Rgba32;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn Color(v: crate::datatypes::Rgba32) -> Color {
+    crate::WrapperComponent::<crate::datatypes::Rgba32, __ColorMarker>(v, std::marker::PhantomData)
+}
 
+impl ::re_types_core::Component for Color {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.Color".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(Color);
 
 impl<T: Into<crate::datatypes::Rgba32>> From<T> for Color {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Rgba32> for Color {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Rgba32 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Color {
-    type Target = crate::datatypes::Rgba32;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Rgba32 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Color {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Rgba32 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Color {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Rgba32>::is_pod()
+        Color(v.into())
     }
 }

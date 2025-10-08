@@ -19,64 +19,30 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __ImageFormatMarker;
+
 /// **Component**: The metadata describing the contents of a [`components::ImageBuffer`][crate::components::ImageBuffer].
-#[derive(Clone, Debug, Default, Copy, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct ImageFormat(pub crate::datatypes::ImageFormat);
+pub type ImageFormat = crate::WrapperComponent<crate::datatypes::ImageFormat, __ImageFormatMarker>;
 
-impl ::re_types_core::WrapperComponent for ImageFormat {
-    type Datatype = crate::datatypes::ImageFormat;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn ImageFormat(v: crate::datatypes::ImageFormat) -> ImageFormat {
+    crate::WrapperComponent::<crate::datatypes::ImageFormat, __ImageFormatMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for ImageFormat {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.ImageFormat".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(ImageFormat);
 
 impl<T: Into<crate::datatypes::ImageFormat>> From<T> for ImageFormat {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::ImageFormat> for ImageFormat {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::ImageFormat {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ImageFormat {
-    type Target = crate::datatypes::ImageFormat;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::ImageFormat {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ImageFormat {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::ImageFormat {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ImageFormat {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::ImageFormat>::is_pod()
+        ImageFormat(v.into())
     }
 }

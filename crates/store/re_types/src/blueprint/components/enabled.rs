@@ -19,66 +19,29 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __EnabledMarker;
+
 /// **Component**: Whether a procedure is enabled.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(transparent)]
-pub struct Enabled(pub crate::datatypes::Bool);
+pub type Enabled = crate::WrapperComponent<crate::datatypes::Bool, __EnabledMarker>;
 
-impl ::re_types_core::WrapperComponent for Enabled {
-    type Datatype = crate::datatypes::Bool;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn Enabled(v: crate::datatypes::Bool) -> Enabled {
+    crate::WrapperComponent::<crate::datatypes::Bool, __EnabledMarker>(v, std::marker::PhantomData)
+}
 
+impl ::re_types_core::Component for Enabled {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.Enabled".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(Enabled);
 
 impl<T: Into<crate::datatypes::Bool>> From<T> for Enabled {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Bool> for Enabled {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Bool {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Enabled {
-    type Target = crate::datatypes::Bool;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Bool {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Enabled {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Enabled {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Bool>::is_pod()
+        Enabled(v.into())
     }
 }

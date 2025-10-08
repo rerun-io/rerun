@@ -10,6 +10,6 @@ impl std::fmt::Display for ClassId {
 impl Default for ClassId {
     #[inline]
     fn default() -> Self {
-        Self(0.into())
+        ClassId(0.into())
     }
 }

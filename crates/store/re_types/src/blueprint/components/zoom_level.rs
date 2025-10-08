@@ -19,68 +19,32 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __ZoomLevelMarker;
+
 /// **Component**: A zoom level determines how much of the world is visible on a map.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
-pub struct ZoomLevel(
-    /// Zoom level: 0 being the lowest zoom level (fully zoomed out) and 22 being the highest (fully zoomed in).
-    pub crate::datatypes::Float64,
-);
+pub type ZoomLevel = crate::WrapperComponent<crate::datatypes::Float64, __ZoomLevelMarker>;
 
-impl ::re_types_core::WrapperComponent for ZoomLevel {
-    type Datatype = crate::datatypes::Float64;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn ZoomLevel(v: crate::datatypes::Float64) -> ZoomLevel {
+    crate::WrapperComponent::<crate::datatypes::Float64, __ZoomLevelMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for ZoomLevel {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.ZoomLevel".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(ZoomLevel);
 
 impl<T: Into<crate::datatypes::Float64>> From<T> for ZoomLevel {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Float64> for ZoomLevel {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float64 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ZoomLevel {
-    type Target = crate::datatypes::Float64;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Float64 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ZoomLevel {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float64 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ZoomLevel {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float64>::is_pod()
+        ZoomLevel(v.into())
     }
 }

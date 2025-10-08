@@ -19,68 +19,34 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __RotationQuatMarker;
+
 /// **Component**: A 3D rotation expressed as a quaternion.
 ///
 /// Note: although the x,y,z,w components of the quaternion will be passed through to the
 /// datastore as provided, when used in the Viewer, quaternions will always be normalized.
 /// If normalization fails the rotation is treated as an invalid transform.
-#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct RotationQuat(pub crate::datatypes::Quaternion);
+pub type RotationQuat = crate::WrapperComponent<crate::datatypes::Quaternion, __RotationQuatMarker>;
 
-impl ::re_types_core::WrapperComponent for RotationQuat {
-    type Datatype = crate::datatypes::Quaternion;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn RotationQuat(v: crate::datatypes::Quaternion) -> RotationQuat {
+    crate::WrapperComponent::<crate::datatypes::Quaternion, __RotationQuatMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for RotationQuat {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.RotationQuat".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(RotationQuat);
 
 impl<T: Into<crate::datatypes::Quaternion>> From<T> for RotationQuat {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Quaternion> for RotationQuat {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Quaternion {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for RotationQuat {
-    type Target = crate::datatypes::Quaternion;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Quaternion {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for RotationQuat {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Quaternion {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for RotationQuat {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Quaternion>::is_pod()
+        RotationQuat(v.into())
     }
 }

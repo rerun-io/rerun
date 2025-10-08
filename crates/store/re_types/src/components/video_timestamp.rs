@@ -19,64 +19,31 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __VideoTimestampMarker;
+
 /// **Component**: Timestamp inside a [`archetypes::AssetVideo`][crate::archetypes::AssetVideo].
-#[derive(Clone, Debug, Copy, PartialEq, Eq, Default)]
-#[repr(transparent)]
-pub struct VideoTimestamp(pub crate::datatypes::VideoTimestamp);
+pub type VideoTimestamp =
+    crate::WrapperComponent<crate::datatypes::VideoTimestamp, __VideoTimestampMarker>;
 
-impl ::re_types_core::WrapperComponent for VideoTimestamp {
-    type Datatype = crate::datatypes::VideoTimestamp;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn VideoTimestamp(v: crate::datatypes::VideoTimestamp) -> VideoTimestamp {
+    crate::WrapperComponent::<crate::datatypes::VideoTimestamp, __VideoTimestampMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for VideoTimestamp {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.VideoTimestamp".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(VideoTimestamp);
 
 impl<T: Into<crate::datatypes::VideoTimestamp>> From<T> for VideoTimestamp {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::VideoTimestamp> for VideoTimestamp {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::VideoTimestamp {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for VideoTimestamp {
-    type Target = crate::datatypes::VideoTimestamp;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::VideoTimestamp {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for VideoTimestamp {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::VideoTimestamp {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for VideoTimestamp {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::VideoTimestamp>::is_pod()
+        VideoTimestamp(v.into())
     }
 }

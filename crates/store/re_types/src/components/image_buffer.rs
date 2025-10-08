@@ -19,66 +19,32 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __ImageBufferMarker;
+
 /// **Component**: A buffer that is known to store image data.
 ///
 /// To interpret the contents of this buffer, see, [`components::ImageFormat`][crate::components::ImageFormat].
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct ImageBuffer(pub crate::datatypes::Blob);
+pub type ImageBuffer = crate::WrapperComponent<crate::datatypes::Blob, __ImageBufferMarker>;
 
-impl ::re_types_core::WrapperComponent for ImageBuffer {
-    type Datatype = crate::datatypes::Blob;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn ImageBuffer(v: crate::datatypes::Blob) -> ImageBuffer {
+    crate::WrapperComponent::<crate::datatypes::Blob, __ImageBufferMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for ImageBuffer {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.ImageBuffer".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(ImageBuffer);
 
 impl<T: Into<crate::datatypes::Blob>> From<T> for ImageBuffer {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Blob> for ImageBuffer {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Blob {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ImageBuffer {
-    type Target = crate::datatypes::Blob;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Blob {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ImageBuffer {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Blob {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ImageBuffer {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Blob>::is_pod()
+        ImageBuffer(v.into())
     }
 }

@@ -19,81 +19,34 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __KeypointIdMarker;
+
 /// **Component**: A 16-bit ID representing a type of semantic keypoint within a class.
 ///
 /// `KeypointId`s are only meaningful within the context of a [`crate::datatypes::ClassDescription`].
 ///
 /// Used to look up an [`crate::datatypes::AnnotationInfo`] for a Keypoint within the [`crate::components::AnnotationContext`].
-#[derive(
-    Clone,
-    Debug,
-    Default,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    bytemuck::Pod,
-    bytemuck::Zeroable,
-)]
-#[repr(transparent)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct KeypointId(pub crate::datatypes::KeypointId);
+pub type KeypointId = crate::WrapperComponent<crate::datatypes::KeypointId, __KeypointIdMarker>;
 
-impl ::re_types_core::WrapperComponent for KeypointId {
-    type Datatype = crate::datatypes::KeypointId;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn KeypointId(v: crate::datatypes::KeypointId) -> KeypointId {
+    crate::WrapperComponent::<crate::datatypes::KeypointId, __KeypointIdMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for KeypointId {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.KeypointId".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(KeypointId);
 
 impl<T: Into<crate::datatypes::KeypointId>> From<T> for KeypointId {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::KeypointId> for KeypointId {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::KeypointId {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for KeypointId {
-    type Target = crate::datatypes::KeypointId;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::KeypointId {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for KeypointId {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::KeypointId {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for KeypointId {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::KeypointId>::is_pod()
+        KeypointId(v.into())
     }
 }

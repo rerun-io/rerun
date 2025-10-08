@@ -19,68 +19,32 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __RowShareMarker;
+
 /// **Component**: The layout share of a row in the container.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
-pub struct RowShare(
-    /// The layout share of a row in the container.
-    pub crate::datatypes::Float32,
-);
+pub type RowShare = crate::WrapperComponent<crate::datatypes::Float32, __RowShareMarker>;
 
-impl ::re_types_core::WrapperComponent for RowShare {
-    type Datatype = crate::datatypes::Float32;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn RowShare(v: crate::datatypes::Float32) -> RowShare {
+    crate::WrapperComponent::<crate::datatypes::Float32, __RowShareMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for RowShare {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.RowShare".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(RowShare);
 
 impl<T: Into<crate::datatypes::Float32>> From<T> for RowShare {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Float32> for RowShare {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for RowShare {
-    type Target = crate::datatypes::Float32;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for RowShare {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for RowShare {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float32>::is_pod()
+        RowShare(v.into())
     }
 }

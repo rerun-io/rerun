@@ -19,70 +19,39 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __ComponentColumnSelectorMarker;
+
 /// **Component**: Describe a component column to be selected in the dataframe view.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct ComponentColumnSelector(pub crate::blueprint::datatypes::ComponentColumnSelector);
+pub type ComponentColumnSelector = crate::WrapperComponent<
+    crate::blueprint::datatypes::ComponentColumnSelector,
+    __ComponentColumnSelectorMarker,
+>;
 
-impl ::re_types_core::WrapperComponent for ComponentColumnSelector {
-    type Datatype = crate::blueprint::datatypes::ComponentColumnSelector;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn ComponentColumnSelector(
+    v: crate::blueprint::datatypes::ComponentColumnSelector,
+) -> ComponentColumnSelector {
+    crate::WrapperComponent::<
+        crate::blueprint::datatypes::ComponentColumnSelector,
+        __ComponentColumnSelectorMarker,
+    >(v, std::marker::PhantomData)
+}
 
+impl ::re_types_core::Component for ComponentColumnSelector {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.ComponentColumnSelector".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(ComponentColumnSelector);
 
 impl<T: Into<crate::blueprint::datatypes::ComponentColumnSelector>> From<T>
     for ComponentColumnSelector
 {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::blueprint::datatypes::ComponentColumnSelector>
-    for ComponentColumnSelector
-{
-    #[inline]
-    fn borrow(&self) -> &crate::blueprint::datatypes::ComponentColumnSelector {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ComponentColumnSelector {
-    type Target = crate::blueprint::datatypes::ComponentColumnSelector;
-
-    #[inline]
-    fn deref(&self) -> &crate::blueprint::datatypes::ComponentColumnSelector {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ComponentColumnSelector {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::ComponentColumnSelector {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ComponentColumnSelector {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::datatypes::ComponentColumnSelector>::is_pod()
+        ComponentColumnSelector(v.into())
     }
 }

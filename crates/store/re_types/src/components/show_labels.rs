@@ -19,70 +19,34 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __ShowLabelsMarker;
+
 /// **Component**: Whether the entity's [`components::Text`][crate::components::Text] label is shown.
 ///
 /// The main purpose of this component existing separately from the labels themselves
 /// is to be overridden when desired, to allow hiding and showing from the viewer and
 /// blueprints.
-#[derive(Clone, Debug, Copy, PartialEq, Eq)]
-pub struct ShowLabels(
-    /// Whether the entity's [`components::Text`][crate::components::Text] label is shown.
-    pub crate::datatypes::Bool,
-);
+pub type ShowLabels = crate::WrapperComponent<crate::datatypes::Bool, __ShowLabelsMarker>;
 
-impl ::re_types_core::WrapperComponent for ShowLabels {
-    type Datatype = crate::datatypes::Bool;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn ShowLabels(v: crate::datatypes::Bool) -> ShowLabels {
+    crate::WrapperComponent::<crate::datatypes::Bool, __ShowLabelsMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for ShowLabels {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.ShowLabels".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(ShowLabels);
 
 impl<T: Into<crate::datatypes::Bool>> From<T> for ShowLabels {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Bool> for ShowLabels {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Bool {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ShowLabels {
-    type Target = crate::datatypes::Bool;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Bool {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ShowLabels {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ShowLabels {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Bool>::is_pod()
+        ShowLabels(v.into())
     }
 }

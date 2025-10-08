@@ -19,64 +19,30 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __AxisLengthMarker;
+
 /// **Component**: The length of an axis in local units of the space.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
-#[repr(transparent)]
-pub struct AxisLength(pub crate::datatypes::Float32);
+pub type AxisLength = crate::WrapperComponent<crate::datatypes::Float32, __AxisLengthMarker>;
 
-impl ::re_types_core::WrapperComponent for AxisLength {
-    type Datatype = crate::datatypes::Float32;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn AxisLength(v: crate::datatypes::Float32) -> AxisLength {
+    crate::WrapperComponent::<crate::datatypes::Float32, __AxisLengthMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for AxisLength {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.AxisLength".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(AxisLength);
 
 impl<T: Into<crate::datatypes::Float32>> From<T> for AxisLength {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Float32> for AxisLength {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for AxisLength {
-    type Target = crate::datatypes::Float32;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for AxisLength {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AxisLength {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float32>::is_pod()
+        AxisLength(v.into())
     }
 }

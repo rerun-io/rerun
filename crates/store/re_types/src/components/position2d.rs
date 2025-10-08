@@ -19,64 +19,30 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __Position2DMarker;
+
 /// **Component**: A position in 2D space.
-#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(transparent)]
-pub struct Position2D(pub crate::datatypes::Vec2D);
+pub type Position2D = crate::WrapperComponent<crate::datatypes::Vec2D, __Position2DMarker>;
 
-impl ::re_types_core::WrapperComponent for Position2D {
-    type Datatype = crate::datatypes::Vec2D;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn Position2D(v: crate::datatypes::Vec2D) -> Position2D {
+    crate::WrapperComponent::<crate::datatypes::Vec2D, __Position2DMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for Position2D {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.Position2D".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(Position2D);
 
 impl<T: Into<crate::datatypes::Vec2D>> From<T> for Position2D {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Vec2D> for Position2D {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Vec2D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Position2D {
-    type Target = crate::datatypes::Vec2D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Vec2D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Position2D {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec2D {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Position2D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Vec2D>::is_pod()
+        Position2D(v.into())
     }
 }

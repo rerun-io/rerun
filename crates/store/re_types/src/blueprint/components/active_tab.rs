@@ -19,70 +19,32 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __ActiveTabMarker;
+
 /// **Component**: The active tab in a tabbed container.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
-pub struct ActiveTab(
-    /// Which tab is currently active.
-    ///
-    /// This should always correspond to a tab in the container.
-    pub crate::datatypes::EntityPath,
-);
+pub type ActiveTab = crate::WrapperComponent<crate::datatypes::EntityPath, __ActiveTabMarker>;
 
-impl ::re_types_core::WrapperComponent for ActiveTab {
-    type Datatype = crate::datatypes::EntityPath;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn ActiveTab(v: crate::datatypes::EntityPath) -> ActiveTab {
+    crate::WrapperComponent::<crate::datatypes::EntityPath, __ActiveTabMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for ActiveTab {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.ActiveTab".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(ActiveTab);
 
 impl<T: Into<crate::datatypes::EntityPath>> From<T> for ActiveTab {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::EntityPath> for ActiveTab {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::EntityPath {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ActiveTab {
-    type Target = crate::datatypes::EntityPath;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::EntityPath {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ActiveTab {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::EntityPath {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ActiveTab {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::EntityPath>::is_pod()
+        ActiveTab(v.into())
     }
 }

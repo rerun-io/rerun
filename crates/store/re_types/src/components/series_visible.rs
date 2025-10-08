@@ -19,66 +19,32 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __SeriesVisibleMarker;
+
 /// **Component**: Like [`components::Visible`][crate::components::Visible], but for time series.
 ///
 /// TODO(#10632): This is a temporary workaround. Right now we can't use [`components::Visible`][crate::components::Visible] since it would conflict with the entity-wide visibility state.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(transparent)]
-pub struct SeriesVisible(pub crate::datatypes::Bool);
+pub type SeriesVisible = crate::WrapperComponent<crate::datatypes::Bool, __SeriesVisibleMarker>;
 
-impl ::re_types_core::WrapperComponent for SeriesVisible {
-    type Datatype = crate::datatypes::Bool;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn SeriesVisible(v: crate::datatypes::Bool) -> SeriesVisible {
+    crate::WrapperComponent::<crate::datatypes::Bool, __SeriesVisibleMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for SeriesVisible {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.SeriesVisible".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(SeriesVisible);
 
 impl<T: Into<crate::datatypes::Bool>> From<T> for SeriesVisible {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Bool> for SeriesVisible {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Bool {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for SeriesVisible {
-    type Target = crate::datatypes::Bool;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Bool {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for SeriesVisible {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for SeriesVisible {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Bool>::is_pod()
+        SeriesVisible(v.into())
     }
 }

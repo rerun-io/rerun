@@ -6,7 +6,7 @@ impl Scale3D {
     /// Scale the same amount along all axis.
     #[inline]
     pub fn uniform(value: f32) -> Self {
-        Self(Vec3D([value, value, value]))
+        Scale3D(Vec3D([value, value, value]))
     }
 
     /// Scale the same amount along all axis.
@@ -31,7 +31,7 @@ impl Scale3D {
 impl From<f32> for Scale3D {
     #[inline]
     fn from(value: f32) -> Self {
-        Self(crate::datatypes::Vec3D([value, value, value]))
+        Scale3D(crate::datatypes::Vec3D([value, value, value]))
     }
 }
 
@@ -49,6 +49,6 @@ impl From<Scale3D> for glam::Affine3A {
 impl Default for Scale3D {
     #[inline]
     fn default() -> Self {
-        Self(crate::datatypes::Vec3D([1.0, 1.0, 1.0]))
+        Scale3D(crate::datatypes::Vec3D([1.0, 1.0, 1.0]))
     }
 }

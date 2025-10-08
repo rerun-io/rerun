@@ -14,7 +14,7 @@ impl Texcoord2D {
     /// Create a new texture coordinate.
     #[inline]
     pub const fn new(u: f32, v: f32) -> Self {
-        Self(Vec2D::new(u, v))
+        Texcoord2D(Vec2D::new(u, v))
     }
 
     /// The first coordinate, i.e. index 0.
@@ -53,6 +53,6 @@ impl From<Texcoord2D> for mint::Point2<f32> {
 impl From<mint::Point2<f32>> for Texcoord2D {
     #[inline]
     fn from(position: mint::Point2<f32>) -> Self {
-        Self(Vec2D([position.x, position.y]))
+        Texcoord2D(Vec2D([position.x, position.y]))
     }
 }

@@ -19,69 +19,32 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __ClassIdMarker;
+
 /// **Component**: A 16-bit ID representing a type of semantic class.
 ///
 /// Used to look up a [`crate::datatypes::ClassDescription`] within the [`crate::components::AnnotationContext`].
-#[derive(
-    Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, bytemuck::Pod, bytemuck::Zeroable,
-)]
-#[repr(transparent)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct ClassId(pub crate::datatypes::ClassId);
+pub type ClassId = crate::WrapperComponent<crate::datatypes::ClassId, __ClassIdMarker>;
 
-impl ::re_types_core::WrapperComponent for ClassId {
-    type Datatype = crate::datatypes::ClassId;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn ClassId(v: crate::datatypes::ClassId) -> ClassId {
+    crate::WrapperComponent::<crate::datatypes::ClassId, __ClassIdMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for ClassId {
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.ClassId".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(ClassId);
 
 impl<T: Into<crate::datatypes::ClassId>> From<T> for ClassId {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::ClassId> for ClassId {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::ClassId {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ClassId {
-    type Target = crate::datatypes::ClassId;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::ClassId {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ClassId {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::ClassId {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ClassId {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::ClassId>::is_pod()
+        ClassId(v.into())
     }
 }

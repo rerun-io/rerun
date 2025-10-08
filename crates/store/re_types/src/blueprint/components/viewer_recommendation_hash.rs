@@ -19,68 +19,35 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __ViewerRecommendationHashMarker;
+
 /// **Component**: Hash of a viewer recommendation.
 ///
 /// The formation of this hash is considered an internal implementation detail of the viewer.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(transparent)]
-pub struct ViewerRecommendationHash(pub crate::datatypes::UInt64);
+pub type ViewerRecommendationHash =
+    crate::WrapperComponent<crate::datatypes::UInt64, __ViewerRecommendationHashMarker>;
 
-impl ::re_types_core::WrapperComponent for ViewerRecommendationHash {
-    type Datatype = crate::datatypes::UInt64;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn ViewerRecommendationHash(v: crate::datatypes::UInt64) -> ViewerRecommendationHash {
+    crate::WrapperComponent::<crate::datatypes::UInt64, __ViewerRecommendationHashMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for ViewerRecommendationHash {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.ViewerRecommendationHash".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(ViewerRecommendationHash);
 
 impl<T: Into<crate::datatypes::UInt64>> From<T> for ViewerRecommendationHash {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::UInt64> for ViewerRecommendationHash {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::UInt64 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ViewerRecommendationHash {
-    type Target = crate::datatypes::UInt64;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::UInt64 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ViewerRecommendationHash {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt64 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ViewerRecommendationHash {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::UInt64>::is_pod()
+        ViewerRecommendationHash(v.into())
     }
 }

@@ -19,66 +19,33 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __FilterIsNotNullMarker;
+
 /// **Component**: Configuration for the filter is not null feature of the dataframe view.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct FilterIsNotNull(pub crate::blueprint::datatypes::FilterIsNotNull);
+pub type FilterIsNotNull =
+    crate::WrapperComponent<crate::blueprint::datatypes::FilterIsNotNull, __FilterIsNotNullMarker>;
 
-impl ::re_types_core::WrapperComponent for FilterIsNotNull {
-    type Datatype = crate::blueprint::datatypes::FilterIsNotNull;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn FilterIsNotNull(v: crate::blueprint::datatypes::FilterIsNotNull) -> FilterIsNotNull {
+    crate::WrapperComponent::<crate::blueprint::datatypes::FilterIsNotNull, __FilterIsNotNullMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for FilterIsNotNull {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.FilterIsNotNull".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(FilterIsNotNull);
 
 impl<T: Into<crate::blueprint::datatypes::FilterIsNotNull>> From<T> for FilterIsNotNull {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::blueprint::datatypes::FilterIsNotNull> for FilterIsNotNull {
-    #[inline]
-    fn borrow(&self) -> &crate::blueprint::datatypes::FilterIsNotNull {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for FilterIsNotNull {
-    type Target = crate::blueprint::datatypes::FilterIsNotNull;
-
-    #[inline]
-    fn deref(&self) -> &crate::blueprint::datatypes::FilterIsNotNull {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for FilterIsNotNull {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::FilterIsNotNull {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for FilterIsNotNull {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::datatypes::FilterIsNotNull>::is_pod()
+        FilterIsNotNull(v.into())
     }
 }

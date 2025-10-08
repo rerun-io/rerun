@@ -6,13 +6,13 @@ impl HalfSize3D {
     /// Create a new half-extent from half-width, half-height, half-depth.
     #[inline]
     pub const fn new(half_width: f32, half_height: f32, half_depth: f32) -> Self {
-        Self(Vec3D::new(half_width, half_height, half_depth))
+        HalfSize3D(Vec3D::new(half_width, half_height, half_depth))
     }
 
     /// Create a new half-extent with all the same sizes (a radius, perhaps).
     #[inline]
     pub const fn splat(half_size: f32) -> Self {
-        Self(Vec3D::new(half_size, half_size, half_size))
+        HalfSize3D(Vec3D::new(half_size, half_size, half_size))
     }
 
     /// Width of a box using this half-extent.
@@ -73,6 +73,6 @@ impl From<HalfSize3D> for mint::Vector3<f32> {
 impl Default for HalfSize3D {
     #[inline]
     fn default() -> Self {
-        Self(Vec3D::ONE)
+        HalfSize3D(Vec3D::ONE)
     }
 }

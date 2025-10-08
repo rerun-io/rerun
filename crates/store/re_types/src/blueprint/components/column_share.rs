@@ -19,68 +19,32 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
+#[doc(hidden)]
+pub struct __ColumnShareMarker;
+
 /// **Component**: The layout share of a column in the container.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
-pub struct ColumnShare(
-    /// The layout shares of a column in the container.
-    pub crate::datatypes::Float32,
-);
+pub type ColumnShare = crate::WrapperComponent<crate::datatypes::Float32, __ColumnShareMarker>;
 
-impl ::re_types_core::WrapperComponent for ColumnShare {
-    type Datatype = crate::datatypes::Float32;
+#[allow(non_snake_case)]
+#[inline]
+pub const fn ColumnShare(v: crate::datatypes::Float32) -> ColumnShare {
+    crate::WrapperComponent::<crate::datatypes::Float32, __ColumnShareMarker>(
+        v,
+        std::marker::PhantomData,
+    )
+}
 
+impl ::re_types_core::Component for ColumnShare {
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.ColumnShare".into()
     }
-
-    #[inline]
-    fn into_inner(self) -> Self::Datatype {
-        self.0
-    }
 }
-
-::re_types_core::macros::impl_into_cow!(ColumnShare);
 
 impl<T: Into<crate::datatypes::Float32>> From<T> for ColumnShare {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Float32> for ColumnShare {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ColumnShare {
-    type Target = crate::datatypes::Float32;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ColumnShare {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
-        &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ColumnShare {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float32>::is_pod()
+        ColumnShare(v.into())
     }
 }
