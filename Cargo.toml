@@ -252,7 +252,7 @@ gltf = "1.1"
 h264-reader = "0.8"
 half = { version = "2.3.1", features = ["bytemuck"] }
 hexasphere = "16.0.0"
-home = "0.5.11"
+home = "=0.5.9" # need to pin to an old version because newer version are incompatible with wasm
 http = "1.2.0"
 image = { version = "0.25", default-features = false }
 indent = "0.1"
