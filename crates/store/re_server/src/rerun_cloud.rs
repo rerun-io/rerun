@@ -18,12 +18,12 @@ use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
-        DeleteEntryResponse, EntryDetails, EntryKind, FetchTaskOutputRequest,
-        FetchTaskOutputResponse, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-        GetDatasetSchemaResponse, GetPartitionTableSchemaResponse, QueryDatasetResponse,
-        QueryTasksOnCompletionRequest, QueryTasksRequest, QueryTasksResponse, RegisterTableRequest,
-        RegisterTableResponse, RegisterWithDatasetResponse, ScanDatasetManifestRequest,
-        ScanPartitionTableResponse, ScanTableResponse,
+        DeleteEntryResponse, EntryDetails, EntryKind, GetDatasetManifestSchemaRequest,
+        GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse,
+        GetPartitionTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionRequest,
+        QueryTasksRequest, QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
+        RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanPartitionTableResponse,
+        ScanTableResponse,
         ext::{self, CreateDatasetEntryResponse, ReadDatasetEntryResponse, ReadTableEntryResponse},
         rerun_cloud_service_server::RerunCloudService,
     },
@@ -1129,15 +1129,6 @@ impl RerunCloudService for RerunCloudHandler {
         // All tasks finish emmidiately in the OSS server
         Ok(tonic::Response::new(
             Box::pin(futures::stream::empty()) as Self::QueryTasksOnCompletionStream
-        ))
-    }
-
-    async fn fetch_task_output(
-        &self,
-        _request: tonic::Request<FetchTaskOutputRequest>,
-    ) -> Result<tonic::Response<FetchTaskOutputResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented(
-            "fetch_task_output not implemented",
         ))
     }
 

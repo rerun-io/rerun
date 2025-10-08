@@ -994,40 +994,6 @@ impl ::prost::Name for QueryTasksOnCompletionResponse {
         "/rerun.cloud.v1alpha1.QueryTasksOnCompletionResponse".into()
     }
 }
-/// `FetchTaskOutputRequest` is the request message for fetching task output
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct FetchTaskOutputRequest {
-    /// Unique identifier for the task
-    #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<super::super::common::v1alpha1::TaskId>,
-}
-impl ::prost::Name for FetchTaskOutputRequest {
-    const NAME: &'static str = "FetchTaskOutputRequest";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.FetchTaskOutputRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.FetchTaskOutputRequest".into()
-    }
-}
-/// / `FetchTaskOutputResponse` is the response message for fetching task output
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct FetchTaskOutputResponse {
-    /// The output of the task, encoded as a record batch
-    #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
-}
-impl ::prost::Name for FetchTaskOutputResponse {
-    const NAME: &'static str = "FetchTaskOutputResponse";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.FetchTaskOutputResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.FetchTaskOutputResponse".into()
-    }
-}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FindEntriesRequest {
     #[prost(message, optional, tag = "1")]
@@ -2227,26 +2193,6 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Fetch the output of a completed task
-        pub async fn fetch_task_output(
-            &mut self,
-            request: impl tonic::IntoRequest<super::FetchTaskOutputRequest>,
-        ) -> std::result::Result<tonic::Response<super::FetchTaskOutputResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.cloud.v1alpha1.RerunCloudService/FetchTaskOutput",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.cloud.v1alpha1.RerunCloudService",
-                "FetchTaskOutput",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
         /// Query the status of submitted tasks as soon as they are no longer pending
         pub async fn query_tasks_on_completion(
             &mut self,
@@ -2525,11 +2471,6 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::QueryTasksRequest>,
         ) -> std::result::Result<tonic::Response<super::QueryTasksResponse>, tonic::Status>;
-        /// Fetch the output of a completed task
-        async fn fetch_task_output(
-            &self,
-            request: tonic::Request<super::FetchTaskOutputRequest>,
-        ) -> std::result::Result<tonic::Response<super::FetchTaskOutputResponse>, tonic::Status>;
         /// Server streaming response type for the QueryTasksOnCompletion method.
         type QueryTasksOnCompletionStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::QueryTasksOnCompletionResponse, tonic::Status>,
@@ -3609,48 +3550,6 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = QueryTasksSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.cloud.v1alpha1.RerunCloudService/FetchTaskOutput" => {
-                    #[allow(non_camel_case_types)]
-                    struct FetchTaskOutputSvc<T: RerunCloudService>(pub Arc<T>);
-                    impl<T: RerunCloudService>
-                        tonic::server::UnaryService<super::FetchTaskOutputRequest>
-                        for FetchTaskOutputSvc<T>
-                    {
-                        type Response = super::FetchTaskOutputResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::FetchTaskOutputRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as RerunCloudService>::fetch_task_output(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = FetchTaskOutputSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

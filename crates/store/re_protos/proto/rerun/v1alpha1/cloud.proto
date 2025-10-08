@@ -154,9 +154,6 @@ service RerunCloudService {
   // Query the status of submitted tasks
   rpc QueryTasks(QueryTasksRequest) returns (QueryTasksResponse) {}
 
-  // Fetch the output of a completed task
-  rpc FetchTaskOutput(FetchTaskOutputRequest) returns (FetchTaskOutputResponse) {}
-
   // Query the status of submitted tasks as soon as they are no longer pending
   rpc QueryTasksOnCompletion(QueryTasksOnCompletionRequest) returns (stream QueryTasksOnCompletionResponse) {}
 
@@ -665,18 +662,6 @@ message QueryTasksOnCompletionRequest {
 // `QueryTaskOnCompletionResponse` is the response message for querying tasks status
 // encoded as a record batch. This is a copy of `QueryTasksResponse`.
 message QueryTasksOnCompletionResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
-
-// `FetchTaskOutputRequest` is the request message for fetching task output
-message FetchTaskOutputRequest {
-  // Unique identifier for the task
-  rerun.common.v1alpha1.TaskId id = 1;
-}
-
-/// `FetchTaskOutputResponse` is the response message for fetching task output
-message FetchTaskOutputResponse {
-  // The output of the task, encoded as a record batch
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
