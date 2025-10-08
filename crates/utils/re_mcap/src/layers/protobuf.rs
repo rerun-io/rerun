@@ -130,12 +130,11 @@ impl MessageParser for ProtobufMessageParser {
             ChunkId::new(),
             entity_path,
             timelines,
-            [(
+            std::iter::once((
                 ComponentDescriptor::partial("message")
                     .with_builtin_archetype(message_descriptor.full_name()),
                 builder.finish().into(),
-            )]
-            .into_iter()
+            ))
             .collect(),
         )
         .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
@@ -179,10 +178,15 @@ fn append_null_to_builder(builder: &mut dyn ArrayBuilder) -> Result<(), Protobuf
         b.append_null();
     } else if let Some(b) = builder.as_any_mut().downcast_mut::<StructBuilder>() {
         b.append_null();
-    } else if let Some(b) = builder.as_any_mut().downcast_mut::<ListBuilder<Box<dyn ArrayBuilder>>>() {
+    } else if let Some(b) = builder
+        .as_any_mut()
+        .downcast_mut::<ListBuilder<Box<dyn ArrayBuilder>>>()
+    {
         b.append_null();
     } else {
-        return Err(ProtobufError::UnsupportedType("Unknown builder type for append_null"));
+        return Err(ProtobufError::UnsupportedType(
+            "Unknown builder type for append_null",
+        ));
     }
     Ok(())
 }
@@ -275,8 +279,7 @@ fn append_value(
                 .append_value(value.name());
 
             // Second field is "value" (Int32)
-            downcast_err::<Int32Builder>(field_builders[1].as_mut(), val)?
-                .append_value(*x);
+            downcast_err::<Int32Builder>(field_builders[1].as_mut(), val)?.append_value(*x);
 
             struct_builder.append(true);
         }
@@ -348,11 +351,10 @@ fn arrow_field_from(descr: &FieldDescriptor) -> Field {
     // Add extension metadata for enum types
     if matches!(descr.kind(), Kind::Enum(_)) {
         field = field.with_metadata(
-            [(
+            std::iter::once((
                 "ARROW:extension:name".to_owned(),
                 "rerun.datatypes.ProtobufEnum".to_owned(),
-            )]
-            .into_iter()
+            ))
             .collect(),
         );
     }

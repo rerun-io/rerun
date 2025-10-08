@@ -26,6 +26,7 @@ impl MessageParser for RawMcapMessageParser {
         msg: &::mcap::Message<'_>,
     ) -> anyhow::Result<()> {
         re_tracing::profile_function!();
+
         self.data.values().values().append_slice(&msg.data);
         self.data.values().append(true);
         self.data.append(true);

@@ -1,8 +1,6 @@
 use anyhow::Context as _;
-use arrow::array::{FixedSizeListArray, FixedSizeListBuilder, StringBuilder, UInt32Builder};
 use re_chunk::{Chunk, ChunkId};
 use re_types::{
-    ComponentDescriptor, SerializedComponentColumn,
     archetypes::{DepthImage, Image},
     datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat},
 };
@@ -12,7 +10,6 @@ use crate::parsers::{
     cdr,
     decode::{MessageParser, ParserContext},
     ros2msg::definitions::sensor_msgs,
-    util::fixed_size_list_builder,
 };
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
@@ -25,24 +22,7 @@ pub struct ImageMessageParser {
     /// Note: These blobs are directly moved into a `Blob`, without copying.
     blobs: Vec<Vec<u8>>,
     image_formats: Vec<ImageFormat>,
-    height: FixedSizeListBuilder<UInt32Builder>,
-    width: FixedSizeListBuilder<UInt32Builder>,
-    encoding: FixedSizeListBuilder<StringBuilder>,
-    is_bigendian: FixedSizeListBuilder<UInt32Builder>,
-    step: FixedSizeListBuilder<UInt32Builder>,
     is_depth_image: bool,
-}
-
-impl ImageMessageParser {
-    const ARCHETYPE_NAME: &str = "sensor_msgs.msg.Image";
-
-    fn create_metadata_column(name: &str, array: FixedSizeListArray) -> SerializedComponentColumn {
-        SerializedComponentColumn {
-            list_array: array.into(),
-            descriptor: ComponentDescriptor::partial(name)
-                .with_archetype(Self::ARCHETYPE_NAME.into()),
-        }
-    }
 }
 
 impl Ros2MessageParser for ImageMessageParser {
@@ -50,11 +30,6 @@ impl Ros2MessageParser for ImageMessageParser {
         Self {
             blobs: Vec::with_capacity(num_rows),
             image_formats: Vec::with_capacity(num_rows),
-            height: fixed_size_list_builder(1, num_rows),
-            width: fixed_size_list_builder(1, num_rows),
-            encoding: fixed_size_list_builder(1, num_rows),
-            is_bigendian: fixed_size_list_builder(1, num_rows),
-            step: fixed_size_list_builder(1, num_rows),
             is_depth_image: false,
         }
     }
@@ -69,8 +44,7 @@ impl MessageParser for ImageMessageParser {
             height,
             width,
             encoding,
-            is_bigendian,
-            step,
+            ..
         } = cdr::try_decode_message::<sensor_msgs::Image<'_>>(&msg.data)
             .context("Failed to decode sensor_msgs::Image message from CDR data")?;
 
@@ -90,23 +64,6 @@ impl MessageParser for ImageMessageParser {
         self.blobs.push(data.into_owned());
         self.image_formats.push(img_format);
 
-        self.height.values().append_slice(&[height]);
-        self.height.append(true);
-
-        self.width.values().append_slice(&[width]);
-        self.width.append(true);
-
-        self.encoding.values().append_value(encoding);
-        self.encoding.append(true);
-
-        self.is_bigendian
-            .values()
-            .append_slice(&[is_bigendian as u32]);
-        self.is_bigendian.append(true);
-
-        self.step.values().append_slice(&[step]);
-        self.step.append(true);
-
         Ok(())
     }
 
@@ -115,18 +72,13 @@ impl MessageParser for ImageMessageParser {
         let Self {
             blobs,
             image_formats,
-            mut height,
-            mut width,
-            mut encoding,
-            mut is_bigendian,
-            mut step,
             is_depth_image,
         } = *self;
 
         let entity_path = ctx.entity_path().clone();
         let timelines = ctx.build_timelines();
 
-        let mut chunk_components: Vec<_> = if is_depth_image {
+        let chunk_components: Vec<_> = if is_depth_image {
             DepthImage::update_fields()
                 .with_many_buffer(blobs)
                 .with_many_format(image_formats)
@@ -139,14 +91,6 @@ impl MessageParser for ImageMessageParser {
                 .columns_of_unit_batches()?
                 .collect()
         };
-
-        chunk_components.extend([
-            Self::create_metadata_column("height", height.finish()),
-            Self::create_metadata_column("width", width.finish()),
-            Self::create_metadata_column("encoding", encoding.finish()),
-            Self::create_metadata_column("is_bigendian", is_bigendian.finish()),
-            Self::create_metadata_column("step", step.finish()),
-        ]);
 
         Ok(vec![Chunk::from_auto_row_ids(
             ChunkId::new(),

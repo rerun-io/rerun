@@ -73,7 +73,7 @@ impl CommandPalette {
             return None;
         }
 
-        let screen_rect = egui_ctx.screen_rect();
+        let screen_rect = egui_ctx.content_rect();
         let width = 300.0;
         let max_height = 320.0.at_most(screen_rect.height());
 
