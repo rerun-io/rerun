@@ -1,6 +1,6 @@
 ---
 source: crates/store/re_tf/src/transform_forest.rs
-expression: "pretty_print_enity_path_hashes_in(transform_forest.transform_from_to(target.hash(),\nsources.iter().map(|s| s.hash()), &|_| { 1.0 }).collect::<Vec<_>>(),\n&all_entity_paths)"
+expression: "pretty_print_entity_path_hashes_in(transform_forest.transform_from_to(target.hash(),\nsources.iter().map(|s| s.hash()), &|_| { 1.0 }).collect::<Vec<_>>(),\n&all_entity_paths)"
 ---
 [
     (

@@ -1,6 +1,6 @@
 ---
 source: crates/store/re_tf/src/transform_forest.rs
-expression: "pretty_print_enity_path_hashes_in(transform_forest.root_info(EntityPath::from(\"top/pinhole\").hash()),\n&all_entity_paths)"
+expression: "pretty_print_entity_path_hashes_in(transform_forest.root_info(EntityPath::from(\"top/pinhole\").hash()),\n&all_entity_paths)"
 ---
 Some(
     Pinhole(
