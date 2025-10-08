@@ -740,7 +740,6 @@ impl TabWidget {
         let tab_desc = match tiles.get(tile_id) {
             Some(egui_tiles::Tile::Pane(view_id)) => {
                 if let Some(view) = tab_viewer.viewport_blueprint.view(view_id) {
-                    println!("---VIEW LABEL: {:?}", view.display_name_or_default());
                     TabDesc {
                         widget_text: tab_viewer.tab_title_for_pane(view_id),
                         user_named: view.display_name.is_some(),
