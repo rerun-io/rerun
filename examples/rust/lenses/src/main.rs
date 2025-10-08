@@ -52,7 +52,7 @@ fn lens_flag() -> anyhow::Result<Lens> {
         .next()
         .unwrap();
 
-    let lens = Lens::input_column("/flag".parse()?, "com.Example.Flag:flag")
+    let lens = Lens::input_column("/flag".parse()?, "example:Flag:flag")
         .output_column("/flag", Scalars::descriptor_scalars(), [Op::func(step_fn)])
         .static_output_column(
             "/flag",
@@ -72,11 +72,11 @@ fn lens_flag() -> anyhow::Result<Lens> {
 fn main() -> anyhow::Result<()> {
     re_log::setup_logging();
 
-    let instruction = Lens::input_column("/instructions".parse()?, "com.Example.Instruction:text")
+    let instruction = Lens::input_column("/instructions".parse()?, "example:Instruction:text")
         .output_column("instructions", TextDocument::descriptor_text(), [])
         .build();
 
-    let destructure = Lens::input_column("/nested".parse()?, "com.Example.Nested:payload")
+    let destructure = Lens::input_column("/nested".parse()?, "example:Nested:payload")
         .output_column(
             "nested/a",
             Scalars::descriptor_scalars(),
@@ -113,8 +113,7 @@ fn log_flag(rec: &RecordingStream) -> anyhow::Result<()> {
         rec.set_time("tick", TimeCell::from_sequence(x));
         rec.log(
             "flag",
-            &DynamicArchetype::new("com.Example.Flag")
-                .with_component_from_data("flag", Arc::new(flag)),
+            &DynamicArchetype::new("example:Flag").with_component_from_data("flag", Arc::new(flag)),
         )?
     }
 
@@ -125,7 +124,7 @@ fn log_instructions(rec: &RecordingStream) -> anyhow::Result<()> {
     rec.set_time("tick", TimeCell::from_sequence(1));
     rec.log(
         "instructions",
-        &DynamicArchetype::new("com.Example.Instruction").with_component_from_data(
+        &DynamicArchetype::new("example:Instruction").with_component_from_data(
             "text",
             Arc::new(arrow::array::StringArray::from(vec![
                 "This is a nice instruction text.",
@@ -154,7 +153,7 @@ fn log_structs_with_scalars(rec: &RecordingStream) -> anyhow::Result<()> {
         rec.set_time("tick", TimeCell::from_sequence(x));
         rec.log(
             "nested",
-            &DynamicArchetype::new("com.Example.Nested")
+            &DynamicArchetype::new("example:Nested")
                 .with_component_from_data("payload", Arc::new(struct_array)),
         )?
     }
