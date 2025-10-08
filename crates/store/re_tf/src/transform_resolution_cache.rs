@@ -23,13 +23,13 @@ use crate::component_type_info::TransformComponentTypeInfo;
 /// Resolves all transform components at a given entity to an affine transform.
 ///
 /// It only handles resulting transforms individually to each entity, not how these transforms propagate in the tree.
-/// For transform tree propagation see [`crate::TransformTree`].
+/// For transform tree propagation see [`crate::TransformForest`].
 ///
 /// There are different kinds of transforms handled here:
 /// * [`archetypes::Transform3D`]
-///   Tree transforms that should propagate in the tree (via [`crate::TransformTree`]).
+///   Tree transforms that should propagate in the tree (via [`crate::TransformForest`]).
 /// * [`archetypes::InstancePoses3D`]
-///   Instance poses that should be applied to the tree transforms (via [`crate::TransformTree`]) but not propagate.
+///   Instance poses that should be applied to the tree transforms (via [`crate::TransformForest`]) but not propagate.
 /// * [`components::PinholeProjection`] and [`components::ViewCoordinates`]
 ///   Pinhole projections & associated view coordinates used for visualizing cameras in 3D and embedding 2D in 3D
 ///
@@ -399,7 +399,7 @@ impl TransformResolutionCache {
     /// Makes sure the transform cache is up to date with the latest data.
     ///
     /// This needs to be called once per frame prior to any transform propagation.
-    /// (which is done by [`crate::TransformTree`])
+    /// (which is done by [`crate::TransformForest`])
     ///
     /// See also [`Self::add_chunks`].
     // TODO(andreas): easy optimization: apply only updates for a single timeline at a time.
