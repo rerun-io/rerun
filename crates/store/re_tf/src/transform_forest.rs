@@ -285,7 +285,6 @@ impl TransformForest {
                 root_from_parent * transforms_at_entity.parent_from_entity_tree_transform;
 
             // Did we encounter a pinhole and need to create a new subspace?
-            // TODO: report nested pinholes
             let (root, root_from_entity) =
                 if let Some(pinhole_projection) = transforms_at_entity.pinhole_projection {
                     let new_root = child_path.hash();
@@ -529,7 +528,6 @@ fn from_3d_source_to_2d_target(
             // The inverse of this matrix *is* working for this, but quickly runs into precision issues.
             // See also `ui_2d.rs#setup_target_config`
 
-            // TODO: Locally cache pinhole transform?
             let pinhole3d_from_image_plane =
                 pinhole3d_from_image_plane(pinhole_projection, pinhole_image_plane_distance);
             let image_plane_from_pinhole3d = pinhole3d_from_image_plane.inverse();
@@ -687,7 +685,7 @@ mod tests {
     /// A test scene that relies exclusively on the entity hierarchy.
     ///
     /// We're using relatively basic transforms here as we assume that resolving transforms have been tested on [`TransformResolutionCache`] already.
-    /// Similarly, since [`TransformForest`] does not yet mantain anything over time, we're using static timeing instead.
+    /// Similarly, since [`TransformForest`] does not yet maintain anything over time, we're using static timing instead.
     /// TODO(RR-2510): add another scene (or extension) where we override transforms on select entities
     /// TODO(RR-2511): add a scene with frame relationships
     fn entity_hierarchy_test_scene() -> EntityDb {
@@ -760,7 +758,7 @@ mod tests {
         entity_db
     }
 
-    fn pretty_print_enity_path_hashes_in<T: std::fmt::Debug>(
+    fn pretty_print_entity_path_hashes_in<T: std::fmt::Debug>(
         obj: T,
         paths: &[EntityPath],
     ) -> String {
@@ -799,7 +797,7 @@ mod tests {
             // Pinhole roots are a bit more complex. Let's use `insta` to verify.
             insta::assert_snapshot!(
                 "simple_entity_hierarchy__root_info_pinhole",
-                pretty_print_enity_path_hashes_in(
+                pretty_print_entity_path_hashes_in(
                     transform_forest.root_info(EntityPath::from("top/pinhole").hash()),
                     &all_entity_paths
                 )
@@ -860,7 +858,7 @@ mod tests {
 
             insta::assert_snapshot!(
                 format!("simple_entity_hierarchy__transform_from_to_{}", name),
-                pretty_print_enity_path_hashes_in(
+                pretty_print_entity_path_hashes_in(
                     transform_forest
                         .transform_from_to(target.hash(), sources.iter().map(|s| s.hash()), &|_| {
                             1.0
