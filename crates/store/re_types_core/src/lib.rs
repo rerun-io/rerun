@@ -33,6 +33,7 @@ pub mod reflection;
 mod result;
 mod tuid;
 mod view;
+mod wrapper_component;
 
 pub use self::{
     archetype::{Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentIdentifier},
@@ -54,6 +55,7 @@ pub use self::{
     },
     tuid::tuids_to_arrow,
     view::{View, ViewClassIdentifier},
+    wrapper_component::WrapperComponent,
 };
 
 /// Fundamental [`Archetype`]s that are implemented in `re_types_core` directly for convenience and
