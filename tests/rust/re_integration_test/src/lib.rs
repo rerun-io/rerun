@@ -1,7 +1,9 @@
 //! Integration tests for rerun and the in memory server.
 
+mod kittest_harness_ext;
 mod test_data;
 
+pub use kittest_harness_ext::HarnessExt;
 use re_redap_client::{ClientConnectionError, ConnectionClient, ConnectionRegistry};
 use re_server::ServerHandle;
 use re_uri::external::url::Host;

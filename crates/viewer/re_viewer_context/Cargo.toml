@@ -68,6 +68,7 @@ macaw.workspace = true
 ndarray.workspace = true
 nohash-hasher.workspace = true
 parking_lot = { workspace = true, features = ["serde"] }
+rayon.workspace = true
 serde.workspace = true
 slotmap.workspace = true
 smallvec.workspace = true
