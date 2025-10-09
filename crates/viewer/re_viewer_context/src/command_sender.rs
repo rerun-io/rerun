@@ -4,7 +4,7 @@ use re_data_source::LogDataSource;
 use re_log_types::StoreId;
 use re_ui::{UICommand, UICommandSender};
 
-use crate::{RecordingOrTable, time_control_command::TimeControlCommand};
+use crate::{RecordingOrTable, time_control::TimeControlCommand};
 
 // ----------------------------------------------------------------------------
 

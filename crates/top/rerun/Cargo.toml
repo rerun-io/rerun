@@ -175,7 +175,6 @@ re_chunk_store = { workspace = true, optional = true }
 re_crash_handler = { workspace = true, optional = true }
 re_data_source = { workspace = true, optional = true }
 re_dataframe = { workspace = true, optional = true }
-re_global_context = { workspace = true, optional = true }
 re_grpc_server = { workspace = true, optional = true }
 re_mcap = { workspace = true, optional = true }
 re_sdk = { workspace = true, optional = true }
@@ -206,6 +205,4 @@ re_build_tools.workspace = true
 ignored = [
   "re_video",
   "puffin",
-  # Local runs of `cargo shear` don't bring up `re_global_context` but CI runs do.
-  "re_global_context",
 ]

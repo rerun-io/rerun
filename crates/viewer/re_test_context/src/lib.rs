@@ -12,10 +12,6 @@ use parking_lot::{Mutex, RwLock};
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
-use re_global_context::{
-    AppOptions, DisplayMode, Item, SystemCommandSender as _,
-    time_control_command::TimeControlCommand,
-};
 use re_log_types::{
     EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind,
     external::re_tuid::Tuid,
@@ -25,9 +21,10 @@ use re_types_core::reflection::Reflection;
 use re_ui::Help;
 
 use re_viewer_context::{
-    ApplicationSelectionState, BlueprintContext, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DataQueryResult, GlobalContext, ItemCollection, NeedsRepaint, StoreHub,
-    SystemCommand, TimeControl, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
+    AppOptions, ApplicationSelectionState, BlueprintContext, CommandReceiver, CommandSender,
+    ComponentUiRegistry, DataQueryResult, DisplayMode, GlobalContext, Item, ItemCollection,
+    NeedsRepaint, StoreHub, SystemCommand, SystemCommandSender as _, TimeControl,
+    TimeControlCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
     blueprint_timeline, command_channel,
 };
 

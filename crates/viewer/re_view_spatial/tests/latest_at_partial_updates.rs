@@ -4,9 +4,7 @@ use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
 use re_types::{Archetype as _, archetypes};
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::{
-    BlueprintContext as _, ViewClass as _, ViewId, time_control_command::TimeControlCommand,
-};
+use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]

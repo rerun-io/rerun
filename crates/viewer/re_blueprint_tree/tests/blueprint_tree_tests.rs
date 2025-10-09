@@ -11,8 +11,7 @@ use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::archetypes::Points3D;
 use re_viewer_context::{
-    CollapseScope, RecommendedView, ViewClass as _, ViewId,
-    time_control_command::TimeControlCommand,
+    CollapseScope, RecommendedView, TimeControlCommand, ViewClass as _, ViewId,
 };
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 

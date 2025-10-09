@@ -4,20 +4,19 @@ use arrow::array::ArrayRef;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
-use re_global_context::time_control_command::TimeControlCommand;
-use re_global_context::{DisplayMode, SystemCommand};
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
 use re_ui::ContextExt as _;
 
 use crate::drag_and_drop::DragAndDropPayload;
+use crate::time_control::TimeControlCommand;
 use crate::{
     AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry, DragAndDropManager,
     IndicatedEntities, ItemCollection, MaybeVisualizableEntities, PerVisualizer, StoreContext,
     SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId,
     query_context::DataQueryResult,
 };
-use crate::{GlobalContext, Item, StorageContext, StoreHub};
+use crate::{DisplayMode, GlobalContext, Item, StorageContext, StoreHub, SystemCommand};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {

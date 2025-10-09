@@ -8,9 +8,7 @@ use re_types::{
     blueprint, components,
 };
 use re_view_time_series::TimeSeriesView;
-use re_viewer_context::{
-    BlueprintContext as _, ViewClass as _, ViewId, time_control_command::TimeControlCommand,
-};
+use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
 #[test]

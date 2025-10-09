@@ -368,8 +368,7 @@ mod tests {
     use re_log_types::{AbsoluteTimeRangeF, TimeCell, external::re_tuid};
     use re_test_context::TestContext;
     use re_viewer_context::{
-        DisplayMode, Item, ItemCollection, open_url::ViewerOpenUrl,
-        time_control_command::TimeControlCommand,
+        DisplayMode, Item, ItemCollection, TimeControlCommand, open_url::ViewerOpenUrl,
     };
 
     use crate::ui::ShareModal;

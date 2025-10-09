@@ -2,7 +2,7 @@ use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{ViewClass as _, ViewId, time_control_command::TimeControlCommand};
+use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]

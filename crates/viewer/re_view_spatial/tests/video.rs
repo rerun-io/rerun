@@ -10,7 +10,7 @@ use re_types::{
     datatypes,
 };
 use re_video::{VideoCodec, VideoDataDescription};
-use re_viewer_context::{ViewClass as _, time_control_command::TimeControlCommand};
+use re_viewer_context::{TimeControlCommand, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;
 
 fn workspace_dir() -> std::path::PathBuf {
