@@ -82,7 +82,7 @@ impl Asset3DVisualizer {
                 // TODO(#7026): This a rare form of hybrid joining.
                 for &world_from_pose in ent_context
                     .transform_info
-                    .reference_from_instances(Asset3D::name())
+                    .target_from_instances(Asset3D::name())
                 {
                     instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
                         let pose_from_mesh = mesh_instance.world_from_mesh;

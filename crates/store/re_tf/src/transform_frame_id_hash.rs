@@ -3,6 +3,8 @@ use re_types::components::TransformFrameId;
 
 /// Hash for [`TransformFrameId`].
 ///
+/// Just like [`EntityPathHash`] we assume this hash to be collision free.
+///
 /// Almost always, instead of using [`TransformFrameId`] directly, `re_tf` uses this hash.
 /// It is assumed to be collision free.
 ///
@@ -10,6 +12,9 @@ use re_types::components::TransformFrameId;
 /// the [`TransformFrameIdHash`] of an entity path derived frame is guaranteed to be exactly the same as [`EntityPathHash`].
 /// Therefore, whenever possible, you should create [`TransformFrameIdHash`] directly from [`EntityPath`],
 /// without going via [`TransformFrameId`].
+///
+/// There's no `Into` conversions for entity paths in order to keep these conversions explicit,
+/// marking clearly where we retrieve the implicit frame id's of an entity path.
 #[derive(Copy, Clone, Eq, PartialOrd, Ord)]
 pub struct TransformFrameIdHash(Hash64);
 
@@ -79,8 +84,30 @@ impl TransformFrameIdHash {
     /// The resulting [`TransformFrameIdHash`] represents the implicit transform frame
     /// at that entity path.
     #[inline]
-    pub fn from_entity_path_hash(path: &EntityPathHash) -> Self {
+    pub fn from_entity_path_hash(path: EntityPathHash) -> Self {
         Self(Hash64::from_u64(path.hash64()))
+    }
+
+    /// Convert the [`TransformFrameIdHash`] to an [`EntityPathHash`].
+    ///
+    /// ⚠️ If this [`TransformFrameIdHash`] is not derived from an [`EntityPath`],
+    /// this will return a virtually random [`EntityPathHash`].
+    /// There is currently no way to determine whether this is the case.
+    #[inline]
+    pub fn as_entity_path_hash(&self) -> EntityPathHash {
+        EntityPathHash::from_u64(self.0.hash64())
+    }
+
+    /// Get the [`TransformFrameIdHash`] of the root of the entity path tree.
+    #[inline]
+    pub fn entity_path_hierarchy_root() -> Self {
+        Self::from_entity_path(&EntityPath::root())
+    }
+
+    /// Get the raw hash value of the [`TransformFrameIdHash`].
+    #[inline]
+    pub fn hash(&self) -> u64 {
+        self.0.hash64()
     }
 }
 
@@ -89,7 +116,7 @@ mod tests {
     use re_log_types::EntityPath;
     use re_types::components::TransformFrameId;
 
-    use crate::frame_id_hash::TransformFrameIdHash;
+    use crate::transform_frame_id_hash::TransformFrameIdHash;
 
     #[test]
     fn test_from_entity_path() {
@@ -102,7 +129,7 @@ mod tests {
         );
         assert_eq!(
             TransformFrameIdHash::new(&derived_frame_id),
-            TransformFrameIdHash::from_entity_path_hash(&path.hash())
+            TransformFrameIdHash::from_entity_path_hash(path.hash())
         );
     }
 
@@ -117,7 +144,7 @@ mod tests {
         );
         assert_ne!(
             TransformFrameIdHash::new(&frame_id),
-            TransformFrameIdHash::from_entity_path_hash(&path.hash())
+            TransformFrameIdHash::from_entity_path_hash(path.hash())
         );
     }
 }
