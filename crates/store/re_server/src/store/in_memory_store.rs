@@ -11,6 +11,7 @@ use itertools::Itertools as _;
 use lance::datafusion::LanceTableProvider;
 
 use re_log_types::EntryId;
+use re_protos::cloud::v1alpha1::EntryKind;
 use re_protos::{
     cloud::v1alpha1::{
         SystemTableKind,
@@ -335,9 +336,22 @@ impl InMemoryStore {
     pub fn entries_table(&self) -> Result<MemTable, Error> {
         let dataset_rb = self.dataset_entries_table()?;
         let table_rb = self.table_entries_table()?;
+
+        // TODO(#11369): this is a hack to have the entries table until we use a proper table-
+        // provider-based approach. When we do, we must seed the `__entries` table in the in-memory
+        // store upon initialization.
+        let entry_table_rb = generate_entries_table(&[EntryDetails {
+            id: EntryId::from(Tuid::from_bytes([0; 16])),
+            name: ENTRIES_TABLE_NAME.to_owned(),
+            kind: EntryKind::Table,
+            created_at: Default::default(),
+            updated_at: Default::default(),
+        }])?;
+
         let schema = dataset_rb.schema();
 
-        let result_table = MemTable::try_new(schema, vec![vec![dataset_rb, table_rb]])?;
+        let result_table =
+            MemTable::try_new(schema, vec![vec![dataset_rb, table_rb, entry_table_rb]])?;
 
         Ok(result_table)
     }
