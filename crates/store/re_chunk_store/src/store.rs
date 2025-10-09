@@ -711,7 +711,7 @@ impl ChunkStore {
         let rrd_file = std::fs::File::open(path_to_rrd)
             .with_context(|| format!("couldn't open {path_to_rrd:?}"))?;
 
-        let decoder = re_log_encoding::decoder::stream::StreamDecoder::decode_eager(
+        let decoder = re_log_encoding::StreamDecoder::decode_eager(
             std::io::BufReader::new(rrd_file),
         )
         .with_context(|| format!("couldn't decode {path_to_rrd:?}"))?;

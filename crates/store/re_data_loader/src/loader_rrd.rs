@@ -1,4 +1,4 @@
-use re_log_encoding::decoder::stream::StreamDecoder;
+use re_log_encoding::StreamDecoder;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crossbeam::channel::Receiver;
@@ -126,8 +126,8 @@ impl crate::DataLoader for RrdLoader {
             Ok(decoder) => decoder,
             Err(err) => match err {
                 // simply not interested
-                re_log_encoding::decoder::DecodeError::NotAnRrd { .. }
-                | re_log_encoding::decoder::DecodeError::Options(_) => return Ok(()),
+                re_log_encoding::DecodeError::NotAnRrd { .. }
+                | re_log_encoding::DecodeError::Options(_) => return Ok(()),
                 _ => return Err(err.into()),
             },
         };
@@ -159,7 +159,7 @@ impl crate::DataLoader for RrdLoader {
 fn decode_and_stream(
     filepath: &std::path::Path,
     tx: &std::sync::mpsc::Sender<crate::LoadedData>,
-    msgs: impl Iterator<Item = Result<re_log_types::LogMsg, re_log_encoding::decoder::DecodeError>>,
+    msgs: impl Iterator<Item = Result<re_log_types::LogMsg, re_log_encoding::DecodeError>>,
     forced_application_id: Option<&ApplicationId>,
     forced_recording_id: Option<&String>,
 ) {

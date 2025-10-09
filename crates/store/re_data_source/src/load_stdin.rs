@@ -8,7 +8,7 @@ use re_smart_channel::Sender;
 pub fn load_stdin(tx: Sender<DataSourceMessage>) -> anyhow::Result<()> {
     let stdin = std::io::BufReader::new(std::io::stdin());
 
-    let decoder = re_log_encoding::decoder::stream::StreamDecoderApp::decode_eager(stdin)?;
+    let decoder = re_log_encoding::StreamDecoderApp::decode_eager(stdin)?;
 
     rayon::spawn(move || {
         re_tracing::profile_scope!("stdin");

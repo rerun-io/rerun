@@ -1,7 +1,7 @@
 //! Crate that handles encoding of rerun log types.
 
 #[cfg(feature = "decoder")]
-pub mod decoder;
+mod decoder;
 
 #[cfg(feature = "encoder")]
 mod encoder;
@@ -26,6 +26,13 @@ pub mod external {
 
 pub use self::app_id_injector::{
     ApplicationIdInjector, CachingApplicationIdInjector, DummyApplicationIdInjector,
+};
+
+#[cfg(feature = "decoder")]
+pub use self::decoder::{
+    DecodeError, FileEncoded, NotAnRrdError, StreamDecoder, StreamDecoderApp,
+    StreamDecoderIterator, StreamDecoderTransport, StreamingDecoder, StreamingDecoderOptions,
+    StreamingLogMsg,
 };
 
 #[cfg(feature = "encoder")]

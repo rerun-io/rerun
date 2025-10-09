@@ -1,7 +1,7 @@
 use similar_asserts::assert_eq;
 
 use re_chunk::{Chunk, RowId, TimePoint, Timeline};
-use re_log_encoding::{Encoder, decoder::stream::StreamDecoderApp};
+use re_log_encoding::{Encoder, StreamDecoderApp};
 use re_log_types::{LogMsg, StoreId};
 use re_types::archetypes::Points3D;
 
