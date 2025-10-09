@@ -509,17 +509,32 @@ impl App {
                         Some(&bp_ctx),
                     );
 
+                    if response.needs_repaint == NeedsRepaint::Yes {
+                        self.egui_ctx.request_repaint();
+                    }
+
                     handle_time_ctrl_event(recording, self.event_dispatcher.as_ref(), &response);
                 }
 
                 if self.app_options().inspect_blueprint_timeline {
-                    _ = self.state.blueprint_time_control.update(
+                    // We ignore most things from the time control response for the blueprint but still
+                    // need to repaint if requested.
+                    let re_viewer_context::TimeControlResponse {
+                        needs_repaint,
+                        playing_change: _,
+                        timeline_change: _,
+                        time_change: _,
+                    } = self.state.blueprint_time_control.update(
                         bp_ctx.current_blueprint.times_per_timeline(),
                         dt,
                         true,
                         false,
                         None::<&AppBlueprintCtx<'_>>,
                     );
+
+                    if needs_repaint == NeedsRepaint::Yes {
+                        self.egui_ctx.request_repaint();
+                    }
 
                     let undo_state = self
                         .state
