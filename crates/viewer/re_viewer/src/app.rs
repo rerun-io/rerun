@@ -491,14 +491,13 @@ impl App {
                 let dt = self.egui_ctx.input(|i| i.stable_dt);
                 if let Some(recording) = store_hub.active_recording() {
                     // Are we still connected to the data source for the current store?
-                    let more_data_is_coming = if let Some(store_source) = &recording.data_source {
-                        self.rx_log
-                            .sources()
-                            .iter()
-                            .any(|s| s.as_ref() == store_source)
-                    } else {
-                        false
-                    };
+                    let more_data_is_coming =
+                        recording.data_source.as_ref().is_some_and(|store_source| {
+                            self.rx_log
+                                .sources()
+                                .iter()
+                                .any(|s| s.as_ref() == store_source)
+                        });
 
                     let time_ctrl = self.state.time_control_mut(recording, &bp_ctx);
 
