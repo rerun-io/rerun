@@ -2,7 +2,7 @@ use re_build_info::CrateVersion;
 
 // ---
 
-/// On failure to encode or serialize a [`LogMsg`].
+/// On failure to encode or serialize a `LogMsg`.
 #[derive(thiserror::Error, Debug)]
 pub enum DecodeError {
     #[error("{0}")]

@@ -1381,8 +1381,7 @@ mod tests {
             let timeout_stream = log_stream.get_mut().timeout(Duration::from_millis(100));
             tokio::pin!(timeout_stream);
             let timeout_result = timeout_stream.try_next().await;
-            let mut app_id_cache =
-                re_log_encoding::CachingApplicationIdInjector::default();
+            let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
             match timeout_result {
                 Ok(Some(value)) => {
                     actual.push(
@@ -1421,8 +1420,7 @@ mod tests {
             let timeout_stream = log_stream.get_mut().timeout(Duration::from_millis(100));
             tokio::pin!(timeout_stream);
             let timeout_result = timeout_stream.try_next().await;
-            let mut app_id_cache =
-                re_log_encoding::CachingApplicationIdInjector::default();
+            let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
             match timeout_result {
                 Ok(Some(value)) => {
                     actual.push(

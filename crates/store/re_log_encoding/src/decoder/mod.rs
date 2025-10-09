@@ -1,4 +1,4 @@
-//! Decoding [`LogMsg`]:es from `.rrd` files/streams.
+//! Decoding `LogMsg`:es from `.rrd` files/streams.
 
 mod app_id_injector;
 mod errors;
