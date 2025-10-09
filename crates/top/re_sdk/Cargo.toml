@@ -64,6 +64,7 @@ re_types.workspace = true
 re_uri.workspace = true
 
 ahash.workspace = true
+arrow.workspace = true
 const_format.workspace = true
 crossbeam.workspace = true
 document-features.workspace = true

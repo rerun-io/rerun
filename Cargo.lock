@@ -5671,6 +5671,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "884e2677b40cc8c339eaefcb701c32ef1fd2493d71118dc0ca4b6a736c93bd67"
 
 [[package]]
+name = "lenses"
+version = "0.26.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "arrow",
+ "rerun",
+]
+
+[[package]]
 name = "levenshtein_automata"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9326,6 +9335,7 @@ name = "re_sdk"
 version = "0.26.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "arrow",
  "const_format",
  "crossbeam",
  "document-features",
