@@ -157,6 +157,12 @@ impl std::ops::Deref for ActiveTimeline {
 }
 
 /// Controls the global view and progress of the time.
+///
+/// Modifications to this can be done via sending [`TimeControlCommand`]s
+/// which are handled at the end of frames.
+///
+/// The commands write both to this struct and to blueprints when
+/// applicable.
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq)]
 #[serde(default)]
 pub struct TimeControl {

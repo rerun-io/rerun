@@ -50,6 +50,9 @@ impl From<AbsoluteTimeRange> for TimeView {
     }
 }
 
+/// A command used to mutate `TimeControl`.
+///
+/// Can be sent using [`crate::SystemCommand::TimeControlCommands`].
 #[derive(Debug)]
 pub enum TimeControlCommand {
     HighlightRange(AbsoluteTimeRange),
