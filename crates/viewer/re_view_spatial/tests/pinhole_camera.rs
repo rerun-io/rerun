@@ -4,7 +4,7 @@ use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
 use re_types::archetypes::Pinhole;
 use re_types::components::{Color, Radius};
-use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
+use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
@@ -21,27 +21,13 @@ pub fn test_pinhole_camera() {
         )
     });
 
-    let view_id = setup_blueprint(&mut test_context);
+    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        let view =
+            ViewBlueprint::new_with_root_wildcard(re_view_spatial::SpatialView3D::identifier());
+        blueprint.add_view_at_root(view)
+    });
+
     run_view_ui_and_save_snapshot(&test_context, view_id, egui::vec2(300.0, 300.0));
-}
-
-#[allow(clippy::unwrap_used)]
-fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
-    test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-        let view_blueprint = ViewBlueprint::new(
-            re_view_spatial::SpatialView3D::identifier(),
-            RecommendedView {
-                origin: "/world".into(),
-                query_filter: "+ $origin/**".parse().unwrap(),
-            },
-        );
-
-        let view_id = view_blueprint.id;
-
-        blueprint.add_views(std::iter::once(view_blueprint), None, None);
-
-        view_id
-    })
 }
 
 fn run_view_ui_and_save_snapshot(test_context: &TestContext, view_id: ViewId, size: egui::Vec2) {

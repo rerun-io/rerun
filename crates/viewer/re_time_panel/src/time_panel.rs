@@ -227,7 +227,7 @@ impl TimePanel {
             panel_frame.inner_margin.right = 0;
         }
 
-        let window_height = ui.ctx().screen_rect().height();
+        let window_height = ui.ctx().content_rect().height();
 
         let id: egui::Id = self.source.into();
 

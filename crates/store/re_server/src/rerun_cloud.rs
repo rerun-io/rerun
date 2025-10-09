@@ -16,14 +16,15 @@ use re_byte_size::SizeBytes as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
+use re_protos::cloud::v1alpha1::ext::DataSource;
 use re_protos::{
     cloud::v1alpha1::{
-        DeleteEntryResponse, EntryDetails, EntryKind, FetchTaskOutputRequest,
-        FetchTaskOutputResponse, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-        GetDatasetSchemaResponse, GetPartitionTableSchemaResponse, QueryDatasetResponse,
-        QueryTasksOnCompletionRequest, QueryTasksRequest, QueryTasksResponse, RegisterTableRequest,
-        RegisterTableResponse, RegisterWithDatasetResponse, ScanDatasetManifestRequest,
-        ScanPartitionTableResponse, ScanTableResponse,
+        DeleteEntryResponse, EntryDetails, EntryKind, GetDatasetManifestSchemaRequest,
+        GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse,
+        GetPartitionTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionRequest,
+        QueryTasksRequest, QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
+        RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanPartitionTableResponse,
+        ScanTableResponse,
         ext::{self, CreateDatasetEntryResponse, ReadDatasetEntryResponse, ReadTableEntryResponse},
         rerun_cloud_service_server::RerunCloudService,
     },
@@ -95,7 +96,7 @@ impl RerunCloudHandler {
         }
     }
 
-    async fn get_storage_engines(
+    async fn get_chunk_stores(
         &self,
         dataset_id: EntryId,
         mut partition_ids: Vec<PartitionId>,
@@ -113,7 +114,8 @@ impl RerunCloudHandler {
             .into_iter()
             .map(|partition_id| {
                 dataset
-                    .partition_store_handle(&partition_id)
+                    //TODO(RR-2482)
+                    .layer_store_handle(&partition_id, DataSource::DEFAULT_LAYER)
                     .ok_or_else(|| {
                         tonic::Status::not_found(format!(
                             "Partition with ID {partition_id} not found"
@@ -491,7 +493,7 @@ impl RerunCloudService for RerunCloudHandler {
                 kind,
             } = source;
 
-            if layer != "base" {
+            if layer != DataSource::DEFAULT_LAYER {
                 return Err(tonic::Status::unimplemented(format!(
                     "register_with_dataset: only 'base' layer is implemented, got {layer:?}"
                 )));
@@ -504,7 +506,7 @@ impl RerunCloudService for RerunCloudHandler {
             }
 
             if let Ok(rrd_path) = storage_url.to_file_path() {
-                let new_partition_ids = dataset.load_rrd(&rrd_path, on_duplicate)?;
+                let new_partition_ids = dataset.load_rrd(&rrd_path, None, on_duplicate)?;
 
                 for partition_id in new_partition_ids {
                     partition_ids.push(partition_id.to_string());
@@ -592,7 +594,12 @@ impl RerunCloudService for RerunCloudHandler {
 
         #[expect(clippy::iter_over_hash_type)]
         for (entity_path, chunk_store) in chunk_stores {
-            dataset.add_partition(entity_path, ChunkStoreHandle::new(chunk_store));
+            //TODO(RR-2482)
+            dataset.add_layer(
+                entity_path,
+                DataSource::DEFAULT_LAYER.to_owned(),
+                ChunkStoreHandle::new(chunk_store),
+            );
         }
 
         Ok(tonic::Response::new(
@@ -767,7 +774,7 @@ impl RerunCloudService for RerunCloudHandler {
             .map(PartitionId::try_from)
             .collect::<Result<Vec<_>, _>>()?;
 
-        let storage_engines = self.get_storage_engines(entry_id, partition_ids).await?;
+        let storage_engines = self.get_chunk_stores(entry_id, partition_ids).await?;
 
         let stream = futures::stream::iter(storage_engines.into_iter().map(
             move |(partition_id, store_handle)| {
@@ -972,7 +979,8 @@ impl RerunCloudService for RerunCloudHandler {
                         .any(|(_, pid)| pid == &partition_id)
                     {
                         dataset
-                            .partition_store_handle(&partition_id)
+                            //TODO(RR-2482)
+                            .layer_store_handle(&partition_id, DataSource::DEFAULT_LAYER)
                             .map(|store_handle| (partition_id, (dataset_id, store_handle.clone())))
                     } else {
                         None
@@ -1129,15 +1137,6 @@ impl RerunCloudService for RerunCloudHandler {
         // All tasks finish emmidiately in the OSS server
         Ok(tonic::Response::new(
             Box::pin(futures::stream::empty()) as Self::QueryTasksOnCompletionStream
-        ))
-    }
-
-    async fn fetch_task_output(
-        &self,
-        _request: tonic::Request<FetchTaskOutputRequest>,
-    ) -> Result<tonic::Response<FetchTaskOutputResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented(
-            "fetch_task_output not implemented",
         ))
     }
 

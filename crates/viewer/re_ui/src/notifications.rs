@@ -278,7 +278,7 @@ impl NotificationUi {
             .frame(ui.tokens().popup_frame(ui.style()))
             // Put the popup below the button, but all the way to the right of the screen:
             .anchor(egui::PopupAnchor::Position(egui::pos2(
-                ui.ctx().screen_rect().right() - gap,
+                ui.ctx().content_rect().right() - gap,
                 ui.max_rect().bottom() + gap,
             )))
             .align(egui::RectAlign::BOTTOM_END)
@@ -309,7 +309,7 @@ impl NotificationUi {
         let notifications = &mut self.notifications;
 
         let panel_width = 356.0;
-        let panel_max_height = (ui.ctx().screen_rect().height() - 100.0)
+        let panel_max_height = (ui.ctx().content_rect().height() - 100.0)
             .at_least(0.0)
             .at_most(640.0);
 

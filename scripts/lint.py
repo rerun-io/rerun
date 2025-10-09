@@ -170,16 +170,14 @@ def lint_line(
         # but we also care about beautiful docs, so at the moment this lint is quite "inclusive".
         if ellipsis.search(line):
             has_quote = '"' in line or "'" in line
-            if has_quote and "Callable" not in line:
-                return "Use … instead of ..."
-            elif (
+            if (has_quote and "Callable" not in line) or (
                 file_extension not in "py"
                 and not ellipsis_expression.search(line)
                 and not ellipsis_import.search(line)
                 and not ellipsis_bare.search(line)
                 and not ellipsis_reference.search(line)
             ):
-                return "Use … instead of ..."
+                return "Use … instead of ... (on Mac it's option+;)"
 
     if "http" not in line:
         if re.search(r"\b2d\b", line):

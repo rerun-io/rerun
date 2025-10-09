@@ -526,7 +526,7 @@ impl AppState {
                     })
                     .min_width(120.0)
                     .default_width(default_blueprint_panel_width(
-                        ui.ctx().screen_rect().width(),
+                        ui.ctx().content_rect().width(),
                     ));
 
                 left_panel.show_animated_inside(

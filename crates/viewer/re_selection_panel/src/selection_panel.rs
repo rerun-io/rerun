@@ -55,7 +55,7 @@ impl SelectionPanel {
         ui: &mut egui::Ui,
         expanded: bool,
     ) {
-        let screen_width = ui.ctx().screen_rect().width();
+        let screen_width = ui.ctx().content_rect().width();
 
         let panel = egui::SidePanel::right("selection_view")
             .min_width(120.0)

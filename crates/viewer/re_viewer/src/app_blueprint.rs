@@ -43,7 +43,7 @@ impl<'a> AppBlueprint<'a> {
         egui_ctx: &egui::Context,
         overrides: Option<PanelStateOverrides>,
     ) -> Self {
-        let screen_size = egui_ctx.screen_rect().size();
+        let screen_size = egui_ctx.content_rect().size();
         let mut ret = Self {
             blueprint_db,
             is_narrow_screen: screen_size.x < 600.0,

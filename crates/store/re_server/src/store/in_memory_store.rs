@@ -1,291 +1,30 @@
-use std::{
-    collections::{BTreeSet, HashMap, hash_map::Entry},
-    path::Path,
-    sync::Arc,
-};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use arrow::array::{
-    ArrayRef, Int32Array, RecordBatchOptions, StringArray, TimestampNanosecondArray,
+    ArrayRef, Int32Array, RecordBatch, RecordBatchOptions, StringArray, TimestampNanosecondArray,
 };
-use arrow::datatypes::{DataType, Field, TimeUnit};
-use arrow::{array::RecordBatch, datatypes::Schema};
-use datafusion::catalog::TableProvider;
-use datafusion::datasource::MemTable;
-use datafusion::error::DataFusionError;
+use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
+use datafusion::catalog::{MemTable, TableProvider};
+use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
-use jiff::Timestamp;
 use lance::datafusion::LanceTableProvider;
 
-use re_byte_size::SizeBytes as _;
-use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
-use re_log_types::{EntryId, StoreKind};
+use re_log_types::EntryId;
 use re_protos::{
     cloud::v1alpha1::{
-        EntryKind, ScanPartitionTableResponse, SystemTableKind,
-        ext::{DatasetEntry, EntryDetails, ProviderDetails as _, SystemTable, TableEntry},
+        SystemTableKind,
+        ext::{EntryDetails, SystemTable},
     },
-    common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
+    common::v1alpha1::ext::IfDuplicateBehavior,
 };
 use re_tuid::Tuid;
 use re_types_core::{ComponentBatch as _, Loggable as _};
 
 use crate::entrypoint::NamedPath;
+use crate::store::{Dataset, Error, Table};
 
 const ENTRIES_TABLE_NAME: &str = "__entries";
-
-#[derive(thiserror::Error, Debug)]
-#[expect(clippy::enum_variant_names)]
-pub enum Error {
-    #[error(transparent)]
-    IoError(#[from] std::io::Error),
-
-    #[error(transparent)]
-    StoreLoadError(#[from] re_entity_db::StoreLoadError),
-
-    #[error("Entry name '{0}' already exists")]
-    DuplicateEntryNameError(String),
-
-    #[error("Entry id '{0}' not found")]
-    EntryIdNotFound(EntryId),
-
-    #[error(transparent)]
-    DataFusionError(#[from] datafusion::error::DataFusionError),
-
-    #[error("Error loading RRD: {0}")]
-    RrdLoadingError(anyhow::Error),
-}
-
-impl From<Error> for tonic::Status {
-    fn from(value: Error) -> Self {
-        match value {
-            Error::IoError(err) => Self::internal(format!("IO error: {err:#}")),
-            Error::StoreLoadError(err) => Self::internal(format!("Store load error: {err:#}")),
-            Error::DuplicateEntryNameError(name) => {
-                Self::already_exists(format!("Entry name already exists: {name}"))
-            }
-            Error::EntryIdNotFound(id) => Self::not_found(format!("Entry ID not found: {id}")),
-            Error::DataFusionError(err) => Self::internal(format!("DataFusion error: {err:#}")),
-            Error::RrdLoadingError(err) => Self::internal(format!("{err:#}")),
-        }
-    }
-}
-
-pub struct Partition {
-    store_handle: ChunkStoreHandle,
-    registration_time: jiff::Timestamp,
-}
-
-pub struct Dataset {
-    id: EntryId,
-    name: String,
-    partitions: HashMap<PartitionId, Partition>,
-
-    created_at: jiff::Timestamp,
-    updated_at: jiff::Timestamp,
-}
-
-impl Dataset {
-    pub fn id(&self) -> EntryId {
-        self.id
-    }
-
-    pub fn as_entry_details(&self) -> EntryDetails {
-        EntryDetails {
-            id: self.id,
-            name: self.name.clone(),
-            kind: EntryKind::Dataset,
-            created_at: self.created_at,
-            updated_at: self.updated_at,
-        }
-    }
-
-    pub fn as_dataset_entry(&self) -> DatasetEntry {
-        DatasetEntry {
-            details: EntryDetails {
-                id: self.id,
-                name: self.name.clone(),
-                kind: EntryKind::Dataset,
-                created_at: self.created_at,
-                updated_at: self.updated_at,
-            },
-
-            dataset_details: Default::default(),
-
-            handle: DatasetHandle {
-                id: Some(self.id),
-                store_kind: StoreKind::Recording,
-                url: url::Url::parse(&format!("memory:///{}", self.id)).expect("valid url"),
-            },
-        }
-    }
-
-    pub fn schema(&self) -> arrow::error::Result<Schema> {
-        let schemas = self.partitions.values().map(|partition| {
-            let columns = partition.store_handle.read().schema();
-            let fields = columns.arrow_fields();
-            Schema::new_with_metadata(fields, HashMap::default())
-        });
-
-        Schema::try_merge(schemas)
-    }
-
-    pub fn partition_ids(&self) -> impl Iterator<Item = PartitionId> {
-        self.partitions.keys().cloned()
-    }
-
-    pub fn partition_table(&self) -> arrow::error::Result<RecordBatch> {
-        let (partition_ids, last_updated_at, num_chunks, size_bytes): (
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-        ) = itertools::multiunzip(self.partitions.iter().map(|(store_id, partition)| {
-            let store = partition.store_handle.read();
-            let size_bytes: u64 = store
-                .iter_chunks()
-                .map(|chunk| chunk.heap_size_bytes())
-                .sum();
-
-            (
-                store_id.to_string(),
-                partition.registration_time.as_nanosecond() as i64,
-                store.num_chunks() as u64,
-                size_bytes,
-            )
-        }));
-
-        let layers = vec![vec!["base".to_owned()]; partition_ids.len()];
-
-        let storage_urls = partition_ids
-            .iter()
-            .map(|partition_id| vec![format!("memory:///{}/{partition_id}", self.id)])
-            .collect();
-
-        ScanPartitionTableResponse::create_dataframe(
-            partition_ids,
-            layers,
-            storage_urls,
-            last_updated_at,
-            num_chunks,
-            size_bytes,
-        )
-    }
-
-    pub fn partition_store_handle(&self, partition_id: &PartitionId) -> Option<&ChunkStoreHandle> {
-        self.partitions.get(partition_id).map(|p| &p.store_handle)
-    }
-
-    pub fn add_partition(&mut self, partition_id: PartitionId, store_handle: ChunkStoreHandle) {
-        re_log::debug!(?partition_id, "add_partition");
-        self.partitions.insert(
-            partition_id,
-            Partition {
-                store_handle,
-                registration_time: jiff::Timestamp::now(),
-            },
-        );
-        self.updated_at = jiff::Timestamp::now();
-    }
-
-    pub fn load_rrd(
-        &mut self,
-        path: &Path,
-        on_duplicate: IfDuplicateBehavior,
-    ) -> Result<BTreeSet<PartitionId>, Error> {
-        re_log::info!("Loading RRD: {}", path.display());
-        let contents =
-            ChunkStore::handle_from_rrd_filepath(&ChunkStoreConfig::CHANGELOG_DISABLED, path)
-                .map_err(Error::RrdLoadingError)?;
-
-        let mut new_partition_ids = BTreeSet::default();
-
-        for (store_id, chunk_store) in contents {
-            if !store_id.is_recording() {
-                continue;
-            }
-
-            let partition_id = PartitionId::new(store_id.recording_id().to_string());
-
-            match self.partitions.entry(partition_id.clone()) {
-                Entry::Vacant(entry) => {
-                    new_partition_ids.insert(partition_id);
-                    entry.insert(Partition {
-                        store_handle: chunk_store,
-                        registration_time: jiff::Timestamp::now(),
-                    });
-                }
-                Entry::Occupied(mut entry) => match on_duplicate {
-                    IfDuplicateBehavior::Overwrite => {
-                        re_log::info!("Overwriting {partition_id}");
-                        entry.insert(Partition {
-                            store_handle: chunk_store,
-                            registration_time: jiff::Timestamp::now(),
-                        });
-                    }
-                    IfDuplicateBehavior::Skip => {
-                        re_log::info!("Ignoring {partition_id}: it already exists");
-                    }
-                    IfDuplicateBehavior::Error => {
-                        return Err(Error::DuplicateEntryNameError(partition_id.to_string()));
-                    }
-                },
-            }
-        }
-
-        Ok(new_partition_ids)
-    }
-}
-
-#[derive(Clone)]
-pub struct Table {
-    id: EntryId,
-    name: String,
-    provider: Arc<dyn TableProvider>,
-
-    created_at: jiff::Timestamp,
-    updated_at: jiff::Timestamp,
-
-    system_table: Option<SystemTable>,
-}
-
-impl Table {
-    pub fn id(&self) -> EntryId {
-        self.id
-    }
-
-    pub fn as_entry_details(&self) -> EntryDetails {
-        EntryDetails {
-            id: self.id,
-            name: self.name.clone(),
-            kind: EntryKind::Table,
-            created_at: self.created_at,
-            updated_at: self.updated_at,
-        }
-    }
-
-    pub fn provider(&self) -> &Arc<dyn TableProvider> {
-        &self.provider
-    }
-
-    pub fn as_table_entry(&self) -> TableEntry {
-        let provider_details = match &self.system_table {
-            Some(s) => s.try_as_any().expect("system_table should always be valid"),
-            None => Default::default(),
-        };
-
-        TableEntry {
-            details: EntryDetails {
-                id: self.id,
-                name: self.name.clone(),
-                kind: EntryKind::Table,
-                created_at: self.created_at,
-                updated_at: self.updated_at,
-            },
-
-            provider_details,
-        }
-    }
-}
 
 pub struct InMemoryStore {
     // TODO(ab): track created/modified time
@@ -344,7 +83,7 @@ impl InMemoryStore {
                     .is_some_and(|s| s.to_lowercase().ends_with(".rrd"));
 
                 if is_rrd {
-                    dataset.load_rrd(&entry.path(), on_duplicate)?;
+                    dataset.load_rrd(&entry.path(), None, on_duplicate)?;
                 }
             }
         }
@@ -418,14 +157,7 @@ impl InMemoryStore {
         self.id_by_name.insert(entry_name.to_owned(), entry_id);
         self.tables.insert(
             entry_id,
-            Table {
-                id: entry_id,
-                name: entry_name.to_owned(),
-                provider,
-                created_at: jiff::Timestamp::now(),
-                updated_at: jiff::Timestamp::now(),
-                system_table: None,
-            },
+            Table::new(entry_id, entry_name.to_owned(), provider, None, None),
         );
 
         self.update_entries_table()
@@ -446,18 +178,15 @@ impl InMemoryStore {
         let entries_table = Arc::new(self.entries_table()?);
         self.tables.insert(
             entries_table_id,
-            Table {
-                id: entries_table_id,
-                name: ENTRIES_TABLE_NAME.to_owned(),
-                provider: entries_table,
-                created_at: prior_entries_table
-                    .map(|t| t.created_at)
-                    .unwrap_or(Timestamp::now()),
-                updated_at: Timestamp::now(),
-                system_table: Some(SystemTable {
+            Table::new(
+                entries_table_id,
+                ENTRIES_TABLE_NAME.to_owned(),
+                entries_table,
+                prior_entries_table.map(|t| t.created_at()),
+                Some(SystemTable {
                     kind: SystemTableKind::Entries,
                 }),
-            },
+            ),
         );
 
         Ok(())
@@ -473,19 +202,16 @@ impl InMemoryStore {
         let entry_id = EntryId::new();
         self.id_by_name.insert(name.clone(), entry_id);
 
-        Ok(self.datasets.entry(entry_id).or_insert_with(|| Dataset {
-            id: entry_id,
-            name,
-            partitions: HashMap::new(),
-            created_at: jiff::Timestamp::now(),
-            updated_at: jiff::Timestamp::now(),
-        }))
+        Ok(self
+            .datasets
+            .entry(entry_id)
+            .or_insert_with(|| Dataset::new(entry_id, name)))
     }
 
     pub fn delete_dataset(&mut self, entry_id: EntryId) -> Result<(), Error> {
         re_log::debug!(?entry_id, "delete_dataset");
         if let Some(dataset) = self.datasets.remove(&entry_id) {
-            self.id_by_name.remove(&dataset.name);
+            self.id_by_name.remove(dataset.name());
             Ok(())
         } else {
             Err(Error::EntryIdNotFound(entry_id))
