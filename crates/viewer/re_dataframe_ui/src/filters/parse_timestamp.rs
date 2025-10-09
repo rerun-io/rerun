@@ -17,9 +17,7 @@ pub fn parse_timestamp(
     // second since epoch special case
     //
 
-    // TODO(#11279): ideally we could use `re_log_types::Timestamp::parse` here, but it is currently
-    // bugged and parses nano instead of seconds.
-    if timestamp_format.kind() == TimestampFormatKind::UnixEpoch {
+    if timestamp_format.kind() == TimestampFormatKind::SecondsSinceUnixEpoch {
         if let Ok(seconds) = value.parse::<f64>() {
             return jiff::Timestamp::from_nanosecond((seconds * 1e9).round() as _);
         } else {

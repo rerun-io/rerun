@@ -165,7 +165,7 @@ impl Timestamp {
         let timestamp = jiff::Timestamp::from(self);
 
         match timestamp_format.kind() {
-            TimestampFormatKind::UnixEpoch => {
+            TimestampFormatKind::SecondsSinceUnixEpoch => {
                 format!(
                     "{}{}",
                     re_format::format_int(timestamp.as_second()),
@@ -190,7 +190,7 @@ impl Timestamp {
                 let suffix = match timestamp_format.kind() {
                     TimestampFormatKind::LocalTimezone => tz.to_offset(timestamp).to_string(),
                     TimestampFormatKind::LocalTimezoneImplicit => String::new(),
-                    TimestampFormatKind::Utc | TimestampFormatKind::UnixEpoch => "Z".to_owned(),
+                    TimestampFormatKind::Utc | TimestampFormatKind::SecondsSinceUnixEpoch => "Z".to_owned(),
                 };
 
                 format!(
@@ -207,7 +207,7 @@ impl Timestamp {
     /// shows relative millisecond when really zoomed in.
     pub fn format_time_compact(self, timestamp_format: TimestampFormat) -> String {
         match timestamp_format.kind() {
-            TimestampFormatKind::UnixEpoch => {
+            TimestampFormatKind::SecondsSinceUnixEpoch => {
                 let ns = self.nanos_since_epoch();
                 let fractional_nanos = ns % 1_000_000_000;
                 let is_whole_second = fractional_nanos == 0;
@@ -254,9 +254,10 @@ impl Timestamp {
                 .to_zoned(timestamp_format.to_jiff_time_zone())
                 .ok()
                 .map(|zoned| zoned.into())
-        } else if timestamp_format.kind() == TimestampFormatKind::UnixEpoch {
-            let ns = re_format::parse_i64(s)?;
-            Some(Self::from_nanos_since_epoch(ns))
+        } else if timestamp_format.kind() == TimestampFormatKind::SecondsSinceUnixEpoch {
+            // Parse as seconds and convert to nanoseconds
+            let seconds = s.parse::<f64>().ok()?;
+            Some(Self::from_secs_since_epoch(seconds))
         } else {
             None
         }
