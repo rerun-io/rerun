@@ -44,18 +44,11 @@ url = { workspace = true, features = ["serde"] }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tonic = { workspace = true, default-features = false, features = [
-  "codegen",
-  "prost",
-  "transport",
-] }
+tonic = { workspace = true, default-features = false, features = ["codegen", "prost", "transport"] }
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-tonic = { workspace = true, default-features = false, features = [
-  "codegen",
-  "prost",
-] }
+tonic = { workspace = true, default-features = false, features = ["codegen", "prost"] }
 
 [lints]
 workspace = true

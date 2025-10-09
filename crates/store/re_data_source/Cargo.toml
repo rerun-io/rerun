@@ -27,10 +27,7 @@ re_data_loader.workspace = true
 re_error.workspace = true
 re_redap_client.workspace = true
 re_grpc_client.workspace = true
-re_log_encoding = { workspace = true, features = [
-  "decoder",
-  "stream_from_http",
-] }
+re_log_encoding = { workspace = true, features = ["decoder", "stream_from_http"] }
 re_log_types.workspace = true
 re_log.workspace = true
 re_smart_channel.workspace = true

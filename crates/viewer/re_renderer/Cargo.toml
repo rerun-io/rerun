@@ -28,8 +28,8 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 [package.metadata.cargo-shear]
 ignored = [
-  "profiling",    # Needed to hook up wgpu, see below at dependency setup.
-  "js-sys",       # Needed for wasm builds
+  "profiling", # Needed to hook up wgpu, see below at dependency setup.
+  "js-sys", # Needed for wasm builds
   "getrandom",
   "wasm-bindgen",
 ]
