@@ -185,7 +185,7 @@ impl crate::DataLoader for ExternalLoader {
                 let is_sending_data = Arc::new(AtomicBool::new(false));
 
                 let stdout = std::io::BufReader::new(stdout);
-                match re_log_encoding::StreamDecoder::decode_eager(stdout) {
+                match re_log_encoding::Decoder::decode_eager(stdout) {
                     Ok(decoder) => {
                         let filepath = filepath.clone();
                         let tx = tx.clone();

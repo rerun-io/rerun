@@ -8,8 +8,6 @@ mod streaming;
 pub use self::{
     errors::{DecodeError, NotAnRrdError},
     helpers::options_from_bytes,
-    stream::{
-        FileEncoded, StreamDecoder, StreamDecoderApp, StreamDecoderIterator, StreamDecoderTransport,
-    },
+    stream::{Decoder, DecoderApp, DecoderIterator, DecoderTransport, FileEncoded},
     streaming::{StreamingDecoder, StreamingDecoderOptions, StreamingLogMsg},
 };

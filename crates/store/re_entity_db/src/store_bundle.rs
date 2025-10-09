@@ -33,7 +33,7 @@ impl StoreBundle {
     ) -> Result<Self, StoreLoadError> {
         re_tracing::profile_function!();
 
-        let decoder = re_log_encoding::StreamDecoderApp::decode_eager(reader)?;
+        let decoder = re_log_encoding::DecoderApp::decode_eager(reader)?;
 
         let mut slf = Self::default();
 

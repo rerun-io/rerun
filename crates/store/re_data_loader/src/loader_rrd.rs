@@ -1,4 +1,4 @@
-use re_log_encoding::StreamDecoder;
+use re_log_encoding::Decoder;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crossbeam::channel::Receiver;
@@ -50,7 +50,7 @@ impl crate::DataLoader for RrdLoader {
                     .with_context(|| format!("Failed to open file {filepath:?}"))?;
                 let file = std::io::BufReader::new(file);
 
-                let messages = StreamDecoder::decode_eager(file)?;
+                let messages = Decoder::decode_eager(file)?;
 
                 // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
                 std::thread::Builder::new()
@@ -82,8 +82,7 @@ impl crate::DataLoader for RrdLoader {
                     format!("failed to create retryable file reader for {filepath:?}")
                 })?;
                 let wait_for_eos = true;
-                let messages =
-                    StreamDecoder::decode_eager_with_opts(retryable_reader, wait_for_eos)?;
+                let messages = Decoder::decode_eager_with_opts(retryable_reader, wait_for_eos)?;
 
                 // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
                 std::thread::Builder::new()
@@ -122,7 +121,7 @@ impl crate::DataLoader for RrdLoader {
         }
 
         let contents = std::io::Cursor::new(contents);
-        let messages = match StreamDecoder::decode_eager(contents) {
+        let messages = match Decoder::decode_eager(contents) {
             Ok(decoder) => decoder,
             Err(err) => match err {
                 // simply not interested
@@ -400,7 +399,7 @@ mod tests {
 
         let reader = RetryableFileReader::new(&rrd_file_path).unwrap();
         let wait_for_eos = true;
-        let mut decoder = StreamDecoder::decode_eager_with_opts(reader, wait_for_eos).unwrap();
+        let mut decoder = Decoder::decode_eager_with_opts(reader, wait_for_eos).unwrap();
 
         // we should be able to read 5 messages that we wrote
         let decoded_messages = (0..5)

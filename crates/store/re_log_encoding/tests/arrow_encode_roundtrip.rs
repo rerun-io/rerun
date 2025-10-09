@@ -1,7 +1,7 @@
 use similar_asserts::assert_eq;
 
 use re_chunk::{Chunk, RowId, TimePoint, Timeline};
-use re_log_encoding::{Encoder, StreamDecoderApp};
+use re_log_encoding::{DecoderApp, Encoder};
 use re_log_types::{LogMsg, StoreId};
 use re_types::archetypes::Points3D;
 
@@ -39,7 +39,7 @@ fn encode_roundtrip() {
     let messages = [LogMsg::ArrowMsg(store_id, arrow_msg)];
 
     let encoded = Encoder::encode(messages.iter().cloned().map(Ok)).unwrap();
-    let decoded: Vec<_> = StreamDecoderApp::decode_lazy(encoded.as_slice())
+    let decoded: Vec<_> = DecoderApp::decode_lazy(encoded.as_slice())
         .map(Result::unwrap)
         .collect();
     similar_asserts::assert_eq!(decoded, messages, "Failed to roundtrip chunk");

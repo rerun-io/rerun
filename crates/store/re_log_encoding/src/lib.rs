@@ -30,9 +30,8 @@ pub use self::app_id_injector::{
 
 #[cfg(feature = "decoder")]
 pub use self::decoder::{
-    DecodeError, FileEncoded, NotAnRrdError, StreamDecoder, StreamDecoderApp,
-    StreamDecoderIterator, StreamDecoderTransport, StreamingDecoder, StreamingDecoderOptions,
-    StreamingLogMsg,
+    DecodeError, Decoder, DecoderApp, DecoderIterator, DecoderTransport, FileEncoded,
+    NotAnRrdError, StreamingDecoder, StreamingDecoderOptions, StreamingLogMsg,
 };
 
 #[cfg(feature = "encoder")]

@@ -105,7 +105,7 @@ fn read_any_rrd_streams_from_file_or_stdin<T: re_log_encoding::FileEncoded + Sen
                 // stdin
 
                 let stdin = std::io::BufReader::new(std::io::stdin().lock());
-                let mut decoder = re_log_encoding::StreamDecoder::decode_lazy(stdin);
+                let mut decoder = re_log_encoding::Decoder::decode_lazy(stdin);
 
                 for res in &mut decoder {
                     let res = res.context("couldn't decode message from stdin -- skipping");
@@ -129,7 +129,7 @@ fn read_any_rrd_streams_from_file_or_stdin<T: re_log_encoding::FileEncoded + Sen
                     };
 
                     let rrd_file = std::io::BufReader::new(rrd_file);
-                    let mut messages = re_log_encoding::StreamDecoder::decode_lazy(rrd_file);
+                    let mut messages = re_log_encoding::Decoder::decode_lazy(rrd_file);
 
                     for res in &mut messages {
                         let res = res.context("decode rrd message").with_context(|| {
