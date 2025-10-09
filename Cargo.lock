@@ -3148,7 +3148,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330c60081dcc4c72131f8eb70510f1ac07223e5d4163db481a04a0befcffa412"
 dependencies = [
- "libloading 0.7.4",
+ "libloading 0.8.9",
 ]
 
 [[package]]
@@ -3196,7 +3196,7 @@ checksum = "d6add3b8cff394282be81f3fc1a0605db594ed69890078ca6e2cab1c408bcf04"
 [[package]]
 name = "ecolor"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#4d4f90eb316ab05794097d13c1bb658abeba1b4e"
+source = "git+https://github.com/emilk/egui.git?branch=main#9e138895894e78505a3d1517bed1fbb29004a460"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -3213,7 +3213,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#4d4f90eb316ab05794097d13c1bb658abeba1b4e"
+source = "git+https://github.com/emilk/egui.git?branch=main#9e138895894e78505a3d1517bed1fbb29004a460"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3251,7 +3251,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#4d4f90eb316ab05794097d13c1bb658abeba1b4e"
+source = "git+https://github.com/emilk/egui.git?branch=main#9e138895894e78505a3d1517bed1fbb29004a460"
 dependencies = [
  "accesskit",
  "ahash",
@@ -3271,7 +3271,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#4d4f90eb316ab05794097d13c1bb658abeba1b4e"
+source = "git+https://github.com/emilk/egui.git?branch=main#9e138895894e78505a3d1517bed1fbb29004a460"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3290,7 +3290,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#4d4f90eb316ab05794097d13c1bb658abeba1b4e"
+source = "git+https://github.com/emilk/egui.git?branch=main#9e138895894e78505a3d1517bed1fbb29004a460"
 dependencies = [
  "accesskit_winit",
  "arboard",
@@ -3356,7 +3356,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#4d4f90eb316ab05794097d13c1bb658abeba1b4e"
+source = "git+https://github.com/emilk/egui.git?branch=main#9e138895894e78505a3d1517bed1fbb29004a460"
 dependencies = [
  "ahash",
  "egui",
@@ -3373,7 +3373,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#4d4f90eb316ab05794097d13c1bb658abeba1b4e"
+source = "git+https://github.com/emilk/egui.git?branch=main#9e138895894e78505a3d1517bed1fbb29004a460"
 dependencies = [
  "bytemuck",
  "egui",
@@ -3389,7 +3389,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#4d4f90eb316ab05794097d13c1bb658abeba1b4e"
+source = "git+https://github.com/emilk/egui.git?branch=main#9e138895894e78505a3d1517bed1fbb29004a460"
 dependencies = [
  "dify",
  "eframe",
@@ -3465,7 +3465,7 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 [[package]]
 name = "emath"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#4d4f90eb316ab05794097d13c1bb658abeba1b4e"
+source = "git+https://github.com/emilk/egui.git?branch=main#9e138895894e78505a3d1517bed1fbb29004a460"
 dependencies = [
  "bytemuck",
  "serde",
@@ -3582,7 +3582,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#4d4f90eb316ab05794097d13c1bb658abeba1b4e"
+source = "git+https://github.com/emilk/egui.git?branch=main#9e138895894e78505a3d1517bed1fbb29004a460"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -3601,7 +3601,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#4d4f90eb316ab05794097d13c1bb658abeba1b4e"
+source = "git+https://github.com/emilk/egui.git?branch=main#9e138895894e78505a3d1517bed1fbb29004a460"
 
 [[package]]
 name = "equivalent"
@@ -4038,7 +4038,7 @@ dependencies = [
  "libc",
  "log",
  "rustversion",
- "windows 0.58.0",
+ "windows 0.61.3",
 ]
 
 [[package]]
@@ -4668,7 +4668,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.5.10",
+ "socket2 0.6.0",
  "tokio",
  "tower-service",
  "tracing",
@@ -4883,7 +4883,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b0f83760fb341a774ed326568e19f5a863af4a952def8c39f9ab92fd95b88e5"
 dependencies = [
  "equivalent",
- "hashbrown 0.15.5",
+ "hashbrown 0.16.0",
  "serde",
  "serde_core",
 ]
@@ -5144,9 +5144,9 @@ checksum = "00810f1d8b74be64b13dbf3db89ac67740615d6c891f0e7b6179326533011a07"
 
 [[package]]
 name = "js-sys"
-version = "0.3.81"
+version = "0.3.77"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec48937a97411dcb524a265206ccd4c90bb711fca92b2792c407f268825b9305"
+checksum = "1cfaf33c695fc6e08064efbc1f72ec937429614f25eef83af942d0e227c3a28f"
 dependencies = [
  "once_cell",
  "wasm-bindgen",
@@ -12464,7 +12464,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "319c70195101a93f56db4c74733e272d720768e13471f400c78406a326b172b0"
 dependencies = [
  "cc",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -12828,22 +12828,21 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen"
-version = "0.2.104"
+version = "0.2.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1da10c01ae9f1ae40cbfac0bac3b1e724b320abfcf52229f80b547c0d250e2d"
+checksum = "1edc8929d7499fc4e8f0be2262a241556cfc54a0bea223790e71446f2aab1ef5"
 dependencies = [
  "cfg-if",
  "once_cell",
  "rustversion",
  "wasm-bindgen-macro",
- "wasm-bindgen-shared",
 ]
 
 [[package]]
 name = "wasm-bindgen-backend"
-version = "0.2.104"
+version = "0.2.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "671c9a5a66f49d8a47345ab942e2cb93c7d1d0339065d4f8139c486121b43b19"
+checksum = "2f0a0651a5c2bc21487bde11ee802ccaf4c51935d0d3d42a6101f98161700bc6"
 dependencies = [
  "bumpalo",
  "log",
@@ -12855,27 +12854,42 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-cli-support"
-version = "0.2.104"
+version = "0.2.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "613a5e80fb944bf4389c0f694b263ed59039cd594561de9a2821feacd32c9487"
+checksum = "21e1a4a49abe9cd6f762fc65fac2ef5732afeeb66be369d2f71a85b165a533cf"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
- "leb128",
  "log",
  "rustc-demangle",
  "serde",
  "serde_json",
+ "tempfile",
  "walrus",
+ "wasm-bindgen-externref-xform",
+ "wasm-bindgen-multi-value-xform",
  "wasm-bindgen-shared",
- "wasmparser",
+ "wasm-bindgen-threads-xform",
+ "wasm-bindgen-wasm-conventions",
+ "wasm-bindgen-wasm-interpreter",
+]
+
+[[package]]
+name = "wasm-bindgen-externref-xform"
+version = "0.2.100"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "940542c5cdbe96c35f98b5da5c65fb9d18df55a0cb1d81fc5ca4acc4fda4d61c"
+dependencies = [
+ "anyhow",
+ "walrus",
+ "wasm-bindgen-wasm-conventions",
 ]
 
 [[package]]
 name = "wasm-bindgen-futures"
-version = "0.4.54"
+version = "0.4.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e038d41e478cc73bae0ff9b36c60cff1c98b8f38f8d7e8061e79ee63608ac5c"
+checksum = "555d470ec0bc3bb57890405e5d4322cc9ea83cebb085523ced7be4144dac1e61"
 dependencies = [
  "cfg-if",
  "js-sys",
@@ -12886,9 +12900,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro"
-version = "0.2.104"
+version = "0.2.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ca60477e4c59f5f2986c50191cd972e3a50d8a95603bc9434501cf156a9a119"
+checksum = "7fe63fc6d09ed3792bd0897b314f53de8e16568c2b3f7982f468c0bf9bd0b407"
 dependencies = [
  "quote",
  "wasm-bindgen-macro-support",
@@ -12896,9 +12910,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro-support"
-version = "0.2.104"
+version = "0.2.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f07d2f20d4da7b26400c9f4a0511e6e0345b040694e8a75bd41d578fa4421d7"
+checksum = "8ae87ea40c9f689fc23f209965b6fb8a99ad69aeeb0231408be24920604395de"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -12908,12 +12922,59 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm-bindgen-shared"
-version = "0.2.104"
+name = "wasm-bindgen-multi-value-xform"
+version = "0.2.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bad67dc8b2a1a6e5448428adec4c3e84c43e561d8c9ee8a9e5aabeb193ec41d1"
+checksum = "64b5ad2e97adde0c3e4369c38e0dbaee329ad8f6cc2ee8e01d1d0b13bd8b14cf"
+dependencies = [
+ "anyhow",
+ "walrus",
+ "wasm-bindgen-wasm-conventions",
+]
+
+[[package]]
+name = "wasm-bindgen-shared"
+version = "0.2.100"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a05d73b933a847d6cccdda8f838a22ff101ad9bf93e33684f39c1f5f0eece3d"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "wasm-bindgen-threads-xform"
+version = "0.2.100"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1cbdf2d55a50f7edc9dd9aecae7a3a40e9736fda851bd8816f98a86167c8c277"
+dependencies = [
+ "anyhow",
+ "walrus",
+ "wasm-bindgen-wasm-conventions",
+]
+
+[[package]]
+name = "wasm-bindgen-wasm-conventions"
+version = "0.2.100"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1c24fcaa34d2d84407122cfb1d3f37c3586756cf462be18e049b49245a16c08"
+dependencies = [
+ "anyhow",
+ "leb128",
+ "log",
+ "walrus",
+ "wasmparser",
+]
+
+[[package]]
+name = "wasm-bindgen-wasm-interpreter"
+version = "0.2.100"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33f24921401faadd6944206f9d6837d07bbb5ff766ed51ad34528089f66550e0"
+dependencies = [
+ "anyhow",
+ "log",
+ "walrus",
+ "wasm-bindgen-wasm-conventions",
 ]
 
 [[package]]
@@ -13063,9 +13124,9 @@ dependencies = [
 
 [[package]]
 name = "web-sys"
-version = "0.3.81"
+version = "0.3.77"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9367c417a924a74cae129e6a2ae3b47fabb1f8995595ab474029da749a8be120"
+checksum = "33b6dd2ef9186f1f2072e409e99cd22a975331a6b3591b12c764e0e55c60d5d2"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
