@@ -1115,25 +1115,6 @@ impl TimeControl {
         self.states.get(self.timeline().name())?.loop_selection
     }
 
-    // /// Set the current loop selection without enabling looping.
-    // pub fn set_loop_selection(&mut self, selection: AbsoluteTimeRangeF) {
-    //     self.states
-    //         .entry(*self.timeline.name())
-    //         .or_insert_with(|| TimeStateEntry::new(selection.min))
-    //         .current
-    //         .loop_selection = Some(selection);
-    // }
-
-    // /// Remove the current loop selection.
-    // pub fn remove_loop_selection(&mut self) {
-    //     if let Some(state) = self.states.get_mut(self.timeline.name()) {
-    //         state.current.loop_selection = None;
-    //     }
-    //     if self.looping() == Looping::Selection {
-    //         self.set_looping(Looping::Off);
-    //     }
-    // }
-
     /// Is the current time in the selection range (if any), or at the current time mark?
     pub fn is_time_selected(&self, timeline: &TimelineName, needle: TimeInt) -> bool {
         if timeline != self.timeline().name() {
@@ -1156,39 +1137,12 @@ impl TimeControl {
         self.states.get(&timeline).map(|state| state.time)
     }
 
-    // /// Set the time.
-    // ///
-    // /// This does not affect the time stored in blueprints.
-    // fn set_time(&mut self, time: TimeReal) {
-    //     self.states
-    //         .entry(*self.timeline.name())
-    //         .or_insert_with(|| TimeStateEntry::new(time))
-    //         .current
-    //         .time = time;
-    // }
-
     /// The range of time we are currently zoomed in on.
     pub fn time_view(&self) -> Option<TimeView> {
         self.states
             .get(self.timeline().name())
             .and_then(|state| state.view)
     }
-
-    // /// The range of time we are currently zoomed in on.
-    // pub fn set_time_view(&mut self, view: TimeView) {
-    //     self.states
-    //         .entry(*self.timeline.name())
-    //         .or_insert_with(|| TimeStateEntry::new(view.min))
-    //         .current
-    //         .view = Some(view);
-    // }
-
-    // /// The range of time we are currently zoomed in on.
-    // pub fn reset_time_view(&mut self) {
-    //     if let Some(state) = self.states.get_mut(self.timeline.name()) {
-    //         state.current.view = None;
-    //     }
-    // }
 }
 
 fn min(values: &TimeCounts) -> TimeInt {
