@@ -35,11 +35,4 @@ itertools.workspace = true
 
 [package.metadata.cargo-shear]
 # false positives because they aren't used until codegen is run:
-ignored = [
-  "itertools",
-  "ndarray",
-  "rand",
-  "rand_distr",
-  "rerun",
-  "similar-asserts",
-]
+ignored = ["itertools", "ndarray", "rand", "rand_distr", "rerun", "similar-asserts"]

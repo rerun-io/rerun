@@ -122,6 +122,7 @@ impl ViewClass for MapView {
         system_registry.register_visualizer::<GeoLineStringsVisualizer>()?;
 
         system_registry.register_context_system::<AnnotationSceneContext>()?;
+        re_viewer_context::AnnotationContextStoreSubscriber::subscription_handle(); // Needed by `AnnotationSceneContext`
 
         Ok(())
     }

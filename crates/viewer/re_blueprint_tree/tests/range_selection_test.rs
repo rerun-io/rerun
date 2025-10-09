@@ -5,11 +5,11 @@ use egui_kittest::{OsThreshold, SnapshotOptions, kittest::Queryable as _};
 use re_blueprint_tree::BlueprintTree;
 use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
-use re_log_types::{Timeline, build_frame_nr};
+use re_log_types::build_frame_nr;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::archetypes::Points3D;
-use re_viewer_context::{Contents, ViewClass as _, VisitorControlFlow};
+use re_viewer_context::{Contents, TimeControlCommand, ViewClass as _, VisitorControlFlow};
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 #[test]
@@ -29,7 +29,10 @@ fn test_range_selection_in_blueprint_tree() {
     let mut blueprint_tree = BlueprintTree::default();
 
     // set the current timeline to the timeline where data was logged to
-    test_context.set_active_timeline(Timeline::new_sequence("frame_nr"));
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
+    );
 
     let mut harness = test_context
         .setup_kittest_for_rendering()
@@ -65,7 +68,7 @@ fn test_range_selection_in_blueprint_tree() {
                         blueprint_tree.show(viewer_ctx, &blueprint, ui);
                     });
 
-                    test_context.handle_system_commands();
+                    test_context.handle_system_commands(ui.ctx());
                 });
         });
 

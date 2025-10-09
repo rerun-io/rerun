@@ -11,7 +11,7 @@ pub use self::{
     },
     grpc::{
         ConnectionError, RedapClient, channel, fetch_chunks_response_to_chunk_and_partition_id,
-        get_chunks_response_to_chunk_and_partition_id, stream_blueprint_and_partition_from_server,
+        stream_blueprint_and_partition_from_server,
     },
 };
 
@@ -96,6 +96,9 @@ pub enum StreamEntryError {
     #[error("Failed reading partition table scheme\nDetails:{0}")]
     GetPartitionTableSchema(TonicStatusError),
 
+    #[error("Failed reading layer table scheme\nDetails:{0}")]
+    GetDatasetManifestSchema(TonicStatusError),
+
     #[error("Failed scanning the partition table \nDetails:{0}")]
     ScanPartitionTable(TonicStatusError),
 
@@ -122,6 +125,12 @@ pub enum StreamPartitionError {
 }
 
 #[derive(thiserror::Error, Debug)]
+pub enum StreamTasksError {
+    #[error("Failed receiving tasks completions stream\nDetails:{0}")]
+    StreamingTaskResults(TonicStatusError),
+}
+
+#[derive(thiserror::Error, Debug)]
 pub enum StreamError {
     #[error(transparent)]
     ClientConnectionError(#[from] ClientConnectionError),
@@ -131,6 +140,9 @@ pub enum StreamError {
 
     #[error(transparent)]
     PartitionError(#[from] StreamPartitionError),
+
+    #[error(transparent)]
+    TasksError(#[from] StreamTasksError),
 
     #[error(transparent)]
     Tokio(#[from] tokio::task::JoinError),

@@ -33,7 +33,7 @@ class PanelBlueprint(Archetype):
         Parameters
         ----------
         state:
-            Current state of the panels.
+            Current state of the panel.
 
         """
 
@@ -71,7 +71,7 @@ class PanelBlueprint(Archetype):
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         state:
-            Current state of the panels.
+            Current state of the panel.
 
         """
 
@@ -100,7 +100,7 @@ class PanelBlueprint(Archetype):
         default=None,
         converter=blueprint_components.PanelStateBatch._converter,  # type: ignore[misc]
     )
-    # Current state of the panels.
+    # Current state of the panel.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

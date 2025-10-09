@@ -15,7 +15,8 @@ use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types::ComponentDescriptor;
 use re_types::reflection::ComponentDescriptorExt as _;
 use re_ui::UiExt as _;
-use re_viewer_context::{SystemCommandSender as _, ViewId, ViewerContext};
+use re_viewer_context::TimeControlCommand;
+use re_viewer_context::{ViewId, ViewerContext};
 
 use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};
 
@@ -341,7 +342,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                             false // Can't select "RowId" as a concept
                         }
                         ColumnDescriptor::Time(descr) => {
-                            &descr.timeline() == self.ctx.rec_cfg.time_ctrl.read().timeline()
+                            &descr.timeline() == self.ctx.time_ctrl.timeline()
                         }
                         ColumnDescriptor::Component(component_column_descriptor) => self
                             .ctx
@@ -372,14 +373,9 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         ColumnDescriptor::RowId(_) => {}
                         ColumnDescriptor::Time(descr) => {
                             if response.clicked() {
-                                self.ctx.command_sender().send_system(
-                                    re_viewer_context::SystemCommand::SetActiveTime {
-                                        store_id: self.ctx.store_id().clone(),
-                                        timeline: descr.timeline(),
-                                        time: None,
-                                        pending: false,
-                                    },
-                                );
+                                self.ctx.send_time_commands([
+                                    TimeControlCommand::SetActiveTimeline(*descr.timeline().name()),
+                                ]);
                             }
                         }
                         ColumnDescriptor::Component(component_column_descriptor) => {

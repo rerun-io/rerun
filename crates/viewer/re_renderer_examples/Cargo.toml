@@ -13,7 +13,7 @@ workspace = true
 [features]
 
 [[bin]]
-name = "2d"    # NOLINT
+name = "2d" # NOLINT
 path = "2d.rs" # NOLINT
 
 [[bin]]

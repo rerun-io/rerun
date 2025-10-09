@@ -1,10 +1,10 @@
-use re_chunk::{EntityPath, Timeline};
+use re_chunk::EntityPath;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::LogDataSource;
-use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, StoreId};
+use re_log_types::StoreId;
 use re_ui::{UICommand, UICommandSender};
 
-use crate::RecordingOrTable;
+use crate::{RecordingOrTable, time_control::TimeControlCommand};
 
 // ----------------------------------------------------------------------------
 
@@ -107,35 +107,9 @@ pub enum SystemCommand {
     /// Set the item selection.
     SetSelection(crate::ItemCollection),
 
-    /// Set the active timeline and time for the given recording.
-    SetActiveTime {
+    TimeControlCommands {
         store_id: StoreId,
-        timeline: re_chunk::Timeline,
-        time: Option<re_log_types::TimeReal>,
-
-        /// If this is true the timeline will persist even if it is invalid at the moment.
-        pending: bool,
-    },
-
-    /// Set the loop selection for the given timeline.
-    ///
-    /// This also sets the active timeline and activates the loop selection.
-    SetLoopSelection {
-        store_id: StoreId,
-        timeline: Timeline,
-        time_range: AbsoluteTimeRangeF,
-    },
-
-    /// Mark a time range as valid.
-    ///
-    /// Everything outside can still be navigated to, but will be considered potentially lacking some data and therefore "invalid".
-    /// Visually, it is outside of the normal time range and shown greyed out.
-    ///
-    /// If timeline is `None`, this signals that all timelines are considered to be valid entirely.
-    AddValidTimeRange {
-        store_id: StoreId,
-        timeline: Option<re_chunk::TimelineName>,
-        time_range: AbsoluteTimeRange,
+        time_commands: Vec<TimeControlCommand>,
     },
 
     /// Sets the focus to the given item.

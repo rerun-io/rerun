@@ -1,13 +1,8 @@
 use super::super::definitions::sensor_msgs;
-use re_chunk::{
-    Chunk, ChunkId, RowId, TimePoint,
-    external::arrow::array::{FixedSizeListBuilder, StringBuilder},
-};
+use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
 use re_types::{
-    ComponentDescriptor,
     archetypes::{EncodedImage, VideoStream},
     components::VideoCodec,
-    reflection::ComponentDescriptorExt as _,
 };
 
 use super::super::Ros2MessageParser;
@@ -23,19 +18,13 @@ pub struct CompressedImageMessageParser {
     ///
     /// Note: These blobs are directly moved into a `Blob`, without copying.
     blobs: Vec<Vec<u8>>,
-    formats: FixedSizeListBuilder<StringBuilder>,
     is_h264: bool,
-}
-
-impl CompressedImageMessageParser {
-    const ARCHETYPE_NAME: &str = "sensor_msgs.msg.CompressedImage";
 }
 
 impl Ros2MessageParser for CompressedImageMessageParser {
     fn new(num_rows: usize) -> Self {
         Self {
             blobs: Vec::with_capacity(num_rows),
-            formats: FixedSizeListBuilder::with_capacity(StringBuilder::new(), 1, num_rows),
             is_h264: false,
         }
     }
@@ -62,19 +51,12 @@ impl MessageParser for CompressedImageMessageParser {
             self.is_h264 = true;
         }
 
-        self.formats.values().append_value(format.as_str());
-        self.formats.append(true);
-
         Ok(())
     }
 
     fn finalize(self: Box<Self>, ctx: ParserContext) -> anyhow::Result<Vec<re_chunk::Chunk>> {
         re_tracing::profile_function!();
-        let Self {
-            blobs,
-            mut formats,
-            is_h264,
-        } = *self;
+        let Self { blobs, is_h264 } = *self;
 
         let entity_path = ctx.entity_path().clone();
         let timelines = ctx.build_timelines();
@@ -98,17 +80,6 @@ impl MessageParser for CompressedImageMessageParser {
             components,
         )?;
 
-        let meta_chunk = Chunk::from_auto_row_ids(
-            ChunkId::new(),
-            entity_path.clone(),
-            timelines,
-            std::iter::once((
-                ComponentDescriptor::partial("format").with_builtin_archetype(Self::ARCHETYPE_NAME),
-                formats.finish().into(),
-            ))
-            .collect(),
-        )?;
-
         if is_h264 {
             // codec should be logged once per entity, as static data.
             let codec_chunk = Chunk::builder(entity_path.clone())
@@ -118,9 +89,9 @@ impl MessageParser for CompressedImageMessageParser {
                     &VideoStream::update_fields().with_codec(VideoCodec::H264),
                 )
                 .build()?;
-            Ok(vec![chunk, meta_chunk, codec_chunk])
+            Ok(vec![chunk, codec_chunk])
         } else {
-            Ok(vec![chunk, meta_chunk])
+            Ok(vec![chunk])
         }
     }
 }

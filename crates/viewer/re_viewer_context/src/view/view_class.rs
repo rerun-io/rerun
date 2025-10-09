@@ -2,7 +2,7 @@ use nohash_hasher::IntSet;
 
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_types::{ComponentType, ViewClassIdentifier};
+use re_types::ViewClassIdentifier;
 
 use crate::{
     IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, QueryRange, SmallVisualizerSet,
@@ -78,13 +78,6 @@ pub trait ViewClass: Send + Sync {
     ///
     /// The state is *not* persisted across viewer sessions, only shared frame-to-frame.
     fn new_state(&self) -> Box<dyn ViewState>;
-
-    /// Optional archetype of the View's blueprint properties.
-    ///
-    /// Blueprint components that only apply to the view itself, not to the entities it displays.
-    fn blueprint_archetype(&self) -> Option<Vec<ComponentType>> {
-        None
-    }
 
     /// Preferred aspect ratio for the ui tiles of this view.
     fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {

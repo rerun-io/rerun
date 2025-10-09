@@ -38,9 +38,9 @@ impl App {
         MenuButton::from_button(Button::image(image))
             .config(MenuConfig::new().style(menu_style()))
             .ui(ui, |ui| {
-                ui.set_max_height(ui.ctx().screen_rect().height());
+                ui.set_max_height(ui.ctx().content_rect().height());
                 ScrollArea::vertical()
-                    .max_height(ui.ctx().screen_rect().height() - 16.0)
+                    .max_height(ui.ctx().content_rect().height() - 16.0)
                     .show(ui, |ui| {
                         self.rerun_menu_ui(ui, render_state, _store_context);
                     });

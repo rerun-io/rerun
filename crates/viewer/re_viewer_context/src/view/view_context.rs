@@ -3,7 +3,9 @@ use re_log_types::{EntityPath, TimePoint};
 use re_query::StorageEngineReadGuard;
 use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, ViewClassIdentifier};
 
-use crate::{DataQueryResult, DataResult, QueryContext, ViewId};
+use crate::{
+    DataQueryResult, DataResult, QueryContext, ViewId, blueprint_helpers::BlueprintContext as _,
+};
 
 use super::VisualizerCollection;
 

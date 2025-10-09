@@ -13,7 +13,7 @@ use re_types::{
     Archetype as _, blueprint::components::BackgroundKind, datatypes::ColorModel,
     image::ImageChannelType,
 };
-use re_viewer_context::ViewClass as _;
+use re_viewer_context::{BlueprintContext as _, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;
 
 fn convert_pixels_to<T: From<u8> + Copy>(u8s: &[u8]) -> Vec<T> {

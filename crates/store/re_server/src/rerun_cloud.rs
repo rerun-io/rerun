@@ -10,23 +10,22 @@ use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
 use tokio_stream::StreamExt as _;
-use tonic::{Code, Status};
+use tonic::{Code, Request, Response, Status};
 
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
+use re_protos::cloud::v1alpha1::ext::DataSource;
 use re_protos::{
     cloud::v1alpha1::{
-        DeleteEntryResponse, EntryDetails, EntryKind, FetchTaskOutputRequest,
-        FetchTaskOutputResponse, GetChunksResponse, GetDatasetSchemaResponse,
+        DeleteEntryResponse, EntryDetails, EntryKind, GetDatasetManifestSchemaRequest,
+        GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse,
         GetPartitionTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionRequest,
         QueryTasksRequest, QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
-        RegisterWithDatasetResponse, ScanPartitionTableResponse, ScanTableResponse,
-        ext::{
-            self, CreateDatasetEntryResponse, GetChunksRequest, ReadDatasetEntryResponse,
-            ReadTableEntryResponse,
-        },
+        RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanPartitionTableResponse,
+        ScanTableResponse,
+        ext::{self, CreateDatasetEntryResponse, ReadDatasetEntryResponse, ReadTableEntryResponse},
         rerun_cloud_service_server::RerunCloudService,
     },
     common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId},
@@ -97,7 +96,7 @@ impl RerunCloudHandler {
         }
     }
 
-    async fn get_storage_engines(
+    async fn get_chunk_stores(
         &self,
         dataset_id: EntryId,
         mut partition_ids: Vec<PartitionId>,
@@ -115,7 +114,8 @@ impl RerunCloudHandler {
             .into_iter()
             .map(|partition_id| {
                 dataset
-                    .partition_store_handle(&partition_id)
+                    //TODO(RR-2482)
+                    .layer_store_handle(&partition_id, DataSource::DEFAULT_LAYER)
                     .ok_or_else(|| {
                         tonic::Status::not_found(format!(
                             "Partition with ID {partition_id} not found"
@@ -163,9 +163,9 @@ macro_rules! decl_stream {
 }
 
 decl_stream!(FetchChunksResponseStream<manifest:FetchChunksResponse>);
-decl_stream!(GetChunksResponseStream<manifest:GetChunksResponse>);
 decl_stream!(QueryDatasetResponseStream<manifest:QueryDatasetResponse>);
 decl_stream!(ScanPartitionTableResponseStream<manifest:ScanPartitionTableResponse>);
+decl_stream!(ScanDatasetManifestResponseStream<manifest:ScanDatasetManifestResponse>);
 decl_stream!(SearchDatasetResponseStream<manifest:SearchDatasetResponse>);
 decl_stream!(ScanTableResponseStream<rerun_cloud:ScanTableResponse>);
 decl_stream!(QueryTasksOnCompletionResponseStream<tasks:QueryTasksOnCompletionResponse>);
@@ -493,7 +493,7 @@ impl RerunCloudService for RerunCloudHandler {
                 kind,
             } = source;
 
-            if layer != "base" {
+            if layer != DataSource::DEFAULT_LAYER {
                 return Err(tonic::Status::unimplemented(format!(
                     "register_with_dataset: only 'base' layer is implemented, got {layer:?}"
                 )));
@@ -506,7 +506,7 @@ impl RerunCloudService for RerunCloudHandler {
             }
 
             if let Ok(rrd_path) = storage_url.to_file_path() {
-                let new_partition_ids = dataset.load_rrd(&rrd_path, on_duplicate)?;
+                let new_partition_ids = dataset.load_rrd(&rrd_path, None, on_duplicate)?;
 
                 for partition_id in new_partition_ids {
                     partition_ids.push(partition_id.to_string());
@@ -594,7 +594,12 @@ impl RerunCloudService for RerunCloudHandler {
 
         #[expect(clippy::iter_over_hash_type)]
         for (entity_path, chunk_store) in chunk_stores {
-            dataset.add_partition(entity_path, ChunkStoreHandle::new(chunk_store));
+            //TODO(RR-2482)
+            dataset.add_layer(
+                entity_path,
+                DataSource::DEFAULT_LAYER.to_owned(),
+                ChunkStoreHandle::new(chunk_store),
+            );
         }
 
         Ok(tonic::Response::new(
@@ -664,6 +669,28 @@ impl RerunCloudService for RerunCloudHandler {
 
         Ok(tonic::Response::new(
             Box::pin(stream) as Self::ScanPartitionTableStream
+        ))
+    }
+
+    type ScanDatasetManifestStream = ScanDatasetManifestResponseStream;
+
+    async fn get_dataset_manifest_schema(
+        &self,
+        _request: Request<GetDatasetManifestSchemaRequest>,
+    ) -> Result<Response<GetDatasetManifestSchemaResponse>, Status> {
+        //TODO(RR-2482)
+        Err(tonic::Status::unimplemented(
+            "get_dataset_manifest_schema not implemented",
+        ))
+    }
+
+    async fn scan_dataset_manifest(
+        &self,
+        _request: Request<ScanDatasetManifestRequest>,
+    ) -> Result<Response<Self::ScanDatasetManifestStream>, Status> {
+        //TODO(RR-2482)
+        Err(tonic::Status::unimplemented(
+            "scan_dataset_manifest not implemented",
         ))
     }
 
@@ -747,7 +774,7 @@ impl RerunCloudService for RerunCloudHandler {
             .map(PartitionId::try_from)
             .collect::<Result<Vec<_>, _>>()?;
 
-        let storage_engines = self.get_storage_engines(entry_id, partition_ids).await?;
+        let storage_engines = self.get_chunk_stores(entry_id, partition_ids).await?;
 
         let stream = futures::stream::iter(storage_engines.into_iter().map(
             move |(partition_id, store_handle)| {
@@ -892,82 +919,6 @@ impl RerunCloudService for RerunCloudHandler {
         ))
     }
 
-    type GetChunksStream = GetChunksResponseStream;
-
-    async fn get_chunks(
-        &self,
-        request: tonic::Request<re_protos::cloud::v1alpha1::GetChunksRequest>,
-    ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status> {
-        if !request.get_ref().chunk_ids.is_empty() {
-            return Err(tonic::Status::unimplemented(
-                "get_chunks: querying specific chunk ids is not implemented",
-            ));
-        }
-
-        let entry_id = get_entry_id_from_headers(&*self.store.read().await, &request)?;
-
-        let GetChunksRequest {
-            partition_ids,
-            chunk_ids: _,
-            entity_paths,
-            query: _,
-            select_all_entity_paths: _,
-            fuzzy_descriptors: _,
-            exclude_static_data: _,
-            exclude_temporal_data: _,
-        } = GetChunksRequest::try_from(request.into_inner())?;
-
-        let entity_paths: IntSet<EntityPath> = entity_paths.into_iter().collect();
-
-        let storage_engines = self.get_storage_engines(entry_id, partition_ids).await?;
-
-        let stream = futures::stream::iter(storage_engines.into_iter().map(
-            move |(partition_id, store_handle)| {
-                let compression = re_log_encoding::Compression::Off;
-                let store_id = StoreId::new(
-                    StoreKind::Recording,
-                    entry_id.to_string(),
-                    partition_id.id.as_str(),
-                );
-
-                let arrow_msgs: Result<Vec<_>, _> = store_handle
-                    // NOTE: ⚠️This is super cursed ⚠️The underlying lock is synchronous: the only
-                    // reason this doesn't deadlock is because we collect() at the end of this mapping,
-                    // before the overarching stream ever gets a chance to yield.
-                    // Make sure it stays that way.
-                    .read()
-                    .iter_chunks()
-                    .filter(|chunk| {
-                        entity_paths.is_empty() || entity_paths.contains(chunk.entity_path())
-                    })
-                    .map(|chunk| {
-                        let arrow_msg = re_log_types::ArrowMsg {
-                            chunk_id: *chunk.id(),
-                            batch: chunk.to_record_batch()?,
-                            on_release: None,
-                        };
-
-                        re_log_encoding::protobuf_conversions::arrow_msg_to_proto(
-                            &arrow_msg,
-                            store_id.clone(),
-                            compression,
-                        )
-                    })
-                    .collect();
-
-                Ok(GetChunksResponse {
-                    chunks: arrow_msgs.map_err(|err| {
-                        tonic::Status::internal(format!("encoding failed: {err:#}"))
-                    })?,
-                })
-            },
-        ));
-
-        Ok(tonic::Response::new(
-            Box::pin(stream) as Self::GetChunksStream
-        ))
-    }
-
     type FetchChunksStream = FetchChunksResponseStream;
 
     async fn fetch_chunks(
@@ -1028,7 +979,8 @@ impl RerunCloudService for RerunCloudHandler {
                         .any(|(_, pid)| pid == &partition_id)
                     {
                         dataset
-                            .partition_store_handle(&partition_id)
+                            //TODO(RR-2482)
+                            .layer_store_handle(&partition_id, DataSource::DEFAULT_LAYER)
                             .map(|store_handle| (partition_id, (dataset_id, store_handle.clone())))
                     } else {
                         None
@@ -1185,15 +1137,6 @@ impl RerunCloudService for RerunCloudHandler {
         // All tasks finish emmidiately in the OSS server
         Ok(tonic::Response::new(
             Box::pin(futures::stream::empty()) as Self::QueryTasksOnCompletionStream
-        ))
-    }
-
-    async fn fetch_task_output(
-        &self,
-        _request: tonic::Request<FetchTaskOutputRequest>,
-    ) -> Result<tonic::Response<FetchTaskOutputResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented(
-            "fetch_task_output not implemented",
         ))
     }
 
