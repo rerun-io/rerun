@@ -116,6 +116,13 @@ pub use re_types::{
     SerializedComponentColumn,
 };
 
+/// Transformation and reinterpretation of components.
+///
+/// # Experimental
+///
+/// This is an experimental API and may change in future releases.
+pub mod lenses;
+
 pub use re_byte_size::SizeBytes;
 
 #[cfg(feature = "data_loaders")]

@@ -11,8 +11,27 @@ table PanelBlueprint (
 
   // --- Optional ---
 
-  /// Current state of the panels.
+  /// Current state of the panel.
   state: rerun.blueprint.components.PanelState ("attr.rerun.component_optional", nullable, order: 1000);
 
   // TODO(jleibs): Add a float to track how expanded the panel is.
+}
+
+/// Time panel specific state.
+table TimePanelBlueprint (
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Default"
+) {
+  // --- Required ---
+
+  // --- Optional ---
+
+  /// Current state of the panel.
+  state: rerun.blueprint.components.PanelState ("attr.rerun.component_optional", nullable, order: 1000);
+
+  /// What timeline the panel is on.
+  timeline: rerun.blueprint.components.TimelineName ("attr.rerun.component_optional", nullable, order: 2000);
+
+  /// What time the time cursor should be on.
+  time: rerun.blueprint.components.TimeInt ("attr.rerun.component_optional", nullable, order: 2100);
 }

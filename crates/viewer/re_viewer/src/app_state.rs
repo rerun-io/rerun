@@ -13,12 +13,12 @@ use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintUndoState, CommandSender,
-    ComponentUiRegistry, DataQueryResult, DisplayMode, DragAndDropManager, GlobalContext,
-    IndicatedEntities, Item, MaybeVisualizableEntities, PerVisualizer, PlayState, RecordingConfig,
-    SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
-    SystemCommandSender as _, TableStore, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
-    blueprint_timeline,
+    AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintContext,
+    BlueprintUndoState, CommandSender, ComponentUiRegistry, DataQueryResult, DisplayMode,
+    DragAndDropManager, GlobalContext, IndicatedEntities, Item, MaybeVisualizableEntities,
+    PerVisualizer, PlayState, SelectionChange, StorageContext, StoreContext, StoreHub,
+    SystemCommand, SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand,
+    ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
     open_url::{self, ViewerOpenUrl},
 };
 use re_viewport::ViewportUi;
@@ -26,7 +26,7 @@ use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
 use crate::{
-    StartupOptions, app_blueprint::AppBlueprint, event::ViewerEventDispatcher,
+    StartupOptions, app_blueprint::AppBlueprint, app_blueprint_ctx::AppBlueprintCtx,
     navigation::Navigation, open_url_description::ViewerOpenUrlDescription, ui::settings_screen_ui,
 };
 
@@ -42,8 +42,8 @@ pub struct AppState {
     pub(crate) app_options: AppOptions,
 
     /// Configuration for the current recording (found in [`EntityDb`]).
-    pub recording_configs: HashMap<StoreId, RecordingConfig>,
-    pub blueprint_cfg: RecordingConfig,
+    pub time_controls: HashMap<StoreId, TimeControl>,
+    pub blueprint_time_control: TimeControl,
 
     /// Maps blueprint id to the current undo state for it.
     #[serde(skip)]
@@ -108,9 +108,9 @@ impl Default for AppState {
     fn default() -> Self {
         Self {
             app_options: Default::default(),
-            recording_configs: Default::default(),
+            time_controls: Default::default(),
             blueprint_undo_state: Default::default(),
-            blueprint_cfg: Default::default(),
+            blueprint_time_control: Default::default(),
             selection_panel: Default::default(),
             time_panel: Default::default(),
             blueprint_time_panel: re_time_panel::TimePanel::new_blueprint_panel(),
@@ -159,10 +159,9 @@ impl AppState {
         store_context: Option<&StoreContext<'_>>,
     ) -> Option<(TimelineName, AbsoluteTimeRangeF)> {
         let rec_id = store_context.as_ref()?.recording.store_id();
-        let rec_cfg = self.recording_configs.get(rec_id)?;
+        let time_ctrl = self.time_controls.get(rec_id)?;
 
         // is there an active loop selection?
-        let time_ctrl = rec_cfg.time_ctrl.read();
         time_ctrl
             .loop_selection()
             .map(|q| (*time_ctrl.timeline().name(), q))
@@ -218,9 +217,9 @@ impl AppState {
 
                 let Self {
                     app_options,
-                    recording_configs,
+                    time_controls,
                     blueprint_undo_state,
-                    blueprint_cfg,
+                    blueprint_time_control,
                     selection_panel,
                     time_panel,
                     blueprint_time_panel,
@@ -324,7 +323,16 @@ impl AppState {
                         .collect::<_>()
                 };
 
-                let rec_cfg = recording_config_entry(recording_configs, recording);
+                let app_blueprint_ctx = AppBlueprintCtx {
+                    command_sender,
+                    current_blueprint: store_context.blueprint,
+                    default_blueprint: store_context.default_blueprint,
+                    blueprint_query,
+                };
+                let time_ctrl =
+                    create_time_control_for(time_controls, recording, &app_blueprint_ctx);
+                let blueprint_query = app_blueprint_ctx.blueprint_query;
+
                 let egui_ctx = ui.ctx().clone();
                 let display_mode = self.navigation.peek();
                 let ctx = ViewerContext {
@@ -350,8 +358,8 @@ impl AppState {
                         &maybe_visualizable_entities_per_visualizer,
                     indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
                     query_results: &query_results,
-                    rec_cfg,
-                    blueprint_cfg,
+                    time_ctrl,
+                    blueprint_time_ctrl: blueprint_time_control,
                     selection_state,
                     blueprint_query: &blueprint_query,
                     focused_item,
@@ -365,21 +373,16 @@ impl AppState {
                     egui_ctx.request_repaint();
                 }
 
-                // We move the time at the very start of the frame,
-                // so that we always show the latest data when we're in "follow" mode.
-                move_time(&ctx, recording, rx_log, event_dispatcher);
-
                 // Update the viewport. May spawn new views and handle queued requests (like screenshots).
                 viewport_ui.on_frame_start(&ctx);
 
-                let active_timeline = *rec_cfg.time_ctrl.read().timeline();
                 let query_results = update_overrides(
                     store_context,
                     query_results,
                     view_class_registry,
                     &viewport_ui.blueprint,
                     &blueprint_query,
-                    &active_timeline,
+                    time_ctrl.timeline(),
                     &maybe_visualizable_entities_per_visualizer,
                     &indicated_entities_per_visualizer,
                     view_states,
@@ -410,8 +413,8 @@ impl AppState {
                         &maybe_visualizable_entities_per_visualizer,
                     indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
                     query_results: &query_results,
-                    rec_cfg,
-                    blueprint_cfg,
+                    time_ctrl,
+                    blueprint_time_ctrl: blueprint_time_control,
                     selection_state,
                     blueprint_query: &blueprint_query,
                     focused_item,
@@ -434,18 +437,23 @@ impl AppState {
 
                     {
                         // Copy time from undo-state to the blueprint time control struct:
-                        let mut time_ctrl = blueprint_cfg.time_ctrl.write();
                         if let Some(redo_time) = undo_state.redo_time() {
-                            time_ctrl.set_play_state(
-                                blueprint_db.times_per_timeline(),
-                                PlayState::Paused,
-                            );
-                            time_ctrl.set_time(redo_time);
+                            ctx.command_sender()
+                                .send_system(SystemCommand::TimeControlCommands {
+                                    store_id: blueprint_db.store_id().clone(),
+                                    time_commands: vec![
+                                        TimeControlCommand::SetPlayState(PlayState::Paused),
+                                        TimeControlCommand::SetTime(redo_time.into()),
+                                    ],
+                                });
                         } else {
-                            time_ctrl.set_play_state(
-                                blueprint_db.times_per_timeline(),
-                                PlayState::Following,
-                            );
+                            ctx.command_sender()
+                                .send_system(SystemCommand::TimeControlCommands {
+                                    store_id: blueprint_db.store_id().clone(),
+                                    time_commands: vec![TimeControlCommand::SetPlayState(
+                                        PlayState::Following,
+                                    )],
+                                });
                         }
                     }
 
@@ -453,7 +461,7 @@ impl AppState {
                         &ctx,
                         &viewport_ui.blueprint,
                         blueprint_db,
-                        blueprint_cfg,
+                        blueprint_time_control,
                         ui,
                         PanelState::Expanded,
                         // Give the blueprint time panel a distinct color from the normal time panel:
@@ -461,16 +469,6 @@ impl AppState {
                             .bottom_panel_frame()
                             .fill(ui.tokens().blueprint_time_panel_bg_fill),
                     );
-
-                    {
-                        // Apply changes to the blueprint time to the undo-state:
-                        let time_ctrl = blueprint_cfg.time_ctrl.read();
-                        if time_ctrl.play_state() == PlayState::Following {
-                            undo_state.redo_all();
-                        } else if let Some(time) = time_ctrl.time_int() {
-                            undo_state.set_redo_time(time);
-                        }
-                    }
                 }
 
                 // TODO(grtlr): We override the app blueprint, until we have proper blueprint support for tables.
@@ -494,7 +492,7 @@ impl AppState {
                         &ctx,
                         &viewport_ui.blueprint,
                         ctx.recording(),
-                        ctx.rec_cfg,
+                        ctx.time_ctrl,
                         ui,
                         app_blueprint.time_panel_state(),
                         ui.tokens().bottom_panel_frame(),
@@ -527,7 +525,7 @@ impl AppState {
                     })
                     .min_width(120.0)
                     .default_width(default_blueprint_panel_width(
-                        ui.ctx().screen_rect().width(),
+                        ui.ctx().content_rect().width(),
                     ));
 
                 left_panel.show_animated_inside(
@@ -716,18 +714,22 @@ impl AppState {
         self.focused_item = None;
     }
 
-    pub fn recording_config(&self, rec_id: &StoreId) -> Option<&RecordingConfig> {
-        self.recording_configs.get(rec_id)
+    pub fn time_control(&self, rec_id: &StoreId) -> Option<&TimeControl> {
+        self.time_controls.get(rec_id)
     }
 
-    pub fn recording_config_mut(&mut self, entity_db: &EntityDb) -> &mut RecordingConfig {
-        recording_config_entry(&mut self.recording_configs, entity_db)
+    pub fn time_control_mut<'a>(
+        &'a mut self,
+        entity_db: &'a EntityDb,
+        blueprint_ctx: &impl BlueprintContext,
+    ) -> &'a mut TimeControl {
+        create_time_control_for(&mut self.time_controls, entity_db, blueprint_ctx)
     }
 
     pub fn cleanup(&mut self, store_hub: &StoreHub) {
         re_tracing::profile_function!();
 
-        self.recording_configs
+        self.time_controls
             .retain(|store_id, _| store_hub.store_bundle().contains(store_id));
 
         self.blueprint_undo_state
@@ -741,12 +743,11 @@ impl AppState {
     /// blueprint `time_ctrl`. Otherwise, we use a latest query from the blueprint timeline.
     pub fn blueprint_query_for_viewer(&mut self, blueprint: &EntityDb) -> LatestAtQuery {
         if self.app_options.inspect_blueprint_timeline {
-            let time_ctrl = self.blueprint_cfg.time_ctrl.read();
-            if time_ctrl.play_state() == PlayState::Following {
+            if self.blueprint_time_control.play_state() == PlayState::Following {
                 // Special-case just to make sure we include stuff added in this frame
                 LatestAtQuery::latest(re_viewer_context::blueprint_timeline())
             } else {
-                time_ctrl.current_query().clone()
+                self.blueprint_time_control.current_query().clone()
             }
         } else {
             let undo_state = self
@@ -754,6 +755,28 @@ impl AppState {
                 .entry(blueprint.store_id().clone())
                 .or_default();
             undo_state.blueprint_query()
+        }
+    }
+
+    /// Returns the blueprint query that should be used for generating the current
+    /// layout of the viewer.
+    ///
+    /// If `inspect_blueprint_timeline` is enabled, we use the time selection from the
+    /// blueprint `time_ctrl`. Otherwise, we use a latest query from the blueprint timeline.
+    pub fn get_blueprint_query_for_viewer(&self, blueprint: &EntityDb) -> Option<LatestAtQuery> {
+        if self.app_options.inspect_blueprint_timeline {
+            if self.blueprint_time_control.play_state() == PlayState::Following {
+                // Special-case just to make sure we include stuff added in this frame
+                Some(LatestAtQuery::latest(
+                    re_viewer_context::blueprint_timeline(),
+                ))
+            } else {
+                Some(self.blueprint_time_control.current_query().clone())
+            }
+        } else {
+            self.blueprint_undo_state
+                .get(blueprint.store_id())
+                .map(|undo_state| undo_state.blueprint_query())
         }
     }
 }
@@ -857,85 +880,15 @@ fn table_ui(
         .show(ctx, runtime, ui);
 }
 
-fn move_time(
-    ctx: &ViewerContext<'_>,
-    recording: &EntityDb,
-    rx: &ReceiveSet<DataSourceMessage>,
-    events: Option<&ViewerEventDispatcher>,
-) {
-    let dt = ctx.egui_ctx().input(|i| i.stable_dt);
-
-    // Are we still connected to the data source for the current store?
-    let more_data_is_coming = if let Some(store_source) = &recording.data_source {
-        rx.sources().iter().any(|s| s.as_ref() == store_source)
-    } else {
-        false
-    };
-
-    let should_diff_time_ctrl = ctx.has_active_recording();
-    let recording_time_ctrl_response = ctx.rec_cfg.time_ctrl.write().update(
-        recording.times_per_timeline(),
-        dt,
-        more_data_is_coming,
-        // The state diffs are used to trigger callbacks if they are configured.
-        // Unless we have a real recording open, we should not actually trigger any callbacks.
-        should_diff_time_ctrl,
-    );
-
-    handle_time_ctrl_event(recording, events, &recording_time_ctrl_response);
-
-    let recording_needs_repaint = recording_time_ctrl_response.needs_repaint;
-
-    let blueprint_needs_repaint = if ctx.app_options().inspect_blueprint_timeline {
-        let should_diff_time_ctrl = false; /* we don't need state diffing here */
-        ctx.blueprint_cfg
-            .time_ctrl
-            .write()
-            .update(
-                ctx.store_context.blueprint.times_per_timeline(),
-                dt,
-                more_data_is_coming,
-                should_diff_time_ctrl,
-            )
-            .needs_repaint
-    } else {
-        re_viewer_context::NeedsRepaint::No
-    };
-
-    if recording_needs_repaint == re_viewer_context::NeedsRepaint::Yes
-        || blueprint_needs_repaint == re_viewer_context::NeedsRepaint::Yes
-    {
-        ctx.egui_ctx().request_repaint();
-    }
-}
-
-fn handle_time_ctrl_event(
-    recording: &EntityDb,
-    events: Option<&ViewerEventDispatcher>,
-    response: &re_viewer_context::TimeControlResponse,
-) {
-    let Some(events) = events else {
-        return;
-    };
-
-    if let Some(playing) = response.playing_change {
-        events.on_play_state_change(recording, playing);
-    }
-
-    if let Some((timeline, time)) = response.timeline_change {
-        events.on_timeline_change(recording, timeline, time);
-    }
-
-    if let Some(time) = response.time_change {
-        events.on_time_update(recording, time);
-    }
-}
-
-pub(crate) fn recording_config_entry<'cfgs>(
-    configs: &'cfgs mut HashMap<StoreId, RecordingConfig>,
+pub(crate) fn create_time_control_for<'cfgs>(
+    configs: &'cfgs mut HashMap<StoreId, TimeControl>,
     entity_db: &'_ EntityDb,
-) -> &'cfgs mut RecordingConfig {
-    fn new_recording_config(entity_db: &'_ EntityDb) -> RecordingConfig {
+    blueprint_ctx: &'_ impl BlueprintContext,
+) -> &'cfgs mut TimeControl {
+    fn new_time_control(
+        entity_db: &'_ EntityDb,
+        blueprint_ctx: &'_ impl BlueprintContext,
+    ) -> TimeControl {
         let play_state = if let Some(data_source) = &entity_db.data_source {
             match data_source {
                 // Play files from the start by default - it feels nice and alive.
@@ -956,19 +909,20 @@ pub(crate) fn recording_config_entry<'cfgs>(
             PlayState::Following // No known source 🤷‍♂️
         };
 
-        let mut rec_cfg = RecordingConfig::default();
+        let mut time_ctrl = TimeControl::from_blueprint(blueprint_ctx);
 
-        rec_cfg
-            .time_ctrl
-            .get_mut()
-            .set_play_state(entity_db.times_per_timeline(), play_state);
+        time_ctrl.set_play_state(
+            entity_db.times_per_timeline(),
+            play_state,
+            Some(blueprint_ctx),
+        );
 
-        rec_cfg
+        time_ctrl
     }
 
     configs
         .entry(entity_db.store_id().clone())
-        .or_insert_with(|| new_recording_config(entity_db))
+        .or_insert_with(|| new_time_control(entity_db, blueprint_ctx))
 }
 
 /// Handles all kind of links that can be opened within the viewer.

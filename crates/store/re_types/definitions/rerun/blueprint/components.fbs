@@ -29,6 +29,7 @@ include "./components/root_container.fbs";
 include "./components/row_share.fbs";
 include "./components/selected_columns.fbs";
 include "./components/tensor_dimension_index_slider.fbs";
+include "./components/time_int.fbs";
 include "./components/timeline_name.fbs";
 include "./components/view_class.fbs";
 include "./components/view_fit.fbs";

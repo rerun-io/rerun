@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default)]
 pub struct PanelBlueprint {
-    /// Current state of the panels.
+    /// Current state of the panel.
     pub state: Option<SerializedComponentBatch>,
 }
 
@@ -139,7 +139,7 @@ impl PanelBlueprint {
         }
     }
 
-    /// Current state of the panels.
+    /// Current state of the panel.
     #[inline]
     pub fn with_state(
         mut self,

@@ -425,15 +425,13 @@ pub fn data_density_graph_ui(
 ) {
     re_tracing::profile_function!();
 
-    let timeline = *time_ctrl.timeline();
-
     let mut data = build_density_graph(
         ui,
         time_ranges_ui,
         row_rect,
         db,
         item,
-        timeline.name(),
+        time_ctrl.timeline().name(),
         DensityGraphBuilderConfig::default(),
     );
 

@@ -152,6 +152,7 @@ examples = [
   "graphs",
   "camera_video_stream",
   "log_file",
+  "lenses",
   "openstreetmap_data",
   "minimal",
   "multiprocess_logging",

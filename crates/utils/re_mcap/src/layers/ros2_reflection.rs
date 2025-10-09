@@ -5,8 +5,8 @@ use arrow::{
     array::{
         ArrayBuilder, ArrowPrimitiveType, BooleanBuilder, FixedSizeListBuilder, Float32Builder,
         Float64Builder, Int8Builder, Int16Builder, Int32Builder, Int64Builder, ListBuilder,
-        PrimitiveBuilder, StringBuilder, StructBuilder, UInt8Builder, UInt16Builder, UInt32Builder,
-        UInt64Builder,
+        NullBuilder, PrimitiveBuilder, StringBuilder, StructBuilder, UInt8Builder, UInt16Builder,
+        UInt32Builder, UInt64Builder,
     },
     datatypes::{
         DataType, Field, Fields, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type,
@@ -153,7 +153,7 @@ impl MessageParser for Ros2ReflectionMessageParser {
                 }
             }
         } else {
-            return Err(anyhow::anyhow!("Expected message value, got {:?}", value));
+            return Err(anyhow::anyhow!("Expected message value, got {value:?}"));
         }
 
         Ok(())
@@ -204,14 +204,11 @@ fn create_empty_message_chunk(
     num_rows: usize,
     archetype_name: &str,
 ) -> anyhow::Result<Chunk> {
-    let empty_list = arrow::array::ListArray::new_null(
-        std::sync::Arc::new(Field::new(
-            "empty",
-            DataType::FixedSizeList(Arc::new(Field::new("item", DataType::Null, true)), 1),
-            true,
-        )),
-        num_rows,
-    );
+    let mut empty_list = ListBuilder::with_capacity(NullBuilder::new(), num_rows);
+    for _ in 0..num_rows {
+        empty_list.values().append_null();
+        empty_list.append(true);
+    }
 
     let chunk = Chunk::from_auto_row_ids(
         ChunkId::new(),
@@ -219,7 +216,7 @@ fn create_empty_message_chunk(
         timelines,
         std::iter::once((
             ComponentDescriptor::partial("empty").with_builtin_archetype(archetype_name),
-            empty_list,
+            empty_list.finish(),
         ))
         .collect(),
     )
@@ -388,7 +385,7 @@ fn arrow_builder_from_type(
         Type::Complex(complex_type) => {
             // Look up the message spec in dependencies
             let spec = resolve_complex_type(complex_type, dependencies).ok_or_else(|| {
-                anyhow::anyhow!("Could not resolve complex type: {:?}", complex_type)
+                anyhow::anyhow!("Could not resolve complex type: {complex_type:?}")
             })?;
             Box::new(struct_builder_from_message_spec(spec, dependencies)?)
         }
@@ -427,7 +424,7 @@ fn datatype_from_type(
         },
         Type::Complex(complex_type) => {
             let spec = resolve_complex_type(complex_type, dependencies).ok_or_else(|| {
-                anyhow::anyhow!("Could not resolve complex type: {:?}", complex_type)
+                anyhow::anyhow!("Could not resolve complex type: {complex_type:?}")
             })?;
             let fields = spec
                 .fields

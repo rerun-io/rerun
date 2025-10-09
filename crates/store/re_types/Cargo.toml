@@ -63,7 +63,7 @@ re_types_core.workspace = true
 re_video = { workspace = true, optional = true }
 
 # External
-anyhow.workspace = true                                                      # TODO(#1845): Use thiserror instead
+anyhow.workspace = true # TODO(#1845): Use thiserror instead
 array-init.workspace = true
 arrow.workspace = true
 bytemuck = { workspace = true, features = ["derive", "extern_crate_alloc"] }
@@ -86,9 +86,7 @@ uuid = { workspace = true, features = ["serde", "v4", "js"] }
 ecolor = { workspace = true, optional = true }
 egui_plot = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
-image = { workspace = true, optional = true, default-features = false, features = [
-  "jpeg",
-] }
+image = { workspace = true, optional = true, default-features = false, features = ["jpeg"] }
 mint = { workspace = true, optional = true }
 macaw = { workspace = true, optional = true }
 serde = { workspace = true, optional = true, features = ["derive", "rc"] }

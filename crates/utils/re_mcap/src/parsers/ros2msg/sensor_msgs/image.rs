@@ -163,8 +163,7 @@ fn decode_image_format(encoding: &str, dimensions: [u32; 2]) -> anyhow::Result<I
         // Other
         format => {
             anyhow::bail!(
-                "Unsupported image encoding '{}'. Supported encodings include: rgb8, rgba8, rgb16, rgba16, bgr8, bgra8, bgr16, bgra16, mono8, mono16, yuyv, yuv422_yuy2, nv12, 8UC1, 8SC1, 16UC1, 16SC1, 32SC1, 32FC1",
-                format
+                "Unsupported image encoding '{format}'. Supported encodings include: rgb8, rgba8, rgb16, rgba16, bgr8, bgra8, bgr16, bgra16, mono8, mono16, yuyv, yuv422_yuy2, nv12, 8UC1, 8SC1, 16UC1, 16SC1, 32SC1, 32FC1"
             )
         }
     }

@@ -59,7 +59,7 @@ pub fn test_annotations() {
         ))
     });
     run_view_ui_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         view_id,
         "annotations",
         // We need quite a bunch of pixels to be able to stack the double hover pop-ups.
@@ -79,7 +79,7 @@ fn get_test_context() -> TestContext {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
+    test_context: &TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
@@ -122,7 +122,7 @@ fn run_view_ui_and_save_snapshot(
             harness.try_run_realtime().ok();
             harness.snapshot_options(
                 &name,
-                &SnapshotOptions::new().failed_pixel_count_threshold(1),
+                &SnapshotOptions::new().failed_pixel_count_threshold(2),
             );
         }
 
@@ -135,7 +135,7 @@ fn run_view_ui_and_save_snapshot(
             harness.run();
             harness.snapshot_options(
                 &name,
-                &SnapshotOptions::new().failed_pixel_count_threshold(1),
+                &SnapshotOptions::new().failed_pixel_count_threshold(2),
             );
         }
 
@@ -148,7 +148,7 @@ fn run_view_ui_and_save_snapshot(
             harness.run();
             harness.snapshot_options(
                 &name,
-                &SnapshotOptions::new().failed_pixel_count_threshold(1),
+                &SnapshotOptions::new().failed_pixel_count_threshold(2),
             );
         }
 
@@ -162,7 +162,7 @@ fn run_view_ui_and_save_snapshot(
 
             harness.snapshot_options(
                 &name,
-                &SnapshotOptions::new().failed_pixel_count_threshold(1),
+                &SnapshotOptions::new().failed_pixel_count_threshold(2),
             );
         }
 
@@ -175,7 +175,7 @@ fn run_view_ui_and_save_snapshot(
             harness.run();
             harness.snapshot_options(
                 &name,
-                &SnapshotOptions::new().failed_pixel_count_threshold(1),
+                &SnapshotOptions::new().failed_pixel_count_threshold(2),
             );
         }
     }

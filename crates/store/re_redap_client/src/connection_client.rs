@@ -9,16 +9,18 @@ use re_protos::{
     TypeConversionError,
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind, FetchChunksRequest,
-        FindEntriesRequest, GetPartitionTableSchemaRequest, GetPartitionTableSchemaResponse,
-        QueryDatasetRequest, QueryDatasetResponse, ReadDatasetEntryRequest, ReadTableEntryRequest,
-        RegisterWithDatasetResponse, ScanPartitionTableRequest, ScanPartitionTableResponse,
+        FindEntriesRequest, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
+        GetPartitionTableSchemaRequest, GetPartitionTableSchemaResponse, QueryDatasetRequest,
+        QueryDatasetResponse, QueryTasksOnCompletionResponse, QueryTasksResponse,
+        ReadDatasetEntryRequest, ReadTableEntryRequest, RegisterWithDatasetResponse,
+        ScanPartitionTableRequest, ScanPartitionTableResponse,
         ext::{
             CreateDatasetEntryResponse, DataSource, DataSourceKind, DatasetDetails, DatasetEntry,
             EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails as _,
-            ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse,
-            RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, TableEntry,
-            UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest,
-            UpdateEntryResponse,
+            QueryTasksOnCompletionRequest, QueryTasksRequest, ReadDatasetEntryResponse,
+            ReadTableEntryResponse, RegisterTableResponse, RegisterWithDatasetRequest,
+            RegisterWithDatasetTaskDescriptor, TableEntry, UpdateDatasetEntryRequest,
+            UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
         },
         rerun_cloud_service_client::RerunCloudServiceClient,
     },
@@ -31,7 +33,7 @@ use re_protos::{
     missing_field,
 };
 
-use crate::{StreamEntryError, StreamError};
+use crate::{StreamEntryError, StreamError, StreamTasksError};
 
 pub type FetchChunksResponseStream = std::pin::Pin<
     Box<
@@ -236,7 +238,7 @@ where
         &mut self,
         entry_id: EntryId,
     ) -> Result<Vec<PartitionId>, StreamError> {
-        const COLUMN_NAME: &str = ScanPartitionTableResponse::PARTITION_ID;
+        const COLUMN_NAME: &str = ScanPartitionTableResponse::FIELD_PARTITION_ID;
 
         let mut stream = self
             .inner()
@@ -274,6 +276,26 @@ where
         }
 
         Ok(partition_ids)
+    }
+
+    //TODO(ab): accept entry name
+    pub async fn get_dataset_manifest_schema(
+        &mut self,
+        entry_id: EntryId,
+    ) -> Result<ArrowSchema, StreamError> {
+        Ok(self
+            .inner()
+            .get_dataset_manifest_schema(
+                tonic::Request::new(GetDatasetManifestSchemaRequest {})
+                    .with_entry_id(entry_id)
+                    .map_err(|err| StreamEntryError::InvalidId(err.into()))?,
+            )
+            .await
+            .map_err(|err| StreamEntryError::GetDatasetManifestSchema(err.into()))?
+            .into_inner()
+            .schema
+            .ok_or_else(|| missing_field!(GetDatasetManifestSchemaResponse, "schema"))?
+            .try_into()?)
     }
 
     /// Fetches all chunks for a specified partition. You can include/exclude static/temporal chunks.
@@ -526,5 +548,35 @@ where
             .into_iter()
             .map(|entry| entry.name.clone())
             .collect())
+    }
+
+    // -- Tasks API --
+    pub async fn query_tasks_on_completion(
+        &mut self,
+        task_ids: Vec<TaskId>,
+        timeout: std::time::Duration,
+    ) -> Result<tonic::Streaming<QueryTasksOnCompletionResponse>, StreamError> {
+        let q = QueryTasksOnCompletionRequest { task_ids, timeout };
+        let response = self
+            .inner()
+            .query_tasks_on_completion(tonic::Request::new(q.try_into()?))
+            .await
+            .map_err(|err| StreamTasksError::StreamingTaskResults(err.into()))?
+            .into_inner();
+        Ok(response)
+    }
+
+    pub async fn query_tasks(
+        &mut self,
+        task_ids: Vec<TaskId>,
+    ) -> Result<QueryTasksResponse, StreamError> {
+        let q = QueryTasksRequest { task_ids };
+        let response = self
+            .inner()
+            .query_tasks(tonic::Request::new(q.try_into()?))
+            .await
+            .map_err(|err| StreamTasksError::StreamingTaskResults(err.into()))?
+            .into_inner();
+        Ok(response)
     }
 }

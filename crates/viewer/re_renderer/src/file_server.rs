@@ -233,7 +233,7 @@ mod file_server_impl {
                     }
                 }
                 std::collections::hash_map::Entry::Vacant(_) => {
-                    anyhow::bail!("The path {:?} was not or no longer watched", path);
+                    anyhow::bail!("The path {path:?} was not or no longer watched");
                 }
             }
 

@@ -88,7 +88,8 @@ impl PyTasks {
         let hash = Hash64::hash(&self.ids);
         let name = format!("__tasks_{:x}__", hash.hash64());
 
-        let task_status_table = connection.query_tasks(py, &self.ids)?;
+        let task_ids = self.ids.iter().cloned().collect_vec();
+        let task_status_table = connection.query_tasks(py, task_ids)?;
         let provider = MemTable::try_new(task_status_table.schema(), vec![vec![task_status_table]])
             .map_err(to_py_err)?;
 

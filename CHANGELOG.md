@@ -462,7 +462,7 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 - Make `archetype_field_name` mandatory in `ComponentDescriptor` [#10082](https://github.com/rerun-io/rerun/pull/10082)
 
 #### 📦 Dependencies
-- Update to wgpu 0.25 [#10009](https://github.com/rerun-io/rerun/pull/10009) (thanks [@Vrixyz](https://github.com/Vrixyz)!)
+- Update to wgpu 0.25 [#10009](https://github.com/rerun-io/rerun/pull/10009) (thanks [@ThierryBerger](https://github.com/ThierryBerger)!)
 - Update Arrow and DataFusion dedpendencies [#10195](https://github.com/rerun-io/rerun/pull/10195)
 - Update egui to 0.32 [#10604](https://github.com/rerun-io/rerun/pull/10604)
 
