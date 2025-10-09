@@ -1,9 +1,8 @@
 namespace rerun.blueprint.archetypes;
 
-
 // ---
 
-/// Configuration for the time (Y) axis of a plot.
+/// Configuration for the time (X) axis of a plot.
 table TimeAxis (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default"
@@ -11,5 +10,13 @@ table TimeAxis (
     // --- Optional ---
 
     /// How should the horizontal/X/time axis be linked across multiple plots?
-    link: rerun.blueprint.components.LinkAxis ("attr.rerun.component_optional", nullable, order: 2200);
+    ///
+    /// Linking with global will ignore all the other options.
+    link: rerun.blueprint.components.LinkAxis ("attr.rerun.component_optional", nullable, order: 2300);
+
+    /// The view range offset of the horizontal/X/time axis, in time units.
+    view_range: rerun.components.Range1D ("attr.rerun.component_optional", nullable, order: 2400);
+
+    /// The align of the horizontal/X/time axis.
+    view_origin: rerun.blueprint.components.TimeOrigin ("attr.rerun.component_optional", nullable, order: 2500);
 }
