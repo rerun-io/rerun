@@ -15965,7 +15965,7 @@ packages:
 - pypi: ./examples/python/controlnet
   name: controlnet
   version: 0.1.0
-  sha256: 30af0136604c6c5d1accedd7e3e6ce71c9ef1b39e84c0ecf3c4629fa47d5dc63
+  sha256: d152be5bd56759d9d705f6ae912f98251df108d2f06a638dec5482734ba1fed9
   requires_dist:
   - accelerate
   - opencv-python
@@ -16542,7 +16542,7 @@ packages:
 - pypi: ./examples/python/detect_and_track_objects
   name: detect-and-track-objects
   version: 0.1.0
-  sha256: a29693142a027c41d848418a478270f2a11decdd69759bc1b2db4f6df7860e3f
+  sha256: 6271c0aa616faf582d04452e4dad294879b72e5272e2f6a15a2245022f2f00c0
   requires_dist:
   - numpy
   - opencv-contrib-python>4.6
@@ -16810,7 +16810,7 @@ packages:
 - pypi: ./examples/python/face_tracking
   name: face-tracking
   version: 0.1.0
-  sha256: b8725fe4d36c11aad2c6c936ba2b57c7f65a856aa179badca5d041db63119d55
+  sha256: c3c2bf14ccceff0a35108ba309dceafe358a7d8e3dae2aeb7492b0fe36f149bf
   requires_dist:
   - mediapipe==0.10.11 ; sys_platform != 'darwin'
   - mediapipe==0.10.9 ; sys_platform == 'darwin'
@@ -18311,7 +18311,7 @@ packages:
 - pypi: ./examples/python/gesture_detection
   name: gesture-detection
   version: 0.1.0
-  sha256: 36dfc4cc822ee47f7aa29ba951bab8a94e96b9fd737daa324a441e6962a620bd
+  sha256: f9cfc8e65ab3d3cae39628474a6db7a553279ef3a191c494ebc0525a0cf19bae
   requires_dist:
   - mediapipe==0.10.11 ; sys_platform != 'darwin'
   - mediapipe==0.10.9 ; sys_platform == 'darwin'
@@ -19405,7 +19405,7 @@ packages:
 - pypi: ./examples/python/human_pose_tracking
   name: human-pose-tracking
   version: 0.1.0
-  sha256: 8a80b67528d3f6d0c82671dc5c36cf551faa4b879f4434f0d386d8ef85666e86
+  sha256: 22604614a593c37633ea8c38911f326f081b289f6140fbc0e52352c68d542877
   requires_dist:
   - mediapipe==0.10.11 ; sys_platform != 'darwin'
   - mediapipe==0.10.9 ; sys_platform == 'darwin'
@@ -28391,7 +28391,7 @@ packages:
 - pypi: ./examples/python/lidar
   name: lidar
   version: 0.1.0
-  sha256: 10fe6d7b3a80959f913aada12c01bfecd6cd9854beaf6a8843a7ecd2215cd4bd
+  sha256: 831c6891677b65f8a3b481eaec8083b41de199593f319ca14626a6bc44fb3de9
   requires_dist:
   - matplotlib
   - numpy
@@ -28418,7 +28418,7 @@ packages:
 - pypi: ./examples/python/llm_embedding_ner
   name: llm-embedding-ner
   version: 0.1.0
-  sha256: 6f5925cbe333d529421ef9a5114f85317bdd8b4200c1e9ff6798dff5e3a7f16f
+  sha256: 924e7622eb2de0a64794f58fc646189a3c5c000a4fdae9da2b4fc7cd7f3f8270
   requires_dist:
   - rerun-sdk
   - torch
@@ -30270,7 +30270,7 @@ packages:
 - pypi: ./examples/python/nuscenes_dataset
   name: nuscenes-dataset
   version: 0.1.0
-  sha256: 78903b7670fac2b4c27637efc9aa6f63b7b70502ce3d5f88e4353aef5607cf40
+  sha256: df6a287bfb60b967d29df8c7848a544a2297ab29e3072b3c40481b111a423578
   requires_dist:
   - matplotlib
   - numpy
@@ -30413,7 +30413,7 @@ packages:
 - pypi: ./examples/python/open_photogrammetry_format
   name: open-photogrammetry-format
   version: 0.1.0
-  sha256: de3134df09286a5d9809cfafcb1082c1ffe45bf70c84adcf79d8f090c14fc1ab
+  sha256: 4c9ddae0cded3c1defd739160099dab7c18a24efd1ba6c37d60a808dd3807b4c
   requires_dist:
   - numpy
   - pillow
@@ -34188,7 +34188,7 @@ packages:
 - pypi: ./rerun_py
   name: rerun-sdk
   version: 0.26.0a1+dev
-  sha256: 2e01c652f267cefbfe53422183b9a96cafe0225d5320b0a02379940f011a729d
+  sha256: ac2aa4ab8b5477ab7ef25d61bad6a36d58187b32a2affb3de2cdd301365ae5db
   requires_dist:
   - attrs>=23.1.0
   - numpy>=2
@@ -34225,7 +34225,7 @@ packages:
 - pypi: ./examples/python/rgbd
   name: rgbd
   version: 0.1.0
-  sha256: b2ef153b0bedd672c3e0ce89b7be1f64f4344b2b75d71748899faea270383fa2
+  sha256: f91e3786854ada328cd93cf571fbb8a9c6855eb2ce1d817e769a9786104919ae
   requires_dist:
   - numpy
   - opencv-python>4.6
@@ -34957,7 +34957,7 @@ packages:
 - pypi: ./examples/python/segment_anything_model
   name: segment-anything-model
   version: 0.1.0
-  sha256: ac45b3defcd03e201ecd5f178f50fa08a612ae773100e3af36ffc4a55ad32148
+  sha256: 26b1686358b97d1e8317853bf821d4fef91a91deb3df8680c908c351cd191a5e
   requires_dist:
   - segment-anything @ git+https://github.com/facebookresearch/segment-anything.git
   - numpy
@@ -35422,7 +35422,7 @@ packages:
 - pypi: ./examples/python/structure_from_motion
   name: structure-from-motion
   version: 0.1.0
-  sha256: b20b79aa7bb2b4225b37d3cb28872a70dc7e9ab2ca9ab138b90d60fc8d7b4c15
+  sha256: 9297720ddf692d4206210a900819b28358fcdbdbceddb2d76ba359a1bb69c8d6
   requires_dist:
   - opencv-python>4.6
   - numpy
