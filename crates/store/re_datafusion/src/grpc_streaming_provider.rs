@@ -46,6 +46,7 @@ pub trait GrpcStreamToTable:
 
     async fn insert_into(
         &self,
+        _state: &dyn Session,
         _input: Arc<dyn ExecutionPlan>,
         _insert_op: InsertOp,
     ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
@@ -114,11 +115,11 @@ where
 
     async fn insert_into(
         &self,
-        _state: &dyn Session,
+        state: &dyn Session,
         input: Arc<dyn ExecutionPlan>,
         insert_op: InsertOp,
     ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
-        self.client.insert_into(input, insert_op).await
+        self.client.insert_into(state, input, insert_op).await
     }
 }
 
@@ -147,16 +148,16 @@ where
     }
 
     fn execute(&self, _ctx: Arc<TaskContext>) -> SendableRecordBatchStream {
-        Box::pin(GrpcStream::execute(&self.schema, self.client.clone()))
+        Box::pin(GrpcReadStream::execute(&self.schema, self.client.clone()))
     }
 }
 
-pub struct GrpcStream {
+pub struct GrpcReadStream {
     schema: SchemaRef,
     adapted_stream: Pin<Box<dyn Stream<Item = datafusion::common::Result<RecordBatch>> + Send>>,
 }
 
-impl GrpcStream {
+impl GrpcReadStream {
     fn execute<T>(schema: &SchemaRef, mut client: T) -> Self
     where
         T::GrpcStreamData: Send + 'static,
@@ -185,13 +186,13 @@ impl GrpcStream {
     }
 }
 
-impl RecordBatchStream for GrpcStream {
+impl RecordBatchStream for GrpcReadStream {
     fn schema(&self) -> SchemaRef {
         Arc::clone(&self.schema)
     }
 }
 
-impl Stream for GrpcStream {
+impl Stream for GrpcReadStream {
     type Item = DataFusionResult<RecordBatch>;
 
     fn poll_next(
