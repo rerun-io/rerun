@@ -466,8 +466,8 @@ impl App {
     /// Update the active [`re_viewer_context::TimeControl`]. And if the blueprint inspection
     /// panel is open, also open that time control.
     fn move_time(&mut self) {
-        if let Some(store_hub) = &self.store_hub {
-            if let Some(store_id) = store_hub.active_store_id()
+        if let Some(store_hub) = &self.store_hub &&
+            let Some(store_id) = store_hub.active_store_id()
                 && let Some(blueprint) =
                     store_hub.active_blueprint_for_app(store_id.application_id())
             {
