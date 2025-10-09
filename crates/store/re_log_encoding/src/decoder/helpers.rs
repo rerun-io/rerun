@@ -1,6 +1,8 @@
 use re_build_info::CrateVersion;
 
-use crate::{EncodingOptions, FileHeader, Serializer, decoder::DecodeError};
+use crate::{
+    DecodeError, codec::Serializer, codec::file::EncodingOptions, codec::file::FileHeader,
+};
 
 // ---
 

@@ -4,10 +4,10 @@ use std::io::Read as _;
 
 use re_build_info::CrateVersion;
 
-use crate::EncodingOptions;
-use crate::FileHeader;
-use crate::Serializer;
 use crate::app_id_injector::CachingApplicationIdInjector;
+use crate::codec::Serializer;
+use crate::codec::file::EncodingOptions;
+use crate::codec::file::FileHeader;
 use crate::decoder::options_from_bytes;
 
 use super::DecodeError;
@@ -856,8 +856,8 @@ mod tests_legacy {
     use re_protos::log_msg::v1alpha1 as proto;
     use re_protos::log_msg::v1alpha1::LogMsg as LogMsgProto;
 
-    use crate::Compression;
     use crate::Encoder;
+    use crate::codec::Compression;
 
     use super::*;
 

@@ -29,7 +29,7 @@ pub enum DecodeError {
     },
 
     #[error("Failed to decode the options: {0}")]
-    Options(#[from] crate::OptionsError),
+    Options(#[from] crate::codec::file::OptionsError),
 
     #[error("Failed to read: {0}")]
     Read(#[from] std::io::Error),

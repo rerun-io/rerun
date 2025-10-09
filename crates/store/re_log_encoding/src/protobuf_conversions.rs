@@ -6,7 +6,7 @@ use re_log_types::{BlueprintActivationCommand, SetStoreInfo};
 #[cfg(feature = "decoder")]
 use crate::ApplicationIdInjector;
 
-impl From<re_protos::log_msg::v1alpha1::Compression> for crate::Compression {
+impl From<re_protos::log_msg::v1alpha1::Compression> for crate::codec::Compression {
     fn from(value: re_protos::log_msg::v1alpha1::Compression) -> Self {
         match value {
             re_protos::log_msg::v1alpha1::Compression::Unspecified
@@ -16,11 +16,11 @@ impl From<re_protos::log_msg::v1alpha1::Compression> for crate::Compression {
     }
 }
 
-impl From<crate::Compression> for re_protos::log_msg::v1alpha1::Compression {
-    fn from(value: crate::Compression) -> Self {
+impl From<crate::codec::Compression> for re_protos::log_msg::v1alpha1::Compression {
+    fn from(value: crate::codec::Compression) -> Self {
         match value {
-            crate::Compression::Off => Self::None,
-            crate::Compression::LZ4 => Self::Lz4,
+            crate::codec::Compression::Off => Self::None,
+            crate::codec::Compression::LZ4 => Self::Lz4,
         }
     }
 }
@@ -138,7 +138,7 @@ pub fn arrow_msg_from_proto(
 #[tracing::instrument(level = "trace", skip_all)]
 pub fn log_msg_to_proto(
     message: re_log_types::LogMsg,
-    compression: crate::Compression,
+    compression: crate::codec::Compression,
 ) -> Result<re_protos::log_msg::v1alpha1::LogMsg, crate::encoder::EncodeError> {
     re_tracing::profile_function!();
 
@@ -186,7 +186,7 @@ pub fn log_msg_to_proto(
 pub fn arrow_msg_to_proto(
     arrow_msg: &re_log_types::ArrowMsg,
     store_id: re_log_types::StoreId,
-    compression: crate::Compression,
+    compression: crate::codec::Compression,
 ) -> Result<re_protos::log_msg::v1alpha1::ArrowMsg, crate::encoder::EncodeError> {
     re_tracing::profile_function!();
 
@@ -205,8 +205,10 @@ pub fn arrow_msg_to_proto(
         store_id: Some(store_id.into()),
         chunk_id: Some((*chunk_id).into()),
         compression: match compression {
-            crate::Compression::Off => re_protos::log_msg::v1alpha1::Compression::None as i32,
-            crate::Compression::LZ4 => re_protos::log_msg::v1alpha1::Compression::Lz4 as i32,
+            crate::codec::Compression::Off => {
+                re_protos::log_msg::v1alpha1::Compression::None as i32
+            }
+            crate::codec::Compression::LZ4 => re_protos::log_msg::v1alpha1::Compression::Lz4 as i32,
         },
         uncompressed_size: payload.uncompressed_size as i32,
         encoding: re_protos::log_msg::v1alpha1::Encoding::ArrowIpc as i32,

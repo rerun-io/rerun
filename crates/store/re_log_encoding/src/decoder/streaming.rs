@@ -9,8 +9,8 @@ use re_chunk::Span;
 use re_log::external::log::warn;
 
 use crate::{
-    EncodingOptions, FileHeader,
-    codec::file::{self, MessageKind},
+    EncodingOptions,
+    codec::file::{FileHeader, MessageHeader, MessageKind},
     decoder::{DecodeError, options_from_bytes},
 };
 
@@ -54,8 +54,8 @@ impl StreamingLogMsg {
     pub fn from_chunk(
         store_id: re_log_types::StoreId,
         chunk: &re_chunk::Chunk,
-    ) -> Result<Self, crate::encoder::EncodeError> {
-        let compression = crate::Compression::Off;
+    ) -> Result<Self, crate::EncodeError> {
+        let compression = crate::codec::Compression::Off;
 
         let arrow_msg = re_log_types::ArrowMsg {
             chunk_id: *chunk.id(),
@@ -112,7 +112,7 @@ impl StreamingLogMsg {
         }
 
         if let Some(encoded) = self.encoded.as_ref() {
-            return file::decoder::decode_bytes_to_transport(self.kind, encoded);
+            return crate::codec::file::decoder::decode_bytes_to_transport(self.kind, encoded);
         }
 
         Ok(None)
@@ -359,8 +359,8 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
             }
 
             let (kind, encoded, processed_length) = match serializer {
-                crate::Serializer::Protobuf => {
-                    let header_size = std::mem::size_of::<file::MessageHeader>();
+                crate::codec::Serializer::Protobuf => {
+                    let header_size = std::mem::size_of::<MessageHeader>();
                     if unprocessed_bytes.len() < header_size {
                         // Not enough data to read the header, need to wait for more
                         self.expect_more_data = true;
@@ -369,7 +369,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                         continue;
                     }
                     let data = &unprocessed_bytes[..header_size];
-                    let header = file::MessageHeader::from_bytes(data)?;
+                    let header = MessageHeader::from_bytes(data)?;
 
                     if unprocessed_bytes.len() < header.len as usize + header_size {
                         // Not enough data to read the message, need to wait for more
@@ -408,7 +408,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
             }
 
             let decoded = if opts.keep_decoded_protobuf {
-                file::decoder::decode_bytes_to_transport(kind, encoded)?
+                crate::codec::file::decoder::decode_bytes_to_transport(kind, encoded)?
             } else {
                 None
             };
@@ -448,9 +448,10 @@ mod tests {
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
 
     use crate::{
-        Compression, EncodingOptions, Serializer,
-        codec::file,
+        codec::Compression,
+        codec::Serializer,
         decoder::streaming::{StreamingDecoder, StreamingDecoderOptions},
+        encoder::EncodingOptions,
     };
 
     #[allow(clippy::unwrap_used)] // acceptable for tests
@@ -530,7 +531,10 @@ mod tests {
             let decoded_messages: Vec<re_log_types::LogMsg> = decoder
                 .map(Result::unwrap)
                 .filter_map(|msg| msg.decoded_transport().unwrap())
-                .map(|msg| file::decoder::decode_transport_to_app(&mut app_id_cache, msg).unwrap())
+                .map(|msg| {
+                    crate::codec::file::decoder::decode_transport_to_app(&mut app_id_cache, msg)
+                        .unwrap()
+                })
                 .collect::<Vec<_>>()
                 .await;
 
@@ -570,7 +574,10 @@ mod tests {
             let decoded_messages = decoder
                 .map(Result::unwrap)
                 .filter_map(|msg| msg.decoded_transport().unwrap())
-                .map(|msg| file::decoder::decode_transport_to_app(&mut app_id_cache, msg).unwrap())
+                .map(|msg| {
+                    crate::codec::file::decoder::decode_transport_to_app(&mut app_id_cache, msg)
+                        .unwrap()
+                })
                 .collect::<Vec<_>>()
                 .await;
 
@@ -620,12 +627,15 @@ mod tests {
                     let header = file::MessageHeader::from_bytes(header_data).unwrap();
 
                     let data = &data[header_size..];
-                    let msg =
-                        file::decoder::decode_bytes_to_app(&mut app_id_cache, header.kind, data)
-                            .unwrap()
-                            .unwrap();
+                    let msg = crate::codec::file::decoder::decode_bytes_to_app(
+                        &mut app_id_cache,
+                        header.kind,
+                        data,
+                    )
+                    .unwrap()
+                    .unwrap();
 
-                    let msg_expected = file::decoder::decode_transport_to_app(
+                    let msg_expected = crate::codec::file::decoder::decode_transport_to_app(
                         &mut app_id_cache,
                         msg_expected.decoded_transport().unwrap().unwrap(),
                     )
@@ -638,7 +648,10 @@ mod tests {
             let decoded_messages = decoded_messages
                 .iter_mut()
                 .filter_map(|msg| msg.decoded_transport().unwrap())
-                .map(|msg| file::decoder::decode_transport_to_app(&mut app_id_cache, msg).unwrap())
+                .map(|msg| {
+                    crate::codec::file::decoder::decode_transport_to_app(&mut app_id_cache, msg)
+                        .unwrap()
+                })
                 .collect::<Vec<_>>();
 
             similar_asserts::assert_eq!(decoded_messages, messages);
