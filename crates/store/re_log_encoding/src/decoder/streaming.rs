@@ -442,17 +442,58 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
 #[cfg(feature = "testing")]
 #[cfg(all(test, feature = "decoder", feature = "encoder"))]
 mod tests {
-    use re_build_info::CrateVersion;
     use tokio_stream::StreamExt as _;
+
+    use re_build_info::CrateVersion;
+    use re_chunk::RowId;
+    use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
 
     use crate::{
         Compression, EncodingOptions, Serializer,
         codec::file,
-        decoder::{
-            streaming::{StreamingDecoder, StreamingDecoderOptions},
-            tests::fake_log_messages,
-        },
+        decoder::streaming::{StreamingDecoder, StreamingDecoderOptions},
     };
+
+    #[allow(clippy::unwrap_used)] // acceptable for tests
+    fn fake_log_messages() -> Vec<LogMsg> {
+        let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
+
+        let arrow_msg = re_chunk::Chunk::builder("test_entity")
+            .with_archetype(
+                re_chunk::RowId::new(),
+                re_log_types::TimePoint::default().with(
+                    re_log_types::Timeline::new_sequence("blueprint"),
+                    re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
+                ),
+                &re_types::blueprint::archetypes::Background::new(
+                    re_types::blueprint::components::BackgroundKind::SolidColor,
+                )
+                .with_color([255, 0, 0]),
+            )
+            .build()
+            .unwrap()
+            .to_arrow_msg()
+            .unwrap();
+
+        vec![
+            LogMsg::SetStoreInfo(SetStoreInfo {
+                row_id: *RowId::new(),
+                info: StoreInfo::new(
+                    store_id.clone(),
+                    StoreSource::RustSdk {
+                        rustc_version: String::new(),
+                        llvm_version: String::new(),
+                    },
+                ),
+            }),
+            LogMsg::ArrowMsg(store_id.clone(), arrow_msg),
+            LogMsg::BlueprintActivationCommand(re_log_types::BlueprintActivationCommand {
+                blueprint_id: store_id,
+                make_active: true,
+                make_default: true,
+            }),
+        ]
+    }
 
     #[tokio::test]
     async fn test_streaming_decoder_handles_corrupted_input_file() {

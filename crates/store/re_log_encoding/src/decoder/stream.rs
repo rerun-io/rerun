@@ -861,7 +861,7 @@ mod tests_legacy {
 
     use super::*;
 
-    pub fn fake_log_messages() -> Vec<LogMsg> {
+    fn fake_log_messages() -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
 
         let arrow_msg = re_chunk::Chunk::builder("test_entity")
