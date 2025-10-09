@@ -1,17 +1,28 @@
-use std::sync::Arc;
-
+use arrow::datatypes::Schema;
 use async_trait::async_trait;
+use std::any::Any;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::task::{Context, Poll};
 
 use arrow::{array::RecordBatch, datatypes::SchemaRef};
+use datafusion::catalog::Session;
+use datafusion::common::exec_err;
+use datafusion::execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext};
+use datafusion::logical_expr::dml::InsertOp;
+use datafusion::physical_expr::{EquivalenceProperties, Partitioning};
+use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
+use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use datafusion::{
     catalog::TableProvider,
     error::{DataFusionError, Result as DataFusionResult},
 };
+use futures::Stream;
 use tracing::instrument;
 
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::cloud::v1alpha1::ext::EntryDetails;
-use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest};
+use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest, WriteChunksRequest};
 use re_protos::cloud::v1alpha1::{GetTableSchemaRequest, ScanTableRequest, ScanTableResponse};
 use re_redap_client::ConnectionClient;
 
@@ -153,5 +164,227 @@ impl GrpcStreamToTable for TableEntryTableProvider {
             ))?
             .try_into()
             .map_err(|err| DataFusionError::External(Box::new(err)))
+    }
+
+    async fn insert_into(
+        &self,
+        state: &dyn Session,
+        input: Arc<dyn ExecutionPlan>,
+        insert_op: InsertOp,
+    ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
+        let num_partitions = input.properties().output_partitioning().partition_count();
+        Ok(Arc::new(
+            crate::table_entry_provider::TableEntryWriterExec::new(
+                self.client.clone(),
+                input,
+                num_partitions,
+            ),
+        ))
+    }
+}
+
+#[derive(Debug, Clone)]
+struct TableEntryWriterExec {
+    client: ConnectionClient,
+    props: PlanProperties,
+    child: Arc<dyn ExecutionPlan>,
+}
+
+impl DisplayAs for TableEntryWriterExec {
+    fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "TableEntryWriterExec")
+    }
+}
+
+impl TableEntryWriterExec {
+    fn new(
+        client: ConnectionClient,
+        child: Arc<dyn ExecutionPlan>,
+        default_partitioning: usize,
+    ) -> Self {
+        Self {
+            client,
+            props: PlanProperties::new(
+                EquivalenceProperties::new(Arc::new(Schema::empty())),
+                Partitioning::UnknownPartitioning(default_partitioning),
+                EmissionType::Incremental,
+                Boundedness::Bounded,
+            ),
+            child,
+        }
+    }
+}
+
+impl ExecutionPlan for TableEntryWriterExec {
+    fn name(&self) -> &str {
+        "TableEntryWriterExec"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn properties(&self) -> &PlanProperties {
+        &self.props
+    }
+
+    fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {
+        vec![&self.child]
+    }
+
+    fn with_new_children(
+        self: Arc<Self>,
+        children: Vec<Arc<dyn ExecutionPlan>>,
+    ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
+        if children.len() != 1 {
+            return exec_err!(
+                "TableEntryWriterExec expects only one child plan. Found {}",
+                children.len()
+            );
+        }
+
+        let mut result = self.as_ref().clone();
+        result.child = Arc::clone(&children[0]);
+
+        Ok(Arc::new(result))
+    }
+
+    fn execute(
+        &self,
+        partition: usize,
+        context: Arc<TaskContext>,
+    ) -> DataFusionResult<SendableRecordBatchStream> {
+        let inner = self.child.execute(partition, context)?;
+
+        let stream = RecordBatchGrpcOutputStream::new(inner, self.client.clone());
+
+        Ok(Box::pin(stream))
+    }
+}
+
+pub struct RecordBatchGrpcOutputStream<S> {
+    inner: S,
+    grpc_sender: Option<GrpcStreamSender>,
+    error_receiver: tokio::sync::oneshot::Receiver<tonic::Status>,
+    grpc_error: Option<tonic::Status>,
+}
+
+struct GrpcStreamSender {
+    sender: tokio::sync::mpsc::UnboundedSender<WriteChunksRequest>,
+}
+
+impl<S> RecordBatchStream for RecordBatchGrpcOutputStream<S>
+where
+    S: Stream<Item = Result<RecordBatch, DataFusionError>> + Send + Unpin + 'static,
+{
+    fn schema(&self) -> SchemaRef {
+        Arc::new(Schema::empty())
+    }
+}
+
+impl<S> RecordBatchGrpcOutputStream<S>
+where
+    S: Stream<Item = Result<RecordBatch, DataFusionError>> + Send + Unpin + 'static,
+{
+    pub fn new(inner: S, client: ConnectionClient) -> Self {
+        // Create a channel that both we and the gRPC client will use
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+
+        // Create an oneshot channel for error reporting
+        let (error_tx, error_rx) = tokio::sync::oneshot::channel();
+
+        // Start the gRPC streaming call immediately
+        tokio::task::spawn(async move {
+            let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
+            let mut client = client;
+
+            if let Err(e) = client.inner().write_chunks(stream).await {
+                // Send the error back to the stream
+                // Ignore send error if receiver is dropped
+                let _ = error_tx.send(e);
+            }
+        });
+
+        Self {
+            inner,
+            grpc_sender: Some(GrpcStreamSender { sender: tx }),
+            error_receiver: error_rx,
+            grpc_error: None,
+        }
+    }
+}
+
+impl<S> Stream for RecordBatchGrpcOutputStream<S>
+where
+    S: Stream<Item = Result<RecordBatch, DataFusionError>> + Send + Unpin,
+{
+    type Item = Result<RecordBatch, DataFusionError>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        // Check for gRPC errors first (only if we haven't already stored one)
+        if self.grpc_error.is_none() {
+            match Pin::new(&mut self.error_receiver).poll(cx) {
+                Poll::Ready(Ok(status)) => {
+                    // Store the error for potential future use
+                    self.grpc_error = Some(status.clone());
+                    // Return the error immediately
+                    return Poll::Ready(Some(Err(DataFusionError::External(Box::new(status)))));
+                }
+                Poll::Ready(Err(_)) => {
+                    // Oneshot receiver error means sender was dropped (normal completion)
+                }
+                Poll::Pending => {
+                    // No error yet, continue normally
+                }
+            }
+        }
+
+        match Pin::new(&mut self.inner).poll_next(cx) {
+            Poll::Ready(Some(Ok(batch))) => {
+                // Send to gRPC if we have a sender
+                if let Some(ref grpc_sender) = self.grpc_sender {
+                    match batch.encode() {
+                        Ok(chunk) => {
+                            let request = WriteChunksRequest { chunk: Some(chunk) };
+                            // Check if channel is still open
+                            if grpc_sender.sender.send(request).is_err() {
+                                // Channel closed - the gRPC task may have failed
+                                // Check if we have a stored error
+                                if let Some(status) = self.grpc_error.take() {
+                                    return Poll::Ready(Some(Err(DataFusionError::External(
+                                        Box::new(status),
+                                    ))));
+                                } else {
+                                    // Channel closed without error - treat as broken pipe
+                                    return Poll::Ready(Some(Err(DataFusionError::External(
+                                        Box::new(std::io::Error::new(
+                                            std::io::ErrorKind::BrokenPipe,
+                                            "gRPC stream closed unexpectedly",
+                                        )),
+                                    ))));
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            // Conversion error
+                            return Poll::Ready(Some(Err(DataFusionError::External(Box::new(
+                                std::io::Error::new(
+                                    std::io::ErrorKind::InvalidData,
+                                    format!("Failed to convert batch: {}", e),
+                                ),
+                            )))));
+                        }
+                    }
+                }
+
+                Poll::Ready(Some(Ok(batch)))
+            }
+            Poll::Ready(None) => {
+                // Drop the sender to signal end of stream
+                self.grpc_sender = None;
+                Poll::Ready(None)
+            }
+            other => other,
+        }
     }
 }
