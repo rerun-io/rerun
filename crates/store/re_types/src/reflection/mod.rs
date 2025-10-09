@@ -388,6 +388,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <TimeOrigin as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Describes how a time view should be aligned with respect to data or time cursor.",
+                deprecation_summary: None,
+                custom_placeholder: Some(TimeOrigin::default().to_arrow()?),
+                datatype: TimeOrigin::arrow_datatype(),
+                verify_arrow_array: TimeOrigin::verify_arrow_array,
+            },
+        ),
+        (
             <TimelineName as Component>::name(),
             ComponentReflection {
                 docstring_md: "A timeline identified by its name.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -3914,13 +3924,29 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 deprecation_summary: None,
                 scope: Some("blueprint"),
                 view_types: &[],
-                fields: vec![ArchetypeFieldReflection {
-                    name: "link",
-                    display_name: "Link",
-                    component_type: "rerun.blueprint.components.LinkAxis".into(),
-                    docstring_md: "How should the horizontal/X/time axis be linked across multiple plots?",
-                    is_required: false,
-                }],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "link",
+                        display_name: "Link",
+                        component_type: "rerun.blueprint.components.LinkAxis".into(),
+                        docstring_md: "How should the horizontal/X/time axis be linked across multiple plots?\n\nLinking with global will ignore all the other options.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "view_range",
+                        display_name: "View range",
+                        component_type: "rerun.components.Range1D".into(),
+                        docstring_md: "The view range offset of the horizontal/X/time axis, in time units.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "view_origin",
+                        display_name: "View origin",
+                        component_type: "rerun.blueprint.components.TimeOrigin".into(),
+                        docstring_md: "The align of the horizontal/X/time axis.",
+                        is_required: false,
+                    },
+                ],
             },
         ),
         (

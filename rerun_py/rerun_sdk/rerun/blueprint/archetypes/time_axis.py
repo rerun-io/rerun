@@ -9,6 +9,7 @@ from typing import Any
 
 from attrs import define, field
 
+from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
 )
@@ -21,12 +22,18 @@ __all__ = ["TimeAxis"]
 @define(str=False, repr=False, init=False)
 class TimeAxis(Archetype):
     """
-    **Archetype**: Configuration for the time (Y) axis of a plot.
+    **Archetype**: Configuration for the time (X) axis of a plot.
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
-    def __init__(self: Any, *, link: blueprint_components.LinkAxisLike | None = None) -> None:
+    def __init__(
+        self: Any,
+        *,
+        link: blueprint_components.LinkAxisLike | None = None,
+        view_range: datatypes.Range1DLike | None = None,
+        view_origin: blueprint_components.TimeOriginLike | None = None,
+    ) -> None:
         """
         Create a new instance of the TimeAxis archetype.
 
@@ -35,11 +42,17 @@ class TimeAxis(Archetype):
         link:
             How should the horizontal/X/time axis be linked across multiple plots?
 
+            Linking with global will ignore all the other options.
+        view_range:
+            The view range offset of the horizontal/X/time axis, in time units.
+        view_origin:
+            The align of the horizontal/X/time axis.
+
         """
 
         # You can define your own __init__ function as a member of TimeAxisExt in time_axis_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(link=link)
+            self.__attrs_init__(link=link, view_range=view_range, view_origin=view_origin)
             return
         self.__attrs_clear__()
 
@@ -47,6 +60,8 @@ class TimeAxis(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             link=None,
+            view_range=None,
+            view_origin=None,
         )
 
     @classmethod
@@ -62,6 +77,8 @@ class TimeAxis(Archetype):
         *,
         clear_unset: bool = False,
         link: blueprint_components.LinkAxisLike | None = None,
+        view_range: datatypes.Range1DLike | None = None,
+        view_origin: blueprint_components.TimeOriginLike | None = None,
     ) -> TimeAxis:
         """
         Update only some specific fields of a `TimeAxis`.
@@ -73,12 +90,20 @@ class TimeAxis(Archetype):
         link:
             How should the horizontal/X/time axis be linked across multiple plots?
 
+            Linking with global will ignore all the other options.
+        view_range:
+            The view range offset of the horizontal/X/time axis, in time units.
+        view_origin:
+            The align of the horizontal/X/time axis.
+
         """
 
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
                 "link": link,
+                "view_range": view_range,
+                "view_origin": view_origin,
             }
 
             if clear_unset:
@@ -101,6 +126,26 @@ class TimeAxis(Archetype):
         converter=blueprint_components.LinkAxisBatch._converter,  # type: ignore[misc]
     )
     # How should the horizontal/X/time axis be linked across multiple plots?
+    #
+    # Linking with global will ignore all the other options.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    view_range: components.Range1DBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.Range1DBatch._converter,  # type: ignore[misc]
+    )
+    # The view range offset of the horizontal/X/time axis, in time units.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    view_origin: blueprint_components.TimeOriginBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.TimeOriginBatch._converter,  # type: ignore[misc]
+    )
+    # The align of the horizontal/X/time axis.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

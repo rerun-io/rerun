@@ -21,13 +21,21 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Configuration for the time (Y) axis of a plot.
+/// **Archetype**: Configuration for the time (X) axis of a plot.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default)]
 pub struct TimeAxis {
     /// How should the horizontal/X/time axis be linked across multiple plots?
+    ///
+    /// Linking with global will ignore all the other options.
     pub link: Option<SerializedComponentBatch>,
+
+    /// The view range offset of the horizontal/X/time axis, in time units.
+    pub view_range: Option<SerializedComponentBatch>,
+
+    /// The align of the horizontal/X/time axis.
+    pub view_origin: Option<SerializedComponentBatch>,
 }
 
 impl TimeAxis {
@@ -42,6 +50,30 @@ impl TimeAxis {
             component_type: Some("rerun.blueprint.components.LinkAxis".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::view_range`].
+    ///
+    /// The corresponding component is [`crate::components::Range1D`].
+    #[inline]
+    pub fn descriptor_view_range() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
+            component: "TimeAxis:view_range".into(),
+            component_type: Some("rerun.components.Range1D".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::view_origin`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::TimeOrigin`].
+    #[inline]
+    pub fn descriptor_view_origin() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
+            component: "TimeAxis:view_origin".into(),
+            component_type: Some("rerun.blueprint.components.TimeOrigin".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
@@ -50,15 +82,27 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [TimeAxis::descriptor_link()]);
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
+    std::sync::LazyLock::new(|| {
+        [
+            TimeAxis::descriptor_link(),
+            TimeAxis::descriptor_view_range(),
+            TimeAxis::descriptor_view_origin(),
+        ]
+    });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [TimeAxis::descriptor_link()]);
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
+    std::sync::LazyLock::new(|| {
+        [
+            TimeAxis::descriptor_link(),
+            TimeAxis::descriptor_view_range(),
+            TimeAxis::descriptor_view_origin(),
+        ]
+    });
 
 impl TimeAxis {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 1usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 impl ::re_types_core::Archetype for TimeAxis {
@@ -102,7 +146,21 @@ impl ::re_types_core::Archetype for TimeAxis {
         let link = arrays_by_descr
             .get(&Self::descriptor_link())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_link()));
-        Ok(Self { link })
+        let view_range = arrays_by_descr
+            .get(&Self::descriptor_view_range())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_view_range())
+            });
+        let view_origin = arrays_by_descr
+            .get(&Self::descriptor_view_origin())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_view_origin())
+            });
+        Ok(Self {
+            link,
+            view_range,
+            view_origin,
+        })
     }
 }
 
@@ -110,7 +168,14 @@ impl ::re_types_core::AsComponents for TimeAxis {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        std::iter::once(self.link.clone()).flatten().collect()
+        [
+            self.link.clone(),
+            self.view_range.clone(),
+            self.view_origin.clone(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
     }
 }
 
@@ -120,7 +185,11 @@ impl TimeAxis {
     /// Create a new `TimeAxis`.
     #[inline]
     pub fn new() -> Self {
-        Self { link: None }
+        Self {
+            link: None,
+            view_range: None,
+            view_origin: None,
+        }
     }
 
     /// Update only some specific fields of a `TimeAxis`.
@@ -138,13 +207,40 @@ impl TimeAxis {
                 crate::blueprint::components::LinkAxis::arrow_empty(),
                 Self::descriptor_link(),
             )),
+            view_range: Some(SerializedComponentBatch::new(
+                crate::components::Range1D::arrow_empty(),
+                Self::descriptor_view_range(),
+            )),
+            view_origin: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::TimeOrigin::arrow_empty(),
+                Self::descriptor_view_origin(),
+            )),
         }
     }
 
     /// How should the horizontal/X/time axis be linked across multiple plots?
+    ///
+    /// Linking with global will ignore all the other options.
     #[inline]
     pub fn with_link(mut self, link: impl Into<crate::blueprint::components::LinkAxis>) -> Self {
         self.link = try_serialize_field(Self::descriptor_link(), [link]);
+        self
+    }
+
+    /// The view range offset of the horizontal/X/time axis, in time units.
+    #[inline]
+    pub fn with_view_range(mut self, view_range: impl Into<crate::components::Range1D>) -> Self {
+        self.view_range = try_serialize_field(Self::descriptor_view_range(), [view_range]);
+        self
+    }
+
+    /// The align of the horizontal/X/time axis.
+    #[inline]
+    pub fn with_view_origin(
+        mut self,
+        view_origin: impl Into<crate::blueprint::components::TimeOrigin>,
+    ) -> Self {
+        self.view_origin = try_serialize_field(Self::descriptor_view_origin(), [view_origin]);
         self
     }
 }
@@ -153,5 +249,7 @@ impl ::re_byte_size::SizeBytes for TimeAxis {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.link.heap_size_bytes()
+            + self.view_range.heap_size_bytes()
+            + self.view_origin.heap_size_bytes()
     }
 }

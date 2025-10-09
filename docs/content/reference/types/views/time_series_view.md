@@ -10,6 +10,10 @@ A time series view for scalars over time, for use with [`archetypes.Scalars`](ht
 
 ### `axis_x`
 Configures the horizontal axis of the plot.
+
+* `link`: How should the horizontal/X/time axis be linked across multiple plots?
+* `view_range`: The view range offset of the horizontal/X/time axis, in time units.
+* `view_origin`: The align of the horizontal/X/time axis.
 ### `axis_y`
 Configures the vertical axis of the plot.
 

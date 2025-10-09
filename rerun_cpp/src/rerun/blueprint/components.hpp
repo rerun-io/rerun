@@ -37,6 +37,7 @@
 #include "blueprint/components/selected_columns.hpp"
 #include "blueprint/components/tensor_dimension_index_slider.hpp"
 #include "blueprint/components/time_int.hpp"
+#include "blueprint/components/time_origin.hpp"
 #include "blueprint/components/timeline_name.hpp"
 #include "blueprint/components/view_class.hpp"
 #include "blueprint/components/view_fit.hpp"
