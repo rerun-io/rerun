@@ -18,6 +18,7 @@ use datafusion::{
     error::{DataFusionError, Result as DataFusionResult},
 };
 use futures::Stream;
+use tokio::runtime::Handle;
 use tracing::instrument;
 
 use re_log_types::{EntryId, EntryIdOrName};
@@ -33,6 +34,7 @@ use crate::wasm_compat::make_future_send;
 pub struct TableEntryTableProvider {
     client: ConnectionClient,
     table: EntryIdOrName,
+    runtime: Handle,
 
     // cache the table id when resolved
     table_id: Option<EntryId>,
@@ -48,16 +50,17 @@ impl std::fmt::Debug for TableEntryTableProvider {
 }
 
 impl TableEntryTableProvider {
-    pub fn new(client: ConnectionClient, table: impl Into<EntryIdOrName>) -> Self {
+    pub fn new(client: ConnectionClient, table: impl Into<EntryIdOrName>, runtime: Handle) -> Self {
         Self {
             client,
             table: table.into(),
             table_id: None,
+            runtime,
         }
     }
 
-    pub fn new_entry_list(client: ConnectionClient) -> Self {
-        Self::new(client, "__entries")
+    pub fn new_entry_list(client: ConnectionClient, runtime: Handle) -> Self {
+        Self::new(client, "__entries", runtime)
     }
 
     /// This is a convenience function
@@ -178,6 +181,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
                 self.client.clone(),
                 input,
                 num_partitions,
+                self.runtime.clone(),
             ),
         ))
     }
@@ -188,6 +192,7 @@ struct TableEntryWriterExec {
     client: ConnectionClient,
     props: PlanProperties,
     child: Arc<dyn ExecutionPlan>,
+    runtime: Handle,
 }
 
 impl DisplayAs for TableEntryWriterExec {
@@ -201,6 +206,7 @@ impl TableEntryWriterExec {
         client: ConnectionClient,
         child: Arc<dyn ExecutionPlan>,
         default_partitioning: usize,
+        runtime: Handle,
     ) -> Self {
         Self {
             client,
@@ -211,6 +217,7 @@ impl TableEntryWriterExec {
                 Boundedness::Bounded,
             ),
             child,
+            runtime,
         }
     }
 }
@@ -256,7 +263,8 @@ impl ExecutionPlan for TableEntryWriterExec {
     ) -> DataFusionResult<SendableRecordBatchStream> {
         let inner = self.child.execute(partition, context)?;
 
-        let stream = RecordBatchGrpcOutputStream::new(inner, self.client.clone());
+        let stream =
+            RecordBatchGrpcOutputStream::new(inner, self.client.clone(), self.runtime.clone());
 
         Ok(Box::pin(stream))
     }
@@ -286,7 +294,7 @@ impl<S> RecordBatchGrpcOutputStream<S>
 where
     S: Stream<Item = Result<RecordBatch, DataFusionError>> + Send + Unpin + 'static,
 {
-    pub fn new(inner: S, client: ConnectionClient) -> Self {
+    pub fn new(inner: S, client: ConnectionClient, runtime: Handle) -> Self {
         // Create a channel that both we and the gRPC client will use
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -294,7 +302,7 @@ where
         let (error_tx, error_rx) = tokio::sync::oneshot::channel();
 
         // Start the gRPC streaming call immediately
-        tokio::task::spawn(async move {
+        runtime.spawn(async move {
             let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
             let mut client = client;
 
