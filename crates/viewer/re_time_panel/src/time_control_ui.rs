@@ -4,10 +4,7 @@ use re_entity_db::TimesPerTimeline;
 use re_log_types::TimeType;
 use re_ui::{UICommand, UiExt as _, list_item};
 
-use re_viewer_context::{
-    TimeControl,
-    time_control_command::{Looping, PlayState, TimeControlCommand},
-};
+use re_viewer_context::{Looping, PlayState, TimeControl, TimeControlCommand};
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 pub struct TimeControlUi;

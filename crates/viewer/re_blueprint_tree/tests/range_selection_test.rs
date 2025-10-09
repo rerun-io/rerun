@@ -9,9 +9,7 @@ use re_log_types::build_frame_nr;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::archetypes::Points3D;
-use re_viewer_context::{
-    Contents, ViewClass as _, VisitorControlFlow, time_control_command::TimeControlCommand,
-};
+use re_viewer_context::{Contents, TimeControlCommand, ViewClass as _, VisitorControlFlow};
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 #[test]

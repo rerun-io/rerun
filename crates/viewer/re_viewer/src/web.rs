@@ -14,8 +14,8 @@ use re_log::ResultExt as _;
 use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
 use re_viewer_context::{
-    AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, open_url,
-    time_control_command::{PlayState, TimeControlCommand},
+    AsyncRuntimeHandle, PlayState, SystemCommand, SystemCommandSender as _, TimeControlCommand,
+    open_url,
 };
 
 use crate::history::install_popstate_listener;

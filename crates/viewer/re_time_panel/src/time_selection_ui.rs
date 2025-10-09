@@ -2,10 +2,7 @@ use egui::{Color32, CursorIcon, Id, NumExt as _, Rect};
 
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType};
 use re_ui::UiExt as _;
-use re_viewer_context::{
-    TimeControl,
-    time_control_command::{Looping, TimeControlCommand},
-};
+use re_viewer_context::{Looping, TimeControl, TimeControlCommand};
 
 use super::time_ranges_ui::TimeRangesUi;
 

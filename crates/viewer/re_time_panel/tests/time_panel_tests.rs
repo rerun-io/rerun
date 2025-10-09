@@ -11,10 +11,7 @@ use re_log_types::{
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_time_panel::TimePanel;
 use re_types::archetypes::Points2D;
-use re_viewer_context::{
-    CollapseScope, blueprint_timeline,
-    time_control_command::{TimeControlCommand, TimeView},
-};
+use re_viewer_context::{CollapseScope, TimeControlCommand, TimeView, blueprint_timeline};
 use re_viewport_blueprint::ViewportBlueprint;
 
 fn add_sparse_data(test_context: &mut TestContext) {
