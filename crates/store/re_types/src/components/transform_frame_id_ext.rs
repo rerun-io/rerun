@@ -4,7 +4,7 @@ use crate::components::TransformFrameId;
 
 impl TransformFrameId {
     /// The prefix used for implicit transform frames derived from entity paths.
-    pub const ENTITY_HIERARCHY_PREFIX: &str = "rerun#"; // TODO: discuss this with the reviewer.
+    pub const ENTITY_HIERARCHY_PREFIX: &str = "rerun_tf#"; // TODO: discuss this with stakeholders.
 
     /// Create a new [`TransformFrameId`] from a string.
     pub fn new(frame_id_name: &str) -> Self {
