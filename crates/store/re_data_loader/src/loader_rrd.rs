@@ -81,7 +81,9 @@ impl crate::DataLoader for RrdLoader {
                 let retryable_reader = RetryableFileReader::new(&filepath).with_context(|| {
                     format!("failed to create retryable file reader for {filepath:?}")
                 })?;
-                let messages = StreamDecoder::decode_eager(retryable_reader)?;
+                let wait_for_eos = true;
+                let messages =
+                    StreamDecoder::decode_eager_with_opts(retryable_reader, wait_for_eos)?;
 
                 // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
                 std::thread::Builder::new()
