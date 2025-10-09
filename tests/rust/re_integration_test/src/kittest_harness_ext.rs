@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::BTreeSet, sync::Arc};
 
 use egui_kittest::{SnapshotOptions, kittest::Queryable as _};
 use re_sdk::{
@@ -20,6 +20,7 @@ use re_viewer::{
     },
     viewer_test_utils::AppTestingExt as _,
 };
+use re_viewer_context::ContainerId;
 use re_viewport_blueprint::ViewportBlueprint;
 
 // Kittest harness utilities specific to the Rerun app.
@@ -38,6 +39,12 @@ pub trait HarnessExt {
         &mut self,
         setup_blueprint: impl FnOnce(&ViewerContext<'_>, &mut ViewportBlueprint) + 'static,
     );
+
+    fn add_blueprint_container(
+        &mut self,
+        kind: egui_tiles::ContainerKind,
+        parent_container: Option<re_viewer_context::ContainerId>,
+    ) -> re_viewer_context::ContainerId;
 
     // Logs an entity to the active recording.
     fn log_entity(
@@ -248,5 +255,38 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
             snapshot_name,
             &SnapshotOptions::new().failed_pixel_count_threshold(20),
         );
+    }
+
+    fn add_blueprint_container(
+        &mut self,
+        kind: egui_tiles::ContainerKind,
+        parent_container: Option<re_viewer_context::ContainerId>,
+    ) -> ContainerId {
+        let old_container_ids = Arc::new(std::sync::Mutex::new(BTreeSet::<ContainerId>::new()));
+        let old_container_ids_clone = old_container_ids.clone();
+        self.setup_viewport_blueprint(move |_viewer_context, blueprint| {
+            let ids: Vec<ContainerId> = blueprint.containers.keys().copied().collect();
+            old_container_ids_clone.lock().unwrap().extend(ids);
+        });
+
+        self.setup_viewport_blueprint(|_viewer_context, blueprint| {
+            blueprint.add_container(egui_tiles::ContainerKind::Vertical, None);
+        });
+
+        let new_container_ids = Arc::new(std::sync::Mutex::new(BTreeSet::new()));
+        let new_container_ids_clone = new_container_ids.clone();
+        self.setup_viewport_blueprint(move |_viewer_context, blueprint| {
+            let ids: Vec<ContainerId> = blueprint.containers.keys().map(|c| c.clone()).collect();
+            new_container_ids_clone.lock().unwrap().extend(ids);
+        });
+        self.run_ok();
+
+        let new_container_ids = new_container_ids.lock().unwrap();
+        let old_container_ids = old_container_ids.lock().unwrap();
+        let new_container_ids = new_container_ids
+            .difference(&old_container_ids)
+            .next()
+            .unwrap();
+        new_container_ids.clone()
     }
 }

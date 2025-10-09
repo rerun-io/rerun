@@ -8898,6 +8898,7 @@ version = "0.26.0-alpha.1+dev"
 dependencies = [
  "egui",
  "egui_kittest",
+ "egui_tiles",
  "re_protos",
  "re_redap_client",
  "re_sdk",

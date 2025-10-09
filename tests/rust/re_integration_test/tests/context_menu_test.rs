@@ -70,3 +70,48 @@ pub async fn test_blueprint_view_context() {
 
     harness.snapshot_app("blueprint_view_context");
 }
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_container_selection_context_menu() {
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
+    harness.init_recording();
+    harness.toggle_selection_panel();
+
+    // Log some data
+    harness.log_entity("txt/hello/world", |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::STATIC,
+            &re_types::archetypes::TextDocument::new("Hello World!"),
+        )
+    });
+
+    // Set up the viewport blueprint
+    harness.clear_current_blueprint();
+
+    let container_id = harness.add_blueprint_container(egui_tiles::ContainerKind::Vertical, None);
+
+    harness.setup_viewport_blueprint(move |_viewer_context, blueprint| {
+        blueprint.add_views(
+            [
+                ViewBlueprint::new_with_root_wildcard(TextDocumentView::identifier()),
+                ViewBlueprint::new_with_root_wildcard(TextDocumentView::identifier()),
+            ]
+            .into_iter(),
+            Some(container_id),
+            None,
+        );
+    });
+
+    harness.click_label("Vertical container");
+    harness.toggle_selection_panel();
+
+    // There are multiple nodes with that label, second and third are
+    // the ones on the selection panel.
+    harness.right_click_nth_label("/", 1);
+    harness.snapshot_app("container_selection_context_menu_1");
+
+    harness.key_press(egui::Key::Escape);
+    harness.right_click_nth_label("/", 2);
+    harness.snapshot_app("container_selection_context_menu_2");
+}

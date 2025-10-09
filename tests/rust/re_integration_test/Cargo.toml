@@ -12,6 +12,7 @@ publish = false
 
 [dependencies]
 egui_kittest.workspace = true
+egui_tiles.workspace = true
 egui.workspace = true
 re_redap_client.workspace = true
 re_protos.workspace = true
