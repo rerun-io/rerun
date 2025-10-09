@@ -74,7 +74,7 @@ impl ServerHandle {
     }
 
     /// Signal to the gRPC server to shutdown, and then wait for it.
-    pub async fn shutdown_blocking(mut self) {
+    pub async fn shutdown_and_wait(mut self) {
         if let Some(shutdown) = self.shutdown.take() {
             shutdown.send(()).ok();
             self.wait_for_shutdown().await;
