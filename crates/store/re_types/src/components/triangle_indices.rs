@@ -24,53 +24,21 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct TriangleIndices(pub crate::datatypes::UVec3D);
 
-impl ::re_types_core::Component for TriangleIndices {
+impl ::re_types_core::WrapperComponent for TriangleIndices {
+    type Datatype = crate::datatypes::UVec3D;
+
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.TriangleIndices".into()
     }
+
+    #[inline]
+    fn into_inner(self) -> Self::Datatype {
+        self.0
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(TriangleIndices);
-
-impl ::re_types_core::Loggable for TriangleIndices {
-    #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
-        crate::datatypes::UVec3D::arrow_datatype()
-    }
-
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
-    where
-        Self: Clone + 'a,
-    {
-        crate::datatypes::UVec3D::to_arrow_opt(data.into_iter().map(|datum| {
-            datum.map(|datum| match datum.into() {
-                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
-                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
-            })
-        }))
-    }
-
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
-        crate::datatypes::UVec3D::from_arrow_opt(arrow_data)
-            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
-    }
-
-    #[inline]
-    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>>
-    where
-        Self: Sized,
-    {
-        crate::datatypes::UVec3D::from_arrow(arrow_data).map(bytemuck::cast_vec)
-    }
-}
 
 impl<T: Into<crate::datatypes::UVec3D>> From<T> for TriangleIndices {
     fn from(v: T) -> Self {
