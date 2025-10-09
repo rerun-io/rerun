@@ -6,6 +6,7 @@
 
 use std::sync::Arc;
 
+use arrow::datatypes::Fields;
 use re_chunk::{
     ArrowArray as _,
     external::arrow::{
@@ -31,7 +32,11 @@ impl AccessField {
             .downcast_ref::<StructArray>()
             .ok_or_else(|| Error::TypeMismatch {
                 actual: field.data_type().clone(),
-                expected: "StructArray",
+                // TODO(grtlr): The struct should not actually be empty, but rather
+                // contain the field that we're looking for. But we don't know it's
+                // type here. When we implement schemas for ops, we probably need
+                // to create our own wrapper types (similar to Datafusion).
+                expected: DataType::Struct(Fields::empty()),
             })?;
 
         let column = struct_array

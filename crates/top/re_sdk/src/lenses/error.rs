@@ -7,7 +7,7 @@ pub enum Error {
     #[error("expected data type `{expected}` but found data type `{actual}`")]
     TypeMismatch {
         actual: DataType,
-        expected: &'static str,
+        expected: DataType,
     },
 
     #[error("missing field `{expected}, found {}`", found.join(", "))]
