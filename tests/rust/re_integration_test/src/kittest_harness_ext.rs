@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use egui::accesskit::Toggled;
+use egui_kittest::kittest::NodeT as _;
 use egui_kittest::{SnapshotOptions, kittest::Queryable as _};
 use re_sdk::{
     Component as _, ComponentDescriptor, EntityPath, EntityPathPart, RecordingInfo, StoreId,
@@ -10,24 +12,17 @@ use re_sdk::{
     },
     log::Chunk,
 };
-use re_ui::{UICommand, UICommandSender as _};
 use re_viewer::{
-    AppBlueprint, SystemCommand, SystemCommandSender as _,
+    SystemCommand, SystemCommandSender as _,
     external::{
         re_chunk::{ChunkBuilder, LatestAtQuery},
         re_entity_db::EntityDb,
         re_types,
-        re_viewer_context::{self, BlueprintUndoState, ViewerContext, blueprint_timeline},
+        re_viewer_context::{self, ViewerContext, blueprint_timeline},
     },
     viewer_test_utils::AppTestingExt as _,
 };
 use re_viewport_blueprint::ViewportBlueprint;
-
-pub struct PanelStates {
-    pub blueprint_panel_open: bool,
-    pub selection_panel_open: bool,
-    pub time_panel_open: bool,
-}
 
 // Kittest harness utilities specific to the Rerun app.
 pub trait HarnessExt {
@@ -60,12 +55,22 @@ pub trait HarnessExt {
     // Takes a snapshot of the current app state with good-enough snapshot options.
     fn snapshot_app(&mut self, snapshot_name: &str);
 
-    // Opens / closes app panels
-    fn set_panel_states(&mut self, panel_states: PanelStates);
-
     // Prints the current viewer state.
     #[allow(unused)]
     fn debug_viewer_state(&mut self);
+
+    // Opens / closes app panels
+    fn set_panel_opened(&mut self, panel_label: &str, opened: bool);
+
+    fn set_blueprint_panel_opened(&mut self, opened: bool) {
+        self.set_panel_opened("Blueprint panel toggle", opened);
+    }
+    fn set_selection_panel_opened(&mut self, opened: bool) {
+        self.set_panel_opened("Selection panel toggle", opened);
+    }
+    fn set_time_panel_opened(&mut self, opened: bool) {
+        self.set_panel_opened("Time panel toggle", opened);
+    }
 }
 
 impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
@@ -229,38 +234,14 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         );
     }
 
-    fn set_panel_states(&mut self, panel_states: PanelStates) {
-        let egui_ctx = self.ctx.clone();
-        let app = self.state_mut();
-        let blueprint_db = app
-            .testonly_get_store_hub()
-            .active_blueprint()
-            .expect("active_blueprint should be initialized");
-        let app_blueprint = AppBlueprint::new(
-            Some(blueprint_db),
-            &BlueprintUndoState::default_query(),
-            &egui_ctx,
-            None,
-        );
-        let toggle_blueprint = app_blueprint.blueprint_panel_state().is_expanded()
-            != panel_states.blueprint_panel_open;
-        let toggle_selection = app_blueprint.selection_panel_state().is_expanded()
-            != panel_states.selection_panel_open;
-        let toggle_time =
-            app_blueprint.time_panel_state().is_expanded() != panel_states.time_panel_open;
-
-        if toggle_blueprint {
-            app.command_sender.send_ui(UICommand::ToggleBlueprintPanel);
+    fn set_panel_opened(&mut self, panel_label: &str, opened: bool) {
+        let node = self.get_by_label(panel_label);
+        let is_open = Some(Toggled::True) == node.accesskit_node().data().toggled();
+        if is_open != opened {
+            self.click_label(panel_label);
         }
-        if toggle_selection {
-            app.command_sender.send_ui(UICommand::ToggleSelectionPanel);
-        }
-        if toggle_time {
-            app.command_sender.send_ui(UICommand::ToggleTimePanel);
-        }
-
-        // We need two cycles: one that handles commands and one that updates the UI.
-        self.run_ok();
+        // The toggle button is hovered now, move the pointer away
+        self.input_mut().events.push(egui::Event::PointerGone);
         self.run_ok();
     }
 }

@@ -1,7 +1,7 @@
 use std::hash::Hash;
 
 use egui::{
-    CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Widget as _, WidgetText,
+    CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Widget as _, WidgetInfo, WidgetText,
     emath::{GuiRounding as _, Rot2},
     pos2,
 };
@@ -140,16 +140,20 @@ pub trait UiExt {
         } else {
             self.ui().visuals().widgets.noninteractive.fg_stroke.color
         };
+        let alt_text = alt_text.into();
         let mut response = self.ui_mut().add(egui::Button::new(
             icon.as_image()
                 .fit_to_exact_size(size_points)
-                .alt_text(alt_text.into())
+                .alt_text(alt_text.clone())
                 .tint(tint),
         ));
         if response.clicked() {
             *selected = !*selected;
             response.mark_changed();
         }
+        response.widget_info(|| {
+            WidgetInfo::selected(egui::WidgetType::Button, true, *selected, alt_text.clone())
+        });
         response
     }
 

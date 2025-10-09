@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use egui_kittest::{SnapshotResults, kittest::Queryable as _};
 
-use re_integration_test::{HarnessExt as _, PanelStates, TestServer};
+use re_integration_test::{HarnessExt as _, TestServer};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 #[tokio::test(flavor = "multi_thread")]
@@ -12,11 +12,9 @@ pub async fn dataset_ui_test() {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
     let mut snapshot_results = SnapshotResults::new();
 
-    harness.set_panel_states(PanelStates {
-        blueprint_panel_open: true,
-        selection_panel_open: false,
-        time_panel_open: false,
-    });
+    harness.set_blueprint_panel_opened(true);
+    harness.set_selection_panel_opened(false);
+    harness.set_time_panel_opened(false);
 
     harness.get_by_label("Add…").click();
     harness.run_ok();
