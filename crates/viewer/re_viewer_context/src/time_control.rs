@@ -589,10 +589,14 @@ impl TimeControl {
                     self.timeline = ActiveTimeline::Pending(Timeline::new_sequence(*timeline_name));
                 }
 
-                if let Some(full_valid_range) = self.full_valid_range(times_per_timeline) {
+                if let Some(full_valid_range) = self.full_valid_range(times_per_timeline)
+                    && !self.states.contains_key(timeline_name)
+                {
                     self.states
-                        .entry(*timeline_name)
-                        .or_insert_with(|| TimeState::new(full_valid_range.min));
+                        .insert(*timeline_name, TimeState::new(full_valid_range.min));
+                    if let Some(blueprint_ctx) = blueprint_ctx {
+                        blueprint_ctx.set_time(full_valid_range.min);
+                    }
                 }
 
                 NeedsRepaint::Yes
