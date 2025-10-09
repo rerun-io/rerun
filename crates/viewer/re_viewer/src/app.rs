@@ -466,90 +466,87 @@ impl App {
     /// Update the active [`re_viewer_context::TimeControl`]. And if the blueprint inspection
     /// panel is open, also open that time control.
     fn move_time(&mut self) {
-        if let Some(store_hub) = &self.store_hub &&
-            let Some(store_id) = store_hub.active_store_id()
-                && let Some(blueprint) =
-                    store_hub.active_blueprint_for_app(store_id.application_id())
-            {
-                let default_blueprint =
-                    store_hub.default_blueprint_for_app(store_id.application_id());
+        if let Some(store_hub) = &self.store_hub
+            && let Some(store_id) = store_hub.active_store_id()
+            && let Some(blueprint) = store_hub.active_blueprint_for_app(store_id.application_id())
+        {
+            let default_blueprint = store_hub.default_blueprint_for_app(store_id.application_id());
 
-                let blueprint_query = self
-                    .state
-                    .get_blueprint_query_for_viewer(blueprint)
-                    .unwrap_or(re_chunk::LatestAtQuery::latest(
-                        re_viewer_context::blueprint_timeline(),
-                    ));
+            let blueprint_query = self
+                .state
+                .get_blueprint_query_for_viewer(blueprint)
+                .unwrap_or(re_chunk::LatestAtQuery::latest(
+                    re_viewer_context::blueprint_timeline(),
+                ));
 
-                let bp_ctx = AppBlueprintCtx {
-                    command_sender: &self.command_sender,
-                    current_blueprint: blueprint,
-                    default_blueprint,
-                    blueprint_query,
-                };
+            let bp_ctx = AppBlueprintCtx {
+                command_sender: &self.command_sender,
+                current_blueprint: blueprint,
+                default_blueprint,
+                blueprint_query,
+            };
 
-                let dt = self.egui_ctx.input(|i| i.stable_dt);
-                if let Some(recording) = store_hub.active_recording() {
-                    // Are we still connected to the data source for the current store?
-                    let more_data_is_coming =
-                        recording.data_source.as_ref().is_some_and(|store_source| {
-                            self.rx_log
-                                .sources()
-                                .iter()
-                                .any(|s| s.as_ref() == store_source)
-                        });
+            let dt = self.egui_ctx.input(|i| i.stable_dt);
+            if let Some(recording) = store_hub.active_recording() {
+                // Are we still connected to the data source for the current store?
+                let more_data_is_coming =
+                    recording.data_source.as_ref().is_some_and(|store_source| {
+                        self.rx_log
+                            .sources()
+                            .iter()
+                            .any(|s| s.as_ref() == store_source)
+                    });
 
-                    let time_ctrl = self.state.time_control_mut(recording, &bp_ctx);
+                let time_ctrl = self.state.time_control_mut(recording, &bp_ctx);
 
-                    let should_diff_state = false;
-                    let response = time_ctrl.update(
-                        recording.times_per_timeline(),
-                        dt,
-                        more_data_is_coming,
-                        should_diff_state,
-                        Some(&bp_ctx),
-                    );
+                let should_diff_state = false;
+                let response = time_ctrl.update(
+                    recording.times_per_timeline(),
+                    dt,
+                    more_data_is_coming,
+                    should_diff_state,
+                    Some(&bp_ctx),
+                );
 
-                    if response.needs_repaint == NeedsRepaint::Yes {
-                        self.egui_ctx.request_repaint();
-                    }
-
-                    handle_time_ctrl_event(recording, self.event_dispatcher.as_ref(), &response);
+                if response.needs_repaint == NeedsRepaint::Yes {
+                    self.egui_ctx.request_repaint();
                 }
 
-                if self.app_options().inspect_blueprint_timeline {
-                    let more_data_is_coming = true;
-                    let should_diff_state = false;
-                    // We ignore most things from the time control response for the blueprint but still
-                    // need to repaint if requested.
-                    let re_viewer_context::TimeControlResponse {
-                        needs_repaint,
-                        playing_change: _,
-                        timeline_change: _,
-                        time_change: _,
-                    } = self.state.blueprint_time_control.update(
-                        bp_ctx.current_blueprint.times_per_timeline(),
-                        dt,
-                        more_data_is_coming,
-                        should_diff_state,
-                        None::<&AppBlueprintCtx<'_>>,
-                    );
+                handle_time_ctrl_event(recording, self.event_dispatcher.as_ref(), &response);
+            }
 
-                    if needs_repaint == NeedsRepaint::Yes {
-                        self.egui_ctx.request_repaint();
-                    }
+            if self.app_options().inspect_blueprint_timeline {
+                let more_data_is_coming = true;
+                let should_diff_state = false;
+                // We ignore most things from the time control response for the blueprint but still
+                // need to repaint if requested.
+                let re_viewer_context::TimeControlResponse {
+                    needs_repaint,
+                    playing_change: _,
+                    timeline_change: _,
+                    time_change: _,
+                } = self.state.blueprint_time_control.update(
+                    bp_ctx.current_blueprint.times_per_timeline(),
+                    dt,
+                    more_data_is_coming,
+                    should_diff_state,
+                    None::<&AppBlueprintCtx<'_>>,
+                );
 
-                    let undo_state = self
-                        .state
-                        .blueprint_undo_state
-                        .entry(blueprint.store_id().clone())
-                        .or_default();
-                    // Apply changes to the blueprint time to the undo-state:
-                    if self.state.blueprint_time_control.play_state() == PlayState::Following {
-                        undo_state.redo_all();
-                    } else if let Some(time) = self.state.blueprint_time_control.time_int() {
-                        undo_state.set_redo_time(time);
-                    }
+                if needs_repaint == NeedsRepaint::Yes {
+                    self.egui_ctx.request_repaint();
+                }
+
+                let undo_state = self
+                    .state
+                    .blueprint_undo_state
+                    .entry(blueprint.store_id().clone())
+                    .or_default();
+                // Apply changes to the blueprint time to the undo-state:
+                if self.state.blueprint_time_control.play_state() == PlayState::Following {
+                    undo_state.redo_all();
+                } else if let Some(time) = self.state.blueprint_time_control.time_int() {
+                    undo_state.set_redo_time(time);
                 }
             }
         }
