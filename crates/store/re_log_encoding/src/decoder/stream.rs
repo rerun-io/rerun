@@ -7,9 +7,7 @@ use re_build_info::CrateVersion;
 use crate::codec::Serializer;
 use crate::codec::file::EncodingOptions;
 use crate::codec::file::FileHeader;
-use crate::decoder::{
-    ApplicationIdInjector, CachingApplicationIdInjector, DecodeError, options_from_bytes,
-};
+use crate::decoder::{ApplicationIdInjector, CachingApplicationIdInjector, DecodeError};
 
 // ---
 
@@ -262,7 +260,7 @@ impl<T: FileEncoded> Decoder<T> {
                     re_log::trace!(?header, "Decoding StreamHeader");
 
                     // header contains version and compression options
-                    let (version, options) = match options_from_bytes(header) {
+                    let (version, options) = match FileHeader::options_from_bytes(header) {
                         Ok(ok) => ok,
                         Err(err) => {
                             // We expected a header, but didn't find one!

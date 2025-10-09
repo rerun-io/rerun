@@ -70,7 +70,6 @@ pub enum OptionsError {
     UnknownSerializer(u8),
 }
 
-#[cfg(any(feature = "encoder", feature = "decoder"))]
 #[derive(Debug, Clone, Copy)]
 pub struct FileHeader {
     #[allow(dead_code)] // only used with the "encoder" feature
@@ -79,9 +78,7 @@ pub struct FileHeader {
     pub options: EncodingOptions,
 }
 
-#[cfg(any(feature = "encoder", feature = "decoder"))]
 impl FileHeader {
-    #[cfg(feature = "decoder")]
     pub const SIZE: usize = 12;
 
     #[cfg(feature = "encoder")]
@@ -124,6 +121,60 @@ impl FileHeader {
             version,
             options,
         })
+    }
+}
+
+// ---
+
+impl FileHeader {
+    #[cfg(feature = "decoder")]
+    pub fn options_from_bytes(
+        bytes: &[u8],
+    ) -> Result<(re_build_info::CrateVersion, EncodingOptions), crate::DecodeError> {
+        let mut read = std::io::Cursor::new(bytes);
+
+        let Self {
+            fourcc: _, // Checked in Self::decode
+            version,
+            options,
+        } = Self::decode(&mut read)?;
+
+        warn_on_version_mismatch(version)?;
+
+        match options.serializer {
+            Serializer::Protobuf => {}
+        }
+
+        Ok((re_build_info::CrateVersion::from_bytes(version), options))
+    }
+}
+
+#[cfg(feature = "decoder")]
+fn warn_on_version_mismatch(encoded_version: [u8; 4]) -> Result<(), crate::DecodeError> {
+    use re_build_info::CrateVersion;
+
+    // We used 0000 for all .rrd files up until 2023-02-27, post 0.2.0 release:
+    let encoded_version = if encoded_version == [0, 0, 0, 0] {
+        CrateVersion::new(0, 2, 0)
+    } else {
+        CrateVersion::from_bytes(encoded_version)
+    };
+
+    if encoded_version.major == 0 && encoded_version.minor < 23 {
+        // We broke compatibility for 0.23 for (hopefully) the last time.
+        Err(crate::DecodeError::IncompatibleRerunVersion {
+            file: Box::new(encoded_version),
+            local: Box::new(CrateVersion::LOCAL),
+        })
+    } else if encoded_version <= CrateVersion::LOCAL {
+        // Loading old files should be fine, and if it is not, the chunk migration in re_sorbet should already log a warning.
+        Ok(())
+    } else {
+        re_log::warn_once!(
+            "Found data stream with Rerun version {encoded_version} which is newer than the local Rerun version ({}). This file may contain data that is not compatible with this version of Rerun. Consider updating Rerun.",
+            CrateVersion::LOCAL
+        );
+        Ok(())
     }
 }
 

@@ -2,7 +2,6 @@
 
 mod app_id_injector;
 mod errors;
-mod helpers;
 mod stream;
 mod streaming;
 
@@ -11,7 +10,6 @@ pub use self::{
         ApplicationIdInjector, CachingApplicationIdInjector, DummyApplicationIdInjector,
     },
     errors::{DecodeError, NotAnRrdError},
-    helpers::options_from_bytes,
     stream::{Decoder, DecoderApp, DecoderIterator, DecoderTransport, FileEncoded},
     streaming::{StreamingDecoder, StreamingDecoderOptions, StreamingLogMsg},
 };

@@ -11,7 +11,7 @@ use re_log::external::log::warn;
 use crate::{
     EncodingOptions,
     codec::file::{FileHeader, MessageHeader, MessageKind},
-    decoder::{DecodeError, options_from_bytes},
+    decoder::DecodeError,
 };
 
 /// A transport-level `LogMsg` with extra contextual information.
@@ -172,7 +172,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             .await
             .map_err(DecodeError::Read)?;
 
-        let (version, encoding_opts) = options_from_bytes(&data)?;
+        let (version, encoding_opts) = FileHeader::options_from_bytes(&data)?;
 
         Ok(Self {
             version,
@@ -341,7 +341,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                 let data = &unprocessed_bytes[..FileHeader::SIZE];
                 // We've found another file header in the middle of the stream, it's time to switch
                 // gears and start over on this new file.
-                match options_from_bytes(data) {
+                match FileHeader::options_from_bytes(data) {
                     Ok((version, options)) => {
                         self.version = CrateVersion::max(self.version, version);
                         self.encoding_opts = options;
