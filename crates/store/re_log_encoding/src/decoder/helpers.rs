@@ -4,31 +4,6 @@ use crate::{EncodingOptions, FileHeader, Serializer, decoder::DecodeError};
 
 // ---
 
-/// Read encoding options from the beginning of the stream.
-pub fn read_options(
-    reader: &mut impl std::io::Read,
-) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
-    let mut data = [0_u8; FileHeader::SIZE];
-    reader.read_exact(&mut data).map_err(DecodeError::Read)?;
-
-    options_from_bytes(&data)
-}
-
-/// Read encoding options from the beginning of the stream asynchronously.
-pub async fn read_options_async(
-    reader: &mut (impl tokio::io::AsyncRead + Unpin),
-) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
-    let mut data = [0_u8; FileHeader::SIZE];
-
-    use tokio::io::AsyncReadExt as _;
-    reader
-        .read_exact(&mut data)
-        .await
-        .map_err(DecodeError::Read)?;
-
-    options_from_bytes(&data)
-}
-
 pub fn options_from_bytes(bytes: &[u8]) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
     let mut read = std::io::Cursor::new(bytes);
 

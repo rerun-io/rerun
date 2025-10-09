@@ -2,7 +2,7 @@
 
 mod helpers;
 
-pub use self::helpers::{options_from_bytes, read_options, read_options_async};
+pub use self::helpers::options_from_bytes;
 
 pub mod stream;
 
