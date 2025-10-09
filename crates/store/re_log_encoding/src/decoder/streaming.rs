@@ -9,11 +9,10 @@ use re_chunk::Span;
 use re_log::external::log::warn;
 
 use crate::{
-    EncodingOptions,
+    EncodingOptions, FileHeader,
     codec::file::{self, MessageKind},
+    decoder::{DecodeError, options_from_bytes},
 };
-
-use super::{DecodeError, FileHeader, options_from_bytes};
 
 /// A transport-level `LogMsg` with extra contextual information.
 ///
