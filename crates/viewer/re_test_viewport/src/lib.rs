@@ -25,10 +25,10 @@ pub trait TestContextExt {
     fn ui_for_single_view(&self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>, view_id: ViewId);
 
     /// [`TestContext::run`] inside a central panel that displays the ui for a single given view.
-    fn run_with_single_view(&mut self, ui: &mut egui::Ui, view_id: ViewId);
+    fn run_with_single_view(&self, ui: &mut egui::Ui, view_id: ViewId);
 
     fn run_view_ui_and_save_snapshot(
-        &mut self,
+        &self,
         view_id: ViewId,
         snapshot_name: &str,
         size: egui::Vec2,
@@ -74,7 +74,7 @@ impl TestContextExt for TestContext {
                     viewport_blueprint.save_to_blueprint_store(ctx);
                 });
 
-                self.handle_system_commands();
+                self.handle_system_commands(egui_ctx);
 
                 // Reload the blueprint store and execute all view queries.
                 let blueprint_query = self.blueprint_query.clone();
@@ -125,7 +125,7 @@ impl TestContextExt for TestContext {
                             resolver.update_overrides(
                                 ctx.store_context.blueprint,
                                 ctx.blueprint_query,
-                                ctx.rec_cfg.time_ctrl.read().timeline(),
+                                ctx.time_ctrl.timeline(),
                                 class_registry,
                                 &mut data_query_result,
                                 self.view_states.lock().get_mut_or_create(*view_id, class),
@@ -173,16 +173,16 @@ impl TestContextExt for TestContext {
     }
 
     /// [`TestContext::run`] for a single view.
-    fn run_with_single_view(&mut self, ui: &mut egui::Ui, view_id: ViewId) {
+    fn run_with_single_view(&self, ui: &mut egui::Ui, view_id: ViewId) {
         self.run_ui(ui, |ctx, ui| {
             self.ui_for_single_view(ui, ctx, view_id);
         });
 
-        self.handle_system_commands();
+        self.handle_system_commands(ui.ctx());
     }
 
     fn run_view_ui_and_save_snapshot(
-        &mut self,
+        &self,
         view_id: ViewId,
         snapshot_name: &str,
         size: egui::Vec2,

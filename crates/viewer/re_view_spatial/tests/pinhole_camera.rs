@@ -27,14 +27,10 @@ pub fn test_pinhole_camera() {
         blueprint.add_view_at_root(view)
     });
 
-    run_view_ui_and_save_snapshot(&mut test_context, view_id, egui::vec2(300.0, 300.0));
+    run_view_ui_and_save_snapshot(&test_context, view_id, egui::vec2(300.0, 300.0));
 }
 
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    size: egui::Vec2,
-) {
+fn run_view_ui_and_save_snapshot(test_context: &TestContext, view_id: ViewId, size: egui::Vec2) {
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(size)

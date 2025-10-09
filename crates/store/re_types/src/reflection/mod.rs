@@ -327,6 +327,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <TimeInt as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A reference to a time.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: TimeInt::arrow_datatype(),
+                verify_arrow_array: TimeInt::verify_arrow_array,
+            },
+        ),
+        (
             <TimelineName as Component>::name(),
             ComponentReflection {
                 docstring_md: "A timeline identified by its name.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -3615,7 +3625,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     name: "state",
                     display_name: "State",
                     component_type: "rerun.blueprint.components.PanelState".into(),
-                    docstring_md: "Current state of the panels.",
+                    docstring_md: "Current state of the panel.",
                     is_required: false,
                 }],
             },
@@ -3772,6 +3782,38 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     docstring_md: "How should the horizontal/X/time axis be linked across multiple plots?",
                     is_required: false,
                 }],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.TimePanelBlueprint"),
+            ArchetypeReflection {
+                display_name: "Time panel blueprint",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "state",
+                        display_name: "State",
+                        component_type: "rerun.blueprint.components.PanelState".into(),
+                        docstring_md: "Current state of the panel.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "timeline",
+                        display_name: "Timeline",
+                        component_type: "rerun.blueprint.components.TimelineName".into(),
+                        docstring_md: "What timeline the panel is on.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "time",
+                        display_name: "Time",
+                        component_type: "rerun.blueprint.components.TimeInt".into(),
+                        docstring_md: "What time the time cursor should be on.",
+                        is_required: false,
+                    },
+                ],
             },
         ),
         (

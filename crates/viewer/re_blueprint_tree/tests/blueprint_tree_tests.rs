@@ -6,11 +6,14 @@ use egui_kittest::{OsThreshold, SnapshotOptions};
 use re_blueprint_tree::BlueprintTree;
 use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
-use re_log_types::{Timeline, build_frame_nr};
+use re_log_types::build_frame_nr;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::archetypes::Points3D;
-use re_viewer_context::{CollapseScope, RecommendedView, ViewClass as _, ViewId};
+use re_viewer_context::{
+    CollapseScope, RecommendedView, ViewClass as _, ViewId,
+    time_control_command::TimeControlCommand,
+};
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 #[test]
@@ -28,7 +31,7 @@ fn basic_blueprint_panel_should_match_snapshot() {
     });
 
     let blueprint_tree = BlueprintTree::default();
-    run_blueprint_panel_and_save_snapshot(test_context, blueprint_tree, "basic_blueprint_panel");
+    run_blueprint_panel_and_save_snapshot(&test_context, blueprint_tree, "basic_blueprint_panel");
 }
 
 // ---
@@ -61,7 +64,10 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
         let mut blueprint_tree = BlueprintTree::default();
 
         // set the current timeline to the timeline where data was logged to
-        test_context.set_active_timeline(Timeline::new_sequence("frame_nr"));
+        test_context.send_time_commands(
+            test_context.active_store_id(),
+            [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
+        );
 
         let mut harness = test_context
             .setup_kittest_for_rendering()
@@ -83,7 +89,7 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
                     blueprint_tree.show(viewer_ctx, &blueprint, ui);
                 });
 
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
         harness.run();
@@ -103,7 +109,7 @@ fn blueprint_panel_filter_active_inside_origin_should_match_snapshot() {
     let (test_context, blueprint_tree) = setup_filter_test(Some("left"));
 
     run_blueprint_panel_and_save_snapshot(
-        test_context,
+        &test_context,
         blueprint_tree,
         "blueprint_panel_filter_active_inside_origin",
     );
@@ -114,7 +120,7 @@ fn blueprint_panel_filter_active_outside_origin_should_match_snapshot() {
     let (test_context, blueprint_tree) = setup_filter_test(Some("out"));
 
     run_blueprint_panel_and_save_snapshot(
-        test_context,
+        &test_context,
         blueprint_tree,
         "blueprint_panel_filter_active_outside_origin",
     );
@@ -125,7 +131,7 @@ fn blueprint_panel_filter_active_above_origin_should_match_snapshot() {
     let (test_context, blueprint_tree) = setup_filter_test(Some("path"));
 
     run_blueprint_panel_and_save_snapshot(
-        test_context,
+        &test_context,
         blueprint_tree,
         "blueprint_panel_filter_active_above_origin",
     );
@@ -182,12 +188,15 @@ fn add_point_to_chunk_builder(builder: ChunkBuilder) -> ChunkBuilder {
 }
 
 fn run_blueprint_panel_and_save_snapshot(
-    mut test_context: TestContext,
+    test_context: &TestContext,
     mut blueprint_tree: BlueprintTree,
     snapshot_name: &str,
 ) {
     // set the current timeline to the timeline where data was logged to
-    test_context.set_active_timeline(Timeline::new_sequence("frame_nr"));
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
+    );
 
     let mut harness = test_context
         .setup_kittest_for_rendering()
@@ -202,7 +211,7 @@ fn run_blueprint_panel_and_save_snapshot(
                 blueprint_tree.show(viewer_ctx, &blueprint, ui);
             });
 
-            test_context.handle_system_commands();
+            test_context.handle_system_commands(ui.ctx());
         });
 
     harness.run();

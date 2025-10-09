@@ -4,7 +4,7 @@ use std::path::Path;
 use re_chunk::{RowId, TimePoint};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::ViewClass as _;
+use re_viewer_context::{BlueprintContext as _, ViewClass as _};
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -76,7 +76,7 @@ fn load_blueprint_from_file(test_context: &mut TestContext, path: &Path) {
     test_context.setup_viewport_blueprint(|_ctx, _blueprint| {});
 }
 
-fn take_snapshot(test_context: &mut TestContext, snapshot_name: &str) {
+fn take_snapshot(test_context: &TestContext, snapshot_name: &str) {
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(egui::vec2(600.0, 400.0))
@@ -90,7 +90,7 @@ fn take_snapshot(test_context: &mut TestContext, snapshot_name: &str) {
                 viewport_ui.viewport_ui(ui, ctx, &mut test_context.view_states.lock());
             });
 
-            test_context.handle_system_commands();
+            test_context.handle_system_commands(ui.ctx());
         });
     harness.run();
     harness.snapshot(snapshot_name);
@@ -118,7 +118,7 @@ fn test_blueprint_change_and_restore() {
     });
 
     load_blueprint_from_file(&mut test_context, rbl_path);
-    take_snapshot(&mut test_context, "blueprint_change_and_restore");
+    take_snapshot(&test_context, "blueprint_change_and_restore");
 }
 
 #[test]
@@ -131,11 +131,11 @@ fn test_blueprint_load_into_new_context() {
 
     setup_viewport(&mut test_context);
     save_blueprint_to_file(&test_context, rbl_path);
-    take_snapshot(&mut test_context, "blueprint_load_into_new_context_1");
+    take_snapshot(&test_context, "blueprint_load_into_new_context_1");
 
     let mut test_context_2 = TestContext::new();
     log_test_data_and_register_views(&mut test_context_2, 20);
 
     load_blueprint_from_file(&mut test_context_2, rbl_path);
-    take_snapshot(&mut test_context_2, "blueprint_load_into_new_context_2");
+    take_snapshot(&test_context_2, "blueprint_load_into_new_context_2");
 }

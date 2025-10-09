@@ -10,7 +10,10 @@ use re_log_types::{Instance, StoreId};
 use re_types::{ComponentDescriptor, ComponentType};
 use re_ui::{UiExt as _, UiLayout};
 
-use crate::{ComponentFallbackProvider, MaybeMutRef, QueryContext, ViewerContext};
+use crate::{
+    ComponentFallbackProvider, MaybeMutRef, QueryContext, ViewerContext,
+    blueprint_helpers::BlueprintContext as _,
+};
 
 /// Describes where an edit should be written to if any
 pub struct EditTarget {
