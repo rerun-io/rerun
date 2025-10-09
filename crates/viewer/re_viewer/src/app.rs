@@ -501,11 +501,12 @@ impl App {
 
                     let time_ctrl = self.state.time_control_mut(recording, &bp_ctx);
 
+                    let should_diff_state = false;
                     let response = time_ctrl.update(
                         recording.times_per_timeline(),
                         dt,
                         more_data_is_coming,
-                        true,
+                        should_diff_state,
                         Some(&bp_ctx),
                     );
 
@@ -517,6 +518,8 @@ impl App {
                 }
 
                 if self.app_options().inspect_blueprint_timeline {
+                    let more_data_is_coming = true;
+                    let should_diff_state = false;
                     // We ignore most things from the time control response for the blueprint but still
                     // need to repaint if requested.
                     let re_viewer_context::TimeControlResponse {
@@ -527,8 +530,8 @@ impl App {
                     } = self.state.blueprint_time_control.update(
                         bp_ctx.current_blueprint.times_per_timeline(),
                         dt,
-                        true,
-                        false,
+                        more_data_is_coming,
+                        should_diff_state,
                         None::<&AppBlueprintCtx<'_>>,
                     );
 
