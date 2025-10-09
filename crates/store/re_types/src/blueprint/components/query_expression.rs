@@ -35,45 +35,21 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct QueryExpression(pub crate::datatypes::Utf8);
 
-impl ::re_types_core::Component for QueryExpression {
+impl ::re_types_core::WrapperComponent for QueryExpression {
+    type Datatype = crate::datatypes::Utf8;
+
     #[inline]
     fn name() -> ComponentType {
         "rerun.blueprint.components.QueryExpression".into()
     }
+
+    #[inline]
+    fn into_inner(self) -> Self::Datatype {
+        self.0
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(QueryExpression);
-
-impl ::re_types_core::Loggable for QueryExpression {
-    #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
-        crate::datatypes::Utf8::arrow_datatype()
-    }
-
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
-    where
-        Self: Clone + 'a,
-    {
-        crate::datatypes::Utf8::to_arrow_opt(data.into_iter().map(|datum| {
-            datum.map(|datum| match datum.into() {
-                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
-                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
-            })
-        }))
-    }
-
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
-        crate::datatypes::Utf8::from_arrow_opt(arrow_data)
-            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
-    }
-}
 
 impl<T: Into<crate::datatypes::Utf8>> From<T> for QueryExpression {
     fn from(v: T) -> Self {

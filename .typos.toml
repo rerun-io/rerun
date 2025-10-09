@@ -17,12 +17,15 @@ extend-exclude = [
 ]
 
 [default.extend-words]
+FUL = "FUL"     # forward-up-left coordinate system
 lod = "lod"     # level-of-detail
 ND = "ND"       # np.NDArray
+opf = "opf"     # Open Photogrammetry Format (OPF) file
 somes = "somes" # many `Some`
 teh = "teh"     # part of @teh-cmc
 trak = "trak"   # mp4 crate spelling
 typ = "typ"     # We cannot write "type" in rust
+ws = "ws"       # web-sockets, as in "ws://…"
 Yoh = "Yoh"     # Part of @YohDeadfall
 
 # Use the more common spelling
@@ -35,16 +38,12 @@ analogue = "analog"
 analyse = "analyze"
 appetiser = "appetizer"
 arbour = "arbor"
-ardor = "arbor"
 armour = "armor"
 artefact = "artifact"
 authorise = "authorize"
 behaviour = "behavior"
-behavioural = "behavioral"
-British = "American"
 calibre = "caliber"
-# allow 'cancelled' since Arrow uses it.
-#cancelled = "canceled"
+#cancelled = "canceled" # allow 'cancelled' since Arrow uses it.
 candour = "candor"
 capitalise = "capitalize"
 catalogue = "catalog"
@@ -120,7 +119,6 @@ saviour = "savior"
 savour = "savor"
 sceptical = "skeptical"
 sceptre = "scepter"
-FUL = "FUL"                       # forward-up-left coordinate system
 sepulchre = "sepulcher"
 serialisation = "serialization"
 serialise = "serialize"
@@ -139,10 +137,9 @@ tonne = "ton"
 travelogue = "travelog"
 tumour = "tumor"
 valour = "valor"
-opf = "opf"                       #  Open Photogrammetry Format (OPF) file
 vaporise = "vaporize"
 vigour = "vigor"
-ws = "ws"                         # web-sockets, as in "ws://…"
+# End of American English section
 
 # null-terminated is the name of the wikipedia article!
 # https://en.wikipedia.org/wiki/Null-terminated_string
