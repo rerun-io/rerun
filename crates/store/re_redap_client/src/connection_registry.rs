@@ -70,7 +70,7 @@ pub enum ClientConnectionError {
     #[error("the server rejected the provided authentication token\nDetails:{0}")]
     UnauthenticatedBadToken(TonicStatusError),
 
-    #[error("failed to obtain server version\nDetails:{0}")]
+    #[error("failed to validate credentials\nDetails:{0}")]
     AuthCheckError(TonicStatusError),
 }
 
