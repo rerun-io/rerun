@@ -309,10 +309,10 @@ where
         query: Option<re_protos::cloud::v1alpha1::Query>,
     ) -> Result<FetchChunksResponseStream, StreamError> {
         let fields_of_interest = [
-            QueryDatasetResponse::PARTITION_ID,
-            QueryDatasetResponse::CHUNK_ID,
-            QueryDatasetResponse::PARTITION_LAYER,
-            QueryDatasetResponse::CHUNK_KEY,
+            QueryDatasetResponse::FIELD_CHUNK_PARTITION_ID,
+            QueryDatasetResponse::FIELD_CHUNK_ID,
+            QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME,
+            QueryDatasetResponse::FIELD_CHUNK_KEY,
         ]
         .into_iter()
         .map(String::from)

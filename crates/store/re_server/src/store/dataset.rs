@@ -45,6 +45,10 @@ impl Dataset {
         &self.name
     }
 
+    pub fn partition(&self, partition_id: &PartitionId) -> Option<&Partition> {
+        self.partitions.get(partition_id)
+    }
+
     pub fn as_entry_details(&self) -> EntryDetails {
         EntryDetails {
             id: self.id,
@@ -240,11 +244,13 @@ impl Dataset {
                     new_partition_ids.insert(partition_id);
 
                     entry.insert(Partition::from_layer_data(layer_name, chunk_store));
+                    self.updated_at = jiff::Timestamp::now();
                 }
                 Entry::Occupied(mut entry) => match on_duplicate {
                     IfDuplicateBehavior::Overwrite => {
                         re_log::info!("Overwriting {partition_id}");
                         entry.insert(Partition::from_layer_data(layer_name, chunk_store));
+                        self.updated_at = jiff::Timestamp::now();
                     }
                     IfDuplicateBehavior::Skip => {
                         re_log::info!("Ignoring {partition_id}: it already exists");

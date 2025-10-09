@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    FixedSizeBinaryArray, ListBuilder, RecordBatchOptions, StringBuilder, UInt64Array,
+    BinaryArray, BooleanArray, FixedSizeBinaryArray, ListBuilder, RecordBatchOptions,
+    StringBuilder, UInt64Array,
 };
 use arrow::datatypes::FieldRef;
 use arrow::{
@@ -11,13 +12,14 @@ use arrow::{
 };
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
+use re_log_types::external::re_types_core::ComponentBatch as _;
 use re_log_types::{EntityPath, EntryId, TimeInt};
 use re_sorbet::ComponentColumnDescriptor;
 
 use crate::cloud::v1alpha1::{
-    EntryKind, GetDatasetSchemaResponse, QueryDatasetResponse, QueryTasksResponse,
-    RegisterWithDatasetResponse, ScanDatasetManifestResponse, ScanPartitionTableResponse,
-    VectorDistanceMetric,
+    EntryKind, FetchChunksRequest, GetDatasetSchemaResponse, QueryDatasetResponse,
+    QueryTasksResponse, RegisterWithDatasetResponse, ScanDatasetManifestResponse,
+    ScanPartitionTableResponse, VectorDistanceMetric,
 };
 use crate::common::v1alpha1::{
     ComponentDescriptor, DataframePart, TaskId,
@@ -129,12 +131,112 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
 // --- QueryDatasetResponse ---
 
 impl QueryDatasetResponse {
-    pub const PARTITION_ID: &str = "chunk_partition_id";
-    pub const CHUNK_ID: &str = "chunk_id";
-    pub const PARTITION_LAYER: &str = RegisterWithDatasetResponse::PARTITION_LAYER;
-    pub const CHUNK_KEY: &str = "chunk_key";
-    pub const CHUNK_IS_STATIC: &str = "chunk_is_static";
-    pub const CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
+    //TODO(RR-2613): make these names consistent
+
+    // mandatory fields for `FetchChunks`
+    pub const FIELD_CHUNK_ID: &str = "chunk_id";
+    pub const FIELD_CHUNK_PARTITION_ID: &str = "chunk_partition_id";
+    pub const FIELD_CHUNK_LAYER_NAME: &str = "rerun_partition_layer";
+    pub const FIELD_CHUNK_KEY: &str = "chunk_key";
+
+    // information fields (not mendatory for `FetchChunks`
+    pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
+
+    pub fn field_chunk_id() -> Field {
+        Field::new(Self::FIELD_CHUNK_ID, DataType::FixedSizeBinary(16), false)
+    }
+
+    pub fn field_chunk_partition_id() -> Field {
+        Field::new(Self::FIELD_CHUNK_PARTITION_ID, DataType::Utf8, false)
+    }
+
+    pub fn field_chunk_layer_name() -> Field {
+        Field::new(Self::FIELD_CHUNK_LAYER_NAME, DataType::Utf8, false)
+    }
+
+    pub fn field_chunk_key() -> Field {
+        Field::new(Self::FIELD_CHUNK_KEY, DataType::Binary, false)
+    }
+
+    pub fn field_chunk_is_static() -> Field {
+        Field::new(Self::FIELD_CHUNK_IS_STATIC, DataType::Boolean, false)
+    }
+
+    pub fn fields() -> Vec<Field> {
+        vec![
+            Self::field_chunk_id(),
+            Self::field_chunk_partition_id(),
+            Self::field_chunk_layer_name(),
+            Self::field_chunk_key(),
+            Self::field_chunk_is_static(),
+        ]
+    }
+
+    pub fn schema() -> arrow::datatypes::Schema {
+        Schema::new(Self::fields())
+    }
+
+    pub fn create_dataframe(
+        chunk_ids: Vec<re_chunk::ChunkId>,
+        chunk_partition_ids: Vec<String>,
+        chunk_layer_names: Vec<String>,
+        chunk_keys: Vec<&[u8]>,
+        chunk_is_static: Vec<bool>,
+    ) -> arrow::error::Result<RecordBatch> {
+        let schema = Arc::new(Self::schema());
+
+        let columns: Vec<ArrayRef> = vec![
+            chunk_ids
+                .to_arrow()
+                .expect("to_arrow for ChunkIds never fails"),
+            Arc::new(StringArray::from(chunk_partition_ids)),
+            Arc::new(StringArray::from(chunk_layer_names)),
+            Arc::new(BinaryArray::from(chunk_keys)),
+            Arc::new(BooleanArray::from(chunk_is_static)),
+        ];
+
+        RecordBatch::try_new_with_options(
+            schema,
+            columns,
+            &RecordBatchOptions::default().with_row_count(Some(chunk_ids.len())),
+        )
+    }
+}
+
+impl FetchChunksRequest {
+    pub const FIELD_CHUNK_ID: &str = QueryDatasetResponse::FIELD_CHUNK_ID;
+    pub const FIELD_CHUNK_PARTITION_ID: &str = QueryDatasetResponse::FIELD_CHUNK_PARTITION_ID;
+    pub const FIELD_CHUNK_LAYER_NAME: &str = QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME;
+    pub const FIELD_CHUNK_KEY: &str = QueryDatasetResponse::FIELD_CHUNK_KEY;
+
+    pub fn field_chunk_id() -> Field {
+        QueryDatasetResponse::field_chunk_id()
+    }
+
+    pub fn field_chunk_partition_id() -> Field {
+        QueryDatasetResponse::field_chunk_partition_id()
+    }
+
+    pub fn field_chunk_layer_name() -> Field {
+        QueryDatasetResponse::field_chunk_layer_name()
+    }
+
+    pub fn field_chunk_key() -> Field {
+        QueryDatasetResponse::field_chunk_key()
+    }
+
+    pub fn fields() -> Vec<Field> {
+        vec![
+            Self::field_chunk_id(),
+            Self::field_chunk_partition_id(),
+            Self::field_chunk_layer_name(),
+            Self::field_chunk_key(),
+        ]
+    }
+
+    pub fn schema() -> arrow::datatypes::Schema {
+        Schema::new(Self::fields())
+    }
 }
 
 // --- DoMaintenanceRequest ---
@@ -1661,6 +1763,25 @@ impl TryFrom<QueryTasksRequest> for crate::cloud::v1alpha1::QueryTasksRequest {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use arrow::datatypes::ToByteSlice as _;
+
+    #[test]
+    fn test_query_dataset_response_create_dataframe() {
+        let chunk_ids = vec![re_chunk::ChunkId::new(), re_chunk::ChunkId::new()];
+        let chunk_partition_id = vec!["partition_id_1".to_owned(), "partition_id_2".to_owned()];
+        let chunk_layer_names = vec!["layer1".to_owned(), "layer2".to_owned()];
+        let chunk_keys = vec![b"key1".to_byte_slice(), b"key2".to_byte_slice()];
+        let chunk_is_static = vec![true, false];
+
+        QueryDatasetResponse::create_dataframe(
+            chunk_ids,
+            chunk_partition_id,
+            chunk_layer_names,
+            chunk_keys,
+            chunk_is_static,
+        )
+        .unwrap();
+    }
 
     /// Ensure `crate_dataframe` implementation is consistent with `schema()`
     #[test]

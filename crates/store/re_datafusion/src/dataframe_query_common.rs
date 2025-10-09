@@ -110,10 +110,10 @@ impl DataframeQueryTableProvider {
         let query = query_from_query_expression(query_expression);
 
         let fields_of_interest = [
-            QueryDatasetResponse::PARTITION_ID,
-            QueryDatasetResponse::CHUNK_ID,
-            QueryDatasetResponse::PARTITION_LAYER,
-            QueryDatasetResponse::CHUNK_KEY,
+            QueryDatasetResponse::FIELD_CHUNK_PARTITION_ID,
+            QueryDatasetResponse::FIELD_CHUNK_ID,
+            QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME,
+            QueryDatasetResponse::FIELD_CHUNK_KEY,
         ]
         .into_iter()
         .map(String::from)
