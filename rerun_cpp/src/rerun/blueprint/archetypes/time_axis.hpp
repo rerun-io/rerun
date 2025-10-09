@@ -4,9 +4,11 @@
 #pragma once
 
 #include "../../blueprint/components/link_axis.hpp"
+#include "../../blueprint/components/time_origin.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
+#include "../../components/range1d.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -15,13 +17,21 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: Configuration for the time (Y) axis of a plot.
+    /// **Archetype**: Configuration for the time (X) axis of a plot.
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct TimeAxis {
         /// How should the horizontal/X/time axis be linked across multiple plots?
+        ///
+        /// Linking with global will ignore all the other options.
         std::optional<ComponentBatch> link;
+
+        /// The view range offset of the horizontal/X/time axis, in time units.
+        std::optional<ComponentBatch> view_range;
+
+        /// The align of the horizontal/X/time axis.
+        std::optional<ComponentBatch> view_origin;
 
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
@@ -31,6 +41,16 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_link = ComponentDescriptor(
             ArchetypeName, "TimeAxis:link",
             Loggable<rerun::blueprint::components::LinkAxis>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `view_range` field.
+        static constexpr auto Descriptor_view_range = ComponentDescriptor(
+            ArchetypeName, "TimeAxis:view_range",
+            Loggable<rerun::components::Range1D>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `view_origin` field.
+        static constexpr auto Descriptor_view_origin = ComponentDescriptor(
+            ArchetypeName, "TimeAxis:view_origin",
+            Loggable<rerun::blueprint::components::TimeOrigin>::ComponentType
         );
 
       public:
@@ -49,8 +69,24 @@ namespace rerun::blueprint::archetypes {
         static TimeAxis clear_fields();
 
         /// How should the horizontal/X/time axis be linked across multiple plots?
+        ///
+        /// Linking with global will ignore all the other options.
         TimeAxis with_link(const rerun::blueprint::components::LinkAxis& _link) && {
             link = ComponentBatch::from_loggable(_link, Descriptor_link).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// The view range offset of the horizontal/X/time axis, in time units.
+        TimeAxis with_view_range(const rerun::components::Range1D& _view_range) && {
+            view_range =
+                ComponentBatch::from_loggable(_view_range, Descriptor_view_range).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// The align of the horizontal/X/time axis.
+        TimeAxis with_view_origin(const rerun::blueprint::components::TimeOrigin& _view_origin) && {
+            view_origin = ComponentBatch::from_loggable(_view_origin, Descriptor_view_origin)
+                              .value_or_throw();
             return std::move(*this);
         }
 
