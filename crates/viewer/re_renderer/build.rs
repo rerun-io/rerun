@@ -92,9 +92,8 @@ fn check_hermeticity(root_path: impl AsRef<Path>, file_path: impl AsRef<Path>) {
             let clause_path = std::fs::canonicalize(clause_path)?;
             ensure!(
                 clause_path.starts_with(&root_path),
-                "trying to import {:?} which lives outside of the workspace, \
-                    this is illegal in release and/or Wasm builds!",
-                clause_path
+                "trying to import {clause_path:?} which lives outside of the workspace, \
+                    this is illegal in release and/or Wasm builds!"
             );
 
             Ok::<_, anyhow::Error>(())

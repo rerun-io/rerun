@@ -10,6 +10,8 @@ mod file_dialog;
 mod item;
 mod item_collection;
 mod recording_or_table;
+// TODO(isse): When removing `re_global_context` also move this back into `TimeControl`.
+pub mod time_control_command;
 
 pub use self::{
     app_options::AppOptions,

@@ -29,53 +29,21 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct HalfSize2D(pub crate::datatypes::Vec2D);
 
-impl ::re_types_core::Component for HalfSize2D {
+impl ::re_types_core::WrapperComponent for HalfSize2D {
+    type Datatype = crate::datatypes::Vec2D;
+
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.HalfSize2D".into()
     }
+
+    #[inline]
+    fn into_inner(self) -> Self::Datatype {
+        self.0
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(HalfSize2D);
-
-impl ::re_types_core::Loggable for HalfSize2D {
-    #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
-        crate::datatypes::Vec2D::arrow_datatype()
-    }
-
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
-    where
-        Self: Clone + 'a,
-    {
-        crate::datatypes::Vec2D::to_arrow_opt(data.into_iter().map(|datum| {
-            datum.map(|datum| match datum.into() {
-                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
-                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
-            })
-        }))
-    }
-
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
-        crate::datatypes::Vec2D::from_arrow_opt(arrow_data)
-            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
-    }
-
-    #[inline]
-    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>>
-    where
-        Self: Sized,
-    {
-        crate::datatypes::Vec2D::from_arrow(arrow_data).map(bytemuck::cast_vec)
-    }
-}
 
 impl<T: Into<crate::datatypes::Vec2D>> From<T> for HalfSize2D {
     fn from(v: T) -> Self {

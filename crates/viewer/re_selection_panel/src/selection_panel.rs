@@ -17,7 +17,7 @@ use re_ui::{
 use re_viewer_context::{
     ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SystemCommand,
     SystemCommandSender as _, UiLayout, ViewContext, ViewId, ViewStates, ViewerContext,
-    contents_name_style, icon_for_container_kind,
+    contents_name_style, icon_for_container_kind, time_control_command::TimeControlCommand,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
 
@@ -55,7 +55,7 @@ impl SelectionPanel {
         ui: &mut egui::Ui,
         expanded: bool,
     ) {
-        let screen_width = ui.ctx().screen_rect().width();
+        let screen_width = ui.ctx().content_rect().width();
 
         let panel = egui::SidePanel::right("selection_view")
             .min_width(120.0)
@@ -68,7 +68,7 @@ impl SelectionPanel {
             });
 
         // Always reset the VH highlight, and let the UI re-set it if needed.
-        ctx.rec_cfg.time_ctrl.write().highlighted_range = None;
+        ctx.send_time_commands([TimeControlCommand::ClearHighlightedRange]);
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
             ui.panel_content(|ui| {
@@ -1098,7 +1098,10 @@ mod tests {
         TimeType,
         example_components::{MyPoint, MyPoints},
     };
-    use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+    use re_test_context::{
+        TestContext,
+        external::egui_kittest::{SnapshotOptions, kittest::Queryable as _},
+    };
     use re_test_viewport::{TestContextExt as _, TestView};
     use re_types::archetypes;
     use re_viewer_context::{RecommendedView, ViewClass as _, blueprint_timeline};
@@ -1142,7 +1145,7 @@ mod tests {
                         ui,
                     );
                 });
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
         harness.run();
@@ -1179,13 +1182,10 @@ mod tests {
                         ui,
                     );
                 });
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
-        let raw_input = harness.input_mut();
-        raw_input
-            .events
-            .push(egui::Event::PointerMoved(egui::Pos2 { x: 120.0, y: 80.0 }));
+        harness.get_by_label("test_app").hover();
 
         harness.run();
 
@@ -1236,7 +1236,7 @@ mod tests {
                         ui,
                     );
                 });
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
         harness.run();
@@ -1294,7 +1294,7 @@ mod tests {
                         ui,
                     );
                 });
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
         harness.run();
@@ -1366,7 +1366,7 @@ mod tests {
                         ui,
                     );
                 });
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
         harness.run();
@@ -1415,7 +1415,7 @@ mod tests {
                         ui,
                     );
                 });
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
         harness.run();
@@ -1472,7 +1472,7 @@ mod tests {
                         ui,
                     );
                 });
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
         harness.run();
@@ -1522,7 +1522,7 @@ mod tests {
                         ui,
                     );
                 });
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
         harness.run();

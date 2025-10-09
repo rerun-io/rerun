@@ -23,11 +23,15 @@ use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
-use re_protos::cloud::v1alpha1::{DATASET_MANIFEST_ID_FIELD_NAME, QueryDatasetResponse};
-use re_protos::cloud::v1alpha1::{GetDatasetSchemaRequest, QueryDatasetRequest};
-use re_protos::common::v1alpha1::ext::ScanParameters;
-use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_protos::{
+    cloud::v1alpha1::{
+        GetDatasetSchemaRequest, QueryDatasetRequest, QueryDatasetResponse,
+        ScanPartitionTableResponse,
+        ext::{Query, QueryLatestAt, QueryRange},
+    },
+    common::v1alpha1::ext::ScanParameters,
+    headers::RerunHeadersInjectorExt as _,
+};
 use re_redap_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind, ComponentColumnSelector};
 use re_uri::Origin;
@@ -168,7 +172,7 @@ impl DataframeQueryTableProvider {
 
         let schema = Arc::new(prepend_string_column_schema(
             &schema,
-            DATASET_MANIFEST_ID_FIELD_NAME,
+            ScanPartitionTableResponse::FIELD_PARTITION_ID,
         ));
 
         Ok(Self {

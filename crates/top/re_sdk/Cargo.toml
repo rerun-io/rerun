@@ -39,12 +39,7 @@ data_loaders = ["dep:re_data_loader", "dep:re_smart_channel"]
 ##
 ## However, when building from source in the repository, this feature adds quite a bit
 ## to the compile time since it requires compiling and bundling the viewer as wasm.
-web_viewer = [
-  "dep:re_smart_channel",
-  "dep:re_web_viewer_server",
-  "dep:tokio",
-  "dep:webbrowser",
-]
+web_viewer = ["dep:re_smart_channel", "dep:re_web_viewer_server", "dep:tokio", "dep:webbrowser"]
 
 server = ["dep:re_smart_channel", "dep:tokio"]
 
@@ -64,6 +59,7 @@ re_types.workspace = true
 re_uri.workspace = true
 
 ahash.workspace = true
+arrow.workspace = true
 const_format.workspace = true
 crossbeam.workspace = true
 document-features.workspace = true

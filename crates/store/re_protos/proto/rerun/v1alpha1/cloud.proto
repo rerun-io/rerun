@@ -77,6 +77,21 @@ service RerunCloudService {
   // This endpoint requires the standard dataset headers.
   rpc ScanPartitionTable(ScanPartitionTableRequest) returns (stream ScanPartitionTableResponse) {}
 
+  // Returns the schema of the dataset manifest.
+  //
+  // To inspect the data of the dataset manifest, which is guaranteed to match the schema returned by
+  // this endpoint, check out `ScanDatasetManifest`.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc GetDatasetManifestSchema(GetDatasetManifestSchemaRequest) returns (GetDatasetManifestSchemaResponse) {}
+
+  // Inspect the contents of the dataset manifest.
+  //
+  // The data will follow the schema returned by `GetDatasetManifestSchema`.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc ScanDatasetManifest(ScanDatasetManifestRequest) returns (stream ScanDatasetManifestResponse) {}
+
   // Returns the schema of the dataset.
   //
   // This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
@@ -138,9 +153,6 @@ service RerunCloudService {
 
   // Query the status of submitted tasks
   rpc QueryTasks(QueryTasksRequest) returns (QueryTasksResponse) {}
-
-  // Fetch the output of a completed task
-  rpc FetchTaskOutput(FetchTaskOutputRequest) returns (FetchTaskOutputResponse) {}
 
   // Query the status of submitted tasks as soon as they are no longer pending
   rpc QueryTasksOnCompletion(QueryTasksOnCompletionRequest) returns (stream QueryTasksOnCompletionResponse) {}
@@ -255,7 +267,25 @@ message ScanPartitionTableRequest {
 }
 
 message ScanPartitionTableResponse {
-  // Partitions metadata as arrow RecordBatch
+  // Partitions metadata as Arrow RecordBatch.
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message GetDatasetManifestSchemaRequest {}
+
+message GetDatasetManifestSchemaResponse {
+  rerun.common.v1alpha1.Schema schema = 1;
+}
+
+message ScanDatasetManifestRequest {
+  // A list of column names to be projected server-side.
+  //
+  // All of them if left empty.
+  repeated string columns = 3;
+}
+
+message ScanDatasetManifestResponse {
+  // The contents of the dataset manifest (i.e. information about layers) as Arrow RecordBatch.
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
@@ -607,27 +637,6 @@ message DoGlobalMaintenanceResponse {}
 
 // --- Tasks ---
 
-// A task is a unit of work that can be submitted to the system
-message Task {
-  // Unique identifier for the task
-  rerun.common.v1alpha1.TaskId id = 1;
-  // Type of the task
-  string task_type = 2;
-  // Task-type dependant data necessary to de-serialize the task
-  bytes task_data = 3;
-}
-
-// `SubmitTasksRequest` is the request message for submitting tasks
-message SubmitTasksRequest {
-  repeated Task tasks = 1;
-}
-
-// `SubmitTaskResponse` contains, for each submitted task
-// its submission outcome, encoded as a `RecordBatch`
-message SubmitTasksResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
-
 // `QueryTasksRequest` is the request message for querying tasks status
 message QueryTasksRequest {
   // Empty queries for all tasks if the server allows it.
@@ -653,18 +662,6 @@ message QueryTasksOnCompletionRequest {
 // `QueryTaskOnCompletionResponse` is the response message for querying tasks status
 // encoded as a record batch. This is a copy of `QueryTasksResponse`.
 message QueryTasksOnCompletionResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
-
-// `FetchTaskOutputRequest` is the request message for fetching task output
-message FetchTaskOutputRequest {
-  // Unique identifier for the task
-  rerun.common.v1alpha1.TaskId id = 1;
-}
-
-/// `FetchTaskOutputResponse` is the response message for fetching task output
-message FetchTaskOutputResponse {
-  // The output of the task, encoded as a record batch
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
@@ -709,7 +706,7 @@ message CreateDatasetEntryRequest {
   // Name of the dataset entry to create.
   //
   // The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
-  // with the same name already exists, the request will fail.
+  // with the same name already exists, the request will fail. Entry names ending with `__manifest` are reserved.
   optional string name = 1;
 
   // If specified, create the entry using this specific ID. Use at your own risk.
@@ -754,7 +751,7 @@ message RegisterTableRequest {
   // Name of the table entry to create.
   //
   // The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
-  // with the same name already exists, the request will fail.
+  // with the same name already exists, the request will fail. Entry names ending with `__manifest` are reserved.
   string name = 1;
 
   // Information about the table to register.

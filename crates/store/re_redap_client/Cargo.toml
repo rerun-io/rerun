@@ -56,10 +56,7 @@ url.workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 re_perf_telemetry = { workspace = true, features = ["tracy"], optional = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
-tonic = { workspace = true, default-features = false, features = [
-  "transport",
-  "tls-native-roots",
-] }
+tonic = { workspace = true, default-features = false, features = ["transport", "tls-native-roots"] }
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

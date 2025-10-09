@@ -1325,7 +1325,7 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
     }
 
     parse_size_inner(size)
-        .ok_or_else(|| anyhow::anyhow!("Invalid size {:?}, expected e.g. 800x600", size))
+        .ok_or_else(|| anyhow::anyhow!("Invalid size {size:?}, expected e.g. 800x600"))
 }
 
 // --- io ---

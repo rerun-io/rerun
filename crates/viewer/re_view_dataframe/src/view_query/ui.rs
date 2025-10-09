@@ -9,6 +9,7 @@ use re_sorbet::ColumnSelector;
 use re_types::blueprint::components;
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{TimeDragValue, UiExt as _, list_item};
+use re_viewer_context::time_control_command::TimeControlCommand;
 use re_viewer_context::{ViewId, ViewSystemExecutionError, ViewerContext};
 use std::collections::{BTreeSet, HashSet};
 
@@ -150,11 +151,10 @@ impl Query {
             self.save_filter_by_range(ctx, AbsoluteTimeRange::new(start, end));
         }
 
-        if should_display_time_range {
-            let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
-            if Some(time_ctrl.timeline()) == timeline {
-                time_ctrl.highlighted_range = Some(AbsoluteTimeRange::new(start, end));
-            }
+        if should_display_time_range && Some(ctx.time_ctrl.timeline()) == timeline {
+            ctx.send_time_commands([TimeControlCommand::HighlightRange(AbsoluteTimeRange::new(
+                start, end,
+            ))]);
         }
 
         Ok(())

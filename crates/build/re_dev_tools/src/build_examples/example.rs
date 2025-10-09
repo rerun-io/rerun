@@ -333,10 +333,7 @@ impl Frontmatter {
         let start = start + START.len();
 
         let Some(end) = content[start..].find(END) else {
-            anyhow::bail!(
-                "{:?} has invalid frontmatter: missing {END:?} terminator",
-                path
-            );
+            anyhow::bail!("{path:?} has invalid frontmatter: missing {END:?} terminator");
         };
         let end = start + end;
 
