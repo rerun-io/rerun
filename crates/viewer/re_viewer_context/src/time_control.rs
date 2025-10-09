@@ -527,13 +527,13 @@ impl TimeControl {
             self.states.get(self.timeline.name()).copied(),
         );
 
-        let mut redraw = false;
+        let mut repaint = false;
 
         for command in commands {
-            redraw |= self.handle_time_command(blueprint_ctx, times_per_timeline, command);
+            repaint |= self.handle_time_command(blueprint_ctx, times_per_timeline, command);
         }
 
-        if redraw {
+        if repaint {
             response.needs_repaint = NeedsRepaint::Yes;
         }
 
