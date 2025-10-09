@@ -69,7 +69,7 @@ impl Op {
 
     /// Ignores any input and returns a constant `ListArray`.
     ///
-    /// Mostl commonly used with [`LensBuilder::add_static_output_column`].
+    /// Commonly used with [`LensBuilder::add_static_output_column_entity`].
     /// When used in non-static columns this function will _not_ guarantee the correct amount of rows.
     pub fn constant(value: ListArray) -> Self {
         Self::func(move |_| Ok(value.clone()))
