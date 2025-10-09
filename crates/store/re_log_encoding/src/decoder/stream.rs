@@ -4,13 +4,12 @@ use std::io::Read as _;
 
 use re_build_info::CrateVersion;
 
-use crate::app_id_injector::CachingApplicationIdInjector;
 use crate::codec::Serializer;
 use crate::codec::file::EncodingOptions;
 use crate::codec::file::FileHeader;
-use crate::decoder::options_from_bytes;
-
-use super::DecodeError;
+use crate::decoder::{
+    ApplicationIdInjector, CachingApplicationIdInjector, DecodeError, options_from_bytes,
+};
 
 // ---
 
@@ -20,7 +19,7 @@ use super::DecodeError;
 
 pub trait FileEncoded: Sized {
     fn decode(
-        app_id_injector: &mut impl crate::ApplicationIdInjector,
+        app_id_injector: &mut impl ApplicationIdInjector,
         message_kind: crate::codec::file::MessageKind,
         buf: &[u8],
     ) -> Result<Option<Self>, DecodeError>;
@@ -33,7 +32,7 @@ pub trait FileEncoded: Sized {
 
 impl FileEncoded for re_log_types::LogMsg {
     fn decode(
-        app_id_injector: &mut impl crate::ApplicationIdInjector,
+        app_id_injector: &mut impl ApplicationIdInjector,
         message_kind: crate::codec::file::MessageKind,
         buf: &[u8],
     ) -> Result<Option<Self>, DecodeError> {
@@ -51,7 +50,7 @@ impl FileEncoded for re_log_types::LogMsg {
 
 impl FileEncoded for re_protos::log_msg::v1alpha1::log_msg::Msg {
     fn decode(
-        _app_id_injector: &mut impl crate::ApplicationIdInjector,
+        _app_id_injector: &mut impl ApplicationIdInjector,
         message_kind: crate::codec::file::MessageKind,
         buf: &[u8],
     ) -> Result<Option<Self>, DecodeError> {

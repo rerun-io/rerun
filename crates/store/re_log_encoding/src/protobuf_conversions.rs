@@ -4,7 +4,7 @@
 use re_log_types::{BlueprintActivationCommand, SetStoreInfo};
 
 #[cfg(feature = "decoder")]
-use crate::ApplicationIdInjector;
+use crate::decoder::ApplicationIdInjector;
 
 impl From<re_protos::log_msg::v1alpha1::Compression> for crate::codec::Compression {
     fn from(value: re_protos::log_msg::v1alpha1::Compression) -> Self {

@@ -1,6 +1,5 @@
 //! Crate that handles encoding of rerun log types.
 
-mod app_id_injector;
 pub mod codec;
 pub mod protobuf_conversions;
 
@@ -22,16 +21,11 @@ pub mod external {
     pub use lz4_flex;
 }
 
-// ---------------------------------------------------------------------
-
-pub use self::app_id_injector::{
-    ApplicationIdInjector, CachingApplicationIdInjector, DummyApplicationIdInjector,
-};
-
 #[cfg(feature = "decoder")]
 pub use self::decoder::{
-    DecodeError, Decoder, DecoderApp, DecoderIterator, DecoderTransport, FileEncoded,
-    NotAnRrdError, StreamingDecoder, StreamingDecoderOptions, StreamingLogMsg,
+    ApplicationIdInjector, CachingApplicationIdInjector, DecodeError, Decoder, DecoderApp,
+    DecoderIterator, DecoderTransport, DummyApplicationIdInjector, FileEncoded, NotAnRrdError,
+    StreamingDecoder, StreamingDecoderOptions, StreamingLogMsg,
 };
 
 #[cfg(feature = "encoder")]
