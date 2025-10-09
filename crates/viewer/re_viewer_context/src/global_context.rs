@@ -1,6 +1,10 @@
 use crate::{AppOptions, CommandSender, DisplayMode};
 
 /// Application context that is shared across all parts of the viewer.
+///
+/// This context, in difference to [`crate::ViewerContext`] can exist for
+/// any arbitrary state of the viewer. And not only when there is an open
+/// recording.
 pub struct GlobalContext<'a> {
     /// Set during tests (e.g. snapshot tests).
     ///
