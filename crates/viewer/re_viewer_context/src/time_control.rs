@@ -533,14 +533,13 @@ impl TimeControl {
             self.states.get(self.timeline.name()).copied(),
         );
 
-        let mut repaint = false;
-
         for command in commands {
-            repaint |= self.handle_time_command(blueprint_ctx, times_per_timeline, command);
-        }
+            let needs_repaint =
+                self.handle_time_command(blueprint_ctx, times_per_timeline, command);
 
-        if repaint {
-            response.needs_repaint = NeedsRepaint::Yes;
+            if needs_repaint == NeedsRepaint::Yes {
+                response.needs_repaint = NeedsRepaint::Yes;
+            }
         }
 
         self.diff_with(&mut response, old_timeline, old_playing, old_state);
@@ -559,17 +558,17 @@ impl TimeControl {
         blueprint_ctx: Option<&impl BlueprintContext>,
         times_per_timeline: &TimesPerTimeline,
         command: &TimeControlCommand,
-    ) -> bool {
+    ) -> NeedsRepaint {
         match command {
             TimeControlCommand::HighlightRange(range) => {
                 self.highlighted_range = Some(*range);
 
-                true
+                NeedsRepaint::Yes
             }
             TimeControlCommand::ClearHighlightedRange => {
                 self.highlighted_range = None;
 
-                true
+                NeedsRepaint::Yes
             }
             TimeControlCommand::ResetActiveTimeline => {
                 if let Some(blueprint_ctx) = blueprint_ctx {
@@ -577,7 +576,7 @@ impl TimeControl {
                 }
                 self.timeline = ActiveTimeline::Auto(*self.timeline());
 
-                true
+                NeedsRepaint::Yes
             }
             TimeControlCommand::SetActiveTimeline(timeline_name) => {
                 if let Some(blueprint_ctx) = blueprint_ctx {
@@ -596,7 +595,7 @@ impl TimeControl {
                         .or_insert_with(|| TimeState::new(full_valid_range.min));
                 }
 
-                true
+                NeedsRepaint::Yes
             }
             TimeControlCommand::SetLooping(looping) => {
                 self.looping = *looping;
@@ -605,34 +604,36 @@ impl TimeControl {
                     self.following = false;
                 }
 
-                true
+                NeedsRepaint::Yes
             }
             TimeControlCommand::SetPlayState(play_state) => {
                 self.set_play_state(times_per_timeline, *play_state, blueprint_ctx);
 
-                true
+                NeedsRepaint::Yes
             }
             TimeControlCommand::Pause => {
-                let redraw = self.playing;
-
-                self.pause();
-
-                redraw
+                if self.playing {
+                    self.pause();
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
             }
+
             TimeControlCommand::TogglePlayPause => {
                 self.toggle_play_pause(times_per_timeline, blueprint_ctx);
 
-                true
+                NeedsRepaint::Yes
             }
             TimeControlCommand::StepTimeBack => {
                 self.step_time_back(times_per_timeline, blueprint_ctx);
 
-                true
+                NeedsRepaint::Yes
             }
             TimeControlCommand::StepTimeForward => {
                 self.step_time_fwd(times_per_timeline, blueprint_ctx);
 
-                true
+                NeedsRepaint::Yes
             }
             TimeControlCommand::Restart => {
                 if let Some(full_valid_range) = self.full_valid_range(times_per_timeline) {
@@ -646,45 +647,46 @@ impl TimeControl {
                         state.time = full_valid_range.min.into();
                     }
 
-                    true
+                    NeedsRepaint::Yes
                 } else {
-                    false
+                    NeedsRepaint::No
                 }
             }
             TimeControlCommand::SetSpeed(speed) => {
-                let redraw = *speed != self.speed;
-
-                self.speed = *speed;
-
-                redraw
+                if *speed != self.speed {
+                    self.speed = *speed;
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
             }
             TimeControlCommand::SetFps(fps) => {
-                if let Some(state) = self.states.get_mut(self.timeline.name()) {
-                    let redraw = state.fps != *fps;
-
+                if let Some(state) = self.states.get_mut(self.timeline.name())
+                    && state.fps != *fps
+                {
                     state.fps = *fps;
 
-                    redraw
+                    NeedsRepaint::Yes
                 } else {
-                    false
+                    NeedsRepaint::No
                 }
             }
             TimeControlCommand::SetLoopSelection(time_range) => {
                 if let Some(state) = self.states.get_mut(self.timeline.name()) {
                     state.loop_selection = Some((*time_range).into());
 
-                    true
+                    NeedsRepaint::Yes
                 } else {
-                    false
+                    NeedsRepaint::No
                 }
             }
             TimeControlCommand::RemoveLoopSelection => {
                 if let Some(state) = self.states.get_mut(self.timeline.name()) {
                     state.loop_selection = None;
 
-                    true
+                    NeedsRepaint::Yes
                 } else {
-                    false
+                    NeedsRepaint::No
                 }
             }
             TimeControlCommand::SetTime(time) => {
@@ -700,24 +702,28 @@ impl TimeControl {
                     .or_insert_with(|| TimeState::new(*time))
                     .time = *time;
 
-                update_blueprint
+                if update_blueprint {
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
             }
             TimeControlCommand::SetTimeView(time_view) => {
                 if let Some(state) = self.states.get_mut(self.timeline.name()) {
                     state.view = Some(*time_view);
 
-                    true
+                    NeedsRepaint::Yes
                 } else {
-                    false
+                    NeedsRepaint::No
                 }
             }
             TimeControlCommand::ResetTimeView => {
                 if let Some(state) = self.states.get_mut(self.timeline.name()) {
                     state.view = None;
 
-                    true
+                    NeedsRepaint::Yes
                 } else {
-                    false
+                    NeedsRepaint::No
                 }
             }
             TimeControlCommand::AddValidTimeRange {
@@ -725,7 +731,7 @@ impl TimeControl {
                 time_range,
             } => {
                 self.mark_time_range_valid(*timeline, *time_range);
-                true
+                NeedsRepaint::Yes
             }
         }
     }
