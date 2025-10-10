@@ -50,7 +50,7 @@ deny = [
   # We have to allow egui_kittest since we use it behind a `testing` feature flag, rather than just as a dev-dependency.
   #{ name = "egui_kittest", reason = "Only allowed as a dev-dependency for testing." },
 
-  # We have to allow insta becuase it's used by `re_redap_tests`, which contains test code
+  # We have to allow insta because it's used by `re_redap_tests`, which contains test code
   #{ name = "insta", reason = "Only allowed as a dev-dependency for testing." },
 ]
 skip = [
