@@ -185,7 +185,7 @@ impl crate::DataLoader for ExternalLoader {
                 let is_sending_data = Arc::new(AtomicBool::new(false));
 
                 let stdout = std::io::BufReader::new(stdout);
-                match re_log_encoding::decoder::stream::StreamDecoder::decode_eager(stdout) {
+                match re_log_encoding::Decoder::decode_eager(stdout) {
                     Ok(decoder) => {
                         let filepath = filepath.clone();
                         let tx = tx.clone();
@@ -203,7 +203,7 @@ impl crate::DataLoader for ExternalLoader {
                             return;
                         }
                     }
-                    Err(re_log_encoding::decoder::DecodeError::Read(_)) => {
+                    Err(re_log_encoding::DecodeError::Read(_)) => {
                         // The child was not interested in that file and left without logging
                         // anything.
                         // That's fine, we just need to make sure to check its exit status further
@@ -311,7 +311,7 @@ fn decode_and_stream(
     filepath: &std::path::Path,
     tx: &std::sync::mpsc::Sender<crate::LoadedData>,
     is_sending_data: Arc<AtomicBool>,
-    msgs: impl Iterator<Item = Result<re_log_types::LogMsg, re_log_encoding::decoder::DecodeError>>,
+    msgs: impl Iterator<Item = Result<re_log_types::LogMsg, re_log_encoding::DecodeError>>,
 ) {
     re_tracing::profile_function!(filepath.display().to_string());
 

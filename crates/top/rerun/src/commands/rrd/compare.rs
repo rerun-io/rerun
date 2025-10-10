@@ -158,7 +158,7 @@ fn load_chunks(
     // in `Decoder` requires `SetStoreInfo` to arrive before the corresponding `ArrowMsg`. Ideally
     // this tool would cache orphan `ArrowMsg` until a matching `SetStoreInfo` arrives.
     let mut stores: std::collections::HashMap<StoreId, EntityDb> = Default::default();
-    let decoder = re_log_encoding::decoder::stream::StreamDecoderApp::decode_lazy(rrd_file);
+    let decoder = re_log_encoding::DecoderApp::decode_lazy(rrd_file);
     for msg in decoder {
         let msg = msg.context("decode rrd message")?;
         stores

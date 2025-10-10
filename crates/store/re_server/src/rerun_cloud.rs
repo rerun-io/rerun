@@ -991,7 +991,7 @@ impl RerunCloudService for RerunCloudHandler {
         drop(store);
 
         let mut chunks = Vec::new();
-        let compression = re_log_encoding::Compression::Off;
+        let compression = re_log_encoding::codec::Compression::Off;
 
         for (chunk_id, partition_id) in chunk_partition_pairs {
             let (dataset_id, store_handle) = store_handles.get(&partition_id).ok_or_else(|| {

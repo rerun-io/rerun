@@ -2,9 +2,8 @@ use re_log_types::{BlueprintActivationCommand, LogMsg, SetStoreInfo};
 use re_protos::missing_field;
 
 use crate::{
-    ApplicationIdInjector,
     codec::{CodecError, arrow::decode_arrow},
-    decoder::DecodeError,
+    decoder::{ApplicationIdInjector, DecodeError},
 };
 
 use super::{MessageHeader, MessageKind};

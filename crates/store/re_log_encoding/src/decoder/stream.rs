@@ -4,23 +4,20 @@ use std::io::Read as _;
 
 use re_build_info::CrateVersion;
 
-use crate::EncodingOptions;
-use crate::FileHeader;
-use crate::Serializer;
-use crate::app_id_injector::CachingApplicationIdInjector;
-use crate::decoder::options_from_bytes;
-
-use super::DecodeError;
+use crate::codec::Serializer;
+use crate::codec::file::EncodingOptions;
+use crate::codec::file::FileHeader;
+use crate::decoder::{ApplicationIdInjector, CachingApplicationIdInjector, DecodeError};
 
 // ---
 
 // TODO(cmc): This trait will be vastly improved and documented in a follow up that completely
 // revamps how codecs are defined and organized. For now, it's just undocumented bare minimum to
-// make `StreamDecoder` work everywhere.
+// make `Decoder` work everywhere.
 
 pub trait FileEncoded: Sized {
     fn decode(
-        app_id_injector: &mut impl crate::ApplicationIdInjector,
+        app_id_injector: &mut impl ApplicationIdInjector,
         message_kind: crate::codec::file::MessageKind,
         buf: &[u8],
     ) -> Result<Option<Self>, DecodeError>;
@@ -33,7 +30,7 @@ pub trait FileEncoded: Sized {
 
 impl FileEncoded for re_log_types::LogMsg {
     fn decode(
-        app_id_injector: &mut impl crate::ApplicationIdInjector,
+        app_id_injector: &mut impl ApplicationIdInjector,
         message_kind: crate::codec::file::MessageKind,
         buf: &[u8],
     ) -> Result<Option<Self>, DecodeError> {
@@ -51,7 +48,7 @@ impl FileEncoded for re_log_types::LogMsg {
 
 impl FileEncoded for re_protos::log_msg::v1alpha1::log_msg::Msg {
     fn decode(
-        _app_id_injector: &mut impl crate::ApplicationIdInjector,
+        _app_id_injector: &mut impl ApplicationIdInjector,
         message_kind: crate::codec::file::MessageKind,
         buf: &[u8],
     ) -> Result<Option<Self>, DecodeError> {
@@ -61,26 +58,26 @@ impl FileEncoded for re_protos::log_msg::v1alpha1::log_msg::Msg {
 
 // ---
 
-/// A type alias for a [`StreamDecoder`] that only decodes from raw bytes up to transport-level
+/// A type alias for a [`Decoder`] that only decodes from raw bytes up to transport-level
 /// types (i.e. Protobuf payloads are decoded, but Arrow data is never touched).
 ///
-/// See also [`StreamDecoderTransport`].
-pub type StreamDecoderTransport = StreamDecoder<re_protos::log_msg::v1alpha1::log_msg::Msg>;
+/// See also [`DecoderTransport`].
+pub type DecoderTransport = Decoder<re_protos::log_msg::v1alpha1::log_msg::Msg>;
 
-/// A type alias for a [`StreamDecoder`] that decodes all the way from raw bytes to
+/// A type alias for a [`Decoder`] that decodes all the way from raw bytes to
 /// application-level types (i.e. even Arrow layers are decoded).
 ///
-/// See also [`StreamDecoderApp`].
-pub type StreamDecoderApp = StreamDecoder<re_log_types::LogMsg>;
+/// See also [`DecoderApp`].
+pub type DecoderApp = Decoder<re_log_types::LogMsg>;
 
 /// The stream decoder is a state machine which ingests byte chunks and outputs messages once it
 /// has enough data to deserialize one.
 ///
-/// Byte chunks are given to the stream via [`StreamDecoderApp::push_byte_chunk`], and messages are read
-/// back via [`StreamDecoderApp::try_read`].
+/// Byte chunks are given to the stream via [`DecoderApp::push_byte_chunk`], and messages are read
+/// back via [`DecoderApp::try_read`].
 //
 // TODO(cmc): explain when you'd use this over StreamingDecoder and vice-versa.
-pub struct StreamDecoder<T: FileEncoded> {
+pub struct Decoder<T: FileEncoded> {
     /// The Rerun version used to encode the RRD data.
     ///
     /// `None` until a Rerun header has been processed.
@@ -133,7 +130,7 @@ enum State {
     Aborted,
 }
 
-impl<T: FileEncoded> StreamDecoder<T> {
+impl<T: FileEncoded> Decoder<T> {
     /// Instantiates a new lazy decoding iterator on top of the given buffered reader.
     ///
     /// This does not perform any IO until the returned iterator is polled. I.e. this will not
@@ -145,7 +142,7 @@ impl<T: FileEncoded> StreamDecoder<T> {
     ///   buffers (and thus exploding memory usage and copies).
     ///
     /// See also [`Self::decode_lazy_with_opts`].
-    pub fn decode_lazy<R: std::io::BufRead>(reader: R) -> StreamDecoderIterator<T, R> {
+    pub fn decode_lazy<R: std::io::BufRead>(reader: R) -> DecoderIterator<T, R> {
         let wait_for_eos = false;
         Self::decode_lazy_with_opts(reader, wait_for_eos)
     }
@@ -160,9 +157,9 @@ impl<T: FileEncoded> StreamDecoder<T> {
     pub fn decode_lazy_with_opts<R: std::io::BufRead>(
         reader: R,
         wait_for_eos: bool,
-    ) -> StreamDecoderIterator<T, R> {
+    ) -> DecoderIterator<T, R> {
         let decoder = Self::new();
-        StreamDecoderIterator {
+        DecoderIterator {
             decoder,
             reader,
             wait_for_eos,
@@ -184,7 +181,7 @@ impl<T: FileEncoded> StreamDecoder<T> {
     /// See also [`Self::decode_eager_with_opts`].
     pub fn decode_eager<R: std::io::BufRead>(
         reader: R,
-    ) -> Result<StreamDecoderIterator<T, R>, DecodeError> {
+    ) -> Result<DecoderIterator<T, R>, DecodeError> {
         let wait_for_eos = false;
         Self::decode_eager_with_opts(reader, wait_for_eos)
     }
@@ -199,9 +196,9 @@ impl<T: FileEncoded> StreamDecoder<T> {
     pub fn decode_eager_with_opts<R: std::io::BufRead>(
         reader: R,
         wait_for_eos: bool,
-    ) -> Result<StreamDecoderIterator<T, R>, DecodeError> {
+    ) -> Result<DecoderIterator<T, R>, DecodeError> {
         let decoder = Self::new();
-        let mut it = StreamDecoderIterator {
+        let mut it = DecoderIterator {
             decoder,
             reader,
             wait_for_eos,
@@ -214,7 +211,7 @@ impl<T: FileEncoded> StreamDecoder<T> {
     }
 }
 
-impl<T: FileEncoded> StreamDecoder<T> {
+impl<T: FileEncoded> Decoder<T> {
     #[expect(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
@@ -263,7 +260,7 @@ impl<T: FileEncoded> StreamDecoder<T> {
                     re_log::trace!(?header, "Decoding StreamHeader");
 
                     // header contains version and compression options
-                    let (version, options) = match options_from_bytes(header) {
+                    let (version, options) = match FileHeader::options_from_bytes(header) {
                         Ok(ok) => ok,
                         Err(err) => {
                             // We expected a header, but didn't find one!
@@ -371,8 +368,8 @@ impl<T: FileEncoded> StreamDecoder<T> {
 // ---
 
 /// Iteratively decodes the contents of an arbitrary buffered reader.
-pub struct StreamDecoderIterator<T: FileEncoded, R: std::io::BufRead> {
-    decoder: StreamDecoder<T>,
+pub struct DecoderIterator<T: FileEncoded, R: std::io::BufRead> {
+    decoder: Decoder<T>,
     reader: R,
 
     /// If true, the decoder will always wait for an end-of-stream marker before calling it a day,
@@ -383,17 +380,17 @@ pub struct StreamDecoderIterator<T: FileEncoded, R: std::io::BufRead> {
     /// lacking a proper end-of-stream marker) RRD stream indicates EOF.
     wait_for_eos: bool,
 
-    /// See [`StreamDecoder::decode_eager`] for more information.
+    /// See [`Decoder::decode_eager`] for more information.
     first_msg: Option<T>,
 }
 
-impl<T: FileEncoded, R: std::io::BufRead> StreamDecoderIterator<T, R> {
+impl<T: FileEncoded, R: std::io::BufRead> DecoderIterator<T, R> {
     pub fn num_bytes_processed(&self) -> u64 {
         self.decoder.byte_chunks.num_read() as _
     }
 }
 
-impl<T: FileEncoded, R: std::io::BufRead> std::iter::Iterator for StreamDecoderIterator<T, R> {
+impl<T: FileEncoded, R: std::io::BufRead> std::iter::Iterator for DecoderIterator<T, R> {
     type Item = Result<T, DecodeError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -650,7 +647,7 @@ mod tests {
     fn stream_whole_chunks_uncompressed_protobuf() {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
 
-        let mut decoder = StreamDecoderApp::new();
+        let mut decoder = DecoderApp::new();
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -667,7 +664,7 @@ mod tests {
     fn stream_byte_chunks_uncompressed_protobuf() {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
 
-        let mut decoder = StreamDecoderApp::new();
+        let mut decoder = DecoderApp::new();
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -688,7 +685,7 @@ mod tests {
         let (input2, data2) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
         let input = input1.into_iter().chain(input2).collect::<Vec<_>>();
 
-        let mut decoder = StreamDecoderApp::new();
+        let mut decoder = DecoderApp::new();
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -706,7 +703,7 @@ mod tests {
     fn stream_whole_chunks_compressed_protobuf() {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
 
-        let mut decoder = StreamDecoderApp::new();
+        let mut decoder = DecoderApp::new();
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -723,7 +720,7 @@ mod tests {
     fn stream_byte_chunks_compressed_protobuf() {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
 
-        let mut decoder = StreamDecoderApp::new();
+        let mut decoder = DecoderApp::new();
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -742,7 +739,7 @@ mod tests {
     fn stream_3x16_chunks_protobuf() {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
 
-        let mut decoder = StreamDecoderApp::new();
+        let mut decoder = DecoderApp::new();
         let mut decoded_messages = vec![];
 
         // keep pushing 3 chunks of 16 bytes at a time, and attempting to read messages
@@ -772,7 +769,7 @@ mod tests {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
         let mut data = Cursor::new(data);
 
-        let mut decoder = StreamDecoderApp::new();
+        let mut decoder = DecoderApp::new();
         let mut decoded_messages = vec![];
 
         // read byte chunks 2xN bytes at a time, where `N` comes from a regular pattern
@@ -856,12 +853,12 @@ mod tests_legacy {
     use re_protos::log_msg::v1alpha1 as proto;
     use re_protos::log_msg::v1alpha1::LogMsg as LogMsgProto;
 
-    use crate::Compression;
     use crate::Encoder;
+    use crate::codec::Compression;
 
     use super::*;
 
-    pub fn fake_log_messages() -> Vec<LogMsg> {
+    fn fake_log_messages() -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
 
         let arrow_msg = re_chunk::Chunk::builder("test_entity")
@@ -1008,7 +1005,7 @@ mod tests_legacy {
             crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut file)
                 .unwrap();
 
-            let decoded_messages: Vec<_> = StreamDecoderApp::decode_lazy(file.as_slice())
+            let decoded_messages: Vec<_> = DecoderApp::decode_lazy(file.as_slice())
                 .map(Result::unwrap)
                 .collect();
             similar_asserts::assert_eq!(decoded_messages, messages);
@@ -1021,7 +1018,7 @@ mod tests_legacy {
                 .unwrap();
 
             let reader = std::io::BufReader::new(file.as_slice());
-            let decoded_messages: Vec<_> = StreamDecoderApp::decode_lazy(reader)
+            let decoded_messages: Vec<_> = DecoderApp::decode_lazy(reader)
                 .map(Result::unwrap)
                 .collect();
             similar_asserts::assert_eq!(decoded_messages, messages);
@@ -1039,7 +1036,7 @@ mod tests_legacy {
             .unwrap();
 
             let reader = std::io::BufReader::new(file.as_slice());
-            let decoded_messages: Vec<_> = StreamDecoderApp::decode_lazy(reader)
+            let decoded_messages: Vec<_> = DecoderApp::decode_lazy(reader)
                 .map(Result::unwrap)
                 .collect();
             similar_asserts::assert_eq!(decoded_messages, messages);
@@ -1075,7 +1072,7 @@ mod tests_legacy {
             }
             drop(encoder);
 
-            let decoded_messages: Vec<_> = StreamDecoderApp::decode_lazy(file.as_slice())
+            let decoded_messages: Vec<_> = DecoderApp::decode_lazy(file.as_slice())
                 .map(Result::unwrap)
                 .collect();
             assert_eq!(decoded_messages.len(), messages.len());
@@ -1132,7 +1129,7 @@ mod tests_legacy {
             }
             drop(encoder);
 
-            let decoded_messages: Vec<_> = StreamDecoderApp::decode_lazy(file.as_slice())
+            let decoded_messages: Vec<_> = DecoderApp::decode_lazy(file.as_slice())
                 .map(Result::unwrap)
                 .collect();
             assert_eq!(decoded_messages.len(), orig_message_count);
@@ -1181,7 +1178,7 @@ mod tests_legacy {
             )
             .unwrap();
 
-            let decoded_messages: Vec<_> = StreamDecoderApp::decode_lazy(file.as_slice())
+            let decoded_messages: Vec<_> = DecoderApp::decode_lazy(file.as_slice())
                 .map(Result::unwrap)
                 .collect();
             similar_asserts::assert_eq!(decoded_messages, out_of_order_messages);
@@ -1231,7 +1228,7 @@ mod tests_legacy {
                 encoder2.finish().unwrap();
             }
 
-            let decoded_messages: Vec<_> = StreamDecoderApp::decode_lazy(data.as_slice())
+            let decoded_messages: Vec<_> = DecoderApp::decode_lazy(data.as_slice())
                 .map(Result::unwrap)
                 .collect();
             similar_asserts::assert_eq!(decoded_messages, [messages.clone(), messages].concat());
@@ -1274,7 +1271,7 @@ mod tests_legacy {
                 std::mem::forget(encoder2);
             }
 
-            let decoded_messages: Vec<_> = StreamDecoderApp::decode_lazy(data.as_slice())
+            let decoded_messages: Vec<_> = DecoderApp::decode_lazy(data.as_slice())
                 .map(Result::unwrap)
                 .collect();
             assert_eq!(messages.len() * 2, decoded_messages.len());
