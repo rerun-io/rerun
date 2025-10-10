@@ -157,22 +157,15 @@ fn transform_struct_list_to_nested_lists(list_array: ListArray) -> Result<ListAr
 
     let instances = rows.as_any().downcast_ref::<ListArray>().unwrap();
 
-    // let structs = instances
-    //     .values()
-    //     .as_any()
-    //     .downcast_ref::<StructArray>()
-    //     .unwrap();
     let pose_struct_array = instances
         .values()
         .as_any()
         .downcast_ref::<StructArray>()
         .ok_or_else(|| Error::TypeMismatch {
-            actual: instances.data_type().clone(),
+            actual: instances.values().data_type().clone(),
             expected: DataType::Struct(
                 vec![
-                    Field::new("x", DataType::Float64, false),
-                    Field::new("y", DataType::Float64, false),
-                    Field::new("z", DataType::Float64, false),
+                    Field::new("position", DataType::Struct(Fields::empty()), false),
                 ]
                 .into(),
             ),
@@ -183,7 +176,7 @@ fn transform_struct_list_to_nested_lists(list_array: ListArray) -> Result<ListAr
         .as_any()
         .downcast_ref::<StructArray>()
         .ok_or_else(|| Error::TypeMismatch {
-            actual: instances.data_type().clone(),
+            actual: pose_struct_array.column(0).data_type().clone(),
             expected: DataType::Struct(
                 vec![
                     Field::new("x", DataType::Float64, false),
@@ -216,42 +209,50 @@ fn transform_struct_list_to_nested_lists(list_array: ListArray) -> Result<ListAr
         .as_any()
         .downcast_ref::<Float64Array>()
         .ok_or_else(|| Error::TypeMismatch {
-            actual: pose_struct_array.column(2).data_type().clone(),
+            actual: instance_struct_array.column(2).data_type().clone(),
             expected: DataType::Float64,
         })?;
 
-    let value_builder = Float32Builder::new();
-    let mut fixed_builder = FixedSizeListBuilder::new(value_builder, 3);
+    // Build List<FixedSizeList<Float32, 3>> structure
+    let fixed_size_list_field = Arc::new(Field::new(
+        "item",
+        DataType::FixedSizeList(
+            Arc::new(Field::new("item", DataType::Float32, true)),
+            3,
+        ),
+        false,
+    ));
 
-    for (x, y, z) in itertools::izip!(x.iter(), y.iter(), z.iter()) {
-        let (Some(x), Some(y), Some(z)) = (x, y, z) else {
-            re_log::warn_once!("Skipping unexpected Vector3 with missing component");
+    let mut list_builder = ListBuilder::new(FixedSizeListBuilder::new(Float32Builder::new(), 3));
+
+    // Iterate over each row (outer list element)
+    for i in 0..instances.len() {
+        if instances.is_null(i) {
+            list_builder.append(false);
             continue;
-        };
-        fixed_builder
-            .values()
-            .append_slice(&[x as f32, y as f32, z as f32]);
-        fixed_builder.append(true);
+        }
+
+        let start = instances.value_offsets()[i] as usize;
+        let end = instances.value_offsets()[i + 1] as usize;
+
+        // For each instance in this row, add a FixedSizeList[3]
+        for j in start..end {
+            let x_val = x.value(j);
+            let y_val = y.value(j);
+            let z_val = z.value(j);
+            list_builder
+                .values()
+                .values()
+                .append_slice(&[x_val as f32, y_val as f32, z_val as f32]);
+            list_builder.values().append(true);
+        }
+
+        list_builder.append(true);
     }
 
-    let fixed_list_array = fixed_builder.finish();
+    let result = list_builder.finish();
 
-    Ok(ListArray::new(
-        Arc::new(Field::new_list_field(
-            fixed_list_array.data_type().clone(),
-            true,
-        )),
-        offsets,
-        Arc::new(fixed_list_array),
-        nulls,
-    ))
-
-    // Ok(ListArray::new(
-    //     Arc::new(Field::new_list_field(rows.data_type().clone(), true)),
-    //     offsets,
-    //     Arc::new(rows),
-    //     nulls,
-    // ))
+    Ok(result)
 }
 
 // TODO: Use clamping
