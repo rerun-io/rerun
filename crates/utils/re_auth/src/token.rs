@@ -6,7 +6,7 @@ pub enum TokenError {
     MalformedToken(#[source] jsonwebtoken::errors::Error),
 }
 
-/// A JWT token that is used to authenticate the client.
+/// A JWT that is used to authenticate the client.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct Jwt(pub(crate) String);

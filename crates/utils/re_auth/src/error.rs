@@ -17,8 +17,8 @@ pub enum Error {
     InvalidToken,
 
     #[cfg(feature = "workos")]
-    #[error("failed to load external provider JWKS: {0}")]
-    ContextLoad(crate::workos::ContextLoadError),
+    #[error("failed to fetch JWKS from WorkOS")]
+    JwksFetch(crate::workos::api::Error),
 
     #[cfg(feature = "workos")]
     #[error(
