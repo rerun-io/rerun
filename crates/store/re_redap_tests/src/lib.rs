@@ -7,7 +7,7 @@
 //! integration test with the following content:
 //!
 //! ```ignore
-//! fn build() -> YourRerunCloudServiceImpl {
+//! async fn build() -> YourRerunCloudServiceImpl {
 //!     YourRerunCloudServiceImpl::new()
 //! }
 //!

@@ -1,6 +1,6 @@
 use re_server::{RerunCloudHandler, RerunCloudHandlerBuilder};
 
-fn build() -> RerunCloudHandler {
+async fn build() -> RerunCloudHandler {
     RerunCloudHandlerBuilder::new().build()
 }
 

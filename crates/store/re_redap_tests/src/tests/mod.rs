@@ -12,11 +12,11 @@ macro_rules! define_redap_tests {
         // this crate. As a result, the `dead_code` lint will kick in one forgets to add them to the
         // definition below.
         $(
-            pub async fn $test<T>(builder: impl FnOnce() -> T)
+            pub async fn $test<T>(service: T)
             where
                 T: re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
             {
-                $mod::$test(builder()).await;
+                $mod::$test(service).await;
             }
         )*
 
@@ -30,7 +30,7 @@ macro_rules! define_redap_tests {
                 $(
                     #[tokio::test]
                     async fn $test() {
-                        $crate::$test(|| $builder()).await
+                        $crate::$test($builder().await).await
                     }
                 )*
             };
