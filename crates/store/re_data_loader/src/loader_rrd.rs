@@ -28,10 +28,20 @@ impl crate::DataLoader for RrdLoader {
 
         re_tracing::profile_function!(filepath.display().to_string());
 
-        let extension = crate::extension(&filepath);
+        let mut extension = crate::extension(&filepath);
         if !matches!(extension.as_str(), "rbl" | "rrd") {
-            // NOTE: blueprints and recordings has the same file format
-            return Err(crate::DataLoaderError::Incompatible(filepath.clone()));
+            if filepath.is_file() {
+                // NOTE: blueprints and recordings have the same file format
+                return Err(crate::DataLoaderError::Incompatible(filepath.clone()));
+            } else {
+                // NOTE(1): If this is some kind of virtual file (fifo, socket, pipe, etc), then we
+                // always assume it's an RRD stream by default.
+                //
+                // NOTE(2): Because waiting for an end-of-stream marker on a pipe doesn't make sense,
+                // we tag it as `rbl` instead of `rrd` (but really this just means: please don't block
+                // indefinitely).
+                extension = "rbl".to_owned();
+            }
         }
 
         re_log::debug!(
