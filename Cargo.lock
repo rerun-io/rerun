@@ -9369,8 +9369,10 @@ dependencies = [
 name = "re_server"
 version = "0.26.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "anyhow",
  "arrow",
+ "bincode",
  "chrono",
  "clap",
  "datafusion",
@@ -9392,6 +9394,7 @@ dependencies = [
  "re_protos",
  "re_tuid",
  "re_types_core",
+ "serde",
  "sha2",
  "thiserror 1.0.69",
  "tokio",

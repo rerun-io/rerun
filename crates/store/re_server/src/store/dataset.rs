@@ -4,7 +4,7 @@ use std::path::Path;
 use arrow::array::RecordBatch;
 use arrow::datatypes::Schema;
 use arrow::error::ArrowError;
-
+use itertools::Either;
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_types::{EntryId, StoreKind};
 use re_protos::{
@@ -47,6 +47,26 @@ impl Dataset {
 
     pub fn partition(&self, partition_id: &PartitionId) -> Option<&Partition> {
         self.partitions.get(partition_id)
+    }
+
+    pub fn partitions_from_ids<'a>(
+        &'a self,
+        partition_ids: &'a [PartitionId],
+    ) -> Result<impl Iterator<Item = (&'a PartitionId, &'a Partition)>, Error> {
+        if partition_ids.is_empty() {
+            Ok(Either::Left(self.partitions.iter()))
+        } else {
+            // Validate that all partition IDs exist
+            for id in partition_ids {
+                if !self.partitions.contains_key(id) {
+                    return Err(Error::PartitionIdNotFound(id.clone(), self.id));
+                }
+            }
+
+            Ok(Either::Right(partition_ids.iter().filter_map(|id| {
+                self.partitions.get(id).map(|partition| (id, partition))
+            })))
+        }
     }
 
     pub fn as_entry_details(&self) -> EntryDetails {

@@ -1,22 +1,18 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use arrow::array::{
-    ArrayRef, BooleanArray, DurationNanosecondArray, Int64Array, RecordBatch, RecordBatchOptions,
-    StringArray, TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
-    TimestampSecondArray, UInt64Array,
-};
-use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
+use ahash::HashMap;
+use arrow::array::{BinaryArray, StringArray};
 use datafusion::prelude::SessionContext;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
-use re_byte_size::SizeBytes as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
+use re_protos::cloud::v1alpha1::FetchChunksRequest;
 use re_protos::{
     cloud::v1alpha1::{
         DeleteEntryResponse, EntryDetails, EntryKind, GetDatasetManifestSchemaRequest,
@@ -37,7 +33,7 @@ use re_protos::{
 use re_types_core::{ChunkId, Loggable as _};
 
 use crate::entrypoint::NamedPath;
-use crate::store::{Dataset, InMemoryStore, Table};
+use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
 
 #[derive(Debug, Default)]
 pub struct RerunCloudHandlerSettings {}
@@ -99,42 +95,32 @@ impl RerunCloudHandler {
         }
     }
 
+    /// Returns all the chunk stores of the specified dataset and partitions ids. If `partition_ids`
+    /// is empty, return stores of all partitions.
+    ///
+    /// Returns (partition id, layer name, store) tuples.
     async fn get_chunk_stores(
         &self,
         dataset_id: EntryId,
-        mut partition_ids: Vec<PartitionId>,
-    ) -> Result<Vec<(PartitionId, Vec<ChunkStoreHandle>, usize)>, tonic::Status> {
+        partition_ids: &[PartitionId],
+    ) -> Result<Vec<(PartitionId, String, ChunkStoreHandle)>, tonic::Status> {
         let store = self.store.read().await;
         let dataset = store.dataset(dataset_id).ok_or_else(|| {
             tonic::Status::not_found(format!("Entry with ID {dataset_id} not found"))
         })?;
 
-        if partition_ids.is_empty() {
-            partition_ids = dataset.partition_ids().collect();
-        }
-
-        partition_ids
-            .into_iter()
-            .map(|partition_id| {
-                dataset
-                    .partition(&partition_id)
-                    .ok_or_else(|| {
-                        tonic::Status::not_found(format!(
-                            "Partition with ID {partition_id} not found"
-                        ))
-                    })
-                    .map(|partition| {
-                        (
-                            partition_id,
-                            partition
-                                .iter_layers()
-                                .map(|(_, layer)| layer.store_handle().clone())
-                                .collect(),
-                            partition.num_chunks() as usize,
-                        )
-                    })
+        Ok(dataset
+            .partitions_from_ids(partition_ids)?
+            .flat_map(|(partition_id, partition)| {
+                partition.iter_layers().map(|(layer_name, layer)| {
+                    (
+                        partition_id.clone(),
+                        layer_name.to_owned(),
+                        layer.store_handle().clone(),
+                    )
+                })
             })
-            .collect::<Result<Vec<_>, _>>()
+            .collect())
     }
 }
 
@@ -552,7 +538,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         let mut request = request.into_inner();
 
-        let mut chunk_stores = HashMap::new();
+        let mut chunk_stores = HashMap::default();
 
         while let Some(chunk_msg) = request.next().await {
             let chunk_msg = chunk_msg?;
@@ -829,134 +815,77 @@ impl RerunCloudService for RerunCloudHandler {
             .map(PartitionId::try_from)
             .collect::<Result<Vec<_>, _>>()?;
 
-        let chunk_stores = self.get_chunk_stores(entry_id, partition_ids).await?;
+        let chunk_stores = self.get_chunk_stores(entry_id, &partition_ids).await?;
 
         let stream = futures::stream::iter(chunk_stores.into_iter().map(
-            move |(partition_id, store_handles, num_chunks)| {
-                let mut chunk_partition_id = Vec::with_capacity(num_chunks);
-                let mut chunk_entity_path = Vec::with_capacity(num_chunks);
-                let mut chunk_id = Vec::with_capacity(num_chunks);
+            move |(partition_id, layer_name, store_handle)| {
+                let num_chunks = store_handle.read().num_chunks();
+
+                let mut chunk_ids = Vec::with_capacity(num_chunks);
+                let mut chunk_partition_ids = Vec::with_capacity(num_chunks);
+                let chunk_layer_names = vec![layer_name.clone(); num_chunks];
+                let mut chunk_keys = Vec::with_capacity(num_chunks);
                 let mut chunk_is_static = Vec::with_capacity(num_chunks);
-                let mut chunk_byte_len = Vec::with_capacity(num_chunks);
 
                 let mut timelines = BTreeMap::new();
 
-                for store_handle in store_handles {
-                    for chunk in store_handle.read().iter_chunks() {
-                        if !entity_paths.is_empty() && !entity_paths.contains(chunk.entity_path()) {
-                            continue;
-                        }
-
-                        let mut missing_timelines: BTreeSet<_> =
-                            timelines.keys().copied().collect();
-                        for (timeline_name, timeline_col) in chunk.timelines() {
-                            let range = timeline_col.time_range();
-                            let time_min = range.min();
-                            let time_max = range.max();
-
-                            let timeline_name = timeline_name.as_str();
-                            missing_timelines.remove(timeline_name);
-                            let timeline_data_type =
-                                timeline_col.times_array().data_type().to_owned();
-
-                            let timeline_data = timelines.entry(timeline_name).or_insert((
-                                timeline_data_type,
-                                vec![None; chunk_partition_id.len()],
-                                vec![None; chunk_partition_id.len()],
-                            ));
-
-                            timeline_data.1.push(Some(time_min.as_i64()));
-                            timeline_data.2.push(Some(time_max.as_i64()));
-                        }
-                        for timeline_name in missing_timelines {
-                            let timeline_data = timelines
-                                .get_mut(timeline_name)
-                                .expect("timeline_names already checked"); // Already checked
-
-                            timeline_data.1.push(None);
-                            timeline_data.2.push(None);
-                        }
-
-                        chunk_partition_id.push(partition_id.id.clone());
-                        chunk_entity_path.push(chunk.entity_path().to_owned());
-                        chunk_id.push(chunk.id());
-                        chunk_is_static.push(chunk.is_static());
-                        chunk_byte_len.push(chunk.heap_size_bytes());
+                for chunk in store_handle.read().iter_chunks() {
+                    if !entity_paths.is_empty() && !entity_paths.contains(chunk.entity_path()) {
+                        continue;
                     }
+
+                    let mut missing_timelines: BTreeSet<_> = timelines.keys().copied().collect();
+                    for (timeline_name, timeline_col) in chunk.timelines() {
+                        let range = timeline_col.time_range();
+                        let time_min = range.min();
+                        let time_max = range.max();
+
+                        let timeline_name = timeline_name.as_str();
+                        missing_timelines.remove(timeline_name);
+                        let timeline_data_type = timeline_col.times_array().data_type().to_owned();
+
+                        let timeline_data = timelines.entry(timeline_name).or_insert((
+                            timeline_data_type,
+                            vec![None; chunk_partition_ids.len()],
+                            vec![None; chunk_partition_ids.len()],
+                        ));
+
+                        timeline_data.1.push(Some(time_min.as_i64()));
+                        timeline_data.2.push(Some(time_max.as_i64()));
+                    }
+                    for timeline_name in missing_timelines {
+                        let timeline_data = timelines
+                            .get_mut(timeline_name)
+                            .expect("timeline_names already checked"); // Already checked
+
+                        timeline_data.1.push(None);
+                        timeline_data.2.push(None);
+                    }
+
+                    chunk_partition_ids.push(partition_id.id.clone());
+                    chunk_ids.push(chunk.id());
+                    chunk_is_static.push(chunk.is_static());
+                    chunk_keys.push(
+                        ChunkKey {
+                            chunk_id: chunk.id(),
+                            partition_id: partition_id.clone(),
+                            layer_name: layer_name.clone(),
+                            dataset_id: entry_id,
+                        }
+                        .encode()?,
+                    );
                 }
 
-                //TODO: use
-                // The output schema of `query_dataset` contains information about
-                // the chunks such as the start and end times of each timeline.
-                // We will need to compute the schema based on which indices exist
-                // in the store.
-                let mut output_fields = vec![
-                    Field::new(
-                        "chunk_partition_id",
-                        arrow::datatypes::DataType::Utf8,
-                        false,
-                    )
-                    .with_metadata(
-                        std::iter::once(("rerun:kind".to_owned(), "control".to_owned())).collect(),
-                    ),
-                    Field::new("chunk_entity_path", arrow::datatypes::DataType::Utf8, false)
-                        .with_metadata(
-                            std::iter::once(("rerun:kind".to_owned(), "control".to_owned()))
-                                .collect(),
-                        ),
-                    Field::new("chunk_id", ChunkId::arrow_datatype(), false).with_metadata(
-                        std::iter::once(("rerun:kind".to_owned(), "control".to_owned())).collect(),
-                    ),
-                    Field::new(
-                        "chunk_is_static",
-                        arrow::datatypes::DataType::Boolean,
-                        false,
-                    )
-                    .with_metadata(
-                        std::iter::once(("rerun:kind".to_owned(), "control".to_owned())).collect(),
-                    ),
-                    Field::new("chunk_byte_len", arrow::datatypes::DataType::UInt64, false),
-                ];
-                let row_count = chunk_partition_id.len();
-                let mut arrays = vec![
-                    Arc::new(StringArray::from(chunk_partition_id)) as ArrayRef,
-                    EntityPath::to_arrow(chunk_entity_path).map_err(|err| {
-                        tonic::Status::internal(format!("EntityPath to_arrow failed: {err:#}"))
-                    })? as ArrayRef,
-                    ChunkId::to_arrow(chunk_id).map_err(|err| {
-                        tonic::Status::internal(format!("ChunkId to_arrow failed: {err:#}"))
-                    })? as ArrayRef,
-                    Arc::new(BooleanArray::from(chunk_is_static)) as ArrayRef,
-                    Arc::new(UInt64Array::from(chunk_byte_len)) as ArrayRef,
-                ];
-
-                for (timeline_name, (data_type, starts, ends)) in timelines {
-                    let (starts, ends) = arrays_from_timelines(&data_type, starts, ends)
-                        .map_err(tonic::Status::internal)?;
-
-                    output_fields.push(Field::new(
-                        format!("{timeline_name}:start"),
-                        starts.data_type().to_owned(),
-                        true,
-                    ));
-                    output_fields.push(Field::new(
-                        format!("{timeline_name}:end"),
-                        ends.data_type().to_owned(),
-                        true,
-                    ));
-
-                    arrays.push(starts);
-                    arrays.push(ends);
-                }
-
-                let schema = Arc::new(Schema::new_with_metadata(output_fields, HashMap::default()));
-                let batch = RecordBatch::try_new_with_options(
-                    schema,
-                    arrays,
-                    &RecordBatchOptions::default().with_row_count(Some(row_count)),
+                let chunk_key_refs = chunk_keys.iter().map(|v| v.as_slice()).collect();
+                let batch = QueryDatasetResponse::create_dataframe(
+                    chunk_ids,
+                    chunk_partition_ids,
+                    chunk_layer_names,
+                    chunk_key_refs,
+                    chunk_is_static,
                 )
                 .map_err(|err| {
-                    tonic::Status::internal(format!("record batch creation failed: {err:#}"))
+                    tonic::Status::internal(format!("Failed to create dataframe: {err:#}"))
                 })?;
 
                 let data =
@@ -982,42 +911,122 @@ impl RerunCloudService for RerunCloudHandler {
         // worth noting that FetchChunks is not per-dataset request, it simply contains chunk infos
         let request = request.into_inner();
 
-        let mut chunk_partition_pairs = Vec::new();
-
+        // Sort chunk ids per dataset id, partition id and layers names
+        let mut chunk_ids_index: HashMap<
+            EntryId,
+            HashMap<PartitionId, HashMap<String, Vec<ChunkId>>>,
+        > = Default::default();
         for chunk_info_data in request.chunk_infos {
             let chunk_info_batch = chunk_info_data.decode().map_err(|err| {
                 tonic::Status::internal(format!("Failed to decode chunk_info: {err:#}"))
             })?;
 
             let schema = chunk_info_batch.schema();
-            let chunk_id_col = schema
-                .column_with_name("chunk_id")
-                .ok_or_else(|| tonic::Status::invalid_argument("Missing chunk_id column"))?;
-            let partition_id_col = schema
-                .column_with_name("chunk_partition_id")
-                .or_else(|| schema.column_with_name("partition_id"))
-                .ok_or_else(|| tonic::Status::invalid_argument("Missing partition_id column"))?;
 
-            let chunk_ids = chunk_info_batch.column(chunk_id_col.0);
+            let chunk_id_col_idx = schema
+                .column_with_name(FetchChunksRequest::FIELD_CHUNK_ID)
+                .ok_or_else(|| {
+                    tonic::Status::invalid_argument(format!(
+                        "Missing {} column",
+                        FetchChunksRequest::FIELD_CHUNK_ID
+                    ))
+                })?
+                .0;
+
+            let partition_id_col_idx = schema
+                .column_with_name(FetchChunksRequest::FIELD_CHUNK_PARTITION_ID)
+                .ok_or_else(|| {
+                    tonic::Status::invalid_argument(format!(
+                        "Missing {} column",
+                        FetchChunksRequest::FIELD_CHUNK_PARTITION_ID
+                    ))
+                })?
+                .0;
+
+            let layer_name_col_idx = schema
+                .column_with_name(FetchChunksRequest::FIELD_CHUNK_LAYER_NAME)
+                .ok_or_else(|| {
+                    tonic::Status::invalid_argument(format!(
+                        "Missing {} column",
+                        FetchChunksRequest::FIELD_CHUNK_LAYER_NAME
+                    ))
+                })?
+                .0;
+
+            let chunk_ids = ChunkId::from_arrow(chunk_info_batch.column(chunk_id_col_idx))
+                .map_err(|err| {
+                    tonic::Status::internal(format!("Failed to parse chunk_id column: {err:#}"))
+                })?;
             let partition_ids = chunk_info_batch
-                .column(partition_id_col.0)
+                .column(partition_id_col_idx)
                 .as_any()
                 .downcast_ref::<StringArray>()
                 .ok_or_else(|| {
-                    tonic::Status::invalid_argument("partition_id must be string array")
+                    tonic::Status::invalid_argument(format!(
+                        "{} must be string array",
+                        FetchChunksRequest::FIELD_CHUNK_PARTITION_ID
+                    ))
+                })?;
+            let layer_names = chunk_info_batch
+                .column(layer_name_col_idx)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .ok_or_else(|| {
+                    tonic::Status::invalid_argument(format!(
+                        "{} must be string array",
+                        FetchChunksRequest::FIELD_CHUNK_LAYER_NAME
+                    ))
                 })?;
 
-            use re_log_types::external::re_types_core::ChunkId;
-            let chunk_id_array = ChunkId::from_arrow(chunk_ids).map_err(|err| {
-                tonic::Status::internal(format!("Failed to parse chunk_id column: {err:#}"))
-            })?;
+            let chunk_key_col_idx = schema
+                .column_with_name(FetchChunksRequest::FIELD_CHUNK_KEY)
+                .ok_or_else(|| {
+                    tonic::Status::invalid_argument(format!(
+                        "Missing {} column",
+                        FetchChunksRequest::FIELD_CHUNK_KEY
+                    ))
+                })?
+                .0;
 
-            for (i, chunk_id) in chunk_id_array.into_iter().enumerate() {
-                if let Some(partition_id_str) = partition_ids.value(i).to_owned().into() {
-                    let partition_id = PartitionId::from(partition_id_str);
-                    chunk_partition_pairs.push((chunk_id, partition_id));
-                }
+            let chunk_keys = chunk_info_batch
+                .column(chunk_key_col_idx)
+                .as_any()
+                .downcast_ref::<BinaryArray>()
+                .ok_or_else(|| {
+                    tonic::Status::invalid_argument(format!(
+                        "{} must be binary array",
+                        FetchChunksRequest::FIELD_CHUNK_KEY
+                    ))
+                })?;
+
+            for chunk_key in chunk_keys.iter() {
+                let chunk_key = chunk_key.ok_or_else(|| {
+                    tonic::Status::invalid_argument(format!(
+                        "{} must not be null",
+                        FetchChunksRequest::FIELD_CHUNK_KEY
+                    ))
+                })?;
+
+                let chunk_key = ChunkKey::decode(chunk_key)?;
             }
+
+            //TODO WIP
+            // for (partition_id, layer_name, chunk_id) in itertools::multizip((
+            //     partition_ids.into_iter(),
+            //     layer_names.into_iter(),
+            //     chunk_ids.into_iter(),
+            // )) {
+            //     let (Some(partition_id), Some(layer_name)) = (partition_id, layer_name) else {
+            //         continue;
+            //     };
+            //
+            //     chunk_ids_index
+            //         .entry(PartitionId::from(partition_id.clone()))
+            //         .or_default()
+            //         .entry(layer_name.clone())
+            //         .or_default()
+            //         .push(chunk_id.clone());
+            // }
         }
 
         // get storage engines only for the partitions we actually need
@@ -1026,7 +1035,7 @@ impl RerunCloudService for RerunCloudHandler {
             .iter_datasets()
             .flat_map(|dataset| {
                 let dataset_id = dataset.id();
-                let chunk_partition_pairs = &chunk_partition_pairs;
+                let chunk_partition_pairs = &chunk_ids_index;
                 dataset.partition_ids().filter_map(move |partition_id| {
                     if chunk_partition_pairs
                         .iter()
@@ -1053,7 +1062,7 @@ impl RerunCloudService for RerunCloudHandler {
         let mut chunks = Vec::new();
         let compression = re_log_encoding::codec::Compression::Off;
 
-        for (chunk_id, partition_id) in chunk_partition_pairs {
+        for (chunk_id, partition_id) in chunk_ids_index {
             let (dataset_id, store_handles) =
                 store_handles.get(&partition_id).ok_or_else(|| {
                     tonic::Status::internal(format!(
@@ -1258,43 +1267,4 @@ fn get_entry_id_from_headers<T>(
             "missing mandatory {HEADERS:?} HTTP headers"
         )))
     }
-}
-
-fn arrays_from_timelines(
-    data_type: &DataType,
-    starts: Vec<Option<i64>>,
-    ends: Vec<Option<i64>>,
-) -> Result<(ArrayRef, ArrayRef), &'static str> {
-    let (starts, ends) = match data_type {
-        DataType::Int64 => (
-            Arc::new(Int64Array::from(starts)) as ArrayRef,
-            Arc::new(Int64Array::from(ends)) as ArrayRef,
-        ),
-        // downcast_value!(time_array, Int64Array).reinterpret_cast::<Int64Type>(),
-        DataType::Timestamp(TimeUnit::Second, _) => (
-            Arc::new(TimestampSecondArray::from(starts)) as ArrayRef,
-            Arc::new(TimestampSecondArray::from(ends)) as ArrayRef,
-        ),
-        DataType::Timestamp(TimeUnit::Millisecond, _) => (
-            Arc::new(TimestampMillisecondArray::from(starts)) as ArrayRef,
-            Arc::new(TimestampMillisecondArray::from(ends)) as ArrayRef,
-        ),
-        DataType::Timestamp(TimeUnit::Microsecond, _) => (
-            Arc::new(TimestampMicrosecondArray::from(starts)) as ArrayRef,
-            Arc::new(TimestampMicrosecondArray::from(ends)) as ArrayRef,
-        ),
-        DataType::Timestamp(TimeUnit::Nanosecond, _) => (
-            Arc::new(TimestampNanosecondArray::from(starts)) as ArrayRef,
-            Arc::new(TimestampNanosecondArray::from(ends)) as ArrayRef,
-        ),
-        DataType::Duration(TimeUnit::Nanosecond) => (
-            Arc::new(DurationNanosecondArray::from(starts)) as ArrayRef,
-            Arc::new(DurationNanosecondArray::from(ends)) as ArrayRef,
-        ),
-        _ => {
-            return Err("Unexpected timeline data type for index");
-        }
-    };
-
-    Ok((starts, ends))
 }

@@ -131,15 +131,11 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
 // --- QueryDatasetResponse ---
 
 impl QueryDatasetResponse {
-    //TODO(RR-2613): make these names consistent
-
-    // mandatory fields for `FetchChunks`
+    //TODO(RR-2650): there is no consensus about these fields and schema
     pub const FIELD_CHUNK_ID: &str = "chunk_id";
     pub const FIELD_CHUNK_PARTITION_ID: &str = "chunk_partition_id";
     pub const FIELD_CHUNK_LAYER_NAME: &str = "rerun_partition_layer";
     pub const FIELD_CHUNK_KEY: &str = "chunk_key";
-
-    // information fields (not mendatory for `FetchChunks`
     pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
 
     pub fn field_chunk_id() -> Field {
@@ -204,6 +200,7 @@ impl QueryDatasetResponse {
 }
 
 impl FetchChunksRequest {
+    //TODO(RR-2650): there is no consensus about these fields and schema
     pub const FIELD_CHUNK_ID: &str = QueryDatasetResponse::FIELD_CHUNK_ID;
     pub const FIELD_CHUNK_PARTITION_ID: &str = QueryDatasetResponse::FIELD_CHUNK_PARTITION_ID;
     pub const FIELD_CHUNK_LAYER_NAME: &str = QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME;

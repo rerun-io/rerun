@@ -40,8 +40,10 @@ re_tuid.workspace = true
 re_types_core.workspace = true
 
 # External
+ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
+bincode.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 chrono = { workspace = true, features = ["serde"] }
 datafusion.workspace = true
@@ -51,6 +53,7 @@ jiff.workspace = true
 lance.workspace = true
 http.workspace = true
 nohash-hasher.workspace = true
+serde.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
