@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use egui::accesskit::Toggled;
+use egui_kittest::kittest::NodeT as _;
 use egui_kittest::{SnapshotOptions, kittest::Queryable as _};
 use re_sdk::{
     Component as _, ComponentDescriptor, EntityPath, EntityPathPart, RecordingInfo, StoreId,
@@ -61,16 +63,17 @@ pub trait HarnessExt {
     #[allow(unused)]
     fn debug_viewer_state(&mut self);
 
-    fn toggle_blueprint_panel(&mut self) {
-        self.click_label("Blueprint panel toggle");
-    }
+    // Opens / closes app panels
+    fn set_panel_opened(&mut self, panel_label: &str, opened: bool);
 
-    fn toggle_time_panel(&mut self) {
-        self.click_label("Time panel toggle");
+    fn set_blueprint_panel_opened(&mut self, opened: bool) {
+        self.set_panel_opened("Blueprint panel toggle", opened);
     }
-
-    fn toggle_selection_panel(&mut self) {
-        self.click_label("Selection panel toggle");
+    fn set_selection_panel_opened(&mut self, opened: bool) {
+        self.set_panel_opened("Selection panel toggle", opened);
+    }
+    fn set_time_panel_opened(&mut self, opened: bool) {
+        self.set_panel_opened("Time panel toggle", opened);
     }
 }
 
@@ -248,5 +251,16 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
             snapshot_name,
             &SnapshotOptions::new().failed_pixel_count_threshold(20),
         );
+    }
+
+    fn set_panel_opened(&mut self, panel_label: &str, opened: bool) {
+        let node = self.get_by_label(panel_label);
+        let is_open = Some(Toggled::True) == node.accesskit_node().data().toggled();
+        if is_open != opened {
+            self.click_label(panel_label);
+        }
+        // The toggle button is hovered now, move the pointer away
+        self.input_mut().events.push(egui::Event::PointerGone);
+        self.run_ok();
     }
 }

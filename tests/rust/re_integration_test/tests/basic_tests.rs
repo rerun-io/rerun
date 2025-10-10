@@ -11,7 +11,10 @@ use re_viewport_blueprint::ViewBlueprint;
 pub async fn test_single_text_document() {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
     harness.init_recording();
-    harness.toggle_selection_panel();
+    harness.set_blueprint_panel_opened(true);
+    harness.set_selection_panel_opened(false);
+    harness.set_time_panel_opened(true);
+
     harness.snapshot_app("single_text_document_1");
 
     // Log some data

@@ -10,7 +10,9 @@ use re_viewport_blueprint::ViewBlueprint;
 fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
     harness.init_recording();
-    harness.toggle_selection_panel();
+    harness.set_blueprint_panel_opened(true);
+    harness.set_selection_panel_opened(false);
+    harness.set_time_panel_opened(true);
 
     // Log some data
     harness.log_entity("txt/hello/world", |builder| {
