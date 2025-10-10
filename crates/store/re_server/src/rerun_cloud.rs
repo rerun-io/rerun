@@ -1121,10 +1121,8 @@ impl RerunCloudService for RerunCloudHandler {
         let table = store
             .table(entry_id)
             .ok_or_else(|| Status::not_found(format!("Entry with ID {entry_id} not found")))?;
-
-        let table_provider = table.provider();
-
-        let schema = table_provider.schema();
+        
+        let schema = table.schema();
 
         Ok(tonic::Response::new(
             re_protos::cloud::v1alpha1::GetTableSchemaResponse {

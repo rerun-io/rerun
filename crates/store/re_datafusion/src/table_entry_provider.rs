@@ -25,7 +25,7 @@ use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::cloud::v1alpha1::ext::EntryDetails;
-use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest, WriteChunksRequest};
+use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest, TableInsertMode, WriteTableRequest};
 use re_protos::cloud::v1alpha1::{GetTableSchemaRequest, ScanTableRequest, ScanTableResponse};
 use re_redap_client::ConnectionClient;
 
@@ -173,17 +173,25 @@ impl GrpcStreamToTable for TableEntryTableProvider {
 
     async fn insert_into(
         &self,
-        state: &dyn Session,
+        _state: &dyn Session,
         input: Arc<dyn ExecutionPlan>,
         insert_op: InsertOp,
     ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
         let num_partitions = input.properties().output_partitioning().partition_count();
+        let entry_id = self.clone().table_id().await?;
+        let insert_op = match insert_op {
+            InsertOp::Append => TableInsertMode::TableInsertAppend,
+            InsertOp::Replace => TableInsertMode::TableInsertReplace,
+            InsertOp::Overwrite => TableInsertMode::TableInsertOverwrite,
+        };
         Ok(Arc::new(
             crate::table_entry_provider::TableEntryWriterExec::new(
                 self.client.clone(),
                 input,
                 num_partitions,
                 self.runtime.clone(),
+                entry_id,
+                insert_op,
             ),
         ))
     }
@@ -195,6 +203,8 @@ struct TableEntryWriterExec {
     props: PlanProperties,
     child: Arc<dyn ExecutionPlan>,
     runtime: Handle,
+    table_id: EntryId,
+    insert_op: TableInsertMode,
 }
 
 impl DisplayAs for TableEntryWriterExec {
@@ -209,6 +219,8 @@ impl TableEntryWriterExec {
         child: Arc<dyn ExecutionPlan>,
         default_partitioning: usize,
         runtime: Handle,
+        table_id: EntryId,
+        insert_op: TableInsertMode,
     ) -> Self {
         Self {
             client,
@@ -220,6 +232,8 @@ impl TableEntryWriterExec {
             ),
             child,
             runtime,
+            table_id,
+            insert_op,
         }
     }
 }
@@ -266,7 +280,7 @@ impl ExecutionPlan for TableEntryWriterExec {
         let inner = self.child.execute(partition, context)?;
 
         let stream =
-            RecordBatchGrpcOutputStream::new(inner, self.client.clone(), self.runtime.clone());
+            RecordBatchGrpcOutputStream::new(inner, self.client.clone(), self.runtime.clone(), self.table_id, self.insert_op);
 
         Ok(Box::pin(stream))
     }
@@ -277,10 +291,12 @@ pub struct RecordBatchGrpcOutputStream<S> {
     grpc_sender: Option<GrpcStreamSender>,
     error_receiver: tokio::sync::oneshot::Receiver<tonic::Status>,
     grpc_error: Option<tonic::Status>,
+    table_id: EntryId,
+    insert_op: TableInsertMode,
 }
 
 struct GrpcStreamSender {
-    sender: tokio::sync::mpsc::UnboundedSender<WriteChunksRequest>,
+    sender: tokio::sync::mpsc::UnboundedSender<WriteTableRequest>,
 }
 
 impl<S> RecordBatchStream for RecordBatchGrpcOutputStream<S>
@@ -296,7 +312,7 @@ impl<S> RecordBatchGrpcOutputStream<S>
 where
     S: Stream<Item = Result<RecordBatch, DataFusionError>> + Send + Unpin + 'static,
 {
-    pub fn new(inner: S, client: ConnectionClient, runtime: Handle) -> Self {
+    pub fn new(inner: S, client: ConnectionClient, runtime: Handle, table_id: EntryId, insert_op: TableInsertMode) -> Self {
         // Create a channel that both we and the gRPC client will use
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -308,7 +324,7 @@ where
             let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
             let mut client = client;
 
-            if let Err(e) = client.inner().write_chunks(stream).await {
+            if let Err(e) = client.inner().write_table(stream).await {
                 // Send the error back to the stream
                 // Ignore send error if receiver is dropped
                 let _ = error_tx.send(e);
@@ -320,6 +336,8 @@ where
             grpc_sender: Some(GrpcStreamSender { sender: tx }),
             error_receiver: error_rx,
             grpc_error: None,
+            table_id,
+            insert_op,
         }
     }
 }
@@ -354,8 +372,12 @@ where
                 // Send to gRPC if we have a sender
                 if let Some(ref grpc_sender) = self.grpc_sender {
                     match batch.encode() {
-                        Ok(chunk) => {
-                            let request = WriteChunksRequest { chunk: Some(chunk) };
+                        Ok(dataframe_part) => {
+                            let request = WriteTableRequest {
+                                dataframe_part: Some(dataframe_part),
+                                table_id: Some(self.table_id.into()),
+                                insert_mode: self.insert_op.into(),
+                            };
                             // Check if channel is still open
                             if grpc_sender.sender.send(request).is_err() {
                                 // Channel closed - the gRPC task may have failed

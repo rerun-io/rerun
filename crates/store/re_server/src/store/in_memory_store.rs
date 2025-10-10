@@ -8,7 +8,7 @@ use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use datafusion::catalog::{MemTable, TableProvider};
 use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
-use lance::datafusion::LanceTableProvider;
+use lance::Dataset as LanceDataset;
 
 use re_chunk_store::ChunkStoreConfig;
 use re_log_types::EntryId;
@@ -25,6 +25,7 @@ use re_types_core::{ComponentBatch as _, Loggable as _};
 
 use crate::entrypoint::NamedPath;
 use crate::store::{Dataset, Error, Table};
+use crate::store::table::TableType;
 
 const ENTRIES_TABLE_NAME: &str = "__entries";
 
@@ -128,21 +129,20 @@ impl InMemoryStore {
             format!("Expected a valid path, got: {}", directory.display()),
         ))?;
 
-        let table = lance::Dataset::open(path)
+        let table = TableType::LanceDataset(lance::Dataset::open(path)
             .await
-            .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?;
-        let provider = Arc::new(LanceTableProvider::new(Arc::new(table), false, false));
+            .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?);
 
         let entry_id = EntryId::new();
 
         match self.table_by_name(entry_name.as_ref()) {
             None => {
-                self.add_table_entry(entry_name.as_ref(), entry_id, provider)?;
+                self.add_table_entry(entry_name.as_ref(), entry_id, table)?;
             }
             Some(_) => match on_duplicate {
                 IfDuplicateBehavior::Overwrite => {
                     re_log::info!("Overwriting {entry_name}");
-                    self.add_table_entry(entry_name.as_ref(), entry_id, provider)?;
+                    self.add_table_entry(entry_name.as_ref(), entry_id, table)?;
                 }
                 IfDuplicateBehavior::Skip => {
                     re_log::info!("Ignoring {entry_name}: it already exists");
@@ -160,12 +160,12 @@ impl InMemoryStore {
         &mut self,
         entry_name: &str,
         entry_id: EntryId,
-        provider: Arc<dyn TableProvider>,
+        table: TableType,
     ) -> Result<(), Error> {
         self.id_by_name.insert(entry_name.to_owned(), entry_id);
         self.tables.insert(
             entry_id,
-            Table::new(entry_id, entry_name.to_owned(), provider, None, None),
+            Table::new(entry_id, entry_name.to_owned(), table, None, None),
         );
 
         self.update_entries_table()
@@ -189,7 +189,7 @@ impl InMemoryStore {
             Table::new(
                 entries_table_id,
                 ENTRIES_TABLE_NAME.to_owned(),
-                entries_table,
+                TableType::DataFusionTable(entries_table),
                 prior_entries_table.map(|t| t.created_at()),
                 Some(SystemTable {
                     kind: SystemTableKind::Entries,
