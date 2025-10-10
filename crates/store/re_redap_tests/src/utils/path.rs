@@ -43,6 +43,7 @@ impl std::ops::Drop for TempPath {
 impl std::ops::Deref for TempPath {
     type Target = PathBuf;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.path
     }
