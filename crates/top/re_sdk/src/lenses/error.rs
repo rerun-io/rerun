@@ -16,6 +16,9 @@ pub enum Error {
         found: Vec<String>,
     },
 
+    #[error("unsupported operation: {0}")]
+    UnsupportedOperation(String),
+
     #[error(transparent)]
     Arrow(#[from] ArrowError),
 
