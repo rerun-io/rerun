@@ -824,6 +824,37 @@ impl ::prost::Name for ScanTableResponse {
         "/rerun.cloud.v1alpha1.ScanTableResponse".into()
     }
 }
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct WriteTableRequest {
+    #[prost(message, optional, tag = "1")]
+    pub table_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    #[prost(message, optional, tag = "2")]
+    pub dataframe_part: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    #[prost(enumeration = "TableInsertMode", tag = "3")]
+    pub insert_mode: i32,
+}
+impl ::prost::Name for WriteTableRequest {
+    const NAME: &'static str = "WriteTableRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.WriteTableRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.WriteTableRequest".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct WriteTableResponse {}
+impl ::prost::Name for WriteTableResponse {
+    const NAME: &'static str = "WriteTableResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.WriteTableResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.WriteTableResponse".into()
+    }
+}
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DoMaintenanceRequest {
     /// Optimize all builtin and user-defined indexes on this dataset.
@@ -1498,6 +1529,38 @@ impl VectorDistanceMetric {
         }
     }
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum TableInsertMode {
+    /// Appends new rows to the existing table without modifying any existing rows.
+    TableInsertAppend = 0,
+    /// Replace existing rows that collide with the inserted rows. Replacement is typically based on a unique key or primary key.
+    TableInsertReplace = 1,
+    /// Overwrites all existing rows in the table with the new rows.
+    TableInsertOverwrite = 2,
+}
+impl TableInsertMode {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::TableInsertAppend => "TABLE_INSERT_APPEND",
+            Self::TableInsertReplace => "TABLE_INSERT_REPLACE",
+            Self::TableInsertOverwrite => "TABLE_INSERT_OVERWRITE",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "TABLE_INSERT_APPEND" => Some(Self::TableInsertAppend),
+            "TABLE_INSERT_REPLACE" => Some(Self::TableInsertReplace),
+            "TABLE_INSERT_OVERWRITE" => Some(Self::TableInsertOverwrite),
+            _ => None,
+        }
+    }
+}
 /// What type of entry. This has strong implication on which APIs are available for this entry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -2164,6 +2227,28 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
+        /// Write record batches to a table.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        pub async fn write_table(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<Message = super::WriteTableRequest>,
+        ) -> std::result::Result<tonic::Response<super::WriteTableResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/WriteTable",
+            );
+            let mut req = request.into_streaming_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "WriteTable",
+            ));
+            self.inner.client_streaming(req, path, codec).await
+        }
         /// Query the status of submitted tasks
         pub async fn query_tasks(
             &mut self,
@@ -2457,6 +2542,13 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::ScanTableRequest>,
         ) -> std::result::Result<tonic::Response<Self::ScanTableStream>, tonic::Status>;
+        /// Write record batches to a table.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        async fn write_table(
+            &self,
+            request: tonic::Request<tonic::Streaming<super::WriteTableRequest>>,
+        ) -> std::result::Result<tonic::Response<super::WriteTableResponse>, tonic::Status>;
         /// Query the status of submitted tasks
         async fn query_tasks(
             &self,
@@ -3511,6 +3603,48 @@ pub mod rerun_cloud_service_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/WriteTable" => {
+                    #[allow(non_camel_case_types)]
+                    struct WriteTableSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ClientStreamingService<super::WriteTableRequest>
+                        for WriteTableSvc<T>
+                    {
+                        type Response = super::WriteTableResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<tonic::Streaming<super::WriteTableRequest>>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::write_table(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = WriteTableSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.client_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
