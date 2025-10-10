@@ -8,4 +8,8 @@ table BarChartView (
 ) {
     /// Configures the legend of the plot.
     plot_legend: rerun.blueprint.archetypes.PlotLegend (order: 2000);
+
+
+    /// Configures the background of the plot.
+    background: rerun.blueprint.archetypes.PlotBackground (order: 3000);
 }

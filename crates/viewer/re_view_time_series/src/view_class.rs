@@ -7,13 +7,13 @@ use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_nanos;
 use re_log_types::{EntityPath, TimeInt};
 use re_types::{
-    ComponentBatch as _, View as _, ViewClassIdentifier,
+    Archetype as _, ComponentBatch as _, View as _, ViewClassIdentifier,
     archetypes::{SeriesLines, SeriesPoints},
     blueprint::{
-        archetypes::{PlotLegend, ScalarAxis, TimeAxis},
-        components::{Corner2D, LinkAxis, LockRangeDuringZoom},
+        archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis},
+        components::{Corner2D, Enabled, LinkAxis, LockRangeDuringZoom},
     },
-    components::{AggregationPolicy, Range1D, SeriesVisible, Visible},
+    components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible},
     datatypes::TimeRange,
 };
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
@@ -209,6 +209,7 @@ impl ViewClass for TimeSeriesView {
 
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
             let ctx = self.view_context(ctx, view_id, state);
+            view_property_ui::<PlotBackground>(&ctx, ui, self);
             view_property_ui::<PlotLegend>(&ctx, ui, self);
             view_property_ui::<TimeAxis>(&ctx, ui, self);
             view_property_ui::<ScalarAxis>(&ctx, ui, self);
@@ -356,6 +357,22 @@ impl ViewClass for TimeSeriesView {
         let view_id = query.view_id;
 
         let view_ctx = self.view_context(ctx, view_id, state);
+        let background = ViewProperty::from_archetype::<PlotBackground>(
+            blueprint_db,
+            ctx.blueprint_query,
+            view_id,
+        );
+        let background_color = background.component_or_fallback::<Color>(
+            &view_ctx,
+            self,
+            &PlotBackground::descriptor_color(),
+        )?;
+        let show_grid = background.component_or_fallback::<Enabled>(
+            &view_ctx,
+            self,
+            &PlotBackground::descriptor_show_grid(),
+        )?;
+
         let plot_legend =
             ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
         let legend_visible = plot_legend.component_or_fallback::<Visible>(
@@ -463,8 +480,11 @@ impl ViewClass for TimeSeriesView {
 
         let min_axis_thickness = ui.tokens().small_icon_size.y;
 
+        ui.style_mut().visuals.extreme_bg_color = background_color.into();
+
         let mut plot = Plot::new(plot_id_src)
             .id(plot_id)
+            .show_grid(**show_grid)
             .auto_bounds(state.saved_auto_bounds) // Note that this only sets the initial default.
             .allow_zoom([true, !lock_y_during_zoom])
             .custom_x_axes(vec![
@@ -931,6 +951,28 @@ impl TypedComponentFallbackProvider<Range1D> for TimeSeriesView {
     }
 }
 
+impl TypedComponentFallbackProvider<Color> for TimeSeriesView {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Color {
+        // Color is a fairly common component, make sure this is the right context.
+        if ctx.archetype_name == Some(PlotBackground::name()) {
+            ctx.viewer_ctx().tokens().viewport_background.into()
+        } else {
+            Color::default()
+        }
+    }
+}
+
+impl TypedComponentFallbackProvider<Enabled> for TimeSeriesView {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Enabled {
+        // Enabled is a fairly general component, make sure this is the right context.
+        if ctx.archetype_name == Some(PlotBackground::name()) {
+            Enabled(true.into())
+        } else {
+            Enabled::default()
+        }
+    }
+}
+
 /// Make sure the range is finite and positive, or `egui_plot` might be buggy.
 fn make_range_sane(y_range: Range1D) -> Range1D {
     let (mut start, mut end) = (y_range.start(), y_range.end());
@@ -954,7 +996,7 @@ fn make_range_sane(y_range: Range1D) -> Range1D {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(TimeSeriesView => [Corner2D, Range1D]);
+re_viewer_context::impl_component_fallback_provider!(TimeSeriesView => [Corner2D, Range1D, Color, Enabled]);
 
 #[test]
 fn test_help_view() {

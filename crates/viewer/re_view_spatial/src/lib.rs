@@ -121,7 +121,7 @@ fn resolution_of_image_at(
     None
 }
 
-pub(crate) fn configure_background(
+pub fn configure_background(
     ctx: &ViewContext<'_>,
     background: &ViewProperty,
     view_system: &dyn re_viewer_context::ComponentFallbackProvider,

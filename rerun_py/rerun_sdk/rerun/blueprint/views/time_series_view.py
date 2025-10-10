@@ -107,6 +107,7 @@ class TimeSeriesView(View):
         axis_x: blueprint_archetypes.TimeAxis | None = None,
         axis_y: blueprint_archetypes.ScalarAxis | None = None,
         plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
+        background: blueprint_archetypes.PlotBackground | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
         | datatypes.VisibleTimeRangeLike
         | Sequence[datatypes.VisibleTimeRangeLike]
@@ -153,6 +154,8 @@ class TimeSeriesView(View):
             Configures the vertical axis of the plot.
         plot_legend:
             Configures the legend of the plot.
+        background:
+            Configures the background of the plot.
         time_ranges:
             Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
@@ -176,6 +179,11 @@ class TimeSeriesView(View):
             if not isinstance(plot_legend, blueprint_archetypes.PlotLegend):
                 plot_legend = blueprint_archetypes.PlotLegend(plot_legend)
             properties["PlotLegend"] = plot_legend
+
+        if background is not None:
+            if not isinstance(background, blueprint_archetypes.PlotBackground):
+                background = blueprint_archetypes.PlotBackground(background)
+            properties["PlotBackground"] = background
 
         if time_ranges is not None:
             if not isinstance(time_ranges, blueprint_archetypes.VisibleTimeRanges):

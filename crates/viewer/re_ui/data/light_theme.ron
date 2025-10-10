@@ -48,6 +48,11 @@
       "color": "{Blue.300}"
     },
 
+    "viewport_background": {
+      "color": "{Gray.1000}"
+    },
+
+
     "highlight_color": {
       // Background color for widgets that should catch the user's attention
       "color": "{Blue.750}"

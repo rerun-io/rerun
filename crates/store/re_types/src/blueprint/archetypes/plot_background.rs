@@ -19,75 +19,80 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Configuration for the background of a spatial view.
+/// **Archetype**: Configuration of a background in a plot view.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default)]
-pub struct Background {
-    /// The type of the background.
-    pub kind: Option<SerializedComponentBatch>,
-
-    /// Color used for the solid background type.
+pub struct PlotBackground {
+    /// Color used for the background.
     pub color: Option<SerializedComponentBatch>,
+
+    /// Should the grid be drawn?
+    pub show_grid: Option<SerializedComponentBatch>,
 }
 
-impl Background {
-    /// Returns the [`ComponentDescriptor`] for [`Self::kind`].
-    ///
-    /// The corresponding component is [`crate::blueprint::components::BackgroundKind`].
-    #[inline]
-    pub fn descriptor_kind() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.Background".into()),
-            component: "Background:kind".into(),
-            component_type: Some("rerun.blueprint.components.BackgroundKind".into()),
-        }
-    }
-
+impl PlotBackground {
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
     ///
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.Background".into()),
-            component: "Background:color".into(),
+            archetype: Some("rerun.blueprint.archetypes.PlotBackground".into()),
+            component: "PlotBackground:color".into(),
             component_type: Some("rerun.components.Color".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::show_grid`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::Enabled`].
+    #[inline]
+    pub fn descriptor_show_grid() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.blueprint.archetypes.PlotBackground".into()),
+            component: "PlotBackground:show_grid".into(),
+            component_type: Some("rerun.blueprint.components.Enabled".into()),
         }
     }
 }
 
-static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [Background::descriptor_kind()]);
+static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
+    std::sync::LazyLock::new(|| []);
 
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [Background::descriptor_color()]);
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+    std::sync::LazyLock::new(|| {
+        [
+            PlotBackground::descriptor_color(),
+            PlotBackground::descriptor_show_grid(),
+        ]
+    });
 
 static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
     std::sync::LazyLock::new(|| {
         [
-            Background::descriptor_kind(),
-            Background::descriptor_color(),
+            PlotBackground::descriptor_color(),
+            PlotBackground::descriptor_show_grid(),
         ]
     });
 
-impl Background {
-    /// The total number of components in the archetype: 1 required, 0 recommended, 1 optional
+impl PlotBackground {
+    /// The total number of components in the archetype: 0 required, 0 recommended, 2 optional
     pub const NUM_COMPONENTS: usize = 2usize;
 }
 
-impl ::re_types_core::Archetype for Background {
+impl ::re_types_core::Archetype for PlotBackground {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.Background".into()
+        "rerun.blueprint.archetypes.PlotBackground".into()
     }
 
     #[inline]
     fn display_name() -> &'static str {
-        "Background"
+        "Plot background"
     }
 
     #[inline]
@@ -117,82 +122,84 @@ impl ::re_types_core::Archetype for Background {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let kind = arrays_by_descr
-            .get(&Self::descriptor_kind())
-            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_kind()));
         let color = arrays_by_descr
             .get(&Self::descriptor_color())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_color()));
-        Ok(Self { kind, color })
+        let show_grid = arrays_by_descr
+            .get(&Self::descriptor_show_grid())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_show_grid())
+            });
+        Ok(Self { color, show_grid })
     }
 }
 
-impl ::re_types_core::AsComponents for Background {
+impl ::re_types_core::AsComponents for PlotBackground {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [self.kind.clone(), self.color.clone()]
+        [self.color.clone(), self.show_grid.clone()]
             .into_iter()
             .flatten()
             .collect()
     }
 }
 
-impl ::re_types_core::ArchetypeReflectionMarker for Background {}
+impl ::re_types_core::ArchetypeReflectionMarker for PlotBackground {}
 
-impl Background {
-    /// Create a new `Background`.
+impl PlotBackground {
+    /// Create a new `PlotBackground`.
     #[inline]
-    pub fn new(kind: impl Into<crate::blueprint::components::BackgroundKind>) -> Self {
+    pub fn new() -> Self {
         Self {
-            kind: try_serialize_field(Self::descriptor_kind(), [kind]),
             color: None,
+            show_grid: None,
         }
     }
 
-    /// Update only some specific fields of a `Background`.
+    /// Update only some specific fields of a `PlotBackground`.
     #[inline]
     pub fn update_fields() -> Self {
         Self::default()
     }
 
-    /// Clear all the fields of a `Background`.
+    /// Clear all the fields of a `PlotBackground`.
     #[inline]
     pub fn clear_fields() -> Self {
         use ::re_types_core::Loggable as _;
         Self {
-            kind: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::BackgroundKind::arrow_empty(),
-                Self::descriptor_kind(),
-            )),
             color: Some(SerializedComponentBatch::new(
                 crate::components::Color::arrow_empty(),
                 Self::descriptor_color(),
             )),
+            show_grid: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::Enabled::arrow_empty(),
+                Self::descriptor_show_grid(),
+            )),
         }
     }
 
-    /// The type of the background.
-    #[inline]
-    pub fn with_kind(
-        mut self,
-        kind: impl Into<crate::blueprint::components::BackgroundKind>,
-    ) -> Self {
-        self.kind = try_serialize_field(Self::descriptor_kind(), [kind]);
-        self
-    }
-
-    /// Color used for the solid background type.
+    /// Color used for the background.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = try_serialize_field(Self::descriptor_color(), [color]);
         self
     }
+
+    /// Should the grid be drawn?
+    #[inline]
+    pub fn with_show_grid(
+        mut self,
+        show_grid: impl Into<crate::blueprint::components::Enabled>,
+    ) -> Self {
+        self.show_grid = try_serialize_field(Self::descriptor_show_grid(), [show_grid]);
+        self
+    }
 }
 
-impl ::re_byte_size::SizeBytes for Background {
+impl ::re_byte_size::SizeBytes for PlotBackground {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.kind.heap_size_bytes() + self.color.heap_size_bytes()
+        self.color.heap_size_bytes() + self.show_grid.heap_size_bytes()
     }
 }

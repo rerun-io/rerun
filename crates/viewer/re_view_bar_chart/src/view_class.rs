@@ -2,12 +2,15 @@ use egui::ahash::HashMap;
 use egui_plot::ColorConflictHandling;
 use re_log_types::EntityPath;
 use re_types::{
-    View as _, ViewClassIdentifier,
-    blueprint::{archetypes::PlotLegend, components::Corner2D},
-    components::Visible,
+    Archetype as _, View as _, ViewClassIdentifier,
+    blueprint::{
+        archetypes::{PlotBackground, PlotLegend},
+        components::{Corner2D, Enabled},
+    },
+    components::{Color, Visible},
     datatypes::TensorBuffer,
 };
-use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
+use re_ui::{Help, IconText, MouseButtonText, icons, list_item};
 use re_view::{controls::SELECTION_RECT_ZOOM_BUTTON, view_property_ui};
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
@@ -139,6 +142,7 @@ impl ViewClass for BarChartView {
     ) -> Result<(), ViewSystemExecutionError> {
         list_item::list_item_scope(ui, "bar_char_selection_ui", |ui| {
             let ctx = self.view_context(ctx, view_id, state);
+            view_property_ui::<PlotBackground>(&ctx, ui, self);
             view_property_ui::<PlotLegend>(&ctx, ui, self);
         });
 
@@ -167,6 +171,22 @@ impl ViewClass for BarChartView {
             .charts;
 
         let ctx = self.view_context(ctx, view_id, state);
+        let background = ViewProperty::from_archetype::<PlotBackground>(
+            blueprint_db,
+            ctx.blueprint_query(),
+            view_id,
+        );
+        let background_color = background.component_or_fallback::<Color>(
+            &ctx,
+            self,
+            &PlotBackground::descriptor_color(),
+        )?;
+        let show_grid = background.component_or_fallback::<Enabled>(
+            &ctx,
+            self,
+            &PlotBackground::descriptor_show_grid(),
+        )?;
+
         let plot_legend = ViewProperty::from_archetype::<PlotLegend>(
             blueprint_db,
             ctx.blueprint_query(),
@@ -178,7 +198,11 @@ impl ViewClass for BarChartView {
             plot_legend.component_or_fallback(&ctx, self, &PlotLegend::descriptor_corner())?;
 
         ui.scope(|ui| {
-            let mut plot = Plot::new("bar_chart_plot").clamp_grid(true);
+            let background_color = background_color.into();
+            ui.style_mut().visuals.extreme_bg_color = background_color;
+            let mut plot = Plot::new("bar_chart_plot")
+                .show_grid(**show_grid)
+                .clamp_grid(true);
 
             if *legend_visible.0 {
                 plot = plot.legend(
@@ -189,7 +213,6 @@ impl ViewClass for BarChartView {
             }
 
             let mut plot_item_id_to_entity_path = HashMap::default();
-            let theme = ui.theme();
 
             let egui_plot::PlotResponse {
                 response,
@@ -201,11 +224,11 @@ impl ViewClass for BarChartView {
                     indexes: impl Iterator<Item = f64>,
                     values: impl Iterator<Item = N>,
                     color: &re_types::components::Color,
-                    theme: egui::Theme,
+                    background_color: egui::Color32,
                 ) -> BarChart {
                     let color: egui::Color32 = color.0.into();
-                    let fill = if theme == egui::Theme::Dark {
-                        color.gamma_multiply(0.75).additive() // make sure overlapping bars are obvious for dark mode
+                    let fill = if background_color.intensity() < 0.5 {
+                        color.gamma_multiply(0.75).additive() // make sure overlapping bars are obvious for darker background colors.
                     } else {
                         color.gamma_multiply(0.75)
                     };
@@ -257,77 +280,77 @@ impl ViewClass for BarChartView {
                             arg.iter().copied(),
                             data.iter().copied(),
                             color,
-                            theme,
+                            background_color,
                         ),
                         TensorBuffer::U16(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
                             data.iter().copied(),
                             color,
-                            theme,
+                            background_color,
                         ),
                         TensorBuffer::U32(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
                             data.iter().copied(),
                             color,
-                            theme,
+                            background_color,
                         ),
                         TensorBuffer::U64(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
                             data.iter().copied().map(|v| v as f64),
                             color,
-                            theme,
+                            background_color,
                         ),
                         TensorBuffer::I8(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
                             data.iter().copied(),
                             color,
-                            theme,
+                            background_color,
                         ),
                         TensorBuffer::I16(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
                             data.iter().copied(),
                             color,
-                            theme,
+                            background_color,
                         ),
                         TensorBuffer::I32(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
                             data.iter().copied(),
                             color,
-                            theme,
+                            background_color,
                         ),
                         TensorBuffer::I64(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
                             data.iter().copied().map(|v| v as f64),
                             color,
-                            theme,
+                            background_color,
                         ),
                         TensorBuffer::F16(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
                             data.iter().map(|f| f.to_f32()),
                             color,
-                            theme,
+                            background_color,
                         ),
                         TensorBuffer::F32(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
                             data.iter().copied(),
                             color,
-                            theme,
+                            background_color,
                         ),
                         TensorBuffer::F64(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
                             data.iter().copied(),
                             color,
-                            theme,
+                            background_color,
                         ),
                     };
 
@@ -370,7 +393,29 @@ impl TypedComponentFallbackProvider<Corner2D> for BarChartView {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(BarChartView => [Corner2D]);
+impl TypedComponentFallbackProvider<Color> for BarChartView {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Color {
+        // Color is a fairly common component, make sure this is the right context.
+        if ctx.archetype_name == Some(PlotBackground::name()) {
+            ctx.viewer_ctx().tokens().viewport_background.into()
+        } else {
+            Color::default()
+        }
+    }
+}
+
+impl TypedComponentFallbackProvider<Enabled> for BarChartView {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Enabled {
+        // Enabled is a fairly general component, make sure this is the right context.
+        if ctx.archetype_name == Some(PlotBackground::name()) {
+            Enabled(true.into())
+        } else {
+            Enabled::default()
+        }
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(BarChartView => [Corner2D, Color, Enabled]);
 
 #[test]
 fn test_help_view() {
