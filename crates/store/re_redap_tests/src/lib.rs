@@ -1,3 +1,19 @@
+//! Official test suite for the Rerun Data Protocol ("redap").
+//!
+//! ## Usage
+//!
+//! In the crate containing your implementation of the
+//! [`re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService` trait, add an
+//! integration test with the following content:
+//!
+//! ```ignore
+//! fn build() -> YourRerunCloudServiceImpl {
+//!     YourRerunCloudServiceImpl::new()
+//! }
+//!
+//! re_redap_tests::generate_redap_tests!(build);
+//! ```
+
 // this is a test suite
 #![allow(clippy::unwrap_used, clippy::disallowed_methods)]
 
@@ -12,19 +28,3 @@ pub use self::utils::{
 };
 
 pub use self::tests::*;
-
-// use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
-//
-// pub async fn list_entries_table<T: RerunCloudService>(builder: impl FnOnce() -> T) {
-//     tests::entries_table::list_entries_table(builder()).await;
-// }
-//
-// #[macro_export]
-// macro_rules! generate_redap_tests {
-//     ($builder:ident) => {
-//         #[tokio::test]
-//         async fn list_entries_table() {
-//             ::re_redap_tests::list_entries_table(|| $builder()).await
-//         }
-//     };
-// }
