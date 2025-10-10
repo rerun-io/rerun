@@ -5,8 +5,8 @@ use arrow::{
     array::{
         ArrayBuilder, ArrowPrimitiveType, BooleanBuilder, FixedSizeListBuilder, Float32Builder,
         Float64Builder, Int8Builder, Int16Builder, Int32Builder, Int64Builder, ListBuilder,
-        PrimitiveBuilder, StringBuilder, StructBuilder, UInt8Builder, UInt16Builder, UInt32Builder,
-        UInt64Builder,
+        PrimitiveBuilder, StringBuilder, StructArray, StructBuilder, UInt8Builder, UInt16Builder,
+        UInt32Builder, UInt64Builder,
     },
     datatypes::{
         DataType, Field, Fields, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type,
@@ -96,11 +96,21 @@ impl ArrayBuilder for MessageStructBuilder {
     }
 
     fn finish(&mut self) -> arrow::array::ArrayRef {
-        Arc::new(self.builder.finish())
+        // Special case for empty structs, e.g. `std_msgs/Empty`
+        if self.spec.fields.is_empty() {
+            Arc::new(StructArray::new_empty_fields(self.builder.len(), None))
+        } else {
+            Arc::new(self.builder.finish())
+        }
     }
 
     fn finish_cloned(&self) -> arrow::array::ArrayRef {
-        Arc::new(self.builder.finish_cloned())
+        // Special case for empty structs, e.g. `std_msgs/Empty`
+        if self.spec.fields.is_empty() {
+            Arc::new(StructArray::new_empty_fields(self.builder.len(), None))
+        } else {
+            Arc::new(self.builder.finish_cloned())
+        }
     }
 }
 
