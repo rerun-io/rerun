@@ -14,12 +14,7 @@ impl TypedComponentFallbackProvider<Color> for SpatialView2D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Color {
         // Color is a fairly common component, make sure this is the right context.
         if ctx.archetype_name == Some(Background::name()) {
-            ctx.viewer_ctx()
-                .egui_ctx()
-                .style()
-                .visuals
-                .extreme_bg_color
-                .into()
+            ctx.viewer_ctx().tokens().viewport_background.into()
         } else {
             Color::default()
         }

@@ -3631,6 +3631,31 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.blueprint.archetypes.PlotBackground"),
+            ArchetypeReflection {
+                display_name: "Plot background",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "color",
+                        display_name: "Color",
+                        component_type: "rerun.components.Color".into(),
+                        docstring_md: "Color used for the background.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "show_grid",
+                        display_name: "Show grid",
+                        component_type: "rerun.blueprint.components.Enabled".into(),
+                        docstring_md: "Should the grid be drawn?",
+                        is_required: false,
+                    },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.blueprint.archetypes.PlotLegend"),
             ArchetypeReflection {
                 display_name: "Plot legend",
