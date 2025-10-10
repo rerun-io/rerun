@@ -1,4 +1,4 @@
-use re_log_encoding::decoder::Decoder;
+use re_log_encoding::Decoder;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crossbeam::channel::Receiver;
@@ -50,7 +50,7 @@ impl crate::DataLoader for RrdLoader {
                     .with_context(|| format!("Failed to open file {filepath:?}"))?;
                 let file = std::io::BufReader::new(file);
 
-                let decoder = Decoder::new(file)?;
+                let messages = Decoder::decode_eager(file)?;
 
                 // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
                 std::thread::Builder::new()
@@ -62,7 +62,7 @@ impl crate::DataLoader for RrdLoader {
                             decode_and_stream(
                                 &filepath,
                                 &tx,
-                                decoder,
+                                messages,
                                 settings
                                     .opened_store_id
                                     .as_ref()
@@ -81,7 +81,8 @@ impl crate::DataLoader for RrdLoader {
                 let retryable_reader = RetryableFileReader::new(&filepath).with_context(|| {
                     format!("failed to create retryable file reader for {filepath:?}")
                 })?;
-                let decoder = Decoder::new(retryable_reader)?;
+                let wait_for_eos = true;
+                let messages = Decoder::decode_eager_with_opts(retryable_reader, wait_for_eos)?;
 
                 // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
                 std::thread::Builder::new()
@@ -90,7 +91,7 @@ impl crate::DataLoader for RrdLoader {
                         let filepath = filepath.clone();
                         move || {
                             decode_and_stream(
-                                &filepath, &tx, decoder,
+                                &filepath, &tx, messages,
                                 // Never use import semantics for .rrd files
                                 None, None,
                             );
@@ -120,12 +121,12 @@ impl crate::DataLoader for RrdLoader {
         }
 
         let contents = std::io::Cursor::new(contents);
-        let decoder = match re_log_encoding::decoder::Decoder::new(contents) {
+        let messages = match Decoder::decode_eager(contents) {
             Ok(decoder) => decoder,
             Err(err) => match err {
                 // simply not interested
-                re_log_encoding::decoder::DecodeError::NotAnRrd { .. }
-                | re_log_encoding::decoder::DecodeError::Options(_) => return Ok(()),
+                re_log_encoding::DecodeError::NotAnRrd { .. }
+                | re_log_encoding::DecodeError::Options(_) => return Ok(()),
                 _ => return Err(err.into()),
             },
         };
@@ -145,7 +146,7 @@ impl crate::DataLoader for RrdLoader {
         decode_and_stream(
             &filepath,
             &tx,
-            decoder,
+            messages,
             forced_application_id,
             forced_recording_id,
         );
@@ -154,16 +155,16 @@ impl crate::DataLoader for RrdLoader {
     }
 }
 
-fn decode_and_stream<R: std::io::Read>(
+fn decode_and_stream(
     filepath: &std::path::Path,
     tx: &std::sync::mpsc::Sender<crate::LoadedData>,
-    decoder: Decoder<R>,
+    msgs: impl Iterator<Item = Result<re_log_types::LogMsg, re_log_encoding::DecodeError>>,
     forced_application_id: Option<&ApplicationId>,
     forced_recording_id: Option<&String>,
 ) {
     re_tracing::profile_function!(filepath.display().to_string());
 
-    for msg in decoder {
+    for msg in msgs {
         let msg = match msg {
             Ok(msg) => msg,
             Err(err) => {
@@ -296,6 +297,17 @@ impl std::io::Read for RetryableFileReader {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+impl std::io::BufRead for RetryableFileReader {
+    fn fill_buf(&mut self) -> std::io::Result<&[u8]> {
+        self.reader.fill_buf()
+    }
+
+    fn consume(&mut self, amount: usize) {
+        self.reader.consume(amount);
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 impl RetryableFileReader {
     fn block_until_file_changes(&self) -> std::io::Result<usize> {
         loop {
@@ -386,7 +398,8 @@ mod tests {
         encoder.flush_blocking().expect("failed to flush messages");
 
         let reader = RetryableFileReader::new(&rrd_file_path).unwrap();
-        let mut decoder = Decoder::new(reader).unwrap();
+        let wait_for_eos = true;
+        let mut decoder = Decoder::decode_eager_with_opts(reader, wait_for_eos).unwrap();
 
         // we should be able to read 5 messages that we wrote
         let decoded_messages = (0..5)

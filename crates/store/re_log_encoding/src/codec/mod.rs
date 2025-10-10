@@ -2,6 +2,27 @@ pub(crate) mod arrow;
 pub mod file;
 pub mod wire;
 
+// ---
+
+/// Compression format used.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Compression {
+    Off = 0,
+
+    /// Very fast compression and decompression, but not very good compression ratio.
+    LZ4 = 1,
+}
+
+/// How we serialize the data
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Serializer {
+    Protobuf = 2,
+}
+
+// ---
+
 #[derive(Debug, thiserror::Error)]
 pub enum CodecError {
     #[error("Arrow IPC serialization error: {0}")]

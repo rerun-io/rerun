@@ -7,7 +7,7 @@ use crate::EntityDb;
 #[derive(thiserror::Error, Debug)]
 pub enum StoreLoadError {
     #[error(transparent)]
-    Decode(#[from] re_log_encoding::decoder::DecodeError),
+    Decode(#[from] re_log_encoding::DecodeError),
 
     #[error(transparent)]
     ChunkStore(#[from] crate::Error),
@@ -28,10 +28,12 @@ pub struct StoreBundle {
 impl StoreBundle {
     /// Decode an rrd stream.
     /// It can theoretically contain multiple recordings, and blueprints.
-    pub fn from_rrd(read: impl std::io::Read) -> Result<Self, StoreLoadError> {
+    pub fn from_rrd<R: std::io::Read>(
+        reader: std::io::BufReader<R>,
+    ) -> Result<Self, StoreLoadError> {
         re_tracing::profile_function!();
 
-        let decoder = re_log_encoding::decoder::Decoder::new(read)?;
+        let decoder = re_log_encoding::DecoderApp::decode_eager(reader)?;
 
         let mut slf = Self::default();
 

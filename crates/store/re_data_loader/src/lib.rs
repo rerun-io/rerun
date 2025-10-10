@@ -347,7 +347,7 @@ pub enum DataLoaderError {
     Chunk(#[from] re_chunk::ChunkError),
 
     #[error(transparent)]
-    Decode(#[from] re_log_encoding::decoder::DecodeError),
+    Decode(#[from] re_log_encoding::DecodeError),
 
     #[error("No data-loader support for {0:?}")]
     Incompatible(std::path::PathBuf),
