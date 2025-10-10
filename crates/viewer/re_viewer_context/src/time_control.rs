@@ -731,14 +731,22 @@ impl TimeControl {
     ) -> NeedsRepaint {
         match command {
             TimeControlCommand::HighlightRange(range) => {
-                self.highlighted_range = Some(*range);
+                if self.highlighted_range != Some(*range) {
+                    self.highlighted_range = Some(*range);
 
-                NeedsRepaint::Yes
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
             }
             TimeControlCommand::ClearHighlightedRange => {
-                self.highlighted_range = None;
+                if self.highlighted_range.is_some() {
+                    self.highlighted_range = None;
 
-                NeedsRepaint::Yes
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
             }
             TimeControlCommand::ResetActiveTimeline => {
                 if let Some(blueprint_ctx) = blueprint_ctx {
