@@ -1,12 +1,16 @@
-use std::sync::Arc;
-
+use arrow::record_batch::RecordBatch;
 use datafusion::catalog::TableProvider;
-
+use datafusion::datasource::memory::MemorySourceConfig;
+use datafusion::error::DataFusionError;
+use datafusion::execution::SessionStateBuilder;
+use datafusion::logical_expr::dml::InsertOp;
+use futures::StreamExt as _;
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::{
     EntryKind,
     ext::{EntryDetails, ProviderDetails as _, SystemTable, TableEntry},
 };
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Table {
@@ -77,5 +81,26 @@ impl Table {
 
             provider_details,
         }
+    }
+
+    pub async fn write_table(
+        &self,
+        rb: RecordBatch,
+        insert_op: InsertOp,
+    ) -> Result<(), DataFusionError> {
+        let schema = rb.schema();
+        let input = MemorySourceConfig::try_new_from_batches(schema, vec![rb])?;
+        let session = SessionStateBuilder::default().build();
+        let result = self
+            .provider
+            .insert_into(&session, input, insert_op)
+            .await?;
+        let mut output = result.execute(0, session.task_ctx())?;
+
+        while let Some(r) = output.next().await {
+            let _ = r?;
+        }
+
+        Ok(())
     }
 }
