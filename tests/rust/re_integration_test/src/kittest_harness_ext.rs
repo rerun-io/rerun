@@ -1,6 +1,7 @@
-use std::sync::Arc;
+use std::{collections::BTreeSet, sync::Arc};
 
 use egui_kittest::{SnapshotOptions, kittest::Queryable as _};
+use parking_lot::Mutex;
 use re_sdk::{
     Component as _, ComponentDescriptor, EntityPath, EntityPathPart, RecordingInfo, StoreId,
     StoreKind,
@@ -20,6 +21,7 @@ use re_viewer::{
     },
     viewer_test_utils::AppTestingExt as _,
 };
+use re_viewer_context::ContainerId;
 use re_viewport_blueprint::ViewportBlueprint;
 
 // Kittest harness utilities specific to the Rerun app.
@@ -38,6 +40,13 @@ pub trait HarnessExt {
         &mut self,
         setup_blueprint: impl FnOnce(&ViewerContext<'_>, &mut ViewportBlueprint) + 'static,
     );
+
+    // Adds a new container to the current blueprint and returns its id.
+    fn add_blueprint_container(
+        &mut self,
+        kind: egui_tiles::ContainerKind,
+        parent_container: Option<re_viewer_context::ContainerId>,
+    ) -> re_viewer_context::ContainerId;
 
     // Logs an entity to the active recording.
     fn log_entity(
@@ -248,5 +257,43 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
             snapshot_name,
             &SnapshotOptions::new().failed_pixel_count_threshold(20),
         );
+    }
+
+    fn add_blueprint_container(
+        &mut self,
+        kind: egui_tiles::ContainerKind,
+        parent_container: Option<re_viewer_context::ContainerId>,
+    ) -> ContainerId {
+        // Collect list of container ids before adding new container
+        let old_container_ids = Arc::new(Mutex::new(BTreeSet::<ContainerId>::new()));
+        let old_container_ids_clone = old_container_ids.clone();
+        self.setup_viewport_blueprint(move |_viewer_context, blueprint| {
+            old_container_ids_clone
+                .lock()
+                .extend(blueprint.containers.keys().copied());
+        });
+
+        // Add new container
+        self.setup_viewport_blueprint(move |_viewer_context, blueprint| {
+            blueprint.add_container(kind, parent_container);
+        });
+
+        // Collect list of container ids after adding new container
+        let new_container_ids = Arc::new(Mutex::new(BTreeSet::new()));
+        let new_container_ids_clone = new_container_ids.clone();
+        self.setup_viewport_blueprint(move |_viewer_context, blueprint| {
+            new_container_ids_clone
+                .lock()
+                .extend(blueprint.containers.keys().copied());
+        });
+        self.run_ok();
+
+        // Find the new container id
+        new_container_ids
+            .lock()
+            .difference(&old_container_ids.lock())
+            .next()
+            .copied()
+            .expect("Failed to find new container id")
     }
 }
