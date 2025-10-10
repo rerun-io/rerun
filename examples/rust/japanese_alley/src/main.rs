@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use arrow::{
     array::{
-        Array, BinaryArray, FixedSizeListBuilder, Float32Builder, Float64Array, ListArray,
-        ListBuilder, StructArray, UInt8Array,
+        Array, AsArray as _, BinaryArray, FixedSizeListBuilder, Float32Builder, Float64Array,
+        ListArray, ListBuilder, StructArray, UInt8Array,
     },
     buffer::OffsetBuffer,
-    datatypes::{DataType, Field, Fields},
+    datatypes::{DataType, Field, Fields, Float32Type},
 };
 use rerun::{
     EncodedImage, InstancePoses3D, Points3D,
@@ -152,13 +152,38 @@ fn convert_list_struct_to_list_fixed(list_array: ListArray) -> Result<ListArray,
     ))
 }
 
-fn convert_list_struct_to_list_list_fixed(list_array: ListArray) -> Result<ListArray, Error> {
-    let (_, offsets, values, nulls) = list_array.into_parts();
-    let struct_array = values
+fn transform_struct_list_to_nested_lists(list_array: ListArray) -> Result<ListArray, Error> {
+    let (_, offsets, rows, nulls) = list_array.into_parts();
+
+    let instances = rows.as_any().downcast_ref::<ListArray>().unwrap();
+
+    // let structs = instances
+    //     .values()
+    //     .as_any()
+    //     .downcast_ref::<StructArray>()
+    //     .unwrap();
+    let pose_struct_array = instances
+        .values()
         .as_any()
         .downcast_ref::<StructArray>()
         .ok_or_else(|| Error::TypeMismatch {
-            actual: values.data_type().clone(),
+            actual: instances.data_type().clone(),
+            expected: DataType::Struct(
+                vec![
+                    Field::new("x", DataType::Float64, false),
+                    Field::new("y", DataType::Float64, false),
+                    Field::new("z", DataType::Float64, false),
+                ]
+                .into(),
+            ),
+        })?;
+
+    let instance_struct_array = pose_struct_array
+        .column(0)
+        .as_any()
+        .downcast_ref::<StructArray>()
+        .ok_or_else(|| Error::TypeMismatch {
+            actual: instances.data_type().clone(),
             expected: DataType::Struct(
                 vec![
                     Field::new("x", DataType::Float64, false),
@@ -170,28 +195,28 @@ fn convert_list_struct_to_list_list_fixed(list_array: ListArray) -> Result<ListA
         })?;
 
     // Assumes struct has exactly 3 fields in order: x, y, z
-    let x = struct_array
+    let x = instance_struct_array
         .column(0)
         .as_any()
         .downcast_ref::<Float64Array>()
         .ok_or_else(|| Error::TypeMismatch {
-            actual: struct_array.column(0).data_type().clone(),
+            actual: instance_struct_array.column(0).data_type().clone(),
             expected: DataType::Float64,
         })?;
-    let y = struct_array
+    let y = instance_struct_array
         .column(1)
         .as_any()
         .downcast_ref::<Float64Array>()
         .ok_or_else(|| Error::TypeMismatch {
-            actual: struct_array.column(1).data_type().clone(),
+            actual: instance_struct_array.column(1).data_type().clone(),
             expected: DataType::Float64,
         })?;
-    let z = struct_array
+    let z = instance_struct_array
         .column(2)
         .as_any()
         .downcast_ref::<Float64Array>()
         .ok_or_else(|| Error::TypeMismatch {
-            actual: struct_array.column(2).data_type().clone(),
+            actual: pose_struct_array.column(2).data_type().clone(),
             expected: DataType::Float64,
         })?;
 
@@ -220,6 +245,13 @@ fn convert_list_struct_to_list_list_fixed(list_array: ListArray) -> Result<ListA
         Arc::new(fixed_list_array),
         nulls,
     ))
+
+    // Ok(ListArray::new(
+    //     Arc::new(Field::new_list_field(rows.data_type().clone(), true)),
+    //     offsets,
+    //     Arc::new(rows),
+    //     nulls,
+    // ))
 }
 
 // TODO: Use clamping
@@ -304,19 +336,18 @@ fn main() -> anyhow::Result<()> {
                 InstancePoses3D::descriptor_translations(),
                 [
                     Op::access_field("poses"),
-                    Op::access_field("position"),
-                    Op::func(convert_list_struct_to_list_fixed),
+                    Op::func(transform_struct_list_to_nested_lists),
                 ],
             )
-            .add_output_column(
-                // TODO: should probably use `Pinhole`
-                Points3D::descriptor_positions(),
-                [
-                    Op::access_field("poses"),
-                    Op::access_field("position"),
-                    Op::func(create_dummy_points_for_pose),
-                ],
-            )
+            // .add_output_column(
+            //     // TODO: should probably use `Pinhole`
+            //     Points3D::descriptor_positions(),
+            //     [
+            //         Op::access_field("poses"),
+            //         Op::access_field("position"),
+            //         Op::func(create_dummy_points_for_pose),
+            //     ],
+            // )
             .build();
 
     // singular
