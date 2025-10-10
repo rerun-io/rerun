@@ -127,6 +127,14 @@ impl AsRef<str> for ContentsName {
     }
 }
 
+impl From<ContentsName> for String {
+    fn from(value: ContentsName) -> Self {
+        match value {
+            ContentsName::Named(name) | ContentsName::Placeholder(name) => name,
+        }
+    }
+}
+
 #[inline]
 pub fn blueprint_id_to_tile_id<T: BlueprintIdRegistry>(id: &BlueprintId<T>) -> TileId {
     TileId::from_u64(id.hash())
