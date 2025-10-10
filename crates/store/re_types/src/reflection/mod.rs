@@ -197,6 +197,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <Fps as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Frames per seconds for a sequence timeline.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: Fps::arrow_datatype(),
+                verify_arrow_array: Fps::verify_arrow_array,
+            },
+        ),
+        (
             <GridColumns as Component>::name(),
             ComponentReflection {
                 docstring_md: "How many columns a grid container should have.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -274,6 +284,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 custom_placeholder: Some(PanelState::default().to_arrow()?),
                 datatype: PanelState::arrow_datatype(),
                 verify_arrow_array: PanelState::verify_arrow_array,
+            },
+        ),
+        (
+            <PlaybackSpeed as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A playback speed which determines how fast time progresses.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: PlaybackSpeed::arrow_datatype(),
+                verify_arrow_array: PlaybackSpeed::verify_arrow_array,
             },
         ),
         (
@@ -3811,6 +3831,20 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Time",
                         component_type: "rerun.blueprint.components.TimeInt".into(),
                         docstring_md: "What time the time cursor should be on.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "playback_speed",
+                        display_name: "Playback speed",
+                        component_type: "rerun.blueprint.components.PlaybackSpeed".into(),
+                        docstring_md: "A time playback speed multiplier.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "fps",
+                        display_name: "Fps",
+                        component_type: "rerun.blueprint.components.Fps".into(),
+                        docstring_md: "Frames per second. Only applicable for sequence timelines.",
                         is_required: false,
                     },
                 ],
