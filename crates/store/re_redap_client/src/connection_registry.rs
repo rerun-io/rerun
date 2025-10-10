@@ -143,6 +143,7 @@ impl ConnectionRegistryHandle {
     /// use the following token, in this order:
     /// - The fallback token, if set via [`Self::set_fallback_token`].
     /// - The `REDAP_TOKEN` environment variable is set.
+    /// - Local credentials for Rerun Cloud
     ///
     /// Failing that, no token will be used.
     pub async fn client(
@@ -266,7 +267,15 @@ impl ConnectionRegistryHandle {
         origin: re_uri::Origin,
         token: Option<Jwt>,
     ) -> Result<RedapClient, ClientConnectionError> {
-        let mut raw_client = match crate::grpc::client(origin.clone(), token.clone()).await {
+        let credentials: Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync> =
+            match &token {
+                Some(token) => Arc::new(re_auth::credentials::StaticCredentialsProvider::new(
+                    token.clone(),
+                )),
+                None => Arc::new(re_auth::credentials::CliCredentialsProvider::new()),
+            };
+
+        let mut raw_client = match crate::grpc::client(origin.clone(), credentials).await {
             Ok(raw_client) => raw_client,
 
             Err(err) => {
