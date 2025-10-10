@@ -10,6 +10,7 @@ const COLORMAP_TURBO:          u32 = 5u;
 const COLORMAP_VIRIDIS:        u32 = 6u;
 const COLORMAP_CYAN_TO_YELLOW: u32 = 7u;
 const COLORMAP_SPECTRAL:       u32 = 8u;
+const COLORMAP_HSV:            u32 = 9u;
 
 /// Returns a gamma-space sRGB in 0-1 range.
 ///
@@ -34,6 +35,8 @@ fn colormap_srgb(which: u32, t_unsaturated: f32) -> vec3f {
         return colormap_cyan_to_yellow_srgb(t);
     } else if which == COLORMAP_SPECTRAL {
         return colormap_spectral_srgb(t);
+    } else if which == COLORMAP_HSV {
+        return colormap_hsv_srgb(t);
     } else {
         return ERROR_RGBA.rgb;
     }
@@ -178,4 +181,32 @@ fn colormap_spectral_srgb(t: f32) -> vec3f {
     let c5 = vec3f(12.716626092708825, 96.954180217298671, 360.627239851094203);
     let c6 = vec3f(5.942343111972585, -33.440386037285862, -123.635206049211334);
     return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
+}
+
+/// Returns a gamma-space sRGB in 0-1 range.
+/// The input (`t`) must be in the 0-1 range.
+/// This colormap cycles through hues from red to yellow to green to cyan to blue to magenta and back to red.
+/// It uses full saturation and value (S=1, V=1), making it suitable for visualizing periodic or cyclic data.
+/// This matches matplotlib's HSV colormap.
+fn colormap_hsv_srgb(t: f32) -> vec3f {
+    // Convert t to hue in range [0, 6)
+    let h = t * 6.0;
+    let i = floor(h);
+    let f = h - i;
+
+    // Since S=1 and V=1, the conversion is simplified
+    let i_mod = i32(i) % 6;
+    if i_mod == 0 {
+        return vec3f(1.0, f, 0.0);        // Red to Yellow
+    } else if i_mod == 1 {
+        return vec3f(1.0 - f, 1.0, 0.0);  // Yellow to Green
+    } else if i_mod == 2 {
+        return vec3f(0.0, 1.0, f);        // Green to Cyan
+    } else if i_mod == 3 {
+        return vec3f(0.0, 1.0 - f, 1.0);  // Cyan to Blue
+    } else if i_mod == 4 {
+        return vec3f(f, 0.0, 1.0);        // Blue to Magenta
+    } else {
+        return vec3f(1.0, 0.0, 1.0 - f);  // Magenta to Red
+    }
 }

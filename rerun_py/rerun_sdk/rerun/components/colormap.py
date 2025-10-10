@@ -97,6 +97,15 @@ class Colormap(Enum):
     It interpolates from red to orange to yellow to green to blue to violet.
     """
 
+    Hsv = 9
+    """
+    The HSV colormap from Matplotlib.
+
+    This is a cyclic colormap that follows the hue component of the HSV color space.
+    It is useful for visualizing periodic or cyclic data.
+    It interpolates from red through yellow, green, cyan, blue, magenta, and back to red.
+    """
+
     @classmethod
     def auto(cls, val: str | int | Colormap) -> Colormap:
         """Best-effort converter, including a case-insensitive string matcher."""
@@ -123,6 +132,7 @@ ColormapLike = Union[
     Literal[
         "CyanToYellow",
         "Grayscale",
+        "Hsv",
         "Inferno",
         "Magma",
         "Plasma",
@@ -131,6 +141,7 @@ ColormapLike = Union[
         "Viridis",
         "cyantoyellow",
         "grayscale",
+        "hsv",
         "inferno",
         "magma",
         "plasma",
