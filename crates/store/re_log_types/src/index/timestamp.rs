@@ -190,7 +190,9 @@ impl Timestamp {
                 let suffix = match timestamp_format.kind() {
                     TimestampFormatKind::LocalTimezone => tz.to_offset(timestamp).to_string(),
                     TimestampFormatKind::LocalTimezoneImplicit => String::new(),
-                    TimestampFormatKind::Utc | TimestampFormatKind::SecondsSinceUnixEpoch => "Z".to_owned(),
+                    TimestampFormatKind::Utc | TimestampFormatKind::SecondsSinceUnixEpoch => {
+                        "Z".to_owned()
+                    }
                 };
 
                 format!(
