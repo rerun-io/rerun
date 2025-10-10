@@ -3,7 +3,7 @@
 //! ## Usage
 //!
 //! In the crate containing your implementation of the
-//! [`re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService` trait, add an
+//! [`re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService`] trait, add an
 //! integration test with the following content:
 //!
 //! ```ignore
