@@ -104,8 +104,8 @@ impl TimeType {
         let time_int = time_int.into();
         match time_int {
             TimeInt::STATIC => "<static>".into(),
-            TimeInt::MIN => "−∞".into(),
-            TimeInt::MAX => "+∞".into(),
+            TimeInt::MIN => "beginning".into(),
+            TimeInt::MAX => "end".into(),
             _ => match self {
                 Self::Sequence => format!("#{}", re_format::format_int(time_int.as_i64())),
                 Self::DurationNs => super::Duration::from(time_int).format_secs(),
