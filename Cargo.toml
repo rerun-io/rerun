@@ -79,6 +79,7 @@ re_log_types = { path = "crates/store/re_log_types", version = "=0.26.0-alpha.1"
 re_protos = { path = "crates/store/re_protos", version = "=0.26.0-alpha.1", default-features = false }
 re_query = { path = "crates/store/re_query", version = "=0.26.0-alpha.1", default-features = false }
 re_redap_client = { path = "crates/store/re_redap_client", version = "=0.26.0-alpha.1", default-features = false }
+re_redap_tests = { path = "crates/store/re_redap_tests", version = "=0.26.0-alpha.1", default-features = false }
 re_server = { path = "crates/store/re_server", version = "=0.26.0-alpha.1", default-features = false }
 re_sorbet = { path = "crates/store/re_sorbet", version = "=0.26.0-alpha.1", default-features = false }
 re_tf = { path = "crates/store/re_tf", version = "=0.26.0-alpha.1", default-features = false }

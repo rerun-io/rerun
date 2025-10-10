@@ -9213,6 +9213,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_redap_tests"
+version = "0.26.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "arrow",
+ "datafusion",
+ "futures",
+ "insta",
+ "itertools 0.14.0",
+ "re_arrow_util",
+ "re_chunk",
+ "re_format_arrow",
+ "re_log_types",
+ "re_protos",
+ "re_sdk",
+ "re_tuid",
+ "re_types",
+ "re_types_core",
+ "tempfile",
+ "tonic",
+]
+
+[[package]]
 name = "re_renderer"
 version = "0.26.0-alpha.1+dev"
 dependencies = [
@@ -9390,6 +9413,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_protos",
+ "re_redap_tests",
  "re_tuid",
  "re_types_core",
  "thiserror 1.0.69",
