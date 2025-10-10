@@ -18,13 +18,10 @@ pub fn parse_timestamp(
     //
 
     if timestamp_format.kind() == TimestampFormatKind::SecondsSinceUnixEpoch {
-        if let Ok(seconds) = value.parse::<f64>() {
-            return jiff::Timestamp::from_nanosecond((seconds * 1e9).round() as _);
-        } else {
-            return Err(jiff::Error::from_args(format_args!(
-                "could not parse seconds since unix epoch"
-            )));
-        };
+        if let Some(timestamp) = re_log_types::Timestamp::parse_with_format(value, timestamp_format)
+        {
+            return jiff::Timestamp::from_nanosecond(timestamp.nanos_since_epoch() as _);
+        }
     }
 
     //
