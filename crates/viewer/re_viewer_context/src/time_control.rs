@@ -841,9 +841,13 @@ impl TimeControl {
     ) -> NeedsRepaint {
         match command {
             TimeControlCommand::HighlightRange(range) => {
-                self.highlighted_range = Some(*range);
+                if self.highlighted_range != Some(*range) {
+                    self.highlighted_range = Some(*range);
 
-                NeedsRepaint::Yes
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
             }
             TimeControlCommand::ClearHighlightedRange => {
                 if self.highlighted_range.is_some() {

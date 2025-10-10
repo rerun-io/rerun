@@ -2,14 +2,12 @@ namespace rerun.blueprint.components;
 
 // ---
 
-/// A reference to a range of time.
-struct AbsoluteTimeRange (
+/// A time range.
+table TimeRange (
   "attr.arrow.transparent",
   "attr.rerun.scope": "blueprint",
-  "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
-  "attr.rust.repr": "transparent",
-  "attr.rust.tuple_struct"
+  "attr.rust.derive": "PartialEq, Eq",
+  "attr.rust.repr": "transparent"
 ) {
-  range: rerun.datatypes.AbsoluteTimeRange (order: 100);
+  time_range: rerun.datatypes.TimeRange (order: 100);
 }
-
