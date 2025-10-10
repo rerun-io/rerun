@@ -20,8 +20,10 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
             &re_types::archetypes::TextDocument::new("Hello World!"),
         )
     });
+    harness
+}
 
-    // Set up the viewport blueprint
+fn setup_single_view_blueprint(harness: &mut egui_kittest::Harness<'_, re_viewer::App>) {
     harness.clear_current_blueprint();
 
     let text_document_view = ViewBlueprint::new(
@@ -36,13 +38,12 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
     harness.setup_viewport_blueprint(|_viewer_context, blueprint| {
         blueprint.add_view_at_root(text_document_view);
     });
-
-    harness
 }
 
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_stream_context_single_select() {
     let mut harness = make_test_harness();
+    setup_single_view_blueprint(&mut harness);
 
     // Click streams tree items and check their context menu
     harness.right_click_label("txt/");
@@ -64,6 +65,7 @@ pub async fn test_stream_context_single_select() {
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_blueprint_view_context() {
     let mut harness = make_test_harness();
+    setup_single_view_blueprint(&mut harness);
 
     // There are two nodes with that label, the second one is the view widget.
     harness.right_click_nth_label("txt/hello", 1);
@@ -73,18 +75,7 @@ pub async fn test_blueprint_view_context() {
 
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_container_selection_context_menu() {
-    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
-    harness.init_recording();
-    harness.toggle_selection_panel();
-
-    // Log some data
-    harness.log_entity("txt/hello/world", |builder| {
-        builder.with_archetype(
-            RowId::new(),
-            TimePoint::STATIC,
-            &re_types::archetypes::TextDocument::new("Hello World!"),
-        )
-    });
+    let mut harness = make_test_harness();
 
     // Set up the viewport blueprint
     harness.clear_current_blueprint();
