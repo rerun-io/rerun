@@ -21,7 +21,7 @@ all-features = true
 [package.metadata.cargo-shear]
 ignored = [
   "num-traits", # Needed for `num-derive`'s macros to work.
-  "half",       # Needed so that `fixed` is pinned at the right version.
+  "half", # Needed so that `fixed` is pinned at the right version.
 ]
 
 

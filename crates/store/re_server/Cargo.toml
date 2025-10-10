@@ -62,7 +62,9 @@ tracing.workspace = true
 url.workspace = true
 
 
-[build-dependencies]
+[dev-dependencies]
+re_redap_tests.workspace = true
 
-# Rerun
+
+[build-dependencies]
 re_build_tools.workspace = true

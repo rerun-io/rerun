@@ -10,14 +10,13 @@ use re_chunk_store::{
     GarbageCollectionTarget,
 };
 use re_entity_db::{EntityDb, StoreBundle};
-use re_global_context::RecordingOrTable;
 use re_log_types::{AbsoluteTimeRange, ApplicationId, StoreId, StoreKind, TableId};
 use re_query::QueryCachesStats;
 use re_types::{archetypes, components::Timestamp};
 
 use crate::{
-    BlueprintUndoState, CacheMemoryReport, Caches, StorageContext, StoreContext, TableStore,
-    TableStores,
+    BlueprintUndoState, CacheMemoryReport, Caches, RecordingOrTable, StorageContext, StoreContext,
+    TableStore, TableStores,
 };
 
 /// Interface for accessing all blueprints and recordings

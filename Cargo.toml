@@ -22,7 +22,7 @@ authors = ["rerun.io <opensource@rerun.io>"]
 edition = "2024"
 homepage = "https://rerun.io"
 include = [
-  "../../Cargo.lock",     # So that users can pass `--locked` to `cargo install rerun-cli`
+  "../../Cargo.lock", # So that users can pass `--locked` to `cargo install rerun-cli`
   "../../LICENSE-APACHE",
   "../../LICENSE-MIT",
   "**/*.rs",
@@ -44,7 +44,7 @@ ignored = [
   "re_renderer_examples",
 
   # used for specific targets or features
-  "chrono",      # TODO(#11368)
+  "chrono", # TODO(#11368)
   "home",
   "profiling",
   "wayland-sys",
@@ -79,6 +79,7 @@ re_log_types = { path = "crates/store/re_log_types", version = "=0.26.0-alpha.1"
 re_protos = { path = "crates/store/re_protos", version = "=0.26.0-alpha.1", default-features = false }
 re_query = { path = "crates/store/re_query", version = "=0.26.0-alpha.1", default-features = false }
 re_redap_client = { path = "crates/store/re_redap_client", version = "=0.26.0-alpha.1", default-features = false }
+re_redap_tests = { path = "crates/store/re_redap_tests", version = "=0.26.0-alpha.1", default-features = false }
 re_server = { path = "crates/store/re_server", version = "=0.26.0-alpha.1", default-features = false }
 re_sorbet = { path = "crates/store/re_sorbet", version = "=0.26.0-alpha.1", default-features = false }
 re_tf = { path = "crates/store/re_tf", version = "=0.26.0-alpha.1", default-features = false }
@@ -124,7 +125,6 @@ re_context_menu = { path = "crates/viewer/re_context_menu", version = "=0.26.0-a
 re_chunk_store_ui = { path = "crates/viewer/re_chunk_store_ui", version = "=0.26.0-alpha.1", default-features = false }
 re_dataframe_ui = { path = "crates/viewer/re_dataframe_ui", version = "=0.26.0-alpha.1", default-features = false }
 re_data_ui = { path = "crates/viewer/re_data_ui", version = "=0.26.0-alpha.1", default-features = false }
-re_global_context = { path = "crates/viewer/re_global_context", version = "=0.26.0-alpha.1", default-features = false }
 re_recording_panel = { path = "crates/viewer/re_recording_panel", version = "=0.26.0-alpha.1", default-features = false }
 re_renderer = { path = "crates/viewer/re_renderer", version = "=0.26.0-alpha.1", default-features = false }
 re_renderer_examples = { path = "crates/viewer/re_renderer_examples", version = "=0.26.0-alpha.1", default-features = false }
@@ -169,12 +169,7 @@ eframe = { version = "0.32.3", default-features = false, features = [
 egui = { version = "0.32.3", features = ["callstack", "color-hex", "rayon"] }
 egui_commonmark = { version = "0.21", default-features = false }
 egui_dnd = { version = "0.13" }
-egui_extras = { version = "0.32.3", features = [
-  "http",
-  "image",
-  "serde",
-  "svg",
-] }
+egui_extras = { version = "0.32.3", features = ["http", "image", "serde", "svg"] }
 egui_kittest = { version = "0.32.3", features = ["wgpu", "snapshot", "eframe"] }
 egui_plot = "0.33" # https://github.com/emilk/egui_plot
 egui_table = "0.4" # https://github.com/rerun-io/egui_table
@@ -262,7 +257,7 @@ infer = "0.16.0" # infer MIME type by checking the magic number signaturefer MIM
 insta = "1.43"
 itertools = "0.14.0"
 jiff = { version = "0.2.15", features = ["js"] }
-js-sys = "0.3.81"
+js-sys = "0.3.77"
 jsonwebtoken = { version = "9.3", default-features = false }
 lance = { version = "0.36.0", default-features = false } # When you update this, also update the list of features enabled for `datafusion` (~50 lines up)
 libc = "0.2.176"
@@ -322,10 +317,7 @@ raw-window-handle = "0.6.2"
 rayon = "1.11"
 regex-lite = "0.1.7"
 rexif = "0.7.5"
-rfd = { version = "0.15.4", default-features = false, features = [
-  "async-std",
-  "xdg-portal",
-] }
+rfd = { version = "0.15.4", default-features = false, features = ["async-std", "xdg-portal"] }
 ron = { version = "0.10.1", features = ["integer128"] }
 roxmltree = "0.19.0"
 rustdoc-json = "0.9.7"
@@ -368,18 +360,14 @@ tower-http = "0.6.6"
 tower-service = "0.3.3"
 tracing = "0.1.41"
 tracing-opentelemetry = "0.31.0"
-tracing-subscriber = { version = "0.3.20", features = [
-  "tracing-log",
-  "fmt",
-  "env-filter",
-] }
+tracing-subscriber = { version = "0.3.20", features = ["tracing-log", "fmt", "env-filter"] }
 tracing-tracy = { version = "0.11.4", default-features = false, features = [
   "broadcast",
   "callstack-inlines",
   "code-transfer",
   "context-switch-tracing",
   "enable",
-  "ondemand",               # much nicer for a long-lived program
+  "ondemand", # much nicer for a long-lived program
   "system-tracing",
 ] } # no sampling, it's very noisy and not that useful
 type-map = "0.5.1"
@@ -392,16 +380,19 @@ uuid = "1.18"
 vec1 = "1.12"
 walkdir = "2.5"
 # TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
-#       Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
-#       `crates/viewer/re_viewer/Cargo.toml`, and make sure that the build script still works.
-#       Do not make this an `=` dependency, because that may break Rust users’ builds when a newer
-#       version is released, even if they are not building the web viewer.
-#       For details see https://github.com/rerun-io/rerun/issues/8766
-wasm-bindgen = "0.2.104"
-wasm-bindgen-cli-support = "=0.2.104"
-wasm-bindgen-futures = "0.4.54"
+#     Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
+#     `crates/viewer/re_viewer/Cargo.toml`, and make sure that notebooks still work:
+#         See `rerun_notebook/README.md` for how to run notebooks.
+#         Try running a cell which starts a viewer, and then running it again.
+#         There should be no errors in the browser console.
+#     Do not make this an `=` dependency, because that may break Rust users’ builds when a newer
+#     version is released, even if they are not building the web viewer.
+#     For details see https://github.com/rerun-io/rerun/issues/8766
+wasm-bindgen = "0.2.100" # ⚠️ read above notice before touching this!
+wasm-bindgen-cli-support = "=0.2.100" # ⚠️ read above notice before touching this!
+wasm-bindgen-futures = "0.4.50"
 wayland-sys = "0.31.7"
-web-sys = "0.3.81"
+web-sys = "0.3.77"
 web-time = "1.1.0"
 webbrowser = "1.0"
 winit = { version = "0.30.12", default-features = false }
@@ -472,7 +463,6 @@ debug = false
 "re_error".debug = true
 "re_format_arrow".debug = true
 "re_format".debug = true
-"re_global_context".debug = true
 "re_grpc_client".debug = true
 "re_grpc_server".debug = true
 "re_int_histogram".debug = true
@@ -547,10 +537,10 @@ debug-assertions = false
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 
 [profile.web-release]
-panic = 'abort'      # Removes panic handling code
+panic = 'abort' # Removes panic handling code
 inherits = "release"
 lto = true
-opt-level = 'z'      # Optimize for size
+opt-level = 'z' # Optimize for size
 codegen-units = 1
 
 
@@ -616,11 +606,11 @@ cloned_instead_of_copied = "warn"
 dbg_macro = "warn"
 debug_assert_with_mut_call = "warn"
 derive_partial_eq_without_eq = "warn"
-disallowed_macros = "warn"                   # See clippy.toml
-disallowed_methods = "warn"                  # See clippy.toml
-disallowed_names = "warn"                    # See clippy.toml
-disallowed_script_idents = "warn"            # See clippy.toml
-disallowed_types = "warn"                    # See clippy.toml
+disallowed_macros = "warn" # See clippy.toml
+disallowed_methods = "warn" # See clippy.toml
+disallowed_names = "warn" # See clippy.toml
+disallowed_script_idents = "warn" # See clippy.toml
+disallowed_types = "warn" # See clippy.toml
 doc_comment_double_space_linebreaks = "warn"
 doc_include_without_cfg = "warn"
 doc_link_with_quotes = "warn"
@@ -658,6 +648,7 @@ iter_on_empty_collections = "warn"
 iter_on_single_items = "warn"
 iter_without_into_iter = "warn"
 large_digit_groups = "warn"
+large_futures = "warn"
 large_include_file = "warn"
 large_stack_arrays = "warn"
 large_stack_frames = "warn"
@@ -674,7 +665,7 @@ manual_instant_elapsed = "warn"
 manual_is_power_of_two = "warn"
 manual_is_variant_and = "warn"
 manual_let_else = "warn"
-manual_midpoint = "warn"                     # NOTE using `midpoint` is nicer for readability, but slower for floats
+manual_midpoint = "warn" # NOTE using `midpoint` is nicer for readability, but slower for floats
 manual_ok_or = "warn"
 manual_string_new = "warn"
 map_err_ignore = "warn"
@@ -749,6 +740,7 @@ unnecessary_semicolon = "warn"
 unnecessary_struct_initialization = "warn"
 unnecessary_wraps = "warn"
 unnested_or_patterns = "warn"
+unused_async = "warn"
 unused_peekable = "warn"
 unused_rounding = "warn"
 unused_self = "warn"
@@ -765,8 +757,8 @@ zero_sized_map_values = "warn"
 #self_named_module_files = "warn"
 
 manual_range_contains = "allow" # this one is just worse imho
-map_unwrap_or = "allow"         # so is this one
-ref_patterns = "allow"          # It's nice to avoid ref pattern, but there are some situations that are hard (impossible?) to express without.
+map_unwrap_or = "allow" # so is this one
+ref_patterns = "allow" # It's nice to avoid ref pattern, but there are some situations that are hard (impossible?) to express without.
 
 # TODO(emilk): enable more of these lints:
 allow_attributes = "allow"
@@ -775,7 +767,7 @@ let_underscore_untyped = "allow"
 missing_assert_message = "allow"
 missing_errors_doc = "allow"
 ref_option = "allow"
-significant_drop_tightening = "allow"  # An update of parking_lot made this trigger in a lot of places. TODO(emilk): fix those places
+significant_drop_tightening = "allow" # An update of parking_lot made this trigger in a lot of places. TODO(emilk): fix those places
 unnecessary_debug_formatting = "allow"
 
 [patch.crates-io]

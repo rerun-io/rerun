@@ -197,6 +197,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <Fps as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Frames per second for a sequence timeline.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: Fps::arrow_datatype(),
+                verify_arrow_array: Fps::verify_arrow_array,
+            },
+        ),
+        (
             <GridColumns as Component>::name(),
             ComponentReflection {
                 docstring_md: "How many columns a grid container should have.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -277,6 +287,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <PlaybackSpeed as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A playback speed which determines how fast time progresses.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: PlaybackSpeed::arrow_datatype(),
+                verify_arrow_array: PlaybackSpeed::verify_arrow_array,
+            },
+        ),
+        (
             <QueryExpression as Component>::name(),
             ComponentReflection {
                 docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of archetypes.ViewContents.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -324,6 +344,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 custom_placeholder: Some(TensorDimensionIndexSlider::default().to_arrow()?),
                 datatype: TensorDimensionIndexSlider::arrow_datatype(),
                 verify_arrow_array: TensorDimensionIndexSlider::verify_arrow_array,
+            },
+        ),
+        (
+            <TimeInt as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A reference to a time.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: TimeInt::arrow_datatype(),
+                verify_arrow_array: TimeInt::verify_arrow_array,
             },
         ),
         (
@@ -3615,7 +3645,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     name: "state",
                     display_name: "State",
                     component_type: "rerun.blueprint.components.PanelState".into(),
-                    docstring_md: "Current state of the panels.",
+                    docstring_md: "Current state of the panel.",
                     is_required: false,
                 }],
             },
@@ -3772,6 +3802,52 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     docstring_md: "How should the horizontal/X/time axis be linked across multiple plots?",
                     is_required: false,
                 }],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.TimePanelBlueprint"),
+            ArchetypeReflection {
+                display_name: "Time panel blueprint",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "state",
+                        display_name: "State",
+                        component_type: "rerun.blueprint.components.PanelState".into(),
+                        docstring_md: "Current state of the panel.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "timeline",
+                        display_name: "Timeline",
+                        component_type: "rerun.blueprint.components.TimelineName".into(),
+                        docstring_md: "What timeline the panel is on.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "time",
+                        display_name: "Time",
+                        component_type: "rerun.blueprint.components.TimeInt".into(),
+                        docstring_md: "What time the time cursor should be on.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "playback_speed",
+                        display_name: "Playback speed",
+                        component_type: "rerun.blueprint.components.PlaybackSpeed".into(),
+                        docstring_md: "A time playback speed multiplier.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "fps",
+                        display_name: "Fps",
+                        component_type: "rerun.blueprint.components.Fps".into(),
+                        docstring_md: "Frames per second. Only applicable for sequence timelines.",
+                        is_required: false,
+                    },
+                ],
             },
         ),
         (

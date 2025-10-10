@@ -70,7 +70,7 @@ impl Drop for TestServer {
             .expect("Server handle not initialized");
         tokio::task::block_in_place(move || {
             tokio::runtime::Handle::current().block_on(async move {
-                server_handle.shutdown().await;
+                server_handle.shutdown_and_wait().await;
             });
         });
     }

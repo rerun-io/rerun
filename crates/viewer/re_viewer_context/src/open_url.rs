@@ -1,9 +1,6 @@
 use std::sync::LazyLock;
 
 use re_data_source::LogDataSource;
-use re_global_context::{
-    CommandSender, DisplayMode, Item, SystemCommand, SystemCommandSender as _,
-};
 use re_smart_channel::SmartChannelSource;
 use re_uri::{
     Scheme,
@@ -11,7 +8,10 @@ use re_uri::{
 };
 use vec1::{Vec1, vec1};
 
-use crate::{StoreHub, ViewerContext};
+use crate::{
+    CommandSender, DisplayMode, Item, ItemCollection, StoreHub, SystemCommand,
+    SystemCommandSender as _, ViewerContext,
+};
 
 /// A URL that points to a selection (typically an entity) within the currently active recording.
 pub const INTRA_RECORDING_URL_SCHEME: &str = "recording://";
@@ -203,11 +203,10 @@ pub struct OpenUrlOptions {
 
 impl ViewerOpenUrl {
     pub fn from_context(ctx: &ViewerContext<'_>) -> anyhow::Result<Self> {
-        let time_ctrl = ctx.rec_cfg.time_ctrl.read();
         Self::from_context_expanded(
             ctx.storage_context.hub,
             ctx.display_mode(),
-            Some(&time_ctrl),
+            Some(ctx.time_ctrl),
             ctx.selection(),
         )
     }
@@ -216,7 +215,7 @@ impl ViewerOpenUrl {
         store_hub: &StoreHub,
         display_mode: &DisplayMode,
         time_ctrl: Option<&crate::TimeControl>,
-        selection: &re_global_context::ItemCollection,
+        selection: &ItemCollection,
     ) -> anyhow::Result<Self> {
         let mut this = Self::from_display_mode(store_hub, display_mode)?;
 

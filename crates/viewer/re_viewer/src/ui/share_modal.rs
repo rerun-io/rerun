@@ -9,7 +9,7 @@ use re_ui::{
 };
 use re_uri::Fragment;
 use re_viewer_context::{
-    DisplayMode, ItemCollection, RecordingConfig, StoreHub, ViewerContext, open_url::ViewerOpenUrl,
+    DisplayMode, ItemCollection, StoreHub, TimeControl, ViewerContext, open_url::ViewerOpenUrl,
 };
 
 pub struct ShareModal {
@@ -45,16 +45,10 @@ impl ShareModal {
     fn current_url(
         store_hub: &StoreHub,
         display_mode: &DisplayMode,
-        rec_cfg: Option<&RecordingConfig>,
+        time_ctrl: Option<&TimeControl>,
         selection: &ItemCollection,
     ) -> anyhow::Result<ViewerOpenUrl> {
-        let time_ctrl = rec_cfg.map(|cfg| cfg.time_ctrl.read());
-        ViewerOpenUrl::from_context_expanded(
-            store_hub,
-            display_mode,
-            time_ctrl.as_deref(),
-            selection,
-        )
+        ViewerOpenUrl::from_context_expanded(store_hub, display_mode, time_ctrl, selection)
     }
 
     /// Opens the share modal with the current URL.
@@ -62,10 +56,10 @@ impl ShareModal {
         &mut self,
         store_hub: &StoreHub,
         display_mode: &DisplayMode,
-        rec_cfg: Option<&RecordingConfig>,
+        time_ctrl: Option<&TimeControl>,
         selection: &ItemCollection,
     ) -> anyhow::Result<()> {
-        let url = Self::current_url(store_hub, display_mode, rec_cfg, selection)?;
+        let url = Self::current_url(store_hub, display_mode, time_ctrl, selection)?;
         self.open_with_url(url);
         Ok(())
     }
@@ -82,12 +76,13 @@ impl ShareModal {
         ui: &mut egui::Ui,
         store_hub: &StoreHub,
         display_mode: &DisplayMode,
-        rec_cfg: Option<&RecordingConfig>,
+        time_ctrl: Option<&TimeControl>,
         selection: &ItemCollection,
     ) {
         re_tracing::profile_function!();
 
-        let url_for_current_screen = Self::current_url(store_hub, display_mode, rec_cfg, selection);
+        let url_for_current_screen =
+            Self::current_url(store_hub, display_mode, time_ctrl, selection);
         let enable_share_button = url_for_current_screen.is_ok()
             && display_mode != &DisplayMode::RedapServer(EXAMPLES_ORIGIN.clone());
 
@@ -259,23 +254,22 @@ fn url_settings_ui(
 
     if let Some(url_time_range) = url.time_range_mut() {
         ui.add_space(8.0);
-        time_range_ui(ui, url_time_range, ctx.rec_cfg);
+        time_range_ui(ui, url_time_range, ctx.time_ctrl);
     }
     if let Some(fragments) = url.fragment_mut() {
         ui.add_space(8.0);
 
         let timestamp_format = ctx.app_options().timestamp_format;
-        time_cursor_ui(ui, fragments, timestamp_format, ctx.rec_cfg);
+        time_cursor_ui(ui, fragments, timestamp_format, ctx.time_ctrl);
     }
 }
 
 fn time_range_ui(
     ui: &mut egui::Ui,
     url_time_range: &mut Option<re_uri::TimeSelection>,
-    rec_cfg: &RecordingConfig,
+    time_ctrl: &TimeControl,
 ) {
     let current_time_range_selection = {
-        let time_ctrl = rec_cfg.time_ctrl.read();
         time_ctrl
             .loop_selection()
             .map(|range| re_uri::TimeSelection {
@@ -319,7 +313,7 @@ fn time_cursor_ui(
     ui: &mut egui::Ui,
     fragments: &mut Fragment,
     timestamp_format: re_log_types::TimestampFormat,
-    rec_cfg: &RecordingConfig,
+    time_ctrl: &TimeControl,
 ) {
     let Fragment {
         selection: _, // We just always include the selection, not exposing it directly in the editor.
@@ -327,7 +321,6 @@ fn time_cursor_ui(
     } = fragments;
 
     let current_time_cursor = {
-        let time_ctrl = rec_cfg.time_ctrl.read();
         time_ctrl
             .time_cell()
             .map(|cell| (*time_ctrl.timeline().name(), cell))
@@ -374,15 +367,26 @@ mod tests {
     use re_chunk::EntityPath;
     use re_log_types::{AbsoluteTimeRangeF, TimeCell, external::re_tuid};
     use re_test_context::TestContext;
-    use re_viewer_context::{DisplayMode, Item, ItemCollection, open_url::ViewerOpenUrl};
+    use re_viewer_context::{
+        DisplayMode, Item, ItemCollection, TimeControlCommand, open_url::ViewerOpenUrl,
+    };
 
     use crate::ui::ShareModal;
 
     #[test]
     fn test_share_modal() {
-        let test_ctx = TestContext::new();
+        let mut test_ctx = TestContext::new();
 
         let timeline = re_log_types::Timeline::new_timestamp("pictime");
+
+        // Log some entity so our timeline exists.
+        test_ctx.log_entity(EntityPath::from("points"), |builder| {
+            builder.with_archetype(
+                re_chunk::RowId::new(),
+                [(timeline, re_chunk::TimeInt::ZERO)],
+                &re_types::archetypes::Points2D::new([(0., 0.), (1., 1.)]),
+            )
+        });
 
         let selection = Item::from(EntityPath::parse_forgiving("entity/path"));
         let origin = re_uri::Origin::from_str("rerun+http://example.com").unwrap();
@@ -397,7 +401,7 @@ mod tests {
                 .open(
                     &store_hub,
                     &DisplayMode::RedapServer(origin.clone()),
-                    Some(&test_ctx.recording_config),
+                    Some(&test_ctx.time_ctrl.read()),
                     &ItemCollection::default(),
                 )
                 .unwrap();
@@ -411,6 +415,8 @@ mod tests {
                 test_ctx.run(ui.ctx(), |ctx| {
                     modal.lock().ui(ctx, ui, None);
                 });
+
+                test_ctx.handle_system_commands(ui.ctx());
             });
         harness.snapshot("share_modal__server_url");
 
@@ -427,11 +433,16 @@ mod tests {
         harness.snapshot("share_modal__dataset_partition_url");
 
         // Set the timeline so it shows up on the dialog.
-        {
-            test_ctx.set_active_timeline(timeline);
-            let mut time_ctrl = test_ctx.recording_config.time_ctrl.write();
-            time_ctrl.set_loop_selection(AbsoluteTimeRangeF::new(0.0, 1000.0));
-        }
+        test_ctx.send_time_commands(
+            test_ctx.active_store_id(),
+            [
+                TimeControlCommand::SetActiveTimeline(*timeline.name()),
+                TimeControlCommand::SetTime(re_chunk::TimeInt::ZERO.into()),
+                TimeControlCommand::SetLoopSelection(AbsoluteTimeRangeF::new(0.0, 1000.0).to_int()),
+            ],
+        );
+
+        harness.run();
 
         modal.lock().url = Some(ViewerOpenUrl::RedapDatasetPartition(
             re_uri::DatasetPartitionUri {

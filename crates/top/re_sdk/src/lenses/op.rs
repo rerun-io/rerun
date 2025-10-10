@@ -95,6 +95,13 @@ impl Flatten {
                     expected: DataType::List(Arc::new(Field::new("item", DataType::Null, true))),
                 })?;
 
+        // Check that each row only contains a single `ListArray`.
+        if inner_list_array.len() != outer_offsets.len() - 1 {
+            return Err(Error::UnsupportedOperation(
+                "Flatten only supports rows with a single list array".to_owned(),
+            ));
+        }
+
         let (inner_field, inner_offsets, inner_values, _inner_nulls) =
             inner_list_array.clone().into_parts();
 
@@ -262,5 +269,49 @@ mod test {
         let res = Flatten.call(res).unwrap();
 
         insta::assert_snapshot!("field_and_flatten", DisplayRB::from(res));
+    }
+
+    #[test]
+    fn flatten_multiple_lists_error() {
+        // Create a List[List[Struct]] where each row has multiple inner lists
+        let inner_struct_fields = Fields::from(vec![Field::new("x", DataType::Float64, false)]);
+
+        let inner_struct_builder = StructBuilder::new(
+            inner_struct_fields.clone(),
+            vec![Box::new(Float64Builder::new())],
+        );
+
+        let list_builder = ListBuilder::new(inner_struct_builder).with_field(Arc::new(Field::new(
+            "item",
+            DataType::Struct(inner_struct_fields),
+            false,
+        )));
+
+        let mut outer_list_builder = ListBuilder::new(list_builder);
+
+        // Row with 2 inner lists (should fail)
+        let inner = outer_list_builder.values();
+        let s = inner.values();
+        s.field_builder::<Float64Builder>(0)
+            .unwrap()
+            .append_value(1.0);
+        s.append(true);
+        inner.append(true);
+
+        let s = inner.values();
+        s.field_builder::<Float64Builder>(0)
+            .unwrap()
+            .append_value(2.0);
+        s.append(true);
+        inner.append(true);
+
+        outer_list_builder.append(true);
+
+        let array = outer_list_builder.finish();
+
+        println!("{}", DisplayRB::from(array.clone()));
+
+        let res = Flatten.call(array);
+        assert!(res.is_err());
     }
 }

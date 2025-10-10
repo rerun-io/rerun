@@ -1,9 +1,11 @@
-use super::{MessageHeader, MessageKind};
-use crate::Compression;
-use crate::codec::arrow::encode_arrow;
-use crate::encoder::EncodeError;
 use re_log_types::LogMsg;
 use re_protos::log_msg::v1alpha1 as proto;
+
+use crate::codec::Compression;
+use crate::codec::arrow::encode_arrow;
+use crate::encoder::EncodeError;
+
+use super::{MessageHeader, MessageKind};
 
 pub(crate) fn encode(
     buf: &mut Vec<u8>,
