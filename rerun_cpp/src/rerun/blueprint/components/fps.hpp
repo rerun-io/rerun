@@ -10,7 +10,7 @@
 #include <memory>
 
 namespace rerun::blueprint::components {
-    /// **Component**: Frames per seconds for a sequence timeline.
+    /// **Component**: Frames per second for a sequence timeline.
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///

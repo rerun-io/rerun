@@ -19,7 +19,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Frames per seconds for a sequence timeline.
+/// **Component**: Frames per second for a sequence timeline.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]

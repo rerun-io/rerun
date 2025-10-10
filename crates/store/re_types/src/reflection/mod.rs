@@ -199,7 +199,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <Fps as Component>::name(),
             ComponentReflection {
-                docstring_md: "Frames per seconds for a sequence timeline.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "Frames per second for a sequence timeline.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
                 datatype: Fps::arrow_datatype(),
