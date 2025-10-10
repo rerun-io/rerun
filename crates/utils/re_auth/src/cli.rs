@@ -3,7 +3,7 @@ use std::{collections::HashMap, time::Duration};
 use base64::prelude::*;
 use indicatif::ProgressBar;
 
-use crate::workos::{self, AuthContext, Credentials};
+use crate::workos::{self, Credentials, CredentialsStoreError, MalformedTokenError};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -13,17 +13,14 @@ pub enum Error {
     #[error("HTTP server error: {0}")]
     Http(std::io::Error),
 
-    #[error("failed to load context: {0}")]
-    Context(#[from] workos::ContextLoadError),
-
-    #[error("failed to verify credentials: {0}")]
-    Credentials(#[from] workos::CredentialsError),
-
-    #[error("failed to store credentials: {0}")]
-    Store(#[from] workos::CredentialsStoreError),
-
     #[error("{0}")]
     Generic(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
+
+    #[error("{0}")]
+    MalformedToken(#[from] MalformedTokenError),
+
+    #[error("{0}")]
+    Store(#[from] CredentialsStoreError),
 }
 
 trait ResponseCorsExt<R> {
@@ -61,75 +58,50 @@ struct NoCredentialsError;
 struct ExpiredCredentialsError;
 
 /// Prints the token to stdout
-pub async fn token(context: &AuthContext) -> Result<(), Error> {
-    let mut credentials = match workos::Credentials::load() {
-        Ok(Some(credentials)) => credentials,
-
-        Ok(None) => {
-            return Err(Error::Generic(NoCredentialsError.into()));
+pub async fn token() -> Result<(), Error> {
+    match workos::load_and_refresh_credentials().await {
+        Ok(Some(credentials)) => {
+            println!("{}", credentials.access_token().as_str());
+            Ok(())
         }
+
+        Ok(None) => Err(Error::Generic(NoCredentialsError.into())),
 
         Err(err) => {
             re_log::debug!("invalid credentials: {err}");
-            return Err(Error::Generic(ExpiredCredentialsError.into()));
+            Err(Error::Generic(ExpiredCredentialsError.into()))
         }
-    };
-
-    if let Err(err) = credentials.refresh_if_needed(context).await {
-        re_log::debug!("failed to refresh credentials: {err}");
-        return Err(Error::Generic(ExpiredCredentialsError.into()));
     }
-
-    credentials.store()?;
-
-    let Some(token) = credentials.access_token() else {
-        unreachable!("bug: no access token after refresh");
-    };
-
-    println!("{}", token.as_str());
-
-    Ok(())
 }
 
 /// Login to Rerun using Authorization Code flow.
 ///
 /// This first checks if valid credentials already exist locally,
 /// and doesn't perform the login flow if so, unless `options.force_login` is set to `true`.
-pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(), Error> {
+pub async fn login(options: LoginOptions<'_>) -> Result<(), Error> {
     if !options.force_login {
         // NOTE: If the loading fails for whatever reason, we debug log the error
         // and have the user login again as if nothing happened.
-        match workos::Credentials::load() {
-            Ok(Some(mut credentials)) => {
-                // Try to do a refresh to validate the token
-                // TODO(jan): call redap `/verify-token` instead
-                match credentials.refresh(context).await {
-                    Ok(_) => {
-                        println!(
-                            "You're already logged in as {}, and your credentials are valid.",
-                            credentials.user().email
-                        );
-                        println!(
-                            "Use `rerun auth login --force` if you'd like to login again anyway."
-                        );
+        match workos::load_credentials() {
+            Ok(Some(credentials)) => {
+                match workos::refresh_credentials(credentials).await {
+                    Ok(credentials) => {
+                        println!("You're already logged in as: {}", credentials.user().email);
                         println!("Note: We've refreshed your credentials.");
-                        credentials.store()?;
+                        println!("Note: Run `rerun auth login --force` to login again.");
                         return Ok(());
                     }
                     Err(err) => {
-                        println!(
-                            "Note: Credentials were already present on the machine, but validating them failed:\n    {err}"
-                        );
-                        println!(
-                            "This is normal if you haven't used your credentials in some time."
-                        );
-                        // Credentials are bad, fallthrough to login path.
+                        re_log::debug!("refreshing credentials failed: {err}");
+                        // Credentials are bad, login again.
+                        // fallthrough
                     }
                 }
             }
 
             Ok(None) => {
                 // No credentials yet, login as usual.
+                // fallthrough
             }
 
             Err(err) => {
@@ -178,12 +150,9 @@ pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(
     p.set_message("Waiting for browser…");
     let auth = wait_for_browser_response(&server, &p)?;
 
-    // 4. Verify credentials
-    p.set_message("Verifying login…");
-    let credentials = Credentials::verify_auth_response(context, auth.into())?;
-
-    // 5. Store credentials
-    credentials.store()?;
+    // 4. Deserialize credentials
+    let credentials = Credentials::from_auth_response(auth.into())?;
+    let credentials = credentials.ensure_stored()?;
 
     p.finish_and_clear();
 

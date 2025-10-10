@@ -15,6 +15,8 @@ mod provider;
 mod service;
 mod token;
 
+pub mod credentials;
+
 #[cfg(feature = "cli")]
 pub mod cli;
 

@@ -26,16 +26,8 @@ pub struct HttpError {
     pub message: String,
 }
 
-async fn post<Body: serde::Serialize, Res: serde::de::DeserializeOwned>(
-    endpoint: impl std::fmt::Display,
-    body: Body,
-) -> Result<Res, Error> {
-    let res = ehttp::fetch_async(
-        ehttp::Request::json(format!("{API_BASE_URL}{endpoint}"), &body)
-            .map_err(Error::Deserialize)?,
-    )
-    .await
-    .map_err(Error::Request)?;
+async fn send<Res: serde::de::DeserializeOwned>(request: ehttp::Request) -> Result<Res, Error> {
+    let res = ehttp::fetch_async(request).await.map_err(Error::Request)?;
 
     if !res.ok {
         if !res.bytes.is_empty() {
@@ -48,6 +40,23 @@ async fn post<Body: serde::Serialize, Res: serde::de::DeserializeOwned>(
     }
 
     serde_json::from_reader(std::io::Cursor::new(res.bytes)).map_err(Error::Deserialize)
+}
+
+async fn get<Res: serde::de::DeserializeOwned>(
+    endpoint: impl std::fmt::Display,
+) -> Result<Res, Error> {
+    send(ehttp::Request::get(endpoint)).await
+}
+
+async fn post<Body: serde::Serialize, Res: serde::de::DeserializeOwned>(
+    endpoint: impl std::fmt::Display,
+    body: Body,
+) -> Result<Res, Error> {
+    send(
+        ehttp::Request::json(format!("{API_BASE_URL}{endpoint}"), &body)
+            .map_err(Error::Deserialize)?,
+    )
+    .await
 }
 
 #[derive(serde::Serialize)]
@@ -73,4 +82,10 @@ pub(crate) async fn refresh(refresh_token: &RefreshToken) -> Result<Authenticati
         },
     )
     .await
+}
+
+const JWKS_URL_BASE: &str = "https://api.workos.com/sso/jwks";
+
+pub async fn jwks(client_id: &str) -> Result<jsonwebtoken::jwk::JwkSet, Error> {
+    get(format_args!("{JWKS_URL_BASE}/{client_id}")).await
 }

@@ -38,11 +38,16 @@ workos = [
 [dependencies]
 re_log.workspace = true
 
+async-trait.workspace = true
+http.workspace = true
 jsonwebtoken.workspace = true
 saturating_cast.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
 tonic.workspace = true
+tower.workspace = true
 
+## Optional dependencies
 base64 = { workspace = true, optional = true }
 const_format = { workspace = true, optional = true }
 directories = { workspace = true, optional = true }

@@ -223,12 +223,13 @@ impl RedapProvider {
     /// These must be fetched from a remote host.
     #[cfg(feature = "workos")]
     pub async fn with_external_provider(self, org_id: impl Into<String>) -> Result<Self, Error> {
-        // TODO(jan): fetch these less often
-        let ctx = crate::workos::AuthContext::load().await.map_err(|err| {
+        use crate::workos::{WORKOS_CLIENT_ID, api};
+
+        // TODO(jan): fetch these less often? cache somehow?
+        let keys = api::jwks(WORKOS_CLIENT_ID).await.map_err(|err| {
             re_log::debug!("failed to fetch external keys: {err}");
-            Error::ContextLoad(err)
+            Error::JwksFetch(err)
         })?;
-        let keys = std::sync::Arc::unwrap_or_clone(ctx.jwks);
         let org_id = org_id.into();
 
         let external = ExternalProvider { keys, org_id };
