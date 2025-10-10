@@ -1,3 +1,6 @@
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::Arc;
+
 use re_auth::client::AuthDecorator;
 use re_chunk::Chunk;
 use re_log_types::{
@@ -121,7 +124,7 @@ pub(crate) async fn client(
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
-pub type RedapClientInner = tonic::service::interceptor::InterceptedService<
+pub type RedapClientInner = re_auth::client::AuthService<
     tonic::service::interceptor::InterceptedService<
         re_protos::headers::PropagateHeaders<
             re_perf_telemetry::external::tower_http::trace::Trace<
@@ -137,16 +140,14 @@ pub type RedapClientInner = tonic::service::interceptor::InterceptedService<
         >,
         re_protos::headers::RerunVersionInterceptor,
     >,
-    re_auth::client::AuthDecorator,
 >;
 
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "perf_telemetry")))]
-pub type RedapClientInner = tonic::service::interceptor::InterceptedService<
+pub type RedapClientInner = re_auth::client::AuthService<
     tonic::service::interceptor::InterceptedService<
         re_protos::headers::PropagateHeaders<tonic::transport::Channel>,
         re_protos::headers::RerunVersionInterceptor,
     >,
-    re_auth::client::AuthDecorator,
 >;
 
 pub type RedapClient = RerunCloudServiceClient<RedapClientInner>;
@@ -154,14 +155,12 @@ pub type RedapClient = RerunCloudServiceClient<RedapClientInner>;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) async fn client(
     origin: Origin,
-    token: Option<re_auth::Jwt>,
-) -> Result<RedapClient, ApiError> {
+    credentials: Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync>,
+) -> Result<RedapClient, ConnectionError> {
     let channel = channel(origin).await?;
 
     let middlewares = tower::ServiceBuilder::new()
-        .layer(tonic::service::interceptor::InterceptorLayer::new(
-            AuthDecorator::new(token),
-        ))
+        .layer(AuthDecorator::new(credentials))
         .layer({
             let name = None;
             let version = None;
@@ -172,7 +171,7 @@ pub(crate) async fn client(
     #[cfg(feature = "perf_telemetry")]
     let middlewares = middlewares.layer(re_perf_telemetry::new_client_telemetry_layer());
 
-    let svc = tower::ServiceBuilder::new()
+    let svc: RedapClientInner = tower::ServiceBuilder::new()
         .layer(middlewares.into_inner())
         .service(channel);
 

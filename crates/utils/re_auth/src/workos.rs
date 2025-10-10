@@ -309,7 +309,7 @@ impl AccessToken {
     /// ## Safety
     ///
     /// - The token should come from a trusted source, like the `WorkOS` API.
-    // Note: This is not memory unsafe, but we're still marking it unsafe
+    // Note: Misusing this will not cause UB, but we're still marking it unsafe
     // to ensure it is not used lightly.
     #[allow(unsafe_code)]
     pub(crate) unsafe fn unverified(jwt: Jwt) -> Result<Self, MalformedTokenError> {
