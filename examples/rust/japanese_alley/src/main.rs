@@ -152,109 +152,6 @@ fn convert_list_struct_to_list_fixed(list_array: ListArray) -> Result<ListArray,
     ))
 }
 
-fn transform_struct_list_to_nested_lists(list_array: ListArray) -> Result<ListArray, Error> {
-    let (_, offsets, rows, nulls) = list_array.into_parts();
-
-    let instances = rows.as_any().downcast_ref::<ListArray>().unwrap();
-
-    let pose_struct_array = instances
-        .values()
-        .as_any()
-        .downcast_ref::<StructArray>()
-        .ok_or_else(|| Error::TypeMismatch {
-            actual: instances.values().data_type().clone(),
-            expected: DataType::Struct(
-                vec![
-                    Field::new("position", DataType::Struct(Fields::empty()), false),
-                ]
-                .into(),
-            ),
-        })?;
-
-    let instance_struct_array = pose_struct_array
-        .column(0)
-        .as_any()
-        .downcast_ref::<StructArray>()
-        .ok_or_else(|| Error::TypeMismatch {
-            actual: pose_struct_array.column(0).data_type().clone(),
-            expected: DataType::Struct(
-                vec![
-                    Field::new("x", DataType::Float64, false),
-                    Field::new("y", DataType::Float64, false),
-                    Field::new("z", DataType::Float64, false),
-                ]
-                .into(),
-            ),
-        })?;
-
-    // Assumes struct has exactly 3 fields in order: x, y, z
-    let x = instance_struct_array
-        .column(0)
-        .as_any()
-        .downcast_ref::<Float64Array>()
-        .ok_or_else(|| Error::TypeMismatch {
-            actual: instance_struct_array.column(0).data_type().clone(),
-            expected: DataType::Float64,
-        })?;
-    let y = instance_struct_array
-        .column(1)
-        .as_any()
-        .downcast_ref::<Float64Array>()
-        .ok_or_else(|| Error::TypeMismatch {
-            actual: instance_struct_array.column(1).data_type().clone(),
-            expected: DataType::Float64,
-        })?;
-    let z = instance_struct_array
-        .column(2)
-        .as_any()
-        .downcast_ref::<Float64Array>()
-        .ok_or_else(|| Error::TypeMismatch {
-            actual: instance_struct_array.column(2).data_type().clone(),
-            expected: DataType::Float64,
-        })?;
-
-    // Build List<FixedSizeList<Float32, 3>> structure
-    let fixed_size_list_field = Arc::new(Field::new(
-        "item",
-        DataType::FixedSizeList(
-            Arc::new(Field::new("item", DataType::Float32, true)),
-            3,
-        ),
-        false,
-    ));
-
-    let mut list_builder = ListBuilder::new(FixedSizeListBuilder::new(Float32Builder::new(), 3));
-
-    // Iterate over each row (outer list element)
-    for i in 0..instances.len() {
-        if instances.is_null(i) {
-            list_builder.append(false);
-            continue;
-        }
-
-        let start = instances.value_offsets()[i] as usize;
-        let end = instances.value_offsets()[i + 1] as usize;
-
-        // For each instance in this row, add a FixedSizeList[3]
-        for j in start..end {
-            let x_val = x.value(j);
-            let y_val = y.value(j);
-            let z_val = z.value(j);
-            list_builder
-                .values()
-                .values()
-                .append_slice(&[x_val as f32, y_val as f32, z_val as f32]);
-            list_builder.values().append(true);
-        }
-
-        list_builder.append(true);
-    }
-
-    let result = list_builder.finish();
-
-    Ok(result)
-}
-
 fn create_points_for_poses(list_array: ListArray) -> Result<ListArray, Error> {
     let (_, _, rows, _) = list_array.into_parts();
 
@@ -430,7 +327,9 @@ fn main() -> anyhow::Result<()> {
                 InstancePoses3D::descriptor_translations(),
                 [
                     Op::access_field("poses"),
-                    Op::func(transform_struct_list_to_nested_lists),
+                    Op::flatten(),
+                    Op::access_field("position"),
+                    Op::func(convert_list_struct_to_list_fixed),
                 ],
             )
             .add_output_column(
