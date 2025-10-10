@@ -38,7 +38,7 @@ fn next_row_id_generator(prefix: u64) -> impl FnMut() -> re_chunk::RowId {
 
 // ---
 
-/// Crates a very nasty recording with all kinds of partial updates, chunk overlaps, repeated
+/// Creates a very nasty recording with all kinds of partial updates, chunk overlaps, repeated
 /// timestamps, duplicated chunks, partial multi-timelines, flat and recursive clears, etc.
 ///
 /// This makes it a great recording to test things with for most situations.
