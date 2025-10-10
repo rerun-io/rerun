@@ -8781,7 +8781,6 @@ dependencies = [
  "itertools 0.14.0",
  "jiff",
  "nohash-hasher",
- "num-traits",
  "ordered-float 5.1.0",
  "parking_lot",
  "re_arrow_util",

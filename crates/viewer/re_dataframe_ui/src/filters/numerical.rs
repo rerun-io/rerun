@@ -272,7 +272,7 @@ impl Filter for FloatFilter {
 
         let udf = FloatFilterUdf {
             op: self.operator,
-            rhs_value: rhs_value.into(),
+            rhs_value,
         }
         .as_scalar_udf();
 
