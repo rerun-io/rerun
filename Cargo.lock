@@ -2286,6 +2286,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "custom_visualizer"
+version = "0.24.0-alpha.3+dev"
+dependencies = [
+ "bytemuck",
+ "mimalloc",
+ "rerun",
+]
+
+[[package]]
 name = "darling"
 version = "0.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
