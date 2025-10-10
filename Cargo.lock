@@ -9361,6 +9361,7 @@ dependencies = [
  "re_byte_size",
  "re_chunk",
  "re_data_loader",
+ "re_format_arrow",
  "re_grpc_client",
  "re_grpc_server",
  "re_log",
