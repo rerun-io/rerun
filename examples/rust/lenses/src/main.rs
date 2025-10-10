@@ -1,11 +1,15 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{Array, Float32Array, Float64Array, ListArray, StringArray, StructArray},
+    array::{
+        Array, ArrayBuilder, Float32Array, Float64Array, Int64Builder, ListArray, ListBuilder,
+        StringArray, StringBuilder, StructArray,
+    },
     datatypes::{DataType, Field},
 };
 use rerun::{
-    DynamicArchetype, RecordingStream, Scalars, SeriesLines, SeriesPoints, TextDocument, TimeCell,
+    ComponentDescriptor, DynamicArchetype, RecordingStream, Scalars, SerializedComponentColumn,
+    SeriesLines, SeriesPoints, TextDocument, TimeCell,
     external::re_log,
     lenses::{Lens, LensesSink, Op},
     sink::GrpcSink,
@@ -89,10 +93,16 @@ fn main() -> anyhow::Result<()> {
         )
         .build();
 
+    let time = Lens::for_input_column("/timestamped".parse()?, "my_timestamp")
+        .add_time_column("my_timeline", rerun::time::TimeType::Sequence, [])
+        .add_output_column(ComponentDescriptor::partial("value"), [])
+        .build();
+
     let lenses_sink = LensesSink::new(GrpcSink::default())
         .with_lens(instruction)
         .with_lens(destructure)
-        .with_lens(lens_flag()?);
+        .with_lens(lens_flag()?)
+        .with_lens(time);
 
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_lenses").spawn()?;
     rec.set_sink(Box::new(lenses_sink));
@@ -100,6 +110,7 @@ fn main() -> anyhow::Result<()> {
     log_instructions(&rec)?;
     log_structs_with_scalars(&rec)?;
     log_flag(&rec)?;
+    log_timestamps(&rec)?;
 
     Ok(())
 }
@@ -157,6 +168,46 @@ fn log_structs_with_scalars(rec: &RecordingStream) -> anyhow::Result<()> {
                 .with_component_from_data("payload", Arc::new(struct_array)),
         )?
     }
+
+    Ok(())
+}
+
+fn log_timestamps(rec: &RecordingStream) -> anyhow::Result<()> {
+    let mut timestamp_list_builder = ListBuilder::new(Int64Builder::new());
+    let mut string_list_builder = ListBuilder::new(StringBuilder::new());
+
+    for x in 42..53 {
+        timestamp_list_builder
+            .values()
+            .as_any_mut()
+            .downcast_mut::<Int64Builder>()
+            .unwrap()
+            .append_value(x);
+        timestamp_list_builder.append(true);
+
+        string_list_builder
+            .values()
+            .as_any_mut()
+            .downcast_mut::<StringBuilder>()
+            .unwrap()
+            .append_value(format!("value: {x}"));
+        string_list_builder.append(true);
+    }
+
+    rec.send_columns(
+        "timestamped",
+        [],
+        [
+            SerializedComponentColumn {
+                descriptor: rerun::ComponentDescriptor::partial("my_timestamp"),
+                list_array: timestamp_list_builder.finish(),
+            },
+            SerializedComponentColumn {
+                descriptor: rerun::ComponentDescriptor::partial("value"),
+                list_array: string_list_builder.finish(),
+            },
+        ],
+    )?;
 
     Ok(())
 }
