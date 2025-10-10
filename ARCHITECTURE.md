@@ -198,7 +198,7 @@ Update instructions:
 | Crate                | Description                                                       |
 |----------------------|-------------------------------------------------------------------|
 | re_redap_client      | Official client for the Rerun Data Protocol                       |
-| re_redap_test        | Official test suite for the Rerun Data Protocol                   |
+| re_redap_tests       | Official test suite for the Rerun Data Protocol                   |
 | re_data_loader       | Handles loading of Rerun data from file using data loader plugins |
 | re_data_source       | Handles loading of Rerun data from different sources              |
 | re_grpc_client       | Client for the legacy StoreHub API                                |
