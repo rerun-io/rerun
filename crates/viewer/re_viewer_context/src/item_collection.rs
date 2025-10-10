@@ -210,7 +210,7 @@ impl ItemCollection {
             AppId,
             StoreId,
             EntityPath,
-            ComponentPath,
+            Component,
         }
 
         #[expect(clippy::match_same_arms)]
@@ -255,7 +255,7 @@ impl ItemCollection {
                     instance_path.entity_path.to_string(),
                 )),
                 Item::ComponentPath(component_path) => Some((
-                    ClipboardTextDesc::ComponentPath,
+                    ClipboardTextDesc::Component,
                     component_path.component.to_string(),
                 )),
             })
@@ -273,7 +273,7 @@ impl ItemCollection {
                 ClipboardTextDesc::AppId => "app id",
                 ClipboardTextDesc::StoreId => "store id",
                 ClipboardTextDesc::EntityPath => "entity path",
-                ClipboardTextDesc::ComponentPath => "component path",
+                ClipboardTextDesc::Component => "component",
             };
             if !content_description.is_empty() {
                 content_description.push_str(", ");
