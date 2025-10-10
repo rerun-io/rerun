@@ -149,6 +149,11 @@ service RerunCloudService {
 
   rpc ScanTable(ScanTableRequest) returns (stream ScanTableResponse) {}
 
+  // Write record batches to a table.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc WriteTable(stream WriteTableRequest) returns (WriteTableResponse) {}
+
   // --- Tasks ---
 
   // Query the status of submitted tasks
@@ -586,6 +591,25 @@ message ScanTableRequest {
 message ScanTableResponse {
   rerun.common.v1alpha1.DataframePart dataframe_part = 1;
 }
+
+enum TableInsertMode {
+  // Appends new rows to the existing table without modifying any existing rows.
+  TABLE_INSERT_APPEND = 0;
+
+  // Replace existing rows that collide with the inserted rows. Replacement is typically based on a unique key or primary key.
+  TABLE_INSERT_REPLACE = 1;
+
+  // Overwrites all existing rows in the table with the new rows.
+  TABLE_INSERT_OVERWRITE = 2;
+}
+
+message WriteTableRequest {
+  rerun.common.v1alpha1.EntryId table_id = 1;
+  rerun.common.v1alpha1.DataframePart dataframe_part = 2;
+  TableInsertMode insert_mode = 3;
+}
+
+message WriteTableResponse {}
 
 // --- Maintenance ---
 
