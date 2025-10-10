@@ -12,25 +12,19 @@ namespace rerun::blueprint::archetypes {
             ComponentBatch::empty<rerun::blueprint::components::LinkAxis>(Descriptor_link)
                 .value_or_throw();
         archetype.view_range =
-            ComponentBatch::empty<rerun::components::Range1D>(Descriptor_view_range)
-                .value_or_throw();
-        archetype.view_origin =
-            ComponentBatch::empty<rerun::blueprint::components::TimeOrigin>(Descriptor_view_origin)
+            ComponentBatch::empty<rerun::blueprint::components::TimeRange>(Descriptor_view_range)
                 .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> TimeAxis::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(3);
+        columns.reserve(2);
         if (link.has_value()) {
             columns.push_back(link.value().partitioned(lengths_).value_or_throw());
         }
         if (view_range.has_value()) {
             columns.push_back(view_range.value().partitioned(lengths_).value_or_throw());
-        }
-        if (view_origin.has_value()) {
-            columns.push_back(view_origin.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -41,9 +35,6 @@ namespace rerun::blueprint::archetypes {
         }
         if (view_range.has_value()) {
             return columns(std::vector<uint32_t>(view_range.value().length(), 1));
-        }
-        if (view_origin.has_value()) {
-            return columns(std::vector<uint32_t>(view_origin.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -56,16 +47,13 @@ namespace rerun {
     ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(3);
+        cells.reserve(2);
 
         if (archetype.link.has_value()) {
             cells.push_back(archetype.link.value());
         }
         if (archetype.view_range.has_value()) {
             cells.push_back(archetype.view_range.value());
-        }
-        if (archetype.view_origin.has_value()) {
-            cells.push_back(archetype.view_origin.value());
         }
 
         return rerun::take_ownership(std::move(cells));

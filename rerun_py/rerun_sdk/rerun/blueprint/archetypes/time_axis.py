@@ -5,16 +5,18 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from attrs import define, field
 
-from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
+
+if TYPE_CHECKING:
+    from ... import datatypes
 
 __all__ = ["TimeAxis"]
 
@@ -31,8 +33,7 @@ class TimeAxis(Archetype):
         self: Any,
         *,
         link: blueprint_components.LinkAxisLike | None = None,
-        view_range: datatypes.Range1DLike | None = None,
-        view_origin: blueprint_components.TimeOriginLike | None = None,
+        view_range: datatypes.TimeRangeLike | None = None,
     ) -> None:
         """
         Create a new instance of the TimeAxis archetype.
@@ -44,15 +45,13 @@ class TimeAxis(Archetype):
 
             Linking with global will ignore all the other options.
         view_range:
-            The view range offset of the horizontal/X/time axis, in time units.
-        view_origin:
-            The align of the horizontal/X/time axis.
+            The view range of the horizontal/X/time axis.
 
         """
 
         # You can define your own __init__ function as a member of TimeAxisExt in time_axis_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(link=link, view_range=view_range, view_origin=view_origin)
+            self.__attrs_init__(link=link, view_range=view_range)
             return
         self.__attrs_clear__()
 
@@ -61,7 +60,6 @@ class TimeAxis(Archetype):
         self.__attrs_init__(
             link=None,
             view_range=None,
-            view_origin=None,
         )
 
     @classmethod
@@ -77,8 +75,7 @@ class TimeAxis(Archetype):
         *,
         clear_unset: bool = False,
         link: blueprint_components.LinkAxisLike | None = None,
-        view_range: datatypes.Range1DLike | None = None,
-        view_origin: blueprint_components.TimeOriginLike | None = None,
+        view_range: datatypes.TimeRangeLike | None = None,
     ) -> TimeAxis:
         """
         Update only some specific fields of a `TimeAxis`.
@@ -92,9 +89,7 @@ class TimeAxis(Archetype):
 
             Linking with global will ignore all the other options.
         view_range:
-            The view range offset of the horizontal/X/time axis, in time units.
-        view_origin:
-            The align of the horizontal/X/time axis.
+            The view range of the horizontal/X/time axis.
 
         """
 
@@ -103,7 +98,6 @@ class TimeAxis(Archetype):
             kwargs = {
                 "link": link,
                 "view_range": view_range,
-                "view_origin": view_origin,
             }
 
             if clear_unset:
@@ -131,21 +125,12 @@ class TimeAxis(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    view_range: components.Range1DBatch | None = field(
+    view_range: blueprint_components.TimeRangeBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.Range1DBatch._converter,  # type: ignore[misc]
+        converter=blueprint_components.TimeRangeBatch._converter,  # type: ignore[misc]
     )
-    # The view range offset of the horizontal/X/time axis, in time units.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    view_origin: blueprint_components.TimeOriginBatch | None = field(
-        metadata={"component": True},
-        default=None,
-        converter=blueprint_components.TimeOriginBatch._converter,  # type: ignore[misc]
-    )
-    # The align of the horizontal/X/time axis.
+    # The view range of the horizontal/X/time axis.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
