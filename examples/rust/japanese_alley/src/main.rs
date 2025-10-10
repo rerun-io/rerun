@@ -2,17 +2,17 @@ use std::sync::Arc;
 
 use arrow::{
     array::{
-        Array, AsArray as _, BinaryArray, FixedSizeListBuilder, Float32Builder, Float64Array,
-        ListArray, ListBuilder, StructArray, UInt8Array,
+        Array, BinaryArray, FixedSizeListBuilder, Float32Builder, Float64Array, ListArray,
+        ListBuilder, StructArray, UInt8Array,
     },
     buffer::OffsetBuffer,
-    datatypes::{DataType, Field, Fields, Float32Type},
+    datatypes::{DataType, Field, Fields},
 };
 use rerun::{
     EncodedImage, InstancePoses3D, Points3D,
     dataframe::EntityPathFilter,
     external::re_log,
-    lenses::{Error, Lens, LensBuilder, LensesSink, Op},
+    lenses::{Error, LensBuilder, LensesSink, Op},
     sink::GrpcSink,
 };
 
@@ -164,9 +164,11 @@ fn create_points_for_poses(list_array: ListArray) -> Result<ListArray, Error> {
         .ok_or_else(|| Error::TypeMismatch {
             actual: instances.values().data_type().clone(),
             expected: DataType::Struct(
-                vec![
-                    Field::new("position", DataType::Struct(Fields::empty()), false),
-                ]
+                vec![Field::new(
+                    "position",
+                    DataType::Struct(Fields::empty()),
+                    false,
+                )]
                 .into(),
             ),
         })?;
@@ -230,10 +232,11 @@ fn create_points_for_poses(list_array: ListArray) -> Result<ListArray, Error> {
             let x_val = x.value(j);
             let y_val = y.value(j);
             let z_val = z.value(j);
-            list_builder
-                .values()
-                .values()
-                .append_slice(&[x_val as f32, y_val as f32, z_val as f32]);
+            list_builder.values().values().append_slice(&[
+                x_val as f32,
+                y_val as f32,
+                z_val as f32,
+            ]);
             list_builder.values().append(true);
         }
 
@@ -334,10 +337,7 @@ fn main() -> anyhow::Result<()> {
             )
             .add_output_column(
                 Points3D::descriptor_positions(),
-                [
-                    Op::access_field("poses"),
-                    Op::func(create_points_for_poses),
-                ],
+                [Op::access_field("poses"), Op::func(create_points_for_poses)],
             )
             .build();
 
