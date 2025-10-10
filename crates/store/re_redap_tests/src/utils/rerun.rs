@@ -304,7 +304,7 @@ pub fn create_nasty_recording(
 /// Create an rrd recording with embeddings with 256 floats each. Total number of embeddings (rows)
 /// and number of embeddings per row can be specified.
 ///
-/// Note that create a Lance vector index requires at least 256 embeddings, but our index creation
+/// Note that creating a Lance vector index requires at least 256 embeddings, but our index creation
 /// won't fail if there are less than that, it will just go through regular search path i.e. won't
 /// be optimized by the Lance index.
 pub fn create_recording_with_embeddings(
