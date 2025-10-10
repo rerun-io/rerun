@@ -15,7 +15,7 @@ use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types::ComponentDescriptor;
 use re_types::reflection::ComponentDescriptorExt as _;
 use re_ui::UiExt as _;
-use re_viewer_context::time_control_command::TimeControlCommand;
+use re_viewer_context::TimeControlCommand;
 use re_viewer_context::{ViewId, ViewerContext};
 
 use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};

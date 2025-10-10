@@ -10,8 +10,7 @@ use re_types::{
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{TimeDragValue, UiExt as _};
 use re_viewer_context::{
-    BlueprintContext as _, QueryRange, ViewClass, ViewState, ViewerContext,
-    time_control_command::TimeControlCommand,
+    BlueprintContext as _, QueryRange, TimeControlCommand, ViewClass, ViewState, ViewerContext,
 };
 use re_viewport_blueprint::{ViewBlueprint, entity_path_for_view_property};
 

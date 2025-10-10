@@ -19,10 +19,10 @@ use re_types_core::ComponentDescriptor;
 use re_ui::{ContextExt as _, DesignTokens, Help, UiExt as _, filter_widget, icons, list_item};
 use re_ui::{IconText, filter_widget::format_matching_text};
 use re_viewer_context::open_url::ViewerOpenUrl;
-use re_viewer_context::time_control_command::{TimeControlCommand, TimeView};
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext, SystemCommand,
-    SystemCommandSender as _, TimeControl, UiLayout, ViewerContext, VisitorControlFlow,
+    SystemCommandSender as _, TimeControl, TimeControlCommand, TimeView, UiLayout, ViewerContext,
+    VisitorControlFlow,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 

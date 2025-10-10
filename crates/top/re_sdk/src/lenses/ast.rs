@@ -18,7 +18,10 @@ pub struct InputColumn {
 }
 
 pub struct OutputColumn {
-    pub entity_path: EntityPath,
+    /// The target entity path for this column.
+    ///
+    /// If `None`, the entity path of the output column will be set to the matched entity path of the input column.
+    pub new_entity_path: Option<EntityPath>,
     pub component_descr: ComponentDescriptor,
     pub ops: Vec<Op>,
     // TODO(grtlr): It would be much nicer if static could be inferred from the output of the operations?
@@ -66,7 +69,7 @@ impl Op {
 
     /// Ignores any input and returns a constant `ListArray`.
     ///
-    /// Mostl commonly used with [`LensBuilder::add_static_output_column`].
+    /// Commonly used with [`LensBuilder::add_static_output_column_entity`].
     /// When used in non-static columns this function will _not_ guarantee the correct amount of rows.
     pub fn constant(value: ListArray) -> Self {
         Self::func(move |_| Ok(value.clone()))
@@ -132,8 +135,13 @@ impl Lens {
 
         let mut builders = ahash::HashMap::default();
         for output in &self.outputs {
+            let entity_path = output
+                .new_entity_path
+                .as_ref()
+                .unwrap_or(chunk.entity_path());
+
             let components = builders
-                .entry((output.entity_path.clone(), output.is_static))
+                .entry((entity_path.clone(), output.is_static))
                 .or_insert_with(ChunkComponents::default);
 
             if components.contains_component(&output.component_descr) {
@@ -150,7 +158,7 @@ impl Lens {
                         re_log::error!(
                             "Lens operation '{:?}' failed for output column '{}' on entity '{}': {err}",
                             op,
-                            output.entity_path,
+                            entity_path,
                             output.component_descr.component
                         );
                         return vec![];
@@ -205,14 +213,35 @@ impl LensBuilder {
 
     /// Can be used to define one or more output columns that are derived from the
     /// component specified via [`Self::for_input_column`].
+    ///
+    /// The output column will live on the same entity path as the input column.
     pub fn add_output_column(
+        mut self,
+        component_descr: ComponentDescriptor,
+        ops: impl IntoIterator<Item = Op>,
+    ) -> Self {
+        let column = OutputColumn {
+            new_entity_path: None,
+            component_descr,
+            ops: ops.into_iter().collect(),
+            is_static: false,
+        };
+        self.0.outputs.push(column);
+        self
+    }
+
+    /// Can be used to define one or more output columns that are derived from the
+    /// component specified via [`Self::for_input_column`].
+    ///
+    /// The output column will live on the same entity path as the input column.
+    pub fn add_output_column_entity(
         mut self,
         entity_path: impl Into<EntityPath>,
         component_descr: ComponentDescriptor,
         ops: impl IntoIterator<Item = Op>,
     ) -> Self {
         let column = OutputColumn {
-            entity_path: entity_path.into(),
+            new_entity_path: Some(entity_path.into()),
             component_descr,
             ops: ops.into_iter().collect(),
             is_static: false,
@@ -224,15 +253,19 @@ impl LensBuilder {
     /// Can be used to define one or more static output columns that are derived from the
     /// component specified via [`Self::for_input_column`].
     ///
+    /// The output column will live on the same entity path as the input column.
+    ///
     /// In most cases, static columns should have a single row only.
-    pub fn add_static_output_column(
+    // TODO(grtlr): We don't provide a non-entity version of this method, because it is
+    //              likely to change again anyway.
+    pub fn add_static_output_column_entity(
         mut self,
         entity_path: impl Into<EntityPath>,
         component_descr: ComponentDescriptor,
         ops: impl IntoIterator<Item = Op>,
     ) -> Self {
         let column = OutputColumn {
-            entity_path: entity_path.into(),
+            new_entity_path: Some(entity_path.into()),
             component_descr,
             ops: ops.into_iter().collect(),
             is_static: true,
@@ -449,7 +482,7 @@ mod test {
 
         let destructure =
             Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
-                .add_output_column(
+                .add_output_column_entity(
                     "nullability/a",
                     Scalars::descriptor_scalars(),
                     [Op::access_field("a"), Op::cast(DataType::Float64)],
@@ -474,7 +507,7 @@ mod test {
 
         let destructure =
             Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
-                .add_output_column(
+                .add_output_column_entity(
                     "nullability/b",
                     Scalars::descriptor_scalars(),
                     [Op::access_field("b")],
@@ -517,13 +550,8 @@ mod test {
 
         let count =
             Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
+                .add_output_column(ComponentDescriptor::partial("counts"), [Op::func(count_fn)])
                 .add_output_column(
-                    "nullability/b_count",
-                    ComponentDescriptor::partial("counts"),
-                    [Op::func(count_fn)],
-                )
-                .add_output_column(
-                    "nullability/b_count",
                     ComponentDescriptor::partial("original"),
                     [], // no operations
                 )
@@ -558,12 +586,12 @@ mod test {
 
         let static_lens =
             Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
-                .add_static_output_column(
+                .add_static_output_column_entity(
                     "nullability/static",
                     ComponentDescriptor::partial("static_metadata_a"),
                     [Op::constant(metadata_builder_a.finish())],
                 )
-                .add_static_output_column(
+                .add_static_output_column_entity(
                     "nullability/static",
                     ComponentDescriptor::partial("static_metadata_b"),
                     [Op::constant(metadata_builder_b.finish())],

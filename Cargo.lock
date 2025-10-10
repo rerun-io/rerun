@@ -8793,41 +8793,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_global_context"
-version = "0.26.0-alpha.1+dev"
-dependencies = [
- "ahash",
- "anyhow",
- "directories",
- "egui",
- "egui_tiles",
- "home",
- "indexmap 2.11.4",
- "itertools 0.14.0",
- "re_capabilities",
- "re_chunk",
- "re_chunk_store",
- "re_data_source",
- "re_entity_db",
- "re_log",
- "re_log_types",
- "re_redap_client",
- "re_renderer",
- "re_smart_channel",
- "re_tracing",
- "re_types",
- "re_types_core",
- "re_ui",
- "re_uri",
- "re_video",
- "rfd",
- "serde",
- "strum_macros",
- "uuid",
- "wasm-bindgen-futures",
-]
-
-[[package]]
 name = "re_grpc_client"
 version = "0.26.0-alpha.1+dev"
 dependencies = [
@@ -8899,6 +8864,7 @@ dependencies = [
  "egui",
  "egui_kittest",
  "egui_tiles",
+ "parking_lot",
  "re_protos",
  "re_redap_client",
  "re_sdk",
@@ -9249,6 +9215,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_redap_tests"
+version = "0.26.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "arrow",
+ "datafusion",
+ "futures",
+ "insta",
+ "itertools 0.14.0",
+ "re_arrow_util",
+ "re_chunk",
+ "re_format_arrow",
+ "re_log_types",
+ "re_protos",
+ "re_sdk",
+ "re_tuid",
+ "re_types",
+ "re_types_core",
+ "tempfile",
+ "tonic",
+]
+
+[[package]]
 name = "re_renderer"
 version = "0.26.0-alpha.1+dev"
 dependencies = [
@@ -9426,6 +9415,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_protos",
+ "re_redap_tests",
  "re_tuid",
  "re_types_core",
  "thiserror 1.0.69",
@@ -9506,7 +9496,6 @@ dependencies = [
  "re_chunk",
  "re_chunk_store",
  "re_entity_db",
- "re_global_context",
  "re_log",
  "re_log_encoding",
  "re_log_types",
@@ -10165,6 +10154,7 @@ dependencies = [
  "bytemuck",
  "crossbeam",
  "datafusion",
+ "directories",
  "egui",
  "egui-wgpu",
  "egui_tiles",
@@ -10173,6 +10163,7 @@ dependencies = [
  "half",
  "home",
  "image",
+ "indexmap 2.11.4",
  "itertools 0.14.0",
  "linked-hash-map",
  "macaw",
@@ -10183,16 +10174,17 @@ dependencies = [
  "re_arrow_ui",
  "re_arrow_util",
  "re_byte_size",
+ "re_capabilities",
  "re_chunk",
  "re_chunk_store",
  "re_data_source",
  "re_entity_db",
  "re_format",
- "re_global_context",
  "re_log",
  "re_log_encoding",
  "re_log_types",
  "re_query",
+ "re_redap_client",
  "re_renderer",
  "re_smart_channel",
  "re_string_interner",
@@ -10202,12 +10194,15 @@ dependencies = [
  "re_ui",
  "re_uri",
  "re_video",
+ "rfd",
  "serde",
  "slotmap",
  "smallvec",
  "static_assertions",
+ "strum_macros",
  "thiserror 1.0.69",
  "tokio",
+ "uuid",
  "vec1",
  "wasm-bindgen-futures",
  "web-sys",
@@ -10476,7 +10471,6 @@ dependencies = [
  "re_error",
  "re_format",
  "re_format_arrow",
- "re_global_context",
  "re_grpc_server",
  "re_log",
  "re_log_encoding",

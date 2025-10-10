@@ -247,7 +247,7 @@ pub fn store_info(store_id: StoreId) -> SetStoreInfo {
 
 /// Checks if a file is an MCAP file.
 fn is_mcap_file(filepath: &Path) -> bool {
-    !filepath.is_dir()
+    filepath.is_file()
         && filepath
             .extension()
             .map(|ext| ext.eq_ignore_ascii_case("mcap"))

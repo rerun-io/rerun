@@ -16,11 +16,10 @@ use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintContext,
     BlueprintUndoState, CommandSender, ComponentUiRegistry, DataQueryResult, DisplayMode,
     DragAndDropManager, GlobalContext, IndicatedEntities, Item, MaybeVisualizableEntities,
-    PerVisualizer, SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
-    SystemCommandSender as _, TableStore, TimeControl, ViewClassRegistry, ViewId, ViewStates,
-    ViewerContext, blueprint_timeline,
+    PerVisualizer, PlayState, SelectionChange, StorageContext, StoreContext, StoreHub,
+    SystemCommand, SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand,
+    ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
     open_url::{self, ViewerOpenUrl},
-    time_control_command::{PlayState, TimeControlCommand},
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;

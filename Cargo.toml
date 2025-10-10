@@ -79,6 +79,7 @@ re_log_types = { path = "crates/store/re_log_types", version = "=0.26.0-alpha.1"
 re_protos = { path = "crates/store/re_protos", version = "=0.26.0-alpha.1", default-features = false }
 re_query = { path = "crates/store/re_query", version = "=0.26.0-alpha.1", default-features = false }
 re_redap_client = { path = "crates/store/re_redap_client", version = "=0.26.0-alpha.1", default-features = false }
+re_redap_tests = { path = "crates/store/re_redap_tests", version = "=0.26.0-alpha.1", default-features = false }
 re_server = { path = "crates/store/re_server", version = "=0.26.0-alpha.1", default-features = false }
 re_sorbet = { path = "crates/store/re_sorbet", version = "=0.26.0-alpha.1", default-features = false }
 re_tf = { path = "crates/store/re_tf", version = "=0.26.0-alpha.1", default-features = false }
@@ -124,7 +125,6 @@ re_context_menu = { path = "crates/viewer/re_context_menu", version = "=0.26.0-a
 re_chunk_store_ui = { path = "crates/viewer/re_chunk_store_ui", version = "=0.26.0-alpha.1", default-features = false }
 re_dataframe_ui = { path = "crates/viewer/re_dataframe_ui", version = "=0.26.0-alpha.1", default-features = false }
 re_data_ui = { path = "crates/viewer/re_data_ui", version = "=0.26.0-alpha.1", default-features = false }
-re_global_context = { path = "crates/viewer/re_global_context", version = "=0.26.0-alpha.1", default-features = false }
 re_recording_panel = { path = "crates/viewer/re_recording_panel", version = "=0.26.0-alpha.1", default-features = false }
 re_renderer = { path = "crates/viewer/re_renderer", version = "=0.26.0-alpha.1", default-features = false }
 re_renderer_examples = { path = "crates/viewer/re_renderer_examples", version = "=0.26.0-alpha.1", default-features = false }
@@ -463,7 +463,6 @@ debug = false
 "re_error".debug = true
 "re_format_arrow".debug = true
 "re_format".debug = true
-"re_global_context".debug = true
 "re_grpc_client".debug = true
 "re_grpc_server".debug = true
 "re_int_histogram".debug = true
@@ -649,6 +648,7 @@ iter_on_empty_collections = "warn"
 iter_on_single_items = "warn"
 iter_without_into_iter = "warn"
 large_digit_groups = "warn"
+large_futures = "warn"
 large_include_file = "warn"
 large_stack_arrays = "warn"
 large_stack_frames = "warn"
@@ -740,6 +740,7 @@ unnecessary_semicolon = "warn"
 unnecessary_struct_initialization = "warn"
 unnecessary_wraps = "warn"
 unnested_or_patterns = "warn"
+unused_async = "warn"
 unused_peekable = "warn"
 unused_rounding = "warn"
 unused_self = "warn"

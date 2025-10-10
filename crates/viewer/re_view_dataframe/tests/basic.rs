@@ -5,7 +5,7 @@ use re_test_viewport::TestContextExt as _;
 use re_types::archetypes::Scalars;
 use re_ui::UiExt as _;
 use re_view_dataframe::DataframeView;
-use re_viewer_context::{ViewClass as _, ViewId, time_control_command::TimeControlCommand};
+use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]

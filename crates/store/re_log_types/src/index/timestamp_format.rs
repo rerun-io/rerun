@@ -15,7 +15,7 @@ pub enum TimestampFormatKind {
     Utc,
 
     /// Show as seconds since unix epoch
-    UnixEpoch,
+    SecondsSinceUnixEpoch,
 }
 
 /// How to display a [`crate::Timestamp`].
@@ -64,7 +64,7 @@ impl TimestampFormat {
     }
 
     pub fn unix_epoch() -> Self {
-        Self::from(TimestampFormatKind::UnixEpoch)
+        Self::from(TimestampFormatKind::SecondsSinceUnixEpoch)
     }
 
     pub fn kind(&self) -> TimestampFormatKind {
@@ -84,7 +84,7 @@ impl TimestampFormat {
         use jiff::tz::TimeZone;
 
         match self.format_kind {
-            TimestampFormatKind::UnixEpoch | TimestampFormatKind::Utc => TimeZone::UTC,
+            TimestampFormatKind::SecondsSinceUnixEpoch | TimestampFormatKind::Utc => TimeZone::UTC,
 
             TimestampFormatKind::LocalTimezone | TimestampFormatKind::LocalTimezoneImplicit => {
                 TimeZone::try_system().unwrap_or_else(|err| {

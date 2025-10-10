@@ -16,8 +16,8 @@ use re_ui::{
 };
 use re_viewer_context::{
     ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SystemCommand,
-    SystemCommandSender as _, UiLayout, ViewContext, ViewId, ViewStates, ViewerContext,
-    contents_name_style, icon_for_container_kind, time_control_command::TimeControlCommand,
+    SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId, ViewStates,
+    ViewerContext, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
 

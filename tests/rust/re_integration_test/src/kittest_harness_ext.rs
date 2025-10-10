@@ -1,6 +1,7 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use egui_kittest::{SnapshotOptions, kittest::Queryable as _};
+use parking_lot::Mutex;
 use re_sdk::{
     Component as _, ComponentDescriptor, EntityPath, EntityPathPart, RecordingInfo, StoreId,
     StoreKind,
@@ -40,6 +41,7 @@ pub trait HarnessExt {
         setup_blueprint: impl FnOnce(&ViewerContext<'_>, &mut ViewportBlueprint) + 'static,
     );
 
+    // Adds a new container to the current blueprint and returns its id.
     fn add_blueprint_container(
         &mut self,
         kind: egui_tiles::ContainerKind,
@@ -262,31 +264,36 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         kind: egui_tiles::ContainerKind,
         parent_container: Option<re_viewer_context::ContainerId>,
     ) -> ContainerId {
-        let old_container_ids = Arc::new(std::sync::Mutex::new(BTreeSet::<ContainerId>::new()));
+        // Collect list of container ids before adding new container
+        let old_container_ids = Arc::new(Mutex::new(BTreeSet::<ContainerId>::new()));
         let old_container_ids_clone = old_container_ids.clone();
         self.setup_viewport_blueprint(move |_viewer_context, blueprint| {
-            let ids: Vec<ContainerId> = blueprint.containers.keys().copied().collect();
-            old_container_ids_clone.lock().unwrap().extend(ids);
+            old_container_ids_clone
+                .lock()
+                .extend(blueprint.containers.keys().copied());
         });
 
-        self.setup_viewport_blueprint(|_viewer_context, blueprint| {
-            blueprint.add_container(egui_tiles::ContainerKind::Vertical, None);
+        // Add new container
+        self.setup_viewport_blueprint(move |_viewer_context, blueprint| {
+            blueprint.add_container(kind, parent_container);
         });
 
-        let new_container_ids = Arc::new(std::sync::Mutex::new(BTreeSet::new()));
+        // Collect list of container ids after adding new container
+        let new_container_ids = Arc::new(Mutex::new(BTreeSet::new()));
         let new_container_ids_clone = new_container_ids.clone();
         self.setup_viewport_blueprint(move |_viewer_context, blueprint| {
-            let ids: Vec<ContainerId> = blueprint.containers.keys().map(|c| c.clone()).collect();
-            new_container_ids_clone.lock().unwrap().extend(ids);
+            new_container_ids_clone
+                .lock()
+                .extend(blueprint.containers.keys().copied());
         });
         self.run_ok();
 
-        let new_container_ids = new_container_ids.lock().unwrap();
-        let old_container_ids = old_container_ids.lock().unwrap();
-        let new_container_ids = new_container_ids
-            .difference(&old_container_ids)
+        // Find the new container id
+        new_container_ids
+            .lock()
+            .difference(&old_container_ids.lock())
             .next()
-            .unwrap();
-        new_container_ids.clone()
+            .copied()
+            .expect("Failed to find new container id")
     }
 }

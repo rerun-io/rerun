@@ -20,7 +20,10 @@ impl crate::DataLoader for DirectoryLoader {
         dirpath: std::path::PathBuf,
         tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
-        if dirpath.is_file() {
+        // NOTE: Checking whether this is a file is _not_ enough. It could also be a fifo, a
+        // socket, a named pipe, a symlink to any of these things, etc.
+        // So make sure to check whether it's a directory, and nothing else.
+        if !dirpath.is_dir() {
             return Err(crate::DataLoaderError::Incompatible(dirpath.clone()));
         }
 
