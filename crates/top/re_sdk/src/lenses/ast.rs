@@ -38,6 +38,9 @@ pub enum Op {
     /// Efficiently casts a component to a new `DataType`.
     Cast(op::Cast),
 
+    /// Flattens a `ListArray` of `ListArray`.
+    Flatten(op::Flatten),
+
     /// A user-defined arbitrary function to convert a component column.
     Func(Box<dyn Fn(ListArray) -> Result<ListArray, Error> + Sync + Send>),
 }
@@ -47,6 +50,7 @@ impl std::fmt::Debug for Op {
         match self {
             Self::AccessField(inner) => f.debug_tuple("AccessField").field(inner).finish(),
             Self::Cast(inner) => f.debug_tuple("Cast").field(inner).finish(),
+            Self::Flatten(inner) => f.debug_tuple("Flatten").field(inner).finish(),
             Self::Func(_) => f.debug_tuple("Func").field(&"<function>").finish(),
         }
     }
@@ -65,6 +69,11 @@ impl Op {
         Self::Cast(op::Cast {
             to_inner_type: data_type,
         })
+    }
+
+    /// Flattens a `ListArray` of `ListArray`.
+    pub fn flatten() -> Self {
+        Self::Flatten(op::Flatten)
     }
 
     /// Ignores any input and returns a constant `ListArray`.
@@ -89,6 +98,7 @@ impl Op {
         match self {
             Self::Cast(op) => op.call(list_array),
             Self::AccessField(op) => op.call(list_array),
+            Self::Flatten(op) => op.call(list_array),
             Self::Func(func) => func(list_array),
         }
     }
