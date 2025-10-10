@@ -28,9 +28,6 @@ mod viewer_analytics;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod viewer_test_utils;
 
-#[cfg(feature = "testing")]
-pub use app_blueprint::AppBlueprint;
-
 #[cfg(not(target_arch = "wasm32"))]
 mod loading;
 
