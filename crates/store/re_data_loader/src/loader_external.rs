@@ -184,9 +184,8 @@ impl crate::DataLoader for ExternalLoader {
                 // streaming data to stdout.
                 let is_sending_data = Arc::new(AtomicBool::new(false));
 
-
                 let stdout = std::io::BufReader::new(stdout);
-                match re_log_encoding::decoder::Decoder::new(stdout) {
+                match re_log_encoding::decoder::stream::StreamDecoder::decode_eager(stdout) {
                     Ok(decoder) => {
                         let filepath = filepath.clone();
                         let tx = tx.clone();
@@ -308,15 +307,15 @@ impl crate::DataLoader for ExternalLoader {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn decode_and_stream<R: std::io::Read>(
+fn decode_and_stream(
     filepath: &std::path::Path,
     tx: &std::sync::mpsc::Sender<crate::LoadedData>,
     is_sending_data: Arc<AtomicBool>,
-    decoder: re_log_encoding::decoder::Decoder<R>,
+    msgs: impl Iterator<Item = Result<re_log_types::LogMsg, re_log_encoding::decoder::DecodeError>>,
 ) {
     re_tracing::profile_function!(filepath.display().to_string());
 
-    for msg in decoder {
+    for msg in msgs {
         is_sending_data.store(true, std::sync::atomic::Ordering::Relaxed);
 
         let msg = match msg {

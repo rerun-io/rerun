@@ -37,6 +37,7 @@ impl MessageHeader {
     // NOTE: We use little-endian encoding, because we live in
     //       the 21st century.
     #[cfg(feature = "encoder")]
+    #[allow(dead_code)] // TODO(cmc): codec revamp
     pub(crate) fn encode(
         &self,
         buf: &mut impl std::io::Write,
@@ -48,6 +49,7 @@ impl MessageHeader {
     }
 
     #[cfg(feature = "decoder")]
+    #[allow(dead_code)] // TODO(cmc): codec revamp
     pub(crate) fn decode(
         data: &mut impl std::io::Read,
     ) -> Result<Self, crate::decoder::DecodeError> {
