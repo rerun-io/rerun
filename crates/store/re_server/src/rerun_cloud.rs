@@ -19,12 +19,12 @@ use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
-        DeleteEntryResponse, EntryDetails, EntryKind, FetchTaskOutputRequest,
-        FetchTaskOutputResponse, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-        GetDatasetSchemaResponse, GetPartitionTableSchemaResponse, QueryDatasetResponse,
-        QueryTasksOnCompletionRequest, QueryTasksRequest, QueryTasksResponse, RegisterTableRequest,
-        RegisterTableResponse, RegisterWithDatasetResponse, ScanDatasetManifestRequest,
-        ScanDatasetManifestResponse, ScanPartitionTableResponse, ScanTableResponse,
+        DeleteEntryResponse, EntryDetails, EntryKind, GetDatasetManifestSchemaRequest,
+        GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse,
+        GetPartitionTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionRequest,
+        QueryTasksRequest, QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
+        RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
+        ScanPartitionTableResponse, ScanTableResponse,
         ext::{
             self, CreateDatasetEntryResponse, DataSource, ReadDatasetEntryResponse,
             ReadTableEntryResponse,
