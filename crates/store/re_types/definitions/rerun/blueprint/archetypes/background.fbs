@@ -20,7 +20,6 @@ table Background (
 
 /// Configuration of a background in a plot view.
 table PlotBackground (
-  "attr.python.aliases": "datatypes.Rgba32Like",
   "attr.rerun.scope": "blueprint"
 ) {
   /// Color used for the background.

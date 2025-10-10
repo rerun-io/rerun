@@ -107,7 +107,7 @@ class TimeSeriesView(View):
         axis_x: blueprint_archetypes.TimeAxis | None = None,
         axis_y: blueprint_archetypes.ScalarAxis | None = None,
         plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
-        background: blueprint_archetypes.PlotBackground | datatypes.Rgba32Like | None = None,
+        background: blueprint_archetypes.PlotBackground | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
         | datatypes.VisibleTimeRangeLike
         | Sequence[datatypes.VisibleTimeRangeLike]

@@ -69,7 +69,7 @@ class BarChartView(View):
         ]
         | None = None,
         plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
-        background: blueprint_archetypes.PlotBackground | datatypes.Rgba32Like | None = None,
+        background: blueprint_archetypes.PlotBackground | None = None,
     ) -> None:
         """
         Construct a blueprint for a new BarChartView view.
