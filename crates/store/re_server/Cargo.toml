@@ -63,6 +63,7 @@ url.workspace = true
 
 
 [dev-dependencies]
+re_chunk_store.workspace = true
 re_redap_tests.workspace = true
 
 

@@ -21,10 +21,13 @@ mod tests;
 mod utils;
 
 pub use self::utils::{
-    arrow::RecordBatchExt, arrow::SchemaExt, path::TempPath, rerun::TuidPrefix,
-    rerun::create_nasty_recording, rerun::create_recording_with_embeddings,
-    rerun::create_recording_with_properties, rerun::create_recording_with_scalars,
-    rerun::create_recording_with_text,
+    arrow::{RecordBatchExt, SchemaExt},
+    path::TempPath,
+    rerun::{
+        TuidPrefix, create_nasty_recording, create_recording_with_embeddings,
+        create_recording_with_properties, create_recording_with_scalars,
+        create_recording_with_text, create_simple_recording,
+    },
 };
 
 pub use self::tests::*;

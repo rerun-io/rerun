@@ -38,6 +38,111 @@ fn next_row_id_generator(prefix: u64) -> impl FnMut() -> re_chunk::RowId {
 
 // ---
 
+/// Creates a simple, clean recording with sequential data and no overlaps or duplicates.
+///
+/// This recording is made such that it cannot be compacted, so that the effect of compaction is
+/// ruled out in snapshots.
+pub fn create_simple_recording(
+    tuid_prefix: TuidPrefix,
+    partition_id: &str,
+    entity_paths: &[&str],
+) -> anyhow::Result<TempPath> {
+    use re_chunk::{Chunk, TimePoint};
+    use re_log_types::{
+        EntityPath, TimeInt, build_frame_nr,
+        example_components::{MyColor, MyLabel, MyPoint, MyPoints},
+    };
+
+    let tmp_path = {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join(format!("{partition_id}.rrd"));
+        TempPath::new(dir, path)
+    };
+
+    let rec = RecordingStreamBuilder::new(format!("rerun_example_{partition_id}"))
+        .recording_id(partition_id)
+        .send_properties(false)
+        .save(tmp_path.clone())?;
+
+    let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
+    let mut next_row_id = next_row_id_generator(tuid_prefix);
+
+    for entity_path in entity_paths {
+        let entity_path = EntityPath::from(*entity_path);
+
+        // Sequential frames
+        let frame1 = TimeInt::new_temporal(10);
+        let frame2 = TimeInt::new_temporal(20);
+        let frame3 = TimeInt::new_temporal(30);
+        let frame4 = TimeInt::new_temporal(40);
+
+        // Data for each frame
+        let points1 = MyPoint::from_iter(0..1);
+        let points2 = MyPoint::from_iter(1..2);
+        let points3 = MyPoint::from_iter(2..3);
+        let points4 = MyPoint::from_iter(3..4);
+
+        let colors1 = MyColor::from_iter(0..1);
+        let colors2 = MyColor::from_iter(1..2);
+        let colors3 = MyColor::from_iter(2..3);
+        let colors4 = MyColor::from_iter(3..4);
+
+        let labels = vec![MyLabel("simple".to_owned())];
+
+        // Single chunk with sequential, complete data
+        let chunk = Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
+            .with_sparse_component_batches(
+                next_row_id(),
+                [build_frame_nr(frame1)],
+                [
+                    (MyPoints::descriptor_points(), Some(&points1 as _)),
+                    (MyPoints::descriptor_colors(), Some(&colors1 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                next_row_id(),
+                [build_frame_nr(frame2)],
+                [
+                    (MyPoints::descriptor_points(), Some(&points2 as _)),
+                    (MyPoints::descriptor_colors(), Some(&colors2 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                next_row_id(),
+                [build_frame_nr(frame3)],
+                [
+                    (MyPoints::descriptor_points(), Some(&points3 as _)),
+                    (MyPoints::descriptor_colors(), Some(&colors3 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                next_row_id(),
+                [build_frame_nr(frame4)],
+                [
+                    (MyPoints::descriptor_points(), Some(&points4 as _)),
+                    (MyPoints::descriptor_colors(), Some(&colors4 as _)),
+                ],
+            )
+            .build()?;
+
+        rec.send_chunk(chunk);
+
+        let static_chunk = Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
+            .with_sparse_component_batches(
+                next_row_id(),
+                TimePoint::default(),
+                [(MyPoints::descriptor_labels(), Some(&labels as _))],
+            )
+            .build()?;
+
+        rec.send_chunk(static_chunk);
+    }
+
+    rec.flush_blocking()?;
+
+    Ok(tmp_path)
+}
+
 /// Creates a very nasty recording with all kinds of partial updates, chunk overlaps, repeated
 /// timestamps, duplicated chunks, partial multi-timelines, flat and recursive clears, etc.
 ///

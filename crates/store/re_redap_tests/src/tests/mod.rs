@@ -1,4 +1,6 @@
+mod common;
 mod entries_table;
+mod register_partition;
 
 macro_rules! define_redap_tests {
     (
@@ -40,4 +42,6 @@ macro_rules! define_redap_tests {
 
 define_redap_tests! {
     entries_table::list_entries_table,
+    register_partition::register_and_scan_simple_dataset,
+    register_partition::register_and_scan_empty_dataset,
 }

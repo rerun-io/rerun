@@ -408,9 +408,9 @@ impl ConnectionHandle {
                     }
 
                     let col_indices = [
-                        QueryTasksResponse::TASK_ID,
-                        QueryTasksResponse::EXEC_STATUS,
-                        QueryTasksResponse::MSGS,
+                        QueryTasksResponse::FIELD_TASK_ID,
+                        QueryTasksResponse::FIELD_EXEC_STATUS,
+                        QueryTasksResponse::FIELD_MSGS,
                     ]
                     .iter()
                     .map(|name| schema.index_of(name))
