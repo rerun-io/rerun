@@ -8,6 +8,7 @@
 pub(crate) mod ast;
 mod error;
 mod op;
+mod optics;
 mod sink;
 
 pub use self::{
