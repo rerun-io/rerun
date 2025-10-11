@@ -82,8 +82,8 @@ def test_binary_stream() -> None:
         del os.environ["RERUN_FLUSH_NUM_ROWS"]
 
 
-def test_binary_stream_set_sinks(tmp_path: "Path") -> None:
-    rr.init("test_binary_stream_set_sinks", spawn=False)
+def test_binary_stream_set_sinks(tmp_path: Path) -> None:
+    rr.init("rerun_example_test_binary_stream_set_sinks", spawn=False)
 
     stream = rr.BinaryStream()
     file_path = tmp_path / "data.rrd"

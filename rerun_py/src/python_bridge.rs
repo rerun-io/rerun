@@ -1294,9 +1294,40 @@ fn binary_stream(recording: Option<&PyRecordingStream>, py: Python<'_>) -> Optio
     Some(stream)
 }
 
-#[pyclass(frozen, name = "BinaryStream")]
+#[pyclass(frozen, eq, hash, name = "BinaryStream")]
 struct PyBinaryStream {
     storage: parking_lot::Mutex<Option<Arc<BinaryStreamStorage>>>,
+}
+
+impl PartialEq for PyBinaryStream {
+    fn eq(&self, other: &Self) -> bool {
+        if std::ptr::eq(self, other) {
+            return true;
+        }
+
+        let this = self.storage.lock();
+        let that = other.storage.lock();
+
+        match (&*this, &*that) {
+            (Some(a), Some(b)) => Arc::ptr_eq(a, b),
+            (None, None) => true,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for PyBinaryStream {}
+
+impl std::hash::Hash for PyBinaryStream {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let guard = self.storage.lock();
+
+        if let Some(storage) = &*guard {
+            state.write_usize(Arc::as_ptr(storage) as usize);
+        } else {
+            state.write_usize(0);
+        }
+    }
 }
 
 impl PyBinaryStream {
