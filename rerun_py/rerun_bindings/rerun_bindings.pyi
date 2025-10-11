@@ -955,8 +955,44 @@ class ComponentDescriptor:
 def is_enabled(recording: PyRecordingStream | None = None) -> bool:
     """Whether the recording stream enabled."""
 
-def binary_stream(recording: PyRecordingStream | None = None) -> PyBinarySinkStorage | None:
+def binary_stream(recording: PyRecordingStream | None = None) -> BinaryStream | None:
     """Create a new binary stream sink, and return the associated binary stream."""
+
+class BinaryStream:
+    def read(self, *, flush: bool = True, flush_timeout_sec: float | None = None) -> bytes | None:
+        """
+        Read the bytes from the binary sink.
+
+        If `flush` is `True`, the sink will be flushed before reading.
+        If all the data was not successfully flushed within the given timeout,
+        an exception will be raised.
+
+        Parameters
+        ----------
+        flush:
+            If true (default), the stream will be flushed before reading.
+        flush_timeout_sec:
+            If `flush` is `True`, wait at most this many seconds.
+            If the timeout is reached, an error is raised.
+
+        """
+
+    def flush(self, *, timeout_sec: float | None = None) -> None:
+        """
+        Flushes the binary sink and ensures that all logged messages have been encoded into the stream.
+
+        This will block until the flush is complete, or the timeout is reached, or an error occurs.
+
+        If all the data was not successfully flushed within the given timeout,
+        an exception will be raised.
+
+        Parameters
+        ----------
+        timeout_sec:
+            Wait at most this many seconds.
+            If the timeout is reached, an error is raised.
+
+        """
 
 class GrpcSink:
     """

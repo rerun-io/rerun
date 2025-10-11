@@ -15,6 +15,7 @@ import rerun.blueprint as rrb
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from pathlib import Path
 
 
 @rr.thread_local_stream("rerun_example_binary_stream")
@@ -79,3 +80,20 @@ def test_binary_stream() -> None:
         os.environ["RERUN_FLUSH_NUM_ROWS"] = prev_flush_num_rows
     else:
         del os.environ["RERUN_FLUSH_NUM_ROWS"]
+
+
+def test_binary_stream_set_sinks(tmp_path: "Path") -> None:
+    rr.init("test_binary_stream_set_sinks", spawn=False)
+
+    stream = rr.BinaryStream()
+    file_path = tmp_path / "data.rrd"
+    rr.set_sinks(rr.FileSink(str(file_path)), stream)
+
+    rr.log("example", rr.TextLog("hello"))
+
+    stream.flush(timeout_sec=None)
+    chunk = stream.read()
+
+    assert chunk is not None and len(chunk) > 0
+    assert file_path.exists()
+    assert file_path.stat().st_size > 0

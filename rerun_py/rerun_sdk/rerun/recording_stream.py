@@ -3,7 +3,6 @@ from __future__ import annotations
 import contextvars
 import functools
 import inspect
-import math
 import uuid
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
 
@@ -27,6 +26,8 @@ if TYPE_CHECKING:
 
     from ._send_columns import TimeColumnLike
 
+
+BinaryStream = bindings.BinaryStream
 
 # TODO(#3793): defaulting recording_id to authkey should be opt-in
 
@@ -176,10 +177,10 @@ def binary_stream(recording: RecordingStream | None = None) -> BinaryStream:
         An object that can be used to flush or read the data.
 
     """
-    inner = bindings.binary_stream(recording=recording.to_native() if recording is not None else None)
-    if inner is None:
+    stream = bindings.binary_stream(recording=recording.to_native() if recording is not None else None)
+    if stream is None:
         raise RuntimeError("No recording stream was provided and set as current")
-    return BinaryStream(inner)
+    return stream
 
 
 def is_enabled(
@@ -1415,50 +1416,6 @@ class RecordingStream:
         from ._send_columns import send_columns
 
         send_columns(entity_path=entity_path, indexes=indexes, columns=columns, strict=strict, recording=self)
-
-
-class BinaryStream:
-    """An encoded stream of bytes that can be saved as an rrd or sent to the viewer."""
-
-    def __init__(self, storage: bindings.PyBinarySinkStorage) -> None:
-        self.storage = storage
-
-    def read(self, *, flush: bool = True, flush_timeout_sec: float = math.inf) -> bytes | None:
-        """
-        Reads the available bytes from the stream.
-
-        If using `flush`, the read call will first block until the flush is complete.
-        If all the data was not successfully flushed within the given timeout,
-        an exception will be raised.
-
-        Parameters
-        ----------
-        flush:
-            If true (default), the stream will be flushed before reading.
-        flush_timeout_sec:
-            If `flush` is `True`, wait at most this many seconds.
-            If the timeout is reached, an error is raised.
-
-        """
-        return self.storage.read(flush=flush, flush_timeout_sec=flush_timeout_sec)  # type: ignore[no-any-return]
-
-    def flush(self, timeout_sec: float = math.inf) -> None:
-        """
-        Flushes the recording stream and ensures that all logged messages have been encoded into the stream.
-
-        This will block until the flush is complete.
-
-        If all the data was not successfully flushed within the given timeout,
-        an exception will be raised.
-
-        Parameters
-        ----------
-        timeout_sec:
-            Wait at most this many seconds.
-            If the timeout is reached, an error is raised.
-
-        """
-        self.storage.flush(timeout_sec=timeout_sec)
 
 
 # ---
