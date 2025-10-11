@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    FixedSizeBinaryArray, ListBuilder, RecordBatchOptions, StringBuilder, UInt64Array,
+    FixedSizeBinaryArray, ListBuilder, RecordBatchOptions, StringBuilder, UInt8Array, UInt64Array,
 };
 use arrow::datatypes::FieldRef;
 use arrow::{
@@ -231,9 +231,44 @@ impl QueryTasksResponse {
             ),
         ])
     }
-}
 
-// --- Catalog ---
+    pub fn create_dataframe(
+        task_ids: Vec<String>,
+        kind: Vec<Option<String>>,
+        data: Vec<Option<String>>,
+        exec_status: Vec<String>,
+        msgs: Vec<Option<String>>,
+        blob_len: Vec<Option<u64>>,
+        lease_owner: Vec<Option<String>>,
+        lease_expiration: Vec<Option<i64>>,
+        attempts: Vec<u8>,
+        creation_time: Vec<Option<i64>>,
+        last_update_time: Vec<Option<i64>>,
+    ) -> arrow::error::Result<RecordBatch> {
+        let row_count = task_ids.len();
+        let schema = Arc::new(Self::schema());
+
+        let columns: Vec<ArrayRef> = vec![
+            Arc::new(StringArray::from(task_ids)),
+            Arc::new(StringArray::from(kind)),
+            Arc::new(StringArray::from(data)),
+            Arc::new(StringArray::from(exec_status)),
+            Arc::new(StringArray::from(msgs)),
+            Arc::new(UInt64Array::from(blob_len)),
+            Arc::new(StringArray::from(lease_owner)),
+            Arc::new(TimestampNanosecondArray::from(lease_expiration)),
+            Arc::new(UInt8Array::from(attempts)),
+            Arc::new(TimestampNanosecondArray::from(creation_time)),
+            Arc::new(TimestampNanosecondArray::from(last_update_time)),
+        ];
+
+        RecordBatch::try_new_with_options(
+            schema,
+            columns,
+            &RecordBatchOptions::default().with_row_count(Some(row_count)),
+        )
+    }
+}
 
 // --- EntryFilter ---
 
