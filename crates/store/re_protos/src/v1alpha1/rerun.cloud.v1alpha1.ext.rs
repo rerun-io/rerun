@@ -185,17 +185,17 @@ impl From<DoMaintenanceRequest> for crate::cloud::v1alpha1::DoMaintenanceRequest
 // --- Tasks ---
 
 impl QueryTasksResponse {
-    pub const TASK_ID: &str = "task_id";
-    pub const KIND: &str = "kind";
-    pub const DATA: &str = "data";
-    pub const EXEC_STATUS: &str = "exec_status";
-    pub const MSGS: &str = "msgs";
-    pub const BLOB_LEN: &str = "blob_len";
-    pub const LEASE_OWNER: &str = "lease_owner";
-    pub const LEASE_EXPIRATION: &str = "lease_expiration";
-    pub const ATTEMPTS: &str = "attempts";
-    pub const CREATION_TIME: &str = "creation_time";
-    pub const LAST_UPDATE_TIME: &str = "last_update_time";
+    pub const FIELD_TASK_ID: &str = "task_id";
+    pub const FIELD_KIND: &str = "kind";
+    pub const FIELD_DATA: &str = "data";
+    pub const FIELD_EXEC_STATUS: &str = "exec_status";
+    pub const FIELD_MSGS: &str = "msgs";
+    pub const FIELD_BLOB_LEN: &str = "blob_len";
+    pub const FIELD_LEASE_OWNER: &str = "lease_owner";
+    pub const FIELD_LEASE_EXPIRATION: &str = "lease_expiration";
+    pub const FIELD_ATTEMPTS: &str = "attempts";
+    pub const FIELD_CREATION_TIME: &str = "creation_time";
+    pub const FIELD_LAST_UPDATE_TIME: &str = "last_update_time";
 
     pub fn dataframe_part(&self) -> Result<&DataframePart, TypeConversionError> {
         Ok(self
@@ -206,26 +206,26 @@ impl QueryTasksResponse {
 
     pub fn schema() -> arrow::datatypes::Schema {
         Schema::new(vec![
-            Field::new(Self::TASK_ID, DataType::Utf8, false),
-            Field::new(Self::KIND, DataType::Utf8, true),
-            Field::new(Self::DATA, DataType::Utf8, true),
-            Field::new(Self::EXEC_STATUS, DataType::Utf8, false),
-            Field::new(Self::MSGS, DataType::Utf8, true),
-            Field::new(Self::BLOB_LEN, DataType::UInt64, true),
-            Field::new(Self::LEASE_OWNER, DataType::Utf8, true),
+            Field::new(Self::FIELD_TASK_ID, DataType::Utf8, false),
+            Field::new(Self::FIELD_KIND, DataType::Utf8, true),
+            Field::new(Self::FIELD_DATA, DataType::Utf8, true),
+            Field::new(Self::FIELD_EXEC_STATUS, DataType::Utf8, false),
+            Field::new(Self::FIELD_MSGS, DataType::Utf8, true),
+            Field::new(Self::FIELD_BLOB_LEN, DataType::UInt64, true),
+            Field::new(Self::FIELD_LEASE_OWNER, DataType::Utf8, true),
             Field::new(
-                Self::LEASE_EXPIRATION,
+                Self::FIELD_LEASE_EXPIRATION,
                 DataType::Timestamp(TimeUnit::Nanosecond, None),
                 true,
             ),
-            Field::new(Self::ATTEMPTS, DataType::UInt8, false),
+            Field::new(Self::FIELD_ATTEMPTS, DataType::UInt8, false),
             Field::new(
-                Self::CREATION_TIME,
+                Self::FIELD_CREATION_TIME,
                 DataType::Timestamp(TimeUnit::Nanosecond, None),
                 true,
             ),
             Field::new(
-                Self::LAST_UPDATE_TIME,
+                Self::FIELD_LAST_UPDATE_TIME,
                 DataType::Timestamp(TimeUnit::Nanosecond, None),
                 true,
             ),
