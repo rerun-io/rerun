@@ -17,15 +17,6 @@ trait ArrowLens: Clone {
     type Target: Array + Clone;
 
     fn project(&self, source: &Self::Source) -> Result<Self::Target, ArrowError>;
-    fn embed(&self, source: Self::Source, value: Self::Target) -> Result<Self::Source, ArrowError>;
-
-    fn over<F>(&self, source: Self::Source, f: F) -> Result<Self::Source, ArrowError>
-    where
-        F: FnOnce(Self::Target) -> Result<Self::Target, ArrowError>,
-    {
-        let value = self.project(&source)?;
-        self.embed(source, f(value)?)
-    }
 }
 
 #[derive(Clone)]
@@ -46,12 +37,6 @@ where
     fn project(&self, source: &Self::Source) -> Result<Self::Target, ArrowError> {
         let mid = self.first.project(source)?;
         self.second.project(&mid)
-    }
-
-    fn embed(&self, source: Self::Source, value: Self::Target) -> Result<Self::Source, ArrowError> {
-        let mid = self.first.project(&source)?;
-        let new_mid = self.second.embed(mid, value)?;
-        self.first.embed(source, new_mid)
     }
 }
 
@@ -92,24 +77,6 @@ impl ArrowLens for StructFieldLens {
             })
             .map(Clone::clone)
     }
-
-    fn embed(&self, source: StructArray, value: ArrayRef) -> Result<StructArray, ArrowError> {
-        let (fields, arrays, nulls) = source.into_parts();
-        let field_idx = fields
-            .iter()
-            .position(|f| f.name() == &self.field_name)
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError(format!(
-                    "Field {} not found",
-                    self.field_name
-                ))
-            })?;
-
-        let mut new_arrays = arrays.to_vec();
-        new_arrays[field_idx] = value;
-
-        Ok(StructArray::new(fields, new_arrays, nulls))
-    }
 }
 
 // Lens: Transform each element in ListArray
@@ -143,34 +110,6 @@ where
             Arc::new(transformed),
             nulls,
         ))
-    }
-
-    fn embed(&self, source: ListArray, value: ListArray) -> Result<ListArray, ArrowError> {
-        let old_values = source
-            .values()
-            .as_any()
-            .downcast_ref::<L::Source>()
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError(
-                    "Type mismatch in ListEachLens".into(),
-                )
-            })?
-            .clone();
-
-        let new_values_raw = value.values();
-        let new_values = new_values_raw
-            .as_any()
-            .downcast_ref::<L::Target>()
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError(
-                    "Type mismatch in ListEachLens embed".into(),
-                )
-            })?
-            .clone();
-
-        let restored = self.element_lens.embed(old_values, new_values)?;
-        let (field, offsets, _, nulls) = source.into_parts();
-        Ok(ListArray::new(field, offsets, Arc::new(restored), nulls))
     }
 }
 
@@ -236,14 +175,6 @@ impl ArrowLens for PointStructToFixedListLens {
             null_buffer,
         ))
     }
-
-    fn embed(
-        &self,
-        _source: StructArray,
-        _value: FixedSizeListArray,
-    ) -> Result<StructArray, ArrowError> {
-        todo!();
-    }
 }
 
 // Lens: Transform ListArray of structs to ListArray of FixedSizeLists
@@ -270,10 +201,6 @@ impl ArrowLens for ListStructToFixedListLens {
         let (_, offsets, _, nulls) = source.clone().into_parts();
 
         Ok(ListArray::new(field, offsets, Arc::new(fixed_list), nulls))
-    }
-
-    fn embed(&self, source: ListArray, _value: ListArray) -> Result<ListArray, ArrowError> {
-        Ok(source) // Simplified for now
     }
 }
 
@@ -321,10 +248,6 @@ impl ArrowLens for UnwrapSingleStructFieldLens {
             })
             .map(Clone::clone)
     }
-
-    fn embed(&self, _source: ListArray, _value: ListArray) -> Result<ListArray, ArrowError> {
-        todo!()
-    }
 }
 
 // Lens: Transform Float64Array values
@@ -354,10 +277,6 @@ where
         }
         Ok(builder.finish())
     }
-
-    fn embed(&self, _source: Float64Array, value: Float64Array) -> Result<Float64Array, ArrowError> {
-        Ok(value)
-    }
 }
 
 // Lens: Convert Float64Array to Float32Array
@@ -375,18 +294,6 @@ impl ArrowLens for Float64ToFloat32Lens {
                 builder.append_null();
             } else {
                 builder.append_value(source.value(i) as f32);
-            }
-        }
-        Ok(builder.finish())
-    }
-
-    fn embed(&self, _source: Float64Array, value: Float32Array) -> Result<Float64Array, ArrowError> {
-        let mut builder = Float64Builder::with_capacity(value.len());
-        for i in 0..value.len() {
-            if value.is_null(i) {
-                builder.append_null();
-            } else {
-                builder.append_value(value.value(i) as f64);
             }
         }
         Ok(builder.finish())
@@ -431,44 +338,6 @@ where
             nulls,
         ))
     }
-
-    fn embed(
-        &self,
-        source: FixedSizeListArray,
-        value: FixedSizeListArray,
-    ) -> Result<FixedSizeListArray, ArrowError> {
-        let old_values = source
-            .values()
-            .as_any()
-            .downcast_ref::<L::Source>()
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError(
-                    "Type mismatch in FixedSizeListMapLens embed".into(),
-                )
-            })?
-            .clone();
-
-        let new_values = value
-            .values()
-            .as_any()
-            .downcast_ref::<L::Target>()
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError(
-                    "Type mismatch in FixedSizeListMapLens embed".into(),
-                )
-            })?
-            .clone();
-
-        let restored = self.inner_lens.embed(old_values, new_values)?;
-        let (field, size, _, nulls) = source.into_parts();
-
-        Ok(FixedSizeListArray::new(
-            field,
-            size,
-            Arc::new(restored),
-            nulls,
-        ))
-    }
 }
 
 
@@ -508,34 +377,6 @@ where
             Arc::new(transformed),
             nulls,
         ))
-    }
-
-    fn embed(&self, source: ListArray, value: ListArray) -> Result<ListArray, ArrowError> {
-        let old_values = source
-            .values()
-            .as_any()
-            .downcast_ref::<L::Source>()
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError(
-                    "Type mismatch in ListMapLens embed".into(),
-                )
-            })?
-            .clone();
-
-        let new_values = value
-            .values()
-            .as_any()
-            .downcast_ref::<L::Target>()
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError(
-                    "Type mismatch in ListMapLens embed".into(),
-                )
-            })?
-            .clone();
-
-        let restored = self.inner_lens.embed(old_values, new_values)?;
-        let (field, offsets, _, nulls) = source.into_parts();
-        Ok(ListArray::new(field, offsets, Arc::new(restored), nulls))
     }
 }
 
