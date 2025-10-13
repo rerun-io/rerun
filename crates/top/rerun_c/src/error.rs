@@ -33,7 +33,7 @@ impl CError {
             for byte in &bytes[..c.len_utf8()] {
                 // `c_char` is something different depending on platforms, and this is needed for
                 // when it's the same as `u8`.
-                #[expect(trivial_numeric_casts)]
+                #[allow(trivial_numeric_casts, clippy::allow_attributes)]
                 {
                     message_c[bytes_next] = *byte as _;
                 }

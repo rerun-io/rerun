@@ -33,7 +33,6 @@ mod data {
 
 /// Failure to host the web viewer.
 #[derive(thiserror::Error, Debug)]
-#[expect(clippy::enum_variant_names)]
 pub enum WebViewerServerError {
     #[error("Could not parse address: {0}")]
     AddrParseFailed(#[from] std::net::AddrParseError),
@@ -221,7 +220,6 @@ impl WebViewerServerInner {
     }
 
     #[cfg(disable_web_viewer_server)]
-    #[expect(clippy::needless_pass_by_value)]
     fn send_response(&self, _request: tiny_http::Request) -> Result<(), std::io::Error> {
         if false {
             self.on_serve_wasm(); // to silence warning about the function being unused

@@ -1,5 +1,4 @@
 //! This testdata was mostly written by claude just to have a large variety of types
-#![expect(clippy::from_iter_instead_of_collect)]
 
 use arrow::array::{
     Array, BinaryArray, BooleanArray, DictionaryArray, FixedSizeListArray, Float64Array,

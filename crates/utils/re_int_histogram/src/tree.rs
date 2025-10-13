@@ -21,8 +21,7 @@ type Level = u64;
 
 #[expect(dead_code)]
 mod small_and_slow {
-    #[expect(clippy::wildcard_imports)]
-    use super::*;
+    use super::Level;
 
     // Uses 20x nodes with 8-way (3 bit) branching factor down to a final 16-way (4 bit) dense leaf.
     // 20x 3-bit + 4-bit = 64 bit.
@@ -44,8 +43,7 @@ mod small_and_slow {
 // ----------------------------------------------------------------------------
 
 mod large_and_fast {
-    #[expect(clippy::wildcard_imports)]
-    use super::*;
+    use super::Level;
 
     // High memory use, faster
     // I believe we could trim this path to use much less memory

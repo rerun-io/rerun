@@ -189,7 +189,6 @@ impl PixelFormat {
 
     /// Yuv matrix coefficients used by this format.
     // TODO(andreas): Expose this in the API separately and document it better.
-    #[expect(clippy::unnecessary_wraps)]
     pub fn yuv_matrix_coefficients(&self) -> YuvMatrixCoefficients {
         match self {
             Self::Y_U_V24_LimitedRange

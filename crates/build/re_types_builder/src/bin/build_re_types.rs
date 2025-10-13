@@ -28,7 +28,6 @@ const SNIPPETS_REF_DIR_PATH: &str = "docs/snippets/";
 macro_rules! join {
     ($($task:expr,)*) => {join!($($task),*)};
     ($($task:expr),*) => {{
-        #![expect(clippy::redundant_closure_call)]
         ::rayon::scope(|scope| {
             $(scope.spawn(|_| ($task)());)*
         })

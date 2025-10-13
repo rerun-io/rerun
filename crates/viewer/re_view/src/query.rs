@@ -165,7 +165,6 @@ fn query_overrides<'a>(
                 re_log_types::StoreKind::Blueprint => ctx.blueprint_query.clone(),
             };
 
-            #[expect(clippy::match_same_arms)] // see @jleibs comment below
             let component_override_result = match override_value.store_kind {
                 re_log_types::StoreKind::Recording => {
                     // TODO(jleibs): This probably is not right, but this code path is not used

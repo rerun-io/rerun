@@ -189,7 +189,7 @@ impl PyRecording {
     /// ```python
     /// recording.view(index="my_index", contents={"points": "Position3D"})
     /// ```
-    #[expect(clippy::fn_params_excessive_bools)]
+    #[allow(clippy::allow_attributes, clippy::fn_params_excessive_bools)]
     #[pyo3(signature = (
         *,
         index,

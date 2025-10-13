@@ -217,7 +217,6 @@ pub fn time_panel_filter_test_active_query() {
     run_time_panel_filter_tests(true, "ath", "time_panel_filter_test_active_query");
 }
 
-#[expect(clippy::unwrap_used)]
 pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_name: &str) {
     TimePanel::ensure_registered_subscribers();
     let mut test_context = TestContext::new();

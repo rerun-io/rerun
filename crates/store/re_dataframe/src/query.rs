@@ -1300,7 +1300,6 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
 impl<E: StorageEngineLike> QueryHandle<E> {
     /// Returns an iterator backed by [`Self::next_row`].
-    #[expect(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn iter(&self) -> impl Iterator<Item = Vec<ArrowArrayRef>> + '_ {
         std::iter::from_fn(move || self.next_row())
     }
@@ -1312,13 +1311,11 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
-    #[expect(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn batch_iter(&self) -> impl Iterator<Item = ArrowRecordBatch> + '_ {
         std::iter::from_fn(move || self.next_row_batch())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
-    #[expect(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn into_batch_iter(self) -> impl Iterator<Item = ArrowRecordBatch> {
         std::iter::from_fn(move || self.next_row_batch())
     }

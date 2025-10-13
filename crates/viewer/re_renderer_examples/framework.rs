@@ -42,13 +42,13 @@ pub trait Example {
     fn on_cursor_moved(&mut self, _position_in_pixel: glam::UVec2) {}
 }
 
-#[expect(dead_code)]
+#[allow(clippy::allow_attributes, dead_code)] // false positive
 pub struct SplitView {
     pub target_location: glam::Vec2,
     pub resolution_in_pixel: [u32; 2],
 }
 
-#[expect(dead_code)]
+#[allow(clippy::allow_attributes, dead_code)] // false positive
 pub fn split_resolution(
     resolution: [u32; 2],
     num_rows: usize,
@@ -318,7 +318,7 @@ impl<E: Example + 'static> Application<E> {
     }
 }
 
-#[expect(dead_code)]
+#[allow(clippy::allow_attributes, dead_code)] // false positive
 pub fn load_rerun_mesh(
     re_ctx: &RenderContext,
 ) -> anyhow::Result<Vec<re_renderer::renderer::GpuMeshInstance>> {

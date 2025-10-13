@@ -109,7 +109,7 @@ pub use wgpu_resources::{
 };
 
 pub use self::file_system::{FileSystem, get_filesystem};
-#[expect(unused_imports)] // they can be handy from time to time
+#[allow(clippy::allow_attributes, unused_imports)] // they can be handy from time to time
 use self::file_system::{MemFileSystem, OsFileSystem};
 
 pub use self::file_resolver::{

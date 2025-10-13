@@ -32,7 +32,6 @@ pub trait CodeGenerator {
 // ---
 
 mod macros {
-    #![expect(unused_macros)]
     macro_rules! autogen_warning {
         () => {
             format!(

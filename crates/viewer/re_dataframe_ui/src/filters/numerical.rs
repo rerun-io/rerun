@@ -191,7 +191,7 @@ impl FilterUdf for IntFilterUdf {
             ($op_arm:ident, $conv_fun:ident, $slf:expr) => {{
                 let array = datafusion::common::cast::$conv_fun(array)?;
 
-                #[expect(trivial_numeric_casts)]
+                #[allow(clippy::allow_attributes, trivial_numeric_casts)]
                 let result: BooleanArray = array
                     .iter()
                     .map(|x| x.map(|x| $slf.op.apply(x, $slf.rhs_value as _)))
@@ -348,7 +348,7 @@ impl FilterUdf for FloatFilterUdf {
             ($op_arm:ident, $conv_fun:ident, $slf:expr) => {{
                 let array = datafusion::common::cast::$conv_fun(array)?;
 
-                #[expect(trivial_numeric_casts)]
+                #[allow(clippy::allow_attributes, trivial_numeric_casts)]
                 let result: BooleanArray = array
                     .iter()
                     .map(|x| x.map(|x| $slf.op.apply(x, $slf.rhs_value as _)))

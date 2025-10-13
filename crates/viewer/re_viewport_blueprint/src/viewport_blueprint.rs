@@ -743,7 +743,6 @@ impl ViewportBlueprint {
         }
     }
 
-    #[expect(clippy::unused_self)]
     pub fn views_containing_entity_path(
         &self,
         ctx: &ViewerContext<'_>,

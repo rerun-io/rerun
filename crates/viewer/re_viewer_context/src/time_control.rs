@@ -988,7 +988,6 @@ impl TimeControl {
         self.pause();
 
         if let Some(time) = self.time() {
-            #[expect(clippy::collapsible_else_if)]
             let new_time = if let Some(loop_range) = self.active_loop_selection() {
                 step_back_time_looped(time, &timeline_stats.per_time, &loop_range)
             } else {
@@ -1016,7 +1015,6 @@ impl TimeControl {
         self.pause();
 
         if let Some(time) = self.time() {
-            #[expect(clippy::collapsible_else_if)]
             let new_time = if let Some(loop_range) = self.active_loop_selection() {
                 step_fwd_time_looped(time, &stats.per_time, &loop_range)
             } else {
@@ -1044,7 +1042,6 @@ impl TimeControl {
         times_per_timeline: &TimesPerTimeline,
         blueprint_ctx: Option<&impl BlueprintContext>,
     ) {
-        #[expect(clippy::collapsible_else_if)]
         if self.playing {
             self.pause();
         } else {

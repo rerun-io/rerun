@@ -245,7 +245,6 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                 }
                 Looping::Selection => {
                     // ui.visuals_mut().selection.bg_fill = re_ui::ReUi::loop_selection_color(); // we have one color for the button, and a slightly different shade of it for the actual selection :/
-                    #[expect(clippy::collapsible_else_if)]
                     if ui
                         .large_button_selected(icon, true)
                         .on_hover_text("Looping selection")

@@ -484,7 +484,6 @@ pub fn selected_tensor_slice<'a, T: Copy>(
         tensor.view()
     };
 
-    #[expect(clippy::tuple_array_conversions)]
     let axis = [dheight as usize, dwidth as usize]
         .into_iter()
         .chain(indices.iter().map(|s| s.dimension as usize))

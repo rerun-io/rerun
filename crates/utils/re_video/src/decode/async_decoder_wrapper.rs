@@ -149,8 +149,6 @@ fn decoder_thread(
     command_rx: &Receiver<Command>,
     output_sender: &Sender<FrameResult>,
 ) {
-    #![expect(clippy::debug_assert_with_mut_call)]
-
     while let Ok(command) = command_rx.recv() {
         if comms.should_stop.load(Ordering::Acquire) {
             re_log::debug!("Should stop");

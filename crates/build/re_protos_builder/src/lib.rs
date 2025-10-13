@@ -3,7 +3,7 @@
 //! definitions in the same file.
 //!
 
-#![expect(clippy::unwrap_used, clippy::exit)]
+#![expect(clippy::exit)]
 
 use std::path::Path;
 

@@ -246,7 +246,6 @@ impl TransformTree {
         }
     }
 
-    #[expect(clippy::too_many_arguments)]
     fn gather_descendants_transforms(
         &mut self,
         subtree: &EntityTree,

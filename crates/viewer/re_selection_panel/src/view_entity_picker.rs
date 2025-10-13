@@ -31,7 +31,6 @@ impl ViewEntityPicker {
         self.modal_handler.open();
     }
 
-    #[expect(clippy::unused_self)]
     pub fn ui(
         &mut self,
         egui_ctx: &egui::Context,
@@ -178,7 +177,6 @@ fn add_entities_tree_ui(
     }
 }
 
-#[expect(clippy::too_many_arguments)]
 fn add_entities_line_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,

@@ -268,7 +268,6 @@ mod tests {
         }
     }
 
-    #[expect(dead_code)]
     fn data() -> (MyColor, MyColor, MyColor, Vec<MyColor>) {
         let red = MyColor(0xDD0000FF);
         let green = MyColor(0x00DD00FF);

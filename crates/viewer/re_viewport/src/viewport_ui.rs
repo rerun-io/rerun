@@ -441,7 +441,6 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         }
     }
 
-    #[expect(clippy::fn_params_excessive_bools)]
     fn tab_ui(
         &mut self,
         tiles: &mut egui_tiles::Tiles<ViewId>,

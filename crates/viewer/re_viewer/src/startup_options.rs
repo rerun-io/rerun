@@ -103,7 +103,7 @@ impl StartupOptions {
     }
 
     /// The url to use for the web viewer when sharing links.
-    #[expect(clippy::unused_self)] // Only used on web.
+    #[allow(clippy::allow_attributes, clippy::unused_self)] // Only used on web.
     pub fn web_viewer_base_url(&self) -> Option<url::Url> {
         // TODO(RR-1878): Would be great to grab this from the dataplatform when available.
 

@@ -256,7 +256,6 @@ where
     /// (taking into account required padding as specified by [`wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`])
     ///
     /// Fails if the buffer size is not sufficient to fill the entire texture.
-    #[expect(unused)]
     pub fn copy_to_texture2d_entire_first_layer(
         self,
         encoder: &mut wgpu::CommandEncoder,

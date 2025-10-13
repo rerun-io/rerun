@@ -137,7 +137,6 @@ impl ChunkStoreSubscriber for TimeHistogramPerTimeline {
         self
     }
 
-    #[expect(clippy::unimplemented)]
     fn on_events(&mut self, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 

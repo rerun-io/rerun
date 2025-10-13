@@ -209,7 +209,7 @@ pub fn new_decoder(
     decode_settings: &DecodeSettings,
     output_sender: crossbeam::channel::Sender<FrameResult>,
 ) -> Result<Box<dyn AsyncDecoder>> {
-    #![expect(unused_variables, clippy::needless_return)] // With some feature flags
+    #![allow(clippy::allow_attributes, unused_variables, clippy::needless_return)] // With some feature flags
 
     re_tracing::profile_function!();
 

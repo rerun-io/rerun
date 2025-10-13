@@ -2,7 +2,8 @@ use crate::{ArchetypeName, ComponentDescriptor, ComponentType, Loggable, Seriali
 
 use arrow::array::ListArray as ArrowListArray;
 
-#[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
+// used in docstrings:
+#[allow(clippy::allow_attributes, unused_imports, clippy::unused_trait_names)]
 use crate::Archetype;
 
 // ---

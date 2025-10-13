@@ -159,7 +159,6 @@ impl re_byte_size::SizeBytes for Timeline {
 }
 
 // required for [`nohash_hasher`].
-#[expect(clippy::derived_hash_with_manual_eq)]
 impl std::hash::Hash for Timeline {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {

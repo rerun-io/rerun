@@ -48,13 +48,13 @@ impl Time {
     }
 
     /// Converts the time to whole seconds, truncating any fractional part.
-    #[expect(unused)]
+    #[allow(clippy::allow_attributes, dead_code)] // used in tests
     pub fn as_secs(&self) -> i64 {
         (self.sec as i64) + (self.nanosec as i64) / 1_000_000_000
     }
 
     /// Converts the time to seconds as a [`f64`].
-    #[expect(unused)]
+    #[allow(clippy::allow_attributes, dead_code)] // used in tests
     pub fn as_secs_f64(&self) -> f64 {
         self.sec as f64 + (self.nanosec as f64) / 1_000_000_000.0
     }

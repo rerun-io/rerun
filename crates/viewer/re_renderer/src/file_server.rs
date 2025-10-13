@@ -256,15 +256,16 @@ mod file_server_impl {
                 .events_rx
                 .try_iter()
                 .flat_map(|ev| {
-                    #[expect(clippy::enum_glob_use)]
-                    use notify::EventKind::*;
+                    use notify::EventKind;
                     match ev.kind {
-                        Create(_) | Modify(_) | Any => ev
+                        EventKind::Create(_) | EventKind::Modify(_) | EventKind::Any => ev
                             .paths
                             .into_iter()
                             .filter_map(canonicalize_opt)
                             .collect::<Vec<_>>(),
-                        Access(_) | Remove(_) | Other => Vec::new(),
+                        EventKind::Access(_) | EventKind::Remove(_) | EventKind::Other => {
+                            Vec::new()
+                        }
                     }
                 })
                 .collect();

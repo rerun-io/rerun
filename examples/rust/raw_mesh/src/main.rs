@@ -11,8 +11,6 @@
 //! cargo run -p raw_mesh <path_to_gltf_scene>
 //! ```
 
-#![expect(clippy::doc_markdown)]
-
 use std::path::PathBuf;
 
 use bytes::Bytes;
@@ -193,14 +191,12 @@ struct GltfPrimitive {
     vertex_positions: Vec<[f32; 3]>,
     vertex_colors: Option<Vec<Color>>,
     vertex_normals: Option<Vec<[f32; 3]>>,
-    #[expect(dead_code)]
     vertex_texcoords: Option<Vec<[f32; 2]>>,
 }
 
 struct GltfTransform {
     t: [f32; 3],
     r: [f32; 4],
-    #[expect(dead_code)]
     s: [f32; 3],
 }
 

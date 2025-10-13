@@ -34,7 +34,6 @@ pub struct ImageDecodeCache {
     generation: u64,
 }
 
-#[expect(clippy::map_err_ignore)]
 impl ImageDecodeCache {
     /// Decode some image data and cache the result.
     ///

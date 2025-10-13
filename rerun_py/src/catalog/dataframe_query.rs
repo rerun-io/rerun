@@ -1,3 +1,5 @@
+#![expect(rustdoc::private_doc_tests)]
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
@@ -123,7 +125,6 @@ impl PyDataframeQueryView {
         })
     }
 
-    #[expect(rustdoc::private_doc_tests)]
     /// Filter the view to only include data between the given index sequence numbers.
     ///
     /// This range is inclusive and will contain both the value at the start and the value at the end.
@@ -184,7 +185,6 @@ impl PyDataframeQueryView {
         }))
     }
 
-    #[expect(rustdoc::private_doc_tests)]
     /// Filter the view to only include data between the given index values expressed as seconds.
     ///
     /// This range is inclusive and will contain both the value at the start and the value at the end.
@@ -226,7 +226,6 @@ impl PyDataframeQueryView {
         }))
     }
 
-    #[expect(rustdoc::private_doc_tests)]
     /// Filter the view to only include data between the given index values expressed as nanoseconds.
     ///
     /// This range is inclusive and will contain both the value at the start and the value at the end.
@@ -268,7 +267,6 @@ impl PyDataframeQueryView {
         }))
     }
 
-    #[expect(rustdoc::private_doc_tests)]
     /// Filter the view to only include data at the provided index values.
     ///
     /// The index values returned will be the intersection between the provided values and the
@@ -301,7 +299,6 @@ impl PyDataframeQueryView {
         }))
     }
 
-    #[expect(rustdoc::private_doc_tests)]
     /// Filter the view to only include rows where the given component column is not null.
     ///
     /// This corresponds to rows for index values where this component was provided to Rerun explicitly
@@ -330,7 +327,6 @@ impl PyDataframeQueryView {
         }))
     }
 
-    #[expect(rustdoc::private_doc_tests)]
     /// Replace the index in the view with the provided values.
     ///
     /// The output view will always have the same number of rows as the provided values, even if
@@ -364,7 +360,6 @@ impl PyDataframeQueryView {
         }))
     }
 
-    #[expect(rustdoc::private_doc_tests)]
     /// Populate any null values in a row with the latest valid data according to the index.
     ///
     /// Returns

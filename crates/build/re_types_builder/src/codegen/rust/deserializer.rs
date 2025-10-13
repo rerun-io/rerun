@@ -925,12 +925,14 @@ enum IteratorKind {
     ResultOptionValue,
 
     /// `Iterator<Item = Option<DeserializationResult<T>>>`.
+    #[expect(dead_code)] // currently unused
     OptionResultValue,
 
     /// `Iterator<Item = Option<T>>`.
     OptionValue,
 
     /// `Iterator<Item = DeserializationResult<T>>`.
+    #[expect(dead_code)] // currently unused
     ResultValue,
 
     /// `Iterator<Item = T>`.

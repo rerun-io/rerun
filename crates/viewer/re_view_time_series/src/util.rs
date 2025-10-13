@@ -162,7 +162,6 @@ pub fn apply_aggregation(
     let points = if should_aggregate {
         re_tracing::profile_scope!("aggregate", aggregator.to_string());
 
-        #[expect(clippy::match_same_arms)] // readability
         match aggregator {
             AggregationPolicy::Off => points,
             AggregationPolicy::Average => {

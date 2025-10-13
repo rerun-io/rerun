@@ -51,7 +51,6 @@ impl Help {
     }
 
     /// Create a new help popup.
-    #[expect(clippy::needless_pass_by_value)]
     pub fn new_without_title() -> Self {
         Self {
             title: None,
@@ -90,7 +89,6 @@ impl Help {
     /// ```rust
     /// re_ui::Help::new("Example").control("Pan", ("click", "+", "drag"));
     /// ```
-    #[expect(clippy::needless_pass_by_value)]
     #[inline]
     pub fn control(mut self, label: impl ToString, items: impl IntoAtoms<'static>) -> Self {
         if let Some(HelpSection::Controls(controls)) = self.sections.last_mut() {

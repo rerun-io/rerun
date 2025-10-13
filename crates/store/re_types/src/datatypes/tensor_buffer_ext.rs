@@ -4,7 +4,6 @@ use super::TensorBuffer;
 
 impl TensorBuffer {
     /// The underlying data type of the buffer.
-    #[expect(clippy::match_same_arms)]
     pub fn dtype(&self) -> TensorDataType {
         match self {
             Self::U8(_) => TensorDataType::U8,
@@ -22,7 +21,6 @@ impl TensorBuffer {
     }
 
     /// The size of the buffer in bytes.
-    #[expect(clippy::match_same_arms)]
     pub fn size_in_bytes(&self) -> usize {
         match self {
             Self::U8(buf) => buf.inner().len(),

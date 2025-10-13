@@ -335,7 +335,6 @@ impl TimePanel {
         });
     }
 
-    #[expect(clippy::unused_self)]
     fn collapsed_ui(
         &mut self,
         entity_db: &re_entity_db::EntityDb,

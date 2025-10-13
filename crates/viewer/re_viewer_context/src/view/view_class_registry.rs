@@ -18,7 +18,6 @@ use super::{
 };
 
 #[derive(Debug, thiserror::Error)]
-#[expect(clippy::enum_variant_names)]
 pub enum ViewClassRegistryError {
     #[error("View with class identifier {0:?} was already registered.")]
     DuplicateClassIdentifier(ViewClassIdentifier),
@@ -131,7 +130,6 @@ pub struct ViewClassRegistryEntry {
     pub visualizer_system_ids: HashSet<ViewSystemIdentifier>,
 }
 
-#[expect(clippy::derivable_impls)] // Clippy gets this one wrong.
 impl Default for ViewClassRegistryEntry {
     fn default() -> Self {
         Self {

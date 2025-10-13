@@ -1053,8 +1053,6 @@ impl TimeColumn {
     ///
     /// Results in an error if the array is of the wrong datatype, or if it contains nulls.
     pub fn read_array(array: &dyn ArrowArray) -> Result<ArrowScalarBuffer<i64>, TimeColumnError> {
-        #![expect(clippy::manual_map)]
-
         if array.null_count() > 0 {
             Err(TimeColumnError::ContainsNulls)
         } else {
@@ -1068,8 +1066,6 @@ impl TimeColumn {
     pub fn read_nullable_array(
         array: &dyn ArrowArray,
     ) -> Result<(ArrowScalarBuffer<i64>, Option<ArrowNullBuffer>), TimeColumnError> {
-        #![expect(clippy::manual_map)]
-
         // Sequence timelines are i64, but time columns are nanoseconds (also as i64).
         if let Some(times) = array.downcast_array_ref::<arrow::array::Int64Array>() {
             Ok((times.values().clone(), times.nulls().cloned()))
@@ -1434,7 +1430,6 @@ impl Chunk {
             components,
         } = self;
 
-        #[expect(clippy::collapsible_if)] // readability
         if cfg!(debug_assertions) {
             let measured = self.heap_size_bytes();
             let advertised = heap_size_bytes.load(Ordering::Relaxed);
@@ -1552,19 +1547,17 @@ impl TimeColumn {
 
         let times = times.as_ref();
 
-        #[expect(clippy::collapsible_if)] // readability
-        if cfg!(debug_assertions) {
-            if *is_sorted != times.windows(2).all(|times| times[0] <= times[1]) {
-                return Err(ChunkError::Malformed {
-                    reason: format!(
-                        "Time column is marked as {}sorted but isn't: {times:?}",
-                        if *is_sorted { "" } else { "un" },
-                    ),
-                });
-            }
+        if cfg!(debug_assertions)
+            && *is_sorted != times.windows(2).all(|times| times[0] <= times[1])
+        {
+            return Err(ChunkError::Malformed {
+                reason: format!(
+                    "Time column is marked as {}sorted but isn't: {times:?}",
+                    if *is_sorted { "" } else { "un" },
+                ),
+            });
         }
 
-        #[expect(clippy::collapsible_if)] // readability
         if cfg!(debug_assertions) {
             let is_tight_lower_bound = times.iter().any(|&time| time == time_range.min().as_i64());
             let is_tight_upper_bound = times.iter().any(|&time| time == time_range.max().as_i64());

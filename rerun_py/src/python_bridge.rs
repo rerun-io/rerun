@@ -1,7 +1,5 @@
-#![expect(clippy::borrow_deref_ref)] // False positive due to #[pyfunction] macro
 #![expect(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 #![expect(clippy::too_many_arguments)] // We used named arguments, so this is fine
-#![expect(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use std::{
     borrow::Borrow as _,
@@ -467,7 +465,7 @@ impl PyChunkBatcherConfig {
 
 /// Create a new recording stream.
 #[expect(clippy::fn_params_excessive_bools)]
-#[expect(clippy::struct_excessive_bools)]
+#[allow(clippy::allow_attributes, clippy::struct_excessive_bools)]
 #[pyfunction]
 #[pyo3(signature = (
     application_id,
@@ -1502,7 +1500,7 @@ fn serve_grpc(
 /// Serve a web-viewer over HTTP.
 ///
 /// This only serves HTML+JS+Wasm, but does NOT host a gRPC server.
-#[expect(clippy::unnecessary_wraps)] // False positive
+#[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 #[pyo3(signature = (web_port = None, open_browser = true, connect_to = None))]
 fn serve_web_viewer(
@@ -1538,7 +1536,7 @@ fn serve_web_viewer(
 
 /// Serve a web-viewer AND host a gRPC server.
 // NOTE: DEPRECATED
-#[expect(clippy::unnecessary_wraps)] // False positive
+#[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 #[pyo3(signature = (open_browser, web_port, grpc_port, server_memory_limit, default_blueprint = None, recording = None))]
 fn serve_web(
@@ -2041,9 +2039,9 @@ fn get_app_url() -> String {
 
 // TODO(jleibs) expose this as a python type
 /// Start a web server to host the run web-assets.
+#[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // false positive
 #[pyfunction]
 fn start_web_viewer_server(port: u16) -> PyResult<()> {
-    #[expect(clippy::unnecessary_wraps)]
     #[cfg(feature = "web_viewer")]
     {
         let mut web_handle = global_web_viewer_server();

@@ -25,7 +25,6 @@ pub fn video_asset_result_ui(
 ) {
     re_tracing::profile_function!();
 
-    #[expect(clippy::match_same_arms)]
     match video_result {
         Ok(video) => {
             if !ui_layout.is_single_line() {
@@ -60,7 +59,6 @@ pub fn video_stream_result_ui(
 ) {
     re_tracing::profile_function!();
 
-    #[expect(clippy::match_same_arms)]
     match video_result {
         Ok(video) => {
             if !ui_layout.is_single_line() {

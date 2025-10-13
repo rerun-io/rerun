@@ -285,7 +285,6 @@ fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> FrameResult {
 
 fn yuv_matrix_coefficients(debug_name: &str, picture: &dav1d::Picture) -> YuvMatrixCoefficients {
     // Quotes are from https://wiki.x266.mov/docs/colorimetry/matrix (if not noted otherwise)
-    #[expect(clippy::match_same_arms)]
     match picture.matrix_coefficients() {
         dav1d::pixel::MatrixCoefficients::Identity => YuvMatrixCoefficients::Identity,
 

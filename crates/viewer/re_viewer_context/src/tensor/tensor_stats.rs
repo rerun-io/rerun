@@ -53,7 +53,7 @@ impl TensorStats {
                         (<$typ>::INFINITY, <$typ>::NEG_INFINITY),
                         |(min, max), &value| (min.min(value), max.max(value)),
                     );
-                    #[expect(trivial_numeric_casts)]
+                    #[allow(clippy::allow_attributes, trivial_numeric_casts)]
                     (min as f64, max as f64)
                 }
             };
@@ -97,7 +97,7 @@ impl TensorStats {
                             }
                         },
                     );
-                    #[expect(trivial_numeric_casts)]
+                    #[allow(clippy::allow_attributes, trivial_numeric_casts)]
                     (min as f64, max as f64)
                 }
             };

@@ -1,3 +1,5 @@
+#![allow(clippy::allow_attributes)] // TODO(emilk): remove
+
 use crate::codec::{Compression, Serializer};
 
 // --- FileHeader ---
@@ -52,7 +54,6 @@ impl EncodingOptions {
 
 /// On failure to decode [`EncodingOptions`]
 #[derive(thiserror::Error, Debug)]
-#[expect(clippy::enum_variant_names)]
 pub enum OptionsError {
     #[error("Reserved bytes not zero")]
     UnknownReservedBytes,
@@ -72,7 +73,7 @@ pub enum OptionsError {
 
 #[derive(Debug, Clone, Copy)]
 pub struct FileHeader {
-    #[expect(dead_code)] // only used with the "encoder" feature
+    #[allow(dead_code)] // only used with the "encoder" feature
     pub fourcc: [u8; 4],
     pub version: [u8; 4],
     pub options: EncodingOptions,
@@ -180,7 +181,7 @@ fn warn_on_version_mismatch(encoded_version: [u8; 4]) -> Result<(), crate::Decod
 
 // --- MessageHeader ---
 
-#[expect(dead_code)] // used behind feature flag
+#[allow(dead_code)] // used behind feature flag
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u64)]
 pub enum MessageKind {
@@ -191,7 +192,7 @@ pub enum MessageKind {
     BlueprintActivationCommand = Self::BLUEPRINT_ACTIVATION_COMMAND,
 }
 
-#[expect(dead_code)] // used behind feature flag
+#[allow(dead_code)] // used behind feature flag
 impl MessageKind {
     const END: u64 = 0;
     const SET_STORE_INFO: u64 = 1;
@@ -199,7 +200,7 @@ impl MessageKind {
     const BLUEPRINT_ACTIVATION_COMMAND: u64 = 3;
 }
 
-#[expect(dead_code)] // used behind feature flag
+#[allow(dead_code)] // used behind feature flag
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MessageHeader {
     pub kind: MessageKind,
@@ -207,13 +208,13 @@ pub struct MessageHeader {
 }
 
 impl MessageHeader {
-    #[expect(dead_code)] // used behind feature flag
+    #[allow(dead_code)] // used behind feature flag
     /// Size of an encoded message header, in bytes.
     pub const SIZE_BYTES: usize = 16;
 
     // NOTE: We use little-endian encoding, because we live in the 21st century.
     #[cfg(feature = "encoder")]
-    #[expect(dead_code)] // TODO(cmc): codec revamp
+    #[allow(dead_code)] // TODO(cmc): codec revamp
     pub fn encode(&self, buf: &mut impl std::io::Write) -> Result<(), crate::EncodeError> {
         let Self { kind, len } = *self;
         buf.write_all(&(kind as u64).to_le_bytes())?;
@@ -222,7 +223,7 @@ impl MessageHeader {
     }
 
     #[cfg(feature = "decoder")]
-    #[expect(dead_code)] // TODO(cmc): codec revamp
+    #[allow(dead_code)] // TODO(cmc): codec revamp
     pub fn decode(data: &mut impl std::io::Read) -> Result<Self, crate::DecodeError> {
         let mut buf = [0; Self::SIZE_BYTES];
         data.read_exact(&mut buf)?;
@@ -242,7 +243,7 @@ impl MessageHeader {
                 )),
             ));
         }
-        #[expect(clippy::unwrap_used)] // cannot fail
+        #[allow(clippy::unwrap_used)] // cannot fail
         let kind = u64::from_le_bytes(buf[0..8].try_into().unwrap());
         let kind = match kind {
             MessageKind::END => MessageKind::End,
@@ -256,7 +257,7 @@ impl MessageHeader {
             }
         };
 
-        #[expect(clippy::unwrap_used)] // cannot fail
+        #[allow(clippy::unwrap_used)] // cannot fail
         let len = u64::from_le_bytes(buf[8..16].try_into().unwrap());
 
         Ok(Self { kind, len })

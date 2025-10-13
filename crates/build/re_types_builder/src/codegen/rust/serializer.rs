@@ -474,7 +474,6 @@ enum InnerRepr {
 ///
 /// TODO(#2993): However, we still emit a validity/null bitmaps for lists inside lists
 /// since Python and Rust do so.
-#[expect(clippy::too_many_arguments)]
 fn quote_arrow_field_serializer(
     objects: &Objects,
     datatype: &DataType,

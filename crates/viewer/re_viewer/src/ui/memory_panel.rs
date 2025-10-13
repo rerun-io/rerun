@@ -35,7 +35,6 @@ impl MemoryPanel {
         self.memory_purge_times.push(sec_since_start());
     }
 
-    #[expect(clippy::too_many_arguments)]
     pub fn ui(
         &self,
         ui: &mut egui::Ui,

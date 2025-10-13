@@ -468,7 +468,6 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
         text: impl Into<String>,
         add_contents_on_hover: impl FnOnce(&mut egui::Ui),
     ) {
-        #[expect(clippy::blocks_in_conditions)]
         let text = text.into();
         if ui
             .add(

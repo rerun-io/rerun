@@ -12,7 +12,7 @@
 
 // TODO(cmc): this should only run for release builds
 
-#![expect(clippy::disallowed_types)] // False positives for using files on Wasm
+#![allow(clippy::allow_attributes, clippy::disallowed_types)] // False positives for using files on Wasm
 #![expect(clippy::unwrap_used)]
 
 use std::path::{Path, PathBuf};
