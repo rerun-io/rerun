@@ -132,7 +132,8 @@ pub fn string_from_quoted(
         // Insert some extra newlines before functions and `impl` blocks:
         let trimmed = line.trim_start();
 
-        let line_is_attr = trimmed.starts_with("#[expect(")
+        let line_is_attr = trimmed.starts_with("#[allow(")
+            || trimmed.starts_with("#[expect(")
             || trimmed.starts_with("#[inline]")
             || trimmed.starts_with("#[doc(hidden)]")
             || trimmed.starts_with("#[rustfmt::skip]")

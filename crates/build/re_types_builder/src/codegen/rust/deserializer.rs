@@ -493,7 +493,6 @@ enum InnerRepr {
 ///
 /// This short-circuits on error using the `try` (`?`) operator: the outer scope must be one that
 /// returns a `Result<_, DeserializationError>`!
-#[expect(clippy::too_many_arguments)]
 fn quote_arrow_field_deserializer(
     objects: &Objects,
     datatype: &DataType,
@@ -572,7 +571,6 @@ fn quote_arrow_field_deserializer(
                                     ));
                                 }
 
-                                #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                 let data = arrow_data_buf.slice_with_length(start, len);
                                 Ok(data)
                             })
@@ -639,7 +637,7 @@ fn quote_arrow_field_deserializer(
                                 (start, end), #data_src_buf.len(),
                             ));
                         }
-                        #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)] // TODO(apache/arrow-rs#6900): slice_with_length_unchecked unsafe when https://github.com/apache/arrow-rs/pull/6901 is merged and released
+                        // TODO(apache/arrow-rs#6900): slice_with_length_unchecked unsafe when https://github.com/apache/arrow-rs/pull/6901 is merged and released
                         let data = #data_src_buf.slice_with_length(start, len);
 
                         Ok(data)
@@ -791,7 +789,7 @@ fn quote_arrow_field_deserializer(
             let quoted_inner_data_range = match inner_repr {
                 InnerRepr::ScalarBuffer => {
                     quote! {
-                        #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)] // TODO(apache/arrow-rs#6900): unsafe slice_unchecked when https://github.com/apache/arrow-rs/pull/6901 is merged and released
+                        // TODO(apache/arrow-rs#6900): unsafe slice_unchecked when https://github.com/apache/arrow-rs/pull/6901 is merged and released
                         let data = #data_src_inner.clone().slice(start,  end - start);
                     }
                 }
@@ -922,7 +920,6 @@ fn quote_array_downcast(
 }
 
 #[derive(Debug, Clone, Copy)]
-#[expect(dead_code)]
 enum IteratorKind {
     /// `Iterator<Item = DeserializationResult<Option<T>>>`.
     ResultOptionValue,

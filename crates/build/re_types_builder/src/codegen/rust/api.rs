@@ -162,24 +162,26 @@ fn generate_object_file(
         code.push_str(&format!("// Based on {:?}.\n\n", format_path(source_path)));
     }
 
-    code.push_str("#![expect(unused_braces)]\n");
-    code.push_str("#![expect(unused_imports)]\n");
-    code.push_str("#![expect(unused_parens)]\n");
-    code.push_str("#![expect(clippy::clone_on_copy)]\n");
-    code.push_str("#![expect(clippy::cloned_instead_of_copied)]\n");
-    code.push_str("#![expect(clippy::map_flatten)]\n");
-    code.push_str("#![expect(clippy::needless_question_mark)]\n");
-    code.push_str("#![expect(clippy::new_without_default)]\n");
-    code.push_str("#![expect(clippy::redundant_closure)]\n");
-    code.push_str("#![expect(clippy::too_many_arguments)]\n"); // e.g. `AffixFuzzer1::new`
-    code.push_str("#![expect(clippy::too_many_lines)]\n");
+    code.push_str("#![allow(unused_braces)]\n");
+    code.push_str("#![allow(unused_imports)]\n");
+    code.push_str("#![allow(unused_parens)]\n");
+    code.push_str("#![allow(clippy::allow_attributes)]\n");
+    code.push_str("#![allow(clippy::clone_on_copy)]\n");
+    code.push_str("#![allow(clippy::cloned_instead_of_copied)]\n");
+    code.push_str("#![allow(clippy::map_flatten)]\n");
+    code.push_str("#![allow(clippy::needless_question_mark)]\n");
+    code.push_str("#![allow(clippy::new_without_default)]\n");
+    code.push_str("#![allow(clippy::redundant_closure)]\n");
+    code.push_str("#![allow(clippy::too_many_arguments)]\n"); // e.g. `AffixFuzzer1::new`
+    code.push_str("#![allow(clippy::too_many_lines)]\n");
+    code.push_str("#![allow(clippy::wildcard_imports)]\n");
     if obj.is_deprecated() {
         code.push_str("#![expect(deprecated)]\n");
     }
 
     if obj.is_enum() {
         // Needed for PixelFormat. Should we limit this via attribute to just that?
-        code.push_str("#![expect(non_camel_case_types)]\n");
+        code.push_str("#![allow(non_camel_case_types)]\n");
     }
 
     code.push_str("\n\n");
@@ -459,7 +461,7 @@ fn quote_union(
             impl ::re_byte_size::SizeBytes for #name {
                 #[inline]
                 fn heap_size_bytes(&self) -> u64 {
-                    #![expect(clippy::match_same_arms)]
+                    #![allow(clippy::match_same_arms)]
                     match self {
                         #(#quoted_matches),*
                     }
@@ -559,7 +561,7 @@ fn quote_enum(
             let clippy_attrs = if field.name == field.pascal_case_name() {
                 quote!()
             } else {
-                quote!(#[expect(clippy::upper_case_acronyms)]) // e.g. for `ColorModel::RGBA`
+                quote!(#[allow(clippy::upper_case_acronyms)]) // e.g. for `ColorModel::RGBA`
             };
 
             quote! {
@@ -932,7 +934,6 @@ fn quote_trait_impls_for_datatype_or_component(
             quote! {
                 #[inline]
                 fn arrow_datatype() -> arrow::datatypes::DataType {
-                    #![expect(clippy::wildcard_imports)]
                     use arrow::datatypes::*;
                     #datatype
                 }
@@ -948,7 +949,6 @@ fn quote_trait_impls_for_datatype_or_component(
                     // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                     // re_tracing::profile_function!();
 
-                    #![expect(clippy::wildcard_imports)]
                     use arrow::{array::*, buffer::*, datatypes::*};
                     use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
 
@@ -984,7 +984,6 @@ fn quote_trait_impls_for_datatype_or_component(
                 // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                 // re_tracing::profile_function!();
 
-                #![expect(clippy::wildcard_imports)]
                 use arrow::{array::*, buffer::*, datatypes::*};
                 use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
 
@@ -1007,8 +1006,7 @@ fn quote_trait_impls_for_datatype_or_component(
                     // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                     // re_tracing::profile_function!();
 
-                    #![expect(clippy::wildcard_imports)]
-                    #![expect(clippy::manual_is_variant_and)]
+                    #![allow(clippy::manual_is_variant_and)]
                     use arrow::{array::*, buffer::*, datatypes::*};
                     use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
 
@@ -1048,8 +1046,6 @@ fn quote_trait_impls_for_datatype_or_component(
 }
 
 fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenStream {
-    #![expect(clippy::collapsible_else_if)]
-
     let Object {
         fqname, name, kind, ..
     } = obj;
