@@ -29,6 +29,10 @@ The following are known limitations and link to the corresponding GitHub issues.
 <!-- TODO(#11174) -->
 - [Cannot express transforms defined via `tf` messages](https://github.com/rerun-io/rerun/issues/11174)
 
+## ROS2 reflection
+
+The `ros2_reflection` layer automatically decodes ROS2 messages using runtime reflection for message types that are not supported by the semantic `ros2msg` layer. Fields become queryable components in the dataframe view and selection panel, but no automatic visualizations are created.
+
 ## ROS1 message types
 
 ROS1 messages are not currently supported for semantic interpretation through any layer.
