@@ -4,7 +4,7 @@ use std::path::Path;
 use arrow::array::RecordBatch;
 use arrow::datatypes::Schema;
 
-use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
+use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_log_types::{EntryId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
@@ -14,7 +14,7 @@ use re_protos::{
     common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
 };
 
-use crate::store::{Error, Layer, Partition};
+use crate::store::{Error, InMemoryStore, Layer, Partition};
 
 pub struct Dataset {
     id: EntryId,
@@ -163,7 +163,7 @@ impl Dataset {
     ) -> Result<BTreeSet<PartitionId>, Error> {
         re_log::info!("Loading RRD: {}", path.display());
         let contents =
-            ChunkStore::handle_from_rrd_filepath(&ChunkStoreConfig::CHANGELOG_DISABLED, path)
+            ChunkStore::handle_from_rrd_filepath(&InMemoryStore::chunk_store_config(), path)
                 .map_err(Error::RrdLoadingError)?;
 
         let layer_name = layer_name.unwrap_or(DataSource::DEFAULT_LAYER);

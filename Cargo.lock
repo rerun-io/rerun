@@ -9237,9 +9237,11 @@ dependencies = [
  "futures",
  "insta",
  "itertools 0.14.0",
+ "prost-types",
  "re_arrow_util",
  "re_chunk",
  "re_format_arrow",
+ "re_log_encoding",
  "re_log_types",
  "re_protos",
  "re_sdk",
@@ -9248,6 +9250,7 @@ dependencies = [
  "re_types_core",
  "tempfile",
  "tonic",
+ "url",
 ]
 
 [[package]]
