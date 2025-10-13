@@ -20,7 +20,7 @@ pub enum Colormap {
     Viridis = 6,
     CyanToYellow = 7,
     Spectral = 8,
-    Hsv = 9,
+    Twilight = 9,
 }
 
 impl Colormap {
@@ -33,7 +33,7 @@ impl Colormap {
         Self::Viridis,
         Self::CyanToYellow,
         Self::Spectral,
-        Self::Hsv,
+        Self::Twilight,
     ];
 }
 
@@ -48,7 +48,7 @@ impl std::fmt::Display for Colormap {
             Self::Viridis => write!(f, "Viridis"),
             Self::CyanToYellow => write!(f, "CyanToYellow"),
             Self::Spectral => write!(f, "Spectral"),
-            Self::Hsv => write!(f, "Hsv"),
+            Self::Twilight => write!(f, "Twilight"),
         }
     }
 }
@@ -63,7 +63,7 @@ pub fn colormap_srgb(which: Colormap, t: f32) -> [u8; 4] {
         Colormap::Inferno => colormap_inferno_srgb(t),
         Colormap::CyanToYellow => colormap_cyan_to_yellow_srgb(t),
         Colormap::Spectral => colormap_spectral_srgb(t),
-        Colormap::Hsv => colormap_hsv_srgb(t),
+        Colormap::Twilight => colormap_twilight_srgb(t),
     }
 }
 
@@ -242,28 +242,25 @@ pub fn colormap_spectral_srgb(t: f32) -> [u8; 4] {
     [c.x as u8, c.y as u8, c.z as u8, 255]
 }
 
-/// Returns sRGB color from HSV colormap, assuming `t` is normalized.
+/// Returns sRGB polynomial approximation from Twilight color map, assuming `t` is normalized.
 ///
-/// This colormap cycles through hues from red to yellow to green to cyan to blue to magenta and back to red.
-/// It uses full saturation and value (S=1, V=1), making it suitable for visualizing periodic or cyclic data.
-/// This matches matplotlib's HSV colormap.
-pub fn colormap_hsv_srgb(t: f32) -> [u8; 4] {
+/// This is a perceptually uniform cyclic colormap from Matplotlib.
+/// It is useful for visualizing periodic or cyclic data such as phase angles or time of day.
+/// It interpolates from light purple through blue to black, then through red back to light purple.
+/// Data from https://github.com/matplotlib/matplotlib (matplotlib's twilight colormap).
+pub fn colormap_twilight_srgb(t: f32) -> [u8; 4] {
+    const C0: Vec3A = Vec3A::new(0.99435322698120177, 0.85170793387210064, 0.93942033498486266);
+    const C1: Vec3A = Vec3A::new(-6.61774273956635106, -0.23133259259568750, -3.96704343424284378);
+    const C2: Vec3A = Vec3A::new(41.78124131041812461, -7.61851602599826982, 38.98566990464263426);
+    const C3: Vec3A = Vec3A::new(-158.29764239605322018, 3.73408709288658525, -170.02538195370874519);
+    const C4: Vec3A = Vec3A::new(301.70954078396789555, 25.04157831823896174, 319.73628266524258379);
+    const C5: Vec3A = Vec3A::new(-265.16454480601146315, -30.83148395246298179, -271.62226902484138691);
+    const C6: Vec3A = Vec3A::new(86.49941055421200531, 9.92441902018943267, 86.93676534780010456);
+
     debug_assert!((0.0..=1.0).contains(&t));
 
-    // Convert t to hue in range [0, 6)
-    let h = t * 6.0;
-    let i = h.floor();
-    let f = h - i;
+    let c = C0 + t * (C1 + t * (C2 + t * (C3 + t * (C4 + t * (C5 + t * C6)))));
 
-    // Since S=1 and V=1, the conversion is simplified
-    let (r, g, b) = match i as i32 % 6 {
-        0 => (1.0, f, 0.0),       // Red to Yellow
-        1 => (1.0 - f, 1.0, 0.0), // Yellow to Green
-        2 => (0.0, 1.0, f),       // Green to Cyan
-        3 => (0.0, 1.0 - f, 1.0), // Cyan to Blue
-        4 => (f, 0.0, 1.0),       // Blue to Magenta
-        _ => (1.0, 0.0, 1.0 - f), // Magenta to Red
-    };
-
-    [(r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8, 255]
+    let c = c * 255.0;
+    [c.x as u8, c.y as u8, c.z as u8, 255]
 }

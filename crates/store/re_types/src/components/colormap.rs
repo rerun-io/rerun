@@ -82,12 +82,12 @@ pub enum Colormap {
     /// It interpolates from red to orange to yellow to green to blue to violet.
     Spectral = 8,
 
-    /// The HSV colormap from Matplotlib.
+    /// The Twilight colormap from Matplotlib.
     ///
-    /// This is a cyclic colormap that follows the hue component of the HSV color space.
-    /// It is useful for visualizing periodic or cyclic data.
-    /// It interpolates from red through yellow, green, cyan, blue, magenta, and back to red.
-    Hsv = 9,
+    /// This is a perceptually uniform cyclic colormap.
+    /// It is useful for visualizing periodic or cyclic data such as phase angles or time of day.
+    /// It interpolates from light purple through blue to black, then through red back to light purple.
+    Twilight = 9,
 }
 
 impl ::re_types_core::Component for Colormap {
@@ -167,7 +167,7 @@ impl ::re_types_core::Loggable for Colormap {
                 Some(6) => Ok(Some(Self::Viridis)),
                 Some(7) => Ok(Some(Self::CyanToYellow)),
                 Some(8) => Ok(Some(Self::Spectral)),
-                Some(9) => Ok(Some(Self::Hsv)),
+                Some(9) => Ok(Some(Self::Twilight)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),
@@ -191,7 +191,7 @@ impl std::fmt::Display for Colormap {
             Self::Viridis => write!(f, "Viridis"),
             Self::CyanToYellow => write!(f, "CyanToYellow"),
             Self::Spectral => write!(f, "Spectral"),
-            Self::Hsv => write!(f, "Hsv"),
+            Self::Twilight => write!(f, "Twilight"),
         }
     }
 }
@@ -208,7 +208,7 @@ impl ::re_types_core::reflection::Enum for Colormap {
             Self::Viridis,
             Self::CyanToYellow,
             Self::Spectral,
-            Self::Hsv,
+            Self::Twilight,
         ]
     }
 
@@ -239,8 +239,8 @@ impl ::re_types_core::reflection::Enum for Colormap {
             Self::Spectral => {
                 "The Spectral colormap from Matplotlib.\n\nThis is a diverging colormap, often used to visualize data with a meaningful center point,\nwhere deviations from that center are important to highlight.\nIt interpolates from red to orange to yellow to green to blue to violet."
             }
-            Self::Hsv => {
-                "The HSV colormap from Matplotlib.\n\nThis is a cyclic colormap that follows the hue component of the HSV color space.\nIt is useful for visualizing periodic or cyclic data.\nIt interpolates from red through yellow, green, cyan, blue, magenta, and back to red."
+            Self::Twilight => {
+                "The Twilight colormap from Matplotlib.\n\nThis is a perceptually uniform cyclic colormap.\nIt is useful for visualizing periodic or cyclic data such as phase angles or time of day.\nIt interpolates from light purple through blue to black, then through red back to light purple."
             }
         }
     }

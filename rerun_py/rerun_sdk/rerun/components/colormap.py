@@ -97,13 +97,13 @@ class Colormap(Enum):
     It interpolates from red to orange to yellow to green to blue to violet.
     """
 
-    Hsv = 9
+    Twilight = 9
     """
-    The HSV colormap from Matplotlib.
+    The Twilight colormap from Matplotlib.
 
-    This is a cyclic colormap that follows the hue component of the HSV color space.
-    It is useful for visualizing periodic or cyclic data.
-    It interpolates from red through yellow, green, cyan, blue, magenta, and back to red.
+    This is a perceptually uniform cyclic colormap.
+    It is useful for visualizing periodic or cyclic data such as phase angles or time of day.
+    It interpolates from light purple through blue to black, then through red back to light purple.
     """
 
     @classmethod
@@ -132,21 +132,21 @@ ColormapLike = Union[
     Literal[
         "CyanToYellow",
         "Grayscale",
-        "Hsv",
         "Inferno",
         "Magma",
         "Plasma",
         "Spectral",
         "Turbo",
+        "Twilight",
         "Viridis",
         "cyantoyellow",
         "grayscale",
-        "hsv",
         "inferno",
         "magma",
         "plasma",
         "spectral",
         "turbo",
+        "twilight",
         "viridis",
     ],
     int,

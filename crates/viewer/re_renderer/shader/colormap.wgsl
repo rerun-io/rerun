@@ -10,7 +10,7 @@ const COLORMAP_TURBO:          u32 = 5u;
 const COLORMAP_VIRIDIS:        u32 = 6u;
 const COLORMAP_CYAN_TO_YELLOW: u32 = 7u;
 const COLORMAP_SPECTRAL:       u32 = 8u;
-const COLORMAP_HSV:            u32 = 9u;
+const COLORMAP_TWILIGHT:       u32 = 9u;
 
 /// Returns a gamma-space sRGB in 0-1 range.
 ///
@@ -35,8 +35,8 @@ fn colormap_srgb(which: u32, t_unsaturated: f32) -> vec3f {
         return colormap_cyan_to_yellow_srgb(t);
     } else if which == COLORMAP_SPECTRAL {
         return colormap_spectral_srgb(t);
-    } else if which == COLORMAP_HSV {
-        return colormap_hsv_srgb(t);
+    } else if which == COLORMAP_TWILIGHT {
+        return colormap_twilight_srgb(t);
     } else {
         return ERROR_RGBA.rgb;
     }
@@ -185,28 +185,18 @@ fn colormap_spectral_srgb(t: f32) -> vec3f {
 
 /// Returns a gamma-space sRGB in 0-1 range.
 /// The input (`t`) must be in the 0-1 range.
-/// This colormap cycles through hues from red to yellow to green to cyan to blue to magenta and back to red.
-/// It uses full saturation and value (S=1, V=1), making it suitable for visualizing periodic or cyclic data.
-/// This matches matplotlib's HSV colormap.
-fn colormap_hsv_srgb(t: f32) -> vec3f {
-    // Convert t to hue in range [0, 6)
-    let h = t * 6.0;
-    let i = floor(h);
-    let f = h - i;
-
-    // Since S=1 and V=1, the conversion is simplified
-    let i_mod = i32(i) % 6;
-    if i_mod == 0 {
-        return vec3f(1.0, f, 0.0);        // Red to Yellow
-    } else if i_mod == 1 {
-        return vec3f(1.0 - f, 1.0, 0.0);  // Yellow to Green
-    } else if i_mod == 2 {
-        return vec3f(0.0, 1.0, f);        // Green to Cyan
-    } else if i_mod == 3 {
-        return vec3f(0.0, 1.0 - f, 1.0);  // Cyan to Blue
-    } else if i_mod == 4 {
-        return vec3f(f, 0.0, 1.0);        // Blue to Magenta
-    } else {
-        return vec3f(1.0, 0.0, 1.0 - f);  // Magenta to Red
-    }
+/// This is a polynomial approximation from Twilight color map.
+/// This is a perceptually uniform cyclic colormap from Matplotlib.
+/// It is useful for visualizing periodic or cyclic data such as phase angles or time of day.
+/// It interpolates from light purple through blue to black, then through red back to light purple.
+/// Data from https://github.com/matplotlib/matplotlib (matplotlib's twilight colormap).
+fn colormap_twilight_srgb(t: f32) -> vec3f {
+    let c0 = vec3f(0.99435322698120177, 0.85170793387210064, 0.93942033498486266);
+    let c1 = vec3f(-6.61774273956635106, -0.23133259259568750, -3.96704343424284378);
+    let c2 = vec3f(41.78124131041812461, -7.61851602599826982, 38.98566990464263426);
+    let c3 = vec3f(-158.29764239605322018, 3.73408709288658525, -170.02538195370874519);
+    let c4 = vec3f(301.70954078396789555, 25.04157831823896174, 319.73628266524258379);
+    let c5 = vec3f(-265.16454480601146315, -30.83148395246298179, -271.62226902484138691);
+    let c6 = vec3f(86.49941055421200531, 9.92441902018943267, 86.93676534780010456);
+    return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
 }
