@@ -17,8 +17,8 @@ use std::error::Error as _;
 
 use pyo3::PyErr;
 use pyo3::exceptions::{
-    PyConnectionError, PyFileExistsError, PyFileNotFoundError, PyIOError, PyPermissionError,
-    PyRuntimeError, PyTimeoutError, PyValueError,
+    PyConnectionError, PyFileExistsError, PyFileNotFoundError, PyPermissionError, PyRuntimeError,
+    PyTimeoutError, PyValueError,
 };
 
 use re_redap_client::{ApiErrorKind, ClientConnectionError, ConnectionError};
@@ -148,7 +148,7 @@ impl From<ExternalError> for PyErr {
                 ApiErrorKind::Unauthenticated | ApiErrorKind::PermissionDenied => {
                     PyPermissionError::new_err(err.to_string())
                 }
-                ApiErrorKind::Serialization => PyIOError::new_err(err.to_string()),
+                ApiErrorKind::Serialization => PyValueError::new_err(err.to_string()),
                 ApiErrorKind::InvalidArguments => PyValueError::new_err(err.to_string()),
                 ApiErrorKind::NotFound => PyFileNotFoundError::new_err(err.to_string()),
                 ApiErrorKind::AlreadyExists => PyFileExistsError::new_err(err.to_string()),
@@ -156,7 +156,7 @@ impl From<ExternalError> for PyErr {
                 ApiErrorKind::Internal => PyRuntimeError::new_err(err.to_string()),
             },
 
-            ExternalError::ArrowError(err) => PyIOError::new_err(format!("Arrow error: {err}")),
+            ExternalError::ArrowError(err) => PyValueError::new_err(format!("Arrow error: {err}")),
 
             ExternalError::UrlParseError(err) => {
                 PyValueError::new_err(format!("Could not parse URL: {err}"))
@@ -166,7 +166,7 @@ impl From<ExternalError> for PyErr {
                 PyValueError::new_err(format!("DataFusion error: {err}"))
             }
 
-            ExternalError::CodecError(err) => PyIOError::new_err(format!("Codec error: {err}")),
+            ExternalError::CodecError(err) => PyValueError::new_err(format!("Codec error: {err}")),
 
             ExternalError::SorbetError(err) => {
                 PyValueError::new_err(format!("Sorbet error: {err}"))
@@ -179,7 +179,7 @@ impl From<ExternalError> for PyErr {
             }
 
             ExternalError::TypeConversionError(err) => {
-                PyIOError::new_err(format!("Could not convert gRPC message: {err}"))
+                PyValueError::new_err(format!("Could not convert gRPC message: {err}"))
             }
 
             ExternalError::TokenError(err) => {
