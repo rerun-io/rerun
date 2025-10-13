@@ -11,41 +11,50 @@ use arrow::error::ArrowError;
 //
 // * The number of rows is identical, so transforming the contents is an affine mapping.
 
-// Core trait
-trait ArrowLens: Clone {
+// Base trait for all arrow optics - provides a read-only view/projection
+trait ArrowOptic: Clone {
     type Source: Array + Clone;
     type Target: Array + Clone;
 
-    fn project(&self, source: &Self::Source) -> Result<Self::Target, ArrowError>;
+    /// Preview/project from source to target (read-only, may fail)
+    fn preview(&self, source: &Self::Source) -> Result<Self::Target, ArrowError>;
+}
+
+// Prism: Partial, reversible projection
+// Represents operations that may fail but are conceptually reversible
+// (e.g., field extraction - can extract field and inject it back into struct)
+trait ArrowPrism: ArrowOptic {
+    /// Review/inject target back into source structure
+    fn review(&self, target: Self::Target) -> Result<Self::Source, ArrowError>;
 }
 
 #[derive(Clone)]
-struct Compose<L1, L2> {
-    first: L1,
-    second: L2,
+struct Compose<O1, O2> {
+    first: O1,
+    second: O2,
 }
 
-impl<L1, L2, M> ArrowLens for Compose<L1, L2>
+impl<O1, O2, M> ArrowOptic for Compose<O1, O2>
 where
-    L1: ArrowLens<Target = M>,
-    L2: ArrowLens<Source = M>,
+    O1: ArrowOptic<Target = M>,
+    O2: ArrowOptic<Source = M>,
     M: Array,
 {
-    type Source = L1::Source;
-    type Target = L2::Target;
+    type Source = O1::Source;
+    type Target = O2::Target;
 
-    fn project(&self, source: &Self::Source) -> Result<Self::Target, ArrowError> {
-        let mid = self.first.project(source)?;
-        self.second.project(&mid)
+    fn preview(&self, source: &Self::Source) -> Result<Self::Target, ArrowError> {
+        let mid = self.first.preview(source)?;
+        self.second.preview(&mid)
     }
 }
 
 // Extension trait for ergonomic composition
-trait LensExt: ArrowLens {
-    fn then<L2>(self, next: L2) -> Compose<Self, L2>
+trait OpticExt: ArrowOptic {
+    fn then<O2>(self, next: O2) -> Compose<Self, O2>
     where
         Self: Sized,
-        L2: ArrowLens<Source = Self::Target>,
+        O2: ArrowOptic<Source = Self::Target>,
     {
         Compose {
             first: self,
@@ -54,19 +63,20 @@ trait LensExt: ArrowLens {
     }
 }
 
-impl<T: ArrowLens> LensExt for T {}
+impl<T: ArrowOptic> OpticExt for T {}
 
-// Lens: Extract field from StructArray
+// Prism: Extract field from StructArray
+// Partial because field may not exist; reversible because we can inject field back
 #[derive(Clone)]
-struct StructFieldLens {
+struct StructFieldPrism {
     field_name: String,
 }
 
-impl ArrowLens for StructFieldLens {
+impl ArrowOptic for StructFieldPrism {
     type Source = StructArray;
     type Target = ArrayRef;
 
-    fn project(&self, source: &StructArray) -> Result<ArrayRef, ArrowError> {
+    fn preview(&self, source: &StructArray) -> Result<ArrayRef, ArrowError> {
         source
             .column_by_name(&self.field_name)
             .ok_or_else(|| {
@@ -79,28 +89,41 @@ impl ArrowLens for StructFieldLens {
     }
 }
 
-// Lens: Transform each element in ListArray
-#[derive(Clone)]
-struct ListEachLens<L> {
-    element_lens: L,
+impl ArrowPrism for StructFieldPrism {
+    fn review(&self, target: Self::Target) -> Result<Self::Source, ArrowError> {
+        // Create a minimal struct with just this field
+        let field = Field::new(&self.field_name, target.data_type().clone(), true);
+        Ok(StructArray::new(
+            vec![Arc::new(field)].into(),
+            vec![target],
+            None,
+        ))
+    }
 }
 
-impl<L> ArrowLens for ListEachLens<L>
+// Traversal: Transform each element in ListArray using an inner optic
+// This is a traversal pattern - applies inner optic to all list elements
+#[derive(Clone)]
+struct ListTraversal<O> {
+    inner_optic: O,
+}
+
+impl<O> ArrowOptic for ListTraversal<O>
 where
-    L: ArrowLens,
-    L::Source: Array + 'static,
-    L::Target: Array + 'static,
+    O: ArrowOptic,
+    O::Source: Array + 'static,
+    O::Target: Array + 'static,
 {
     type Source = ListArray;
     type Target = ListArray;
 
-    fn project(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
+    fn preview(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
         let values = source.values();
-        let downcast = values.as_any().downcast_ref::<L::Source>().ok_or_else(|| {
-            arrow::error::ArrowError::InvalidArgumentError("Type mismatch in ListEachLens".into())
+        let downcast = values.as_any().downcast_ref::<O::Source>().ok_or_else(|| {
+            arrow::error::ArrowError::InvalidArgumentError("Type mismatch in ListTraversal".into())
         })?;
 
-        let transformed = self.element_lens.project(downcast)?;
+        let transformed = self.inner_optic.preview(downcast)?;
         let new_field = Arc::new(Field::new("item", transformed.data_type().clone(), true));
 
         let (_, offsets, _, nulls) = source.clone().into_parts();
@@ -113,15 +136,16 @@ where
     }
 }
 
-// Lens: Convert struct {x, y} to FixedSizeListArray[2]
+// Getter: Convert struct {x, y} to FixedSizeListArray[2]
+// This is a getter (read-only) - loses field names, so not reversible
 #[derive(Clone)]
-struct PointStructToFixedListLens;
+struct PointStructToFixedListOptic;
 
-impl ArrowLens for PointStructToFixedListLens {
+impl ArrowOptic for PointStructToFixedListOptic {
     type Source = StructArray;
     type Target = FixedSizeListArray;
 
-    fn project(&self, source: &StructArray) -> Result<FixedSizeListArray, ArrowError> {
+    fn preview(&self, source: &StructArray) -> Result<FixedSizeListArray, ArrowError> {
         let x_array = source
             .column_by_name("x")
             .ok_or_else(|| {
@@ -177,15 +201,16 @@ impl ArrowLens for PointStructToFixedListLens {
     }
 }
 
-// Lens: Transform ListArray of structs to ListArray of FixedSizeLists
+// Getter: Transform ListArray of structs to ListArray of FixedSizeLists
+// Composes ListTraversal with PointStructToFixedListOptic
 #[derive(Clone)]
-struct ListStructToFixedListLens;
+struct ListStructToFixedListOptic;
 
-impl ArrowLens for ListStructToFixedListLens {
+impl ArrowOptic for ListStructToFixedListOptic {
     type Source = ListArray;
     type Target = ListArray;
 
-    fn project(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
+    fn preview(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
         let struct_array = source
             .values()
             .as_any()
@@ -196,7 +221,7 @@ impl ArrowLens for ListStructToFixedListLens {
                 )
             })?;
 
-        let fixed_list = PointStructToFixedListLens.project(struct_array)?;
+        let fixed_list = PointStructToFixedListOptic.preview(struct_array)?;
         let field = Arc::new(Field::new("item", fixed_list.data_type().clone(), true));
         let (_, offsets, _, nulls) = source.clone().into_parts();
 
@@ -204,17 +229,18 @@ impl ArrowLens for ListStructToFixedListLens {
     }
 }
 
-// Lens: Unwrap single-element ListArray and extract field from the struct
+// Prism: Unwrap single-element ListArray and extract field from the struct
+// Partial because field may not exist; conceptually reversible
 #[derive(Clone)]
-struct UnwrapSingleStructFieldLens {
+struct UnwrapSingleStructFieldPrism {
     field_name: String,
 }
 
-impl ArrowLens for UnwrapSingleStructFieldLens {
+impl ArrowOptic for UnwrapSingleStructFieldPrism {
     type Source = ListArray;
     type Target = ListArray;
 
-    fn project(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
+    fn preview(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
         // Get the struct array from the list values
         let struct_array = source
             .values()
@@ -250,23 +276,46 @@ impl ArrowLens for UnwrapSingleStructFieldLens {
     }
 }
 
-// Lens: Transform Float64Array values
+impl ArrowPrism for UnwrapSingleStructFieldPrism {
+    fn review(&self, target: Self::Target) -> Result<Self::Source, ArrowError> {
+        // Create a struct with just this field
+        let field = Field::new(&self.field_name, target.data_type().clone(), true);
+        let struct_array = StructArray::new(
+            vec![Arc::new(field)].into(),
+            vec![Arc::new(target) as ArrayRef],
+            None,
+        );
+
+        // Wrap in a list with one element per row
+        let list_field = Arc::new(Field::new("item", struct_array.data_type().clone(), true));
+        let mut offsets = Vec::with_capacity(struct_array.len() + 1);
+        for i in 0..=struct_array.len() {
+            offsets.push(i as i32);
+        }
+        let offsets = arrow::buffer::OffsetBuffer::new(offsets.into());
+
+        Ok(ListArray::new(list_field, offsets, Arc::new(struct_array), None))
+    }
+}
+
+// Getter: Transform Float64Array values with a function
+// This is a getter - potentially non-invertible depending on the function
 #[derive(Clone)]
-struct Float64MapLens<F>
+struct Float64MapOptic<F>
 where
     F: Fn(f64) -> f64 + Clone,
 {
     f: F,
 }
 
-impl<F> ArrowLens for Float64MapLens<F>
+impl<F> ArrowOptic for Float64MapOptic<F>
 where
     F: Fn(f64) -> f64 + Clone,
 {
     type Source = Float64Array;
     type Target = Float64Array;
 
-    fn project(&self, source: &Float64Array) -> Result<Float64Array, ArrowError> {
+    fn preview(&self, source: &Float64Array) -> Result<Float64Array, ArrowError> {
         let mut builder = Float64Builder::with_capacity(source.len());
         for i in 0..source.len() {
             if source.is_null(i) {
@@ -279,15 +328,16 @@ where
     }
 }
 
-// Lens: Convert Float64Array to Float32Array
+// Getter: Convert Float64Array to Float32Array
+// Lossy conversion - loses precision, so not reversible
 #[derive(Clone)]
-struct Float64ToFloat32Lens;
+struct Float64ToFloat32Optic;
 
-impl ArrowLens for Float64ToFloat32Lens {
+impl ArrowOptic for Float64ToFloat32Optic {
     type Source = Float64Array;
     type Target = Float32Array;
 
-    fn project(&self, source: &Float64Array) -> Result<Float32Array, ArrowError> {
+    fn preview(&self, source: &Float64Array) -> Result<Float32Array, ArrowError> {
         let mut builder = Float32Builder::with_capacity(source.len());
         for i in 0..source.len() {
             if source.is_null(i) {
@@ -300,33 +350,34 @@ impl ArrowLens for Float64ToFloat32Lens {
     }
 }
 
-// Lens: Transform FixedSizeListArray values
+// Traversal: Transform FixedSizeListArray values using inner optic
+// Applies inner optic to the flattened values array
 #[derive(Clone)]
-struct FixedSizeListMapLens<L> {
-    inner_lens: L,
+struct FixedSizeListTraversal<O> {
+    inner_optic: O,
 }
 
-impl<L> ArrowLens for FixedSizeListMapLens<L>
+impl<O> ArrowOptic for FixedSizeListTraversal<O>
 where
-    L: ArrowLens,
-    L::Source: Array + 'static,
-    L::Target: Array + 'static,
+    O: ArrowOptic,
+    O::Source: Array + 'static,
+    O::Target: Array + 'static,
 {
     type Source = FixedSizeListArray;
     type Target = FixedSizeListArray;
 
-    fn project(&self, source: &FixedSizeListArray) -> Result<FixedSizeListArray, ArrowError> {
+    fn preview(&self, source: &FixedSizeListArray) -> Result<FixedSizeListArray, ArrowError> {
         let values = source
             .values()
             .as_any()
-            .downcast_ref::<L::Source>()
+            .downcast_ref::<O::Source>()
             .ok_or_else(|| {
                 arrow::error::ArrowError::InvalidArgumentError(
-                    "Type mismatch in FixedSizeListMapLens".into(),
+                    "Type mismatch in FixedSizeListTraversal".into(),
                 )
             })?;
 
-        let transformed = self.inner_lens.project(values)?;
+        let transformed = self.inner_optic.preview(values)?;
         let field = Arc::new(Field::new("item", transformed.data_type().clone(), true));
         let size = source.value_length();
         let nulls = source.nulls().cloned();
@@ -341,44 +392,7 @@ where
 }
 
 
-// Need a lens to map over the outer ListArray's elements
-#[derive(Clone)]
-struct ListMapLens<L> {
-    inner_lens: L,
-}
-
-impl<L> ArrowLens for ListMapLens<L>
-where
-    L: ArrowLens,
-    L::Source: Array + 'static,
-    L::Target: Array + 'static,
-{
-    type Source = ListArray;
-    type Target = ListArray;
-
-    fn project(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
-        let values = source
-            .values()
-            .as_any()
-            .downcast_ref::<L::Source>()
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError(
-                    "Type mismatch in ListMapLens".into(),
-                )
-            })?;
-
-        let transformed = self.inner_lens.project(values)?;
-        let new_field = Arc::new(Field::new("item", transformed.data_type().clone(), true));
-        let (_, offsets, _, nulls) = source.clone().into_parts();
-
-        Ok(ListArray::new(
-            new_field,
-            offsets,
-            Arc::new(transformed),
-            nulls,
-        ))
-    }
-}
+// Note: ListMapLens was redundant with ListTraversal - removing this duplicate
 
 #[cfg(test)]
 mod test {
@@ -519,12 +533,12 @@ mod test {
         let array = create_nasty_component_column();
         println!("{}", DisplayRB::from(array.clone()));
 
-        let pipeline = UnwrapSingleStructFieldLens {
+        let pipeline = UnwrapSingleStructFieldPrism {
             field_name: "poses".into(),
         }
-        .then(ListStructToFixedListLens);
+        .then(ListStructToFixedListOptic);
 
-        let result: ListArray = pipeline.project(&array).unwrap();
+        let result: ListArray = pipeline.preview(&array).unwrap();
 
         insta::assert_snapshot!("simple", format!("{}", DisplayRB::from(result.clone())));
     }
@@ -533,17 +547,17 @@ mod test {
     fn add_one_to_leaves() {
         let array = create_nasty_component_column();
 
-        let pipeline = UnwrapSingleStructFieldLens {
+        let pipeline = UnwrapSingleStructFieldPrism {
             field_name: "poses".into(),
         }
-        .then(ListStructToFixedListLens)
-        .then(ListMapLens {
-            inner_lens: FixedSizeListMapLens {
-                inner_lens: Float64MapLens { f: |x| x + 1.0 },
+        .then(ListStructToFixedListOptic)
+        .then(ListTraversal {
+            inner_optic: FixedSizeListTraversal {
+                inner_optic: Float64MapOptic { f: |x| x + 1.0 },
             },
         });
 
-        let result = pipeline.project(&array).unwrap();
+        let result = pipeline.preview(&array).unwrap();
 
         insta::assert_snapshot!("add_one_to_leaves", format!("{}", DisplayRB::from(result)));
     }
@@ -552,17 +566,17 @@ mod test {
     fn convert_to_f32() {
         let array = create_nasty_component_column();
 
-        let pipeline = UnwrapSingleStructFieldLens {
+        let pipeline = UnwrapSingleStructFieldPrism {
             field_name: "poses".into(),
         }
-        .then(ListStructToFixedListLens)
-        .then(ListMapLens {
-            inner_lens: FixedSizeListMapLens {
-                inner_lens: Float64ToFloat32Lens,
+        .then(ListStructToFixedListOptic)
+        .then(ListTraversal {
+            inner_optic: FixedSizeListTraversal {
+                inner_optic: Float64ToFloat32Optic,
             },
         });
 
-        let result = pipeline.project(&array).unwrap();
+        let result = pipeline.preview(&array).unwrap();
 
         insta::assert_snapshot!("convert_to_f32", format!("{}", DisplayRB::from(result)));
     }
