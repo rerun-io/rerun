@@ -375,14 +375,17 @@ impl UICommand {
                 }
             }
 
-            #[cfg(all(not(target_arch = "wasm32"), target_os = "windows"))]
-            Self::Quit => smallvec![KeyboardShortcut::new(Modifiers::ALT, Key::F4)],
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::Quit => {
+                if os == OperatingSystem::Windows {
+                    smallvec![KeyboardShortcut::new(Modifiers::ALT, Key::F4)]
+                } else {
+                    smallvec![cmd(Key::Q)]
+                }
+            }
 
             Self::OpenWebHelp => smallvec![],
             Self::OpenRerunDiscord => smallvec![],
-
-            #[cfg(all(not(target_arch = "wasm32"), not(target_os = "windows")))]
-            Self::Quit => smallvec![cmd(Key::Q)],
 
             Self::ResetViewer => smallvec![ctrl_shift(Key::R)],
             Self::ClearActiveBlueprint => smallvec![],
@@ -406,10 +409,13 @@ impl UICommand {
             #[cfg(debug_assertions)]
             Self::ToggleEguiDebugPanel => smallvec![ctrl_shift(Key::U)],
 
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::ToggleFullscreen => smallvec![key(Key::F11)],
-            #[cfg(target_arch = "wasm32")]
-            Self::ToggleFullscreen => smallvec![],
+            Self::ToggleFullscreen => {
+                if cfg!(target_arch = "wasm32") {
+                    smallvec![]
+                } else {
+                    smallvec![key(Key::F11)]
+                }
+            }
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::ZoomIn => smallvec![egui::gui_zoom::kb_shortcuts::ZOOM_IN],
