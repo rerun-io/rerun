@@ -316,6 +316,150 @@ impl ArrowLens for UnwrapSingleStructFieldLens {
     }
 }
 
+// Lens: Transform Float64Array values
+#[derive(Clone)]
+struct Float64MapLens<F>
+where
+    F: Fn(f64) -> f64 + Clone,
+{
+    f: F,
+}
+
+impl<F> ArrowLens for Float64MapLens<F>
+where
+    F: Fn(f64) -> f64 + Clone,
+{
+    type Source = Float64Array;
+    type Target = Float64Array;
+
+    fn project(&self, source: &Float64Array) -> Result<Float64Array, ArrowError> {
+        let mut builder = Float64Builder::with_capacity(source.len());
+        for i in 0..source.len() {
+            if source.is_null(i) {
+                builder.append_null();
+            } else {
+                builder.append_value((self.f)(source.value(i)));
+            }
+        }
+        Ok(builder.finish())
+    }
+
+    fn embed(&self, _source: Float64Array, value: Float64Array) -> Result<Float64Array, ArrowError> {
+        Ok(value)
+    }
+}
+
+// Lens: Convert Float64Array to Float32Array
+#[derive(Clone)]
+struct Float64ToFloat32Lens;
+
+impl ArrowLens for Float64ToFloat32Lens {
+    type Source = Float64Array;
+    type Target = Float32Array;
+
+    fn project(&self, source: &Float64Array) -> Result<Float32Array, ArrowError> {
+        let mut builder = Float32Builder::with_capacity(source.len());
+        for i in 0..source.len() {
+            if source.is_null(i) {
+                builder.append_null();
+            } else {
+                builder.append_value(source.value(i) as f32);
+            }
+        }
+        Ok(builder.finish())
+    }
+
+    fn embed(&self, _source: Float64Array, value: Float32Array) -> Result<Float64Array, ArrowError> {
+        let mut builder = Float64Builder::with_capacity(value.len());
+        for i in 0..value.len() {
+            if value.is_null(i) {
+                builder.append_null();
+            } else {
+                builder.append_value(value.value(i) as f64);
+            }
+        }
+        Ok(builder.finish())
+    }
+}
+
+// Lens: Transform FixedSizeListArray values
+#[derive(Clone)]
+struct FixedSizeListMapLens<L> {
+    inner_lens: L,
+}
+
+impl<L> ArrowLens for FixedSizeListMapLens<L>
+where
+    L: ArrowLens,
+    L::Source: Array + 'static,
+    L::Target: Array + 'static,
+{
+    type Source = FixedSizeListArray;
+    type Target = FixedSizeListArray;
+
+    fn project(&self, source: &FixedSizeListArray) -> Result<FixedSizeListArray, ArrowError> {
+        let values = source
+            .values()
+            .as_any()
+            .downcast_ref::<L::Source>()
+            .ok_or_else(|| {
+                arrow::error::ArrowError::InvalidArgumentError(
+                    "Type mismatch in FixedSizeListMapLens".into(),
+                )
+            })?;
+
+        let transformed = self.inner_lens.project(values)?;
+        let field = Arc::new(Field::new("item", transformed.data_type().clone(), true));
+        let size = source.value_length();
+        let nulls = source.nulls().cloned();
+
+        Ok(FixedSizeListArray::new(
+            field,
+            size,
+            Arc::new(transformed),
+            nulls,
+        ))
+    }
+
+    fn embed(
+        &self,
+        source: FixedSizeListArray,
+        value: FixedSizeListArray,
+    ) -> Result<FixedSizeListArray, ArrowError> {
+        let old_values = source
+            .values()
+            .as_any()
+            .downcast_ref::<L::Source>()
+            .ok_or_else(|| {
+                arrow::error::ArrowError::InvalidArgumentError(
+                    "Type mismatch in FixedSizeListMapLens embed".into(),
+                )
+            })?
+            .clone();
+
+        let new_values = value
+            .values()
+            .as_any()
+            .downcast_ref::<L::Target>()
+            .ok_or_else(|| {
+                arrow::error::ArrowError::InvalidArgumentError(
+                    "Type mismatch in FixedSizeListMapLens embed".into(),
+                )
+            })?
+            .clone();
+
+        let restored = self.inner_lens.embed(old_values, new_values)?;
+        let (field, size, _, nulls) = source.into_parts();
+
+        Ok(FixedSizeListArray::new(
+            field,
+            size,
+            Arc::new(restored),
+            nulls,
+        ))
+    }
+}
+
 // Helper lens for ArrayRef -> concrete type
 #[derive(Clone)]
 struct ArrayRefToListLens;
@@ -554,5 +698,45 @@ mod test {
         let result: ListArray = pipeline.project(&array).unwrap();
 
         insta::assert_snapshot!("simple", format!("{}", DisplayRB::from(result.clone())));
+    }
+
+    #[test]
+    fn add_one_to_leaves() {
+        let array = create_nasty_component_column();
+
+        let pipeline = UnwrapSingleStructFieldLens {
+            field_name: "poses".into(),
+        }
+        .then(ArrayRefToListLens)
+        .then(ListStructToFixedListLens)
+        .then(ListMapLens {
+            inner_lens: FixedSizeListMapLens {
+                inner_lens: Float64MapLens { f: |x| x + 1.0 },
+            },
+        });
+
+        let result = pipeline.project(&array).unwrap();
+
+        insta::assert_snapshot!("add_one_to_leaves", format!("{}", DisplayRB::from(result)));
+    }
+
+    #[test]
+    fn convert_to_f32() {
+        let array = create_nasty_component_column();
+
+        let pipeline = UnwrapSingleStructFieldLens {
+            field_name: "poses".into(),
+        }
+        .then(ArrayRefToListLens)
+        .then(ListStructToFixedListLens)
+        .then(ListMapLens {
+            inner_lens: FixedSizeListMapLens {
+                inner_lens: Float64ToFloat32Lens,
+            },
+        });
+
+        let result = pipeline.project(&array).unwrap();
+
+        insta::assert_snapshot!("convert_to_f32", format!("{}", DisplayRB::from(result)));
     }
 }
