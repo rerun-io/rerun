@@ -13,9 +13,9 @@ use re_types::{
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
-use re_viewer_context::time_control_command::TimeControlCommand;
 use re_viewer_context::{
-    HoverHighlight, Item, SystemCommand, SystemCommandSender as _, UiLayout, ViewId, ViewerContext,
+    HoverHighlight, Item, SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout,
+    ViewId, ViewerContext,
 };
 
 use super::DataUi as _;

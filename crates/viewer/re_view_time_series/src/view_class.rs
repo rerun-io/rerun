@@ -24,10 +24,10 @@ use re_view::{
 use re_viewer_context::{
     BlueprintContext as _, IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities,
     PerVisualizer, QueryRange, RecommendedView, SmallVisualizerSet, SystemExecutionOutput,
-    TypedComponentFallbackProvider, ViewClass, ViewClassExt as _, ViewClassRegistryError,
-    ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
-    external::re_entity_db::InstancePath, time_control_command::TimeControlCommand,
+    TimeControlCommand, TypedComponentFallbackProvider, ViewClass, ViewClassExt as _,
+    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    VisualizableEntities, external::re_entity_db::InstancePath,
 };
 use re_viewport_blueprint::ViewProperty;
 

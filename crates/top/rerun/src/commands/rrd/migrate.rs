@@ -103,7 +103,7 @@ fn migrate_from_to(from_path: &Utf8PathBuf, to_path: &Utf8PathBuf) -> anyhow::Re
     let from_file =
         std::fs::File::open(from_path).with_context(|| format!("Failed to open {from_path:?}"))?;
 
-    let decoder = re_log_encoding::decoder::Decoder::new(std::io::BufReader::new(from_file))?;
+    let decoder = re_log_encoding::DecoderApp::decode_eager(std::io::BufReader::new(from_file))?;
 
     let mut errors = indexmap::IndexSet::new();
 

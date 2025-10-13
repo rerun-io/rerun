@@ -2,9 +2,8 @@ use re_log_types::{BlueprintActivationCommand, LogMsg, SetStoreInfo};
 use re_protos::missing_field;
 
 use crate::{
-    ApplicationIdInjector,
     codec::{CodecError, arrow::decode_arrow},
-    decoder::DecodeError,
+    decoder::{ApplicationIdInjector, DecodeError},
 };
 
 use super::{MessageHeader, MessageKind};
@@ -15,6 +14,7 @@ use super::{MessageHeader, MessageKind};
 ///
 /// See also:
 /// * [`decode_to_transport`]
+#[allow(dead_code)] // TODO(cmc): codec revamp
 pub(crate) fn decode_to_app(
     app_id_injector: &mut impl ApplicationIdInjector,
     data: &mut impl std::io::Read,
@@ -35,6 +35,7 @@ pub(crate) fn decode_to_app(
 ///
 /// See also:
 /// * [`decode_to_app`]
+#[allow(dead_code)] // TODO(cmc): codec revamp
 pub(crate) fn decode_to_transport(
     data: &mut impl std::io::Read,
 ) -> Result<(u64, Option<re_protos::log_msg::v1alpha1::log_msg::Msg>), DecodeError> {

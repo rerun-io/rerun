@@ -35,6 +35,8 @@ class TimePanelBlueprint(Archetype):
         state: blueprint_components.PanelStateLike | None = None,
         timeline: datatypes.Utf8Like | None = None,
         time: datatypes.TimeIntLike | None = None,
+        playback_speed: datatypes.Float64Like | None = None,
+        fps: datatypes.Float64Like | None = None,
     ) -> None:
         """
         Create a new instance of the TimePanelBlueprint archetype.
@@ -47,12 +49,16 @@ class TimePanelBlueprint(Archetype):
             What timeline the panel is on.
         time:
             What time the time cursor should be on.
+        playback_speed:
+            A time playback speed multiplier.
+        fps:
+            Frames per second. Only applicable for sequence timelines.
 
         """
 
         # You can define your own __init__ function as a member of TimePanelBlueprintExt in time_panel_blueprint_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(state=state, timeline=timeline, time=time)
+            self.__attrs_init__(state=state, timeline=timeline, time=time, playback_speed=playback_speed, fps=fps)
             return
         self.__attrs_clear__()
 
@@ -62,6 +68,8 @@ class TimePanelBlueprint(Archetype):
             state=None,
             timeline=None,
             time=None,
+            playback_speed=None,
+            fps=None,
         )
 
     @classmethod
@@ -79,6 +87,8 @@ class TimePanelBlueprint(Archetype):
         state: blueprint_components.PanelStateLike | None = None,
         timeline: datatypes.Utf8Like | None = None,
         time: datatypes.TimeIntLike | None = None,
+        playback_speed: datatypes.Float64Like | None = None,
+        fps: datatypes.Float64Like | None = None,
     ) -> TimePanelBlueprint:
         """
         Update only some specific fields of a `TimePanelBlueprint`.
@@ -93,6 +103,10 @@ class TimePanelBlueprint(Archetype):
             What timeline the panel is on.
         time:
             What time the time cursor should be on.
+        playback_speed:
+            A time playback speed multiplier.
+        fps:
+            Frames per second. Only applicable for sequence timelines.
 
         """
 
@@ -102,6 +116,8 @@ class TimePanelBlueprint(Archetype):
                 "state": state,
                 "timeline": timeline,
                 "time": time,
+                "playback_speed": playback_speed,
+                "fps": fps,
             }
 
             if clear_unset:
@@ -142,6 +158,24 @@ class TimePanelBlueprint(Archetype):
         converter=blueprint_components.TimeIntBatch._converter,  # type: ignore[misc]
     )
     # What time the time cursor should be on.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    playback_speed: blueprint_components.PlaybackSpeedBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.PlaybackSpeedBatch._converter,  # type: ignore[misc]
+    )
+    # A time playback speed multiplier.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    fps: blueprint_components.FpsBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.FpsBatch._converter,  # type: ignore[misc]
+    )
+    # Frames per second. Only applicable for sequence timelines.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

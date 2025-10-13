@@ -16,13 +16,12 @@ use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, Item, NeedsRepaint, RecordingOrTable, StorageContext,
-    StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
-    ViewClassRegistry, ViewClassRegistryError, command_channel,
+    ComponentUiRegistry, DisplayMode, Item, NeedsRepaint, PlayState, RecordingOrTable,
+    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore,
+    TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError, command_channel,
     open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url},
     sanitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
-    time_control_command::{PlayState, TimeControlCommand},
 };
 
 use crate::{

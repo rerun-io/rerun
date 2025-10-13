@@ -711,11 +711,11 @@ impl ChunkStore {
         let rrd_file = std::fs::File::open(path_to_rrd)
             .with_context(|| format!("couldn't open {path_to_rrd:?}"))?;
 
-        let mut decoder = re_log_encoding::decoder::Decoder::new(rrd_file)
+        let decoder = re_log_encoding::Decoder::decode_eager(std::io::BufReader::new(rrd_file))
             .with_context(|| format!("couldn't decode {path_to_rrd:?}"))?;
 
         // TODO(cmc): offload the decoding to a background thread.
-        for res in &mut decoder {
+        for res in decoder {
             let msg = res.with_context(|| format!("couldn't decode message {path_to_rrd:?}"))?;
             match msg {
                 re_log_types::LogMsg::SetStoreInfo(info) => {

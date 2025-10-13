@@ -9,11 +9,9 @@ use re_chunk::Span;
 use re_log::external::log::warn;
 
 use crate::{
-    EncodingOptions,
-    codec::file::{self, MessageKind},
+    codec::file::{EncodingOptions, FileHeader, MessageHeader, MessageKind},
+    decoder::DecodeError,
 };
-
-use super::{DecodeError, FileHeader, options_from_bytes};
 
 /// A transport-level `LogMsg` with extra contextual information.
 ///
@@ -55,8 +53,8 @@ impl StreamingLogMsg {
     pub fn from_chunk(
         store_id: re_log_types::StoreId,
         chunk: &re_chunk::Chunk,
-    ) -> Result<Self, crate::encoder::EncodeError> {
-        let compression = crate::Compression::Off;
+    ) -> Result<Self, crate::EncodeError> {
+        let compression = crate::codec::Compression::Off;
 
         let arrow_msg = re_log_types::ArrowMsg {
             chunk_id: *chunk.id(),
@@ -113,7 +111,7 @@ impl StreamingLogMsg {
         }
 
         if let Some(encoded) = self.encoded.as_ref() {
-            return file::decoder::decode_bytes_to_transport(self.kind, encoded);
+            return crate::codec::file::decoder::decode_bytes_to_transport(self.kind, encoded);
         }
 
         Ok(None)
@@ -173,7 +171,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             .await
             .map_err(DecodeError::Read)?;
 
-        let (version, encoding_opts) = options_from_bytes(&data)?;
+        let (version, encoding_opts) = FileHeader::options_from_bytes(&data)?;
 
         Ok(Self {
             version,
@@ -342,7 +340,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                 let data = &unprocessed_bytes[..FileHeader::SIZE];
                 // We've found another file header in the middle of the stream, it's time to switch
                 // gears and start over on this new file.
-                match options_from_bytes(data) {
+                match FileHeader::options_from_bytes(data) {
                     Ok((version, options)) => {
                         self.version = CrateVersion::max(self.version, version);
                         self.encoding_opts = options;
@@ -360,8 +358,8 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
             }
 
             let (kind, encoded, processed_length) = match serializer {
-                crate::Serializer::Protobuf => {
-                    let header_size = std::mem::size_of::<file::MessageHeader>();
+                crate::codec::Serializer::Protobuf => {
+                    let header_size = std::mem::size_of::<MessageHeader>();
                     if unprocessed_bytes.len() < header_size {
                         // Not enough data to read the header, need to wait for more
                         self.expect_more_data = true;
@@ -370,7 +368,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                         continue;
                     }
                     let data = &unprocessed_bytes[..header_size];
-                    let header = file::MessageHeader::from_bytes(data)?;
+                    let header = MessageHeader::from_bytes(data)?;
 
                     if unprocessed_bytes.len() < header.len as usize + header_size {
                         // Not enough data to read the message, need to wait for more
@@ -409,7 +407,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
             }
 
             let decoded = if opts.keep_decoded_protobuf {
-                file::decoder::decode_bytes_to_transport(kind, encoded)?
+                crate::codec::file::decoder::decode_bytes_to_transport(kind, encoded)?
             } else {
                 None
             };
@@ -442,17 +440,59 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
 #[cfg(feature = "testing")]
 #[cfg(all(test, feature = "decoder", feature = "encoder"))]
 mod tests {
-    use re_build_info::CrateVersion;
     use tokio_stream::StreamExt as _;
 
+    use re_build_info::CrateVersion;
+    use re_chunk::RowId;
+    use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+
     use crate::{
-        Compression, EncodingOptions, Serializer,
-        codec::file,
-        decoder::{
-            streaming::{StreamingDecoder, StreamingDecoderOptions},
-            tests::fake_log_messages,
-        },
+        codec::Compression,
+        codec::Serializer,
+        decoder::streaming::{StreamingDecoder, StreamingDecoderOptions},
+        encoder::EncodingOptions,
     };
+
+    #[allow(clippy::unwrap_used)] // acceptable for tests
+    fn fake_log_messages() -> Vec<LogMsg> {
+        let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
+
+        let arrow_msg = re_chunk::Chunk::builder("test_entity")
+            .with_archetype(
+                re_chunk::RowId::new(),
+                re_log_types::TimePoint::default().with(
+                    re_log_types::Timeline::new_sequence("blueprint"),
+                    re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
+                ),
+                &re_types::blueprint::archetypes::Background::new(
+                    re_types::blueprint::components::BackgroundKind::SolidColor,
+                )
+                .with_color([255, 0, 0]),
+            )
+            .build()
+            .unwrap()
+            .to_arrow_msg()
+            .unwrap();
+
+        vec![
+            LogMsg::SetStoreInfo(SetStoreInfo {
+                row_id: *RowId::new(),
+                info: StoreInfo::new(
+                    store_id.clone(),
+                    StoreSource::RustSdk {
+                        rustc_version: String::new(),
+                        llvm_version: String::new(),
+                    },
+                ),
+            }),
+            LogMsg::ArrowMsg(store_id.clone(), arrow_msg),
+            LogMsg::BlueprintActivationCommand(re_log_types::BlueprintActivationCommand {
+                blueprint_id: store_id,
+                make_active: true,
+                make_default: true,
+            }),
+        ]
+    }
 
     #[tokio::test]
     async fn test_streaming_decoder_handles_corrupted_input_file() {
@@ -486,11 +526,14 @@ mod tests {
                 .await
                 .unwrap();
 
-            let mut app_id_cache = crate::app_id_injector::CachingApplicationIdInjector::default();
+            let mut app_id_cache = crate::decoder::CachingApplicationIdInjector::default();
             let decoded_messages: Vec<re_log_types::LogMsg> = decoder
                 .map(Result::unwrap)
                 .filter_map(|msg| msg.decoded_transport().unwrap())
-                .map(|msg| file::decoder::decode_transport_to_app(&mut app_id_cache, msg).unwrap())
+                .map(|msg| {
+                    crate::codec::file::decoder::decode_transport_to_app(&mut app_id_cache, msg)
+                        .unwrap()
+                })
                 .collect::<Vec<_>>()
                 .await;
 
@@ -526,11 +569,14 @@ mod tests {
                 .await
                 .unwrap();
 
-            let mut app_id_cache = crate::app_id_injector::CachingApplicationIdInjector::default();
+            let mut app_id_cache = crate::decoder::CachingApplicationIdInjector::default();
             let decoded_messages = decoder
                 .map(Result::unwrap)
                 .filter_map(|msg| msg.decoded_transport().unwrap())
-                .map(|msg| file::decoder::decode_transport_to_app(&mut app_id_cache, msg).unwrap())
+                .map(|msg| {
+                    crate::codec::file::decoder::decode_transport_to_app(&mut app_id_cache, msg)
+                        .unwrap()
+                })
                 .collect::<Vec<_>>()
                 .await;
 
@@ -568,7 +614,7 @@ mod tests {
 
             let mut decoded_messages = decoder.collect::<Result<Vec<_>, _>>().await.unwrap();
 
-            let mut app_id_cache = crate::app_id_injector::CachingApplicationIdInjector::default();
+            let mut app_id_cache = crate::decoder::CachingApplicationIdInjector::default();
             for msg_expected in &mut decoded_messages {
                 let data = &data[msg_expected.byte_span.try_cast::<usize>().unwrap().range()];
 
@@ -580,12 +626,15 @@ mod tests {
                     let header = file::MessageHeader::from_bytes(header_data).unwrap();
 
                     let data = &data[header_size..];
-                    let msg =
-                        file::decoder::decode_bytes_to_app(&mut app_id_cache, header.kind, data)
-                            .unwrap()
-                            .unwrap();
+                    let msg = crate::codec::file::decoder::decode_bytes_to_app(
+                        &mut app_id_cache,
+                        header.kind,
+                        data,
+                    )
+                    .unwrap()
+                    .unwrap();
 
-                    let msg_expected = file::decoder::decode_transport_to_app(
+                    let msg_expected = crate::codec::file::decoder::decode_transport_to_app(
                         &mut app_id_cache,
                         msg_expected.decoded_transport().unwrap().unwrap(),
                     )
@@ -594,11 +643,14 @@ mod tests {
                 }
             }
 
-            let mut app_id_cache = crate::app_id_injector::CachingApplicationIdInjector::default();
+            let mut app_id_cache = crate::decoder::CachingApplicationIdInjector::default();
             let decoded_messages = decoded_messages
                 .iter_mut()
                 .filter_map(|msg| msg.decoded_transport().unwrap())
-                .map(|msg| file::decoder::decode_transport_to_app(&mut app_id_cache, msg).unwrap())
+                .map(|msg| {
+                    crate::codec::file::decoder::decode_transport_to_app(&mut app_id_cache, msg)
+                        .unwrap()
+                })
                 .collect::<Vec<_>>();
 
             similar_asserts::assert_eq!(decoded_messages, messages);

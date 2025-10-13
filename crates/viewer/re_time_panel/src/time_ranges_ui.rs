@@ -11,7 +11,7 @@ use egui::{NumExt as _, lerp, remap};
 use itertools::Itertools as _;
 
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeInt, TimeReal};
-use re_viewer_context::time_control_command::{PlayState, TimeControlCommand, TimeView};
+use re_viewer_context::{PlayState, TimeControlCommand, TimeView};
 
 /// The ideal gap between time segments.
 ///
