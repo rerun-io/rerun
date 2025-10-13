@@ -36,6 +36,17 @@ impl Snippets {
         let snippet_root = snippets_dir.join("all");
         let snippets = collect_snippets_recursively(&snippet_root, &config, &snippet_root)?;
 
+        // Check for duplicates as this will lead to undefined behavior (multiple threads writing
+        // to the same file).
+        {
+            let mut deduped = std::collections::HashSet::new();
+            for snippet in &snippets {
+                if !deduped.insert(snippet.name.as_str()) {
+                    anyhow::bail!("Snippet '{}' is defined multiple times", snippet.name);
+                }
+            }
+        }
+
         let progress = MultiProgress::new();
 
         println!("Running {} snippets…", snippets.len());
