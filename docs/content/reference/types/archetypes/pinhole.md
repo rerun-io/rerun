@@ -36,7 +36,7 @@ Camera perspective projection (a.k.a. intrinsics).
 
 snippet: archetypes/pinhole_simple
 
-<picture data-inline-viewer="snippets/pinhole_simple">
+<picture data-inline-viewer="snippets/archetypes/pinhole_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1024w.png">
@@ -48,7 +48,7 @@ snippet: archetypes/pinhole_simple
 
 snippet: archetypes/pinhole_perspective
 
-<picture data-inline-viewer="snippets/pinhole_perspective">
+<picture data-inline-viewer="snippets/archetypes/pinhole_perspective">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/1024w.png">

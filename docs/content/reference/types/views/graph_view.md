@@ -50,7 +50,7 @@ Tries to move the center of mass of the graph to the origin.
 
 snippet: views/graph
 
-<picture data-inline-viewer="snippets/graph">
+<picture data-inline-viewer="snippets/views/graph">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/graph_lattice/f9169da9c3f35b7260c9d74cd5be5fe710aec6a8/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/graph_lattice/f9169da9c3f35b7260c9d74cd5be5fe710aec6a8/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graph_lattice/f9169da9c3f35b7260c9d74cd5be5fe710aec6a8/1024w.png">

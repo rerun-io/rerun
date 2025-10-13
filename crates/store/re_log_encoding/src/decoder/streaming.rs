@@ -9,8 +9,7 @@ use re_chunk::Span;
 use re_log::external::log::warn;
 
 use crate::{
-    EncodingOptions,
-    codec::file::{FileHeader, MessageHeader, MessageKind},
+    codec::file::{EncodingOptions, FileHeader, MessageHeader, MessageKind},
     decoder::DecodeError,
 };
 

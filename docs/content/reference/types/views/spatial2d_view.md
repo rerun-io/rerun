@@ -33,7 +33,7 @@ If a timeline is specified more than once, the first entry will be used.
 
 snippet: views/spatial2d
 
-<picture data-inline-viewer="snippets/spatial2d">
+<picture data-inline-viewer="snippets/views/spatial2d">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/1024w.png">
