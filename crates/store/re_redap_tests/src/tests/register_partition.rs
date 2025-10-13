@@ -22,9 +22,6 @@ use crate::{RecordBatchExt as _, create_simple_recording};
 // We just want to make sure that the dataset resolution logic and the proxy in general both work as
 // expected: registering and listing partitions using dataset IDs is a good way to do that.
 pub async fn register_and_scan_simple_dataset(fe: impl RerunCloudService) {
-    // NOTE: We're re-using the same prefix multiple times, but it's fine because we're
-    // only interested in the dataset manifest in this test suite anyhow.
-
     let tuid_prefix1 = 1;
     let partition1_path = create_simple_recording(
         tuid_prefix1,
