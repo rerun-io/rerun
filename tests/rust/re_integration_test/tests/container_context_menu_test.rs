@@ -1,3 +1,4 @@
+use egui::Modifiers;
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
@@ -87,4 +88,56 @@ pub async fn test_context_menu_invalid_sub_container() {
     harness.hover_label_contains("Move to new container");
     harness.snapshot_app("context_menu_invalid_sub_container_05");
     harness.key_press(egui::Key::Escape);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_context_menu_multi_selection() {
+    let mut harness = make_multi_view_test_harness();
+
+    harness.snapshot_app("context_menu_multi_selection_01");
+
+    // Expand both views and the boxes2d entity
+    harness.right_click_nth_label("3D View", 0);
+    harness.click_label("Expand all");
+    harness.right_click_nth_label("2D View", 0);
+    harness.click_label("Expand all");
+    harness.right_click_nth_label("boxes2d", 0);
+    harness.click_label("Expand all");
+    harness.snapshot_app("context_menu_multi_selection_02");
+
+    // Select 3D View and 2D View, check context menu
+    harness.click_nth_label("3D View", 0);
+    harness.click_nth_label_modifiers("2D View", 0, Modifiers::COMMAND);
+    harness.right_click_nth_label("2D View", 0);
+    harness.snapshot_app("context_menu_multi_selection_03");
+    harness.key_press(egui::Key::Escape);
+
+    // Add container to selection, check context menu
+    harness.click_nth_label_modifiers("Grid container", 0, Modifiers::COMMAND);
+    harness.right_click_nth_label("2D View", 0);
+    harness.snapshot_app("context_menu_multi_selection_04");
+    harness.key_press(egui::Key::Escape);
+
+    // Select viewport and check context menu
+    harness.click_nth_label_modifiers("Viewport (Grid container)", 0, Modifiers::COMMAND);
+    harness.right_click_nth_label("Viewport (Grid container)", 0);
+    harness.snapshot_app("context_menu_multi_selection_05");
+    harness.key_press(egui::Key::Escape);
+
+    // View + data result
+    harness.click_nth_label("2D View", 0);
+    harness.click_nth_label_modifiers("boxes2d", 1, Modifiers::COMMAND);
+    harness.right_click_nth_label("boxes2d", 1);
+    harness.snapshot_app("context_menu_multi_selection_06");
+    harness.key_press(egui::Key::Escape);
+
+    harness.click_nth_label("boxes2d", 0);
+    harness.click_nth_label_modifiers("boxes3d", 0, Modifiers::COMMAND);
+    harness.right_click_nth_label("boxes3d", 0);
+    harness.snapshot_app("context_menu_multi_selection_07");
+    harness.key_press(egui::Key::Escape);
+
+    harness.click_nth_label_modifiers("half_sizes", 0, Modifiers::COMMAND);
+    harness.right_click_nth_label("half_sizes", 0);
+    harness.snapshot_app("context_menu_multi_selection_08");
 }

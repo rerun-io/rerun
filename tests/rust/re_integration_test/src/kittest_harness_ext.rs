@@ -1,5 +1,6 @@
 use std::{collections::BTreeSet, sync::Arc};
 
+use egui::Modifiers;
 use egui_kittest::{SnapshotOptions, kittest::Queryable as _};
 use parking_lot::Mutex;
 use re_sdk::{
@@ -65,7 +66,9 @@ pub trait HarnessExt {
     // Clicks a node in the UI by its label.
     fn click_label(&mut self, label: &str);
     fn right_click_label(&mut self, label: &str);
+    fn click_nth_label(&mut self, label: &str, index: usize);
     fn right_click_nth_label(&mut self, label: &str, index: usize);
+    fn click_nth_label_modifiers(&mut self, label: &str, index: usize, modifiers: Modifiers);
     fn hover_label_contains(&mut self, label: &str);
 
     // Takes a snapshot of the current app state with good-enough snapshot options.
@@ -242,6 +245,10 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         nodes.swap_remove(index)
     }
 
+    fn click_nth_label(&mut self, label: &str, index: usize) {
+        self.click_nth_label_modifiers(label, index, Modifiers::NONE);
+    }
+
     fn right_click_nth_label(&mut self, label: &str, index: usize) {
         self.get_nth_label(label, index).click_secondary();
         self.run_ok();
@@ -249,6 +256,11 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
 
     fn hover_label_contains(&mut self, label: &str) {
         self.get_by_label_contains(label).hover();
+        self.run_ok();
+    }
+
+    fn click_nth_label_modifiers(&mut self, label: &str, index: usize, modifiers: Modifiers) {
+        self.get_nth_label(label, index).click_modifiers(modifiers);
         self.run_ok();
     }
 
