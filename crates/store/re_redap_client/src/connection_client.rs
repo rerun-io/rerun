@@ -259,7 +259,7 @@ where
                 ApiError::serde(err, "missing field in /GetPartitionTableSchema response")
             })?
             .try_into()
-            .map_err(|err| ApiError::serde(err, "failed parsing /GetPartitionTableSchema respnose"))
+            .map_err(|err| ApiError::serde(err, "failed parsing /GetPartitionTableSchema response"))
     }
 
     /// Get a list of partition IDs for the given dataset entry ID.
@@ -418,7 +418,7 @@ where
                     let err = missing_field!(QueryDatasetResponse, "data");
                     ApiError::serde(
                         err,
-                        "missing filed in item in /QueryDataset response stream",
+                        "missing field in item in /QueryDataset response stream",
                     )
                 })
             })

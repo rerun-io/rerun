@@ -426,7 +426,7 @@ impl ConnectionHandle {
                     .map_err(|err| {
                         to_py_err(ApiError::serde(
                             err,
-                            format!("missing column on item in /QueryTasksOnCompletion stream"),
+                            "missing column on item in /QueryTasksOnCompletion stream",
                         ))
                     })?;
 
