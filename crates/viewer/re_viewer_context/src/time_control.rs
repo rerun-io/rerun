@@ -1,16 +1,172 @@
 use std::collections::BTreeMap;
 
 use nohash_hasher::IntMap;
+use re_types::blueprint::archetypes::TimePanelBlueprint;
 use vec1::Vec1;
 
-use re_chunk::TimelineName;
+use re_chunk::{EntityPath, TimelineName};
 use re_entity_db::{TimeCounts, TimelineStats, TimesPerTimeline};
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeCell, TimeInt, TimeReal, TimeType,
     Timeline,
 };
 
-use crate::NeedsRepaint;
+use crate::{NeedsRepaint, blueprint_helpers::BlueprintContext};
+
+pub const TIME_PANEL_PATH: &str = "time_panel";
+
+pub fn time_panel_blueprint_entity_path() -> EntityPath {
+    TIME_PANEL_PATH.into()
+}
+
+/// Helper trait to write time panel related blueprint components.
+trait TimeBlueprintExt {
+    fn set_time(&self, time: impl Into<TimeInt>);
+
+    fn get_time(&self) -> Option<TimeInt>;
+
+    fn set_timeline(&self, timeline: TimelineName);
+
+    fn get_timeline(&self) -> Option<TimelineName>;
+
+    /// Replaces the current timeline with the automatic one.
+    fn clear_timeline(&self);
+
+    /// Clears the blueprint time cursor, and will instead fall back
+    /// to a default one, most likely the one saved in time control's
+    /// per timeline state.
+    fn clear_time(&self);
+
+    fn set_playback_speed(&self, playback_speed: f64);
+    fn get_playback_speed(&self) -> Option<f64>;
+
+    fn set_fps(&self, fps: f64);
+    fn get_fps(&self) -> Option<f64>;
+}
+
+impl<T: BlueprintContext> TimeBlueprintExt for T {
+    fn set_time(&self, time: impl Into<TimeInt>) {
+        let time: TimeInt = time.into();
+        self.save_static_blueprint_component(
+            time_panel_blueprint_entity_path(),
+            &TimePanelBlueprint::descriptor_time(),
+            &re_types::blueprint::components::TimeInt(time.as_i64().into()),
+        );
+    }
+
+    fn get_time(&self) -> Option<TimeInt> {
+        let (_, time) = self
+            .current_blueprint()
+            .latest_at_component_quiet::<re_types::blueprint::components::TimeInt>(
+                &time_panel_blueprint_entity_path(),
+                self.blueprint_query(),
+                &TimePanelBlueprint::descriptor_time(),
+            )?;
+
+        Some(TimeInt::saturated_temporal_i64(time.0.0))
+    }
+
+    fn set_timeline(&self, timeline: TimelineName) {
+        self.save_blueprint_component(
+            time_panel_blueprint_entity_path(),
+            &TimePanelBlueprint::descriptor_timeline(),
+            &re_types::blueprint::components::TimelineName::from(timeline.as_str()),
+        );
+        self.clear_time();
+    }
+
+    fn get_timeline(&self) -> Option<TimelineName> {
+        let (_, timeline) = self
+            .current_blueprint()
+            .latest_at_component_quiet::<re_types::blueprint::components::TimelineName>(
+            &time_panel_blueprint_entity_path(),
+            self.blueprint_query(),
+            &TimePanelBlueprint::descriptor_timeline(),
+        )?;
+
+        Some(TimelineName::new(timeline.as_str()))
+    }
+
+    fn clear_timeline(&self) {
+        self.clear_blueprint_component(
+            time_panel_blueprint_entity_path(),
+            TimePanelBlueprint::descriptor_timeline(),
+        );
+    }
+
+    fn clear_time(&self) {
+        self.clear_static_blueprint_component(
+            time_panel_blueprint_entity_path(),
+            TimePanelBlueprint::descriptor_time(),
+        );
+    }
+
+    fn set_playback_speed(&self, playback_speed: f64) {
+        self.save_blueprint_component(
+            time_panel_blueprint_entity_path(),
+            &TimePanelBlueprint::descriptor_playback_speed(),
+            &re_types::blueprint::components::PlaybackSpeed(playback_speed.into()),
+        );
+    }
+
+    fn get_playback_speed(&self) -> Option<f64> {
+        let (_, playback_speed) = self
+            .current_blueprint()
+            .latest_at_component_quiet::<re_types::blueprint::components::PlaybackSpeed>(
+            &time_panel_blueprint_entity_path(),
+            self.blueprint_query(),
+            &TimePanelBlueprint::descriptor_playback_speed(),
+        )?;
+
+        Some(**playback_speed)
+    }
+
+    fn set_fps(&self, fps: f64) {
+        self.save_blueprint_component(
+            time_panel_blueprint_entity_path(),
+            &TimePanelBlueprint::descriptor_fps(),
+            &re_types::blueprint::components::Fps(fps.into()),
+        );
+    }
+
+    fn get_fps(&self) -> Option<f64> {
+        let (_, fps) = self
+            .current_blueprint()
+            .latest_at_component_quiet::<re_types::blueprint::components::Fps>(
+                &time_panel_blueprint_entity_path(),
+                self.blueprint_query(),
+                &TimePanelBlueprint::descriptor_fps(),
+            )?;
+
+        Some(**fps)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum Looping {
+    /// Looping is off.
+    Off,
+
+    /// We are looping within the current loop selection.
+    Selection,
+
+    /// We are looping the entire recording.
+    ///
+    /// The loop selection is ignored.
+    All,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum PlayState {
+    /// Time doesn't move
+    Paused,
+
+    /// Time move steadily
+    Playing,
+
+    /// Follow the latest available data
+    Following,
+}
 
 /// The time range we are currently zoomed in on.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize, PartialEq)]
@@ -33,6 +189,74 @@ impl From<AbsoluteTimeRange> for TimeView {
             time_spanned: value.abs_length() as f64,
         }
     }
+}
+
+/// A command used to mutate `TimeControl`.
+///
+/// Can be sent using [`crate::SystemCommand::TimeControlCommands`].
+#[derive(Debug)]
+pub enum TimeControlCommand {
+    HighlightRange(AbsoluteTimeRange),
+    ClearHighlightedRange,
+
+    /// Reset the active timeline to instead be automatically assigned.
+    ResetActiveTimeline,
+    SetActiveTimeline(TimelineName),
+
+    /// Set the current looping state.
+    SetLooping(Looping),
+    SetPlayState(PlayState),
+    Pause,
+    TogglePlayPause,
+    StepTimeBack,
+    StepTimeForward,
+
+    /// Restart the time cursor to the start.
+    ///
+    /// Stops any ongoing following.
+    Restart,
+
+    /// Set playback speed.
+    SetSpeed(f32),
+
+    /// Set playback fps.
+    SetFps(f32),
+
+    /// Set the current loop selection without enabling looping.
+    SetLoopSelection(AbsoluteTimeRange),
+
+    /// Remove the current loop selection.
+    ///
+    /// If the current loop mode is selection, turns off looping.
+    RemoveLoopSelection,
+
+    /// Sets the current time cursor.
+    SetTime(TimeReal),
+
+    /// Set the range of time we are currently zoomed in on.
+    SetTimeView(TimeView),
+
+    /// Reset the range of time we are currently zoomed in on.
+    ///
+    /// The view will instead fall back to the default which is
+    /// showing all received data.
+    ResetTimeView,
+
+    /// Mark up a time range as valid.
+    ///
+    /// Everything outside can still be navigated to, but will be considered potentially lacking some data and therefore "invalid".
+    /// Visually, it is outside of the normal time range and shown greyed out.
+    ///
+    /// If timeline is `None`, this signals that all timelines are considered to be valid entirely.
+    //
+    // TODO(andreas): The source of truth for this should probably in recording properties as it is just that,
+    // a property of the data!
+    // However, as of writing it's hard to inject _additional_ properties upon recording loading.
+    // For an attempt of modelling this as a serialized recordign property see `andreas/valid-ranges-rec-props` branch.
+    AddValidTimeRange {
+        timeline: Option<TimelineName>,
+        time_range: AbsoluteTimeRange,
+    },
 }
 
 /// State per timeline.
@@ -75,32 +299,6 @@ impl TimeState {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
-pub enum Looping {
-    /// Looping is off.
-    Off,
-
-    /// We are looping within the current loop selection.
-    Selection,
-
-    /// We are looping the entire recording.
-    ///
-    /// The loop selection is ignored.
-    All,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
-pub enum PlayState {
-    /// Time doesn't move
-    Paused,
-
-    /// Time move steadily
-    Playing,
-
-    /// Follow the latest available data
-    Following,
-}
-
 // TODO(andreas): This should be a blueprint property and follow the usual rules of how we determine fallbacks.
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq)]
 enum ActiveTimeline {
@@ -120,47 +318,20 @@ impl std::ops::Deref for ActiveTimeline {
     }
 }
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-struct TimeStateEntry {
-    prev: TimeState,
-    current: TimeState,
-}
-
-impl TimeStateEntry {
-    fn new(time: impl Into<TimeReal>) -> Self {
-        let state = TimeState::new(time);
-        Self {
-            prev: state,
-            current: state,
-        }
-    }
-}
-
-#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq)]
-struct LastFrame {
-    timeline: Option<Timeline>,
-    playing: bool,
-}
-
-impl Default for LastFrame {
-    fn default() -> Self {
-        Self {
-            timeline: None,
-            playing: true,
-        }
-    }
-}
-
 /// Controls the global view and progress of the time.
+///
+/// Modifications to this can be done via sending [`TimeControlCommand`]s
+/// which are handled at the end of frames.
+///
+/// The commands write both to this struct and to blueprints when
+/// applicable.
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq)]
 #[serde(default)]
 pub struct TimeControl {
-    last_frame: LastFrame,
-
     /// Name of the timeline (e.g. `log_time`).
     timeline: ActiveTimeline,
 
-    states: BTreeMap<TimelineName, TimeStateEntry>,
+    states: BTreeMap<TimelineName, TimeState>,
 
     /// Valid time ranges for each timeline.
     ///
@@ -188,7 +359,6 @@ pub struct TimeControl {
 impl Default for TimeControl {
     fn default() -> Self {
         Self {
-            last_frame: Default::default(),
             timeline: ActiveTimeline::Auto(default_timeline([])),
             states: Default::default(),
             valid_time_ranges: Default::default(),
@@ -201,6 +371,7 @@ impl Default for TimeControl {
     }
 }
 
+#[must_use]
 pub struct TimeControlResponse {
     pub needs_repaint: NeedsRepaint,
 
@@ -236,19 +407,126 @@ impl TimeControlResponse {
 }
 
 impl TimeControl {
-    /// Move the time forward (if playing), and perhaps pause if we've reached the end.
+    pub fn from_blueprint(blueprint_ctx: &impl BlueprintContext) -> Self {
+        let mut this = Self::default();
+
+        this.update_from_blueprint(blueprint_ctx, None);
+
+        this
+    }
+
+    /// Read from the time panel blueprint and update the state from that.
     ///
-    /// If `should_diff_state` is true, then the response also contains any changes in state
-    /// between last frame and the current one.
-    #[must_use]
+    /// If `times_per_timeline` is some this will also make sure we are on
+    /// a valid timeline.
+    pub fn update_from_blueprint(
+        &mut self,
+        blueprint_ctx: &impl BlueprintContext,
+        times_per_timeline: Option<&TimesPerTimeline>,
+    ) {
+        if let Some(timeline) = blueprint_ctx.get_timeline() {
+            if matches!(self.timeline, ActiveTimeline::Auto(_))
+                || timeline.as_str() != self.timeline().name().as_str()
+            {
+                self.timeline = ActiveTimeline::Pending(Timeline::new_sequence(timeline));
+            }
+        } else {
+            self.timeline = ActiveTimeline::Auto(*self.timeline());
+        }
+
+        // Make sure we are on a valid timeline.
+        if let Some(times_per_timeline) = times_per_timeline {
+            self.select_valid_timeline(times_per_timeline);
+        }
+
+        if let Some(time) = blueprint_ctx.get_time() {
+            if self.time_int() != Some(time) {
+                self.states
+                    .entry(*self.timeline().name())
+                    .or_insert_with(|| TimeState::new(time))
+                    .time = time.into();
+            }
+        }
+        // If the blueprint time wasn't set, but the current state's time was, we likely just switched timelines, so restore that timeline's time.
+        else if let Some(state) = self.states.get(self.timeline().name()) {
+            blueprint_ctx.set_time(state.time.floor());
+        }
+        // If we can't restore that timeline's state, we are on a new timeline.
+        //
+        // Then insert that new state at the start. Or end if we're following.
+        else if let Some(times_per_timeline) = times_per_timeline
+            && let Some(full_valid_range) = self.full_valid_range(times_per_timeline)
+        {
+            self.states.insert(
+                *self.timeline.name(),
+                TimeState::new(if self.following {
+                    full_valid_range.max
+                } else {
+                    full_valid_range.min
+                }),
+            );
+        }
+
+        let play_state = self.play_state();
+
+        if let Some(playback_speed) = blueprint_ctx.get_playback_speed() {
+            self.speed = playback_speed as f32;
+        }
+
+        // Update the last paused time if we are paused.
+        if let Some(state) = self.states.get_mut(self.timeline.name()) {
+            if let Some(fps) = blueprint_ctx.get_fps() {
+                state.fps = fps as f32;
+            }
+
+            match play_state {
+                PlayState::Paused => {
+                    state.last_paused_time = Some(state.time);
+                }
+                PlayState::Playing | PlayState::Following => {}
+            }
+        }
+    }
+
+    /// Sets the current time.
+    ///
+    /// If `blueprint_ctx` is some, this will also update the time stored in
+    /// the blueprint if `time_int` has changed.
+    fn update_time(&mut self, blueprint_ctx: Option<&impl BlueprintContext>, time: TimeReal) {
+        let time_int = time.floor();
+        if self.time_int() != Some(time_int)
+            && let Some(blueprint_ctx) = blueprint_ctx
+        {
+            blueprint_ctx.set_time(time_int);
+        }
+
+        self.states
+            .entry(*self.timeline.name())
+            .or_insert_with(|| TimeState::new(time))
+            .time = time;
+    }
+
+    /// Create [`TimeControlCommand`]s to move the time forward (if playing), and perhaps pause if
+    /// we've reached the end.
     pub fn update(
         &mut self,
         times_per_timeline: &TimesPerTimeline,
         stable_dt: f32,
         more_data_is_coming: bool,
         should_diff_state: bool,
+        blueprint_ctx: Option<&impl BlueprintContext>,
     ) -> TimeControlResponse {
-        self.select_a_valid_timeline(times_per_timeline);
+        let (old_playing, old_timeline, old_state) = (
+            self.playing,
+            *self.timeline(),
+            self.states.get(self.timeline.name()).copied(),
+        );
+
+        if let Some(blueprint_ctx) = blueprint_ctx {
+            self.update_from_blueprint(blueprint_ctx, Some(times_per_timeline));
+        } else {
+            self.select_valid_timeline(times_per_timeline);
+        }
 
         let Some(full_valid_range) = self.full_valid_range(times_per_timeline) else {
             return TimeControlResponse::no_repaint(); // we have no data on this timeline yet, so bail
@@ -261,14 +539,14 @@ impl TimeControl {
                 // When they do so, it might be the case that they switch to a timeline they've
                 // never interacted with before, in which case we don't even have a time state yet.
                 let state = self.states.entry(*self.timeline.name()).or_insert_with(|| {
-                    TimeStateEntry::new(if self.following {
+                    TimeState::new(if self.following {
                         full_valid_range.max()
                     } else {
                         full_valid_range.min()
                     })
                 });
 
-                state.current.last_paused_time = Some(state.current.time);
+                state.last_paused_time = Some(state.time);
                 NeedsRepaint::No
             }
             PlayState::Playing => {
@@ -277,11 +555,11 @@ impl TimeControl {
                 let state = self
                     .states
                     .entry(*self.timeline.name())
-                    .or_insert_with(|| TimeStateEntry::new(full_valid_range.min()));
+                    .or_insert_with(|| TimeState::new(full_valid_range.min()));
 
-                if self.looping == Looping::Off && full_valid_range.max() <= state.current.time {
+                if self.looping == Looping::Off && full_valid_range.max() <= state.time {
                     // We've reached the end of the data
-                    state.current.time = full_valid_range.max().into();
+                    self.update_time(blueprint_ctx, full_valid_range.max().into());
 
                     if more_data_is_coming {
                         // then let's wait for it without pausing!
@@ -292,25 +570,27 @@ impl TimeControl {
                     }
                 }
 
+                let mut new_time = state.time;
+
                 let loop_range = match self.looping {
                     Looping::Off => None,
-                    Looping::Selection => state.current.loop_selection,
+                    Looping::Selection => state.loop_selection,
                     Looping::All => Some(full_valid_range.into()),
                 };
 
                 match self.timeline.typ() {
                     TimeType::Sequence => {
-                        state.current.time += TimeReal::from(state.current.fps * dt);
+                        new_time += TimeReal::from(state.fps * dt);
                     }
                     TimeType::DurationNs | TimeType::TimestampNs => {
-                        state.current.time += TimeReal::from(Duration::from_secs(dt));
+                        new_time += TimeReal::from(Duration::from_secs(dt));
                     }
                 }
 
                 if let Some(loop_range) = loop_range
-                    && loop_range.max < state.current.time
+                    && loop_range.max < new_time
                 {
-                    state.current.time = loop_range.min; // loop!
+                    new_time = loop_range.min; // loop!
                 }
 
                 // Confine cursor to valid ranges.
@@ -323,28 +603,21 @@ impl TimeControl {
 
                     // The valid range index that the time cursor is either contained in or just behind.
                     let next_valid_range_idx =
-                        valid_ranges.partition_point(|range| range.max() < state.current.time);
+                        valid_ranges.partition_point(|range| range.max() < new_time);
                     let clamp_range = valid_ranges
                         .get(next_valid_range_idx)
                         .unwrap_or_else(|| valid_ranges.last());
-                    state.current.time = state
-                        .current
-                        .time
-                        .clamp(clamp_range.min().into(), clamp_range.max().into());
+                    new_time = new_time.clamp(clamp_range.min().into(), clamp_range.max().into());
                 }
+
+                self.update_time(blueprint_ctx, new_time);
 
                 NeedsRepaint::Yes
             }
             PlayState::Following => {
                 // Set the time to the max:
-                match self.states.entry(*self.timeline.name()) {
-                    std::collections::btree_map::Entry::Vacant(entry) => {
-                        entry.insert(TimeStateEntry::new(full_valid_range.max()));
-                    }
-                    std::collections::btree_map::Entry::Occupied(mut entry) => {
-                        entry.get_mut().current.time = full_valid_range.max().into();
-                    }
-                }
+                self.update_time(blueprint_ctx, full_valid_range.max().into());
+
                 NeedsRepaint::No // no need for request_repaint - we already repaint when new data arrives
             }
         };
@@ -357,27 +630,25 @@ impl TimeControl {
                 .get(self.timeline.name())
                 .is_some_and(|stats| !stats.per_time.is_empty());
         if should_diff_state {
-            self.diff_last_frame(&mut response);
+            self.diff_with(&mut response, old_timeline, old_playing, old_state);
         }
 
         response
     }
 
     /// Handle updating last frame state and trigger callbacks on changes.
-    fn diff_last_frame(&mut self, response: &mut TimeControlResponse) {
-        if self.last_frame.playing != self.playing {
-            self.last_frame.playing = self.playing;
-
-            if self.playing {
-                response.playing_change = Some(true);
-            } else {
-                response.playing_change = Some(false);
-            }
+    fn diff_with(
+        &mut self,
+        response: &mut TimeControlResponse,
+        old_timeline: Timeline,
+        old_playing: bool,
+        old_state: Option<TimeState>,
+    ) {
+        if old_playing != self.playing {
+            response.playing_change = Some(self.playing);
         }
 
-        if self.last_frame.timeline != Some(*self.timeline) {
-            self.last_frame.timeline = Some(*self.timeline);
-
+        if old_timeline != *self.timeline {
             let time = self
                 .time_for_timeline(*self.timeline.name())
                 .unwrap_or(TimeReal::MIN);
@@ -387,10 +658,8 @@ impl TimeControl {
 
         if let Some(state) = self.states.get_mut(self.timeline.name()) {
             // TODO(jan): throttle?
-            if state.prev.time != state.current.time {
-                state.prev.time = state.current.time;
-
-                response.time_change = Some(state.current.time);
+            if old_state.is_none_or(|old_state| old_state.time != state.time) {
+                response.time_change = Some(state.time);
             }
         }
     }
@@ -415,15 +684,251 @@ impl TimeControl {
         }
     }
 
-    pub fn set_looping(&mut self, looping: Looping) {
-        self.looping = looping;
-        if self.looping != Looping::Off {
-            // It makes no sense with looping and follow.
-            self.following = false;
+    pub fn handle_time_commands(
+        &mut self,
+        blueprint_ctx: Option<&impl BlueprintContext>,
+        times_per_timeline: &TimesPerTimeline,
+        commands: &[TimeControlCommand],
+    ) -> TimeControlResponse {
+        let mut response = TimeControlResponse {
+            needs_repaint: NeedsRepaint::No,
+            playing_change: None,
+            timeline_change: None,
+            time_change: None,
+        };
+
+        let (old_playing, old_timeline, old_state) = (
+            self.playing,
+            *self.timeline(),
+            self.states.get(self.timeline.name()).copied(),
+        );
+
+        for command in commands {
+            let needs_repaint =
+                self.handle_time_command(blueprint_ctx, times_per_timeline, command);
+
+            if needs_repaint == NeedsRepaint::Yes {
+                response.needs_repaint = NeedsRepaint::Yes;
+            }
+        }
+
+        self.diff_with(&mut response, old_timeline, old_playing, old_state);
+
+        response
+    }
+
+    /// Applies a time command with respect to the current timeline.
+    ///
+    /// If `blueprint_ctx` is some, this also writes to that blueprint
+    /// for applicable commands.
+    ///
+    /// Returns if the command should cause a repaint.
+    fn handle_time_command(
+        &mut self,
+        blueprint_ctx: Option<&impl BlueprintContext>,
+        times_per_timeline: &TimesPerTimeline,
+        command: &TimeControlCommand,
+    ) -> NeedsRepaint {
+        match command {
+            TimeControlCommand::HighlightRange(range) => {
+                self.highlighted_range = Some(*range);
+
+                NeedsRepaint::Yes
+            }
+            TimeControlCommand::ClearHighlightedRange => {
+                self.highlighted_range = None;
+
+                NeedsRepaint::Yes
+            }
+            TimeControlCommand::ResetActiveTimeline => {
+                if let Some(blueprint_ctx) = blueprint_ctx {
+                    blueprint_ctx.clear_timeline();
+                }
+                self.timeline = ActiveTimeline::Auto(*self.timeline());
+
+                NeedsRepaint::Yes
+            }
+            TimeControlCommand::SetActiveTimeline(timeline_name) => {
+                if let Some(blueprint_ctx) = blueprint_ctx {
+                    blueprint_ctx.set_timeline(*timeline_name);
+                }
+
+                if let Some(stats) = times_per_timeline.get(timeline_name) {
+                    self.timeline = ActiveTimeline::UserEdited(stats.timeline);
+                } else {
+                    self.timeline = ActiveTimeline::Pending(Timeline::new_sequence(*timeline_name));
+                }
+
+                if let Some(full_valid_range) = self.full_valid_range(times_per_timeline)
+                    && !self.states.contains_key(timeline_name)
+                {
+                    self.states
+                        .insert(*timeline_name, TimeState::new(full_valid_range.min));
+                    if let Some(blueprint_ctx) = blueprint_ctx {
+                        blueprint_ctx.set_time(full_valid_range.min);
+                    }
+                }
+
+                NeedsRepaint::Yes
+            }
+            TimeControlCommand::SetLooping(looping) => {
+                self.looping = *looping;
+                if self.looping != Looping::Off {
+                    // It makes no sense with looping and follow.
+                    self.following = false;
+                }
+
+                NeedsRepaint::Yes
+            }
+            TimeControlCommand::SetPlayState(play_state) => {
+                self.set_play_state(times_per_timeline, *play_state, blueprint_ctx);
+
+                NeedsRepaint::Yes
+            }
+            TimeControlCommand::Pause => {
+                if self.playing {
+                    self.pause();
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
+            }
+
+            TimeControlCommand::TogglePlayPause => {
+                self.toggle_play_pause(times_per_timeline, blueprint_ctx);
+
+                NeedsRepaint::Yes
+            }
+            TimeControlCommand::StepTimeBack => {
+                self.step_time_back(times_per_timeline, blueprint_ctx);
+
+                NeedsRepaint::Yes
+            }
+            TimeControlCommand::StepTimeForward => {
+                self.step_time_fwd(times_per_timeline, blueprint_ctx);
+
+                NeedsRepaint::Yes
+            }
+            TimeControlCommand::Restart => {
+                if let Some(full_valid_range) = self.full_valid_range(times_per_timeline) {
+                    self.following = false;
+
+                    if let Some(blueprint_ctx) = blueprint_ctx {
+                        blueprint_ctx.set_time(full_valid_range.min);
+                    }
+
+                    if let Some(state) = self.states.get_mut(self.timeline.name()) {
+                        state.time = full_valid_range.min.into();
+                    }
+
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
+            }
+            TimeControlCommand::SetSpeed(speed) => {
+                if *speed != self.speed {
+                    self.speed = *speed;
+
+                    if let Some(blueprint_ctx) = blueprint_ctx {
+                        blueprint_ctx.set_playback_speed(*speed as f64);
+                    }
+
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
+            }
+            TimeControlCommand::SetFps(fps) => {
+                if let Some(state) = self.states.get_mut(self.timeline.name())
+                    && state.fps != *fps
+                {
+                    state.fps = *fps;
+
+                    if let Some(blueprint_ctx) = blueprint_ctx {
+                        blueprint_ctx.set_fps(*fps as f64);
+                    }
+
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
+            }
+            TimeControlCommand::SetLoopSelection(time_range) => {
+                if let Some(state) = self.states.get_mut(self.timeline.name()) {
+                    state.loop_selection = Some((*time_range).into());
+
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
+            }
+            TimeControlCommand::RemoveLoopSelection => {
+                if let Some(state) = self.states.get_mut(self.timeline.name()) {
+                    state.loop_selection = None;
+
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
+            }
+            TimeControlCommand::SetTime(time) => {
+                let time_int = time.floor();
+                let update_blueprint = self.time_int() != Some(time_int);
+                if let Some(blueprint_ctx) = blueprint_ctx
+                    && update_blueprint
+                {
+                    blueprint_ctx.set_time(time_int);
+                }
+                self.states
+                    .entry(*self.timeline.name())
+                    .or_insert_with(|| TimeState::new(*time))
+                    .time = *time;
+
+                if update_blueprint {
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
+            }
+            TimeControlCommand::SetTimeView(time_view) => {
+                if let Some(state) = self.states.get_mut(self.timeline.name()) {
+                    state.view = Some(*time_view);
+
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
+            }
+            TimeControlCommand::ResetTimeView => {
+                if let Some(state) = self.states.get_mut(self.timeline.name()) {
+                    state.view = None;
+
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
+            }
+            TimeControlCommand::AddValidTimeRange {
+                timeline,
+                time_range,
+            } => {
+                self.mark_time_range_valid(*timeline, *time_range);
+                NeedsRepaint::Yes
+            }
         }
     }
 
-    pub fn set_play_state(&mut self, times_per_timeline: &TimesPerTimeline, play_state: PlayState) {
+    /// Updates the current play-state.
+    ///
+    /// If `blueprint_ctx` is specified this writes to the related
+    /// blueprint.
+    pub fn set_play_state(
+        &mut self,
+        times_per_timeline: &TimesPerTimeline,
+        play_state: PlayState,
+        blueprint_ctx: Option<&impl BlueprintContext>,
+    ) {
         match play_state {
             PlayState::Paused => {
                 self.playing = false;
@@ -435,14 +940,20 @@ impl TimeControl {
                 // Start from beginning if we are at the end:
                 if let Some(timeline_stats) = times_per_timeline.get(self.timeline.name()) {
                     if let Some(state) = self.states.get_mut(self.timeline.name()) {
-                        if max(&timeline_stats.per_time) <= state.current.time {
-                            state.current.time = min(&timeline_stats.per_time).into();
+                        if max(&timeline_stats.per_time) <= state.time {
+                            let new_time = min(&timeline_stats.per_time);
+                            if let Some(blueprint_ctx) = blueprint_ctx {
+                                blueprint_ctx.set_time(new_time);
+                            }
+                            state.time = new_time.into();
                         }
                     } else {
-                        self.states.insert(
-                            *self.timeline.name(),
-                            TimeStateEntry::new(min(&timeline_stats.per_time)),
-                        );
+                        let new_time = min(&timeline_stats.per_time);
+                        if let Some(blueprint_ctx) = blueprint_ctx {
+                            blueprint_ctx.set_time(new_time);
+                        }
+                        self.states
+                            .insert(*self.timeline.name(), TimeState::new(new_time));
                     }
                 }
             }
@@ -452,24 +963,24 @@ impl TimeControl {
 
                 if let Some(timeline_stats) = times_per_timeline.get(self.timeline.name()) {
                     // Set the time to the max:
-                    match self.states.entry(*self.timeline.name()) {
-                        std::collections::btree_map::Entry::Vacant(entry) => {
-                            entry.insert(TimeStateEntry::new(max(&timeline_stats.per_time)));
-                        }
-                        std::collections::btree_map::Entry::Occupied(mut entry) => {
-                            entry.get_mut().current.time = max(&timeline_stats.per_time).into();
-                        }
+                    let new_time = max(&timeline_stats.per_time);
+                    if let Some(blueprint_ctx) = blueprint_ctx {
+                        blueprint_ctx.set_time(new_time);
                     }
+                    self.states
+                        .entry(*self.timeline.name())
+                        .or_insert_with(|| TimeState::new(new_time))
+                        .time = new_time.into();
                 }
             }
         }
     }
 
-    pub fn pause(&mut self) {
-        self.playing = false;
-    }
-
-    pub fn step_time_back(&mut self, times_per_timeline: &TimesPerTimeline) {
+    fn step_time_back(
+        &mut self,
+        times_per_timeline: &TimesPerTimeline,
+        blueprint_ctx: Option<&impl TimeBlueprintExt>,
+    ) {
         let Some(timeline_stats) = times_per_timeline.get(self.timeline().name()) else {
             return;
         };
@@ -483,11 +994,21 @@ impl TimeControl {
             } else {
                 step_back_time(time, &timeline_stats.per_time).into()
             };
-            self.set_time(new_time);
+            if let Some(ctx) = blueprint_ctx {
+                ctx.set_time(new_time.floor());
+            }
+
+            if let Some(state) = self.states.get_mut(self.timeline.name()) {
+                state.time = new_time;
+            }
         }
     }
 
-    pub fn step_time_fwd(&mut self, times_per_timeline: &TimesPerTimeline) {
+    fn step_time_fwd(
+        &mut self,
+        times_per_timeline: &TimesPerTimeline,
+        blueprint_ctx: Option<&impl TimeBlueprintExt>,
+    ) {
         let Some(stats) = times_per_timeline.get(self.timeline().name()) else {
             return;
         };
@@ -501,20 +1022,28 @@ impl TimeControl {
             } else {
                 step_fwd_time(time, &stats.per_time).into()
             };
-            self.set_time(new_time);
+            if let Some(ctx) = blueprint_ctx {
+                ctx.set_time(new_time.floor());
+            }
+
+            if let Some(state) = self.states.get_mut(self.timeline.name()) {
+                state.time = new_time;
+            }
         }
     }
 
-    pub fn restart(&mut self, times_per_timeline: &TimesPerTimeline) {
-        if let Some(stats) = times_per_timeline.get(self.timeline.name())
-            && let Some(state) = self.states.get_mut(self.timeline.name())
-        {
-            state.current.time = min(&stats.per_time).into();
-            self.following = false;
+    fn pause(&mut self) {
+        self.playing = false;
+        if let Some(state) = self.states.get_mut(self.timeline.name()) {
+            state.last_paused_time = Some(state.time);
         }
     }
 
-    pub fn toggle_play_pause(&mut self, times_per_timeline: &TimesPerTimeline) {
+    fn toggle_play_pause(
+        &mut self,
+        times_per_timeline: &TimesPerTimeline,
+        blueprint_ctx: Option<&impl BlueprintContext>,
+    ) {
         #[allow(clippy::collapsible_else_if)]
         if self.playing {
             self.pause();
@@ -544,18 +1073,22 @@ impl TimeControl {
             // Start from beginning if we are at the end:
             if let Some(stats) = times_per_timeline.get(self.timeline.name())
                 && let Some(state) = self.states.get_mut(self.timeline.name())
-                && max(&stats.per_time) <= state.current.time
+                && max(&stats.per_time) <= state.time
             {
-                state.current.time = min(&stats.per_time).into();
+                let new_time = min(&stats.per_time);
+                if let Some(blueprint_ctx) = blueprint_ctx {
+                    blueprint_ctx.set_time(new_time);
+                }
+                state.time = new_time.into();
                 self.playing = true;
                 self.following = false;
                 return;
             }
 
             if self.following {
-                self.set_play_state(times_per_timeline, PlayState::Following);
+                self.set_play_state(times_per_timeline, PlayState::Following, blueprint_ctx);
             } else {
-                self.set_play_state(times_per_timeline, PlayState::Playing);
+                self.set_play_state(times_per_timeline, PlayState::Playing, blueprint_ctx);
             }
         }
     }
@@ -565,27 +1098,15 @@ impl TimeControl {
         self.speed
     }
 
-    /// playback speed
-    pub fn set_speed(&mut self, speed: f32) {
-        self.speed = speed;
-    }
-
     /// playback fps
     pub fn fps(&self) -> Option<f32> {
         self.states
             .get(self.timeline().name())
-            .map(|state| state.current.fps)
-    }
-
-    /// playback fps
-    pub fn set_fps(&mut self, fps: f32) {
-        if let Some(state) = self.states.get_mut(self.timeline.name()) {
-            state.current.fps = fps;
-        }
+            .map(|state| state.fps)
     }
 
     /// Make sure the selected timeline is a valid one
-    pub fn select_a_valid_timeline(&mut self, times_per_timeline: &TimesPerTimeline) {
+    fn select_valid_timeline(&mut self, times_per_timeline: &TimesPerTimeline) {
         fn is_timeline_valid(selected: &Timeline, times_per_timeline: &TimesPerTimeline) -> bool {
             for timeline in times_per_timeline.timelines() {
                 if selected == timeline {
@@ -605,15 +1126,18 @@ impl TimeControl {
             // If it's pending never automatically refresh it.
             ActiveTimeline::Pending(timeline) => {
                 // If the pending timeline is valid, it shouldn't be pending anymore.
-                if is_timeline_valid(timeline, times_per_timeline) {
-                    self.set_timeline(*timeline);
+                if let Some(timeline) = times_per_timeline
+                    .timelines()
+                    .find(|t| t.name() == timeline.name())
+                {
+                    self.timeline = ActiveTimeline::UserEdited(*timeline);
                 }
 
                 false
             }
         };
 
-        if reset_timeline {
+        if reset_timeline || matches!(self.timeline, ActiveTimeline::Auto(_)) {
             self.timeline =
                 ActiveTimeline::Auto(default_timeline(times_per_timeline.timelines_with_stats()));
         }
@@ -630,14 +1154,6 @@ impl TimeControl {
         self.timeline.typ()
     }
 
-    pub fn set_timeline(&mut self, timeline: Timeline) {
-        self.timeline = ActiveTimeline::UserEdited(timeline);
-    }
-
-    pub fn set_pending_timeline(&mut self, timeline: Timeline) {
-        self.timeline = ActiveTimeline::Pending(timeline);
-    }
-
     /// Mark up a time range as valid.
     ///
     /// Everything outside can still be navigated to, but will be considered potentially lacking some data and therefore "invalid".
@@ -649,7 +1165,7 @@ impl TimeControl {
     // a property of the data!
     // However, as of writing it's hard to inject _additional_ properties upon recording loading.
     // For an attempt of modelling this as a serialized recordign property see `andreas/valid-ranges-rec-props` branch.
-    pub fn mark_time_range_valid(
+    fn mark_time_range_valid(
         &mut self,
         timeline: Option<TimelineName>,
         time_range: AbsoluteTimeRange,
@@ -716,7 +1232,7 @@ impl TimeControl {
     pub fn time(&self) -> Option<TimeReal> {
         self.states
             .get(self.timeline().name())
-            .map(|state| state.current.time)
+            .map(|state| state.time)
     }
 
     pub fn last_paused_time(&self) -> Option<TimeReal> {
@@ -725,7 +1241,7 @@ impl TimeControl {
         } else {
             self.states
                 .get(self.timeline().name())
-                .and_then(|state| state.current.last_paused_time)
+                .and_then(|state| state.last_paused_time)
         }
     }
 
@@ -756,10 +1272,7 @@ impl TimeControl {
     /// The current loop range, if selection looping is turned on.
     pub fn active_loop_selection(&self) -> Option<AbsoluteTimeRangeF> {
         if self.looping == Looping::Selection {
-            self.states
-                .get(self.timeline().name())?
-                .current
-                .loop_selection
+            self.states.get(self.timeline().name())?.loop_selection
         } else {
             None
         }
@@ -782,29 +1295,7 @@ impl TimeControl {
     ///
     /// This can still return `Some` even if looping is currently off.
     pub fn loop_selection(&self) -> Option<AbsoluteTimeRangeF> {
-        self.states
-            .get(self.timeline().name())?
-            .current
-            .loop_selection
-    }
-
-    /// Set the current loop selection without enabling looping.
-    pub fn set_loop_selection(&mut self, selection: AbsoluteTimeRangeF) {
-        self.states
-            .entry(*self.timeline.name())
-            .or_insert_with(|| TimeStateEntry::new(selection.min))
-            .current
-            .loop_selection = Some(selection);
-    }
-
-    /// Remove the current loop selection.
-    pub fn remove_loop_selection(&mut self) {
-        if let Some(state) = self.states.get_mut(self.timeline.name()) {
-            state.current.loop_selection = None;
-        }
-        if self.looping() == Looping::Selection {
-            self.set_looping(Looping::Off);
-        }
+        self.states.get(self.timeline().name())?.loop_selection
     }
 
     /// Is the current time in the selection range (if any), or at the current time mark?
@@ -814,7 +1305,7 @@ impl TimeControl {
         }
 
         if let Some(state) = self.states.get(self.timeline().name()) {
-            state.current.time.floor() == needle
+            state.time.floor() == needle
         } else {
             false
         }
@@ -825,56 +1316,15 @@ impl TimeControl {
         matches!(self.timeline, ActiveTimeline::Pending(_))
     }
 
-    pub fn set_timeline_and_time(&mut self, timeline: Timeline, time: impl Into<TimeReal>) {
-        self.timeline = ActiveTimeline::UserEdited(timeline);
-        self.set_time(time);
-    }
-
     pub fn time_for_timeline(&self, timeline: TimelineName) -> Option<TimeReal> {
-        self.states.get(&timeline).map(|state| state.current.time)
-    }
-
-    pub fn set_time_for_timeline(&mut self, timeline: Timeline, time: impl Into<TimeReal>) {
-        let time = time.into();
-
-        self.states
-            .entry(*timeline.name())
-            .or_insert_with(|| TimeStateEntry::new(time))
-            .current
-            .time = time;
-    }
-
-    pub fn set_time(&mut self, time: impl Into<TimeReal>) {
-        let time = time.into();
-
-        self.states
-            .entry(*self.timeline.name())
-            .or_insert_with(|| TimeStateEntry::new(time))
-            .current
-            .time = time;
+        self.states.get(&timeline).map(|state| state.time)
     }
 
     /// The range of time we are currently zoomed in on.
     pub fn time_view(&self) -> Option<TimeView> {
         self.states
             .get(self.timeline().name())
-            .and_then(|state| state.current.view)
-    }
-
-    /// The range of time we are currently zoomed in on.
-    pub fn set_time_view(&mut self, view: TimeView) {
-        self.states
-            .entry(*self.timeline.name())
-            .or_insert_with(|| TimeStateEntry::new(view.min))
-            .current
-            .view = Some(view);
-    }
-
-    /// The range of time we are currently zoomed in on.
-    pub fn reset_time_view(&mut self) {
-        if let Some(state) = self.states.get_mut(self.timeline.name()) {
-            state.current.view = None;
-        }
+            .and_then(|state| state.view)
     }
 }
 

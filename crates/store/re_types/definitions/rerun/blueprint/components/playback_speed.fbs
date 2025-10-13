@@ -1,0 +1,16 @@
+namespace rerun.blueprint.components;
+
+// ---
+
+/// A playback speed which determines how fast time progresses.
+table PlaybackSpeed (
+  "attr.python.aliases": "float",
+  "attr.python.array_aliases": "npt.ArrayLike",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  /// 1.0 is default speed.
+  speed: rerun.datatypes.Float64 (order: 100);
+}

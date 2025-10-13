@@ -691,7 +691,7 @@ pub mod ar_plane_anchor {
         /// The classification process for the plane anchor has completed but the
         /// result is inconclusive.
         Unknown = 0,
-        /// No classication information can be provided (set on error or if the
+        /// No classification information can be provided (set on error or if the
         /// device does not support plane classification).
         Unavailable = 1,
         /// The classification process has not completed.

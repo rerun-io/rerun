@@ -3,13 +3,13 @@ use std::time::Duration;
 use egui_kittest::{SnapshotResults, kittest::Queryable as _};
 
 use re_integration_test::TestServer;
-use re_viewer::viewer_test_utils;
+use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 #[tokio::test(flavor = "multi_thread")]
 pub async fn dataset_ui_test() {
     let server = TestServer::spawn().await.with_test_data().await;
 
-    let mut harness = viewer_test_utils::viewer_harness();
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
     let mut snapshot_results = SnapshotResults::new();
 
     harness.get_by_label("Blueprint panel toggle").click();

@@ -143,7 +143,7 @@ pub fn test_transform_tree_origins() {
     for origin in ["/sun", "/sun/planet", "/sun/planet/moon"] {
         let view_id = setup_blueprint(&mut test_context, origin);
         run_view_ui_and_save_snapshot(
-            &mut test_context,
+            &test_context,
             view_id,
             &format!("transform_tree_origins_{}", origin.replace('/', "_")),
             egui::vec2(400.0, 250.0),
@@ -177,7 +177,7 @@ fn setup_blueprint(test_context: &mut TestContext, origin: &str) -> ViewId {
 
 #[track_caller]
 fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
+    test_context: &TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
@@ -207,7 +207,7 @@ fn run_view_ui_and_save_snapshot(
                 test_context.ui_for_single_view(ui, ctx, view_id);
             });
 
-            test_context.handle_system_commands();
+            test_context.handle_system_commands(ui.ctx());
         });
 
     harness.snapshot_options(

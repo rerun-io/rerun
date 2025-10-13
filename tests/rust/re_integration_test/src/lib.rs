@@ -1,7 +1,9 @@
 //! Integration tests for rerun and the in memory server.
 
+mod kittest_harness_ext;
 mod test_data;
 
+pub use kittest_harness_ext::HarnessExt;
 use re_redap_client::{ClientConnectionError, ConnectionClient, ConnectionRegistry};
 use re_server::ServerHandle;
 use re_uri::external::url::Host;
@@ -68,7 +70,7 @@ impl Drop for TestServer {
             .expect("Server handle not initialized");
         tokio::task::block_in_place(move || {
             tokio::runtime::Handle::current().block_on(async move {
-                server_handle.shutdown().await;
+                server_handle.shutdown_and_wait().await;
             });
         });
     }

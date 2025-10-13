@@ -309,7 +309,7 @@ fn merge_and_compact(
         .unwrap_or(re_build_info::CrateVersion::LOCAL);
 
     re_log::info!("encoding…");
-    let rrd_out_size = re_log_encoding::encoder::encode(
+    let rrd_out_size = re_log_encoding::Encoder::encode_into(
         version,
         encoding_options,
         // NOTE: We want to make sure all blueprints come first, so that the viewer can immediately

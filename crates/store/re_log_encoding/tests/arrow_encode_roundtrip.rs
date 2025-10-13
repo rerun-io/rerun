@@ -1,8 +1,7 @@
 use similar_asserts::assert_eq;
 
-use re_build_info::CrateVersion;
 use re_chunk::{Chunk, RowId, TimePoint, Timeline};
-use re_log_encoding::{EncodingOptions, decoder::decode_bytes, encoder::encode_as_bytes};
+use re_log_encoding::{DecoderApp, Encoder};
 use re_log_types::{LogMsg, StoreId};
 use re_types::archetypes::Points3D;
 
@@ -39,13 +38,9 @@ fn encode_roundtrip() {
     let store_id = StoreId::empty_recording();
     let messages = [LogMsg::ArrowMsg(store_id, arrow_msg)];
 
-    let option = EncodingOptions::PROTOBUF_COMPRESSED;
-    let crate_version = CrateVersion::LOCAL;
-    let encoded = encode_as_bytes(crate_version, option, messages.iter().cloned().map(Ok)).unwrap();
-    let decoded = decode_bytes(&encoded).unwrap();
-    similar_asserts::assert_eq!(
-        decoded,
-        messages,
-        "Failed to roundtrip chunk with option {option:?}"
-    );
+    let encoded = Encoder::encode(messages.iter().cloned().map(Ok)).unwrap();
+    let decoded: Vec<_> = DecoderApp::decode_lazy(encoded.as_slice())
+        .map(Result::unwrap)
+        .collect();
+    similar_asserts::assert_eq!(decoded, messages, "Failed to roundtrip chunk");
 }

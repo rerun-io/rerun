@@ -22,45 +22,21 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer21(pub crate::testing::datatypes::AffixFuzzer21);
 
-impl ::re_types_core::Component for AffixFuzzer21 {
+impl ::re_types_core::WrapperComponent for AffixFuzzer21 {
+    type Datatype = crate::testing::datatypes::AffixFuzzer21;
+
     #[inline]
     fn name() -> ComponentType {
         "rerun.testing.components.AffixFuzzer21".into()
     }
+
+    #[inline]
+    fn into_inner(self) -> Self::Datatype {
+        self.0
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer21);
-
-impl ::re_types_core::Loggable for AffixFuzzer21 {
-    #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
-        crate::testing::datatypes::AffixFuzzer21::arrow_datatype()
-    }
-
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
-    where
-        Self: Clone + 'a,
-    {
-        crate::testing::datatypes::AffixFuzzer21::to_arrow_opt(data.into_iter().map(|datum| {
-            datum.map(|datum| match datum.into() {
-                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
-                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
-            })
-        }))
-    }
-
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
-        crate::testing::datatypes::AffixFuzzer21::from_arrow_opt(arrow_data)
-            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
-    }
-}
 
 impl<T: Into<crate::testing::datatypes::AffixFuzzer21>> From<T> for AffixFuzzer21 {
     fn from(v: T) -> Self {

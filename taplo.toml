@@ -13,4 +13,6 @@ include = [
 ]
 
 [formatting]
+align_comments = false # causes unnecessary churn
+column_width = 100
 indent_string = "  " # keep in sync with `.editorconfig`

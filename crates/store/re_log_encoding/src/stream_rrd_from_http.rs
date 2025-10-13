@@ -71,7 +71,7 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
     ehttp::streaming::fetch(ehttp::Request::get(&url), {
-        let decoder = RefCell::new(StreamDecoder::new());
+        let decoder = RefCell::new(crate::Decoder::new());
         move |part| match part {
             Ok(part) => match part {
                 ehttp::streaming::Part::Response(ehttp::PartialResponse {
@@ -100,7 +100,7 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
                     }
 
                     re_tracing::profile_scope!("decoding_rrd_stream");
-                    decoder.borrow_mut().push_chunk(chunk);
+                    decoder.borrow_mut().push_byte_chunk(chunk);
                     loop {
                         match decoder.borrow_mut().try_read() {
                             Ok(message) => match message {
@@ -186,7 +186,7 @@ pub mod web_decode {
     async fn decode_rrd_async(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
         let mut last_yield = web_time::Instant::now();
 
-        match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
+        match crate::Decoder::decode_eager(rrd_bytes.as_slice()) {
             Ok(decoder) => {
                 for msg in decoder {
                     match msg {
@@ -241,5 +241,3 @@ pub mod web_decode {
 
 #[cfg(target_arch = "wasm32")]
 use web_decode::decode_rrd;
-
-use crate::decoder::stream::StreamDecoder;

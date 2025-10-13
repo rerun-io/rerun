@@ -26,11 +26,7 @@ pub(crate) async fn start_metrics_server(
     reader: Arc<ManualReader>,
 ) -> anyhow::Result<SocketAddr> {
     let addr: SocketAddr = address.parse().map_err(|err| {
-        anyhow::anyhow!(
-            "Failed to parse metrics listen address '{}': {}",
-            address,
-            err
-        )
+        anyhow::anyhow!("Failed to parse metrics listen address '{address}': {err}")
     })?;
 
     let app = Router::new()
@@ -40,11 +36,11 @@ pub(crate) async fn start_metrics_server(
     // Bind synchronously to catch binding errors immediately
     let listener = TcpListener::bind(addr)
         .await
-        .map_err(|err| anyhow::anyhow!("Failed to bind to {}: {}", addr, err))?;
+        .map_err(|err| anyhow::anyhow!("Failed to bind to {addr}: {err}"))?;
 
     let bound_addr = listener
         .local_addr()
-        .map_err(|err| anyhow::anyhow!("Failed to get local address: {}", err))?;
+        .map_err(|err| anyhow::anyhow!("Failed to get local address: {err}"))?;
 
     // Spawn the server task to run asynchronously
     tokio::spawn(async move {

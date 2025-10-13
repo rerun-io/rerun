@@ -115,7 +115,10 @@ impl PyRerunHtmlTable {
         has_more: bool,
         table_uuid: &str,
     ) -> PyResult<String> {
-        let batch_opts = RecordBatchFormatOpts::default();
+        let batch_opts = RecordBatchFormatOpts {
+            include_metadata: false,
+            ..Default::default()
+        };
 
         let tables = batches
             .into_iter()

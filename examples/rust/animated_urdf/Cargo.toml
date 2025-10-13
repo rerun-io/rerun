@@ -7,11 +7,8 @@ license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
-rerun = { path = "../../../crates/top/rerun", features = [
-  "clap",
-  "data_loaders",
-] }
+rerun = { path = "../../../crates/top/rerun", features = ["clap", "data_loaders"] }
 
-anyhow = "1.0"
-clap = { version = "4.0", features = ["derive"] }
-emath = "0.32.0"
+anyhow.workspace = true
+clap = { workspace = true, features = ["derive"] }
+emath.workspace = true

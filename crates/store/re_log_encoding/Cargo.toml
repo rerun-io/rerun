@@ -24,13 +24,7 @@ default = []
 testing = []
 
 ## Enable loading data from an .rrd file.
-decoder = [
-  "re_log_types/serde",
-  "dep:bytes",
-  "dep:lz4_flex",
-  "dep:tokio",
-  "dep:tokio-stream",
-]
+decoder = ["re_log_types/serde", "dep:bytes", "dep:lz4_flex", "dep:tokio", "dep:tokio-stream"]
 
 ## Enable encoding of log messages to an .rrd file/stream.
 encoder = ["dep:lz4_flex", "re_log_types/serde"]
@@ -77,10 +71,7 @@ web-time = { workspace = true, optional = true }
 js-sys = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 wasm-bindgen-futures = { workspace = true, optional = true }
-web-sys = { workspace = true, optional = true, features = [
-  "Window",
-  "MessageEvent",
-] }
+web-sys = { workspace = true, optional = true, features = ["Window", "MessageEvent"] }
 
 [dev-dependencies]
 re_types.workspace = true

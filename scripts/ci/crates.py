@@ -8,7 +8,7 @@ Use the script:
 
     # Update crate versions to the next prerelease version,
     # e.g. `0.8.0` -> `0.8.0-alpha.0`, `0.8.0-alpha.0` -> `0.8.0-alpha.1`
-    pixi run python scripts/ci/crates.py version --bump prerelase --dry-run
+    pixi run python scripts/ci/crates.py version --bump prerelease --dry-run
 
     # Update crate versions to an exact version
     pixi run python scripts/ci/crates.py version --exact 0.10.1 --dry-run
@@ -495,7 +495,7 @@ def publish_unpublished_crates_in_parallel(all_crates: dict[str, Crate], version
         else:
             unpublished_crates[name] = crate
 
-    # collect dependency graph (adjancency list of `crate -> dependencies`)
+    # collect dependency graph (adjacency list of `crate -> dependencies`)
     print("Building dependency graph…")
     dependency_graph: dict[str, list[str]] = {}
     for name, crate in unpublished_crates.items():

@@ -1325,7 +1325,7 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
     }
 
     parse_size_inner(size)
-        .ok_or_else(|| anyhow::anyhow!("Invalid size {:?}, expected e.g. 800x600", size))
+        .ok_or_else(|| anyhow::anyhow!("Invalid size {size:?}, expected e.g. 800x600"))
 }
 
 // --- io ---
@@ -1347,11 +1347,8 @@ fn stream_to_rrd_on_disk(
     let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
     let file =
         std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-    let mut encoder = re_log_encoding::encoder::DroppableEncoder::new(
-        re_build_info::CrateVersion::LOCAL,
-        encoding_options,
-        file,
-    )?;
+    let mut encoder =
+        re_log_encoding::Encoder::new(re_build_info::CrateVersion::LOCAL, encoding_options, file)?;
 
     loop {
         if let Ok(msg) = rx.recv() {

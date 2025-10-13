@@ -1,8 +1,5 @@
 use anyhow::Context as _;
-use arrow::array::{
-    FixedSizeListArray, FixedSizeListBuilder, Float64Builder, Int8Builder, UInt8Builder,
-    UInt16Builder,
-};
+use arrow::array::{FixedSizeListArray, FixedSizeListBuilder, Float64Builder};
 use re_chunk::{Chunk, ChunkId};
 use re_types::{
     ComponentDescriptor, SerializedComponentColumn, archetypes::GeoPoints, components::LatLon,
@@ -23,10 +20,6 @@ pub struct NavSatFixSchemaPlugin;
 pub struct NavSatFixMessageParser {
     geo_points: Vec<LatLon>,
     altitude: FixedSizeListBuilder<Float64Builder>,
-    status: FixedSizeListBuilder<Int8Builder>,
-    service: FixedSizeListBuilder<UInt16Builder>,
-    position_covariance: FixedSizeListBuilder<Float64Builder>,
-    position_covariance_type: FixedSizeListBuilder<UInt8Builder>,
 }
 
 impl NavSatFixMessageParser {
@@ -46,10 +39,6 @@ impl Ros2MessageParser for NavSatFixMessageParser {
         Self {
             geo_points: Vec::with_capacity(num_rows),
             altitude: fixed_size_list_builder(1, num_rows),
-            status: fixed_size_list_builder(1, num_rows),
-            service: fixed_size_list_builder(1, num_rows),
-            position_covariance: fixed_size_list_builder(9, num_rows),
-            position_covariance_type: fixed_size_list_builder(1, num_rows),
         }
     }
 }
@@ -59,12 +48,10 @@ impl MessageParser for NavSatFixMessageParser {
         re_tracing::profile_function!();
         let sensor_msgs::NavSatFix {
             header,
-            status,
             latitude,
             longitude,
             altitude,
-            position_covariance,
-            position_covariance_type,
+            ..
         } = cdr::try_decode_message::<sensor_msgs::NavSatFix>(&msg.data)
             .context("Failed to decode sensor_msgs::NavSatFix message from CDR data")?;
 
@@ -80,22 +67,6 @@ impl MessageParser for NavSatFixMessageParser {
         self.altitude.values().append_slice(&[altitude]);
         self.altitude.append(true);
 
-        self.status.values().append_slice(&[status.status as i8]);
-        self.status.append(true);
-
-        self.service.values().append_slice(&[status.service as u16]);
-        self.service.append(true);
-
-        self.position_covariance
-            .values()
-            .append_slice(&position_covariance);
-        self.position_covariance.append(true);
-
-        self.position_covariance_type
-            .values()
-            .append_slice(&[position_covariance_type as u8]);
-        self.position_covariance_type.append(true);
-
         Ok(())
     }
 
@@ -104,10 +75,6 @@ impl MessageParser for NavSatFixMessageParser {
         let Self {
             geo_points,
             mut altitude,
-            mut status,
-            mut service,
-            mut position_covariance,
-            mut position_covariance_type,
         } = *self;
 
         let entity_path = ctx.entity_path().clone();
@@ -118,16 +85,7 @@ impl MessageParser for NavSatFixMessageParser {
             .columns_of_unit_batches()?
             .collect();
 
-        chunk_components.extend([
-            Self::create_metadata_column("altitude", altitude.finish()),
-            Self::create_metadata_column("status", status.finish()),
-            Self::create_metadata_column("service", service.finish()),
-            Self::create_metadata_column("position_covariance", position_covariance.finish()),
-            Self::create_metadata_column(
-                "position_covariance_type",
-                position_covariance_type.finish(),
-            ),
-        ]);
+        chunk_components.extend([Self::create_metadata_column("altitude", altitude.finish())]);
 
         Ok(vec![Chunk::from_auto_row_ids(
             ChunkId::new(),
