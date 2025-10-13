@@ -39,10 +39,18 @@ prost.workspace = true
 pyo3 = { workspace = true, optional = true }
 serde.workspace = true
 thiserror.workspace = true
-tonic = { workspace = true, default-features = false, features = ["codegen", "transport"] }
 tonic-prost = { workspace = true, default-features = false }
 tower.workspace = true
 url = { workspace = true, features = ["serde"] }
+
+# Native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tonic = { workspace = true, default-features = false, features = ["codegen", "transport"] }
+
+# Web dependencies:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+tonic = { workspace = true, default-features = false, features = ["codegen"] }
+
 
 [lints]
 workspace = true
