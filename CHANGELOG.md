@@ -12,12 +12,6 @@ These changes make it easier to slice and explore your data directly in the View
 
 TODO(gijsd): screenshot
 
-#### Improved ROS2 & MCAP support
-
-MCAP support for ROS2 and protobuf messages has been expanded.
-The new reflection-based parser handles more message types and now includes enum support, improving compatibility with a wider range of MCAP logs.
-
-TODO(gijsd): screenshot
 
 ### ⚠️ Breaking changes
 
