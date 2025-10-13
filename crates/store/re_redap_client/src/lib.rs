@@ -112,6 +112,19 @@ impl From<tonic::Code> for ApiErrorKind {
     }
 }
 
+impl From<&ClientConnectionError> for ApiErrorKind {
+    fn from(err: &ClientConnectionError) -> Self {
+        match err {
+            ClientConnectionError::UnencryptedServer => Self::InvalidArguments,
+            ClientConnectionError::UnauthenticatedMissingToken(_)
+            | ClientConnectionError::UnauthenticatedBadToken(_) => Self::Unauthenticated,
+            ClientConnectionError::AuthCheckError(_) | ClientConnectionError::Tonic(_) => {
+                Self::Connection
+            }
+        }
+    }
+}
+
 impl std::fmt::Display for ApiErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -129,7 +142,7 @@ impl std::fmt::Display for ApiErrorKind {
 }
 
 impl ApiError {
-    fn tonic(err: tonic::Status, message: impl Into<String>) -> Self {
+    pub fn tonic(err: tonic::Status, message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
             kind: ApiErrorKind::from(err.code()),
@@ -137,7 +150,7 @@ impl ApiError {
         }
     }
 
-    fn serde(
+    pub fn serde(
         err: impl std::error::Error + Send + Sync + 'static,
         message: impl Into<String>,
     ) -> Self {
@@ -148,13 +161,33 @@ impl ApiError {
         }
     }
 
-    fn internal(
+    pub fn internal(
         err: impl std::error::Error + Send + Sync + 'static,
         message: impl Into<String>,
     ) -> Self {
         Self {
             message: message.into(),
             kind: ApiErrorKind::Internal,
+            source: Some(Box::new(err)),
+        }
+    }
+
+    pub fn connection(
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::Connection,
+            source: Some(Box::new(err)),
+        }
+    }
+
+    pub fn client_connection(err: ClientConnectionError, message: impl Into<String>) -> Self {
+        let kind = ApiErrorKind::from(&err);
+        Self {
+            message: message.into(),
+            kind,
             source: Some(Box::new(err)),
         }
     }

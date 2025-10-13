@@ -17,7 +17,7 @@ use re_ui::{UiExt as _, icons};
 use re_viewer_context::{AsyncRuntimeHandle, GlobalContext, ViewerContext};
 
 use crate::context::Context;
-use crate::entries::{Dataset, Entries, Entry, Table};
+use crate::entries::{AuthApiErrorExt as _, Dataset, Entries, Entry, Table};
 use crate::server_modal::{ServerModal, ServerModalMode};
 
 pub struct Server {
