@@ -25,7 +25,7 @@ use re_protos::{
         ext::{IfDuplicateBehavior, ScanParameters},
     },
 };
-use re_redap_client::{ConnectionClient, ConnectionRegistryHandle};
+use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
 
 use crate::catalog::to_py_err;
 use crate::utils::wait_for_future;
@@ -382,9 +382,21 @@ impl ConnectionHandle {
                 // will complete the stream
                 while let Some(response) = response_stream.next().await {
                     let item = response
+                        .map_err(|err| {
+                            ApiError::tonic(
+                                err,
+                                "failed receiving item from /QueryTaskOnCompletion stream",
+                            )
+                        })
                         .map_err(to_py_err)?
                         .data
-                        .ok_or_else(|| PyValueError::new_err("received response without data"))?
+                        .ok_or_else(|| {
+                            let err = ApiError::serde(
+                                err,
+                                "received item without data on /QueryTasksOnCompletion stream",
+                            );
+                            to_py_err(err)
+                        })?
                         .decode()
                         .map_err(to_py_err)?;
 
@@ -393,9 +405,11 @@ impl ConnectionHandle {
 
                     let schema = item.schema();
                     if !schema.contains(&QueryTasksResponse::schema()) {
-                        return Err(PyValueError::new_err(
-                            "invalid schema for QueryTasksResponse",
-                        ));
+                        let err = ApiError::serde(
+                            err,
+                            "received item with invalid schema on /QueryTasksOnCompletion stream",
+                        );
+                        return Err(to_py_err(err));
                     }
 
                     let col_indices = [
@@ -406,7 +420,12 @@ impl ConnectionHandle {
                     .iter()
                     .map(|name| schema.index_of(name))
                     .collect::<Result<Vec<_>, _>>()
-                    .map_err(|err| PyValueError::new_err(format!("missing column: {err}")))?;
+                    .map_err(|err| {
+                        to_py_err(ApiError::serde(
+                            err,
+                            format!("missing column on item in /QueryTasksOnCompletion stream"),
+                        ))
+                    })?;
 
                     let projected = item.project(&col_indices).map_err(to_py_err)?;
 
