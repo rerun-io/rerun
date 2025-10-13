@@ -17,7 +17,8 @@ use std::error::Error as _;
 
 use pyo3::PyErr;
 use pyo3::exceptions::{
-    PyConnectionError, PyFileExistsError, PyFileNotFoundError, PyIOError, PyPermissionError, PyRuntimeError, PyTimeoutError, PyValueError,
+    PyConnectionError, PyFileExistsError, PyFileNotFoundError, PyIOError, PyPermissionError,
+    PyRuntimeError, PyTimeoutError, PyValueError,
 };
 
 use re_redap_client::{ApiErrorKind, ClientConnectionError, ConnectionError};
@@ -142,32 +143,18 @@ impl From<ExternalError> for PyErr {
                 PyValueError::new_err(format!("Chunk store error: {err}"))
             }
 
-            ExternalError::ApiError(err) => {
-                match err.kind {
-                    ApiErrorKind::Connection => {
-                        PyConnectionError::new_err(err.to_string())
-                    }
-                    ApiErrorKind::Unauthenticated | ApiErrorKind::PermissionDenied => {
-                        PyPermissionError::new_err(err.to_string())
-                    }
-                    ApiErrorKind::Serialization => {
-                        PyIOError::new_err(err.to_string())
-                    }
-                    ApiErrorKind::InvalidArguments => {
-                        PyValueError::new_err(err.to_string())
-                    }
-                    ApiErrorKind::NotFound => {
-                        PyFileNotFoundError::new_err(err.to_string())
-                    }
-                    ApiErrorKind::AlreadyExists => {
-                        PyFileExistsError::new_err(err.to_string())
-                    }
-                    ApiErrorKind::Timeout => {
-                        PyTimeoutError::new_err(err.to_string())
-                    }
-                    ApiErrorKind::Internal => PyRuntimeError::new_err(err.to_string()),
+            ExternalError::ApiError(err) => match err.kind {
+                ApiErrorKind::Connection => PyConnectionError::new_err(err.to_string()),
+                ApiErrorKind::Unauthenticated | ApiErrorKind::PermissionDenied => {
+                    PyPermissionError::new_err(err.to_string())
                 }
-            }
+                ApiErrorKind::Serialization => PyIOError::new_err(err.to_string()),
+                ApiErrorKind::InvalidArguments => PyValueError::new_err(err.to_string()),
+                ApiErrorKind::NotFound => PyFileNotFoundError::new_err(err.to_string()),
+                ApiErrorKind::AlreadyExists => PyFileExistsError::new_err(err.to_string()),
+                ApiErrorKind::Timeout => PyTimeoutError::new_err(err.to_string()),
+                ApiErrorKind::Internal => PyRuntimeError::new_err(err.to_string()),
+            },
 
             ExternalError::ArrowError(err) => PyIOError::new_err(format!("Arrow error: {err}")),
 

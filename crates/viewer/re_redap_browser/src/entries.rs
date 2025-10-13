@@ -169,7 +169,7 @@ async fn fetch_entries_and_register_tables(
     let mut client = connection_registry
         .client(origin.clone())
         .await
-        .map_err(|err| ApiError::client_connection(err, "Failed fetching entries"))?;
+        .map_err(|err| ApiError::client_connection(err, "failed establising client connection"))?;
 
     let entries = client
         .find_entries(EntryFilter {
@@ -253,7 +253,7 @@ fn fetch_entry_details(
             let err = TypeConversionError::from(prost::UnknownEnumValue(kind as i32));
             Some(Right(future::ready((
                 entry,
-                Err(ApiError::serde(err, "Failed fetching entry details")),
+                Err(ApiError::serde(err, "unknown entry kind")),
             ))))
         }
     }
@@ -275,7 +275,7 @@ async fn fetch_dataset_details(
     let table_provider = PartitionTableProvider::new(client, id)
         .into_provider()
         .await
-        .map_err(|err| ApiError::internal(err, "Failed creating table provider"))?;
+        .map_err(|err| ApiError::internal(err, "failed creating partition table provider"))?;
 
     Ok((result, table_provider))
 }
@@ -293,7 +293,7 @@ async fn fetch_table_details(
     let table_provider = TableEntryTableProvider::new(client, id)
         .into_provider()
         .await
-        .map_err(|err| ApiError::internal(err, "Failed creating table provider"))?;
+        .map_err(|err| ApiError::internal(err, "failed creating table-entry table provider"))?;
 
     Ok((result, table_provider))
 }

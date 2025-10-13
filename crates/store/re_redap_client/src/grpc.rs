@@ -205,7 +205,7 @@ where
             // not going to make this one single pipeline any faster, but it will prevent starvation of
             // the Tokio runtime (which would slow down every other futures currently scheduled!).
             tokio::task::spawn_blocking(move || {
-                let r = resp.map_err(|err| ApiError::tonic(err, "Failed to get chunk response"))?;
+                let r = resp.map_err(|err| ApiError::tonic(err, "failed to get item in /FetchChunks response stream"))?;
                 let _span =
                     tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = r.chunks.len())
                         .entered();
@@ -217,10 +217,10 @@ where
 
                         let arrow_msg =
                             re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
-                                .map_err(|err| ApiError::serde(err, "Failed to fetch chunk"))?;
+                                .map_err(|err| ApiError::serde(err, "failed to get arrow data for item in /FetchChunks response stream"))?;
 
                         let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
-                            .map_err(|err| ApiError::serde(err, "Failed to fetch chunk"))?;
+                            .map_err(|err| ApiError::serde(err, "failed to parse item in /FetchChunks response stream"))?;
 
                         Ok((chunk, partition_id))
                     })
@@ -228,7 +228,7 @@ where
             })
         })
         .map(|res| {
-            res.map_err(|err| ApiError::internal(err, "Failed to fetch chunks"))
+            res.map_err(|err| ApiError::internal(err, "failed to sync on /FetchChunks response stream"))
                 .and_then(std::convert::identity)
         })
 }
@@ -242,7 +242,9 @@ where
     S: Stream<Item = Result<re_protos::cloud::v1alpha1::FetchChunksResponse, tonic::Status>>,
 {
     response.map(|resp| {
-        let resp = resp.map_err(|err| ApiError::tonic(err, "Failed to fetch chunks"))?;
+        let r = resp.map_err(|err| {
+            ApiError::tonic(err, "failed to get item in /FetchChunks response stream")
+        })?;
 
         let _span =
             tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = resp.chunks.len())
@@ -255,10 +257,17 @@ where
 
                 let arrow_msg =
                     re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
-                        .map_err(|err| ApiError::serde(err, "Failed to fetch chunk"))?;
+                        .map_err(|err| {
+                            ApiError::serde(
+                                err,
+                                "failed to get arrow data for item in /FetchChunks response stream",
+                            )
+                        })?;
 
-                let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
-                    .map_err(|err| ApiError::serde(err, "Failed to fetch chunk"))?;
+                let chunk =
+                    re_chunk::Chunk::from_record_batch(&arrow_msg.batch).map_err(|err| {
+                        ApiError::serde(err, "failed to parse item in /FetchChunks response stream")
+                    })?;
 
                 Ok((chunk, partition_id))
             })
@@ -493,9 +502,12 @@ async fn stream_partition_from_server(
                 .send(
                     LogMsg::ArrowMsg(
                         store_id.clone(),
-                        chunk
-                            .to_arrow_msg()
-                            .map_err(|err| ApiError::serde(err, "Failed to stream partition"))?,
+                        chunk.to_arrow_msg().map_err(|err| {
+                            ApiError::serde(
+                                err,
+                                "failed to parse chunk in /FetchChunks response stream",
+                            )
+                        })?,
                     )
                     .into(),
                 )
