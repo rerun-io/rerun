@@ -241,7 +241,7 @@ pub async fn serve_from_channel(
 
             let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(
                 msg,
-                re_log_encoding::Compression::LZ4,
+                re_log_encoding::codec::Compression::LZ4,
             ) {
                 Ok(msg) => msg,
                 Err(err) => {
@@ -329,7 +329,7 @@ pub fn spawn_from_rx_set(
 
             let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(
                 msg,
-                re_log_encoding::Compression::LZ4,
+                re_log_encoding::codec::Compression::LZ4,
             ) {
                 Ok(msg) => msg,
                 Err(err) => {
@@ -1022,26 +1022,28 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::net::SocketAddr;
+    use std::sync::Arc;
+    use std::time::Duration;
 
     use itertools::{Itertools as _, chain};
+    use similar_asserts::assert_eq;
+    use tokio::net::TcpListener;
+    use tokio_util::sync::CancellationToken;
+    use tonic::transport::Channel;
+    use tonic::transport::Endpoint;
+    use tonic::transport::server::TcpIncoming;
+
     use re_chunk::RowId;
-    use re_log_encoding::Compression;
+    use re_log_encoding::codec::Compression;
     use re_log_encoding::protobuf_conversions::{log_msg_from_proto, log_msg_to_proto};
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
     use re_protos::sdk_comms::v1alpha1::{
         message_proxy_service_client::MessageProxyServiceClient,
         message_proxy_service_server::MessageProxyServiceServer,
     };
-    use similar_asserts::assert_eq;
-    use std::net::SocketAddr;
-    use std::sync::Arc;
-    use std::time::Duration;
-    use tokio::net::TcpListener;
-    use tokio_util::sync::CancellationToken;
-    use tonic::transport::Channel;
-    use tonic::transport::Endpoint;
-    use tonic::transport::server::TcpIncoming;
+
+    use super::*;
 
     #[derive(Clone)]
     struct Completion(Arc<CancellationToken>);

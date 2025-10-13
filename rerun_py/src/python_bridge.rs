@@ -27,7 +27,7 @@ use re_log_types::{BlueprintActivationCommand, EntityPathPart};
 use re_log_types::{LogMsg, RecordingId};
 use re_sdk::{
     ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, TimeCell,
-    external::re_log_encoding::encoder::encode_ref_as_bytes_local,
+    external::re_log_encoding::Encoder,
     sink::{BinaryStreamStorage, CallbackSink, MemorySinkStorage, SinkFlushError},
     time::TimePoint,
 };
@@ -117,12 +117,6 @@ fn init_perf_telemetry() -> parking_lot::MutexGuard<'static, re_perf_telemetry::
     static TELEMETRY: OnceLock<parking_lot::Mutex<re_perf_telemetry::Telemetry>> = OnceLock::new();
     TELEMETRY
         .get_or_init(|| {
-            // Safety: anything touching the env is unsafe, tis what it is.
-            #[expect(unsafe_code)]
-            unsafe {
-                std::env::set_var("OTEL_SERVICE_NAME", "rerun-py");
-            }
-
             // NOTE: We're just parsing the environment, hence the `vec![]` for CLI flags.
             use re_perf_telemetry::external::clap::Parser as _;
             let args = re_perf_telemetry::TelemetryArgs::parse_from::<_, String>(vec![]);
@@ -153,6 +147,15 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         // called more than once.
         // The SDK should not be as noisy as the CLI, so we set log filter to warning if not specified otherwise.
         re_log::setup_logging_with_filter(&re_log::log_filter_from_env_or_default("warn"));
+    }
+
+    // There is always value in setting this, even if `re_perf_telemetry` is disabled. For example,
+    // the Rerun versioning headers will automatically pick it up.
+    //
+    // Safety: anything touching the env is unsafe, tis what it is.
+    #[expect(unsafe_code)]
+    unsafe {
+        std::env::set_var("OTEL_SERVICE_NAME", "rerun-py");
     }
 
     #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
@@ -311,8 +314,8 @@ impl DurationLike {
 }
 
 /// Defines the different batching thresholds used within the RecordingStream.
-#[pyclass(name = "ChunkBatcherConfig")]
-#[derive(Clone)]
+#[pyclass(eq, name = "ChunkBatcherConfig")]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PyChunkBatcherConfig(ChunkBatcherConfig);
 
 #[pymethods]
@@ -322,7 +325,7 @@ impl PyChunkBatcherConfig {
     #[pyo3(
         text_signature = "(self, flush_tick=None, flush_num_bytes=None, flush_num_rows=None, chunk_max_rows_if_unsorted=None)"
     )]
-    /// Initialize the chunk batcher onfiguration.
+    /// Initialize the chunk batcher configuration.
     ///
     /// Check out <https://rerun.io/docs/reference/sdk/micro-batching> for more information.
     ///
@@ -613,7 +616,7 @@ fn shutdown(py: Python<'_>) {
 
 // --- Recordings ---
 
-#[pyclass(frozen)]
+#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
 #[derive(Clone)]
 struct PyRecordingStream(RecordingStream);
 
@@ -1204,7 +1207,7 @@ fn set_callback_sink(callback: PyObject, recording: Option<&PyRecordingStream>, 
 
     let callback = move |msgs: &[LogMsg]| {
         Python::with_gil(|py| {
-            let data = encode_ref_as_bytes_local(msgs.iter().map(Ok)).ok_or_log_error()?;
+            let data = Encoder::encode(msgs.iter().map(Ok)).ok_or_log_error()?;
             let bytes = PyBytes::new(py, &data);
             callback.bind(py).call1((bytes,)).ok_or_log_error()?;
             Some(())
@@ -1235,7 +1238,7 @@ fn set_callback_sink_blueprint(
 
     let callback = move |msgs: &[LogMsg]| {
         Python::with_gil(|py| {
-            let data = encode_ref_as_bytes_local(msgs.iter().map(Ok)).ok_or_log_error()?;
+            let data = Encoder::encode(msgs.iter().map(Ok)).ok_or_log_error()?;
             let bytes = PyBytes::new(py, &data);
             callback.bind(py).call1((bytes,)).ok_or_log_error()?;
             Some(())
@@ -1283,7 +1286,7 @@ fn binary_stream(
     Some(PyBinarySinkStorage { inner })
 }
 
-#[pyclass(frozen)]
+#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
 struct PyMemorySinkStorage {
     // So we can flush when needed!
     inner: MemorySinkStorage,
@@ -1349,7 +1352,7 @@ impl PyMemorySinkStorage {
     }
 }
 
-#[pyclass(frozen)]
+#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
 struct PyBinarySinkStorage {
     /// The underlying binary sink storage.
     inner: BinaryStreamStorage,
@@ -1643,8 +1646,12 @@ fn flush(py: Python<'_>, timeout_sec: f32, recording: Option<&PyRecordingStream>
 /// Every component at a given entity path is uniquely identified by the
 /// `component` field of the descriptor. The `archetype` and `component_type`
 /// fields provide additional information about the semantics of the data.
-#[pyclass(name = "ComponentDescriptor", module = "rerun_bindings.rerun_bindings")]
-#[derive(Clone)]
+#[pyclass(
+    eq,
+    name = "ComponentDescriptor",
+    module = "rerun_bindings.rerun_bindings"
+)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 struct PyComponentDescriptor(pub ComponentDescriptor);
 
 #[pymethods]
@@ -1661,10 +1668,6 @@ impl PyComponentDescriptor {
         };
 
         Self(descr)
-    }
-
-    fn __eq__(&self, other: &Self) -> bool {
-        self.0 == other.0
     }
 
     fn __hash__(&self) -> u64 {

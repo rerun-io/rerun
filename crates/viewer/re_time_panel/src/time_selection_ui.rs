@@ -2,7 +2,7 @@ use egui::{Color32, CursorIcon, Id, NumExt as _, Rect};
 
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType};
 use re_ui::UiExt as _;
-use re_viewer_context::{Looping, TimeControl};
+use re_viewer_context::{Looping, TimeControl, TimeControlCommand};
 
 use super::time_ranges_ui::TimeRangesUi;
 
@@ -53,23 +53,24 @@ pub fn collapsed_loop_selection_ui(
 }
 
 pub fn loop_selection_ui(
-    time_ctrl: &mut TimeControl,
+    time_ctrl: &TimeControl,
     time_ranges_ui: &TimeRangesUi,
     ui: &egui::Ui,
     time_area_painter: &egui::Painter,
     timeline_rect: &Rect,
+    time_commands: &mut Vec<TimeControlCommand>,
 ) {
     let tokens = ui.tokens();
 
     if time_ctrl.loop_selection().is_none() && time_ctrl.looping() == Looping::Selection {
         // Helpfully select a time slice
         if let Some(selection) = initial_time_selection(time_ranges_ui, time_ctrl.time_type()) {
-            time_ctrl.set_loop_selection(selection);
+            time_commands.push(TimeControlCommand::SetLoopSelection(selection.to_int()));
         }
     }
 
     if time_ctrl.loop_selection().is_none() && time_ctrl.looping() == Looping::Selection {
-        time_ctrl.set_looping(Looping::Off);
+        time_commands.push(TimeControlCommand::SetLooping(Looping::Off));
     }
 
     let is_active = time_ctrl.looping() == Looping::Selection;
@@ -174,10 +175,12 @@ pub fn loop_selection_ui(
         if selected_range.is_empty() && ui.ctx().dragged_id().is_none() {
             // A zero-sized loop selection is confusing (and invisible), so remove it
             // (unless we are in the process of dragging right now):
-            time_ctrl.remove_loop_selection();
+            time_commands.push(TimeControlCommand::RemoveLoopSelection);
         } else {
             // Update it in case it was modified:
-            time_ctrl.set_loop_selection(selected_range);
+            time_commands.push(TimeControlCommand::SetLoopSelection(
+                selected_range.to_int(),
+            ));
         }
     }
 
@@ -189,8 +192,10 @@ pub fn loop_selection_ui(
             && ui.input(|i| i.pointer.primary_down() && i.modifiers.shift_only())
             && let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x)
         {
-            time_ctrl.set_loop_selection(AbsoluteTimeRangeF::point(time));
-            time_ctrl.set_looping(Looping::Selection);
+            time_commands.push(TimeControlCommand::SetLoopSelection(
+                AbsoluteTimeRangeF::point(time).to_int(),
+            ));
+            time_commands.push(TimeControlCommand::SetLooping(Looping::Selection));
             ui.ctx().set_dragged_id(right_edge_id);
         }
     }

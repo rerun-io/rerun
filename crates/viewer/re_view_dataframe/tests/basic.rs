@@ -5,7 +5,7 @@ use re_test_viewport::TestContextExt as _;
 use re_types::archetypes::Scalars;
 use re_ui::UiExt as _;
 use re_view_dataframe::DataframeView;
-use re_viewer_context::{ViewClass as _, ViewId};
+use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
@@ -14,6 +14,11 @@ pub fn test_null_timeline() {
 
     let timeline_a = Timeline::new_sequence("timeline_a");
     let timeline_b = Timeline::new_sequence("timeline_b");
+
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline(*timeline_a.name())],
+    );
 
     test_context.log_entity("first", |builder| {
         builder.with_archetype(RowId::new(), [(timeline_a, 0)], &Scalars::single(10.0))
@@ -28,11 +33,11 @@ pub fn test_null_timeline() {
     });
 
     let view_id = setup_blueprint(&mut test_context, timeline_a.name());
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
+    test_context.run_view_ui_and_save_snapshot(
         view_id,
         "null_timeline",
         egui::vec2(400.0, 200.0),
+        None,
     );
 }
 
@@ -51,15 +56,15 @@ pub fn test_unknown_timeline() {
 
     let view_id = setup_blueprint(&mut test_context, &TimelineName::from("unknown_timeline"));
 
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
+    test_context.run_view_ui_and_save_snapshot(
         view_id,
         "unknown_timeline_view_ui",
         egui::vec2(300.0, 150.0),
+        None,
     );
 
     run_view_selection_panel_ui_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         view_id,
         "unknown_timeline_selection_panel_ui",
         egui::vec2(300.0, 450.0),
@@ -89,25 +94,8 @@ fn setup_blueprint(test_context: &mut TestContext, timeline_name: &TimelineName)
     })
 }
 
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    name: &str,
-    size: egui::Vec2,
-) {
-    let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
-        .build_ui(|ui| {
-            test_context.run_with_single_view(ui, view_id);
-        });
-
-    harness.run();
-    harness.snapshot(name);
-}
-
 fn run_view_selection_panel_ui_and_save_snapshot(
-    test_context: &mut TestContext,
+    test_context: &TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
@@ -141,7 +129,7 @@ fn run_view_selection_panel_ui_and_save_snapshot(
                 });
             });
 
-            test_context.handle_system_commands();
+            test_context.handle_system_commands(ui.ctx());
         });
 
     harness.run();

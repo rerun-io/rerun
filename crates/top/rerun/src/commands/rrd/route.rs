@@ -1,7 +1,7 @@
 use std::{fs::File, io::BufWriter};
 
 use crossbeam::channel::Receiver;
-use re_log_encoding::encoder::DroppableEncoder;
+use re_log_encoding::Encoder;
 use re_protos::{
     common::v1alpha1::ApplicationId,
     log_msg::v1alpha1::{
@@ -108,7 +108,7 @@ fn process_messages<W: std::io::Write>(
     // TODO(grtlr): encoding should match the original (just like in `rrd stats`).
     let options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
     let version = re_build_info::CrateVersion::LOCAL;
-    let mut encoder = DroppableEncoder::new(version, options, writer)?;
+    let mut encoder = Encoder::new(version, options, writer)?;
 
     while let Ok((_input, res)) = receiver.recv() {
         let mut is_success = true;

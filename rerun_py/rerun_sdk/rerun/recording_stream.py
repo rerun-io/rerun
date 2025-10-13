@@ -498,7 +498,22 @@ class RecordingStream:
     # any free function taking a `RecordingStream` as the first argument can also be a method
     binary_stream = binary_stream
     get_application_id = get_application_id
-    get_recording_id = get_recording_id
+
+    def get_recording_id(self) -> str:
+        """
+        Get the recording ID that this recording is logging to, as a UUIDv4.
+
+        Returns
+        -------
+        str
+            The recording ID that this recording is logging to.
+
+        """
+        this_recording = get_recording_id(self)
+        # Make type checker happy
+        assert isinstance(this_recording, str)
+        return this_recording
+
     is_enabled = is_enabled
 
     def set_sinks(
@@ -1360,6 +1375,7 @@ class RecordingStream:
         entity_path: str,
         indexes: Iterable[TimeColumnLike],
         columns: Iterable[ComponentColumn],
+        *,
         strict: bool | None = None,
     ) -> None:
         r"""

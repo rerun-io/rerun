@@ -68,6 +68,7 @@ def script_add_args(parser: ArgumentParser) -> None:
 def script_setup(
     args: Namespace,
     application_id: str,
+    *,
     recording_id: str | UUID | None = None,
     default_blueprint: rr.blueprint.BlueprintLike | None = None,
 ) -> RecordingStream:

@@ -13,19 +13,20 @@ use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
-use re_datafusion::{PartitionTableProvider, SearchResultsTableProvider};
+use re_datafusion::{DatasetManifestProvider, PartitionTableProvider, SearchResultsTableProvider};
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::ext::DatasetDetails;
-use re_protos::cloud::v1alpha1::ext::IndexProperties;
-use re_protos::cloud::v1alpha1::{CreateIndexRequest, GetChunksRequest, SearchDatasetRequest};
-use re_protos::cloud::v1alpha1::{
-    IndexConfig, IndexQueryProperties, InvertedIndexQuery, VectorIndexQuery, index_query_properties,
+use re_protos::{
+    cloud::v1alpha1::{
+        CreateIndexRequest, IndexConfig, IndexQueryProperties, InvertedIndexQuery,
+        SearchDatasetRequest, VectorIndexQuery,
+        ext::{DatasetDetails, IndexProperties},
+        index_query_properties,
+    },
+    common::v1alpha1::{IfDuplicateBehavior, ext::DatasetHandle},
+    headers::RerunHeadersInjectorExt as _,
 };
-use re_protos::common::v1alpha1::IfDuplicateBehavior;
-use re_protos::common::v1alpha1::ext::DatasetHandle;
-use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_redap_client::get_chunks_response_to_chunk_and_partition_id;
+use re_redap_client::fetch_chunks_response_to_chunk_and_partition_id;
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 
 use crate::dataframe::{AnyComponentColumn, PyIndexColumnSelector, PyRecording, PySchema};
@@ -37,7 +38,7 @@ use super::{
 };
 
 /// A dataset entry in the catalog.
-#[pyclass(name = "DatasetEntry", extends=PyEntry)]
+#[pyclass(name = "DatasetEntry", extends=PyEntry)] // NOLINT: skip pyclass_eq, non-trivial implementation
 pub struct PyDatasetEntry {
     pub dataset_details: DatasetDetails,
     pub dataset_handle: DatasetHandle,
@@ -161,6 +162,28 @@ impl PyDatasetEntry {
         Ok(PyDataFusionTable {
             client: super_.client.clone_ref(self_.py()),
             name: super_.name() + "_partition_table",
+            provider,
+        })
+    }
+
+    /// Return the dataset manifest as a Datafusion table provider.
+    #[instrument(skip_all)]
+    fn manifest(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let provider = wait_for_future(self_.py(), async move {
+            DatasetManifestProvider::new(connection.client().await?, dataset_id)
+                .into_provider()
+                .await
+                .map_err(to_py_err)
+        })?;
+
+        #[expect(clippy::string_add)]
+        Ok(PyDataFusionTable {
+            client: super_.client.clone_ref(self_.py()),
+            name: super_.name() + "__manifest",
             provider,
         })
     }
@@ -358,34 +381,28 @@ impl PyDatasetEntry {
         let dataset_id = super_.details.id;
         let dataset_name = super_.details.name.clone();
 
-        //TODO(ab): use `ConnectionHandle::get_chunk()`
         let store: PyResult<ChunkStore> = wait_for_future(self_.py(), async move {
-            let catalog_chunk_stream = connection
-                .client()
-                .await?
-                .inner()
-                .get_chunks(GetChunksRequest {
-                    dataset_id: Some(dataset_id.into()),
-                    partition_ids: vec![partition_id.clone().into()],
-                    chunk_ids: vec![],
-                    entity_paths: vec![],
-                    select_all_entity_paths: true,
-                    fuzzy_descriptors: vec![],
-                    exclude_static_data: false,
-                    exclude_temporal_data: false,
-                    query: None,
-                })
+            let mut client = connection.client().await?;
+            let exclude_static_data = false;
+            let exclude_temporal_data = false;
+            let response_stream = client
+                .fetch_partition_chunks(
+                    dataset_id,
+                    partition_id.clone().into(),
+                    exclude_static_data,
+                    exclude_temporal_data,
+                    None,
+                )
                 .await
-                .map_err(to_py_err)?
-                .into_inner();
+                .map_err(to_py_err)?;
+
+            let mut chunks_stream =
+                fetch_chunks_response_to_chunk_and_partition_id(response_stream);
 
             let store_id = StoreId::new(StoreKind::Recording, dataset_name, partition_id.clone());
             let mut store = ChunkStore::new(store_id, Default::default());
 
-            let mut chunk_stream =
-                get_chunks_response_to_chunk_and_partition_id(catalog_chunk_stream);
-
-            while let Some(chunks) = chunk_stream.next().await {
+            while let Some(chunks) = chunks_stream.next().await {
                 for chunk in chunks.map_err(to_py_err)? {
                     let (chunk, chunk_partition_id) = chunk;
 

@@ -3,7 +3,7 @@ use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
-use re_viewer_context::{ViewClass as _, ViewId};
+use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
 fn color_gradient0(step: i64) -> re_types::components::Color {
@@ -23,6 +23,8 @@ pub fn test_clear_series_points_and_line() {
 
 fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+
+    let timeline = Timeline::log_tick();
 
     // TODO(#10512): Potentially fix up this after we have "markers".
     // There are some intricacies involved with this test. `SeriesLines` and
@@ -50,7 +52,7 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
     });
 
     for i in 0..32 {
-        let timepoint = TimePoint::from([(test_context.active_timeline(), i)]);
+        let timepoint = TimePoint::from([(timeline, i)]);
 
         match i {
             15 => {
@@ -85,9 +87,14 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
         }
     }
 
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
+    );
+
+    let allowed_broken_pixels = if two_series_per_entity { 5 } else { 2 };
     let view_id = setup_blueprint(&mut test_context);
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
+    test_context.run_view_ui_and_save_snapshot(
         view_id,
         &format!(
             "clear_series_points_and_line{}",
@@ -98,7 +105,7 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
             }
         ),
         egui::vec2(300.0, 300.0),
-        if two_series_per_entity { 5 } else { 2 },
+        Some(SnapshotOptions::new().failed_pixel_count_threshold(allowed_broken_pixels)),
     );
 }
 
@@ -136,6 +143,8 @@ fn test_line_properties() {
 fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
+    let timeline = Timeline::log_tick();
+
     let properties_static = if multiple_properties {
         re_types::archetypes::SeriesLines::new()
             .with_widths([4.0, 8.0])
@@ -155,7 +164,7 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
     });
 
     for step in 0..32 {
-        let timepoint = TimePoint::from([(test_context.active_timeline(), step)]);
+        let timepoint = TimePoint::from([(timeline, step)]);
 
         let properties = if multiple_properties {
             re_types::archetypes::SeriesLines::new()
@@ -181,6 +190,11 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
         });
     }
 
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
+    );
+
     let view_id = setup_blueprint(&mut test_context);
     let mut name = "line_properties".to_owned();
     if multiple_properties {
@@ -189,12 +203,12 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
     if multiple_scalars {
         name += "_two_series_per_entity";
     }
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
+    let num_allowed_broken_pixels = if multiple_scalars { 5 } else { 0 };
+    test_context.run_view_ui_and_save_snapshot(
         view_id,
         &name,
         egui::vec2(300.0, 300.0),
-        if multiple_scalars { 5 } else { 0 },
+        Some(SnapshotOptions::new().failed_pixel_count_threshold(num_allowed_broken_pixels)),
     );
 }
 
@@ -208,6 +222,8 @@ fn test_per_series_visibility() {
     ] {
         let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
+        let timeline = Timeline::log_tick();
+
         test_context.log_entity("plots", |builder| {
             builder.with_archetype(
                 RowId::new(),
@@ -217,21 +233,20 @@ fn test_per_series_visibility() {
         });
 
         for step in 0..32 {
-            let timepoint = TimePoint::from([(test_context.active_timeline(), step)]);
+            let timepoint = TimePoint::from([(timeline, step)]);
             let (scalars, _) = scalars_for_properties_test(step, true);
             test_context.log_entity("plots", |builder| {
                 builder.with_archetype(RowId::new(), timepoint.clone(), &scalars)
             });
         }
 
-        let view_id = setup_blueprint(&mut test_context);
-        run_view_ui_and_save_snapshot(
-            &mut test_context,
-            view_id,
-            name,
-            egui::vec2(300.0, 300.0),
-            0,
+        test_context.send_time_commands(
+            test_context.active_store_id(),
+            [TimeControlCommand::SetActiveTimeline(*timeline.name())],
         );
+
+        let view_id = setup_blueprint(&mut test_context);
+        test_context.run_view_ui_and_save_snapshot(view_id, name, egui::vec2(300.0, 300.0), None);
     }
 }
 
@@ -259,6 +274,8 @@ fn test_point_properties() {
 fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool) {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
+    let timeline = Timeline::log_tick();
+
     let static_props = if multiple_properties {
         re_types::archetypes::SeriesPoints::new()
             .with_marker_sizes([4.0, 8.0])
@@ -284,7 +301,7 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
     });
 
     for step in 0..32 {
-        let timepoint = TimePoint::from([(test_context.active_timeline(), step)]);
+        let timepoint = TimePoint::from([(timeline, step)]);
 
         let properties = if multiple_properties {
             re_types::archetypes::SeriesPoints::new()
@@ -314,6 +331,11 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
         });
     }
 
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
+    );
+
     let view_id = setup_blueprint(&mut test_context);
     let mut name = "point_properties".to_owned();
     if multiple_properties {
@@ -322,12 +344,11 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
     if multiple_scalars {
         name += "_two_series_per_entity";
     }
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
+    test_context.run_view_ui_and_save_snapshot(
         view_id,
         &name,
         egui::vec2(300.0, 300.0),
-        5, // Allow 5 broken pixels
+        Some(SnapshotOptions::new().failed_pixel_count_threshold(5)),
     );
 }
 
@@ -337,26 +358,6 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
             TimeSeriesView::identifier(),
         ))
     })
-}
-
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    name: &str,
-    size: egui::Vec2,
-    num_allowed_broken_pixels: usize,
-) {
-    let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
-        .build_ui(|ui| {
-            test_context.run_with_single_view(ui, view_id);
-        });
-
-    harness.snapshot_options(
-        name,
-        &SnapshotOptions::new().failed_pixel_count_threshold(num_allowed_broken_pixels),
-    );
 }
 
 #[test]
@@ -426,16 +427,22 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool) {
         blueprint.add_view_at_root(view)
     });
 
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline(
+            *Timeline::log_tick().name(),
+        )],
+    );
+
     let name = if partial_range {
         "bootstrapped_secondaries_partial"
     } else {
         "bootstrapped_secondaries_full"
     };
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
+    test_context.run_view_ui_and_save_snapshot(
         view_id,
         name,
         egui::vec2(300.0, 300.0),
-        2,
+        Some(SnapshotOptions::new().failed_pixel_count_threshold(2)),
     );
 }

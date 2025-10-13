@@ -17,7 +17,7 @@ dependencies = [
   # Must match list in `.github/workflows/reusable_test_wheels.yml`
   "attrs>=23.1.0",
   "numpy>=2",
-  "pillow>=8.0.0",          # Used for JPEG encoding. 8.0.0 added the `format` arguments to `Image.open`
+  "pillow>=8.0.0", # Used for JPEG encoding. 8.0.0 added the `format` arguments to `Image.open`
   "pyarrow>=18.0.0",
   "typing_extensions>=4.5",
 ]
@@ -141,28 +141,29 @@ lint.ignore = [
 
 line-length = 120
 lint.select = [
-  "A",       # Avoid shadowing built-ins
-  "ANN",     # Ensure all code is properly annotated.
-  "ARG",     # Detect unused arguments
-  "B",       # flake8-bugbear lints
-  "C4",      # Comprehension-related rules
-  "COM",     # Trailing-comma-related rules
-  "D",       # pydocstyle codes https://www.pydocstyle.org/en/latest/error_codes.html
-  "E",       # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-  "F",       # Flake8 error codes https://flake8.pycqa.org/en/latest/user/error-codes.html
-  "FA",      # Force from __future__ import annotations
-  "FURB",    # refurb (Python code modernization)
-  "I",       # Isort
-  "ISC",     # Ensure implicit string concat syntax
-  "PIE",     # flake8-pic: various idomatic python lints
+  "A", # Avoid shadowing built-ins
+  "ANN", # Ensure all code is properly annotated.
+  "ARG", # Detect unused arguments
+  "B", # flake8-bugbear lints
+  "C4", # Comprehension-related rules
+  "COM", # Trailing-comma-related rules
+  "D", # pydocstyle codes https://www.pydocstyle.org/en/latest/error_codes.html
+  "E", # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
+  "F", # Flake8 error codes https://flake8.pycqa.org/en/latest/user/error-codes.html
+  "FA", # Force from __future__ import annotations
+  "FURB", # refurb (Python code modernization)
+  "I", # Isort
+  "ISC", # Ensure implicit string concat syntax
+  "PIE", # flake8-pic: various idomatic python lints
+  "PLR0917", # too-many-positional-parameters
   "PLW1514", # Force setting `encoding` for open calls. This is in order to prevent issues when opening utf8 files on windows where the default encoding may depend on the active locale. https://docs.astral.sh/ruff/rules/unspecified-encoding/
-  "RUF",     # Ruff-specific rules
-  "RUF027",  # Ensure that strings which look like format-strings have the `f` prefix
-  "TC",      # Ensure that all type comments are valid
-  "TID",     # flake8-tidy-imports
-  "UP",      # pyupgrade (ensures idomatic code for supported python version)
-  "W",       # pycodestyle warning codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-  "YTT",     # Various checks on the use of `sys.version_info` and related.
+  "RUF", # Ruff-specific rules
+  "RUF027", # Ensure that strings which look like format-strings have the `f` prefix
+  "TC", # Ensure that all type comments are valid
+  "TID", # flake8-tidy-imports
+  "UP", # pyupgrade (ensures idomatic code for supported python version)
+  "W", # pycodestyle warning codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
+  "YTT", # Various checks on the use of `sys.version_info` and related.
 
   # TODO(emilk): Consider enable more of these lints:
   # "ERA",     # eradicate dead code (WONT DO: we have lots of dead-looking code in comments)
@@ -175,6 +176,9 @@ lint.select = [
 lint.unfixable = [
   "PLW1514", # Automatic fix for `encoding` doesn't do what we want - it queries the locale for the preferred encoding which is exactly what we want to avoid.
 ]
+
+[tool.ruff.lint.pylint]
+max-positional-args = 3
 
 [tool.ruff.lint.per-file-ignores]
 "*" = ["RUF012"] # TODO(emilk): consider enabling this
@@ -193,9 +197,26 @@ lint.unfixable = [
   "RUF001",
 ]
 
+"examples/*" = [
+  # We don't care about nice APIs in our examples:
+  "PLR0917",
+]
+"scripts/*" = [
+  # We don't care about nice APIs in our scripts:
+  "PLR0917",
+]
+"rerun_py/tests/*" = [
+  # We don't care about nice APIs in our tests:
+  "PLR0917",
+]
+"tests/python/*" = [
+  # We don't care about nice APIs in our tests:
+  "PLR0917",
+]
+
 [tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]
-combine-as-imports = true                                 # needed so keep rerun_sdk/__init__.py clean
+combine-as-imports = true # needed so keep rerun_sdk/__init__.py clean
 
 [tool.maturin]
 # We use a python package from inside the rerun_sdk folder to avoid conflicting
@@ -205,11 +226,7 @@ combine-as-imports = true                                 # needed so keep rerun
 # Even though both `rerun` and `rerun.exe` are here, only one will be included since
 # they both should not be fetched in CI when running the build.
 # Files missing from this list is not a packaging failure.
-include = [
-  "rerun_sdk.pth",
-  "rerun_sdk/rerun_cli/rerun",
-  "rerun_sdk/rerun_cli/rerun.exe",
-]
+include = ["rerun_sdk.pth", "rerun_sdk/rerun_cli/rerun", "rerun_sdk/rerun_cli/rerun.exe"]
 locked = true
 name = "rerun_bindings"
 python-packages = ["rerun_sdk/rerun", "rerun_sdk/rerun_cli"]

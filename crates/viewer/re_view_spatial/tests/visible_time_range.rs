@@ -8,7 +8,7 @@ use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::{Archetype as _, archetypes::Points2D, datatypes::VisibleTimeRange};
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::{ViewClass as _, ViewId};
+use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 fn intra_timestamp_data(test_context: &mut TestContext) {
@@ -104,8 +104,10 @@ fn intra_timestamp_data(test_context: &mut TestContext) {
         )
     });
 
-    let mut time_ctrl = test_context.recording_config.time_ctrl.write();
-    time_ctrl.set_timeline(timeline);
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
+    );
 }
 
 #[test]
@@ -223,9 +225,13 @@ fn visible_timerange_data(test_context: &mut TestContext) {
         }
     }
 
-    let mut time_ctrl = test_context.recording_config.time_ctrl.write();
-    time_ctrl.set_timeline(timeline);
-    time_ctrl.set_time(TimeReal::from_secs(4.5));
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [
+            TimeControlCommand::SetActiveTimeline(*timeline.name()),
+            TimeControlCommand::SetTime(TimeReal::from_secs(4.5)),
+        ],
+    );
 }
 
 #[test]
@@ -304,7 +310,7 @@ fn run_visible_time_range_test(
     add_data(&mut test_context);
 
     let view_id = setup_blueprint(&mut test_context, view_time_range, green_time_range);
-    run_view_ui_and_save_snapshot(&mut test_context, view_id, name, egui::vec2(200.0, 200.0));
+    test_context.run_view_ui_and_save_snapshot(view_id, name, egui::vec2(200.0, 200.0), None);
 }
 
 fn setup_blueprint(
@@ -357,21 +363,4 @@ fn setup_blueprint(
 
         view_id
     })
-}
-
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    name: &str,
-    size: egui::Vec2,
-) {
-    let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
-        .build_ui(|ui| {
-            test_context.run_with_single_view(ui, view_id);
-        });
-
-    harness.run();
-    harness.snapshot(name);
 }

@@ -311,6 +311,12 @@ impl GpuReadbackBelt {
     /// Prepare used buffers for CPU read.
     ///
     /// This should be called after the command encoder(s) used in [`GpuReadbackBuffer`] copy operations are submitted.
+    ///
+    /// Implementation note:
+    /// We can't use [`wgpu::CommandEncoder::map_buffer_on_submit`] here because for that we'd need to know which
+    /// command encoder is the last one scheduling any gpu->cpu copy operations.
+    /// Note that if chunks were fully tied to a single encoder, we could call [`wgpu::CommandEncoder::map_buffer_on_submit`]
+    /// once we know a chunk has all its gpu->cpu copy operations scheduled on that very encoder.
     pub fn after_queue_submit(&mut self) {
         re_tracing::profile_function!();
 

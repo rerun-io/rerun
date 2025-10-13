@@ -172,7 +172,7 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppE
                 .small()
                 .color(ui.visuals().warn_fg_color),
         )
-        .on_hover_text("egui was compiled with debug assertions enabled.");
+        .on_hover_text("Rerun was compiled with debug assertions enabled.");
     }
 
     if !app_env.is_test() {
@@ -406,7 +406,7 @@ fn panel_buttons_r2l(
     let selection = app.state.selection_state.selected_items();
     let rec_cfg = store_hub
         .active_store_id()
-        .and_then(|id| app.state.recording_configs.get(id));
+        .and_then(|id| app.state.time_controls.get(id));
     app.state.share_modal.button_ui(
         ui,
         store_hub,

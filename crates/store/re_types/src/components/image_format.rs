@@ -24,45 +24,21 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct ImageFormat(pub crate::datatypes::ImageFormat);
 
-impl ::re_types_core::Component for ImageFormat {
+impl ::re_types_core::WrapperComponent for ImageFormat {
+    type Datatype = crate::datatypes::ImageFormat;
+
     #[inline]
     fn name() -> ComponentType {
         "rerun.components.ImageFormat".into()
     }
+
+    #[inline]
+    fn into_inner(self) -> Self::Datatype {
+        self.0
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(ImageFormat);
-
-impl ::re_types_core::Loggable for ImageFormat {
-    #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
-        crate::datatypes::ImageFormat::arrow_datatype()
-    }
-
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
-    where
-        Self: Clone + 'a,
-    {
-        crate::datatypes::ImageFormat::to_arrow_opt(data.into_iter().map(|datum| {
-            datum.map(|datum| match datum.into() {
-                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
-                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
-            })
-        }))
-    }
-
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
-        crate::datatypes::ImageFormat::from_arrow_opt(arrow_data)
-            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
-    }
-}
 
 impl<T: Into<crate::datatypes::ImageFormat>> From<T> for ImageFormat {
     fn from(v: T) -> Self {

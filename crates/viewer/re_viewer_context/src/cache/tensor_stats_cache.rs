@@ -3,6 +3,7 @@ use itertools::Either;
 
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreEvent;
+use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
 use re_types::{archetypes::Tensor, datatypes::TensorData};
 
@@ -43,7 +44,7 @@ impl Cache for TensorStatsCache {
         "Tensor Stats"
     }
 
-    fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {
         re_tracing::profile_function!();
 
         let cache_keys: HashSet<Hash64> = events

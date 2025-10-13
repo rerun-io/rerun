@@ -133,7 +133,7 @@ def main() -> None:
         build_cpp_snippets()
 
     # Always build rust since we use it as the baseline for comparison.
-    build_rust_snippets(build_env, args.release, args.target, args.target_dir)
+    build_rust_snippets(build_env=build_env, release=args.release, target=args.target, target_dir=args.target_dir)
 
     examples = []
     if len(args.example) > 0:
@@ -281,13 +281,17 @@ def run_example(example: Example, language: str, args: argparse.Namespace) -> No
         python_output_path = run_python(example)
         check_non_empty_rrd(python_output_path)
     elif language == "rust":
-        rust_output_path = run_prebuilt_rust(example, args.release, args.target, args.target_dir)
+        rust_output_path = run_prebuilt_rust(
+            example, release=args.release, target=args.target, target_dir=args.target_dir
+        )
         check_non_empty_rrd(rust_output_path)
     else:
         raise AssertionError(f"Unknown language: {language}")
 
 
-def build_rust_snippets(build_env: dict[str, str], release: bool, target: str | None, target_dir: str | None) -> None:
+def build_rust_snippets(
+    *, build_env: dict[str, str], release: bool, target: str | None, target_dir: str | None
+) -> None:
     print("----------------------------------------------------------")
     print("Building snippets for Rust…")
 
@@ -343,7 +347,7 @@ def run_python(example: Example) -> str:
     return output_path
 
 
-def run_prebuilt_rust(example: Example, release: bool, target: str | None, target_dir: str | None) -> str:
+def run_prebuilt_rust(example: Example, *, release: bool, target: str | None, target_dir: str | None) -> str:
     output_path = example.output_path("rust")
 
     extension = ".exe" if os.name == "nt" else ""

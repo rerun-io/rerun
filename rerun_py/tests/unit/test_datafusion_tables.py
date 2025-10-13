@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import pathlib
 import platform
+import socket
 import subprocess
 import time
 from typing import TYPE_CHECKING
@@ -11,8 +12,7 @@ import psutil
 import pyarrow as pa
 import pytest
 from datafusion import col, functions as f
-from rerun.catalog import CatalogClient
-from rerun_bindings import EntryKind
+from rerun.catalog import CatalogClient, EntryKind
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -20,8 +20,6 @@ if TYPE_CHECKING:
     from rerun_bindings import DatasetEntry
 
 HOST = "localhost"
-PORT = 51234
-CATALOG_URL = f"rerun+http://{HOST}:{PORT}"
 DATASET_NAME = "dataset"
 
 DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "rrd" / "dataset"
@@ -84,14 +82,12 @@ def shutdown_process(process: subprocess.Popen[str]) -> None:
         print(f"Error during cleanup: {e}")
 
 
-def wait_for_server_ready(timeout: int = 30) -> None:
-    import socket
-
+def wait_for_server_ready(port: int, timeout: int = 30) -> None:
     def is_port_open() -> bool:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(1)
         try:
-            result = sock.connect_ex((HOST, PORT))
+            result = sock.connect_ex((HOST, port))
             return result == 0
         finally:
             sock.close()
@@ -103,7 +99,7 @@ def wait_for_server_ready(timeout: int = 30) -> None:
             break
         time.sleep(0.1)
     else:
-        raise TimeoutError(f"Server port {PORT} not ready within {timeout}s")
+        raise TimeoutError(f"Server port {port} not ready within {timeout}s")
 
 
 class ServerInstance:
@@ -123,16 +119,36 @@ def server_instance() -> Generator[ServerInstance, None, None]:
         # Server can be noisy by default
         env["RUST_LOG"] = "warning"
 
-    # TODO(#11173): pick a free port
-    cmd = ["python", "-m", "rerun", "server", "--dataset", str(DATASET_FILEPATH), "--table", str(TABLE_FILEPATH)]
+    # Find a free port dynamically
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind((HOST, 0))
+    port = sock.getsockname()[1]
+    sock.close()
+
+    catalog_url = f"rerun+http://{HOST}:{port}"
+
+    cmd = [
+        "python",
+        "-m",
+        "rerun",
+        "server",
+        "--dataset",
+        str(DATASET_FILEPATH),
+        "--table",
+        str(TABLE_FILEPATH),
+        "--table",
+        f"second_schema.second_table={TABLE_FILEPATH}",
+        "--table",
+        f"alternate_catalog.third_schema.third_table={TABLE_FILEPATH}",
+    ]
     server_process = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     try:
-        wait_for_server_ready()
+        wait_for_server_ready(port)
     except Exception as e:
         print(f"Error during waiting for server to start: {e}")
 
-    client = CatalogClient(CATALOG_URL)
+    client = CatalogClient(catalog_url)
     dataset = client.get_dataset(name=DATASET_NAME)
 
     resource = ServerInstance(server_process, client, dataset)
@@ -255,9 +271,8 @@ def test_tables_to_arrow_reader(server_instance: ServerInstance) -> None:
     for partition_batch in dataset.partition_table().to_arrow_reader():
         assert partition_batch.num_rows > 0
 
-    # TODO(tsaucer) Once OSS server supports table entries, uncomment this test
-    # for table_entry in client.table_entries()[0].to_arrow_reader():
-    #     assert table_entry.num_rows > 0
+    for table_entry in server_instance.client.table_entries()[0].to_arrow_reader():
+        assert table_entry.num_rows > 0
 
 
 def test_url_generation(server_instance: ServerInstance) -> None:
@@ -317,24 +332,67 @@ def test_query_lance_table(server_instance: ServerInstance) -> None:
     assert entries_table_name in client.table_names()
 
     entries = client.table_entries()
-    assert len(entries) == 2
-
-    # No guarantee on order here
-    if entries[0].name == expected_table_name:
-        assert entries[1].name == entries_table_name
-    else:
-        assert entries[0].name == entries_table_name
-        assert entries[1].name == expected_table_name
-
-    assert entries[0].kind == EntryKind.TABLE
-    assert entries[1].kind == EntryKind.TABLE
+    assert len(entries) == 4
 
     tables = client.tables()
-    assert tables.collect()[0].num_rows == 1
+    assert pa.Table.from_batches(tables.collect()).num_rows == 4
 
-    table = client.get_table(name=expected_table_name)
-    assert table.collect()[0].num_rows > 0
+    client.get_table(name=expected_table_name)
+    assert pa.Table.from_batches(tables.collect()).num_rows > 0
 
     entry = client.get_table_entry(name=expected_table_name)
     assert entry.name == expected_table_name
     assert entry.kind == EntryKind.TABLE
+
+
+def test_dataset_schema_comparison_self_consistent(server_instance: ServerInstance) -> None:
+    dataset = server_instance.dataset
+
+    schema_0 = dataset.schema()
+    schema_1 = dataset.schema()
+    set_diff = set(schema_0).symmetric_difference(schema_1)
+
+    assert len(set_diff) == 0, f"Schema iterator is not self-consistent: {set_diff}"
+    assert schema_0 == schema_1, "Schema is not self-consistent"
+
+
+def test_datafusion_catalog_get_tables(server_instance: ServerInstance) -> None:
+    ctx = server_instance.client.ctx
+
+    # Verify we have the catalog provider and schema provider
+    catalog_provider = ctx.catalog("datafusion")
+    assert catalog_provider is not None
+
+    schema_provider = catalog_provider.schema("public")
+    assert schema_provider is not None
+
+    # Note: as of DataFusion 50.0.0 this is not a DataFrame
+    # but rather a python object that describes the table.
+    table = schema_provider.table("simple_datatypes")
+    assert table is not None
+
+    schema_provider = catalog_provider.schema("second_schema")
+    assert schema_provider.table("second_table") is not None
+
+    catalog_provider = ctx.catalog("alternate_catalog")
+    schema_provider = catalog_provider.schema("third_schema")
+    assert schema_provider.table("third_table") is not None
+
+    # Get by table name since it should be in the default catalog/schema
+    df = ctx.table("simple_datatypes")
+    rb = pa.Table.from_batches(df.collect())
+    assert rb.num_rows > 0
+
+    # Get table by fully qualified name
+    df = ctx.table("datafusion.public.simple_datatypes")
+    rb = pa.Table.from_batches(df.collect())
+    assert rb.num_rows > 0
+
+    # Verify SQL parsing for catalog provider works as expected
+    df = ctx.sql("SELECT * FROM simple_datatypes")
+    rb = pa.Table.from_batches(df.collect())
+    assert rb.num_rows > 0
+
+    df = ctx.sql("SELECT * FROM datafusion.public.simple_datatypes")
+    rb = pa.Table.from_batches(df.collect())
+    assert rb.num_rows > 0

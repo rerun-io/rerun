@@ -18,6 +18,7 @@ workspace = true
 re_chunk.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
+re_ros_msg.workspace = true
 re_tracing.workspace = true
 re_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
 
@@ -33,7 +34,5 @@ serde_bytes.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
-re_format_arrow.workspace = true
-
 insta = { workspace = true, features = ["filters", "redactions"] }
 prost-reflect = { workspace = true, features = ["text-format"] }

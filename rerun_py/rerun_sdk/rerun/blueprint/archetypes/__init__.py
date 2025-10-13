@@ -23,6 +23,7 @@ from .tensor_scalar_mapping import TensorScalarMapping
 from .tensor_slice_selection import TensorSliceSelection
 from .tensor_view_fit import TensorViewFit
 from .time_axis import TimeAxis
+from .time_panel_blueprint import TimePanelBlueprint
 from .view_blueprint import ViewBlueprint
 from .view_contents import ViewContents
 from .viewport_blueprint import ViewportBlueprint
@@ -52,6 +53,7 @@ __all__ = [
     "TensorSliceSelection",
     "TensorViewFit",
     "TimeAxis",
+    "TimePanelBlueprint",
     "ViewBlueprint",
     "ViewContents",
     "ViewportBlueprint",

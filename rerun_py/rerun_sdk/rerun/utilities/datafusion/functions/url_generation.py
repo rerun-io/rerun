@@ -19,6 +19,7 @@ except ModuleNotFoundError:
 
 def partition_url(
     dataset: DatasetEntry,
+    *,
     partition_id_col: str | Expr | None = None,
     timestamp_col: str | Expr | None = None,
     timeline_name: str | None = None,

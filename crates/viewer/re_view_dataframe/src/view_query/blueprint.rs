@@ -29,7 +29,7 @@ impl Query {
         if let Some(timeline_name) = timeline_name {
             Ok(timeline_name.into())
         } else {
-            let timeline_name = *ctx.rec_cfg.time_ctrl.read().timeline().name();
+            let timeline_name = *ctx.time_ctrl.timeline().name();
             self.save_timeline_name(ctx, &timeline_name);
 
             Ok(timeline_name)
@@ -307,7 +307,7 @@ mod test {
     /// Simple test to demo round-trip testing using [`TestContext::run_and_handle_system_commands`].
     #[test]
     fn test_latest_at_enabled() {
-        let mut test_context = TestContext::new();
+        let test_context = TestContext::new();
 
         let view_id = ViewId::random();
 
@@ -315,7 +315,10 @@ mod test {
             let query = Query::from_blueprint(ctx, view_id);
             query.save_latest_at_enabled(ctx, true);
         });
-        test_context.handle_system_commands();
+
+        egui::__run_test_ctx(|egui_ctx| {
+            test_context.handle_system_commands(egui_ctx);
+        });
 
         test_context.run_in_egui_central_panel(|ctx, _| {
             let query = Query::from_blueprint(ctx, view_id);

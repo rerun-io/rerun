@@ -161,6 +161,7 @@ class catch_and_log_exceptions:
     def __init__(
         self,
         context: str | None = None,
+        *,
         depth_to_user_code: int = 1,
         exception_return_value: Any = None,
         strict: bool | None = None,
@@ -288,7 +289,7 @@ class RerunIncompatibleDependencyVersionError(ImportError):
     def __init__(self, package: str, actual_version: str, compatible_versions: list[int]) -> None:
         super().__init__(
             f"'{package}' version {actual_version} is incompatible with rerun. "
-            f"Please install rerun as rerun[{package}]/rerun[all] "
+            f"Please install rerun as rerun-sdk[{package}]/rerun-sdk[all] "
             f"to use this functionality. "
             f"Compatible major version(s): {', '.join(map(str, compatible_versions))}"
         )

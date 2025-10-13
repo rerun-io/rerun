@@ -33,7 +33,7 @@ use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
 };
 use re_log_types::{ApplicationId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::{DATASET_MANIFEST_ID_FIELD_NAME, FetchChunksRequest};
+use re_protos::cloud::v1alpha1::{FetchChunksRequest, ScanPartitionTableResponse};
 use re_redap_client::ConnectionClient;
 use re_sorbet::{ColumnDescriptor, ColumnSelector};
 
@@ -71,7 +71,7 @@ pub struct DataframePartitionStreamInner {
     client: ConnectionClient,
     chunk_infos: Vec<RecordBatch>,
 
-    chunk_tx: Option<Sender<ChunksWithPartition>>,
+    chunk_tx: Option<Sender<Result<ChunksWithPartition, re_redap_client::StreamError>>>,
     store_output_channel: Receiver<RecordBatch>,
     io_join_handle: Option<JoinHandle<Result<(), DataFusionError>>>,
 
@@ -201,10 +201,12 @@ impl PartitionStreamExec {
         let orderings = if projected_schema
             .fields()
             .iter()
-            .any(|f| f.name().as_str() == DATASET_MANIFEST_ID_FIELD_NAME)
+            .any(|f| f.name().as_str() == ScanPartitionTableResponse::FIELD_PARTITION_ID)
         {
-            let partition_col =
-                Arc::new(Column::new(DATASET_MANIFEST_ID_FIELD_NAME, 0)) as Arc<dyn PhysicalExpr>;
+            let partition_col = Arc::new(Column::new(
+                ScanPartitionTableResponse::FIELD_PARTITION_ID,
+                0,
+            )) as Arc<dyn PhysicalExpr>;
             let order_col = sort_index
                 .and_then(|index| {
                     let index_name = index.as_str();
@@ -242,7 +244,10 @@ impl PartitionStreamExec {
 
         let output_partitioning = if partition_in_output_schema {
             Partitioning::Hash(
-                vec![Arc::new(Column::new(DATASET_MANIFEST_ID_FIELD_NAME, 0))],
+                vec![Arc::new(Column::new(
+                    ScanPartitionTableResponse::FIELD_PARTITION_ID,
+                    0,
+                ))],
                 num_partitions,
             )
         } else {
@@ -303,7 +308,7 @@ async fn send_next_row(
 
     let batch_schema = Arc::new(prepend_string_column_schema(
         &query_schema,
-        DATASET_MANIFEST_ID_FIELD_NAME,
+        ScanPartitionTableResponse::FIELD_PARTITION_ID,
     ));
 
     let batch = RecordBatch::try_new_with_options(
@@ -325,13 +330,16 @@ async fn send_next_row(
 // TODO(#10781) - support for sending intermediate results/chunks
 #[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_store_cpu_worker_thread(
-    mut input_channel: Receiver<ChunksWithPartition>,
+    mut input_channel: Receiver<Result<ChunksWithPartition, re_redap_client::StreamError>>,
     output_channel: Sender<RecordBatch>,
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
 ) -> Result<(), DataFusionError> {
     let mut current_stores: Option<(String, ChunkStoreHandle, QueryHandle<StorageEngine>)> = None;
     while let Some(chunks_and_partition_ids) = input_channel.recv().await {
+        let chunks_and_partition_ids =
+            chunks_and_partition_ids.map_err(|err| exec_datafusion_err!("{err}"))?;
+
         for (chunk, partition_id) in chunks_and_partition_ids {
             let partition_id = partition_id
                 .ok_or_else(|| exec_datafusion_err!("Received chunk without a partition id"))?;
@@ -405,7 +413,7 @@ async fn chunk_store_cpu_worker_thread(
 async fn chunk_stream_io_loop(
     mut client: ConnectionClient,
     chunk_infos: Vec<RecordBatch>,
-    output_channel: Sender<ChunksWithPartition>,
+    output_channel: Sender<Result<ChunksWithPartition, re_redap_client::StreamError>>,
 ) -> Result<(), DataFusionError> {
     let chunk_infos = chunk_infos
         .into_iter()
@@ -438,7 +446,7 @@ async fn chunk_stream_io_loop(
             fetch_chunks_response_stream,
         );
 
-        while let Some(Ok(chunk_and_partition_id)) = chunk_stream.next().await {
+        while let Some(chunk_and_partition_id) = chunk_stream.next().await {
             if output_channel.send(chunk_and_partition_id).await.is_err() {
                 break;
             }
