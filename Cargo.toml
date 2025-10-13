@@ -173,12 +173,12 @@ egui-wgpu = "0.33.0"
 emath = "0.33.0"
 
 # other egui crates:
-egui_commonmark = { version = "0.22", default-features = false }
-egui_dnd = { version = "0.13" }
-egui_plot = "0.34" # https://github.com/emilk/egui_plot
-egui_table = "0.5" # https://github.com/rerun-io/egui_table
-egui_tiles = "0.14" # https://github.com/rerun-io/egui_tiles
-walkers = "0.45"
+egui_commonmark = { version = "0.22.0", default-features = false }
+egui_dnd = { version = "0.14.0" }
+egui_plot = "0.34.0" # https://github.com/emilk/egui_plot
+egui_table = "0.5.0" # https://github.com/rerun-io/egui_table
+egui_tiles = "0.14.0" # https://github.com/rerun-io/egui_tiles
+walkers = "0.47.0"
 
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
@@ -832,12 +832,12 @@ unnecessary_debug_formatting = "allow"
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }
 # egui_tiles = { path = "../egui_tiles" }
 
-egui_dnd = { git = "https://github.com/rerun-io/hello_egui.git", branch = "emilk/egui-0.33.0" }
+# egui_dnd = { git = "https://github.com/rerun-io/hello_egui.git", branch = "emilk/egui-0.33.0" }
 
 # egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", branch = "lucas/update-egui-main" }
 
 # egui_commonmark = { path = "../../forks/egui_commonmark/egui_commonmark" }
 
-walkers = { git = "https://github.com/rerun-io/walkers", branch = "emilk/rust-1.88" } # https://github.com/podusowski/walkers/pull/394
+# walkers = { git = "https://github.com/rerun-io/walkers", branch = "emilk/rust-1.88" } # https://github.com/podusowski/walkers/pull/394
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }

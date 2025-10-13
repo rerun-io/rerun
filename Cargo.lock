@@ -3316,8 +3316,9 @@ dependencies = [
 
 [[package]]
 name = "egui_animation"
-version = "0.9.0"
-source = "git+https://github.com/rerun-io/hello_egui.git?branch=emilk%2Fegui-0.33.0#03ecb48470844764fc0c86a4fd866e23ca469bb8"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3db554dd3784f469d804f7dc25d1b14a2e00f1608d7af60218ccbced720a6e8"
 dependencies = [
  "egui",
  "hello_egui_utils",
@@ -3349,8 +3350,9 @@ dependencies = [
 
 [[package]]
 name = "egui_dnd"
-version = "0.13.0"
-source = "git+https://github.com/rerun-io/hello_egui.git?branch=emilk%2Fegui-0.33.0#03ecb48470844764fc0c86a4fd866e23ca469bb8"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f535b8df7ca89f781954feaa505899c8955b550074ecafcaa3c040f67aec3d46"
 dependencies = [
  "egui",
  "egui_animation",
@@ -4444,8 +4446,9 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
 name = "hello_egui_utils"
-version = "0.9.0"
-source = "git+https://github.com/rerun-io/hello_egui.git?branch=emilk%2Fegui-0.33.0#03ecb48470844764fc0c86a4fd866e23ca469bb8"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f5d09c2c7f3aa61624b1bec320be9029f30e06769f92e39ac99a6d6e01024ae8"
 dependencies = [
  "concat-idents",
  "egui",
@@ -4894,7 +4897,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b0f83760fb341a774ed326568e19f5a863af4a952def8c39f9ab92fd95b88e5"
 dependencies = [
  "equivalent",
- "hashbrown 0.15.5",
+ "hashbrown 0.16.0",
  "serde",
  "serde_core",
 ]
@@ -12750,8 +12753,9 @@ dependencies = [
 
 [[package]]
 name = "walkers"
-version = "0.45.0"
-source = "git+https://github.com/rerun-io/walkers?branch=emilk%2Frust-1.88#802a1097a838410c0e01ca67fb2cbe38f144ad79"
+version = "0.47.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d486e75fbc4a6284398c5434f8fe371038f0ec845cbb9f3a3d7bcbcd9b692fb"
 dependencies = [
  "egui",
  "egui_extras",
