@@ -66,6 +66,7 @@ pub trait HarnessExt {
     fn click_label(&mut self, label: &str);
     fn right_click_label(&mut self, label: &str);
     fn right_click_nth_label(&mut self, label: &str, index: usize);
+    fn hover_label_contains(&mut self, label: &str);
 
     // Takes a snapshot of the current app state with good-enough snapshot options.
     fn snapshot_app(&mut self, snapshot_name: &str);
@@ -243,6 +244,11 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
 
     fn right_click_nth_label(&mut self, label: &str, index: usize) {
         self.get_nth_label(label, index).click_secondary();
+        self.run_ok();
+    }
+
+    fn hover_label_contains(&mut self, label: &str) {
+        self.get_by_label_contains(label).hover();
         self.run_ok();
     }
 
