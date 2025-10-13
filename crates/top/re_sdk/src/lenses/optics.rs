@@ -285,9 +285,9 @@ struct UnwrapSingleStructFieldLens {
 
 impl ArrowLens for UnwrapSingleStructFieldLens {
     type Source = ListArray;
-    type Target = ArrayRef;
+    type Target = ListArray;
 
-    fn project(&self, source: &ListArray) -> Result<ArrayRef, ArrowError> {
+    fn project(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
         // Get the struct array from the list values
         let struct_array = source
             .values()
@@ -300,18 +300,29 @@ impl ArrowLens for UnwrapSingleStructFieldLens {
             })?;
 
         // Extract the field
-        struct_array
+        let field_array = struct_array
             .column_by_name(&self.field_name)
             .ok_or_else(|| {
                 arrow::error::ArrowError::InvalidArgumentError(format!(
                     "Field {} not found",
                     self.field_name
                 ))
+            })?;
+
+        // Downcast to ListArray
+        field_array
+            .as_any()
+            .downcast_ref::<ListArray>()
+            .ok_or_else(|| {
+                arrow::error::ArrowError::InvalidArgumentError(format!(
+                    "Field {} is not a ListArray",
+                    self.field_name
+                ))
             })
             .map(Clone::clone)
     }
 
-    fn embed(&self, _source: ListArray, _value: ArrayRef) -> Result<ListArray, ArrowError> {
+    fn embed(&self, _source: ListArray, _value: ListArray) -> Result<ListArray, ArrowError> {
         todo!()
     }
 }
@@ -460,28 +471,6 @@ where
     }
 }
 
-// Helper lens for ArrayRef -> concrete type
-#[derive(Clone)]
-struct ArrayRefToListLens;
-
-impl ArrowLens for ArrayRefToListLens {
-    type Source = ArrayRef;
-    type Target = ListArray;
-
-    fn project(&self, source: &ArrayRef) -> Result<ListArray, ArrowError> {
-        source
-            .as_any()
-            .downcast_ref::<ListArray>()
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError("Expected ListArray".into())
-            })
-            .map(Clone::clone)
-    }
-
-    fn embed(&self, _source: ArrayRef, value: ListArray) -> Result<ArrayRef, ArrowError> {
-        Ok(Arc::new(value))
-    }
-}
 
 // Need a lens to map over the outer ListArray's elements
 #[derive(Clone)]
@@ -692,7 +681,6 @@ mod test {
         let pipeline = UnwrapSingleStructFieldLens {
             field_name: "poses".into(),
         }
-        .then(ArrayRefToListLens)
         .then(ListStructToFixedListLens);
 
         let result: ListArray = pipeline.project(&array).unwrap();
@@ -707,7 +695,6 @@ mod test {
         let pipeline = UnwrapSingleStructFieldLens {
             field_name: "poses".into(),
         }
-        .then(ArrayRefToListLens)
         .then(ListStructToFixedListLens)
         .then(ListMapLens {
             inner_lens: FixedSizeListMapLens {
@@ -727,7 +714,6 @@ mod test {
         let pipeline = UnwrapSingleStructFieldLens {
             field_name: "poses".into(),
         }
-        .then(ArrayRefToListLens)
         .then(ListStructToFixedListLens)
         .then(ListMapLens {
             inner_lens: FixedSizeListMapLens {
