@@ -80,7 +80,6 @@ impl std::error::Error for TonicStatusError {
 pub struct ApiError {
     pub message: String,
     pub kind: ApiErrorKind,
-    /// Optional underlying error.
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
@@ -118,9 +117,9 @@ impl From<&ClientConnectionError> for ApiErrorKind {
             ClientConnectionError::UnencryptedServer => Self::InvalidArguments,
             ClientConnectionError::UnauthenticatedMissingToken(_)
             | ClientConnectionError::UnauthenticatedBadToken(_) => Self::Unauthenticated,
-            ClientConnectionError::AuthCheckError(_) | ClientConnectionError::Tonic(_) => {
-                Self::Connection
-            }
+            ClientConnectionError::AuthCheckError(_) => Self::Connection,
+            #[cfg(not(target_arch = "wasm32"))]
+            ClientConnectionError::Tonic(_) => Self::Connection,
         }
     }
 }

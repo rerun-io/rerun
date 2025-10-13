@@ -242,7 +242,7 @@ where
     S: Stream<Item = Result<re_protos::cloud::v1alpha1::FetchChunksResponse, tonic::Status>>,
 {
     response.map(|resp| {
-        let r = resp.map_err(|err| {
+        let resp = resp.map_err(|err| {
             ApiError::tonic(err, "failed to get item in /FetchChunks response stream")
         })?;
 

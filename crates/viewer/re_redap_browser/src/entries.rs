@@ -169,7 +169,7 @@ async fn fetch_entries_and_register_tables(
     let mut client = connection_registry
         .client(origin.clone())
         .await
-        .map_err(|err| ApiError::client_connection(err, "failed establising client connection"))?;
+        .map_err(|err| ApiError::client_connection(err, "failed establishing client connection"))?;
 
     let entries = client
         .find_entries(EntryFilter {
