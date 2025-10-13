@@ -16,7 +16,7 @@ A view of a text log, for use with [`archetypes.TextLog`](https://rerun.io/docs/
 
 snippet: views/text_log
 
-<picture data-inline-viewer="snippets/text_log">
+<picture data-inline-viewer="snippets/views/text_log">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/1024w.png">
