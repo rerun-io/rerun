@@ -178,7 +178,7 @@ async fn scan_dataset_manifest_and_snapshot(
     dataset_id: EntryId,
     snapshot_name: &str,
 ) {
-    let response = fe
+    let resps: Vec<_> = fe
         .scan_dataset_manifest(
             tonic::Request::new(ScanDatasetManifestRequest {
                 columns: vec![], // all of them
@@ -186,17 +186,12 @@ async fn scan_dataset_manifest_and_snapshot(
             .with_entry_id(dataset_id)
             .unwrap(),
         )
-        .await;
-
-    //TODO(RR-2482): remove this once OSS server implements this endpoint
-    if response
-        .as_ref()
-        .is_err_and(|status| status.code() == tonic::Code::Unimplemented)
-    {
-        return;
-    }
-
-    let resps: Vec<_> = response.unwrap().into_inner().try_collect().await.unwrap();
+        .await
+        .unwrap()
+        .into_inner()
+        .try_collect()
+        .await
+        .unwrap();
 
     let batches = resps
         .into_iter()

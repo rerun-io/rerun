@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
+use ahash::HashMap;
 use arrow::array::{
     ArrayRef, Int32Array, RecordBatch, RecordBatchOptions, StringArray, TimestampNanosecondArray,
 };
@@ -10,21 +10,20 @@ use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
 use lance::datafusion::LanceTableProvider;
 
-use re_chunk_store::ChunkStoreConfig;
-use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::EntryKind;
+use re_chunk_store::{Chunk, ChunkStoreConfig};
+use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
-        SystemTableKind,
+        EntryKind, SystemTableKind,
         ext::{EntryDetails, SystemTable},
     },
-    common::v1alpha1::ext::IfDuplicateBehavior,
+    common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId},
 };
 use re_tuid::Tuid;
 use re_types_core::{ComponentBatch as _, Loggable as _};
 
 use crate::entrypoint::NamedPath;
-use crate::store::{Dataset, Error, Table};
+use crate::store::{ChunkKey, Dataset, Error, Table};
 
 const ENTRIES_TABLE_NAME: &str = "__entries";
 
@@ -53,6 +52,68 @@ impl InMemoryStore {
         ChunkStoreConfig::CHANGELOG_DISABLED
             .apply_env()
             .unwrap_or(ChunkStoreConfig::CHANGELOG_DISABLED)
+    }
+
+    pub fn chunks_from_chunk_keys(
+        &self,
+        chunk_keys: &[ChunkKey],
+    ) -> Result<Vec<(StoreId, Arc<Chunk>)>, Error> {
+        // sort keys per dataset, partition, layer
+        let mut chunk_key_index: HashMap<
+            &EntryId,
+            HashMap<&PartitionId, HashMap<&str, Vec<&ChunkKey>>>,
+        > = Default::default();
+
+        for chunk_key in chunk_keys {
+            chunk_key_index
+                .entry(&chunk_key.dataset_id)
+                .or_default()
+                .entry(&chunk_key.partition_id)
+                .or_default()
+                .entry(&chunk_key.layer_name)
+                .or_default()
+                .push(chunk_key);
+        }
+
+        let mut result = Vec::with_capacity(chunk_keys.len());
+
+        for (dataset_id, partition_index) in chunk_key_index {
+            let dataset = self.dataset(*dataset_id)?;
+
+            for (partition_id, layer_index) in partition_index {
+                let partition = dataset.partition(partition_id)?;
+
+                let store_id = StoreId::new(
+                    StoreKind::Recording,
+                    dataset_id.to_string(),
+                    partition_id.id.as_str(),
+                );
+
+                for (layer_name, chunk_keys) in layer_index {
+                    let store_handle = partition
+                        .layer(layer_name)
+                        .ok_or_else(|| {
+                            Error::LayerNameNotFound(
+                                layer_name.to_owned(),
+                                partition_id.clone(),
+                                *dataset_id,
+                            )
+                        })?
+                        .store_handle()
+                        .read();
+
+                    for chunk_key in chunk_keys {
+                        let chunk = store_handle
+                            .chunk(&chunk_key.chunk_id)
+                            .ok_or_else(|| Error::ChunkNotFound(chunk_key.clone()))?;
+
+                        result.push((store_id.clone(), Arc::clone(chunk)));
+                    }
+                }
+            }
+        }
+
+        Ok(result)
     }
 
     /// Load a directory of RRDs.
@@ -226,16 +287,22 @@ impl InMemoryStore {
         }
     }
 
-    pub fn dataset(&self, entry_id: EntryId) -> Option<&Dataset> {
-        self.datasets.get(&entry_id)
+    pub fn dataset(&self, entry_id: EntryId) -> Result<&Dataset, Error> {
+        self.datasets
+            .get(&entry_id)
+            .ok_or(Error::EntryIdNotFound(entry_id))
     }
 
     pub fn dataset_mut(&mut self, entry_id: EntryId) -> Option<&mut Dataset> {
         self.datasets.get_mut(&entry_id)
     }
 
-    pub fn dataset_by_name(&self, name: &str) -> Option<&Dataset> {
-        let entry_id = self.id_by_name.get(name).copied()?;
+    pub fn dataset_by_name(&self, name: &str) -> Result<&Dataset, Error> {
+        let entry_id = self
+            .id_by_name
+            .get(name)
+            .copied()
+            .ok_or(Error::EntryNameNotFound(name.to_owned()))?;
         self.dataset(entry_id)
     }
 
@@ -306,7 +373,7 @@ fn generate_entries_table(entries: &[EntryDetails]) -> Result<RecordBatch, Error
                 false,
             ),
         ],
-        HashMap::new(),
+        Default::default(),
     ));
 
     let num_rows = id_arr.len();

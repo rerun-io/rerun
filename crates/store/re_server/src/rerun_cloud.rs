@@ -2,25 +2,24 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use ahash::HashMap;
-use arrow::array::{BinaryArray, StringArray};
+use arrow::array::BinaryArray;
 use datafusion::prelude::SessionContext;
-use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
-use re_byte_size::SizeBytes as _;
-use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
+use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
-        DeleteEntryResponse, EntryDetails, EntryKind, GetDatasetManifestSchemaRequest,
-        GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse,
-        GetPartitionTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionRequest,
-        QueryTasksRequest, QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
+        DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
+        GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
+        GetDatasetSchemaResponse, GetPartitionTableSchemaResponse, QueryDatasetResponse,
+        QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse, QueryTasksRequest,
+        QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
         RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
-        ScanPartitionTableResponse, ScanTableResponse, FetchChunksRequest
+        ScanPartitionTableResponse, ScanTableResponse,
         ext::{
             self, CreateDatasetEntryResponse, DataSource, ReadDatasetEntryResponse,
             ReadTableEntryResponse,
@@ -33,7 +32,6 @@ use re_protos::{
     },
     headers::RerunHeadersExtractorExt as _,
 };
-use re_types_core::{ChunkId, Loggable as _};
 
 use crate::entrypoint::NamedPath;
 use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
@@ -110,9 +108,7 @@ impl RerunCloudHandler {
         partition_ids: &[PartitionId],
     ) -> Result<Vec<(PartitionId, String, ChunkStoreHandle)>, tonic::Status> {
         let store = self.store.read().await;
-        let dataset = store.dataset(dataset_id).ok_or_else(|| {
-            tonic::Status::not_found(format!("Entry with ID {dataset_id} not found"))
-        })?;
+        let dataset = store.dataset(dataset_id)?;
 
         Ok(dataset
             .partitions_from_ids(partition_ids)?
@@ -183,30 +179,12 @@ impl RerunCloudHandler {
         let dataset = match (entry_id, name) {
             (None, None) => None,
 
-            (Some(entry_id), None) => {
-                let Some(dataset) = store.dataset(entry_id) else {
-                    return Err(tonic::Status::not_found(format!(
-                        "Dataset with ID {entry_id} not found"
-                    )));
-                };
-                Some(dataset)
-            }
+            (Some(entry_id), None) => Some(store.dataset(entry_id)?),
 
-            (None, Some(name)) => {
-                let Some(dataset) = store.dataset_by_name(&name) else {
-                    return Err(tonic::Status::not_found(format!(
-                        "Dataset with name {name} not found"
-                    )));
-                };
-                Some(dataset)
-            }
+            (None, Some(name)) => Some(store.dataset_by_name(&name)?),
 
             (Some(entry_id), Some(name)) => {
-                let Some(dataset) = store.dataset_by_name(&name) else {
-                    return Err(tonic::Status::not_found(format!(
-                        "Dataset with name {name} not found"
-                    )));
-                };
+                let dataset = store.dataset_by_name(&name)?;
                 if dataset.id() != entry_id {
                     return Err(tonic::Status::not_found(format!(
                         "Dataset with ID {entry_id} not found"
@@ -397,9 +375,7 @@ impl RerunCloudService for RerunCloudHandler {
     {
         let store = self.store.read().await;
         let entry_id = get_entry_id_from_headers(&store, &request)?;
-        let dataset = store.dataset(entry_id).ok_or_else(|| {
-            tonic::Status::not_found(format!("entry with ID '{entry_id}' not found"))
-        })?;
+        let dataset = store.dataset(entry_id)?;
 
         Ok(tonic::Response::new(
             ReadDatasetEntryResponse {
@@ -649,10 +625,7 @@ impl RerunCloudService for RerunCloudHandler {
             ));
         }
 
-        let dataset = store.dataset(entry_id).ok_or_else(|| {
-            tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
-        })?;
-
+        let dataset = store.dataset(entry_id)?;
         let record_batch = dataset.partition_table().map_err(|err| {
             tonic::Status::internal(format!("Unable to read partition table: {err:#}"))
         })?;
@@ -710,9 +683,7 @@ impl RerunCloudService for RerunCloudHandler {
             ));
         }
 
-        let dataset = store.dataset(entry_id).ok_or_else(|| {
-            tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
-        })?;
+        let dataset = store.dataset(entry_id)?;
 
         let record_batch = dataset.dataset_manifest().map_err(|err| {
             tonic::Status::internal(format!("Unable to read partition table: {err:#}"))
@@ -742,10 +713,7 @@ impl RerunCloudService for RerunCloudHandler {
         let store = self.store.read().await;
         let entry_id = get_entry_id_from_headers(&store, &request)?;
 
-        let dataset = store.dataset(entry_id).ok_or_else(|| {
-            tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
-        })?;
-
+        let dataset = store.dataset(entry_id)?;
         let schema = dataset.schema().map_err(|err| {
             tonic::Status::internal(format!("Unable to read dataset schema: {err:#}"))
         })?;
@@ -916,72 +884,13 @@ impl RerunCloudService for RerunCloudHandler {
         // worth noting that FetchChunks is not per-dataset request, it simply contains chunk infos
         let request = request.into_inner();
 
-        // Sort chunk ids per dataset id, partition id and layers names
-        let mut chunk_ids_index: HashMap<
-            EntryId,
-            HashMap<PartitionId, HashMap<String, Vec<ChunkId>>>,
-        > = Default::default();
+        let mut chunk_keys = vec![];
         for chunk_info_data in request.chunk_infos {
             let chunk_info_batch = chunk_info_data.decode().map_err(|err| {
                 tonic::Status::internal(format!("Failed to decode chunk_info: {err:#}"))
             })?;
 
             let schema = chunk_info_batch.schema();
-
-            let chunk_id_col_idx = schema
-                .column_with_name(FetchChunksRequest::FIELD_CHUNK_ID)
-                .ok_or_else(|| {
-                    tonic::Status::invalid_argument(format!(
-                        "Missing {} column",
-                        FetchChunksRequest::FIELD_CHUNK_ID
-                    ))
-                })?
-                .0;
-
-            let partition_id_col_idx = schema
-                .column_with_name(FetchChunksRequest::FIELD_CHUNK_PARTITION_ID)
-                .ok_or_else(|| {
-                    tonic::Status::invalid_argument(format!(
-                        "Missing {} column",
-                        FetchChunksRequest::FIELD_CHUNK_PARTITION_ID
-                    ))
-                })?
-                .0;
-
-            let layer_name_col_idx = schema
-                .column_with_name(FetchChunksRequest::FIELD_CHUNK_LAYER_NAME)
-                .ok_or_else(|| {
-                    tonic::Status::invalid_argument(format!(
-                        "Missing {} column",
-                        FetchChunksRequest::FIELD_CHUNK_LAYER_NAME
-                    ))
-                })?
-                .0;
-
-            let chunk_ids = ChunkId::from_arrow(chunk_info_batch.column(chunk_id_col_idx))
-                .map_err(|err| {
-                    tonic::Status::internal(format!("Failed to parse chunk_id column: {err:#}"))
-                })?;
-            let partition_ids = chunk_info_batch
-                .column(partition_id_col_idx)
-                .as_any()
-                .downcast_ref::<StringArray>()
-                .ok_or_else(|| {
-                    tonic::Status::invalid_argument(format!(
-                        "{} must be string array",
-                        FetchChunksRequest::FIELD_CHUNK_PARTITION_ID
-                    ))
-                })?;
-            let layer_names = chunk_info_batch
-                .column(layer_name_col_idx)
-                .as_any()
-                .downcast_ref::<StringArray>()
-                .ok_or_else(|| {
-                    tonic::Status::invalid_argument(format!(
-                        "{} must be string array",
-                        FetchChunksRequest::FIELD_CHUNK_LAYER_NAME
-                    ))
-                })?;
 
             let chunk_key_col_idx = schema
                 .column_with_name(FetchChunksRequest::FIELD_CHUNK_KEY)
@@ -993,7 +902,7 @@ impl RerunCloudService for RerunCloudHandler {
                 })?
                 .0;
 
-            let chunk_keys = chunk_info_batch
+            let chunk_keys_arr = chunk_info_batch
                 .column(chunk_key_col_idx)
                 .as_any()
                 .downcast_ref::<BinaryArray>()
@@ -1004,7 +913,7 @@ impl RerunCloudService for RerunCloudHandler {
                     ))
                 })?;
 
-            for chunk_key in chunk_keys.iter() {
+            for chunk_key in chunk_keys_arr {
                 let chunk_key = chunk_key.ok_or_else(|| {
                     tonic::Status::invalid_argument(format!(
                         "{} must not be null",
@@ -1013,101 +922,43 @@ impl RerunCloudService for RerunCloudHandler {
                 })?;
 
                 let chunk_key = ChunkKey::decode(chunk_key)?;
+                chunk_keys.push(chunk_key);
             }
-
-            //TODO WIP
-            // for (partition_id, layer_name, chunk_id) in itertools::multizip((
-            //     partition_ids.into_iter(),
-            //     layer_names.into_iter(),
-            //     chunk_ids.into_iter(),
-            // )) {
-            //     let (Some(partition_id), Some(layer_name)) = (partition_id, layer_name) else {
-            //         continue;
-            //     };
-            //
-            //     chunk_ids_index
-            //         .entry(PartitionId::from(partition_id.clone()))
-            //         .or_default()
-            //         .entry(layer_name.clone())
-            //         .or_default()
-            //         .push(chunk_id.clone());
-            // }
         }
 
-        // get storage engines only for the partitions we actually need
-        let store = self.store.read().await;
-        let store_handles: std::collections::HashMap<_, _> = store
-            .iter_datasets()
-            .flat_map(|dataset| {
-                let dataset_id = dataset.id();
-                let chunk_partition_pairs = &chunk_ids_index;
-                dataset.partition_ids().filter_map(move |partition_id| {
-                    if chunk_partition_pairs
-                        .iter()
-                        .any(|(_, pid)| pid == &partition_id)
-                    {
-                        Some((
-                            partition_id,
-                            (
-                                dataset_id,
-                                dataset
-                                    .iter_layers()
-                                    .map(|layer| layer.store_handle().clone())
-                                    .collect_vec(),
-                            ),
-                        ))
-                    } else {
-                        None
-                    }
-                })
-            })
-            .collect();
-        drop(store);
+        let chunks = self
+            .store
+            .read()
+            .await
+            .chunks_from_chunk_keys(&chunk_keys)?;
 
-        let mut chunks = Vec::new();
         let compression = re_log_encoding::codec::Compression::Off;
 
-        for (chunk_id, partition_id) in chunk_ids_index {
-            let (dataset_id, store_handles) =
-                store_handles.get(&partition_id).ok_or_else(|| {
-                    tonic::Status::internal(format!(
-                        "Storage engine not found for partition {partition_id}"
-                    ))
-                })?;
+        let encoded_chunks = chunks
+            .into_iter()
+            .map(|(store_id, chunk)| {
+                let arrow_msg = re_log_types::ArrowMsg {
+                    chunk_id: *chunk.id(),
+                    batch: chunk.to_record_batch().map_err(|err| {
+                        tonic::Status::internal(format!(
+                            "failed to convert chunk to record batch: {err:#}"
+                        ))
+                    })?,
+                    on_release: None,
+                };
 
-            for store_handle in store_handles {
-                let chunk_store = store_handle.read();
+                re_log_encoding::protobuf_conversions::arrow_msg_to_proto(
+                    &arrow_msg,
+                    store_id,
+                    compression,
+                )
+                .map_err(|err| tonic::Status::internal(format!("encoding failed: {err:#}")))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
-                if let Some(chunk) = chunk_store.chunk(&chunk_id) {
-                    let store_id = StoreId::new(
-                        StoreKind::Recording,
-                        dataset_id.to_string(),
-                        partition_id.id.as_str(),
-                    );
-
-                    let arrow_msg = re_log_types::ArrowMsg {
-                        chunk_id: *chunk.id(),
-                        batch: chunk.to_record_batch().map_err(|err| {
-                            tonic::Status::internal(format!(
-                                "failed to convert chunk to record batch: {err:#}"
-                            ))
-                        })?,
-                        on_release: None,
-                    };
-
-                    let proto_msg = re_log_encoding::protobuf_conversions::arrow_msg_to_proto(
-                        &arrow_msg,
-                        store_id,
-                        compression,
-                    )
-                    .map_err(|err| tonic::Status::internal(format!("encoding failed: {err:#}")))?;
-
-                    chunks.push(proto_msg);
-                }
-            }
-        }
-
-        let response = re_protos::cloud::v1alpha1::FetchChunksResponse { chunks };
+        let response = re_protos::cloud::v1alpha1::FetchChunksResponse {
+            chunks: encoded_chunks,
+        };
 
         let stream = futures::stream::once(async move { Ok(response) });
 
@@ -1304,12 +1155,7 @@ fn get_entry_id_from_headers<T>(
     if let Some(entry_id) = req.entry_id()? {
         Ok(entry_id)
     } else if let Some(dataset_name) = req.entry_name()? {
-        Ok(store
-            .dataset_by_name(&dataset_name)
-            .ok_or_else(|| {
-                tonic::Status::not_found(format!("entry with name '{dataset_name}' not found"))
-            })?
-            .id())
+        Ok(store.dataset_by_name(&dataset_name)?.id())
     } else {
         const HEADERS: &[&str] = &[
             re_protos::headers::RERUN_HTTP_HEADER_ENTRY_ID,

@@ -55,7 +55,19 @@ impl Layer {
     }
 
     pub fn schema_sha256(&self) -> Result<[u8; 32], ArrowError> {
-        let schema = self.schema();
+        let schema = {
+            // Sort and remove top-level metadata before hashing.
+            //
+            // NOTE: For RRDs, this happens to already be taken care of by the partition mapper,
+            // but this is absolutely not something we can trust. There are zero guarantees that
+            // the schema that ends up here is still sorted and free of top-level metadata, nor
+            // that other mappers behave like that.
+
+            let mut fields = self.schema().fields().to_vec();
+            fields.sort();
+            Schema::new(fields) // no metadata!
+        };
+
         let partition_schema_ipc = {
             let mut schema_ipc = Vec::new();
             arrow::ipc::writer::StreamWriter::try_new(&mut schema_ipc, &schema)?;

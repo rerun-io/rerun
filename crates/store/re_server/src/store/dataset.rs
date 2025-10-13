@@ -45,8 +45,10 @@ impl Dataset {
         &self.name
     }
 
-    pub fn partition(&self, partition_id: &PartitionId) -> Option<&Partition> {
-        self.partitions.get(partition_id)
+    pub fn partition(&self, partition_id: &PartitionId) -> Result<&Partition, Error> {
+        self.partitions
+            .get(partition_id)
+            .ok_or_else(|| Error::PartitionIdNotFound(partition_id.clone(), self.id))
     }
 
     pub fn partitions_from_ids<'a>(
