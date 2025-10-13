@@ -1,4 +1,3 @@
-use re_renderer::colormap_srgb;
 use re_types::reflection::Enum as _;
 use re_ui::list_item;
 
@@ -79,13 +78,16 @@ fn colormap_variant_ui(
 
     let mut response = list_item.show_flat(
         ui,
-        list_item::PropertyContent::new(option.to_string())
-            .min_desired_width(MIN_WIDTH)
-            .value_fn(|ui, _| {
-                if let Err(err) = colormap_preview_ui(render_ctx, ui, *option) {
-                    re_log::error_once!("Failed to paint colormap preview: {err}");
-                }
-            }),
+        list_item::CustomContent::new(|ui, _| {
+            // Draw colormap preview first (on the left)
+            if let Err(err) = colormap_preview_ui(render_ctx, ui, *option) {
+                re_log::error_once!("Failed to paint colormap preview: {err}");
+            }
+
+            ui.add_space(8.0);
+
+            ui.label(option.to_string());
+        }),
     );
 
     if response.clicked() {
@@ -104,37 +106,11 @@ pub fn colormap_edit_or_view_ui(
     if let Some(map) = map.as_mut() {
         let selected_text = map.to_string();
         let content_ui = |ui: &mut egui::Ui| {
-            let is_cyclic = |colormap: re_types::components::Colormap| {
-                let colormap_re_renderer = colormap_to_re_renderer(colormap);
-                let value_at_0 = colormap_srgb(colormap_re_renderer, 0.0);
-                let value_at_1 = colormap_srgb(colormap_re_renderer, 1.0);
-                value_at_0 == value_at_1
-            };
-
-            let (cyclic, non_cyclic): (Vec<_>, Vec<_>) = re_types::components::Colormap::variants()
-                .iter()
-                .partition(|&&colormap| is_cyclic(colormap));
-
             let mut response = ui.allocate_response(egui::Vec2::ZERO, egui::Sense::hover());
 
-            for option in non_cyclic {
-                response |= colormap_variant_ui(ctx.render_ctx(), ui, option, map);
-            }
-
-            if !cyclic.is_empty() {
-                list_item::ListItem::new()
-                    .interactive(false)
-                    .header()
-                    .show_flat(
-                        ui,
-                        list_item::LabelContent::header("Cyclic colormaps")
-                            .min_desired_width(MIN_WIDTH),
-                    );
-
-                for option in cyclic {
-                    response |= colormap_variant_ui(ctx.render_ctx(), ui, option, map);
-                }
-            }
+            response |= colormap_category_ui(ctx, ui, ColormapCategory::Sequential, map);
+            response |= colormap_category_ui(ctx, ui, ColormapCategory::Diverging, map);
+            response |= colormap_category_ui(ctx, ui, ColormapCategory::Cyclic, map);
 
             response
         };
@@ -170,6 +146,38 @@ pub fn colormap_edit_or_view_ui(
     }
 }
 
+fn colormap_category_ui(
+    ctx: &crate::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    category: ColormapCategory,
+    selected: &mut re_types::components::Colormap,
+) -> egui::Response {
+    let label_content = match category {
+        ColormapCategory::Sequential => "Sequential",
+        ColormapCategory::Diverging => "Diverging",
+        ColormapCategory::Cyclic => "Cyclic",
+    };
+
+    let mut response = list_item::ListItem::new()
+        .interactive(false)
+        .header()
+        .show_flat(
+            ui,
+            list_item::LabelContent::header(label_content)
+                .strong(true)
+                .min_desired_width(MIN_WIDTH),
+        );
+
+    for option in re_types::components::Colormap::variants()
+        .into_iter()
+        .filter(|&&colormap| colormap_category(colormap) == category)
+    {
+        response |= colormap_variant_ui(ctx.render_ctx(), ui, option, selected);
+    }
+
+    response
+}
+
 pub fn colormap_to_re_renderer(colormap: re_types::components::Colormap) -> re_renderer::Colormap {
     match colormap {
         re_types::components::Colormap::Grayscale => re_renderer::Colormap::Grayscale,
@@ -182,4 +190,26 @@ pub fn colormap_to_re_renderer(colormap: re_types::components::Colormap) -> re_r
         re_types::components::Colormap::Spectral => re_renderer::Colormap::Spectral,
         re_types::components::Colormap::Twilight => re_renderer::Colormap::Twilight,
     }
+}
+
+pub fn colormap_category(colormap: re_types::components::Colormap) -> ColormapCategory {
+    match colormap {
+        re_types::components::Colormap::Grayscale
+        | re_types::components::Colormap::Inferno
+        | re_types::components::Colormap::Magma
+        | re_types::components::Colormap::Plasma
+        | re_types::components::Colormap::Viridis
+        | re_types::components::Colormap::Turbo => ColormapCategory::Sequential,
+        re_types::components::Colormap::CyanToYellow | re_types::components::Colormap::Spectral => {
+            ColormapCategory::Diverging
+        }
+        re_types::components::Colormap::Twilight => ColormapCategory::Cyclic,
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ColormapCategory {
+    Sequential,
+    Diverging,
+    Cyclic,
 }
