@@ -102,6 +102,19 @@ pub enum TypeConversionError {
         reason: String,
     },
 
+    #[error("missing required dataframe column {column_name} in {package_name}.{type_name}")]
+    MissingColumn {
+        package_name: &'static str,
+        type_name: &'static str,
+        column_name: &'static str,
+    },
+
+    #[error("invalid dataframe schema in {package_name}.{type_name}")]
+    InvalidSchema {
+        package_name: &'static str,
+        type_name: &'static str,
+    },
+
     #[error("failed to parse timestamp: {0}")]
     InvalidTime(#[from] jiff::Error),
 
@@ -147,6 +160,23 @@ impl TypeConversionError {
             reason: reason.to_string(),
         }
     }
+
+    #[inline]
+    pub fn invalid_schema<T: prost::Name>() -> Self {
+        Self::InvalidSchema {
+            package_name: T::PACKAGE,
+            type_name: T::NAME,
+        }
+    }
+
+    #[inline]
+    pub fn missing_column<T: prost::Name>(column_name: &'static str) -> Self {
+        Self::MissingColumn {
+            package_name: T::PACKAGE,
+            type_name: T::NAME,
+            column_name,
+        }
+    }
 }
 
 impl From<TypeConversionError> for tonic::Status {
@@ -177,6 +207,22 @@ macro_rules! missing_field {
 macro_rules! invalid_field {
     ($type:ty, $field:expr, $reason:expr $(,)?) => {
         $crate::TypeConversionError::invalid_field::<$type>($field, &$reason)
+    };
+}
+
+/// Create [`TypeConversionError::InvalidSchema`]
+#[macro_export]
+macro_rules! invalid_schema {
+    ($type:ty $(,)?) => {
+        $crate::TypeConversionError::invalid_schema::<$type>()
+    };
+}
+
+/// Create [`TypeConversionError::MissingColumn`]
+#[macro_export]
+macro_rules! missing_column {
+    ($type:ty, $column:expr $(,)?) => {
+        $crate::TypeConversionError::missing_column::<$type>($column)
     };
 }
 

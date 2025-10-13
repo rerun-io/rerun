@@ -76,100 +76,109 @@ impl std::error::Error for TonicStatusError {
     }
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum StreamEntryError {
-    #[error("Failed reading entry\nDetails:{0}")]
-    Read(TonicStatusError),
-
-    #[error("Failed finding entry\nDetails:{0}")]
-    Find(TonicStatusError),
-
-    #[error("Failed deleting entry\nDetails:{0}")]
-    Delete(TonicStatusError),
-
-    #[error("Failed updating entry\nDetails:{0}")]
-    Update(TonicStatusError),
-
-    #[error("Failed creating entry\nDetails:{0}")]
-    Create(TonicStatusError),
-
-    #[error("Failed reading partition table scheme\nDetails:{0}")]
-    GetPartitionTableSchema(TonicStatusError),
-
-    #[error("Failed reading layer table scheme\nDetails:{0}")]
-    GetDatasetManifestSchema(TonicStatusError),
-
-    #[error("Failed scanning the partition table \nDetails:{0}")]
-    ScanPartitionTable(TonicStatusError),
-
-    #[error("Failed reading entry's partitions\nDetails:{0}")]
-    ReadPartitions(TonicStatusError),
-
-    #[error("Failed registering data source with entry\nDetails:{0}")]
-    RegisterData(TonicStatusError),
-
-    #[error("Failed registering table\nDetails:{0}")]
-    RegisterTable(TonicStatusError),
-
-    #[error("Error while doing maintenance on entry\nDetails:{0}")]
-    Maintenance(TonicStatusError),
-
-    #[error("Invalid entry id\nDetails:{0}")]
-    InvalidId(TonicStatusError),
+#[derive(Debug)]
+pub struct ApiError {
+    pub message: String,
+    pub kind: ApiErrorKind,
+    /// Optional underlying error.
+    pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum StreamPartitionError {
-    #[error("Failed streaming partition chunks\nDetails:{0}")]
-    StreamingChunks(TonicStatusError),
+#[derive(Debug)]
+pub enum ApiErrorKind {
+    NotFound,
+    AlreadyExists,
+    PermissionDenied,
+    Unauthenticated,
+    Connection,
+    Internal,
+    InvalidArguments,
+    Serialization,
+    Other(tonic::Code),
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum StreamTasksError {
-    #[error("Failed receiving tasks completions stream\nDetails:{0}")]
-    StreamingTaskResults(TonicStatusError),
+impl From<tonic::Code> for ApiErrorKind {
+    fn from(code: tonic::Code) -> Self {
+        match code {
+            tonic::Code::NotFound => Self::NotFound,
+            tonic::Code::AlreadyExists => Self::AlreadyExists,
+            tonic::Code::PermissionDenied => Self::PermissionDenied,
+            tonic::Code::Unauthenticated => Self::Unauthenticated,
+            tonic::Code::Unavailable => Self::Connection,
+            tonic::Code::Internal => Self::Internal,
+            tonic::Code::InvalidArgument => Self::InvalidArguments,
+            _ => Self::Other(code),
+        }
+    }
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum StreamError {
-    #[error(transparent)]
-    ClientConnectionError(#[from] ClientConnectionError),
+impl std::fmt::Display for ApiErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NotFound => write!(f, "NotFound"),
+            Self::AlreadyExists => write!(f, "AlreadyExists"),
+            Self::PermissionDenied => write!(f, "PermissionDenied"),
+            Self::Unauthenticated => write!(f, "Unauthenticated"),
+            Self::Connection => write!(f, "Connection"),
+            Self::Internal => write!(f, "Internal"),
+            Self::InvalidArguments => write!(f, "InvalidArguments"),
+            Self::Serialization => write!(f, "Serialization"),
+            Self::Other(code) => write!(f, "Other({code})"),
+        }
+    }
+}
 
-    #[error(transparent)]
-    EntryError(#[from] StreamEntryError),
+impl ApiError {
+    fn tonic(err: tonic::Status, message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::from(err.code()),
+            source: Some(Box::new(err)),
+        }
+    }
 
-    #[error(transparent)]
-    PartitionError(#[from] StreamPartitionError),
+    fn serde(
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::Serialization,
+            source: Some(Box::new(err)),
+        }
+    }
 
-    #[error(transparent)]
-    TasksError(#[from] StreamTasksError),
+    fn internal(
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::Internal,
+            source: Some(Box::new(err)),
+        }
+    }
+}
 
-    #[error(transparent)]
-    Tokio(#[from] tokio::task::JoinError),
+impl std::fmt::Display for ApiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.kind, self.message)?;
+        if let Some(source) = &self.source {
+            write!(f, ": {source}")?;
+        }
+        Ok(())
+    }
+}
 
-    #[error(transparent)]
-    CodecError(#[from] re_log_encoding::codec::CodecError),
-
-    #[error(transparent)]
-    ChunkError(#[from] re_chunk::ChunkError),
-
-    #[error(transparent)]
-    DecodeError(#[from] re_log_encoding::DecodeError),
-
-    #[error(transparent)]
-    TypeConversionError(#[from] re_protos::TypeConversionError),
-
-    #[error("Column '{0}' is missing from the dataframe")]
-    MissingDataframeColumn(String),
-
-    #[error("{0}")]
-    MissingData(String),
-
-    #[error("arrow error: {0}")]
-    ArrowError(#[from] arrow::error::ArrowError),
+impl std::error::Error for ApiError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.source
+            .as_deref()
+            .map(|e| e as &(dyn std::error::Error + 'static))
+    }
 }
 
 const _: () = assert!(
-    std::mem::size_of::<StreamError>() <= 80,
+    std::mem::size_of::<ApiError>() <= 80,
     "Error type is too large. Try to reduce its size by boxing some of its variants.",
 );
