@@ -140,6 +140,7 @@ def server_instance() -> Generator[ServerInstance, None, None]:
         f"second_schema.second_table={TABLE_FILEPATH}",
         "--table",
         f"alternate_catalog.third_schema.third_table={TABLE_FILEPATH}",
+        f"--port={port}",
     ]
     server_process = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
