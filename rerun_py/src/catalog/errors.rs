@@ -148,8 +148,9 @@ impl From<ExternalError> for PyErr {
                 ApiErrorKind::Unauthenticated | ApiErrorKind::PermissionDenied => {
                     PyPermissionError::new_err(err.to_string())
                 }
-                ApiErrorKind::Serialization => PyValueError::new_err(err.to_string()),
-                ApiErrorKind::InvalidArguments => PyValueError::new_err(err.to_string()),
+                ApiErrorKind::Serialization | ApiErrorKind::InvalidArguments => {
+                    PyValueError::new_err(err.to_string())
+                }
                 ApiErrorKind::NotFound => PyFileNotFoundError::new_err(err.to_string()),
                 ApiErrorKind::AlreadyExists => PyFileExistsError::new_err(err.to_string()),
                 ApiErrorKind::Timeout => PyTimeoutError::new_err(err.to_string()),
