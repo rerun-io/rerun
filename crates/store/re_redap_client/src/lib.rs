@@ -154,7 +154,7 @@ pub enum StreamError {
     ChunkError(#[from] re_chunk::ChunkError),
 
     #[error(transparent)]
-    DecodeError(#[from] re_log_encoding::decoder::DecodeError),
+    DecodeError(#[from] re_log_encoding::DecodeError),
 
     #[error(transparent)]
     TypeConversionError(#[from] re_protos::TypeConversionError),

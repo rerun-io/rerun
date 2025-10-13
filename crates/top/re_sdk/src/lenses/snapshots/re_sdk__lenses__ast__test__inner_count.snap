@@ -4,7 +4,7 @@ expression: "format!(\"{chunk:-240}\")"
 ---
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                       │
-│ * entity_path: /nullability/b_count                                                                                                             │
+│ * entity_path: /nullability                                                                                                                     │
 │ * heap_size_bytes: [**REDACTED**]                                                                                                               │
 │ * id: [**REDACTED**]                                                                                                                            │
 │ * version: [**REDACTED**]                                                                                                                       │
