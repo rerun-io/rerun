@@ -1,4 +1,4 @@
-#![expect(clippy::result_large_err)] // we're just returning tonic::Status
+#![allow(clippy::allow_attributes, clippy::result_large_err)] // we're just returning tonic::Status
 
 /// The HTTP header key to pass an entry ID to the `RerunCloudService` APIs.
 pub const RERUN_HTTP_HEADER_ENTRY_ID: &str = "x-rerun-entry-id";

@@ -135,7 +135,7 @@ impl PyRecording {
         }
     }
 
-    #[expect(rustdoc::private_doc_tests)]
+    #[expect(rustdoc::private_doc_tests, rustdoc::invalid_rust_codeblocks)]
     /// Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
     ///
     /// The only type of index currently supported is the name of a timeline, or `None` (see below
@@ -189,7 +189,6 @@ impl PyRecording {
     /// ```python
     /// recording.view(index="my_index", contents={"points": "Position3D"})
     /// ```
-    #[allow(clippy::allow_attributes, clippy::fn_params_excessive_bools)]
     #[pyo3(signature = (
         *,
         index,

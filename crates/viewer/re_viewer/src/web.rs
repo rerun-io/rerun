@@ -1,6 +1,6 @@
 //! Main entry-point of the web app.
 
-#![expect(clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
+#![allow(clippy::allow_attributes, clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
 
 use std::rc::Rc;
 use std::str::FromStr as _;
@@ -48,7 +48,11 @@ pub struct WebHandle {
 
 #[wasm_bindgen]
 impl WebHandle {
-    #[expect(clippy::new_without_default, clippy::use_self)] // Can't use `Self` here because of `#[wasm_bindgen]`.
+    #[allow(
+        clippy::allow_attributes,
+        clippy::new_without_default,
+        clippy::use_self
+    )] // Can't use `Self` here because of `#[wasm_bindgen]`.
     #[wasm_bindgen(constructor)]
     pub fn new(app_options: JsValue) -> Result<WebHandle, JsValue> {
         re_log::setup_logging();
@@ -815,11 +819,12 @@ fn create_app(
 /// This one just panics when it fails, as it's only ever really run
 /// by rerun employees manually in `app.rerun.io`.
 #[cfg(feature = "analytics")]
+#[allow(clippy::allow_attributes, clippy::unwrap_used)] // This is only run by rerun employees, so it's fine to panic
 #[wasm_bindgen]
-#[expect(clippy::unwrap_used)] // This is only run by rerun employees, so it's fine to panic
 pub fn set_email(email: String) {
     let mut config = re_analytics::Config::load().unwrap().unwrap_or_default();
     config.opt_in_metadata.insert("email".into(), email.into());
+
     config.save().unwrap();
 }
 

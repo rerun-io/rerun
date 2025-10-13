@@ -1,4 +1,4 @@
-#![expect(clippy::todo, clippy::unused_self)]
+#![expect(clippy::unused_self)]
 
 use std::collections::HashMap;
 

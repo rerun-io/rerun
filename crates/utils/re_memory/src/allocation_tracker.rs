@@ -44,6 +44,7 @@ impl std::fmt::Display for ReadableBacktrace {
 }
 
 impl ReadableBacktrace {
+    #[allow(clippy::allow_attributes, unused_mut)] // wasm vs native diff
     fn new(mut backtrace: Backtrace) -> Self {
         Self {
             readable: backtrace.format(),
