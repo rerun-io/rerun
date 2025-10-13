@@ -8879,6 +8879,7 @@ dependencies = [
  "egui",
  "egui_kittest",
  "egui_tiles",
+ "parking_lot",
  "re_protos",
  "re_redap_client",
  "re_sdk",

@@ -36,6 +36,17 @@ impl Snippets {
         let snippet_root = snippets_dir.join("all");
         let snippets = collect_snippets_recursively(&snippet_root, &config, &snippet_root)?;
 
+        // Check for duplicates as this will lead to undefined behavior (multiple threads writing
+        // to the same file).
+        {
+            let mut deduped = std::collections::HashSet::new();
+            for snippet in &snippets {
+                if !deduped.insert(snippet.name.as_str()) {
+                    anyhow::bail!("Snippet '{}' is defined multiple times", snippet.name);
+                }
+            }
+        }
+
         let progress = MultiProgress::new();
 
         println!("Running {} snippets…", snippets.len());
@@ -94,10 +105,13 @@ fn collect_snippets_recursively(
         if path.extension().is_some_and(|p| p == "rrd") {
             continue;
         }
-        let name = path.file_stem().unwrap().to_str().unwrap().to_owned();
 
-        let config_key = path.strip_prefix(snippet_root_path)?.with_extension("");
-        let config_key = config_key.to_str().unwrap().replace('\\', "/");
+        let name = path
+            .strip_prefix(snippet_root_path)?
+            .with_extension("")
+            .to_string_lossy()
+            .to_string();
+        let config_key = name.replace('\\', "/");
 
         let is_opted_out = config
             .opt_out
@@ -161,6 +175,10 @@ struct Snippet {
 impl Snippet {
     fn build(self, progress: &MultiProgress, output_dir: &Path) -> anyhow::Result<PathBuf> {
         let rrd_path = output_dir.join(&self.name).with_extension("rrd");
+
+        if let Some(dir) = rrd_path.parent() {
+            std::fs::create_dir_all(dir)?;
+        }
 
         let mut cmd = Command::new("python3");
         cmd.arg(&self.path);

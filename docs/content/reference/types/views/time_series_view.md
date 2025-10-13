@@ -35,7 +35,7 @@ If a timeline is specified more than once, the first entry will be used.
 
 snippet: views/timeseries
 
-<picture data-inline-viewer="snippets/timeseries">
+<picture data-inline-viewer="snippets/views/timeseries">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/1024w.png">

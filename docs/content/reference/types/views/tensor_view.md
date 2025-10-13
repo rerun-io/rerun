@@ -33,7 +33,7 @@ Configures how the selected slice should fit into the view.
 
 snippet: views/tensor
 
-<picture data-inline-viewer="snippets/tensor">
+<picture data-inline-viewer="snippets/views/tensor">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/tensor_view/04158807b970c16af7922698389b239b0575c436/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/tensor_view/04158807b970c16af7922698389b239b0575c436/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_view/04158807b970c16af7922698389b239b0575c436/1024w.png">
