@@ -37,7 +37,7 @@ an instance of the mesh will be drawn for each transform.
 
 snippet: archetypes/asset3d_simple
 
-<picture data-inline-viewer="snippets/asset3d_simple">
+<picture data-inline-viewer="snippets/archetypes/asset3d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/1024w.png">
