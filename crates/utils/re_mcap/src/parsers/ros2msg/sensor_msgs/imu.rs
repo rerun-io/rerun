@@ -29,9 +29,6 @@ fn fixed_size_list_builder(
 pub struct ImuMessageParser {
     orientation: FixedSizeListBuilder<Float64Builder>,
     sensor_readings: FixedSizeListBuilder<Float64Builder>,
-    orientation_covariance: FixedSizeListBuilder<Float64Builder>,
-    angular_velocity_covariance: FixedSizeListBuilder<Float64Builder>,
-    linear_acceleration_covariance: FixedSizeListBuilder<Float64Builder>,
 }
 
 impl ImuMessageParser {
@@ -61,9 +58,6 @@ impl Ros2MessageParser for ImuMessageParser {
         Self {
             orientation: fixed_size_list_builder(4, num_rows),
             sensor_readings: fixed_size_list_builder(6, num_rows),
-            orientation_covariance: fixed_size_list_builder(9, num_rows),
-            angular_velocity_covariance: fixed_size_list_builder(9, num_rows),
-            linear_acceleration_covariance: fixed_size_list_builder(9, num_rows),
         }
     }
 }
@@ -94,21 +88,8 @@ impl MessageParser for ImuMessageParser {
             imu.linear_acceleration.z,
         ]);
 
-        self.orientation_covariance
-            .values()
-            .append_slice(&imu.orientation_covariance);
-        self.angular_velocity_covariance
-            .values()
-            .append_slice(&imu.angular_velocity_covariance);
-        self.linear_acceleration_covariance
-            .values()
-            .append_slice(&imu.linear_acceleration_covariance);
-
         self.orientation.append(true);
         self.sensor_readings.append(true);
-        self.orientation_covariance.append(true);
-        self.angular_velocity_covariance.append(true);
-        self.linear_acceleration_covariance.append(true);
 
         Ok(())
     }
@@ -121,9 +102,6 @@ impl MessageParser for ImuMessageParser {
         let Self {
             mut orientation,
             mut sensor_readings,
-            mut orientation_covariance,
-            mut angular_velocity_covariance,
-            mut linear_acceleration_covariance,
         } = *self;
 
         let data_chunk = Chunk::from_auto_row_ids(
@@ -142,21 +120,6 @@ impl MessageParser for ImuMessageParser {
                     orientation.finish().into(),
                 ),
                 // TODO(#10728): Figure out what to do with the covariance matrices.
-                (
-                    ComponentDescriptor::partial("orientation_covariance")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    orientation_covariance.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("angular_velocity_covariance")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    angular_velocity_covariance.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("linear_acceleration_covariance")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    linear_acceleration_covariance.finish().into(),
-                ),
             ]
             .into_iter()
             .collect(),

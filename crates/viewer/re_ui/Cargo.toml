@@ -34,10 +34,10 @@ analytics = ["dep:re_analytics"]
 
 [dependencies]
 re_analytics = { workspace = true, optional = true }
-re_entity_db.workspace = true                        # syntax-highlighting for InstancePath. TODO(emilk): move InstancePath
+re_entity_db.workspace = true # syntax-highlighting for InstancePath. TODO(emilk): move InstancePath
 re_format.workspace = true
 re_log.workspace = true
-re_log_types.workspace = true                        # syntax-highlighting for EntityPath
+re_log_types.workspace = true # syntax-highlighting for EntityPath
 re_tracing.workspace = true
 
 ahash.workspace = true

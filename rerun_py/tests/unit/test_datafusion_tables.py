@@ -11,8 +11,7 @@ import psutil
 import pyarrow as pa
 import pytest
 from datafusion import col, functions as f
-from rerun.catalog import CatalogClient
-from rerun_bindings import EntryKind
+from rerun.catalog import CatalogClient, EntryKind
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -332,10 +331,10 @@ def test_query_lance_table(server_instance: ServerInstance) -> None:
     assert len(entries) == 4
 
     tables = client.tables()
-    assert tables.collect()[0].num_rows == 3
+    assert pa.Table.from_batches(tables.collect()).num_rows == 4
 
-    table = client.get_table(name=expected_table_name)
-    assert table.collect()[0].num_rows > 0
+    client.get_table(name=expected_table_name)
+    assert pa.Table.from_batches(tables.collect()).num_rows > 0
 
     entry = client.get_table_entry(name=expected_table_name)
     assert entry.name == expected_table_name
@@ -377,19 +376,19 @@ def test_datafusion_catalog_get_tables(server_instance: ServerInstance) -> None:
 
     # Get by table name since it should be in the default catalog/schema
     df = ctx.table("simple_datatypes")
-    rb = df.collect()[0]
+    rb = pa.Table.from_batches(df.collect())
     assert rb.num_rows > 0
 
     # Get table by fully qualified name
     df = ctx.table("datafusion.public.simple_datatypes")
-    rb = df.collect()[0]
+    rb = pa.Table.from_batches(df.collect())
     assert rb.num_rows > 0
 
     # Verify SQL parsing for catalog provider works as expected
     df = ctx.sql("SELECT * FROM simple_datatypes")
-    rb = df.collect()[0]
+    rb = pa.Table.from_batches(df.collect())
     assert rb.num_rows > 0
 
     df = ctx.sql("SELECT * FROM datafusion.public.simple_datatypes")
-    rb = df.collect()[0]
+    rb = pa.Table.from_batches(df.collect())
     assert rb.num_rows > 0

@@ -7,7 +7,7 @@ use egui_kittest::{SnapshotOptions, kittest::Queryable as _};
 
 use re_test_context::TestContext;
 use re_types::components::Colormap;
-use re_viewer::viewer_test_utils;
+use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
 /// Navigates from welcome to settings screen and snapshots it.
@@ -20,7 +20,7 @@ async fn settings_screen() {
         std::env::set_var("TZ", "Europe/Stockholm");
     }
 
-    let mut harness = viewer_test_utils::viewer_harness();
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
     harness.get_by_label("Menu").click();
     harness.run_ok();
     harness.get_by_label_contains("Settings…").click();
@@ -45,7 +45,7 @@ async fn settings_screen() {
 /// Tests that certain recording-related entries are disabled (e.g. save or close recording).
 #[tokio::test]
 async fn menu_without_recording() {
-    let mut harness = viewer_test_utils::viewer_harness();
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
     harness.get_by_label("Menu").click();
     harness.run_ok();
     // Mask the shortcut for quitting, it's platform-dependent.

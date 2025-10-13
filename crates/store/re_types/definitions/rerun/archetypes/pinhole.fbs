@@ -14,7 +14,7 @@ table Pinhole (
   // --- Required ---
 
   /// Camera projection, from image coordinates to view coordinates.
-  image_from_camera: rerun.components.PinholeProjection ("attr.rerun.component_required", required, order: 1000);
+  image_from_camera: rerun.components.PinholeProjection ("attr.rerun.component_required", order: 1000);
 
   // --- Recommended ---
 

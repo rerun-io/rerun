@@ -55,9 +55,7 @@ impl MaxImageDimensionsStoreSubscriber {
             move |subscriber: &Self| f(&subscriber.max_dimensions),
         )
     }
-}
 
-impl MaxImageDimensionsStoreSubscriber {
     /// Accesses the global store subscriber.
     ///
     /// Lazily registers the subscriber if it hasn't been registered yet.

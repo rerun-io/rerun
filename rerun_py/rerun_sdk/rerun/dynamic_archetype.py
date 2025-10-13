@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING, Any
 
 from rerun._baseclasses import ComponentDescriptor
@@ -226,13 +225,3 @@ class DynamicArchetype(AsComponents):
         return ComponentColumnList([
             ComponentColumn(batch.component_descriptor(), batch) for batch in inst._component_batches
         ])
-
-    @property
-    def component_batches(self) -> list[DescribedComponentBatch]:
-        # TODO(#10908): Prune this type in 0.26
-        warnings.warn(
-            "Accessing `component_batches` directly is deprecated, access via `as_component_batches` instead.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        return self._component_batches

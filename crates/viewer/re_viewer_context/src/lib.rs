@@ -5,19 +5,29 @@
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 mod annotations;
+mod app_options;
 mod async_runtime_handle;
 mod blueprint_helpers;
+mod blueprint_id;
 mod cache;
 mod collapsed_id;
+mod command_sender;
 mod component_fallbacks;
 mod component_ui_registry;
+mod contents;
+mod display_mode;
 mod drag_and_drop;
+mod file_dialog;
+mod global_context;
 mod heuristics;
 mod image_info;
+mod item;
+mod item_collection;
 mod maybe_mut_ref;
 pub mod open_url;
 mod query_context;
 mod query_range;
+mod recording_or_table;
 mod selection_state;
 mod storage_context;
 mod store_context;
@@ -35,33 +45,44 @@ mod viewer_context;
 pub mod gpu_bridge;
 mod visitor_flow_control;
 
-// if you use a ViewerContext, you probably want to use the inner GlobalContext, so we re-export
-// everything
-pub use re_global_context::*;
-
 pub use self::{
-    annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos},
+    annotations::{
+        AnnotationContextStoreSubscriber, AnnotationMap, Annotations, ResolvedAnnotationInfo,
+        ResolvedAnnotationInfos,
+    },
+    app_options::AppOptions,
     async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend},
-    blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
+    blueprint_helpers::{BlueprintContext, blueprint_timeline, blueprint_timepoint_for_writes},
+    blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, ViewId},
     cache::{
         Cache, CacheMemoryReport, CacheMemoryReportItem, Caches, ImageDecodeCache, ImageStatsCache,
         SharablePlayableVideoStream, TensorStatsCache, VideoAssetCache, VideoStreamCache,
         VideoStreamProcessingError,
     },
     collapsed_id::{CollapseItem, CollapseScope, CollapsedId},
+    command_sender::{
+        CommandReceiver, CommandSender, SystemCommand, SystemCommandSender, command_channel,
+    },
     component_fallbacks::{
         ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
         TypedComponentFallbackProvider,
     },
     component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, EditTarget, VariantName},
+    contents::{Contents, ContentsName, blueprint_id_to_tile_id},
+    display_mode::DisplayMode,
     drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload},
+    file_dialog::sanitize_file_name,
+    global_context::GlobalContext,
     heuristics::suggest_view_for_each_entity,
     image_info::{ColormapWithRange, ImageInfo, StoredBlobCacheKey},
+    item::{Item, resolve_mono_instance_path, resolve_mono_instance_path_item},
+    item_collection::{ItemCollection, ItemContext},
     maybe_mut_ref::MaybeMutRef,
     query_context::{
         DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,
     },
     query_range::QueryRange,
+    recording_or_table::RecordingOrTable,
     selection_state::{
         ApplicationSelectionState, HoverHighlight, InteractionHighlight, SelectionChange,
         SelectionHighlight,
@@ -71,7 +92,10 @@ pub use self::{
     store_hub::StoreHub,
     tables::{TableStore, TableStores},
     tensor::{ImageStats, TensorStats},
-    time_control::{Looping, PlayState, TimeControl, TimeControlResponse, TimeView},
+    time_control::{
+        Looping, PlayState, TIME_PANEL_PATH, TimeControl, TimeControlCommand, TimeControlResponse,
+        TimeView, time_panel_blueprint_entity_path,
+    },
     typed_entity_collections::{
         IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, VisualizableEntities,
     },
@@ -84,13 +108,14 @@ pub use self::{
         DataBasedVisualizabilityFilter, DataResult, IdentifiedViewSystem,
         OptionalViewEntityHighlight, OverridePath, PerSystemDataResults, PerSystemEntities,
         PropertyOverrides, RecommendedView, SmallVisualizerSet, SystemExecutionOutput, ViewClass,
-        ViewClassExt, ViewClassLayoutPriority, ViewClassRegistry, ViewClassRegistryError,
-        ViewContext, ViewContextCollection, ViewContextSystem, ViewEntityHighlight, ViewHighlights,
-        ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates,
+        ViewClassExt, ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry,
+        ViewClassRegistryError, ViewContext, ViewContextCollection, ViewContextSystem,
+        ViewContextSystemStaticExecResult, ViewEntityHighlight, ViewHighlights, ViewOutlineMasks,
+        ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates,
         ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
         VisualizableFilterContext, VisualizerCollection, VisualizerQueryInfo, VisualizerSystem,
     },
-    viewer_context::{RecordingConfig, ViewerContext},
+    viewer_context::ViewerContext,
     visitor_flow_control::VisitorControlFlow,
 };
 

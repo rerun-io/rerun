@@ -14,7 +14,7 @@ use re_types::{
 };
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    ContentsName, QueryRange, RecommendedView, StoreContext, SystemCommand,
+    BlueprintContext as _, ContentsName, QueryRange, RecommendedView, StoreContext, SystemCommand,
     SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewContext, ViewId, ViewState,
     ViewStates, ViewerContext,
 };
@@ -463,7 +463,7 @@ mod tests {
     use re_types::{ComponentDescriptor, blueprint::archetypes::EntityBehavior};
     use re_viewer_context::{
         IndicatedEntities, MaybeVisualizableEntities, OverridePath, PerVisualizer,
-        VisualizableEntities,
+        ViewClassPlaceholder, VisualizableEntities,
     };
 
     use crate::view_contents::DataQueryPropertyResolver;
@@ -516,7 +516,8 @@ mod tests {
         );
 
         // Basic blueprint - a single view that queries everything.
-        let view = ViewBlueprint::new_with_root_wildcard("3D".into());
+        test_ctx.register_view_class::<ViewClassPlaceholder>();
+        let view = ViewBlueprint::new_with_root_wildcard(ViewClassPlaceholder::identifier());
         let override_root = ViewContents::override_path_for_entity(view.id, &EntityPath::root());
 
         // Things needed to resolve properties:
@@ -764,14 +765,20 @@ mod tests {
                 visualizable_entities,
             );
             let mut view_states = ViewStates::default();
+            let view_state = view_states.get_mut_or_create(
+                view.id,
+                ctx.view_class_registry
+                    .class(view.class_identifier())
+                    .expect("view class should be registered"),
+            );
 
             resolver.update_overrides(
                 ctx.blueprint_db(),
                 ctx.blueprint_query,
-                ctx.rec_cfg.time_ctrl.read().timeline(),
+                ctx.time_ctrl.timeline(),
                 ctx.view_class_registry(),
                 &mut query_result,
-                &mut view_states,
+                view_state,
             );
 
             result = Some(query_result.clone());

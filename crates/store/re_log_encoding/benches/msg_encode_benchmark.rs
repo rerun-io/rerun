@@ -38,7 +38,7 @@ fn encode_log_msgs(
     encoding_options: re_log_encoding::EncodingOptions,
 ) -> Vec<u8> {
     let mut bytes = vec![];
-    re_log_encoding::encoder::encode_ref(
+    re_log_encoding::Encoder::encode_into(
         re_build_info::CrateVersion::LOCAL,
         encoding_options,
         messages.iter().map(Ok),
@@ -50,8 +50,7 @@ fn encode_log_msgs(
 }
 
 fn decode_log_msgs(mut bytes: &[u8]) -> Vec<LogMsg> {
-    let messages = re_log_encoding::decoder::Decoder::new(&mut bytes)
-        .unwrap()
+    let messages = re_log_encoding::DecoderApp::decode_lazy(&mut bytes)
         .collect::<Result<Vec<LogMsg>, _>>()
         .unwrap();
     assert!(bytes.is_empty());

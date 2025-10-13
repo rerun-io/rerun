@@ -12,6 +12,7 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, EntityPath, Span, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
+use re_entity_db::EntityDb;
 use re_log_types::{EntityPathHash, TimeType};
 use re_types::{archetypes::VideoStream, components};
 use re_video::{DecodeSettings, StableIndexDeque};
@@ -560,7 +561,7 @@ impl Cache for VideoStreamCache {
     }
 
     /// Keep existing cache entries up to date with new and removed video data.
-    fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {
         re_tracing::profile_function!();
 
         let sample_descr = VideoStream::descriptor_sample();
@@ -995,7 +996,7 @@ mod tests {
                     .add_chunk(&Arc::new(chunk_builder.build().unwrap()))
                     .unwrap();
                 let store_events_refs = store_events.iter().collect::<Vec<_>>();
-                cache.on_store_events(&store_events_refs);
+                cache.on_store_events(&store_events_refs, &store);
 
                 let video_stream = cache
                     .entry(
@@ -1050,12 +1051,15 @@ mod tests {
         // Instead of relying on the "real" GC, we fake it by creating a GC event, pretending the first chunk got removed.
         let storage_engine = store.storage_engine();
         let chunk_store = storage_engine.store();
-        cache.on_store_events(&[&ChunkStoreEvent {
-            store_id: store.store_id().clone(),
-            store_generation: store.generation(),
-            event_id: 0, // Wrong but don't care.
-            diff: ChunkStoreDiff::deletion(chunk_store.iter_chunks().next().unwrap().clone()),
-        }]);
+        cache.on_store_events(
+            &[&ChunkStoreEvent {
+                store_id: store.store_id().clone(),
+                store_generation: store.generation(),
+                event_id: 0, // Wrong but don't care.
+                diff: ChunkStoreDiff::deletion(chunk_store.iter_chunks().next().unwrap().clone()),
+            }],
+            &store,
+        );
 
         // Check whether the chunk removal had the expected effect.
 

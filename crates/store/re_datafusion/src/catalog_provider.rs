@@ -1,14 +1,17 @@
-use crate::TableEntryTableProvider;
+use std::any::Any;
+use std::iter;
+use std::sync::Arc;
+
 use ahash::{HashMap, HashSet};
 use async_trait::async_trait;
 use datafusion::catalog::{CatalogProvider, SchemaProvider, TableProvider};
 use datafusion::common::{DataFusionError, Result as DataFusionResult, TableReference, exec_err};
 use parking_lot::Mutex;
-use re_redap_client::ConnectionClient;
-use std::any::Any;
-use std::iter;
-use std::sync::Arc;
 use tokio::runtime::Handle as RuntimeHandle;
+
+use re_redap_client::ConnectionClient;
+
+use crate::TableEntryTableProvider;
 
 // These are to match the defaults in datafusion.
 pub const DEFAULT_CATALOG_NAME: &str = "datafusion";

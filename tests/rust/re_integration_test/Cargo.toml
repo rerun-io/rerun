@@ -11,18 +11,20 @@ version.workspace = true
 publish = false
 
 [dependencies]
+egui_kittest.workspace = true
+egui.workspace = true
 re_redap_client.workspace = true
 re_protos.workspace = true
 re_sdk.workspace = true
 re_server.workspace = true
 re_uri.workspace = true
+re_viewer = { workspace = true, features = ["testing"] }
+re_viewport_blueprint.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 [dev-dependencies]
-re_viewer = { workspace = true, features = ["testing"] }
-egui_kittest.workspace = true
-egui.workspace = true
+re_view_text_document.workspace = true
 
 [lints]
 workspace = true

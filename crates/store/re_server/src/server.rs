@@ -39,7 +39,7 @@ pub struct Server {
 /// `ServerHandle` is a tiny helper abstraction that enables us to
 /// deal with the gRPC server lifecycle more easily.
 pub struct ServerHandle {
-    shutdown: Sender<()>,
+    shutdown: Option<Sender<()>>,
     ready: mpsc::Receiver<SocketAddr>,
     failed: mpsc::Receiver<String>,
 }
@@ -51,7 +51,7 @@ impl ServerHandle {
             ready = self.ready.recv() => {
                 match ready {
                     Some(local_addr) => {
-                        info!("Ready for connections");
+                        info!("Ready for connections.");
                         Ok(local_addr)
                     },
                     None => Err(ServerError::ReadyChannelClosedUnexpectedly)
@@ -73,9 +73,12 @@ impl ServerHandle {
         self.failed.recv().await;
     }
 
-    /// Signal to the gRPC server to shutdown.
-    pub async fn shutdown(self) {
-        let _ = self.shutdown.send(());
+    /// Signal to the gRPC server to shutdown, and then wait for it.
+    pub async fn shutdown_and_wait(mut self) {
+        if let Some(shutdown) = self.shutdown.take() {
+            shutdown.send(()).ok();
+            self.wait_for_shutdown().await;
+        }
     }
 }
 
@@ -91,7 +94,9 @@ impl Server {
             let listener = if let Ok(listener) = TcpListener::bind(self.addr).await {
                 #[expect(clippy::unwrap_used)]
                 let local_addr = listener.local_addr().unwrap();
-                info!("Listening on {local_addr}");
+                info!(
+                    "Listening on {local_addr}. To connect the Rerun Viewer, use the following address: rerun+http://{local_addr}"
+                );
 
                 #[expect(clippy::unwrap_used)]
                 ready_tx.send(local_addr).await.unwrap();
@@ -149,7 +154,7 @@ impl Server {
         });
 
         ServerHandle {
-            shutdown: shutdown_tx,
+            shutdown: Some(shutdown_tx),
             ready: ready_rx,
             failed: failed_rx,
         }

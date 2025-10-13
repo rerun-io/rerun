@@ -456,13 +456,14 @@ class ComponentMixin(ComponentBatchLike):
         """
         return cls._BATCH_TYPE._ARROW_DATATYPE  # type: ignore[attr-defined]
 
-    def component_type(self) -> str:
+    @classmethod
+    def component_type(cls) -> str:
         """
         Returns the name of the component.
 
         Part of the `ComponentBatchLike` logging interface.
         """
-        return self._BATCH_TYPE._COMPONENT_TYPE  # type: ignore[attr-defined, no-any-return]
+        return cls._BATCH_TYPE._COMPONENT_TYPE  # type: ignore[attr-defined, no-any-return]
 
     def as_arrow_array(self) -> pa.Array:
         """

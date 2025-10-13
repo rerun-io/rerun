@@ -1,5 +1,6 @@
 use parking_lot::Mutex;
-use re_global_context::{ItemCollection, ItemContext};
+
+use crate::{ItemCollection, ItemContext};
 
 use super::Item;
 
@@ -58,7 +59,7 @@ impl InteractionHighlight {
 /// Changes from one frame are only visible in the next frame.
 #[derive(Default)]
 pub struct ApplicationSelectionState {
-    /// The selected items. Write to this with [`re_global_context::SystemCommand::SetSelection`].
+    /// The selected items. Write to this with [`crate::SystemCommand::SetSelection`].
     selection: ItemCollection,
 
     /// Has selection changed since the previous frame?
