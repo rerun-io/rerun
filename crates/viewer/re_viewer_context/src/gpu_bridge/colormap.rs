@@ -1,3 +1,4 @@
+use re_renderer::colormap_srgb;
 use re_types::reflection::Enum as _;
 use re_ui::list_item;
 
@@ -103,16 +104,36 @@ pub fn colormap_edit_or_view_ui(
     if let Some(map) = map.as_mut() {
         let selected_text = map.to_string();
         let content_ui = |ui: &mut egui::Ui| {
-            let mut iter = re_types::components::Colormap::variants().iter();
-
-            let Some(first) = iter.next() else {
-                return ui.label("<no variants>");
+            let is_cyclic = |colormap: re_types::components::Colormap| {
+                let colormap_re_renderer = colormap_to_re_renderer(colormap);
+                let value_at_0 = colormap_srgb(colormap_re_renderer, 0.0);
+                let value_at_1 = colormap_srgb(colormap_re_renderer, 1.0);
+                value_at_0 == value_at_1
             };
 
-            let mut response = colormap_variant_ui(ctx.render_ctx(), ui, first, map);
+            let (cyclic, non_cyclic): (Vec<_>, Vec<_>) = re_types::components::Colormap::variants()
+                .iter()
+                .partition(|&&colormap| is_cyclic(colormap));
 
-            for option in iter {
+            let mut response = ui.allocate_response(egui::Vec2::ZERO, egui::Sense::hover());
+
+            for option in non_cyclic {
                 response |= colormap_variant_ui(ctx.render_ctx(), ui, option, map);
+            }
+
+            if !cyclic.is_empty() {
+                list_item::ListItem::new()
+                    .interactive(false)
+                    .header()
+                    .show_flat(
+                        ui,
+                        list_item::LabelContent::header("Cyclic colormaps")
+                            .min_desired_width(MIN_WIDTH),
+                    );
+
+                for option in cyclic {
+                    response |= colormap_variant_ui(ctx.render_ctx(), ui, option, map);
+                }
             }
 
             response
@@ -120,6 +141,7 @@ pub fn colormap_edit_or_view_ui(
 
         let mut inner_response = egui::ComboBox::from_id_salt("color map select")
             .selected_text(selected_text)
+            .height(400.0)
             .show_ui(ui, |ui| {
                 list_item::list_item_scope(ui, "inner_scope", content_ui)
             });
