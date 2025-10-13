@@ -7,8 +7,7 @@ use re_viewer::external::re_viewer_context::{RecommendedView, ViewClass as _};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;
 
-#[tokio::test(flavor = "multi_thread")]
-pub async fn test_stream_context_single_select() {
+fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
     harness.init_recording();
     harness.toggle_selection_panel();
@@ -29,12 +28,21 @@ pub async fn test_stream_context_single_select() {
         TextDocumentView::identifier(),
         RecommendedView {
             origin: "/txt/hello".into(),
-            query_filter: "+ $origin/**".parse().unwrap(),
+            query_filter: "+ $origin/**"
+                .parse()
+                .expect("Failed to parse query filter"),
         },
     );
     harness.setup_viewport_blueprint(|_viewer_context, blueprint| {
         blueprint.add_view_at_root(text_document_view);
     });
+
+    harness
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_stream_context_single_select() {
+    let mut harness = make_test_harness();
 
     // Click streams tree items and check their context menu
     harness.right_click_label("txt/");
@@ -51,4 +59,14 @@ pub async fn test_stream_context_single_select() {
 
     harness.right_click_label("text");
     harness.snapshot_app("streams_context_single_select_5");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_blueprint_view_context() {
+    let mut harness = make_test_harness();
+
+    // There are two nodes with that label, the second one is the view widget.
+    harness.right_click_nth_label("txt/hello", 1);
+
+    harness.snapshot_app("blueprint_view_context");
 }

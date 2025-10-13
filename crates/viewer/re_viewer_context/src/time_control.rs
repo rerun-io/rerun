@@ -36,6 +36,12 @@ trait TimeBlueprintExt {
     /// to a default one, most likely the one saved in time control's
     /// per timeline state.
     fn clear_time(&self);
+
+    fn set_playback_speed(&self, playback_speed: f64);
+    fn get_playback_speed(&self) -> Option<f64>;
+
+    fn set_fps(&self, fps: f64);
+    fn get_fps(&self) -> Option<f64>;
 }
 
 impl<T: BlueprintContext> TimeBlueprintExt for T {
@@ -93,6 +99,46 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
             time_panel_blueprint_entity_path(),
             TimePanelBlueprint::descriptor_time(),
         );
+    }
+
+    fn set_playback_speed(&self, playback_speed: f64) {
+        self.save_blueprint_component(
+            time_panel_blueprint_entity_path(),
+            &TimePanelBlueprint::descriptor_playback_speed(),
+            &re_types::blueprint::components::PlaybackSpeed(playback_speed.into()),
+        );
+    }
+
+    fn get_playback_speed(&self) -> Option<f64> {
+        let (_, playback_speed) = self
+            .current_blueprint()
+            .latest_at_component_quiet::<re_types::blueprint::components::PlaybackSpeed>(
+            &time_panel_blueprint_entity_path(),
+            self.blueprint_query(),
+            &TimePanelBlueprint::descriptor_playback_speed(),
+        )?;
+
+        Some(**playback_speed)
+    }
+
+    fn set_fps(&self, fps: f64) {
+        self.save_blueprint_component(
+            time_panel_blueprint_entity_path(),
+            &TimePanelBlueprint::descriptor_fps(),
+            &re_types::blueprint::components::Fps(fps.into()),
+        );
+    }
+
+    fn get_fps(&self) -> Option<f64> {
+        let (_, fps) = self
+            .current_blueprint()
+            .latest_at_component_quiet::<re_types::blueprint::components::Fps>(
+                &time_panel_blueprint_entity_path(),
+                self.blueprint_query(),
+                &TimePanelBlueprint::descriptor_fps(),
+            )?;
+
+        Some(**fps)
     }
 }
 
@@ -423,8 +469,16 @@ impl TimeControl {
 
         let play_state = self.play_state();
 
+        if let Some(playback_speed) = blueprint_ctx.get_playback_speed() {
+            self.speed = playback_speed as f32;
+        }
+
         // Update the last paused time if we are paused.
         if let Some(state) = self.states.get_mut(self.timeline.name()) {
+            if let Some(fps) = blueprint_ctx.get_fps() {
+                state.fps = fps as f32;
+            }
+
             match play_state {
                 PlayState::Paused => {
                     state.last_paused_time = Some(state.time);
@@ -775,6 +829,11 @@ impl TimeControl {
             TimeControlCommand::SetSpeed(speed) => {
                 if *speed != self.speed {
                     self.speed = *speed;
+
+                    if let Some(blueprint_ctx) = blueprint_ctx {
+                        blueprint_ctx.set_playback_speed(*speed as f64);
+                    }
+
                     NeedsRepaint::Yes
                 } else {
                     NeedsRepaint::No
@@ -785,6 +844,10 @@ impl TimeControl {
                     && state.fps != *fps
                 {
                     state.fps = *fps;
+
+                    if let Some(blueprint_ctx) = blueprint_ctx {
+                        blueprint_ctx.set_fps(*fps as f64);
+                    }
 
                     NeedsRepaint::Yes
                 } else {

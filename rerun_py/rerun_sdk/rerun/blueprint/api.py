@@ -442,6 +442,8 @@ class TimePanel(Panel):
         sequence_cursor: int | None = None,
         duration_cursor: int | float | timedelta | np.timedelta64 | None = None,
         timestamp_cursor: int | float | datetime | np.datetime64 | None = None,
+        playback_speed: float | None = None,
+        fps: float | None = None,
     ) -> None:
         """
         Construct a new time panel.
@@ -467,6 +469,12 @@ class TimePanel(Panel):
         timestamp_cursor:
             The time cursor for a timestamp timeline.
 
+        playback_speed:
+            A time playback speed multiplier.
+
+        fps:
+            Frames per second. Only applicable for sequence timelines.
+
         """
         super().__init__(blueprint_path="time_panel", expanded=expanded, state=state)
         self.timeline = timeline
@@ -483,11 +491,16 @@ class TimePanel(Panel):
         elif timestamp_cursor is not None:
             self.time = to_nanos_since_epoch(timestamp_cursor)
 
+        self.playback_speed = playback_speed
+        self.fps = fps
+
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
         arch = TimePanelBlueprint(
             state=self.state,
             timeline=self.timeline,
+            playback_speed=self.playback_speed,
+            fps=self.fps,
         )
 
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]

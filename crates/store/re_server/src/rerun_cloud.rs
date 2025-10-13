@@ -9,10 +9,10 @@ use nohash_hasher::IntSet;
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
+use re_byte_size::SizeBytes as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::FetchChunksRequest;
 use re_protos::{
     cloud::v1alpha1::{
         DeleteEntryResponse, EntryDetails, EntryKind, GetDatasetManifestSchemaRequest,
@@ -20,14 +20,17 @@ use re_protos::{
         GetPartitionTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionRequest,
         QueryTasksRequest, QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
         RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
-        ScanPartitionTableResponse, ScanTableResponse,
+        ScanPartitionTableResponse, ScanTableResponse, FetchChunksRequest
         ext::{
             self, CreateDatasetEntryResponse, DataSource, ReadDatasetEntryResponse,
             ReadTableEntryResponse,
         },
         rerun_cloud_service_server::RerunCloudService,
     },
-    common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId},
+    common::v1alpha1::{
+        TaskId,
+        ext::{IfDuplicateBehavior, PartitionId},
+    },
     headers::RerunHeadersExtractorExt as _,
 };
 use re_types_core::{ChunkId, Loggable as _};
@@ -79,6 +82,8 @@ impl RerunCloudHandlerBuilder {
 }
 
 // ---
+
+const DUMMY_TASK_ID: &str = "task_00000000DEADBEEF";
 
 pub struct RerunCloudHandler {
     #[expect(dead_code)]
@@ -505,7 +510,7 @@ impl RerunCloudService for RerunCloudHandler {
                     partition_types.push("rrd".to_owned());
                     // TODO(RR-2289): this should probably be a memory address
                     storage_urls.push(storage_url.to_string());
-                    task_ids.push("<DUMMY TASK ID>".to_owned());
+                    task_ids.push(DUMMY_TASK_ID.to_owned());
                 }
             }
         }
@@ -572,7 +577,7 @@ impl RerunCloudService for RerunCloudHandler {
                 .or_insert_with(|| {
                     ChunkStore::new(
                         StoreId::new(StoreKind::Recording, entry_id.to_string(), partition_id.id),
-                        ChunkStoreConfig::CHANGELOG_DISABLED,
+                        InMemoryStore::chunk_store_config(),
                     )
                 })
                 .insert_chunk(&chunk)
@@ -1195,20 +1200,67 @@ impl RerunCloudService for RerunCloudHandler {
 
     async fn query_tasks(
         &self,
-        _request: tonic::Request<QueryTasksRequest>,
+        request: tonic::Request<QueryTasksRequest>,
     ) -> Result<tonic::Response<QueryTasksResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented("query_tasks not implemented"))
+        let tasks_id = request.into_inner().ids;
+
+        let dummy_task_id = TaskId {
+            id: DUMMY_TASK_ID.to_owned(),
+        };
+
+        for task_id in &tasks_id {
+            if task_id != &dummy_task_id {
+                return Err(tonic::Status::not_found(format!(
+                    "task {} not found",
+                    task_id.id
+                )));
+            }
+        }
+
+        let rb = QueryTasksResponse::create_dataframe(
+            vec![DUMMY_TASK_ID.to_owned()],
+            vec![None],
+            vec![None],
+            vec!["success".to_owned()],
+            vec![None],
+            vec![None],
+            vec![None],
+            vec![None],
+            vec![1],
+            vec![None],
+            vec![None],
+        )
+        .expect("constant content that should always succeed");
+
+        // All tasks finish immediately in the OSS server
+        Ok(tonic::Response::new(QueryTasksResponse {
+            data: Some(rb.encode().map_err(|err| {
+                tonic::Status::internal(format!("Failed to encode response: {err:#}"))
+            })?),
+        }))
     }
 
     type QueryTasksOnCompletionStream = QueryTasksOnCompletionResponseStream;
 
     async fn query_tasks_on_completion(
         &self,
-        _request: tonic::Request<QueryTasksOnCompletionRequest>,
+        request: tonic::Request<QueryTasksOnCompletionRequest>,
     ) -> Result<tonic::Response<Self::QueryTasksOnCompletionStream>, tonic::Status> {
-        // All tasks finish emmidiately in the OSS server
+        let task_ids = request.into_inner().ids;
+
+        // All tasks finish immediately in the OSS server, so we can delegate to `query_tasks
+        let response_data = self
+            .query_tasks(tonic::Request::new(QueryTasksRequest { ids: task_ids }))
+            .await?
+            .into_inner()
+            .data;
+
         Ok(tonic::Response::new(
-            Box::pin(futures::stream::empty()) as Self::QueryTasksOnCompletionStream
+            Box::pin(futures::stream::once(async move {
+                Ok(QueryTasksOnCompletionResponse {
+                    data: response_data,
+                })
+            })) as Self::QueryTasksOnCompletionStream,
         ))
     }
 

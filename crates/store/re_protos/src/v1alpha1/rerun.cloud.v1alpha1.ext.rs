@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use arrow::array::{
     BinaryArray, BooleanArray, FixedSizeBinaryArray, ListBuilder, RecordBatchOptions,
-    StringBuilder, UInt64Array,
+    StringBuilder, UInt8Array, UInt64Array,
 };
 use arrow::datatypes::FieldRef;
 use arrow::{
@@ -284,17 +284,17 @@ impl From<DoMaintenanceRequest> for crate::cloud::v1alpha1::DoMaintenanceRequest
 // --- Tasks ---
 
 impl QueryTasksResponse {
-    pub const TASK_ID: &str = "task_id";
-    pub const KIND: &str = "kind";
-    pub const DATA: &str = "data";
-    pub const EXEC_STATUS: &str = "exec_status";
-    pub const MSGS: &str = "msgs";
-    pub const BLOB_LEN: &str = "blob_len";
-    pub const LEASE_OWNER: &str = "lease_owner";
-    pub const LEASE_EXPIRATION: &str = "lease_expiration";
-    pub const ATTEMPTS: &str = "attempts";
-    pub const CREATION_TIME: &str = "creation_time";
-    pub const LAST_UPDATE_TIME: &str = "last_update_time";
+    pub const FIELD_TASK_ID: &str = "task_id";
+    pub const FIELD_KIND: &str = "kind";
+    pub const FIELD_DATA: &str = "data";
+    pub const FIELD_EXEC_STATUS: &str = "exec_status";
+    pub const FIELD_MSGS: &str = "msgs";
+    pub const FIELD_BLOB_LEN: &str = "blob_len";
+    pub const FIELD_LEASE_OWNER: &str = "lease_owner";
+    pub const FIELD_LEASE_EXPIRATION: &str = "lease_expiration";
+    pub const FIELD_ATTEMPTS: &str = "attempts";
+    pub const FIELD_CREATION_TIME: &str = "creation_time";
+    pub const FIELD_LAST_UPDATE_TIME: &str = "last_update_time";
 
     pub fn dataframe_part(&self) -> Result<&DataframePart, TypeConversionError> {
         Ok(self
@@ -305,34 +305,69 @@ impl QueryTasksResponse {
 
     pub fn schema() -> arrow::datatypes::Schema {
         Schema::new(vec![
-            Field::new(Self::TASK_ID, DataType::Utf8, false),
-            Field::new(Self::KIND, DataType::Utf8, true),
-            Field::new(Self::DATA, DataType::Utf8, true),
-            Field::new(Self::EXEC_STATUS, DataType::Utf8, false),
-            Field::new(Self::MSGS, DataType::Utf8, true),
-            Field::new(Self::BLOB_LEN, DataType::UInt64, true),
-            Field::new(Self::LEASE_OWNER, DataType::Utf8, true),
+            Field::new(Self::FIELD_TASK_ID, DataType::Utf8, false),
+            Field::new(Self::FIELD_KIND, DataType::Utf8, true),
+            Field::new(Self::FIELD_DATA, DataType::Utf8, true),
+            Field::new(Self::FIELD_EXEC_STATUS, DataType::Utf8, false),
+            Field::new(Self::FIELD_MSGS, DataType::Utf8, true),
+            Field::new(Self::FIELD_BLOB_LEN, DataType::UInt64, true),
+            Field::new(Self::FIELD_LEASE_OWNER, DataType::Utf8, true),
             Field::new(
-                Self::LEASE_EXPIRATION,
+                Self::FIELD_LEASE_EXPIRATION,
                 DataType::Timestamp(TimeUnit::Nanosecond, None),
                 true,
             ),
-            Field::new(Self::ATTEMPTS, DataType::UInt8, false),
+            Field::new(Self::FIELD_ATTEMPTS, DataType::UInt8, false),
             Field::new(
-                Self::CREATION_TIME,
+                Self::FIELD_CREATION_TIME,
                 DataType::Timestamp(TimeUnit::Nanosecond, None),
                 true,
             ),
             Field::new(
-                Self::LAST_UPDATE_TIME,
+                Self::FIELD_LAST_UPDATE_TIME,
                 DataType::Timestamp(TimeUnit::Nanosecond, None),
                 true,
             ),
         ])
     }
-}
 
-// --- Catalog ---
+    pub fn create_dataframe(
+        task_ids: Vec<String>,
+        kind: Vec<Option<String>>,
+        data: Vec<Option<String>>,
+        exec_status: Vec<String>,
+        msgs: Vec<Option<String>>,
+        blob_len: Vec<Option<u64>>,
+        lease_owner: Vec<Option<String>>,
+        lease_expiration: Vec<Option<i64>>,
+        attempts: Vec<u8>,
+        creation_time: Vec<Option<i64>>,
+        last_update_time: Vec<Option<i64>>,
+    ) -> arrow::error::Result<RecordBatch> {
+        let row_count = task_ids.len();
+        let schema = Arc::new(Self::schema());
+
+        let columns: Vec<ArrayRef> = vec![
+            Arc::new(StringArray::from(task_ids)),
+            Arc::new(StringArray::from(kind)),
+            Arc::new(StringArray::from(data)),
+            Arc::new(StringArray::from(exec_status)),
+            Arc::new(StringArray::from(msgs)),
+            Arc::new(UInt64Array::from(blob_len)),
+            Arc::new(StringArray::from(lease_owner)),
+            Arc::new(TimestampNanosecondArray::from(lease_expiration)),
+            Arc::new(UInt8Array::from(attempts)),
+            Arc::new(TimestampNanosecondArray::from(creation_time)),
+            Arc::new(TimestampNanosecondArray::from(last_update_time)),
+        ];
+
+        RecordBatch::try_new_with_options(
+            schema,
+            columns,
+            &RecordBatchOptions::default().with_row_count(Some(row_count)),
+        )
+    }
+}
 
 // --- EntryFilter ---
 

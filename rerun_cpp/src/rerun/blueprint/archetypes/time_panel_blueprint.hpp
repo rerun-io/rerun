@@ -3,7 +3,9 @@
 
 #pragma once
 
+#include "../../blueprint/components/fps.hpp"
 #include "../../blueprint/components/panel_state.hpp"
+#include "../../blueprint/components/playback_speed.hpp"
 #include "../../blueprint/components/time_int.hpp"
 #include "../../blueprint/components/timeline_name.hpp"
 #include "../../collection.hpp"
@@ -31,6 +33,12 @@ namespace rerun::blueprint::archetypes {
         /// What time the time cursor should be on.
         std::optional<ComponentBatch> time;
 
+        /// A time playback speed multiplier.
+        std::optional<ComponentBatch> playback_speed;
+
+        /// Frames per second. Only applicable for sequence timelines.
+        std::optional<ComponentBatch> fps;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] =
@@ -50,6 +58,16 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_time = ComponentDescriptor(
             ArchetypeName, "TimePanelBlueprint:time",
             Loggable<rerun::blueprint::components::TimeInt>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `playback_speed` field.
+        static constexpr auto Descriptor_playback_speed = ComponentDescriptor(
+            ArchetypeName, "TimePanelBlueprint:playback_speed",
+            Loggable<rerun::blueprint::components::PlaybackSpeed>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `fps` field.
+        static constexpr auto Descriptor_fps = ComponentDescriptor(
+            ArchetypeName, "TimePanelBlueprint:fps",
+            Loggable<rerun::blueprint::components::Fps>::ComponentType
         );
 
       public:
@@ -84,6 +102,22 @@ namespace rerun::blueprint::archetypes {
         /// What time the time cursor should be on.
         TimePanelBlueprint with_time(const rerun::blueprint::components::TimeInt& _time) && {
             time = ComponentBatch::from_loggable(_time, Descriptor_time).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// A time playback speed multiplier.
+        TimePanelBlueprint with_playback_speed(
+            const rerun::blueprint::components::PlaybackSpeed& _playback_speed
+        ) && {
+            playback_speed =
+                ComponentBatch::from_loggable(_playback_speed, Descriptor_playback_speed)
+                    .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Frames per second. Only applicable for sequence timelines.
+        TimePanelBlueprint with_fps(const rerun::blueprint::components::Fps& _fps) && {
+            fps = ComponentBatch::from_loggable(_fps, Descriptor_fps).value_or_throw();
             return std::move(*this);
         }
 
