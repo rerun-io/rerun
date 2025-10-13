@@ -10,10 +10,10 @@ use re_protos::{
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind, FetchChunksRequest,
         FindEntriesRequest, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-        GetPartitionTableSchemaRequest, GetPartitionTableSchemaResponse, QueryDatasetRequest,
-        QueryDatasetResponse, QueryTasksOnCompletionResponse, QueryTasksResponse,
-        ReadDatasetEntryRequest, ReadTableEntryRequest, RegisterWithDatasetResponse,
-        ScanPartitionTableRequest, ScanPartitionTableResponse,
+        GetDatasetSchemaRequest, GetPartitionTableSchemaRequest, GetPartitionTableSchemaResponse,
+        QueryDatasetRequest, QueryDatasetResponse, QueryTasksOnCompletionResponse,
+        QueryTasksResponse, ReadDatasetEntryRequest, ReadTableEntryRequest,
+        RegisterWithDatasetResponse, ScanPartitionTableRequest, ScanPartitionTableResponse,
         ext::{
             CreateDatasetEntryResponse, DataSource, DataSourceKind, DatasetDetails, DatasetEntry,
             EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails as _,
@@ -134,6 +134,21 @@ where
             .map_err(|err| ApiError::serde(err, "UpdateEntry failed"))?;
 
         Ok(response.entry_details)
+    }
+
+    /// Get the Arrow schema for a dataset entry.
+    pub async fn get_dataset_schema(&mut self, entry_id: EntryId) -> Result<ArrowSchema, ApiError> {
+        self.inner()
+            .get_dataset_schema(
+                tonic::Request::new(GetDatasetSchemaRequest {})
+                    .with_entry_id(entry_id)
+                    .map_err(|err| ApiError::tonic(err, "GetDatasetSchema failed"))?,
+            )
+            .await
+            .map_err(|err| ApiError::tonic(err, "GetDatasetSchema failed"))?
+            .into_inner()
+            .schema()
+            .map_err(|err| ApiError::serde(err, "GetDatasetSchema failed"))
     }
 
     /// Create a new dataset entry.

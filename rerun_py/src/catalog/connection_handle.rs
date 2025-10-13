@@ -19,7 +19,7 @@ use re_protos::{
         EntryFilter,
         ext::{DatasetDetails, DatasetEntry, EntryDetails, TableEntry},
     },
-    cloud::v1alpha1::{GetDatasetSchemaRequest, QueryDatasetRequest, QueryTasksResponse},
+    cloud::v1alpha1::{QueryDatasetRequest, QueryTasksResponse},
     common::v1alpha1::{
         TaskId,
         ext::{IfDuplicateBehavior, ScanParameters},
@@ -223,7 +223,6 @@ impl ConnectionHandle {
         )
     }
 
-    // TODO(ab): migrate this to the `ConnectionClient` API.
     #[tracing::instrument(level = "info", skip_all)]
     pub fn get_dataset_schema(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<ArrowSchema> {
         wait_for_future(
@@ -231,16 +230,8 @@ impl ConnectionHandle {
             async {
                 self.client()
                     .await?
-                    .inner()
-                    .get_dataset_schema(
-                        tonic::Request::new(GetDatasetSchemaRequest {})
-                            .with_entry_id(entry_id)
-                            .map_err(to_py_err)?,
-                    )
+                    .get_dataset_schema(entry_id)
                     .await
-                    .map_err(to_py_err)?
-                    .into_inner()
-                    .schema()
                     .map_err(to_py_err)
             }
             .in_current_span(),

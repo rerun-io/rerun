@@ -18,7 +18,6 @@ use std::error::Error as _;
 use pyo3::PyErr;
 use pyo3::exceptions::{PyConnectionError, PyTimeoutError, PyValueError};
 
-use re_protos::cloud::v1alpha1::ext::GetDatasetSchemaResponseError;
 use re_redap_client::{ClientConnectionError, ConnectionError};
 
 // ---
@@ -50,7 +49,7 @@ enum ExternalError {
     ChunkStoreError(Box<re_chunk_store::ChunkStoreError>),
 
     #[error("{0}")]
-    StreamError(Box<re_redap_client::StreamError>),
+    ApiError(Box<re_redap_client::ApiError>),
 
     #[error("{0}")]
     ArrowError(#[from] arrow::error::ArrowError),
@@ -97,22 +96,11 @@ macro_rules! impl_from_boxed {
 
 impl_from_boxed!(re_chunk::ChunkError, ChunkError);
 impl_from_boxed!(re_chunk_store::ChunkStoreError, ChunkStoreError);
-impl_from_boxed!(re_redap_client::StreamError, StreamError);
+impl_from_boxed!(re_redap_client::ApiError, ApiError);
 impl_from_boxed!(tonic::transport::Error, TonicTransportError);
 impl_from_boxed!(tonic::Status, TonicStatusError);
 impl_from_boxed!(datafusion::error::DataFusionError, DatafusionError);
 impl_from_boxed!(re_protos::TypeConversionError, TypeConversionError);
-
-impl From<re_protos::cloud::v1alpha1::ext::GetDatasetSchemaResponseError> for ExternalError {
-    fn from(value: GetDatasetSchemaResponseError) -> Self {
-        match value {
-            GetDatasetSchemaResponseError::ArrowError(err) => err.into(),
-            GetDatasetSchemaResponseError::TypeConversionError(err) => {
-                re_redap_client::StreamError::from(err).into()
-            }
-        }
-    }
-}
 
 impl From<ExternalError> for PyErr {
     fn from(err: ExternalError) -> Self {
@@ -152,7 +140,7 @@ impl From<ExternalError> for PyErr {
                 PyValueError::new_err(format!("Chunk store error: {err}"))
             }
 
-            ExternalError::StreamError(err) => {
+            ExternalError::ApiError(err) => {
                 PyValueError::new_err(format!("Data streaming error: {err}"))
             }
 
