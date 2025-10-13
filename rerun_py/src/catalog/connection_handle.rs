@@ -386,7 +386,7 @@ impl ConnectionHandle {
                         .map_err(|err| {
                             ApiError::tonic(
                                 err,
-                                "failed receiving item from /QueryTaskOnCompletion stream",
+                                "failed waiting for tasks done: error receiving completion notifications",
                             )
                         })
                         .map_err(to_py_err)?
@@ -395,7 +395,7 @@ impl ConnectionHandle {
                             let err = missing_field!(QueryTasksResponse, "data");
                             let err = ApiError::serde(
                                 err,
-                                "received item without data on /QueryTasksOnCompletion stream",
+                                "failed waiting for tasks done: received item without data",
                             );
                             to_py_err(err)
                         })?
@@ -410,7 +410,7 @@ impl ConnectionHandle {
                         let err = invalid_schema!(QueryTasksResponse);
                         let err = ApiError::serde(
                             err,
-                            "received item with invalid schema on /QueryTasksOnCompletion stream",
+                            "failed waiting for tasks done: received item with invalid schema",
                         );
                         return Err(to_py_err(err));
                     }
@@ -426,7 +426,7 @@ impl ConnectionHandle {
                     .map_err(|err| {
                         to_py_err(ApiError::serde(
                             err,
-                            "missing column on item in /QueryTasksOnCompletion stream",
+                            "failed waiting for tasks done: missing column on item",
                         ))
                     })?;
 
