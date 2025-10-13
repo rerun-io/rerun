@@ -193,7 +193,9 @@ where
             // not going to make this one single pipeline any faster, but it will prevent starvation of
             // the Tokio runtime (which would slow down every other futures currently scheduled!).
             tokio::task::spawn_blocking(move || {
-                let r = resp.map_err(|err| ApiError::tonic(err, "failed to get item in /FetchChunks response stream"))?;
+                let r = resp.map_err(|err| {
+                    ApiError::tonic(err, "failed to get item in /FetchChunks response stream")
+                })?;
                 let _span =
                     tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = r.chunks.len())
                         .entered();
@@ -203,12 +205,22 @@ where
                     .map(|arrow_msg| {
                         let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
 
-                        let arrow_msg =
-                            re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
-                                .map_err(|err| ApiError::serialization(err, "failed to get arrow data for item in /FetchChunks response stream"))?;
+                        use re_log_encoding::ToApplication as _;
+                        let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
+                            ApiError::serialization(
+                                err,
+                                "failed to get arrow data for item in /FetchChunks response stream",
+                            )
+                        })?;
 
-                        let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
-                            .map_err(|err| ApiError::serialization(err, "failed to parse item in /FetchChunks response stream"))?;
+                        let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch).map_err(
+                            |err| {
+                                ApiError::serialization(
+                                    err,
+                                    "failed to parse item in /FetchChunks response stream",
+                                )
+                            },
+                        )?;
 
                         Ok((chunk, partition_id))
                     })
@@ -216,8 +228,10 @@ where
             })
         })
         .map(|res| {
-            res.map_err(|err| ApiError::internal(err, "failed to sync on /FetchChunks response stream"))
-                .and_then(std::convert::identity)
+            res.map_err(|err| {
+                ApiError::internal(err, "failed to sync on /FetchChunks response stream")
+            })
+            .and_then(std::convert::identity)
         })
 }
 
@@ -243,14 +257,13 @@ where
             .map(|arrow_msg| {
                 let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
 
-                let arrow_msg =
-                    re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
-                        .map_err(|err| {
-                            ApiError::serialization(
-                                err,
-                                "failed to get arrow data for item in /FetchChunks response stream",
-                            )
-                        })?;
+                use re_log_encoding::ToApplication as _;
+                let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
+                    ApiError::serialization(
+                        err,
+                        "failed to get arrow data for item in /FetchChunks response stream",
+                    )
+                })?;
 
                 let chunk =
                     re_chunk::Chunk::from_record_batch(&arrow_msg.batch).map_err(|err| {

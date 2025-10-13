@@ -12,7 +12,7 @@ use tonic::transport::Endpoint;
 use web_time::Instant;
 
 use re_chunk::external::crossbeam::atomic::AtomicCell;
-use re_log_encoding::codec::Compression;
+use re_log_encoding::{ToTransport as _, rrd::Compression};
 use re_log_types::LogMsg;
 use re_protos::sdk_comms::v1alpha1::{
     WriteMessagesRequest, message_proxy_service_client::MessageProxyServiceClient,
@@ -370,7 +370,7 @@ async fn message_proxy_client(
                                 re_sorbet::timestamp_metadata::now_timestamp(),
                             );
 
-                            let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(log_msg, compression) {
+                            let msg = match log_msg.to_transport(compression) {
                                 Ok(msg) => msg,
                                 Err(err) => {
                                     stream_status.store(ClientConnectionState::Disconnected(
@@ -382,7 +382,7 @@ async fn message_proxy_client(
                             };
 
                             let msg = WriteMessagesRequest {
-                                log_msg: Some(msg),
+                                log_msg: Some(msg.into()),
                             };
 
                             yield msg;

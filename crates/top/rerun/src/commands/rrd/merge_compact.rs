@@ -300,7 +300,7 @@ fn merge_and_compact(
         });
 
     // TODO(cmc): encoding options should match the original.
-    let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
+    let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
     let version = entity_dbs
         .values()
         .next()

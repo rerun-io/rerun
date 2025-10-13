@@ -86,8 +86,8 @@ impl FilterCommand {
                 let mut encoder = {
                     // TODO(cmc): encoding options & version should match the original.
                     let version = CrateVersion::LOCAL;
-                    let options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
-                    re_log_encoding::Encoder::new(version, options, &mut rrd_out)
+                    let options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
+                    re_log_encoding::Encoder::new_eager(version, options, &mut rrd_out)
                         .context("couldn't init encoder")?
                 };
 

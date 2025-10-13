@@ -862,6 +862,9 @@ impl From<&arrow::array::RecordBatch> for crate::common::v1alpha1::DataframePart
 }
 
 /// `RecordBatch` to IPC bytes. No I/O, no failures.
+///
+/// Note that this is never compressed in any way. It is assumed that for `DataframePart`s and
+/// `RerunChunk`s, transport-level compression will be used where needed.
 #[tracing::instrument(level = "debug", skip_all)]
 fn record_batch_to_ipc_bytes(batch: &arrow::array::RecordBatch) -> Vec<u8> {
     let schema = batch.schema_ref().as_ref();

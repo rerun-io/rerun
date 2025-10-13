@@ -1,44 +1,44 @@
-//! Crate that handles encoding of rerun log types.
+//! * Encode/decode and serialize/deserialize RRD streams.
+//! * Convert between transport-level (Protobuf) and application-level types (`re_log_types`).
+//!
+//! If you are working with one of the gRPC APIs (Redap or SDK comms), then you want to be looking
+//! into the `transport_to_app` module. The [`rrd`] module is completely irrelevant in that case.
+//!
+//! If you are working with actual RRD streams (i.e. everything that does not go through gRPC:
+//! files, standard I/O, HTTP, data loaders, etc), then look into the [`rrd`] module.
 
-pub mod codec;
-pub mod protobuf_conversions;
+// TODO: this needs to document the different protocols that we have: SDK comms, Redap, RRD
+// TODO: RRD: files, stdio, HTTP, data loaders, etc
+// TODO: RRD is the expectation, the rest is the exception
+// TODO: the job of encoders/decoders is to provide the IO, state machines
 
-#[cfg(feature = "decoder")]
-mod decoder;
+pub mod rrd;
 
-#[cfg(feature = "encoder")]
-mod encoder;
-
-#[cfg(feature = "encoder")]
-#[cfg(not(target_arch = "wasm32"))]
-mod file_sink;
-
-#[cfg(feature = "stream_from_http")]
-pub mod stream_rrd_from_http;
+mod app_id_injector;
+mod transport_to_app;
 
 pub mod external {
-    #[cfg(feature = "decoder")]
     pub use lz4_flex;
 }
 
+pub use self::app_id_injector::{
+    ApplicationIdInjector, CachingApplicationIdInjector, DummyApplicationIdInjector,
+};
+pub use self::transport_to_app::{ToApplication, ToTransport};
+
+// ---
+
+// Reexposed for legacy/convenience reasons.
+
 #[cfg(feature = "decoder")]
-pub use self::decoder::{
-    ApplicationIdInjector, CachingApplicationIdInjector, DecodeError, Decoder, DecoderApp,
-    DecoderIterator, DecoderTransport, DummyApplicationIdInjector, FileEncoded, NotAnRrdError,
+pub use self::rrd::{
+    DecodeError, Decoder, DecoderApp, DecoderEntrypoint, DecoderIterator, DecoderTransport,
     StreamingDecoder, StreamingDecoderOptions, StreamingLogMsg,
 };
 
 #[cfg(feature = "encoder")]
-pub use self::encoder::{EncodeError, Encoder, EncodingOptions};
+pub use self::rrd::{EncodeError, Encoder};
 
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]
-pub use self::file_sink::{FileFlushError, FileSink, FileSinkError};
-
-// ----------------------------------------------------------------------------
-
-/// The currently used `FourCC` for Rerun RRD files.
-pub const RRD_FOURCC: [u8; 4] = *b"RRF2";
-
-/// Previously used `FourCC`s for Rerun RRD files.
-pub const OLD_RRD_FOURCC: &[[u8; 4]] = &[*b"RRF0", *b"RRF1"];
+pub use self::rrd::{FileFlushError, FileSink, FileSinkError};

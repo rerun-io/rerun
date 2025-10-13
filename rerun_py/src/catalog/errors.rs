@@ -74,7 +74,7 @@ enum ExternalError {
     DatafusionError(Box<datafusion::error::DataFusionError>),
 
     #[error(transparent)]
-    CodecError(#[from] re_log_encoding::codec::CodecError),
+    CodecError(#[from] re_log_encoding::rrd::CodecError),
 
     #[error(transparent)]
     SorbetError(#[from] re_sorbet::SorbetError),
