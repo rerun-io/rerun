@@ -16,9 +16,11 @@
 use std::error::Error as _;
 
 use pyo3::PyErr;
-use pyo3::exceptions::{PyConnectionError, PyTimeoutError, PyValueError};
+use pyo3::exceptions::{
+    PyConnectionError, PyFileExistsError, PyFileNotFoundError, PyIOError, PyPermissionError, PyRuntimeError, PyTimeoutError, PyValueError,
+};
 
-use re_redap_client::{ClientConnectionError, ConnectionError};
+use re_redap_client::{ApiErrorKind, ClientConnectionError, ConnectionError};
 
 // ---
 
@@ -141,10 +143,33 @@ impl From<ExternalError> for PyErr {
             }
 
             ExternalError::ApiError(err) => {
-                PyValueError::new_err(format!("Data streaming error: {err}"))
+                match err.kind {
+                    ApiErrorKind::Connection => {
+                        PyConnectionError::new_err(err.to_string())
+                    }
+                    ApiErrorKind::Unauthenticated | ApiErrorKind::PermissionDenied => {
+                        PyPermissionError::new_err(err.to_string())
+                    }
+                    ApiErrorKind::Serialization => {
+                        PyIOError::new_err(err.to_string())
+                    }
+                    ApiErrorKind::InvalidArguments => {
+                        PyValueError::new_err(err.to_string())
+                    }
+                    ApiErrorKind::NotFound => {
+                        PyFileNotFoundError::new_err(err.to_string())
+                    }
+                    ApiErrorKind::AlreadyExists => {
+                        PyFileExistsError::new_err(err.to_string())
+                    }
+                    ApiErrorKind::Timeout => {
+                        PyTimeoutError::new_err(err.to_string())
+                    }
+                    ApiErrorKind::Internal => PyRuntimeError::new_err(err.to_string()),
+                }
             }
 
-            ExternalError::ArrowError(err) => PyValueError::new_err(format!("Arrow error: {err}")),
+            ExternalError::ArrowError(err) => PyIOError::new_err(format!("Arrow error: {err}")),
 
             ExternalError::UrlParseError(err) => {
                 PyValueError::new_err(format!("Could not parse URL: {err}"))
@@ -154,7 +179,7 @@ impl From<ExternalError> for PyErr {
                 PyValueError::new_err(format!("DataFusion error: {err}"))
             }
 
-            ExternalError::CodecError(err) => PyValueError::new_err(format!("Codec error: {err}")),
+            ExternalError::CodecError(err) => PyIOError::new_err(format!("Codec error: {err}")),
 
             ExternalError::SorbetError(err) => {
                 PyValueError::new_err(format!("Sorbet error: {err}"))
@@ -167,11 +192,11 @@ impl From<ExternalError> for PyErr {
             }
 
             ExternalError::TypeConversionError(err) => {
-                PyValueError::new_err(format!("Could not convert gRPC message: {err}"))
+                PyIOError::new_err(format!("Could not convert gRPC message: {err}"))
             }
 
             ExternalError::TokenError(err) => {
-                PyValueError::new_err(format!("Invalid token: {err}"))
+                PyPermissionError::new_err(format!("Invalid token: {err}"))
             }
         }
     }

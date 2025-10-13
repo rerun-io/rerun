@@ -24,7 +24,6 @@ use re_viewer_context::AsyncRuntimeHandle;
 
 pub type EntryResult<T> = Result<T, ApiError>;
 
-
 pub trait AuthApiErrorExt {
     fn client_connection_error(&self) -> Option<&ClientConnectionError>;
     fn is_missing_token(&self) -> bool;

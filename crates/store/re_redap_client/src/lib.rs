@@ -91,10 +91,10 @@ pub enum ApiErrorKind {
     PermissionDenied,
     Unauthenticated,
     Connection,
+    Timeout,
     Internal,
     InvalidArguments,
     Serialization,
-    Other(tonic::Code),
 }
 
 impl From<tonic::Code> for ApiErrorKind {
@@ -105,9 +105,9 @@ impl From<tonic::Code> for ApiErrorKind {
             tonic::Code::PermissionDenied => Self::PermissionDenied,
             tonic::Code::Unauthenticated => Self::Unauthenticated,
             tonic::Code::Unavailable => Self::Connection,
-            tonic::Code::Internal => Self::Internal,
             tonic::Code::InvalidArgument => Self::InvalidArguments,
-            _ => Self::Other(code),
+            tonic::Code::DeadlineExceeded => Self::Timeout,
+            _ => Self::Internal,
         }
     }
 }
@@ -136,7 +136,7 @@ impl std::fmt::Display for ApiErrorKind {
             Self::Internal => write!(f, "Internal"),
             Self::InvalidArguments => write!(f, "InvalidArguments"),
             Self::Serialization => write!(f, "Serialization"),
-            Self::Other(code) => write!(f, "Other({code})"),
+            Self::Timeout => write!(f, "Timeout"),
         }
     }
 }
