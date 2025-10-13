@@ -38,7 +38,7 @@ fn setup_single_view_blueprint(harness: &mut egui_kittest::Harness<'_, re_viewer
             query_filter: EntityPathFilter::all(),
         },
     );
-    view3d.display_name = Some("Test View".into());
+    view3d.display_name = Some("Test view".into());
 
     harness.setup_viewport_blueprint(|_viewer_context, blueprint| {
         blueprint.add_view_at_root(view3d);
@@ -52,7 +52,7 @@ pub async fn test_blueprint_tree_context_menu() {
 
     harness.snapshot_app("blueprint_tree_context_menu_01");
 
-    harness.right_click_nth_label("Test View", 1);
+    harness.right_click_nth_label("Test view", 1);
     harness.snapshot_app("blueprint_tree_context_menu_02");
 
     harness.click_label("Expand all");
@@ -64,7 +64,7 @@ pub async fn test_blueprint_tree_context_menu() {
     harness.key_press(egui::Key::Escape);
     harness.snapshot_app("blueprint_tree_context_menu_05");
 
-    harness.right_click_nth_label("Test View", 0);
+    harness.right_click_nth_label("Test view", 0);
     harness.snapshot_app("blueprint_tree_context_menu_06");
 
     harness.key_press(egui::Key::Escape);
