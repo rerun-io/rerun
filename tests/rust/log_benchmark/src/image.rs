@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 const IMAGE_CHANNELS: u64 = 4;
 

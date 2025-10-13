@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used, clippy::match_same_arms)]
+#![expect(clippy::unwrap_used, clippy::match_same_arms)]
 
 use itertools::Itertools as _;
 

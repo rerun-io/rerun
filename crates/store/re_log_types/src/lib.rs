@@ -476,7 +476,7 @@ impl BlueprintActivationCommand {
 /// `.rrd` files.
 #[must_use]
 #[derive(Clone, Debug, PartialEq)] // `PartialEq` used for tests in another crate
-#[allow(clippy::large_enum_variant)]
+#[expect(clippy::large_enum_variant)]
 // TODO(#8631): Remove `LogMsg`
 pub enum LogMsg {
     /// A new recording has begun.

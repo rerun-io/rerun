@@ -1,7 +1,7 @@
-#![allow(clippy::borrow_deref_ref)] // False positive due to #[pyfunction] macro
-#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
-#![allow(clippy::too_many_arguments)] // We used named arguments, so this is fine
-#![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
+#![expect(clippy::borrow_deref_ref)] // False positive due to #[pyfunction] macro
+#![expect(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
+#![expect(clippy::too_many_arguments)] // We used named arguments, so this is fine
+#![expect(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use std::{
     borrow::Borrow as _,
@@ -436,28 +436,28 @@ impl PyChunkBatcherConfig {
         self.0.chunk_max_rows_if_unsorted = chunk_max_rows_if_unsorted;
     }
 
-    #[allow(non_snake_case)]
+    #[expect(non_snake_case)]
     #[staticmethod]
     /// Default configuration, applicable to most use cases.
     fn DEFAULT() -> Self {
         Self(ChunkBatcherConfig::DEFAULT)
     }
 
-    #[allow(non_snake_case)]
+    #[expect(non_snake_case)]
     #[staticmethod]
     /// Low-latency configuration, preferred when streaming directly to a viewer.
     fn LOW_LATENCY() -> Self {
         Self(ChunkBatcherConfig::LOW_LATENCY)
     }
 
-    #[allow(non_snake_case)]
+    #[expect(non_snake_case)]
     #[staticmethod]
     /// Always flushes ASAP.
     fn ALWAYS() -> Self {
         Self(ChunkBatcherConfig::ALWAYS)
     }
 
-    #[allow(non_snake_case)]
+    #[expect(non_snake_case)]
     #[staticmethod]
     /// Never flushes unless manually told to (or hitting one the builtin invariants).
     fn NEVER() -> Self {
@@ -466,8 +466,8 @@ impl PyChunkBatcherConfig {
 }
 
 /// Create a new recording stream.
-#[allow(clippy::fn_params_excessive_bools)]
-#[allow(clippy::struct_excessive_bools)]
+#[expect(clippy::fn_params_excessive_bools)]
+#[expect(clippy::struct_excessive_bools)]
 #[pyfunction]
 #[pyo3(signature = (
     application_id,
@@ -535,7 +535,7 @@ fn new_recording(
 }
 
 /// Create a new blueprint stream.
-#[allow(clippy::fn_params_excessive_bools)]
+#[expect(clippy::fn_params_excessive_bools)]
 #[pyfunction]
 #[pyo3(signature = (
     application_id,
@@ -1502,7 +1502,7 @@ fn serve_grpc(
 /// Serve a web-viewer over HTTP.
 ///
 /// This only serves HTML+JS+Wasm, but does NOT host a gRPC server.
-#[allow(clippy::unnecessary_wraps)] // False positive
+#[expect(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 #[pyo3(signature = (web_port = None, open_browser = true, connect_to = None))]
 fn serve_web_viewer(
@@ -1538,7 +1538,7 @@ fn serve_web_viewer(
 
 /// Serve a web-viewer AND host a gRPC server.
 // NOTE: DEPRECATED
-#[allow(clippy::unnecessary_wraps)] // False positive
+#[expect(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 #[pyo3(signature = (open_browser, web_port, grpc_port, server_memory_limit, default_blueprint = None, recording = None))]
 fn serve_web(
@@ -2043,7 +2043,7 @@ fn get_app_url() -> String {
 /// Start a web server to host the run web-assets.
 #[pyfunction]
 fn start_web_viewer_server(port: u16) -> PyResult<()> {
-    #[allow(clippy::unnecessary_wraps)]
+    #[expect(clippy::unnecessary_wraps)]
     #[cfg(feature = "web_viewer")]
     {
         let mut web_handle = global_web_viewer_server();

@@ -47,7 +47,7 @@ macro_rules! entity_path_vec {
     };
     ($($part: expr),* $(,)?) => {
         $crate::path::__private::vec![ $($crate::EntityPathPart::from(
-            #[allow(clippy::str_to_string, clippy::string_to_string)]
+            #[expect(clippy::str_to_string, clippy::string_to_string)]
             $crate::path::__private::string::ToString::to_string(&$part)
         ),)+ ]
     };

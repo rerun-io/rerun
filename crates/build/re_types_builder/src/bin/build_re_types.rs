@@ -4,7 +4,7 @@
 //! which will set up the necessary tools.
 
 // TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 use re_build_tools::{
     read_versioning_hash, set_output_cargo_build_instructions, write_versioning_hash,
@@ -28,7 +28,7 @@ const SNIPPETS_REF_DIR_PATH: &str = "docs/snippets/";
 macro_rules! join {
     ($($task:expr,)*) => {join!($($task),*)};
     ($($task:expr),*) => {{
-        #![allow(clippy::redundant_closure_call)]
+        #![expect(clippy::redundant_closure_call)]
         ::rayon::scope(|scope| {
             $(scope.spawn(|_| ($task)());)*
         })

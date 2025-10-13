@@ -11,7 +11,7 @@
 //! cargo run -p raw_mesh <path_to_gltf_scene>
 //! ```
 
-#![allow(clippy::doc_markdown)]
+#![expect(clippy::doc_markdown)]
 
 use std::path::PathBuf;
 
@@ -23,7 +23,7 @@ use rerun::{Color, Mesh3D, RecordingStream, Rgba32, external::re_log};
 // --- Rerun logging ---
 
 // Declare how to turn a glTF primitive into a Rerun component (`Mesh3D`).
-#[allow(clippy::fallible_impl_from)]
+#[expect(clippy::fallible_impl_from)]
 impl From<GltfPrimitive> for Mesh3D {
     fn from(primitive: GltfPrimitive) -> Self {
         let GltfPrimitive {
@@ -193,14 +193,14 @@ struct GltfPrimitive {
     vertex_positions: Vec<[f32; 3]>,
     vertex_colors: Option<Vec<Color>>,
     vertex_normals: Option<Vec<[f32; 3]>>,
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     vertex_texcoords: Option<Vec<[f32; 2]>>,
 }
 
 struct GltfTransform {
     t: [f32; 3],
     r: [f32; 4],
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     s: [f32; 3],
 }
 

@@ -256,7 +256,7 @@ mod file_server_impl {
                 .events_rx
                 .try_iter()
                 .flat_map(|ev| {
-                    #[allow(clippy::enum_glob_use)]
+                    #[expect(clippy::enum_glob_use)]
                     use notify::EventKind::*;
                     match ev.kind {
                         Create(_) | Modify(_) | Any => ev
@@ -304,7 +304,7 @@ mod file_server_impl {
             f(&mut Self)
         }
 
-        #[allow(clippy::needless_pass_by_ref_mut, clippy::unused_self)]
+        #[expect(clippy::needless_pass_by_ref_mut, clippy::unused_self)]
         pub fn collect<Fs: FileSystem>(
             &mut self,
             _resolver: &FileResolver<Fs>,

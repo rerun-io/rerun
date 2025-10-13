@@ -196,7 +196,7 @@ const fn const_u8_slice_util(v: &[u8], start: Option<usize>, end: Option<usize>)
 
     {
         // The only reason we do this is to allow slicing in `const` functions.
-        #![allow(unsafe_code)]
+        #![expect(unsafe_code)]
 
         let ptr = v.as_ptr();
         // SAFETY:
@@ -303,7 +303,7 @@ impl CrateVersion {
         ]
     }
 
-    #[allow(clippy::unnested_or_patterns)]
+    #[expect(clippy::unnested_or_patterns)]
     pub fn is_compatible_with(self, other: Self) -> bool {
         match (self.meta, other.meta) {
             // release candidates are always compatible with each other

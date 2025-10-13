@@ -129,7 +129,7 @@ impl_trait![
 impl DedupableError for wgpu_core::pipeline::CreateShaderModuleError {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         type_of_var(self).hash(state);
-        #[allow(clippy::enum_glob_use)]
+        #[expect(clippy::enum_glob_use)]
         use wgpu_core::pipeline::CreateShaderModuleError::*;
         match self {
             Parsing(err) => err.source.hash(state),
@@ -144,7 +144,7 @@ impl DedupableError for wgpu_core::pipeline::CreateShaderModuleError {
         }
         let rhs = rhs.downcast_ref::<Self>().unwrap();
 
-        #[allow(clippy::enum_glob_use)]
+        #[expect(clippy::enum_glob_use)]
         use wgpu_core::pipeline::CreateShaderModuleError::*;
         match (self, rhs) {
             (Parsing(err1), Parsing(err2)) => err1.source == err2.source,

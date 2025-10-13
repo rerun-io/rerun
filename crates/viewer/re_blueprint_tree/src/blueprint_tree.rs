@@ -473,7 +473,7 @@ impl BlueprintTree {
         );
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn data_result_ui(
         &mut self,
         ctx: &ViewerContext<'_>,

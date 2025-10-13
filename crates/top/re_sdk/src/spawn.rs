@@ -179,7 +179,7 @@ impl std::fmt::Debug for SpawnError {
 ///
 /// This only starts a Viewer process: if you'd like to connect to it and start sending data, refer
 /// to [`crate::RecordingStream::connect_grpc`] or use [`crate::RecordingStream::spawn`] directly.
-#[allow(unsafe_code)]
+#[expect(unsafe_code)]
 pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     #[cfg(target_family = "unix")]
     use std::os::unix::process::CommandExt as _;

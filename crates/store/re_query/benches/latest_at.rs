@@ -1,5 +1,5 @@
 // Allow unwrap() in benchmarks
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 use std::sync::Arc;
 
@@ -36,7 +36,7 @@ mod constants {
     pub const NUM_STRINGS: u32 = 1_000;
 }
 
-#[allow(clippy::wildcard_imports)]
+#[expect(clippy::wildcard_imports)]
 use self::constants::*;
 
 // ---

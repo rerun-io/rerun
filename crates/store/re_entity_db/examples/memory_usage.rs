@@ -1,5 +1,5 @@
 // TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 
@@ -16,11 +16,11 @@ static GLOBAL_ALLOCATOR: TrackingAllocator = TrackingAllocator {
     allocator: std::alloc::System,
 };
 
-#[allow(unsafe_code)]
+#[expect(unsafe_code)]
 // SAFETY:
 // We just do book-keeping and then let another allocator do all the actual work.
 unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
-    #[allow(clippy::let_and_return)]
+    #[expect(clippy::let_and_return)]
     unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {
         LIVE_BYTES_IN_THREAD.with(|bytes| bytes.fetch_add(layout.size(), Relaxed));
 

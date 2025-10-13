@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_variables)]
+#![expect(dead_code, unused_variables)]
 
 use std::collections::BTreeMap;
 

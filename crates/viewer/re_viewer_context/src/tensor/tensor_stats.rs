@@ -53,7 +53,7 @@ impl TensorStats {
                         (<$typ>::INFINITY, <$typ>::NEG_INFINITY),
                         |(min, max), &value| (min.min(value), max.max(value)),
                     );
-                    #[allow(trivial_numeric_casts)]
+                    #[expect(trivial_numeric_casts)]
                     (min as f64, max as f64)
                 }
             };
@@ -73,7 +73,7 @@ impl TensorStats {
         declare_tensor_range_float!(tensor_range_f32, f32);
         declare_tensor_range_float!(tensor_range_f64, f64);
 
-        #[allow(clippy::needless_pass_by_value)]
+        #[expect(clippy::needless_pass_by_value)]
         fn tensor_range_f16(tensor: ndarray::ArrayViewD<'_, f16>) -> (f64, f64) {
             re_tracing::profile_function!();
             let (min, max) = tensor
@@ -97,7 +97,7 @@ impl TensorStats {
                             }
                         },
                     );
-                    #[allow(trivial_numeric_casts)]
+                    #[expect(trivial_numeric_casts)]
                     (min as f64, max as f64)
                 }
             };
@@ -107,7 +107,7 @@ impl TensorStats {
         declare_tensor_finite_range_float!(tensor_finite_range_f32, f32);
         declare_tensor_finite_range_float!(tensor_finite_range_f64, f64);
 
-        #[allow(clippy::needless_pass_by_value)]
+        #[expect(clippy::needless_pass_by_value)]
         fn tensor_finite_range_f16(tensor: ndarray::ArrayViewD<'_, f16>) -> (f64, f64) {
             re_tracing::profile_function!();
             let (min, max) =

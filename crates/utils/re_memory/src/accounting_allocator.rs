@@ -284,13 +284,13 @@ impl<InnerAllocator> AccountingAllocator<InnerAllocator> {
     }
 }
 
-#[allow(unsafe_code)]
+#[expect(unsafe_code)]
 // SAFETY:
 // We just do book-keeping and then let another allocator do all the actual work.
 unsafe impl<InnerAllocator: std::alloc::GlobalAlloc> std::alloc::GlobalAlloc
     for AccountingAllocator<InnerAllocator>
 {
-    #[allow(clippy::let_and_return)]
+    #[expect(clippy::let_and_return)]
     unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {
         // SAFETY:
         // We just do book-keeping and then let another allocator do all the actual work.

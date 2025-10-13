@@ -41,7 +41,7 @@ impl DragDropAddress {
                     dimension: h.dimension,
                     index: shape[h.dimension as usize].size / 2, // Select middle if this becomes index fixed.
                 }),
-            #[allow(clippy::unwrap_used)]
+            #[expect(clippy::unwrap_used)]
             Self::Selector(selector_idx) => Some(slice_selection.indices[*selector_idx].0),
             Self::NewSelector => None,
         }
@@ -129,7 +129,7 @@ fn drag_source_ui_id(drag_context_id: egui::Id, dim_idx: u32) -> egui::Id {
     drag_context_id.with("tensor_dimension_ui").with(dim_idx)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn tensor_dimension_ui(
     ui: &mut egui::Ui,
     drag_context_id: egui::Id,

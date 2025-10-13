@@ -102,11 +102,11 @@
 // ---
 
 // TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 // NOTE: Official generated code from flatbuffers; ignore _everything_.
 
-#[allow(
+#[expect(
     warnings,
     unused,
     unsafe_code,
@@ -138,13 +138,13 @@ pub use self::reflection::reflection::{
 
 // NOTE: This crate isn't only okay with `unimplemented`, it actively encourages it.
 
-#[allow(clippy::unimplemented)]
+#[expect(clippy::unimplemented)]
 mod codegen;
-#[allow(clippy::unimplemented)]
+#[expect(clippy::unimplemented)]
 mod format;
-#[allow(clippy::unimplemented)]
+#[expect(clippy::unimplemented)]
 mod objects;
-#[allow(clippy::unimplemented)]
+#[expect(clippy::unimplemented)]
 mod type_registry;
 
 pub mod data_type;

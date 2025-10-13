@@ -126,7 +126,7 @@ impl QueryCache {
                     //
                     // For (recursive) parents, we need to deserialize the data to make sure the
                     // recursive flag is set.
-                    #[allow(clippy::collapsible_if)] // readability
+                    #[expect(clippy::collapsible_if)] // readability
                     if clear_entity_path == *entity_path || found_recursive_clear {
                         if let Some(index) = cached.index(&query.timeline()) {
                             if compare_indices(index, max_clear_index)

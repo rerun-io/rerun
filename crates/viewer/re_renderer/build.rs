@@ -12,8 +12,8 @@
 
 // TODO(cmc): this should only run for release builds
 
-#![allow(clippy::disallowed_types)] // False positives for using files on Wasm
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::disallowed_types)] // False positives for using files on Wasm
+#![expect(clippy::unwrap_used)]
 
 use std::path::{Path, PathBuf};
 
@@ -104,7 +104,7 @@ fn check_hermeticity(root_path: impl AsRef<Path>, file_path: impl AsRef<Path>) {
 // ---
 
 fn should_run(environment: Environment) -> bool {
-    #![allow(clippy::match_same_arms)]
+    #![expect(clippy::match_same_arms)]
 
     match environment {
         // we should have been run before publishing

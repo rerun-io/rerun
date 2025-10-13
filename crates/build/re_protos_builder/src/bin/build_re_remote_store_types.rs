@@ -3,7 +3,7 @@
 //! It is easiest to call this using `pixi run codegen-protos`,
 //! which will set up the necessary tools.
 
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 use camino::Utf8Path;
 

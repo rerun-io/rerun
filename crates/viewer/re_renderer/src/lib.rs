@@ -27,7 +27,7 @@
 //! Unlike [`renderer::DrawData`]s, [`renderer::Renderer`]s are immutable and long-lived.
 
 // TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 mod allocator;
 pub mod device_caps;
@@ -109,7 +109,7 @@ pub use wgpu_resources::{
 };
 
 pub use self::file_system::{FileSystem, get_filesystem};
-#[allow(unused_imports)] // they can be handy from time to time
+#[expect(unused_imports)] // they can be handy from time to time
 use self::file_system::{MemFileSystem, OsFileSystem};
 
 pub use self::file_resolver::{

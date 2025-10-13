@@ -9,7 +9,7 @@ use crate::{ContainerId, Contents, Item, ViewId};
 
 /// The various scopes for which we want to track collapsed state.
 #[derive(Debug, Clone, Copy, Hash)]
-#[allow(clippy::enum_variant_names)]
+#[expect(clippy::enum_variant_names)]
 pub enum CollapseScope {
     /// Stream tree from the time panel
     StreamsTree,

@@ -188,7 +188,7 @@ impl TimePanel {
         self.filter_state.activate(query);
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn show_panel(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -335,7 +335,7 @@ impl TimePanel {
         });
     }
 
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     fn collapsed_ui(
         &mut self,
         entity_db: &re_entity_db::EntityDb,

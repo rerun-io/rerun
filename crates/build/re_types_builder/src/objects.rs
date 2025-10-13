@@ -1596,7 +1596,7 @@ impl ElementType {
             }
         }
 
-        #[allow(clippy::match_same_arms)]
+        #[expect(clippy::match_same_arms)]
         match inner_type {
             FbsBaseType::Bool => Self::Bool,
             FbsBaseType::Byte => Self::Int8,

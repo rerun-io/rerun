@@ -63,7 +63,7 @@ impl PixelFormat {
     /// The color model derived from this pixel format.
     #[inline]
     pub fn color_model(&self) -> ColorModel {
-        #[allow(clippy::match_same_arms)]
+        #[expect(clippy::match_same_arms)]
         match self {
             Self::Y_U_V12_FullRange
             | Self::Y_U_V16_FullRange
@@ -189,7 +189,7 @@ impl PixelFormat {
 
     /// Yuv matrix coefficients used by this format.
     // TODO(andreas): Expose this in the API separately and document it better.
-    #[allow(clippy::unnecessary_wraps)]
+    #[expect(clippy::unnecessary_wraps)]
     pub fn yuv_matrix_coefficients(&self) -> YuvMatrixCoefficients {
         match self {
             Self::Y_U_V24_LimitedRange

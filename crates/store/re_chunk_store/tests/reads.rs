@@ -845,7 +845,7 @@ fn range() -> anyhow::Result<()> {
     // by the range query.
     // A single timepoint might have several of those! That's one of the behaviors specific to
     // range queries.
-    #[allow(clippy::type_complexity)]
+    #[expect(clippy::type_complexity)]
     let assert_range_components =
         |time_range: AbsoluteTimeRange,
          component_descr: ComponentDescriptor,

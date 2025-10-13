@@ -13,7 +13,7 @@ pub struct PickedPixelInfo {
     pub pixel_coordinates: [u32; 2],
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub fn textured_rect_hover_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -163,7 +163,7 @@ impl TextureInteractionId<'_> {
 }
 
 /// `meter`: iff this is a depth map, how long is one meter?
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub fn show_zoomed_image_region(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
@@ -189,7 +189,7 @@ pub fn show_zoomed_image_region(
 }
 
 /// `meter`: iff this is a depth map, how long is one meter?
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn try_show_zoomed_image_region(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,

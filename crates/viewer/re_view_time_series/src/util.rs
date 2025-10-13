@@ -162,7 +162,7 @@ pub fn apply_aggregation(
     let points = if should_aggregate {
         re_tracing::profile_scope!("aggregate", aggregator.to_string());
 
-        #[allow(clippy::match_same_arms)] // readability
+        #[expect(clippy::match_same_arms)] // readability
         match aggregator {
             AggregationPolicy::Off => points,
             AggregationPolicy::Average => {
@@ -201,7 +201,7 @@ pub fn apply_aggregation(
 }
 
 #[expect(clippy::too_many_arguments)]
-#[allow(clippy::needless_pass_by_value)]
+#[expect(clippy::needless_pass_by_value)]
 #[inline(never)] // Better callstacks on crashes
 fn add_series_runs(
     visible: bool,
@@ -263,7 +263,7 @@ fn add_series_runs(
             let cur_continuous = matches!(attrs.kind, PlotSeriesKind::Continuous);
             let prev_continuous = matches!(prev_series.kind, PlotSeriesKind::Continuous);
 
-            #[allow(clippy::unwrap_used)] // prev_series.points can't be empty here
+            #[expect(clippy::unwrap_used)] // prev_series.points can't be empty here
             let prev_point = *prev_series.points.last().unwrap();
             all_series.push(prev_series);
 

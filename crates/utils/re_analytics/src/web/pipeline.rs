@@ -1,4 +1,4 @@
-#![allow(
+#![expect(
     clippy::needless_pass_by_value,
     clippy::unnecessary_wraps,
     clippy::unused_self

@@ -19,9 +19,9 @@ type Level = u64;
 
 // ----------------------------------------------------------------------------
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 mod small_and_slow {
-    #[allow(clippy::wildcard_imports)]
+    #[expect(clippy::wildcard_imports)]
     use super::*;
 
     // Uses 20x nodes with 8-way (3 bit) branching factor down to a final 16-way (4 bit) dense leaf.
@@ -44,7 +44,7 @@ mod small_and_slow {
 // ----------------------------------------------------------------------------
 
 mod large_and_fast {
-    #[allow(clippy::wildcard_imports)]
+    #[expect(clippy::wildcard_imports)]
     use super::*;
 
     // High memory use, faster
@@ -72,7 +72,7 @@ const ROOT_LEVEL: Level = 64 - LEVEL_STEP;
 static_assertions::const_assert_eq!(ROOT_LEVEL + LEVEL_STEP, 64);
 static_assertions::const_assert_eq!((ROOT_LEVEL - BOTTOM_LEVEL) % LEVEL_STEP, 0);
 const NUM_NODE_STEPS: u64 = (ROOT_LEVEL - BOTTOM_LEVEL) / LEVEL_STEP;
-#[allow(dead_code)] // used in static assert
+#[expect(dead_code)] // used in static assert
 const NUM_STEPS_IN_DENSE_LEAF: u64 = 64 - NUM_NODE_STEPS * LEVEL_STEP;
 static_assertions::const_assert_eq!(1 << NUM_STEPS_IN_DENSE_LEAF, NUM_CHILDREN_IN_DENSE);
 
@@ -261,7 +261,7 @@ impl Iterator for Iter<'_> {
 // ----------------------------------------------------------------------------
 // Low-level data structure.
 
-#[allow(clippy::enum_variant_names)]
+#[expect(clippy::enum_variant_names)]
 #[derive(Clone, Debug)]
 enum Node {
     /// An inner node, addressed by the next few bits of the key/address.

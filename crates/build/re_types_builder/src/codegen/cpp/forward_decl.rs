@@ -89,7 +89,7 @@ pub struct ForwardDecls {
 }
 
 impl ForwardDecls {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub fn insert(&mut self, namespace: impl Into<String>, decl: ForwardDecl) {
         self.declarations_per_namespace
             .entry(namespace.into())

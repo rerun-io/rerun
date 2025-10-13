@@ -183,7 +183,7 @@ fn prepend_string_column_schema(schema: &Schema, column_name: &str) -> Schema {
 
 impl PartitionStreamExec {
     #[tracing::instrument(level = "info", skip_all)]
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn try_new(
         table_schema: &SchemaRef,
         sort_index: Option<Index>,

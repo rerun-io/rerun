@@ -7,7 +7,7 @@ use crate::tensor_data::{TensorCastError, TensorDataType, TensorElement};
 #[cfg(feature = "image")]
 use crate::tensor_data::TensorImageLoadError;
 
-#[allow(unused_imports)] // Used for docstring links
+#[expect(unused_imports)] // Used for docstring links
 use crate::archetypes::EncodedImage;
 
 use super::{TensorBuffer, TensorData};

@@ -49,7 +49,7 @@ struct CameraComponentDataWithFallbacks {
 }
 
 impl CamerasVisualizer {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
         tokens: &re_ui::DesignTokens,

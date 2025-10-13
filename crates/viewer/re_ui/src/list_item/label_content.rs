@@ -8,7 +8,7 @@ use crate::list_item::item_buttons::ItemButtons;
 use crate::{DesignTokens, Icon, LabelStyle, UiExt as _};
 
 /// [`ListItemContent`] that displays a simple label with optional icon and buttons.
-#[allow(clippy::type_complexity)]
+#[expect(clippy::type_complexity)]
 pub struct LabelContent<'a> {
     text: egui::WidgetText,
 

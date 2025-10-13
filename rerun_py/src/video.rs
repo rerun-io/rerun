@@ -1,4 +1,4 @@
-#![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
+#![expect(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use pyo3::{Bound, PyAny, PyResult, exceptions::PyRuntimeError, pyfunction};
 

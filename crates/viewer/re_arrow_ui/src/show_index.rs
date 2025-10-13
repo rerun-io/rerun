@@ -460,7 +460,7 @@ macro_rules! timestamp_primitive_display {
                 if self.is_null(idx) {
                     f.append_primitive("null");
                 } else {
-                    #[allow(trivial_numeric_casts)]
+                    #[expect(trivial_numeric_casts)]
                     let timestamp = jiff::Timestamp::$conv_fn(self.value(idx) as _)
                         .map_err(|err| ArrowError::ExternalError(Box::new(err)))?;
                     f.append_primitive(&re_log_types::Timestamp::from(timestamp).format(*state));

@@ -474,7 +474,7 @@ enum InnerRepr {
 ///
 /// TODO(#2993): However, we still emit a validity/null bitmaps for lists inside lists
 /// since Python and Rust do so.
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn quote_arrow_field_serializer(
     objects: &Objects,
     datatype: &DataType,
@@ -636,7 +636,7 @@ fn quote_arrow_field_serializer(
 
                     // Offsets is always non-empty. The last element is the total length of buffer we need.
                     // We want this capacity in order to allocate exactly as much memory as we need.
-                    #[allow(clippy::unwrap_used)]
+                    #[expect(clippy::unwrap_used)]
                     let capacity = offsets.last().copied().unwrap() as usize;
 
                     let mut buffer_builder = arrow::array::builder::BufferBuilder::<u8>::new(capacity);
@@ -655,7 +655,7 @@ fn quote_arrow_field_serializer(
 
                     // Offsets is always non-empty. The last element is the total length of buffer we need.
                     // We want this capacity in order to allocate exactly as much memory as we need.
-                    #[allow(clippy::unwrap_used)]
+                    #[expect(clippy::unwrap_used)]
                     let capacity = offsets.last().copied().unwrap() as usize;
 
                     let mut buffer_builder = arrow::array::builder::BufferBuilder::<u8>::new(capacity);
@@ -679,7 +679,7 @@ fn quote_arrow_field_serializer(
                     // whole utf8 validation _again_.
                     // It would be nice to use quote_comment here and put this safety notice in the generated code,
                     // but that seems to push us over some complexity limit causing rustfmt to fail.
-                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                    #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
                     as_array_ref(unsafe { StringArray::new_unchecked(offsets, inner_data, #validity_src) })
                 }}
             }

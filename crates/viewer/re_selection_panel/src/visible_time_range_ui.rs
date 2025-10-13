@@ -364,7 +364,7 @@ fn current_range_ui(
         .on_hover_text("Showing data in this range (inclusive).");
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn resolved_visible_history_boundary_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -459,7 +459,7 @@ fn visible_history_boundary_combo_label(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn visible_history_boundary_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,

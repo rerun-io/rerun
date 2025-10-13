@@ -66,7 +66,7 @@ pub enum AnyComponentColumn {
 }
 
 impl AnyComponentColumn {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub fn into_selector(self) -> PyResult<ComponentColumnSelector> {
         match self {
             Self::Name(name) => {
