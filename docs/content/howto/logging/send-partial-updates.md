@@ -28,7 +28,7 @@ The best way to learn about these APIs is to see them in action: check out the e
 
 snippet: archetypes/points3d_partial_updates
 
-<picture data-inline-viewer="snippets/points3d_partial_updates">
+<picture data-inline-viewer="snippets/archetypes/points3d_partial_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/1024w.png">
@@ -41,7 +41,7 @@ snippet: archetypes/points3d_partial_updates
 
 snippet: archetypes/transform3d_partial_updates
 
-<picture data-inline-viewer="snippets/transform3d_partial_updates">
+<picture data-inline-viewer="snippets/archetypes/transform3d_partial_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/1024w.png">
@@ -54,7 +54,7 @@ snippet: archetypes/transform3d_partial_updates
 
 snippet: archetypes/mesh3d_partial_updates
 
-<picture data-inline-viewer="snippets/mesh3d_partial_updates">
+<picture data-inline-viewer="snippets/archetypes/mesh3d_partial_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/1024w.png">

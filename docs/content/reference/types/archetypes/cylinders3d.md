@@ -45,7 +45,7 @@ Orienting and placing cylinders forms a separate transform that is applied prior
 
 snippet: archetypes/cylinders3d_batch
 
-<picture data-inline-viewer="snippets/cylinders3d_batch">
+<picture data-inline-viewer="snippets/archetypes/cylinders3d_batch">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/1024w.png">

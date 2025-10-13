@@ -256,6 +256,7 @@ impl<T: FileEncoded> Decoder<T> {
         match self.state {
             State::StreamHeader => {
                 let is_first_header = self.byte_chunks.num_read() == 0;
+                let position = self.byte_chunks.num_read();
                 if let Some(header) = self.byte_chunks.try_read(FileHeader::SIZE) {
                     re_log::trace!(?header, "Decoding StreamHeader");
 
@@ -267,7 +268,11 @@ impl<T: FileEncoded> Decoder<T> {
                             if is_first_header {
                                 return Err(err);
                             } else {
-                                re_log::error!("Trailing bytes in rrd stream: {header:?} ({err})");
+                                re_log::error!(
+                                    is_first_header,
+                                    position,
+                                    "Trailing bytes in rrd stream: {header:?} ({err})"
+                                );
                                 self.state = State::Aborted;
                                 return Ok(None);
                             }
