@@ -52,12 +52,6 @@ pub trait HarnessExt {
         parent_container: Option<re_viewer_context::ContainerId>,
     ) -> re_viewer_context::ContainerId;
 
-    fn add_blueprint_container(
-        &mut self,
-        kind: egui_tiles::ContainerKind,
-        parent_container: Option<re_viewer_context::ContainerId>,
-    ) -> re_viewer_context::ContainerId;
-
     // Logs an entity to the active recording.
     fn log_entity(
         &mut self,
