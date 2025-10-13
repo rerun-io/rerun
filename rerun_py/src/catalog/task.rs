@@ -47,7 +47,6 @@ impl PyTask {
 }
 
 /// A collection of [`Task`].
-#[expect(rustdoc::broken_intra_doc_links)]
 #[pyclass(name = "Tasks")] // NOLINT: skip pyclass_eq, non-trivial implementation
 pub struct PyTasks {
     client: Py<PyCatalogClientInternal>,

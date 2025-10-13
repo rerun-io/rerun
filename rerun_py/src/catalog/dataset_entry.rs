@@ -341,7 +341,6 @@ impl PyDatasetEntry {
     ///     * If longer than `recording_uris`, `recording_layers` will be truncated.
     ///     * If shorter than `recording_uris`, `recording_layers` will be extended by repeating its last value.
     ///       I.e. an empty `recording_layers` will result in `"base"` begin repeated `len(recording_layers)` times.
-    #[expect(rustdoc::broken_intra_doc_links)]
     #[pyo3(signature = (
         recording_uris,
         *,
@@ -433,7 +432,7 @@ impl PyDatasetEntry {
         })
     }
 
-    #[expect(rustdoc::private_doc_tests, rustdoc::invalid_rust_codeblocks)]
+    #[expect(rustdoc::private_doc_tests)]
     /// Create a [`DataframeQueryView`][rerun.catalog.DataframeQueryView] of the recording according to a particular index and content specification.
     ///
     /// The only type of index currently supported is the name of a timeline, or `None` (see below

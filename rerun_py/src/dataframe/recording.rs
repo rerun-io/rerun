@@ -135,7 +135,7 @@ impl PyRecording {
         }
     }
 
-    #[expect(rustdoc::private_doc_tests, rustdoc::invalid_rust_codeblocks)]
+    #[expect(rustdoc::private_doc_tests)]
     /// Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
     ///
     /// The only type of index currently supported is the name of a timeline, or `None` (see below
