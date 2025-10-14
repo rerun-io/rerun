@@ -67,6 +67,19 @@ pub enum Error {
         actual: DataType,
     },
 
+    /// Fields have inconsistent types.
+    #[error("Field '{field_name}' has type {actual_type:?}, but expected {expected_type:?} (inferred from field '{reference_field}')")]
+    InconsistentFieldTypes {
+        field_name: String,
+        actual_type: DataType,
+        reference_field: String,
+        expected_type: DataType,
+    },
+
+    /// No field names provided to transformation.
+    #[error("At least one field name is required")]
+    NoFieldNames,
+
     /// Custom user-defined error for transformations implemented outside this module.
     ///
     /// This allows users to implement their own transformations with custom error messages.
@@ -277,100 +290,105 @@ where
     }
 }
 
-/// Converts a struct with {x, y} fields to a fixed-size list array of length 2.
+/// Converts a struct to a fixed-size list array by extracting specified fields.
 ///
-/// This transformation extracts the x and y fields from each struct and packs them
-/// into a fixed-size list of 2 elements. Null handling: if either x or y is null,
-/// the entire list entry is marked as null.
+/// This transformation takes a list of field names and extracts them from each struct,
+/// packing them into a fixed-size list. The size of the list equals the number of field names.
+///
+/// Null handling: Individual field values can be null (represented as null in the flattened array),
+/// but the outer list entries are never null - missing fields result in null values in the list.
 #[derive(Clone)]
-pub struct StructToPoint2D;
+pub struct StructToFixedList {
+    field_names: Vec<String>,
+}
 
-impl StructToPoint2D {
-    /// Create a new struct-to-point-2D transformer.
-    pub fn new() -> Self {
-        Self
+impl StructToFixedList {
+    /// Create a new struct-to-fixed-list transformer.
+    ///
+    /// The field names specify which fields to extract and in what order.
+    /// The resulting fixed-size list will have length equal to `field_names.len()`.
+    pub fn new(field_names: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        Self {
+            field_names: field_names.into_iter().map(|s| s.into()).collect(),
+        }
     }
 }
 
-impl Default for StructToPoint2D {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Transform for StructToPoint2D {
+impl Transform for StructToFixedList {
     type Source = StructArray;
     type Target = FixedSizeListArray;
 
     fn transform(&self, source: &StructArray) -> Result<FixedSizeListArray, Error> {
+        if self.field_names.is_empty() {
+            return Err(Error::NoFieldNames);
+        }
+
         let available_fields: Vec<String> = source
             .fields()
             .iter()
             .map(|f| f.name().clone())
             .collect();
 
-        let x_array = source
-            .column_by_name("x")
-            .ok_or_else(|| Error::MissingStructField {
-                field_name: "x".to_string(),
+        // Get the first field to determine the element type
+        let first_field_name = &self.field_names[0];
+        let first_array = source.column_by_name(first_field_name).ok_or_else(|| {
+            Error::MissingStructField {
+                field_name: first_field_name.clone(),
                 struct_fields: available_fields.clone(),
-            })?
-            .as_any()
-            .downcast_ref::<Float64Array>()
-            .ok_or_else(|| Error::FieldTypeMismatch {
-                field_name: "x".to_string(),
-                expected_type: "Float64".to_string(),
-                actual_type: source.column_by_name("x").unwrap().data_type().clone(),
+            }
+        })?;
+        let element_type = first_array.data_type().clone();
+
+        // Collect all field arrays, ensuring they all have the same type
+        let mut field_arrays = Vec::new();
+        field_arrays.push(first_array);
+
+        for field_name in &self.field_names[1..] {
+            let array = source.column_by_name(field_name).ok_or_else(|| {
+                Error::MissingStructField {
+                    field_name: field_name.clone(),
+                    struct_fields: available_fields.clone(),
+                }
             })?;
 
-        let y_array = source
-            .column_by_name("y")
-            .ok_or_else(|| Error::MissingStructField {
-                field_name: "y".to_string(),
-                struct_fields: available_fields,
-            })?
-            .as_any()
-            .downcast_ref::<Float64Array>()
-            .ok_or_else(|| Error::FieldTypeMismatch {
-                field_name: "y".to_string(),
-                expected_type: "Float64".to_string(),
-                actual_type: source.column_by_name("y").unwrap().data_type().clone(),
-            })?;
+            // Verify type consistency
+            if array.data_type() != &element_type {
+                return Err(Error::InconsistentFieldTypes {
+                    field_name: field_name.clone(),
+                    actual_type: array.data_type().clone(),
+                    reference_field: first_field_name.clone(),
+                    expected_type: element_type.clone(),
+                });
+            }
+
+            field_arrays.push(array);
+        }
 
         let len = source.len();
-        let mut builder = Float64Builder::with_capacity(len * 2);
-        let mut null_buffer = BooleanBufferBuilder::new(len);
+        let list_size = self.field_names.len();
 
-        for i in 0..len {
-            // Mark the list entry as null if the struct is null or either field is null
-            let is_valid = !source.is_null(i) && !x_array.is_null(i) && !y_array.is_null(i);
-
-            if is_valid {
-                builder.append_value(x_array.value(i));
-                builder.append_value(y_array.value(i));
-                null_buffer.append(true);
-            } else {
-                // Append placeholder nulls for the list elements
-                builder.append_null();
-                builder.append_null();
-                null_buffer.append(false);
+        // Build the flattened values array by concatenating field arrays
+        let mut concatenated_arrays = Vec::new();
+        for row_idx in 0..len {
+            for field_array in &field_arrays {
+                concatenated_arrays.push(field_array.slice(row_idx, 1));
             }
         }
 
-        let values = builder.finish();
-        let field = Arc::new(Field::new_list_field(DataType::Float64, true));
+        // Concatenate all slices into a single array
+        let refs: Vec<&dyn Array> = concatenated_arrays.iter().map(|a| a.as_ref()).collect();
+        let values = arrow::compute::concat(&refs)?;
 
-        let null_buffer = Some(arrow::buffer::NullBuffer::new(null_buffer.finish()));
+        let field = Arc::new(Field::new("item", element_type, true));
 
         Ok(FixedSizeListArray::new(
             field,
-            2,
-            Arc::new(values),
-            null_buffer,
+            list_size as i32,
+            values,
+            None, // No outer nulls
         ))
     }
 }
-
 
 /// Unwraps a struct array within a list and extracts a field from it.
 ///
@@ -702,7 +720,7 @@ mod test {
         println!("{}", DisplayRB::from(array.clone()));
 
         let pipeline = UnwrapListStructField::new("poses")
-            .then(MapList::new(StructToPoint2D::new()));
+            .then(MapList::new(StructToFixedList::new(["x", "y"])));
 
         let result: ListArray = pipeline.transform(&array).unwrap();
 
@@ -714,7 +732,7 @@ mod test {
         let array = create_nasty_component_column();
 
         let pipeline = UnwrapListStructField::new("poses")
-            .then(MapList::new(StructToPoint2D::new()))
+            .then(MapList::new(StructToFixedList::new(["x", "y"])))
             .then(MapList::new(MapFixedSizeList::new(MapFloat64::new(|x| x + 1.0))));
 
         let result = pipeline.transform(&array).unwrap();
@@ -727,7 +745,7 @@ mod test {
         let array = create_nasty_component_column();
 
         let pipeline = UnwrapListStructField::new("poses")
-            .then(MapList::new(StructToPoint2D::new()))
+            .then(MapList::new(StructToFixedList::new(["x", "y"])))
             .then(MapList::new(MapFixedSizeList::new(
                 Cast::<Float64Array, Float32Array>::new(),
             )));
