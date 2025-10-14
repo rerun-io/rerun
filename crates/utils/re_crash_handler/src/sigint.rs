@@ -35,8 +35,6 @@ pub fn track_sigint() {
 }
 
 #[cfg(any(target_os = "windows", target_arch = "wasm32"))]
-#[expect(unsafe_code)]
-#[expect(clippy::fn_to_numeric_cast_any)]
 pub fn track_sigint() {}
 
 /// Returns whether a `SIGINT` was ever caught.
