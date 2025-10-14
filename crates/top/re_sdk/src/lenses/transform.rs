@@ -597,6 +597,82 @@ where
     }
 }
 
+// ## ListArray Operations
+//
+// These transformations work directly on `ListArray` and are commonly used in lenses.
+
+/// The identity transformation that returns the input unchanged.
+#[derive(Clone, Debug)]
+pub struct Identity;
+
+impl Identity {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for Identity {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Transform for Identity {
+    type Source = ListArray;
+    type Target = ListArray;
+
+    fn transform(&self, source: &ListArray) -> Result<ListArray, Error> {
+        Ok(source.clone())
+    }
+}
+
+/// Returns a constant `ListArray`, ignoring the input.
+#[derive(Clone)]
+pub struct Constant {
+    value: ListArray,
+}
+
+impl Constant {
+    pub fn new(value: ListArray) -> Self {
+        Self { value }
+    }
+}
+
+impl Transform for Constant {
+    type Source = ListArray;
+    type Target = ListArray;
+
+    fn transform(&self, _source: &ListArray) -> Result<ListArray, Error> {
+        Ok(self.value.clone())
+    }
+}
+
+/// A user-defined function that transforms a `ListArray`.
+pub struct Func<F> {
+    func: F,
+}
+
+impl<F> Func<F>
+where
+    F: Fn(&ListArray) -> Result<ListArray, Error>,
+{
+    pub fn new(func: F) -> Self {
+        Self { func }
+    }
+}
+
+impl<F> Transform for Func<F>
+where
+    F: Fn(&ListArray) -> Result<ListArray, Error>,
+{
+    type Source = ListArray;
+    type Target = ListArray;
+
+    fn transform(&self, source: &ListArray) -> Result<ListArray, Error> {
+        (self.func)(source)
+    }
+}
+
 
 #[cfg(test)]
 mod test {

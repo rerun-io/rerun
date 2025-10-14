@@ -1,20 +1,11 @@
-use arrow::{datatypes::DataType, error::ArrowError};
+use arrow::error::ArrowError;
 
 /// Different variants of errors that can happen when executing lenses.
 #[expect(missing_docs)]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("expected data type `{expected}` but found data type `{actual}`")]
-    TypeMismatch {
-        actual: DataType,
-        expected: DataType,
-    },
-
-    #[error("missing field `{expected}, found {}`", found.join(", "))]
-    MissingField {
-        expected: String,
-        found: Vec<String>,
-    },
+    #[error(transparent)]
+    Transform(#[from] super::transform::Error),
 
     #[error(transparent)]
     Arrow(#[from] ArrowError),

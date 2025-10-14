@@ -7,13 +7,12 @@
 
 pub(crate) mod ast;
 mod error;
-mod op;
-mod optics;
 mod sink;
+pub mod transform;
 
 pub use self::{
     // We should be careful not to expose to much implementation details here.
-    ast::{Lens, LensBuilder, Op},
+    ast::{Lens, LensBuilder},
     error::Error,
     sink::LensesSink,
 };
