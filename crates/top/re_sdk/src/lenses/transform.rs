@@ -536,7 +536,7 @@ where
 ///
 /// The source and target types are specified via generic parameters to maintain type safety.
 /// The target data type is automatically deduced from the target's `ArrowPrimitiveType`.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Cast<S, T> {
     _phantom: std::marker::PhantomData<(S, T)>,
 }
@@ -553,16 +553,6 @@ where
         Self {
             _phantom: std::marker::PhantomData,
         }
-    }
-}
-
-impl<S, T> Default for Cast<PrimitiveArray<S>, PrimitiveArray<T>>
-where
-    S: ArrowPrimitiveType,
-    T: ArrowPrimitiveType,
-{
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -596,18 +586,12 @@ where
 // These transformations work directly on `ListArray` and are commonly used in lenses.
 
 /// The identity transformation that returns the input unchanged.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Identity;
 
 impl Identity {
     pub fn new() -> Self {
         Self
-    }
-}
-
-impl Default for Identity {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
