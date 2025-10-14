@@ -128,7 +128,7 @@ class GraphView(View):
             This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
 
         background:
-            Configures the background of the plot.
+            Configures the background of the graph.
         visual_bounds:
             Everything within these bounds is guaranteed to be visible.
 

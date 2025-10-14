@@ -26,7 +26,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug)]
 pub struct GraphView {
-    /// Configures the background of the plot.
+    /// Configures the background of the graph.
     pub background: crate::blueprint::archetypes::GraphBackground,
 
     /// Everything within these bounds is guaranteed to be visible.
