@@ -4,7 +4,7 @@ use arrow::array::{RecordBatch, RecordBatchIterator, RecordBatchReader};
 use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
-use pyo3::{PyErr, PyResult, Python, create_exception, exceptions::PyConnectionError};
+use pyo3::{PyErr, PyResult, Python};
 use tracing::Instrument as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -30,8 +30,6 @@ use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
 
 use crate::catalog::to_py_err;
 use crate::utils::wait_for_future;
-
-create_exception!(catalog, ConnectionError, PyConnectionError);
 
 /// Connection handle to a catalog service.
 #[derive(Clone)]

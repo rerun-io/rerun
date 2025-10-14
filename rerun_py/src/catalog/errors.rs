@@ -6,6 +6,9 @@
 //!   `Error` enum, and implement a mapping to a user-facing Python error in the `to_py_err`
 //!   function. Then, use `?`.
 //!
+//! - For errors at the API boundaries between client and server, prefer mapping to
+//!   [`re_redap_client::ApiError`] rather than wrapping the error in a new enum variant.
+//!
 //! - Don't hesitate to introduce new error classes if this could help the user catch specific
 //!   errors. Use the [`pyo3::create_exception`] macro for that and update [`super::register`] to
 //!   expose it.
@@ -17,11 +20,25 @@ use std::error::Error as _;
 
 use pyo3::PyErr;
 use pyo3::exceptions::{
-    PyConnectionError, PyFileExistsError, PyFileNotFoundError, PyPermissionError, PyRuntimeError,
-    PyTimeoutError, PyValueError,
+    PyConnectionError, PyException, PyPermissionError, PyRuntimeError, PyTimeoutError, PyValueError,
 };
 
 use re_redap_client::{ApiErrorKind, ClientConnectionError, ConnectionError};
+
+
+pyo3::create_exception!(
+    rerun_bindings,
+    EntryNotFoundError,
+    PyException,
+    "Raised when a requested entry is not found in the catalog."
+);
+
+pyo3::create_exception!(
+    rerun_bindings,
+    EntryExistsError,
+    PyException,
+    "Raised when trying to create an entry that already exists in the catalog."
+);
 
 // ---
 
@@ -151,8 +168,8 @@ impl From<ExternalError> for PyErr {
                 ApiErrorKind::Serialization | ApiErrorKind::InvalidArguments => {
                     PyValueError::new_err(err.to_string())
                 }
-                ApiErrorKind::NotFound => PyFileNotFoundError::new_err(err.to_string()),
-                ApiErrorKind::AlreadyExists => PyFileExistsError::new_err(err.to_string()),
+                ApiErrorKind::NotFound => EntryNotFoundError::new_err(err.to_string()),
+                ApiErrorKind::AlreadyExists => EntryExistsError::new_err(err.to_string()),
                 ApiErrorKind::Timeout => PyTimeoutError::new_err(err.to_string()),
                 ApiErrorKind::Internal => PyRuntimeError::new_err(err.to_string()),
             },

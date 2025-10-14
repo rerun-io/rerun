@@ -19,6 +19,7 @@ use arrow::{
     array::{Float32Array, RecordBatch},
     datatypes::Field,
 };
+use errors::{EntryExistsError, EntryNotFoundError};
 use pyo3::{Bound, PyResult, exceptions::PyRuntimeError, prelude::*};
 
 use crate::catalog::dataframe_query::PyDataframeQueryView;
@@ -52,6 +53,10 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
 
     m.add_class::<PyVectorDistanceMetric>()?;
     m.add_class::<PyRerunHtmlTable>()?;
+
+    // register exceptions generated with the [`pyo3::create_exception!`] macro
+    m.add("EntryNotFoundError", _py.get_type::<EntryNotFoundError>())?;
+    m.add("EntryExistsError", _py.get_type::<EntryExistsError>())?;
 
     Ok(())
 }
