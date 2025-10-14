@@ -64,6 +64,38 @@ pub enum Error {
     ExpectedStructInList {
         actual: DataType,
     },
+
+    /// Custom user-defined error for transformations implemented outside this module.
+    ///
+    /// This allows users to implement their own transformations with custom error messages.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// impl Transform for MyCustomTransform {
+    ///     type Source = MyArray;
+    ///     type Target = MyOtherArray;
+    ///
+    ///     fn transform(&self, source: &MyArray) -> Result<MyOtherArray, Error> {
+    ///         if !self.validate(source) {
+    ///             return Err(Error::custom("Invalid data: values must be positive"));
+    ///         }
+    ///         // ... transformation logic
+    ///     }
+    /// }
+    /// ```
+    #[error("{0}")]
+    Custom(String),
+}
+
+impl Error {
+    /// Create a custom error with a user-defined message.
+    ///
+    /// This is useful when implementing custom transformations that need
+    /// application-specific error messages.
+    pub fn custom(msg: impl Into<String>) -> Self {
+        Self::Custom(msg.into())
+    }
 }
 
 /// A transformation that converts one Arrow array type to another.
