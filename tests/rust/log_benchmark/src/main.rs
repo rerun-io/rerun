@@ -27,7 +27,6 @@
 //!
 
 use clap::Parser as _;
-use rerun::external::re_log;
 
 use crate::image::ImageCommand;
 
@@ -37,6 +36,7 @@ mod points3d_large_batch;
 mod points3d_many_individual;
 mod points3d_shared;
 mod scalars;
+mod very_large_chunk;
 
 // ---
 
@@ -66,6 +66,9 @@ enum Benchmark {
 
     #[command(name = "image")]
     Image(ImageCommand),
+
+    #[command(name = "very_large_chunk")]
+    VeryLargeChunk,
 }
 
 #[derive(Debug, clap::Parser)]
@@ -86,7 +89,7 @@ struct Args {
 }
 
 fn main() -> anyhow::Result<()> {
-    re_log::setup_logging();
+    rerun::external::re_log::setup_logging();
 
     #[cfg(debug_assertions)]
     println!("WARNING: Debug build, timings will be inaccurate!");
@@ -103,7 +106,7 @@ fn main() -> anyhow::Result<()> {
         profiler.start();
     }
 
-    let (rec, _storage) = if connect {
+    let (rec, storage) = if connect {
         let rec = rerun::RecordingStreamBuilder::new("rerun_example_benchmark").connect_grpc()?;
         (rec, None)
     } else {
@@ -120,6 +123,7 @@ fn main() -> anyhow::Result<()> {
         Benchmark::Points3DManyIndividual => points3d_many_individual::run(&rec)?,
         Benchmark::Boxes3D => boxes3d_batch::run(&rec)?,
         Benchmark::Image(cmd) => cmd.run(&rec)?,
+        Benchmark::VeryLargeChunk => very_large_chunk::run(&rec)?,
     }
 
     rec.flush_blocking()?;
@@ -127,6 +131,8 @@ fn main() -> anyhow::Result<()> {
     // Being able to log fast isn't particularly useful if the data happens to be corrupt at the
     // other end, so make sure we can encode/decode everything that was logged.
     if let Some(storage) = storage {
+        use rerun::external::re_log_encoding;
+
         let msgs: anyhow::Result<Vec<_>> = storage
             .take()
             .into_iter()
@@ -138,7 +144,7 @@ fn main() -> anyhow::Result<()> {
             })
             .collect();
 
-        let mut app_id_injector = DummyApplicationIdInjector::new("dummy");
+        let mut app_id_injector = re_log_encoding::DummyApplicationIdInjector::new("dummy");
         let msgs: anyhow::Result<Vec<_>> = msgs?
             .into_iter()
             .map(|msg| {
