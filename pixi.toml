@@ -7,7 +7,7 @@
 #
 # Type `pixi shell` to enter the pixi environment.
 #
-# https://prefix.dev/docs/pixi/overview
+# https://pixi.sh/latest/
 
 # We currently assume pixi version 0.34.0
 # You can check that your environment is correct by running:

@@ -61,7 +61,7 @@ Note that SDK and Viewer can run on different machines!
 
 # Building Rerun from source
 
-We use the [`pixi`](https://prefix.dev/) for managing dev-tool versioning, download and task running. See [here](https://github.com/casey/just#installation) for installation instructions.
+We use the [`pixi`](https://pixi.sh/) for managing dev-tool versioning, download and task running. See [here](https://github.com/casey/just#installation) for installation instructions.
 
 ```sh
 pixi run py-build --release
