@@ -97,7 +97,7 @@ where
             .into_iter()
             .map(TryInto::try_into)
             .collect::<Result<Vec<EntryDetails>, _>>()
-            .map_err(|err| ApiError::serde(err, "failed parsing /FindEntries response"))
+            .map_err(|err| ApiError::serialization(err, "failed parsing /FindEntries response"))
     }
 
     /// Delete the provided entry.
@@ -131,7 +131,7 @@ where
             .map_err(|err| ApiError::tonic(err, "/UpdateEntry failed"))?
             .into_inner()
             .try_into()
-            .map_err(|err| ApiError::serde(err, "failed parsing /UpdateEntry response"))?;
+            .map_err(|err| ApiError::serialization(err, "failed parsing /UpdateEntry response"))?;
 
         Ok(response.entry_details)
     }
@@ -150,7 +150,9 @@ where
             .map_err(|err| ApiError::tonic(err, "/GetDatasetSchema failed"))?
             .into_inner()
             .schema()
-            .map_err(|err| ApiError::serde(err, "failed parsing /GetDatasetSchema response"))
+            .map_err(|err| {
+                ApiError::serialization(err, "failed parsing /GetDatasetSchema response")
+            })
     }
 
     /// Create a new dataset entry.
@@ -169,7 +171,9 @@ where
             .map_err(|err| ApiError::tonic(err, "/CreateDatasetEntry failed"))?
             .into_inner()
             .try_into()
-            .map_err(|err| ApiError::serde(err, "failed parsing /CreateDatasetEntry response"))?;
+            .map_err(|err| {
+                ApiError::serialization(err, "failed parsing /CreateDatasetEntry response")
+            })?;
 
         Ok(response.dataset)
     }
@@ -192,7 +196,9 @@ where
             .map_err(|err| ApiError::tonic(err, "/ReadDatasetEntry failed"))?
             .into_inner()
             .try_into()
-            .map_err(|err| ApiError::serde(err, "failed parsing /ReadDatasetEntry response"))?;
+            .map_err(|err| {
+                ApiError::serialization(err, "failed parsing /ReadDatasetEntry response")
+            })?;
 
         Ok(response.dataset_entry)
     }
@@ -216,7 +222,9 @@ where
             .map_err(|err| ApiError::tonic(err, "/UpdateDatasetEntry failed"))?
             .into_inner()
             .try_into()
-            .map_err(|err| ApiError::serde(err, "failed parsing /UpdateDatasetEntry response"))?;
+            .map_err(|err| {
+                ApiError::serialization(err, "failed parsing /UpdateDatasetEntry response")
+            })?;
 
         Ok(response.dataset_entry)
     }
@@ -232,7 +240,9 @@ where
             .map_err(|err| ApiError::tonic(err, "/ReadTableEntry failed"))?
             .into_inner()
             .try_into()
-            .map_err(|err| ApiError::serde(err, "failed parsing /ReadTableEntry response"))?;
+            .map_err(|err| {
+                ApiError::serialization(err, "failed parsing /ReadTableEntry response")
+            })?;
 
         Ok(response.table_entry)
     }
@@ -256,10 +266,12 @@ where
             .schema
             .ok_or_else(|| {
                 let err = missing_field!(GetPartitionTableSchemaResponse, "schema");
-                ApiError::serde(err, "missing field in /GetPartitionTableSchema response")
+                ApiError::serialization(err, "missing field in /GetPartitionTableSchema response")
             })?
             .try_into()
-            .map_err(|err| ApiError::serde(err, "failed parsing /GetPartitionTableSchema response"))
+            .map_err(|err| {
+                ApiError::serialization(err, "failed parsing /GetPartitionTableSchema response")
+            })
     }
 
     /// Get a list of partition IDs for the given dataset entry ID.
@@ -294,16 +306,22 @@ where
                 })?
                 .data()
                 .map_err(|err| {
-                    ApiError::serde(err, "failed parsing item from /ScanPartitionTable stream")
+                    ApiError::serialization(
+                        err,
+                        "failed parsing item from /ScanPartitionTable stream",
+                    )
                 })?
                 .decode()
                 .map_err(|err| {
-                    ApiError::serde(err, "failed decoding item from /ScanPartitionTable stream")
+                    ApiError::serialization(
+                        err,
+                        "failed decoding item from /ScanPartitionTable stream",
+                    )
                 })?;
 
             let partition_id_col = record_batch.column_by_name(COLUMN_NAME).ok_or_else(|| {
                 let err = missing_column!(ScanPartitionTableResponse, COLUMN_NAME);
-                ApiError::serde(
+                ApiError::serialization(
                     err,
                     "missing column from item in /ScanPartitionTable stream",
                 )
@@ -312,7 +330,7 @@ where
             let partition_id_array = partition_id_col
                 .try_downcast_array_ref::<arrow::array::StringArray>()
                 .map_err(|err| {
-                    ApiError::serde(
+                    ApiError::serialization(
                         err,
                         "unexpected types in item in /ScanPartitionTable stream",
                     )
@@ -347,11 +365,11 @@ where
             .schema
             .ok_or_else(|| {
                 let err = missing_field!(GetDatasetManifestSchemaResponse, "schema");
-                ApiError::serde(err, "missing field in /GetDatasetManifestSchema response")
+                ApiError::serialization(err, "missing field in /GetDatasetManifestSchema response")
             })?
             .try_into()
             .map_err(|err| {
-                ApiError::serde(err, "failed parsing /GetDatasetManifestSchema response")
+                ApiError::serialization(err, "failed parsing /GetDatasetManifestSchema response")
             })
     }
 
@@ -416,7 +434,7 @@ where
             .map(|resp| {
                 resp.data.ok_or_else(|| {
                     let err = missing_field!(QueryDatasetResponse, "data");
-                    ApiError::serde(
+                    ApiError::serialization(
                         err,
                         "missing field in item in /QueryDataset response stream",
                     )
@@ -470,10 +488,12 @@ where
             .data
             .ok_or_else(|| {
                 let err = missing_field!(RegisterWithDatasetResponse, "data");
-                ApiError::serde(err, "missing field in /RegisterWithDataset response")
+                ApiError::serialization(err, "missing field in /RegisterWithDataset response")
             })?
             .decode()
-            .map_err(|err| ApiError::serde(err, "failed decoding /RegisterWithDataset response"))?;
+            .map_err(|err| {
+                ApiError::serialization(err, "failed decoding /RegisterWithDataset response")
+            })?;
 
         // TODO(andrea): why is the schema completely off?
         #[expect(clippy::overly_complex_bool_expr)]
@@ -483,7 +503,7 @@ where
                 .contains(&RegisterWithDatasetResponse::schema())
         {
             let err = invalid_schema!(RegisterWithDatasetResponse);
-            return Err(ApiError::serde(
+            return Err(ApiError::serialization(
                 err,
                 "invalid schema in /RegisterWithDataset response",
             ));
@@ -499,7 +519,7 @@ where
                 })
                 .ok_or_else(|| {
                     let err = missing_column!(RegisterWithDatasetResponse, column_name);
-                    ApiError::serde(err, "missing column in /RegisterWithDataset response")
+                    ApiError::serialization(err, "missing column in /RegisterWithDataset response")
                 })
         };
 
@@ -512,10 +532,12 @@ where
                         RegisterWithDatasetResponse,
                         RegisterWithDatasetResponse::PARTITION_TYPE
                     );
-                    ApiError::serde(err, "missing column in /RegisterWithDataset response")
+                    ApiError::serialization(err, "missing column in /RegisterWithDataset response")
                 })?,
         )
-        .map_err(|err| ApiError::serde(err, "failed parsing /RegisterWithDataset response"))?;
+        .map_err(|err| {
+            ApiError::serialization(err, "failed parsing /RegisterWithDataset response")
+        })?;
         let storage_url_column = get_string_array(RegisterWithDatasetResponse::STORAGE_URL)?;
         let task_id_column = get_string_array(RegisterWithDatasetResponse::TASK_ID)?;
 
@@ -531,17 +553,20 @@ where
                     partition_id
                         .ok_or_else(|| {
                             let err = missing_field!(RegisterWithDatasetResponse, "partition_id");
-                            ApiError::serde(err, "missing field in /RegisterWithDataset response")
+                            ApiError::serialization(
+                                err,
+                                "missing field in /RegisterWithDataset response",
+                            )
                         })?
                         .to_owned(),
                 ),
                 partition_type,
                 storage_url: url::Url::parse(storage_url.ok_or_else(|| {
                     let err = missing_field!(RegisterWithDatasetResponse, "storage_url");
-                    ApiError::serde(err, "missing field in /RegisterWithDataset response")
+                    ApiError::serialization(err, "missing field in /RegisterWithDataset response")
                 })?)
                 .map_err(|err| {
-                    ApiError::serde(
+                    ApiError::serialization(
                         TypeConversionError::UrlParseError(err),
                         "failed to parse /RegisterWithDataset response",
                     )
@@ -550,7 +575,10 @@ where
                     id: task_id
                         .ok_or_else(|| {
                             let err = missing_field!(RegisterWithDatasetResponse, "task_id");
-                            ApiError::serde(err, "missing field in /RegisterWithDataset response")
+                            ApiError::serialization(
+                                err,
+                                "missing field in /RegisterWithDataset response",
+                            )
                         })?
                         .to_owned(),
                 },
@@ -568,9 +596,9 @@ where
     ) -> Result<TableEntry, ApiError> {
         let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
             name,
-            provider_details: LanceTable { table_url: url }
-                .try_as_any()
-                .map_err(|err| ApiError::serde(err, "failed building /RegisterTable request"))?,
+            provider_details: LanceTable { table_url: url }.try_as_any().map_err(|err| {
+                ApiError::serialization(err, "failed building /RegisterTable request")
+            })?,
         };
 
         let response: RegisterTableResponse = self
@@ -580,7 +608,9 @@ where
             .map_err(|err| ApiError::tonic(err, "/RegisterTable failed"))?
             .into_inner()
             .try_into()
-            .map_err(|err| ApiError::serde(err, "failed parsing /RegisterTable response"))?;
+            .map_err(|err| {
+                ApiError::serialization(err, "failed parsing /RegisterTable response")
+            })?;
 
         Ok(response.table_entry)
     }
@@ -649,7 +679,7 @@ where
         let response = self
             .inner()
             .query_tasks_on_completion(tonic::Request::new(q.try_into().map_err(|err| {
-                ApiError::serde(err, "failed building /QueryTasksOnCompletion request")
+                ApiError::serialization(err, "failed building /QueryTasksOnCompletion request")
             })?))
             .await
             .map_err(|err| ApiError::tonic(err, "/QueryTasksOnCompletion failed"))?
@@ -665,7 +695,7 @@ where
         let response = self
             .inner()
             .query_tasks(tonic::Request::new(q.try_into().map_err(|err| {
-                ApiError::serde(err, "failed building /QueryTasks request")
+                ApiError::serialization(err, "failed building /QueryTasks request")
             })?))
             .await
             .map_err(|err| ApiError::tonic(err, "/QueryTasks failed"))?

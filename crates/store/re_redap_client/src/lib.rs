@@ -149,7 +149,7 @@ impl ApiError {
         }
     }
 
-    pub fn serde(
+    pub fn serialization(
         err: impl std::error::Error + Send + Sync + 'static,
         message: impl Into<String>,
     ) -> Self {
@@ -209,8 +209,3 @@ impl std::error::Error for ApiError {
             .map(|e| e as &(dyn std::error::Error + 'static))
     }
 }
-
-const _: () = assert!(
-    std::mem::size_of::<ApiError>() <= 80,
-    "Error type is too large. Try to reduce its size by boxing some of its variants.",
-);

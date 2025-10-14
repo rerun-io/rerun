@@ -87,14 +87,14 @@ pub mod sdk_comms {
 
 #[derive(Debug, thiserror::Error)]
 pub enum TypeConversionError {
-    #[error("missing required field: {package_name}.{type_name}.{field_name}")]
+    #[error("missing required field: '{package_name}.{type_name}.{field_name}'")]
     MissingField {
         package_name: &'static str,
         type_name: &'static str,
         field_name: &'static str,
     },
 
-    #[error("invalid value for field {package_name}.{type_name}.{field_name}: {reason}")]
+    #[error("invalid value for field '{package_name}.{type_name}.{field_name}: {reason}'")]
     InvalidField {
         package_name: &'static str,
         type_name: &'static str,
@@ -102,14 +102,14 @@ pub enum TypeConversionError {
         reason: String,
     },
 
-    #[error("missing required dataframe column {column_name} in {package_name}.{type_name}")]
+    #[error("missing required dataframe column {column_name:?} in '{package_name}.{type_name}'")]
     MissingColumn {
         package_name: &'static str,
         type_name: &'static str,
         column_name: &'static str,
     },
 
-    #[error("invalid dataframe schema in {package_name}.{type_name}")]
+    #[error("invalid dataframe schema in '{package_name}.{type_name}'")]
     InvalidSchema {
         package_name: &'static str,
         type_name: &'static str,

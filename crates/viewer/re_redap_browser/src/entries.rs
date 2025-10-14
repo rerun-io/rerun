@@ -253,7 +253,7 @@ fn fetch_entry_details(
             let err = TypeConversionError::from(prost::UnknownEnumValue(kind as i32));
             Some(Right(future::ready((
                 entry,
-                Err(ApiError::serde(err, "unknown entry kind")),
+                Err(ApiError::serialization(err, "unknown entry kind")),
             ))))
         }
     }

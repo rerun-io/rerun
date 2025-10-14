@@ -217,10 +217,10 @@ where
 
                         let arrow_msg =
                             re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
-                                .map_err(|err| ApiError::serde(err, "failed to get arrow data for item in /FetchChunks response stream"))?;
+                                .map_err(|err| ApiError::serialization(err, "failed to get arrow data for item in /FetchChunks response stream"))?;
 
                         let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
-                            .map_err(|err| ApiError::serde(err, "failed to parse item in /FetchChunks response stream"))?;
+                            .map_err(|err| ApiError::serialization(err, "failed to parse item in /FetchChunks response stream"))?;
 
                         Ok((chunk, partition_id))
                     })
@@ -258,7 +258,7 @@ where
                 let arrow_msg =
                     re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
                         .map_err(|err| {
-                            ApiError::serde(
+                            ApiError::serialization(
                                 err,
                                 "failed to get arrow data for item in /FetchChunks response stream",
                             )
@@ -266,7 +266,10 @@ where
 
                 let chunk =
                     re_chunk::Chunk::from_record_batch(&arrow_msg.batch).map_err(|err| {
-                        ApiError::serde(err, "failed to parse item in /FetchChunks response stream")
+                        ApiError::serialization(
+                            err,
+                            "failed to parse item in /FetchChunks response stream",
+                        )
                     })?;
 
                 Ok((chunk, partition_id))
@@ -503,7 +506,7 @@ async fn stream_partition_from_server(
                     LogMsg::ArrowMsg(
                         store_id.clone(),
                         chunk.to_arrow_msg().map_err(|err| {
-                            ApiError::serde(
+                            ApiError::serialization(
                                 err,
                                 "failed to parse chunk in /FetchChunks response stream",
                             )
