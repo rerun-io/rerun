@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from rerun_bindings import (
+    AlreadyExistsError as AlreadyExistsError,
     CatalogClientInternal,
     DataframeQueryView as DataframeQueryView,
     DatasetEntry as DatasetEntry,
     Entry as Entry,
-    EntryExistsError as EntryExistsError,
     EntryId as EntryId,
     EntryKind as EntryKind,
-    EntryNotFoundError as EntryNotFoundError,
+    NotFoundError as NotFoundError,
     TableEntry as TableEntry,
     Task as Task,
     VectorDistanceMetric as VectorDistanceMetric,

@@ -25,19 +25,18 @@ use pyo3::exceptions::{
 
 use re_redap_client::{ApiErrorKind, ClientConnectionError, ConnectionError};
 
-
 pyo3::create_exception!(
     rerun_bindings,
-    EntryNotFoundError,
+    NotFoundError,
     PyException,
-    "Raised when a requested entry is not found in the catalog."
+    "Raised when the requested resource is not found."
 );
 
 pyo3::create_exception!(
     rerun_bindings,
-    EntryExistsError,
+    AlreadyExistsError,
     PyException,
-    "Raised when trying to create an entry that already exists in the catalog."
+    "Raised when trying to create a resource that already exists."
 );
 
 // ---
@@ -168,8 +167,8 @@ impl From<ExternalError> for PyErr {
                 ApiErrorKind::Serialization | ApiErrorKind::InvalidArguments => {
                     PyValueError::new_err(err.to_string())
                 }
-                ApiErrorKind::NotFound => EntryNotFoundError::new_err(err.to_string()),
-                ApiErrorKind::AlreadyExists => EntryExistsError::new_err(err.to_string()),
+                ApiErrorKind::NotFound => NotFoundError::new_err(err.to_string()),
+                ApiErrorKind::AlreadyExists => AlreadyExistsError::new_err(err.to_string()),
                 ApiErrorKind::Timeout => PyTimeoutError::new_err(err.to_string()),
                 ApiErrorKind::Internal => PyRuntimeError::new_err(err.to_string()),
             },
