@@ -12,14 +12,13 @@ Blueprints now give you more control over playback and visualization settings.
 You can define playback speed and FPS directly in blueprints, and manage time and timeline behavior through them as well.
 The Blueprint panel is now always resizable, and we've added support for customizing plot backgrounds.
 
-<picture>
-  <img src="https://static.rerun.io/plot_background/7589506e07136a93a954b4f023ba29bb31d0f48f/480w.png" alt="">
-</picture>
+<img src="https://static.rerun.io/plot_background/d1b00e09cf5097eb11738821fa27c3660501158b/480w.png" alt="">
 
 #### Table filtering upgrades
 
 Table filtering just got a lot more capable. You can now filter on timestamps, use new string operators like `starts with`, `ends with`, and `does not contain`, and combine these with improved numeric and boolean filtering.
 
+<img src="https://static.rerun.io/improved_table_filtering/c9198336beb89e7064da8139539be667ede020a1/480w.png" alt="">
 
 ### ⚠️ Breaking changes
 
@@ -71,6 +70,7 @@ See the
 - Enable "Close current recording" only when there's a recording [#11353](https://github.com/rerun-io/rerun/pull/11353)
 - Do not include metadata when rendering table in html [#11463](https://github.com/rerun-io/rerun/pull/11463)
 - Data loaders: fix multiple nasty bugs when working with virtual FDs (e.g. `<(...)` FIFOs) [#11486](https://github.com/rerun-io/rerun/pull/11486)
+- Fix data corruption during compression of large chunks [#11525](https://github.com/rerun-io/rerun/pull/11525)
 
 #### 🌁 Viewer improvements
 - Keep last paused time in web-viewer url [#11246](https://github.com/rerun-io/rerun/pull/11246)
