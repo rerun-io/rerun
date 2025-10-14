@@ -28,3 +28,11 @@ table PlotBackground (
   /// Should the grid be drawn?
   show_grid: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 2000);
 }
+
+/// Configuration of a background in a graph view.
+table GraphBackground (
+  "attr.rerun.scope": "blueprint"
+) {
+  /// Color used for the background.
+  color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 1000);
+}
