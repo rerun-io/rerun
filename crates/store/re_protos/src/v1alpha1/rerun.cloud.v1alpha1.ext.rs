@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    BinaryArray, BooleanArray, FixedSizeBinaryArray, ListBuilder, RecordBatchOptions,
+    BinaryArray, BooleanArray, FixedSizeBinaryBuilder, ListBuilder, RecordBatchOptions,
     StringBuilder, UInt8Array, UInt64Array,
 };
 use arrow::datatypes::FieldRef;
@@ -10,6 +10,7 @@ use arrow::{
     datatypes::{DataType, Field, Schema, TimeUnit},
     error::ArrowError,
 };
+
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
 use re_log_types::external::re_types_core::ComponentBatch as _;
@@ -1452,6 +1453,11 @@ impl ScanDatasetManifestResponse {
         let row_count = partition_ids.len();
         let schema = Arc::new(Self::schema());
 
+        let mut schema_sha256_builder = FixedSizeBinaryBuilder::with_capacity(row_count, 32);
+        for sha256 in schema_sha256s {
+            schema_sha256_builder.append_value(sha256.as_slice())?;
+        }
+
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(layer_names)),
             Arc::new(StringArray::from(partition_ids)),
@@ -1461,10 +1467,7 @@ impl ScanDatasetManifestResponse {
             Arc::new(TimestampNanosecondArray::from(last_updated_at_times)),
             Arc::new(UInt64Array::from(num_chunks)),
             Arc::new(UInt64Array::from(size_bytes)),
-            Arc::new(
-                FixedSizeBinaryArray::try_from_iter(schema_sha256s.into_iter())
-                    .expect("sizes of nested slices are guaranteed to match"),
-            ),
+            Arc::new(schema_sha256_builder.finish()),
         ];
 
         RecordBatch::try_new_with_options(
