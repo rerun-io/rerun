@@ -32,7 +32,7 @@ expression: "pretty_print_entity_path_hashes_in(transform_forest.transform_from_
                         0.0,
                     ),
                 },
-                target_from_instances_overall: [
+                target_from_instances: [
                     Affine3A {
                         matrix3: Mat3A {
                             x_axis: Vec3A(
@@ -91,7 +91,7 @@ expression: "pretty_print_entity_path_hashes_in(transform_forest.transform_from_
                         0.0,
                     ),
                 },
-                target_from_instances_overall: [
+                target_from_instances: [
                     Affine3A {
                         matrix3: Mat3A {
                             x_axis: Vec3A(
@@ -225,7 +225,7 @@ expression: "pretty_print_entity_path_hashes_in(transform_forest.transform_from_
                         1.0,
                     ),
                 },
-                target_from_instances_overall: [
+                target_from_instances: [
                     Affine3A {
                         matrix3: Mat3A {
                             x_axis: Vec3A(
@@ -284,7 +284,7 @@ expression: "pretty_print_entity_path_hashes_in(transform_forest.transform_from_
                         1.0,
                     ),
                 },
-                target_from_instances_overall: [
+                target_from_instances: [
                     Affine3A {
                         matrix3: Mat3A {
                             x_axis: Vec3A(
@@ -351,7 +351,7 @@ expression: "pretty_print_entity_path_hashes_in(transform_forest.transform_from_
                         1.0,
                     ),
                 },
-                target_from_instances_overall: [
+                target_from_instances: [
                     Affine3A {
                         matrix3: Mat3A {
                             x_axis: Vec3A(
