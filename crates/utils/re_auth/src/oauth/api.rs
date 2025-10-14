@@ -1,8 +1,14 @@
 //! HTTP Client for Rerun's Auth API.
 
+use std::sync::LazyLock;
+
 use super::{RefreshToken, User};
 
-const API_BASE_URL: &str = "https://rerun.io/api";
+static API_BASE_URL: LazyLock<String> = LazyLock::new(|| {
+    std::env::var("RERUN_AUTH_API_BASE_URL")
+        .ok()
+        .unwrap_or_else(|| "https://rerun.io/api".into())
+});
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -49,7 +55,11 @@ async fn send<Res: serde::de::DeserializeOwned>(request: ehttp::Request) -> Resu
 async fn get<Res: serde::de::DeserializeOwned>(
     endpoint: impl std::fmt::Display,
 ) -> Result<Res, Error> {
-    send(ehttp::Request::get(endpoint)).await
+    send(ehttp::Request::get(format!(
+        "{base_url}{endpoint}",
+        base_url = *API_BASE_URL
+    )))
+    .await
 }
 
 async fn post<Body: serde::Serialize, Res: serde::de::DeserializeOwned>(
@@ -57,8 +67,11 @@ async fn post<Body: serde::Serialize, Res: serde::de::DeserializeOwned>(
     body: Body,
 ) -> Result<Res, Error> {
     send(
-        ehttp::Request::json(format!("{API_BASE_URL}{endpoint}"), &body)
-            .map_err(Error::Deserialize)?,
+        ehttp::Request::json(
+            format!("{base_url}{endpoint}", base_url = *API_BASE_URL),
+            &body,
+        )
+        .map_err(Error::Deserialize)?,
     )
     .await
 }
@@ -88,8 +101,6 @@ pub(crate) async fn refresh(refresh_token: &RefreshToken) -> Result<Authenticati
     .await
 }
 
-const JWKS_URL_BASE: &str = "https://api.workos.com/sso/jwks";
-
-pub async fn jwks(client_id: &str) -> Result<jsonwebtoken::jwk::JwkSet, Error> {
-    get(format!("{JWKS_URL_BASE}/{client_id}")).await
+pub async fn jwks() -> Result<jsonwebtoken::jwk::JwkSet, Error> {
+    get(format!("/jwks")).await
 }

@@ -3,7 +3,7 @@ use std::{collections::HashMap, time::Duration};
 use base64::prelude::*;
 use indicatif::ProgressBar;
 
-use crate::workos::{self, Credentials, CredentialsStoreError, MalformedTokenError};
+use crate::oauth::{self, Credentials, CredentialsStoreError, MalformedTokenError};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -59,7 +59,7 @@ struct ExpiredCredentialsError;
 
 /// Prints the token to stdout
 pub async fn token() -> Result<(), Error> {
-    match workos::load_and_refresh_credentials().await {
+    match oauth::load_and_refresh_credentials().await {
         Ok(Some(credentials)) => {
             println!("{}", credentials.access_token().as_str());
             Ok(())
@@ -82,9 +82,9 @@ pub async fn login(options: LoginOptions<'_>) -> Result<(), Error> {
     if !options.force_login {
         // NOTE: If the loading fails for whatever reason, we debug log the error
         // and have the user login again as if nothing happened.
-        match workos::load_credentials() {
+        match oauth::load_credentials() {
             Ok(Some(credentials)) => {
-                match workos::refresh_credentials(credentials).await {
+                match oauth::refresh_credentials(credentials).await {
                     Ok(credentials) => {
                         println!("You're already logged in as: {}", credentials.user().email);
                         println!("Note: We've refreshed your credentials.");
@@ -296,7 +296,7 @@ struct AuthenticationResponse {
     oauth_tokens: Option<OauthTokens>,
 }
 
-impl From<AuthenticationResponse> for workos::api::AuthenticationResponse {
+impl From<AuthenticationResponse> for oauth::api::AuthenticationResponse {
     fn from(value: AuthenticationResponse) -> Self {
         Self {
             user: value.user.into(),
@@ -324,7 +324,7 @@ struct User {
     metadata: HashMap<String, String>,
 }
 
-impl From<User> for workos::User {
+impl From<User> for oauth::User {
     fn from(value: User) -> Self {
         Self {
             id: value.id,

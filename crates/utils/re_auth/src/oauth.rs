@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::LazyLock};
 
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header, jwk::JwkSet};
 use saturating_cast::SaturatingCast as _;
@@ -14,17 +14,22 @@ mod storage;
 /// during network transit.
 const SOFT_EXPIRE_SECS: i64 = 60;
 
-const ISSUER_URL_BASE: &str = "https://api.workos.com/user_management";
+pub(crate) static OAUTH_CLIENT_ID: LazyLock<String> = LazyLock::new(|| {
+    std::env::var("RERUN_OAUTH_CLIENT_ID")
+        .ok()
+        .unwrap_or_else(|| "client_01JZ3JVR1PEVQMS73V86MC4CE2".into())
+});
 
-// TODO(jan): This is the client ID for the WorkOS public staging environment
-// should be replaced by our actual client ID at some point.
-// When doing so, don't forget to replace it everywhere. :)
-pub(crate) const WORKOS_CLIENT_ID: &str = match option_env!("WORKOS_CLIENT_ID") {
-    Some(v) => v,
-    None => "client_01JZ3JVR1PEVQMS73V86MC4CE2",
-};
-pub(crate) const DEFAULT_ISSUER: &str =
-    const_format::concatcp!(ISSUER_URL_BASE, "/", WORKOS_CLIENT_ID);
+pub(crate) static OAUTH_ISSUER_URL: LazyLock<String> = LazyLock::new(|| {
+    std::env::var("RERUN_OAUTH_ISSUER_URL")
+        .ok()
+        .unwrap_or_else(|| {
+            format!(
+                "https://api.workos.com/user_management/{}",
+                *OAUTH_CLIENT_ID
+            )
+        })
+});
 
 #[derive(Debug, thiserror::Error)]
 #[error("failed to load credentials: {0}")]
@@ -49,7 +54,7 @@ pub enum CredentialsRefreshError {
     #[error("failed to store credentials: {0}")]
     Store(#[from] storage::StoreError),
 
-    #[error("failed to deserialize credentials from WorkOS: {0}")]
+    #[error("failed to deserialize credentials: {0}")]
     MalformedToken(#[from] MalformedTokenError),
 }
 
@@ -99,40 +104,6 @@ pub async fn load_and_refresh_credentials() -> Result<Option<Credentials>, Crede
     }
 }
 
-/// Verify a JWT's claims.
-///
-/// Returns `Ok(None)` if the token is expired.
-pub fn verify_token(jwks: &JwkSet, jwt: Jwt) -> Result<Option<AccessToken>, VerifyError> {
-    // 1. decode header to get `kid`
-    let header = decode_header(jwt.as_str())?;
-    let kid = header.kid.as_ref().ok_or(VerifyError::MissingKeyId)?;
-
-    // 2. find the associated JWK
-    let key = jwks
-        .find(kid)
-        .ok_or_else(|| VerifyError::KeyNotFound { id: kid.clone() })?;
-    let key = DecodingKey::from_jwk(key)?;
-
-    // 3. verify token claims
-    let mut validation = Validation::new(Algorithm::RS256);
-    validation.set_issuer(&[DEFAULT_ISSUER]);
-    validation.validate_exp = true;
-    let token = match decode::<Claims>(jwt.as_str(), &key, &validation) {
-        Ok(v) => v,
-        Err(err) => match err.kind() {
-            jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
-                return Ok(None);
-            }
-            _ => return Err(err.into()),
-        },
-    };
-
-    Ok(Some(AccessToken {
-        token: jwt.0,
-        expires_at: token.claims.exp,
-    }))
-}
-
 #[derive(Debug, thiserror::Error)]
 pub enum FetchJwksError {
     #[error("{0}")]
@@ -142,7 +113,7 @@ pub enum FetchJwksError {
     Deserialize(#[from] serde_json::Error),
 }
 
-/// Permissions defined for Redap through the `WorkOS` dashboard.
+/// Rerun Cloud permissions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Permission {
     /// User can read data.
@@ -159,7 +130,7 @@ pub enum Permission {
 
 #[allow(clippy::allow_attributes, dead_code)] // fields may become used at some point in the near future
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
+pub struct RerunCloudClaims {
     /// Issuer
     pub iss: String,
 
@@ -170,12 +141,9 @@ pub struct Claims {
     pub act: Option<Act>,
 
     /// Organization ID
-    pub org_id: Option<String>,
+    pub org_id: String,
 
-    /// Role
-    pub role: Option<String>,
-
-    pub permissions: Option<Vec<Permission>>,
+    pub permissions: Vec<Permission>,
 
     pub entitlements: Option<Vec<String>>,
 
@@ -190,6 +158,11 @@ pub struct Claims {
 
     /// Issued at
     pub iat: i64,
+}
+
+impl RerunCloudClaims {
+    pub const REQUIRED: &'static [&'static str] =
+        &["iss", "sub", "org_id", "permissions", "exp", "iat"];
 }
 
 #[allow(clippy::allow_attributes, dead_code)] // fields may become used at some point in the near future
@@ -298,7 +271,7 @@ impl AccessToken {
     ///
     /// ## Safety
     ///
-    /// - The token should come from a trusted source, like the `WorkOS` API.
+    /// - The token should come from a trusted source, like the Rerun auth API.
     // Note: Misusing this will not cause UB, but we're still marking it unsafe
     // to ensure it is not used lightly.
     #[expect(unsafe_code)]
@@ -315,7 +288,7 @@ impl AccessToken {
         let payload = BASE64_URL_SAFE_NO_PAD
             .decode(payload)
             .map_err(MalformedTokenError::Base64)?;
-        let payload: Claims =
+        let payload: RerunCloudClaims =
             serde_json::from_slice(&payload).map_err(MalformedTokenError::Serde)?;
 
         Ok(Self {

@@ -39,13 +39,13 @@ impl CredentialsProvider for StaticCredentialsProvider {
     }
 }
 
-#[cfg(feature = "workos")]
-pub use workos::CliCredentialsProvider;
+#[cfg(feature = "oauth")]
+pub use oauth::CliCredentialsProvider;
 
-#[cfg(feature = "workos")]
-mod workos {
+#[cfg(feature = "oauth")]
+mod oauth {
     use super::{CredentialsProvider, CredentialsProviderError, Jwt};
-    use crate::workos::{Credentials, load_and_refresh_credentials};
+    use crate::oauth::{Credentials, load_and_refresh_credentials};
     use tokio::sync::RwLock;
 
     // We only want to keep a single instance of credentials in memory,

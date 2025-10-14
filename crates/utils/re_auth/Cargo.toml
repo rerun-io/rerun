@@ -23,10 +23,10 @@ cli = [
   "dep:tiny_http",
   "dep:url",
   "dep:webbrowser",
-  "workos",
+  "oauth",
 ]
 
-workos = [
+oauth = [
   "dep:base64",
   "dep:const_format",
   "dep:directories",
