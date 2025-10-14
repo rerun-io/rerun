@@ -7,13 +7,13 @@ use arrow::{
 use rerun::{
     DynamicArchetype, RecordingStream, Scalars, SeriesLines, SeriesPoints, TextDocument, TimeCell,
     external::re_log,
-    lenses::{Lens, LensesSink, transform::{self, Cast, Constant, Func, GetField, Identity, MapList, TransformExt}},
+    lenses::{Lens, LensesSink, Op, Error as LensError},
     sink::GrpcSink,
 };
 
 fn lens_flag() -> anyhow::Result<Lens> {
-    let step_fn = Func::new(|list_array: &ListArray| -> Result<ListArray, transform::Error> {
-        let (_, offsets, values, nulls) = list_array.clone().into_parts();
+    let step_fn = Op::func(|list_array: ListArray| -> Result<ListArray, LensError> {
+        let (_, offsets, values, nulls) = list_array.into_parts();
         let flag_array = values.as_any().downcast_ref::<StringArray>().unwrap();
 
         let scalar_array: Float64Array = flag_array
@@ -53,16 +53,16 @@ fn lens_flag() -> anyhow::Result<Lens> {
         .unwrap();
 
     let lens = Lens::for_input_column("/flag".parse()?, "example:Flag:flag")
-        .add_output_column(Scalars::descriptor_scalars(), step_fn)
+        .add_output_column(Scalars::descriptor_scalars(), vec![step_fn])
         .add_static_output_column_entity(
             "/flag",
             series_points.descriptor,
-            Constant::new(series_points.list_array),
+            vec![Op::constant(series_points.list_array)],
         )
         .add_static_output_column_entity(
             "/flag",
             series_lines.descriptor,
-            Constant::new(series_lines.list_array),
+            vec![Op::constant(series_lines.list_array)],
         )
         .build();
 
@@ -73,20 +73,22 @@ fn main() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let instruction = Lens::for_input_column("/instructions".parse()?, "example:Instruction:text")
-        .add_output_column(TextDocument::descriptor_text(), Identity::new())
+        .add_output_column(TextDocument::descriptor_text(), vec![])
         .build();
 
     let destructure = Lens::for_input_column("/nested".parse()?, "example:Nested:payload")
         .add_output_column_entity(
             "nested/a",
             Scalars::descriptor_scalars(),
-            MapList::new(GetField::new("a"))
-                .then(MapList::new(Cast::<Float32Array, Float64Array>::new())),
+            vec![
+                Op::access_field("a"),
+                Op::cast(DataType::Float64),
+            ],
         )
         .add_output_column_entity(
             "nested/b",
             Scalars::descriptor_scalars(),
-            MapList::new(GetField::new("b")),
+            vec![Op::access_field("b")],
         )
         .build();
 

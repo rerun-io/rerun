@@ -4,13 +4,16 @@
 //! we should not leak these elements into the public API. This allows us to
 //! evolve the definition of lenses over time, if requirements change.
 
-use arrow::array::ListArray;
+use arrow::{array::ListArray, datatypes::DataType};
 
 use re_chunk::{Chunk, ChunkComponents, ChunkId, ComponentIdentifier, EntityPath};
 use re_log_types::EntityPathFilter;
 use re_types::ComponentDescriptor;
 
-use super::transform::Transform;
+use super::{
+    transform::{Constant, Func, GetField, MapList, Transform},
+    Error,
+};
 
 pub struct InputColumn {
     pub entity_path_filter: EntityPathFilter,
@@ -23,9 +26,94 @@ pub struct OutputColumn {
     /// If `None`, the entity path of the output column will be set to the matched entity path of the input column.
     pub new_entity_path: Option<EntityPath>,
     pub component_descr: ComponentDescriptor,
-    pub transform: Box<dyn Transform<Source = ListArray, Target = ListArray> + Send + Sync>,
+    pub ops: Vec<Op>,
     // TODO(grtlr): It would be much nicer if static could be inferred from the output of the operations?
     pub is_static: bool,
+}
+
+/// Provides commonly used transformations of component columns.
+///
+/// Individual operations are wrapped to hide their implementation details.
+pub enum Op {
+    /// Returns a constant `ListArray`, ignoring the input.
+    Constant(Constant),
+
+    /// A user-defined arbitrary function to convert a component column.
+    Func(Box<dyn Fn(ListArray) -> Result<ListArray, Error> + Sync + Send>),
+
+    /// A boxed transform that operates on `ListArray`.
+    Transform(Box<dyn Transform<Source = ListArray, Target = ListArray> + Send + Sync>),
+}
+
+impl std::fmt::Debug for Op {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Constant(_) => f.debug_tuple("Constant").finish(),
+            Self::Func(_) => f.debug_tuple("Func").field(&"<function>").finish(),
+            Self::Transform(_) => f.debug_tuple("Transform").field(&"<transform>").finish(),
+        }
+    }
+}
+
+impl Op {
+    /// Extracts a specific field from a `StructArray` within a list.
+    pub fn access_field(field_name: impl Into<String>) -> Self {
+        Self::Transform(Box::new(MapList::new(GetField::new(field_name))))
+    }
+
+    /// Efficiently casts the inner values of a list to a new `DataType`.
+    pub fn cast(data_type: DataType) -> Self {
+        Self::Transform(Box::new(Func::new(move |list_array: &ListArray| {
+            use arrow::compute::cast;
+            use std::sync::Arc;
+            use arrow::datatypes::Field;
+
+            let (_field, offsets, values, nulls) = list_array.clone().into_parts();
+            let casted = cast(values.as_ref(), &data_type)
+                .map_err(|e| super::transform::Error::Arrow(e))?;
+            Ok(ListArray::new(
+                Arc::new(Field::new("item", casted.data_type().clone(), true)),
+                offsets,
+                casted,
+                nulls,
+            ))
+        })))
+    }
+
+    /// Ignores any input and returns a constant `ListArray`.
+    ///
+    /// Commonly used with [`LensBuilder::add_static_output_column_entity`].
+    /// When used in non-static columns this function will _not_ guarantee the correct amount of rows.
+    pub fn constant(value: ListArray) -> Self {
+        Self::Constant(Constant::new(value))
+    }
+
+    /// A user-defined arbitrary function to convert a component column.
+    pub fn func<F>(func: F) -> Self
+    where
+        F: Fn(ListArray) -> Result<ListArray, Error> + Send + Sync + 'static,
+    {
+        Self::Func(Box::new(func))
+    }
+
+    /// Wraps a transform that operates on `ListArray`.
+    ///
+    /// This allows you to use any type implementing `Transform<Source = ListArray, Target = ListArray>`
+    /// directly as an operation.
+    pub fn transform<T>(transform: T) -> Self
+    where
+        T: Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
+    {
+        Self::Transform(Box::new(transform))
+    }
+
+    fn call(&self, list_array: &ListArray) -> Result<ListArray, Error> {
+        match self {
+            Self::Constant(op) => op.transform(list_array).map_err(Error::from),
+            Self::Func(func) => func(list_array.clone()),
+            Self::Transform(transform) => transform.transform(list_array).map_err(Error::from),
+        }
+    }
 }
 
 /// A lens that transforms component data from one form to another.
@@ -82,18 +170,28 @@ impl Lens {
                 re_log::warn_once!("Replacing duplicated component {}", output.component_descr);
             }
 
-            match output.transform.transform(list_array) {
-                Ok(result) => {
-                    components.insert(output.component_descr.clone(), result);
+            // Apply all operations sequentially
+            let mut current = list_array.clone();
+            let mut all_ok = true;
+            for op in &output.ops {
+                match op.call(&current) {
+                    Ok(result) => current = result,
+                    Err(err) => {
+                        re_log::error!(
+                            "Lens operation failed for output column '{}' on entity '{}': {err}",
+                            entity_path,
+                            output.component_descr.component
+                        );
+                        all_ok = false;
+                        break;
+                    }
                 }
-                Err(err) => {
-                    re_log::error!(
-                        "Lens transform failed for output column '{}' on entity '{}': {err}",
-                        entity_path,
-                        output.component_descr.component
-                    );
-                    return vec![];
-                }
+            }
+
+            if all_ok {
+                components.insert(output.component_descr.clone(), current);
+            } else {
+                return vec![];
             }
         }
 
@@ -143,18 +241,15 @@ impl LensBuilder {
     /// component specified via [`Self::for_input_column`].
     ///
     /// The output column will live on the same entity path as the input column.
-    pub fn add_output_column<T>(
+    pub fn add_output_column(
         mut self,
         component_descr: ComponentDescriptor,
-        transform: T,
-    ) -> Self
-    where
-        T: Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
-    {
+        ops: impl Into<Vec<Op>>,
+    ) -> Self {
         let column = OutputColumn {
             new_entity_path: None,
             component_descr,
-            transform: Box::new(transform),
+            ops: ops.into(),
             is_static: false,
         };
         self.0.outputs.push(column);
@@ -165,19 +260,16 @@ impl LensBuilder {
     /// component specified via [`Self::for_input_column`].
     ///
     /// The output column will live on the specified entity path.
-    pub fn add_output_column_entity<T>(
+    pub fn add_output_column_entity(
         mut self,
         entity_path: impl Into<EntityPath>,
         component_descr: ComponentDescriptor,
-        transform: T,
-    ) -> Self
-    where
-        T: Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
-    {
+        ops: impl Into<Vec<Op>>,
+    ) -> Self {
         let column = OutputColumn {
             new_entity_path: Some(entity_path.into()),
             component_descr,
-            transform: Box::new(transform),
+            ops: ops.into(),
             is_static: false,
         };
         self.0.outputs.push(column);
@@ -192,19 +284,16 @@ impl LensBuilder {
     /// In most cases, static columns should have a single row only.
     // TODO(grtlr): We don't provide a non-entity version of this method, because it is
     //              likely to change again anyway.
-    pub fn add_static_output_column_entity<T>(
+    pub fn add_static_output_column_entity(
         mut self,
         entity_path: impl Into<EntityPath>,
         component_descr: ComponentDescriptor,
-        transform: T,
-    ) -> Self
-    where
-        T: Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
-    {
+        ops: impl Into<Vec<Op>>,
+    ) -> Self {
         let column = OutputColumn {
             new_entity_path: Some(entity_path.into()),
             component_descr,
-            transform: Box::new(transform),
+            ops: ops.into(),
             is_static: true,
         };
         self.0.outputs.push(column);
@@ -253,7 +342,6 @@ impl LensRegistry {
 mod test {
     use std::sync::Arc;
 
-    use arrow::array::{Float32Array, Float64Array};
     use re_chunk::{
         TimeColumn, TimelineName,
         external::arrow::{
@@ -265,10 +353,6 @@ mod test {
         },
     };
     use re_types::{ComponentDescriptor, archetypes::Scalars};
-
-    use crate::lenses::transform::{
-        Cast, Constant, Func, GetField, Identity, MapList, TransformExt as _,
-    };
 
     use super::*;
 
@@ -427,11 +511,10 @@ mod test {
                 .add_output_column_entity(
                     "nullability/a",
                     Scalars::descriptor_scalars(),
-                    MapList::new(GetField::new("a")).then(MapList::new(Cast::<
-                        Float32Array,
-                        Float64Array,
-                    >::new(
-                    ))),
+                    vec![
+                        Op::access_field("a"),
+                        Op::cast(DataType::Float64),
+                    ],
                 )
                 .build();
 
@@ -456,7 +539,7 @@ mod test {
                 .add_output_column_entity(
                     "nullability/b",
                     Scalars::descriptor_scalars(),
-                    MapList::new(GetField::new("b")),
+                    vec![Op::access_field("b")],
                 )
                 .build();
 
@@ -476,7 +559,7 @@ mod test {
         let original_chunk = nullability_chunk();
         println!("{original_chunk}");
 
-        let count_fn = Func::new(|list_array: &ListArray| {
+        let count_fn = Op::func(|list_array: ListArray| {
             let mut builder = ListBuilder::new(Int32Builder::new());
 
             for maybe_array in list_array.iter() {
@@ -496,8 +579,8 @@ mod test {
 
         let count =
             Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
-                .add_output_column(ComponentDescriptor::partial("counts"), count_fn)
-                .add_output_column(ComponentDescriptor::partial("original"), Identity::new())
+                .add_output_column(ComponentDescriptor::partial("counts"), vec![count_fn])
+                .add_output_column(ComponentDescriptor::partial("original"), vec![])
                 .build();
 
         let pipeline = LensRegistry {
@@ -532,12 +615,12 @@ mod test {
                 .add_static_output_column_entity(
                     "nullability/static",
                     ComponentDescriptor::partial("static_metadata_a"),
-                    Constant::new(metadata_builder_a.finish()),
+                    vec![Op::constant(metadata_builder_a.finish())],
                 )
                 .add_static_output_column_entity(
                     "nullability/static",
                     ComponentDescriptor::partial("static_metadata_b"),
-                    Constant::new(metadata_builder_b.finish()),
+                    vec![Op::constant(metadata_builder_b.finish())],
                 )
                 .build();
 
@@ -550,5 +633,37 @@ mod test {
 
         let chunk = &res[0];
         insta::assert_snapshot!("single_static", format!("{chunk:-240}"));
+    }
+
+    #[test]
+    fn test_transform_variant() {
+        use arrow::array::{Float32Array, Float64Array};
+        use crate::lenses::transform::{Cast, GetField, MapList, TransformExt as _};
+
+        let original_chunk = nullability_chunk();
+        println!("{original_chunk}");
+
+        // Demonstrate using Op::transform with a composed transform
+        let composed = MapList::new(GetField::new("a"))
+            .then(MapList::new(Cast::<Float32Array, Float64Array>::new()));
+
+        let destructure =
+            Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
+                .add_output_column_entity(
+                    "nullability/a",
+                    Scalars::descriptor_scalars(),
+                    vec![Op::transform(composed)],
+                )
+                .build();
+
+        let pipeline = LensRegistry {
+            lenses: vec![destructure],
+        };
+
+        let res = pipeline.apply(&original_chunk);
+        assert_eq!(res.len(), 1);
+
+        let chunk = &res[0];
+        insta::assert_snapshot!("transform_variant", format!("{chunk:-240}"));
     }
 }

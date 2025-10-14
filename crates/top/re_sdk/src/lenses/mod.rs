@@ -12,7 +12,7 @@ pub mod transform;
 
 pub use self::{
     // We should be careful not to expose to much implementation details here.
-    ast::{Lens, LensBuilder},
+    ast::{Lens, LensBuilder, Op},
     error::Error,
     sink::LensesSink,
 };
