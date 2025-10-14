@@ -280,7 +280,7 @@ impl TransformForest {
         let previous_transform = self
             .root_from_entity
             .insert(subtree.path.hash(), transform_root_from_parent);
-        debug_assert!(previous_transform.is_none(), "Root was added already"); // TODO(andreas): Build out into cycle detection (cycles can't _yet_ happen)
+        debug_assert!(previous_transform.is_none(), "Root was added already"); // TODO(RR-2667): Build out into cycle detection (cycles can't _yet_ happen)
 
         for child_tree in subtree.children.values() {
             let child_path = &child_tree.path;
