@@ -493,6 +493,48 @@ where
     }
 }
 
+/// Replaces null values in a primitive array with a specified default value.
+///
+/// All null entries in the source array will be replaced with the provided value,
+/// while non-null entries remain unchanged.
+#[derive(Clone)]
+pub struct ReplaceNull<T>
+where
+    T: ArrowPrimitiveType,
+{
+    default_value: T::Native,
+    _phantom: std::marker::PhantomData<T>,
+}
+
+impl<T> ReplaceNull<T>
+where
+    T: ArrowPrimitiveType,
+{
+    /// Create a new null replacer with the given default value.
+    pub fn new(default_value: T::Native) -> Self {
+        Self {
+            default_value,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<T> Transform for ReplaceNull<T>
+where
+    T: ArrowPrimitiveType,
+{
+    type Source = PrimitiveArray<T>;
+    type Target = PrimitiveArray<T>;
+
+    fn transform(&self, source: &PrimitiveArray<T>) -> Result<PrimitiveArray<T>, Error> {
+        let result: PrimitiveArray<T> = source
+            .iter()
+            .map(|opt| Some(opt.unwrap_or(self.default_value)))
+            .collect();
+        Ok(result)
+    }
+}
+
 /// Casts a primitive array from one type to another using Arrow's type casting.
 ///
 /// This uses Arrow's `cast` function for primitive type conversions. Null values are preserved.
@@ -759,5 +801,20 @@ mod test {
         let result = pipeline.transform(&array).unwrap();
 
         insta::assert_snapshot!("convert_to_f32", format!("{}", DisplayRB::from(result)));
+    }
+
+    #[test]
+    fn replace_nulls() {
+        let array = create_nasty_component_column();
+
+        let pipeline = UnwrapListStructField::new("poses")
+            .then(MapList::new(StructToFixedList::new(["x", "y"])))
+            .then(MapList::new(MapFixedSizeList::new(
+                ReplaceNull::<arrow::datatypes::Float64Type>::new(1337.0),
+            )));
+
+        let result = pipeline.transform(&array).unwrap();
+
+        insta::assert_snapshot!("replace_nulls", format!("{}", DisplayRB::from(result)));
     }
 }
