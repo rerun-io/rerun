@@ -68,7 +68,7 @@ impl RowIdColumnDescriptor {
         .with_metadata(metadata)
     }
 
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     pub fn datatype(&self) -> ArrowDatatype {
         RowId::arrow_datatype()
     }

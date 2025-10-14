@@ -75,7 +75,7 @@ impl ChunkId {
     pub const MAX: Self = Self(re_tuid::Tuid::MAX);
 
     /// Create a new unique [`ChunkId`] based on the current time.
-    #[allow(clippy::new_without_default)]
+    #[expect(clippy::new_without_default)]
     #[inline]
     pub fn new() -> Self {
         Self(re_tuid::Tuid::new())
@@ -249,7 +249,7 @@ impl RowId {
     pub const MAX: Self = Self(re_tuid::Tuid::MAX);
 
     /// Create a new unique [`RowId`] based on the current time.
-    #[allow(clippy::new_without_default)]
+    #[expect(clippy::new_without_default)]
     #[inline]
     pub fn new() -> Self {
         Self(re_tuid::Tuid::new())

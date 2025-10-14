@@ -1,6 +1,6 @@
 //! Decodes an mp4 to a folder of images.
 
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 use std::{
     fs::{File, OpenOptions},

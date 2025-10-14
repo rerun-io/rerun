@@ -132,7 +132,7 @@ fn map_format(format: gltf::image::Format) -> Option<wgpu::TextureFormat> {
     use gltf::image::Format;
     use wgpu::TextureFormat;
 
-    #[allow(clippy::match_same_arms)]
+    #[expect(clippy::match_same_arms)]
     match format {
         Format::R8 => Some(TextureFormat::R8Unorm),
         Format::R8G8 => Some(TextureFormat::Rg8Unorm),

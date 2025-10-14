@@ -17,7 +17,7 @@ static BUILD_INFO: Mutex<Option<BuildInfo>> = Mutex::new(None);
 /// NOTE: only install these in binaries!
 /// * First of all, we don't want to compete with other panic/signal handlers.
 /// * Second of all, we don't ever want to include user callstacks in our analytics.
-#[allow(clippy::needless_pass_by_value)]
+#[allow(clippy::allow_attributes, clippy::needless_pass_by_value)]
 pub fn install_crash_handlers(build_info: BuildInfo) {
     install_panic_hook(build_info.clone());
 
@@ -90,7 +90,7 @@ fn install_panic_hook(_build_info: BuildInfo) {
             }
 
             // We compile with `panic = "abort"`, but we don't want to report the same problem twice, so just exit:
-            #[allow(clippy::exit)]
+            #[expect(clippy::exit)]
             std::process::exit(102);
         },
     ));
@@ -100,7 +100,7 @@ fn panic_info_message(panic_info: &std::panic::PanicHookInfo<'_>) -> Option<Stri
     // `panic_info.message` is unstable, so this is the recommended way of getting
     // the panic message out. We need both the `&str` and `String` variants.
 
-    #[allow(clippy::manual_map)]
+    #[expect(clippy::manual_map)]
     if let Some(msg) = panic_info.payload().downcast_ref::<&str>() {
         Some((*msg).to_owned())
     } else if let Some(msg) = panic_info.payload().downcast_ref::<String>() {
@@ -112,8 +112,8 @@ fn panic_info_message(panic_info: &std::panic::PanicHookInfo<'_>) -> Option<Stri
 
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(not(target_os = "windows"))]
-#[allow(unsafe_code)]
-#[allow(clippy::fn_to_numeric_cast_any)]
+#[expect(unsafe_code)]
+#[expect(clippy::fn_to_numeric_cast_any)]
 fn install_signal_handler(build_info: BuildInfo) {
     *BUILD_INFO.lock() = Some(build_info); // Share it with the signal handler
 

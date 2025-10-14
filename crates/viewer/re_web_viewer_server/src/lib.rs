@@ -21,7 +21,7 @@ pub const DEFAULT_WEB_VIEWER_SERVER_PORT: u16 = 9090;
 // See `Cargo.toml` for docs about the `disable_web_viewer_server` cfg:
 #[cfg(not(disable_web_viewer_server))]
 mod data {
-    #![allow(clippy::large_include_file)]
+    #![expect(clippy::large_include_file)]
 
     // If you add/remove/change the paths here, also update the include-list in `Cargo.toml`!
     pub const INDEX_HTML: &[u8] = include_bytes!("../web_viewer/index.html");
@@ -33,7 +33,6 @@ mod data {
 
 /// Failure to host the web viewer.
 #[derive(thiserror::Error, Debug)]
-#[allow(clippy::enum_variant_names)]
 pub enum WebViewerServerError {
     #[error("Could not parse address: {0}")]
     AddrParseFailed(#[from] std::net::AddrParseError),
@@ -221,7 +220,6 @@ impl WebViewerServerInner {
     }
 
     #[cfg(disable_web_viewer_server)]
-    #[allow(clippy::needless_pass_by_value)]
     fn send_response(&self, _request: tiny_http::Request) -> Result<(), std::io::Error> {
         if false {
             self.on_serve_wasm(); // to silence warning about the function being unused

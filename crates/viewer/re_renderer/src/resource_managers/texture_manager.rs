@@ -207,7 +207,7 @@ impl TextureManager2D {
 
     /// Creates a new 2D texture resource and schedules data upload to the GPU.
     /// TODO(jleibs): All usages of this should be replaced with `get_or_create`, which is strictly preferable
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     pub fn create(
         &self,
         render_ctx: &RenderContext,

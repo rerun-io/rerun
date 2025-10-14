@@ -23,7 +23,6 @@ cli = [
   "dep:tiny_http",
   "dep:url",
   "dep:webbrowser",
-
   "workos",
 ]
 

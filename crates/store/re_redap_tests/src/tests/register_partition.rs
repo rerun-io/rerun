@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;

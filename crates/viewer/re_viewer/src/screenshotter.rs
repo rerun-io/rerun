@@ -113,7 +113,7 @@ pub struct Screenshotter {}
 
 #[cfg(target_arch = "wasm32")]
 impl Screenshotter {
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     pub fn is_screenshotting(&self) -> bool {
         false
     }

@@ -58,14 +58,14 @@ pub struct BatcherHooks {
     /// including the new one.
     ///
     /// Used for testing.
-    #[allow(clippy::type_complexity)]
+    #[expect(clippy::type_complexity)]
     pub on_insert: Option<Arc<dyn Fn(&[PendingRow]) + Send + Sync>>,
 
     /// Called when the batcher's configuration changes.
     ///
     /// Called for initial configuration as well as subsequent changes.
     /// Used for testing.
-    #[allow(clippy::type_complexity)]
+    #[expect(clippy::type_complexity)]
     pub on_config_change: Option<Arc<dyn Fn(&ChunkBatcherConfig) + Send + Sync>>,
 
     /// Callback to be run when an Arrow Chunk goes out of scope.
@@ -305,7 +305,7 @@ impl ChunkBatcherConfig {
 
 #[test]
 fn chunk_batcher_config() {
-    #![allow(unsafe_code)] // It's only a test
+    #![expect(unsafe_code)] // It's only a test
 
     // Detect breaking changes in our environment variables.
     // SAFETY: it's a test
@@ -436,7 +436,7 @@ impl ChunkBatcher {
     /// The returned object must be kept in scope: dropping it will trigger a clean shutdown of the
     /// batcher.
     #[must_use = "Batching threads will automatically shutdown when this object is dropped"]
-    #[allow(clippy::needless_pass_by_value)]
+    #[expect(clippy::needless_pass_by_value)]
     pub fn new(config: ChunkBatcherConfig, hooks: BatcherHooks) -> ChunkBatcherResult<Self> {
         let (tx_cmds, rx_cmd) = match config.max_commands_in_flight {
             Some(cap) => crossbeam::channel::bounded(cap as _),
@@ -523,7 +523,7 @@ impl ChunkBatcher {
     pub fn chunks(&self) -> Receiver<Chunk> {
         // NOTE: `rx_chunks` is only ever taken when the batcher as a whole is dropped, at which
         // point it is impossible to call this method.
-        #[allow(clippy::unwrap_used)]
+        #[expect(clippy::unwrap_used)]
         self.inner.rx_chunks.clone().unwrap()
     }
 }
@@ -565,7 +565,7 @@ impl ChunkBatcherInner {
     }
 }
 
-#[allow(clippy::needless_pass_by_value)]
+#[expect(clippy::needless_pass_by_value)]
 fn batching_thread(
     mut config: ChunkBatcherConfig,
     hooks: BatcherHooks,
@@ -1223,7 +1223,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::len_zero)]
+    #[expect(clippy::len_zero)]
     fn simple_but_hashes_might_not_match() -> anyhow::Result<()> {
         let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER, BatcherHooks::NONE)?;
 
@@ -1304,7 +1304,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::zero_sized_map_values)]
+    #[expect(clippy::zero_sized_map_values)]
     fn intmap_order_is_deterministic() {
         let descriptors = [
             MyPoints::descriptor_points(),

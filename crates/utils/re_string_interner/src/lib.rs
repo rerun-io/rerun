@@ -157,7 +157,7 @@ struct StringInterner {
 }
 
 impl StringInterner {
-    #[allow(dead_code)] // used in tests
+    #[allow(clippy::allow_attributes, dead_code)] // used in tests
     pub fn len(&self) -> usize {
         self.map.len()
     }
@@ -337,8 +337,6 @@ fn test_interner() {
 
 #[test]
 fn test_newtype_macro() {
-    #![allow(dead_code)]
-
     declare_new_type!(
         /// My typesafe string
         pub struct MyString;

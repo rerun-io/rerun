@@ -675,7 +675,7 @@ fn column_groups_for_entity(
     if columns.is_empty() {
         (vec![], vec![])
     } else if columns.len() == 1 {
-        #[allow(clippy::single_range_in_vec_init)]
+        #[expect(clippy::single_range_in_vec_init)]
         (vec![0..1], vec![columns[0].entity_path().cloned()])
     } else {
         let mut groups = vec![];

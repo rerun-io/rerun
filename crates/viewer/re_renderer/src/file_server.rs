@@ -256,15 +256,16 @@ mod file_server_impl {
                 .events_rx
                 .try_iter()
                 .flat_map(|ev| {
-                    #[allow(clippy::enum_glob_use)]
-                    use notify::EventKind::*;
+                    use notify::EventKind;
                     match ev.kind {
-                        Create(_) | Modify(_) | Any => ev
+                        EventKind::Create(_) | EventKind::Modify(_) | EventKind::Any => ev
                             .paths
                             .into_iter()
                             .filter_map(canonicalize_opt)
                             .collect::<Vec<_>>(),
-                        Access(_) | Remove(_) | Other => Vec::new(),
+                        EventKind::Access(_) | EventKind::Remove(_) | EventKind::Other => {
+                            Vec::new()
+                        }
                     }
                 })
                 .collect();
@@ -304,7 +305,7 @@ mod file_server_impl {
             f(&mut Self)
         }
 
-        #[allow(clippy::needless_pass_by_ref_mut, clippy::unused_self)]
+        #[expect(clippy::needless_pass_by_ref_mut, clippy::unused_self)]
         pub fn collect<Fs: FileSystem>(
             &mut self,
             _resolver: &FileResolver<Fs>,

@@ -95,7 +95,6 @@ impl SelectionPanel {
         self.view_entity_modal.ui(ui.ctx(), ctx, viewport);
     }
 
-    #[allow(clippy::unused_self)]
     fn contents(
         &mut self,
         ctx: &ViewerContext<'_>,

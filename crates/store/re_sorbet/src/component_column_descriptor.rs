@@ -208,7 +208,7 @@ impl ComponentColumnDescriptor {
                 metadata.insert("rerun:entity_path".to_owned(), entity_path.to_string());
             }
             BatchType::Chunk => {
-                // The whole chhunk is for the same entity, which is set in the record batch metadata.
+                // The whole chunk is for the same entity, which is set in the record batch metadata.
                 // No need to repeat it here.
             }
         }

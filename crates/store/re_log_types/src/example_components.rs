@@ -130,7 +130,7 @@ pub struct MyPoint {
 }
 
 impl MyPoint {
-    #[allow(clippy::should_implement_trait)]
+    #[expect(clippy::should_implement_trait)]
     #[inline]
     pub fn from_iter(it: impl IntoIterator<Item = u32>) -> Vec<Self> {
         it.into_iter()
@@ -246,7 +246,7 @@ pub struct MyPoint64 {
 }
 
 impl MyPoint64 {
-    #[allow(clippy::should_implement_trait)]
+    #[expect(clippy::should_implement_trait)]
     #[inline]
     pub fn from_iter(it: impl IntoIterator<Item = u64>) -> Vec<Self> {
         it.into_iter()
@@ -365,7 +365,7 @@ impl Component for MyPoint64 {
 pub struct MyColor(pub u32);
 
 impl MyColor {
-    #[allow(clippy::should_implement_trait)]
+    #[expect(clippy::should_implement_trait)]
     #[inline]
     pub fn from_iter(it: impl IntoIterator<Item = u32>) -> Vec<Self> {
         it.into_iter().map(Self).collect()
@@ -490,7 +490,7 @@ impl Component for MyLabel {
 pub struct MyIndex(pub u64);
 
 impl MyIndex {
-    #[allow(clippy::should_implement_trait)]
+    #[expect(clippy::should_implement_trait)]
     #[inline]
     pub fn from_iter(it: impl IntoIterator<Item = u64>) -> Vec<Self> {
         it.into_iter().map(Self).collect()

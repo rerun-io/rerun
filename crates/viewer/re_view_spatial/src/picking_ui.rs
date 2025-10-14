@@ -22,7 +22,7 @@ use crate::{
     visualizers::{CamerasVisualizer, DepthImageVisualizer, SpatialViewVisualizerData},
 };
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub fn picking(
     ctx: &ViewerContext<'_>,
     picking_context: &PickingContext,

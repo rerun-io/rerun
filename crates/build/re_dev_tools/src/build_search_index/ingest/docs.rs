@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)] // build tool, so okay here
+#![expect(clippy::unwrap_used)] // build tool, so okay here
 
 use super::{Context, DocumentData, DocumentKind};
 use crate::build_search_index::util::ProgressBarExt as _;

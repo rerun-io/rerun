@@ -33,7 +33,6 @@ pub fn tensor_decode_srgb_gamma_heuristic(
 ) -> bool {
     if matches!(channels, 1 | 3 | 4) {
         let (min, max) = tensor_stats.finite_range;
-        #[allow(clippy::if_same_then_else)]
         if 0.0 <= min && max <= 255.0 {
             // If the range is suspiciously reminding us of a "regular image", assume sRGB.
             true

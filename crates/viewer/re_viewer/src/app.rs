@@ -59,11 +59,10 @@ type ReceiveSetTable = parking_lot::Mutex<Vec<crossbeam::channel::Receiver<Table
 
 /// The Rerun Viewer as an [`eframe`] application.
 pub struct App {
-    #[allow(dead_code)] // Unused on wasm32
+    #[allow(clippy::allow_attributes, dead_code)] // Unused on wasm32
     main_thread_token: MainThreadToken,
     build_info: re_build_info::BuildInfo,
 
-    #[allow(dead_code)] // Only used for analytics
     app_env: crate::AppEnvironment,
 
     startup_options: StartupOptions,
@@ -252,7 +251,8 @@ impl App {
                 Default::default()
             });
 
-        #[allow(unused_mut, clippy::needless_update)] // false positive on web
+        #[allow(clippy::allow_attributes, unused_mut, clippy::needless_update)]
+        // false positive on web
         let mut screenshotter = crate::screenshotter::Screenshotter::default();
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -442,7 +442,7 @@ impl App {
         self.screenshotter.is_screenshotting()
     }
 
-    #[allow(clippy::needless_pass_by_ref_mut)]
+    #[expect(clippy::needless_pass_by_ref_mut)]
     pub fn add_log_receiver(&mut self, rx: re_smart_channel::Receiver<DataSourceMessage>) {
         re_log::debug!("Adding new log receiver: {:?}", rx.source());
 
@@ -551,7 +551,7 @@ impl App {
         }
     }
 
-    #[allow(clippy::needless_pass_by_ref_mut)]
+    #[expect(clippy::needless_pass_by_ref_mut)]
     pub fn add_table_receiver(&mut self, rx: crossbeam::channel::Receiver<TableMsg>) {
         // Make sure we wake up when a message is sent.
         #[cfg(not(target_arch = "wasm32"))]
@@ -694,7 +694,6 @@ impl App {
         }
     }
 
-    #[allow(clippy::unused_self)]
     fn run_system_command(
         &mut self,
         cmd: SystemCommand,
@@ -804,7 +803,7 @@ impl App {
                 };
                 if let Some(data_source) = data_source {
                     // Only certain sources should be closed.
-                    #[allow(clippy::match_same_arms)]
+                    #[expect(clippy::match_same_arms)]
                     let should_close = match &data_source {
                         // Specific files should stop streaming when closing them.
                         SmartChannelSource::File(_) => true,
@@ -1932,7 +1931,7 @@ impl App {
     /// Top-level ui function.
     ///
     /// Shows the viewer ui.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn ui(
         &mut self,
         egui_ctx: &egui::Context,
@@ -2477,7 +2476,7 @@ impl App {
         storage_ctx: &StorageContext<'_>,
         command_sender: &CommandSender,
     ) {
-        #![allow(clippy::needless_continue)] // false positive, depending on target_arch
+        #![allow(clippy::allow_attributes, clippy::needless_continue)] // false positive, depending on target_arch
 
         preview_files_being_dropped(egui_ctx);
 
@@ -2561,7 +2560,6 @@ impl App {
         // So: if we expect data very soon, we do a fade-in.
 
         for source in self.rx_log.sources() {
-            #[allow(clippy::match_same_arms)]
             match &*source {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
@@ -2608,7 +2606,6 @@ impl App {
         }
     }
 
-    #[allow(clippy::unused_self)]
     pub(crate) fn toggle_fullscreen(&self) {
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -2648,7 +2645,7 @@ impl App {
         false
     }
 
-    #[allow(clippy::needless_pass_by_ref_mut)] // False positive on wasm
+    #[allow(clippy::allow_attributes, clippy::needless_pass_by_ref_mut)] // False positive on wasm
     fn process_screenshot_result(
         &mut self,
         image: &Arc<egui::ColorImage>,
@@ -3378,10 +3375,10 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
 }
 
 // TODO(emilk): unify this with `ViewerContext::save_file_dialog`
-#[allow(clippy::needless_pass_by_ref_mut)] // `app` is only used on native
-#[allow(clippy::unnecessary_wraps)] // cannot return error on web
+#[allow(clippy::allow_attributes, clippy::needless_pass_by_ref_mut)] // `app` is only used on native
+#[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // cannot return error on web
 fn save_entity_db(
-    #[allow(unused_variables)] app: &mut App, // only used on native
+    #[allow(clippy::allow_attributes, unused_variables)] app: &mut App, // only used on native
     rrd_version: CrateVersion,
     file_name: String,
     title: String,
