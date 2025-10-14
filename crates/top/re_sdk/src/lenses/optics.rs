@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayRef, FixedSizeListArray, Float32Array, Float32Builder, Float64Array,
-    Float64Builder, ListArray, StructArray,
+    Array, ArrayRef, BooleanBufferBuilder, FixedSizeListArray, Float32Array, Float32Builder,
+    Float64Array, Float64Builder, ListArray, StructArray,
 };
 use arrow::datatypes::{DataType, Field};
 use arrow::error::ArrowError;
@@ -170,18 +170,23 @@ impl ArrowOptic for PointStructToFixedListOptic {
 
         let len = source.len();
         let mut builder = Float64Builder::with_capacity(len * 2);
+        let mut null_buffer = BooleanBufferBuilder::new(len);
 
         for i in 0..len {
             if source.is_null(i) {
                 builder.append_null();
                 builder.append_null();
+                null_buffer.append(false);
             } else {
                 if x_array.is_null(i) || y_array.is_null(i) {
+                    // Still append placeholder values, but mark the list entry as null
                     builder.append_null();
                     builder.append_null();
+                    null_buffer.append(false);
                 } else {
                     builder.append_value(x_array.value(i));
                     builder.append_value(y_array.value(i));
+                    null_buffer.append(true);
                 }
             }
         }
@@ -189,8 +194,7 @@ impl ArrowOptic for PointStructToFixedListOptic {
         let values = builder.finish();
         let field = Arc::new(Field::new_list_field(DataType::Float64, true));
 
-        // Build null buffer from source
-        let null_buffer = source.nulls().cloned();
+        let null_buffer = Some(arrow::buffer::NullBuffer::new(null_buffer.finish()));
 
         Ok(FixedSizeListArray::new(
             field,
@@ -294,7 +298,12 @@ impl ArrowPrism for UnwrapSingleStructFieldPrism {
         }
         let offsets = arrow::buffer::OffsetBuffer::new(offsets.into());
 
-        Ok(ListArray::new(list_field, offsets, Arc::new(struct_array), None))
+        Ok(ListArray::new(
+            list_field,
+            offsets,
+            Arc::new(struct_array),
+            None,
+        ))
     }
 }
 
@@ -391,7 +400,6 @@ where
     }
 }
 
-
 // Note: ListMapLens was redundant with ListTraversal - removing this duplicate
 
 #[cfg(test)]
@@ -432,8 +440,8 @@ mod test {
 
     fn create_nasty_component_column() -> ListArray {
         let inner_struct_fields = Fields::from(vec![
-            Field::new("x", DataType::Float64, false),
-            Field::new("y", DataType::Float64, false),
+            Field::new("x", DataType::Float64, true),
+            Field::new("y", DataType::Float64, true),
         ]);
 
         // Middle struct schema: {poses: List<Struct<x: Float32>>}
@@ -503,6 +511,34 @@ mod test {
         inner
             .field_builder::<Float64Builder>(0)
             .unwrap()
+            .append_value(7.0);
+        inner
+            .field_builder::<Float64Builder>(1)
+            .unwrap()
+            .append_null();
+        inner.append(true);
+        inner
+            .field_builder::<Float64Builder>(0)
+            .unwrap()
+            .append_value(7.0);
+        inner
+            .field_builder::<Float64Builder>(1)
+            .unwrap()
+            .append_value(7.0);
+        inner.append(true);
+        list.append(true);
+        struct_val.append(true);
+        column_builder.append(true);
+
+        // Row 2:
+        let struct_val = column_builder.values();
+        let list = struct_val
+            .field_builder::<ListBuilder<StructBuilder>>(0)
+            .unwrap();
+        let inner = list.values();
+        inner
+            .field_builder::<Float64Builder>(0)
+            .unwrap()
             .append_value(17.0);
         inner
             .field_builder::<Float64Builder>(1)
@@ -513,7 +549,7 @@ mod test {
         struct_val.append(true);
         column_builder.append(true);
 
-        // Row 2:
+        // Row 3:
         let struct_val = column_builder.values();
         struct_val
             .field_builder::<ListBuilder<StructBuilder>>(0)
