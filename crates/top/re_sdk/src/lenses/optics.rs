@@ -7,68 +7,67 @@ use arrow::array::{
 use arrow::datatypes::{DataType, Field};
 use arrow::error::ArrowError;
 
-// ## Observations
+// ## Arrow Transformations
 //
-// * The number of rows is identical, so transforming the contents is an affine mapping.
+// This module provides composable transformations for Arrow arrays.
+// All operations preserve row count (affine transformations).
 
-// Base trait for all arrow optics - provides a read-only view/projection
-// Affine: focuses on 0 or 1 target
-trait ArrowOptic: Clone {
+/// A transformation that projects from one Arrow array type to another.
+///
+/// This is a read-only projection that may fail (e.g., missing field).
+/// Mathematical property: Affine transformation (0 or 1 output per input).
+trait Projection: Clone {
     type Source: Array + Clone;
     type Target: Array + Clone;
 
-    /// Preview/project from source to target (read-only, may fail)
-    fn preview(&self, source: &Self::Source) -> Result<Self::Target, ArrowError>;
+    /// Project from source array to target array.
+    fn project(&self, source: &Self::Source) -> Result<Self::Target, ArrowError>;
 }
 
-// Prism: Partial, reversible projection
-// Represents operations that may fail but are conceptually reversible
-// (e.g., field extraction - can extract field and inject it back into struct)
-trait ArrowPrism: ArrowOptic {
-    /// Review/inject target back into source structure
-    fn review(&self, target: Self::Target) -> Result<Self::Source, ArrowError>;
-}
-
-// Traversal: Non-affine projection that applies an inner optic to multiple elements
-// Focuses on 0 to N targets within a container structure
-trait ArrowTraversal: Clone {
+/// Applies a transformation to multiple elements within a container.
+///
+/// Example: Transform each element in a list using an inner projection.
+/// Mathematical property: Non-affine transformation (0 to N outputs per input).
+trait ElementwiseTransform: Clone {
     type Container: Array + Clone;
     type Element: Array + Clone;
 
-    /// Apply an optic to all elements in the container
-    fn traverse<O>(&self, source: &Self::Container, optic: &O) -> Result<Self::Container, ArrowError>
+    /// Apply a projection to all elements in the container.
+    fn transform<P>(&self, source: &Self::Container, projection: &P) -> Result<Self::Container, ArrowError>
     where
-        O: ArrowOptic<Source = Self::Element>,
-        O::Target: Array + 'static;
+        P: Projection<Source = Self::Element>,
+        P::Target: Array + 'static;
 }
 
+/// Composes two projections into a single projection.
 #[derive(Clone)]
-struct Compose<O1, O2> {
-    first: O1,
-    second: O2,
+struct Compose<P1, P2> {
+    first: P1,
+    second: P2,
 }
 
-impl<O1, O2, M> ArrowOptic for Compose<O1, O2>
+impl<P1, P2, M> Projection for Compose<P1, P2>
 where
-    O1: ArrowOptic<Target = M>,
-    O2: ArrowOptic<Source = M>,
+    P1: Projection<Target = M>,
+    P2: Projection<Source = M>,
     M: Array,
 {
-    type Source = O1::Source;
-    type Target = O2::Target;
+    type Source = P1::Source;
+    type Target = P2::Target;
 
-    fn preview(&self, source: &Self::Source) -> Result<Self::Target, ArrowError> {
-        let mid = self.first.preview(source)?;
-        self.second.preview(&mid)
+    fn project(&self, source: &Self::Source) -> Result<Self::Target, ArrowError> {
+        let mid = self.first.project(source)?;
+        self.second.project(&mid)
     }
 }
 
-// Extension trait for ergonomic composition
-trait OpticExt: ArrowOptic {
-    fn then<O2>(self, next: O2) -> Compose<Self, O2>
+/// Extension trait for composing projections.
+trait ProjectionExt: Projection {
+    /// Chain this projection with another projection.
+    fn then<P2>(self, next: P2) -> Compose<Self, P2>
     where
         Self: Sized,
-        O2: ArrowOptic<Source = Self::Target>,
+        P2: Projection<Source = Self::Target>,
     {
         Compose {
             first: self,
@@ -76,53 +75,54 @@ trait OpticExt: ArrowOptic {
         }
     }
 
-    /// Compose with a traversal, applying an inner optic to all elements
-    fn then_over<T, O2>(self, traversal: T, inner: O2) -> Compose<Self, Over<T, O2>>
+    /// Chain this projection with an elementwise transformation.
+    fn then_each<T, P2>(self, transform: T, inner: P2) -> Compose<Self, ApplyToElements<T, P2>>
     where
         Self: Sized,
-        T: ArrowTraversal<Container = Self::Target>,
-        O2: ArrowOptic<Source = T::Element>,
-        O2::Target: Array + 'static,
+        T: ElementwiseTransform<Container = Self::Target>,
+        P2: Projection<Source = T::Element>,
+        P2::Target: Array + 'static,
     {
-        self.then(Over { traversal, optic: inner })
+        self.then(ApplyToElements { transform, projection: inner })
     }
 }
 
-impl<T: ArrowOptic> OpticExt for T {}
+impl<T: Projection> ProjectionExt for T {}
 
-// Over: Apply an optic through a traversal to all elements
+/// Applies a projection to each element in a container.
 #[derive(Clone)]
-struct Over<T, O> {
-    traversal: T,
-    optic: O,
+struct ApplyToElements<T, P> {
+    transform: T,
+    projection: P,
 }
 
-impl<T, O> ArrowOptic for Over<T, O>
+impl<T, P> Projection for ApplyToElements<T, P>
 where
-    T: ArrowTraversal,
-    O: ArrowOptic<Source = T::Element>,
-    O::Target: Array + 'static,
+    T: ElementwiseTransform,
+    P: Projection<Source = T::Element>,
+    P::Target: Array + 'static,
 {
     type Source = T::Container;
     type Target = T::Container;
 
-    fn preview(&self, source: &Self::Source) -> Result<Self::Target, ArrowError> {
-        self.traversal.traverse(source, &self.optic)
+    fn project(&self, source: &Self::Source) -> Result<Self::Target, ArrowError> {
+        self.transform.transform(source, &self.projection)
     }
 }
 
-// Prism: Extract field from StructArray
-// Partial because field may not exist; reversible because we can inject field back
+/// Extracts a field from a struct array.
+///
+/// Fails if the field doesn't exist.
 #[derive(Clone)]
-struct StructFieldPrism {
+struct ExtractStructField {
     field_name: String,
 }
 
-impl ArrowOptic for StructFieldPrism {
+impl Projection for ExtractStructField {
     type Source = StructArray;
     type Target = ArrayRef;
 
-    fn preview(&self, source: &StructArray) -> Result<ArrayRef, ArrowError> {
+    fn project(&self, source: &StructArray) -> Result<ArrayRef, ArrowError> {
         source
             .column_by_name(&self.field_name)
             .ok_or_else(|| {
@@ -135,27 +135,16 @@ impl ArrowOptic for StructFieldPrism {
     }
 }
 
-impl ArrowPrism for StructFieldPrism {
-    fn review(&self, target: Self::Target) -> Result<Self::Source, ArrowError> {
-        // Create a minimal struct with just this field
-        let field = Field::new(&self.field_name, target.data_type().clone(), true);
-        Ok(StructArray::new(
-            vec![Arc::new(field)].into(),
-            vec![target],
-            None,
-        ))
-    }
-}
-
-// Traversal: Transform each element in ListArray using an inner optic
-// This is a traversal pattern - applies inner optic to all list elements
-// Generic over the element type for type safety
+/// Transforms the elements within a list array.
+///
+/// Applies a projection to the flattened values array inside the list.
+/// Generic over element type for type safety.
 #[derive(Clone)]
-struct ListTraversal<E> {
+struct TransformListElements<E> {
     _phantom: std::marker::PhantomData<E>,
 }
 
-impl<E> ListTraversal<E> {
+impl<E> TransformListElements<E> {
     fn new() -> Self {
         Self {
             _phantom: std::marker::PhantomData,
@@ -163,24 +152,24 @@ impl<E> ListTraversal<E> {
     }
 }
 
-impl<E: Array + Clone + 'static> ArrowTraversal for ListTraversal<E> {
+impl<E: Array + Clone + 'static> ElementwiseTransform for TransformListElements<E> {
     type Container = ListArray;
     type Element = E;
 
-    fn traverse<O>(&self, source: &Self::Container, optic: &O) -> Result<Self::Container, ArrowError>
+    fn transform<P>(&self, source: &Self::Container, projection: &P) -> Result<Self::Container, ArrowError>
     where
-        O: ArrowOptic<Source = Self::Element>,
-        O::Target: Array + 'static,
+        P: Projection<Source = Self::Element>,
+        P::Target: Array + 'static,
     {
         let values = source.values();
         let downcast = values.as_any().downcast_ref::<E>().ok_or_else(|| {
             arrow::error::ArrowError::InvalidArgumentError(format!(
-                "Type mismatch in ListTraversal: expected {}",
+                "Type mismatch: expected {}",
                 std::any::type_name::<E>()
             ))
         })?;
 
-        let transformed = optic.preview(downcast)?;
+        let transformed = projection.project(downcast)?;
         let new_field = Arc::new(Field::new("item", transformed.data_type().clone(), true));
 
         let (_, offsets, _, nulls) = source.clone().into_parts();
@@ -193,16 +182,17 @@ impl<E: Array + Clone + 'static> ArrowTraversal for ListTraversal<E> {
     }
 }
 
-// Getter: Convert struct {x, y} to FixedSizeListArray[2]
-// This is a getter (read-only) - loses field names, so not reversible
+/// Converts a struct with {x, y} fields to a fixed-size list array of length 2.
+///
+/// Loses field name information during conversion.
 #[derive(Clone)]
-struct PointStructToFixedListOptic;
+struct ConvertPointStructToFixedList;
 
-impl ArrowOptic for PointStructToFixedListOptic {
+impl Projection for ConvertPointStructToFixedList {
     type Source = StructArray;
     type Target = FixedSizeListArray;
 
-    fn preview(&self, source: &StructArray) -> Result<FixedSizeListArray, ArrowError> {
+    fn project(&self, source: &StructArray) -> Result<FixedSizeListArray, ArrowError> {
         let x_array = source
             .column_by_name("x")
             .ok_or_else(|| {
@@ -263,18 +253,20 @@ impl ArrowOptic for PointStructToFixedListOptic {
 }
 
 
-// Prism: Unwrap single-element ListArray and extract field from the struct
-// Partial because field may not exist; conceptually reversible
+/// Unwraps a single-element struct array within a list and extracts a field.
+///
+/// Input: ListArray[StructArray] -> Output: the field from the struct.
+/// Fails if the field doesn't exist or isn't a ListArray.
 #[derive(Clone)]
-struct UnwrapSingleStructFieldPrism {
+struct UnwrapStructAndExtractField {
     field_name: String,
 }
 
-impl ArrowOptic for UnwrapSingleStructFieldPrism {
+impl Projection for UnwrapStructAndExtractField {
     type Source = ListArray;
     type Target = ListArray;
 
-    fn preview(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
+    fn project(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
         // Get the struct array from the list values
         let struct_array = source
             .values()
@@ -310,51 +302,23 @@ impl ArrowOptic for UnwrapSingleStructFieldPrism {
     }
 }
 
-impl ArrowPrism for UnwrapSingleStructFieldPrism {
-    fn review(&self, target: Self::Target) -> Result<Self::Source, ArrowError> {
-        // Create a struct with just this field
-        let field = Field::new(&self.field_name, target.data_type().clone(), true);
-        let struct_array = StructArray::new(
-            vec![Arc::new(field)].into(),
-            vec![Arc::new(target) as ArrayRef],
-            None,
-        );
-
-        // Wrap in a list with one element per row
-        let list_field = Arc::new(Field::new("item", struct_array.data_type().clone(), true));
-        let mut offsets = Vec::with_capacity(struct_array.len() + 1);
-        for i in 0..=struct_array.len() {
-            offsets.push(i as i32);
-        }
-        let offsets = arrow::buffer::OffsetBuffer::new(offsets.into());
-
-        Ok(ListArray::new(
-            list_field,
-            offsets,
-            Arc::new(struct_array),
-            None,
-        ))
-    }
-}
-
-// Getter: Transform Float64Array values with a function
-// This is a getter - potentially non-invertible depending on the function
+/// Applies a function to each element in a Float64Array.
 #[derive(Clone)]
-struct Float64MapOptic<F>
+struct MapFloat64<F>
 where
     F: Fn(f64) -> f64 + Clone,
 {
     f: F,
 }
 
-impl<F> ArrowOptic for Float64MapOptic<F>
+impl<F> Projection for MapFloat64<F>
 where
     F: Fn(f64) -> f64 + Clone,
 {
     type Source = Float64Array;
     type Target = Float64Array;
 
-    fn preview(&self, source: &Float64Array) -> Result<Float64Array, ArrowError> {
+    fn project(&self, source: &Float64Array) -> Result<Float64Array, ArrowError> {
         let mut builder = Float64Builder::with_capacity(source.len());
         for i in 0..source.len() {
             if source.is_null(i) {
@@ -367,16 +331,17 @@ where
     }
 }
 
-// Getter: Convert Float64Array to Float32Array
-// Lossy conversion - loses precision, so not reversible
+/// Converts Float64Array to Float32Array.
+///
+/// Lossy conversion - reduces precision from 64-bit to 32-bit floats.
 #[derive(Clone)]
-struct Float64ToFloat32Optic;
+struct ConvertFloat64ToFloat32;
 
-impl ArrowOptic for Float64ToFloat32Optic {
+impl Projection for ConvertFloat64ToFloat32 {
     type Source = Float64Array;
     type Target = Float32Array;
 
-    fn preview(&self, source: &Float64Array) -> Result<Float32Array, ArrowError> {
+    fn project(&self, source: &Float64Array) -> Result<Float32Array, ArrowError> {
         let mut builder = Float32Builder::with_capacity(source.len());
         for i in 0..source.len() {
             if source.is_null(i) {
@@ -389,15 +354,16 @@ impl ArrowOptic for Float64ToFloat32Optic {
     }
 }
 
-// Traversal: Transform FixedSizeListArray values using inner optic
-// Applies inner optic to the flattened values array
-// Generic over the element type for type safety
+/// Transforms the elements within a fixed-size list array.
+///
+/// Applies a projection to the flattened values array inside the list.
+/// Generic over element type for type safety.
 #[derive(Clone)]
-struct FixedSizeListTraversal<E> {
+struct TransformFixedSizeListElements<E> {
     _phantom: std::marker::PhantomData<E>,
 }
 
-impl<E> FixedSizeListTraversal<E> {
+impl<E> TransformFixedSizeListElements<E> {
     fn new() -> Self {
         Self {
             _phantom: std::marker::PhantomData,
@@ -405,24 +371,24 @@ impl<E> FixedSizeListTraversal<E> {
     }
 }
 
-impl<E: Array + Clone + 'static> ArrowTraversal for FixedSizeListTraversal<E> {
+impl<E: Array + Clone + 'static> ElementwiseTransform for TransformFixedSizeListElements<E> {
     type Container = FixedSizeListArray;
     type Element = E;
 
-    fn traverse<O>(&self, source: &Self::Container, optic: &O) -> Result<Self::Container, ArrowError>
+    fn transform<P>(&self, source: &Self::Container, projection: &P) -> Result<Self::Container, ArrowError>
     where
-        O: ArrowOptic<Source = Self::Element>,
-        O::Target: Array + 'static,
+        P: Projection<Source = Self::Element>,
+        P::Target: Array + 'static,
     {
         let values = source.values();
         let downcast = values.as_any().downcast_ref::<E>().ok_or_else(|| {
             arrow::error::ArrowError::InvalidArgumentError(format!(
-                "Type mismatch in FixedSizeListTraversal: expected {}",
+                "Type mismatch: expected {}",
                 std::any::type_name::<E>()
             ))
         })?;
 
-        let transformed = optic.preview(downcast)?;
+        let transformed = projection.project(downcast)?;
         let field = Arc::new(Field::new("item", transformed.data_type().clone(), true));
         let size = source.value_length();
         let nulls = source.nulls().cloned();
@@ -435,8 +401,6 @@ impl<E: Array + Clone + 'static> ArrowTraversal for FixedSizeListTraversal<E> {
         ))
     }
 }
-
-// Note: ListMapLens was redundant with ListTraversal - removing this duplicate
 
 #[cfg(test)]
 mod test {
@@ -605,12 +569,12 @@ mod test {
         let array = create_nasty_component_column();
         println!("{}", DisplayRB::from(array.clone()));
 
-        let pipeline = UnwrapSingleStructFieldPrism {
+        let pipeline = UnwrapStructAndExtractField {
             field_name: "poses".into(),
         }
-        .then_over(ListTraversal::new(), PointStructToFixedListOptic);
+        .then_each(TransformListElements::new(), ConvertPointStructToFixedList);
 
-        let result: ListArray = pipeline.preview(&array).unwrap();
+        let result: ListArray = pipeline.project(&array).unwrap();
 
         insta::assert_snapshot!("simple", format!("{}", DisplayRB::from(result.clone())));
     }
@@ -619,16 +583,16 @@ mod test {
     fn add_one_to_leaves() {
         let array = create_nasty_component_column();
 
-        let pipeline = UnwrapSingleStructFieldPrism {
+        let pipeline = UnwrapStructAndExtractField {
             field_name: "poses".into(),
         }
-        .then_over(ListTraversal::new(), PointStructToFixedListOptic)
-        .then_over(ListTraversal::new(), Over {
-            traversal: FixedSizeListTraversal::new(),
-            optic: Float64MapOptic { f: |x| x + 1.0 },
+        .then_each(TransformListElements::new(), ConvertPointStructToFixedList)
+        .then_each(TransformListElements::new(), ApplyToElements {
+            transform: TransformFixedSizeListElements::new(),
+            projection: MapFloat64 { f: |x| x + 1.0 },
         });
 
-        let result = pipeline.preview(&array).unwrap();
+        let result = pipeline.project(&array).unwrap();
 
         insta::assert_snapshot!("add_one_to_leaves", format!("{}", DisplayRB::from(result)));
     }
@@ -637,16 +601,16 @@ mod test {
     fn convert_to_f32() {
         let array = create_nasty_component_column();
 
-        let pipeline = UnwrapSingleStructFieldPrism {
+        let pipeline = UnwrapStructAndExtractField {
             field_name: "poses".into(),
         }
-        .then_over(ListTraversal::new(), PointStructToFixedListOptic)
-        .then_over(ListTraversal::new(), Over {
-            traversal: FixedSizeListTraversal::new(),
-            optic: Float64ToFloat32Optic,
+        .then_each(TransformListElements::new(), ConvertPointStructToFixedList)
+        .then_each(TransformListElements::new(), ApplyToElements {
+            transform: TransformFixedSizeListElements::new(),
+            projection: ConvertFloat64ToFloat32,
         });
 
-        let result = pipeline.preview(&array).unwrap();
+        let result = pipeline.project(&array).unwrap();
 
         insta::assert_snapshot!("convert_to_f32", format!("{}", DisplayRB::from(result)));
     }
