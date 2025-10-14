@@ -205,33 +205,6 @@ impl ArrowOptic for PointStructToFixedListOptic {
     }
 }
 
-// Getter: Transform ListArray of structs to ListArray of FixedSizeLists
-// Composes ListTraversal with PointStructToFixedListOptic
-#[derive(Clone)]
-struct ListStructToFixedListOptic;
-
-impl ArrowOptic for ListStructToFixedListOptic {
-    type Source = ListArray;
-    type Target = ListArray;
-
-    fn preview(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
-        let struct_array = source
-            .values()
-            .as_any()
-            .downcast_ref::<StructArray>()
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError(
-                    "Expected ListArray of StructArray".into(),
-                )
-            })?;
-
-        let fixed_list = PointStructToFixedListOptic.preview(struct_array)?;
-        let field = Arc::new(Field::new("item", fixed_list.data_type().clone(), true));
-        let (_, offsets, _, nulls) = source.clone().into_parts();
-
-        Ok(ListArray::new(field, offsets, Arc::new(fixed_list), nulls))
-    }
-}
 
 // Prism: Unwrap single-element ListArray and extract field from the struct
 // Partial because field may not exist; conceptually reversible
@@ -572,7 +545,9 @@ mod test {
         let pipeline = UnwrapSingleStructFieldPrism {
             field_name: "poses".into(),
         }
-        .then(ListStructToFixedListOptic);
+        .then(ListTraversal {
+            inner_optic: PointStructToFixedListOptic,
+        });
 
         let result: ListArray = pipeline.preview(&array).unwrap();
 
@@ -586,7 +561,9 @@ mod test {
         let pipeline = UnwrapSingleStructFieldPrism {
             field_name: "poses".into(),
         }
-        .then(ListStructToFixedListOptic)
+        .then(ListTraversal {
+            inner_optic: PointStructToFixedListOptic,
+        })
         .then(ListTraversal {
             inner_optic: FixedSizeListTraversal {
                 inner_optic: Float64MapOptic { f: |x| x + 1.0 },
@@ -605,7 +582,9 @@ mod test {
         let pipeline = UnwrapSingleStructFieldPrism {
             field_name: "poses".into(),
         }
-        .then(ListStructToFixedListOptic)
+        .then(ListTraversal {
+            inner_optic: PointStructToFixedListOptic,
+        })
         .then(ListTraversal {
             inner_optic: FixedSizeListTraversal {
                 inner_optic: Float64ToFloat32Optic,
