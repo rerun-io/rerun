@@ -4,15 +4,13 @@
 //! we should not leak these elements into the public API. This allows us to
 //! evolve the definition of lenses over time, if requirements change.
 
-use arrow::array::{Float32Array, Float64Array, ListArray};
+use arrow::array::ListArray;
 
 use re_chunk::{Chunk, ChunkComponents, ChunkId, ComponentIdentifier, EntityPath};
 use re_log_types::EntityPathFilter;
 use re_types::ComponentDescriptor;
 
-use super::transform::{
-    Cast, Constant, Func, GetField, Identity, MapList, Transform, TransformExt,
-};
+use super::transform::Transform;
 
 pub struct InputColumn {
     pub entity_path_filter: EntityPathFilter,
@@ -255,6 +253,7 @@ impl LensRegistry {
 mod test {
     use std::sync::Arc;
 
+    use arrow::array::{Float32Array, Float64Array};
     use re_chunk::{
         TimeColumn, TimelineName,
         external::arrow::{
@@ -266,6 +265,10 @@ mod test {
         },
     };
     use re_types::{ComponentDescriptor, archetypes::Scalars};
+
+    use crate::lenses::transform::{
+        Cast, Constant, Func, GetField, Identity, MapList, TransformExt as _,
+    };
 
     use super::*;
 
@@ -424,8 +427,11 @@ mod test {
                 .add_output_column_entity(
                     "nullability/a",
                     Scalars::descriptor_scalars(),
-                    MapList::new(GetField::new("a"))
-                        .then(MapList::new(Cast::<Float32Array, Float64Array>::new())),
+                    MapList::new(GetField::new("a")).then(MapList::new(Cast::<
+                        Float32Array,
+                        Float64Array,
+                    >::new(
+                    ))),
                 )
                 .build();
 
@@ -491,10 +497,7 @@ mod test {
         let count =
             Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
                 .add_output_column(ComponentDescriptor::partial("counts"), count_fn)
-                .add_output_column(
-                    ComponentDescriptor::partial("original"),
-                    Identity::new(),
-                )
+                .add_output_column(ComponentDescriptor::partial("original"), Identity::new())
                 .build();
 
         let pipeline = LensRegistry {

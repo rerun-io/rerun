@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayRef, FixedSizeListArray, Float32Array, Float64Array, ListArray, PrimitiveArray,
-    StructArray, ArrowPrimitiveType,
+    Array, ArrayRef, ArrowPrimitiveType, FixedSizeListArray, ListArray, PrimitiveArray, StructArray,
 };
 use arrow::compute::cast;
 use arrow::datatypes::{DataType, Field};
@@ -15,6 +14,7 @@ use arrow::error::ArrowError;
 // preserving structural properties like row counts and null handling.
 
 /// Errors that can occur during array transformations.
+#[expect(missing_docs)]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// A required field was not found in a struct array.
@@ -49,26 +49,20 @@ pub enum Error {
 
     /// List values have unexpected type.
     #[error("List contains unexpected value type: expected {expected}, got {actual:?}")]
-    UnexpectedListValueType {
-        expected: String,
-        actual: DataType,
-    },
+    UnexpectedListValueType { expected: String, actual: DataType },
 
     /// Fixed-size list values have unexpected type.
     #[error("Fixed-size list contains unexpected value type: expected {expected}, got {actual:?}")]
-    UnexpectedFixedSizeListValueType {
-        expected: String,
-        actual: DataType,
-    },
+    UnexpectedFixedSizeListValueType { expected: String, actual: DataType },
 
     /// Struct values in list have wrong type.
     #[error("Expected list to contain struct values, but got {actual:?}")]
-    ExpectedStructInList {
-        actual: DataType,
-    },
+    ExpectedStructInList { actual: DataType },
 
     /// Fields have inconsistent types.
-    #[error("Field '{field_name}' has type {actual_type:?}, but expected {expected_type:?} (inferred from field '{reference_field}')")]
+    #[error(
+        "Field '{field_name}' has type {actual_type:?}, but expected {expected_type:?} (inferred from field '{reference_field}')"
+    )]
     InconsistentFieldTypes {
         field_name: String,
         actual_type: DataType,
@@ -181,11 +175,7 @@ impl Transform for GetField {
         source
             .column_by_name(&self.field_name)
             .ok_or_else(|| {
-                let available_fields = source
-                    .fields()
-                    .iter()
-                    .map(|f| f.name().clone())
-                    .collect();
+                let available_fields = source.fields().iter().map(|f| f.name().clone()).collect();
                 Error::FieldNotFound {
                     field_name: self.field_name.clone(),
                     available_fields,
@@ -222,12 +212,14 @@ where
 
     fn transform(&self, source: &ListArray) -> Result<ListArray, Error> {
         let values = source.values();
-        let downcast = values.as_any().downcast_ref::<S>().ok_or_else(|| {
-            Error::UnexpectedListValueType {
-                expected: std::any::type_name::<S>().to_string(),
-                actual: values.data_type().clone(),
-            }
-        })?;
+        let downcast =
+            values
+                .as_any()
+                .downcast_ref::<S>()
+                .ok_or_else(|| Error::UnexpectedListValueType {
+                    expected: std::any::type_name::<S>().to_owned(),
+                    actual: values.data_type().clone(),
+                })?;
 
         let transformed = self.transform.transform(downcast)?;
         let new_field = Arc::new(Field::new("item", transformed.data_type().clone(), true));
@@ -271,13 +263,16 @@ where
         let values = source.values();
         let downcast = values.as_any().downcast_ref::<S>().ok_or_else(|| {
             Error::UnexpectedFixedSizeListValueType {
-                expected: std::any::type_name::<S>().to_string(),
+                expected: std::any::type_name::<S>().to_owned(),
                 actual: values.data_type().clone(),
             }
         })?;
 
         let transformed = self.transform.transform(downcast)?;
-        let field = Arc::new(Field::new("item", transformed.data_type().clone(), true));
+        let field = Arc::new(Field::new_list_field(
+            transformed.data_type().clone(),
+            transformed.is_nullable(),
+        ));
         let size = source.value_length();
         let nulls = source.nulls().cloned();
 
@@ -323,20 +318,18 @@ impl Transform for StructToFixedList {
             return Err(Error::NoFieldNames);
         }
 
-        let available_fields: Vec<String> = source
-            .fields()
-            .iter()
-            .map(|f| f.name().clone())
-            .collect();
+        let available_fields: Vec<String> =
+            source.fields().iter().map(|f| f.name().clone()).collect();
 
         // Get the first field to determine the element type
         let first_field_name = &self.field_names[0];
-        let first_array = source.column_by_name(first_field_name).ok_or_else(|| {
-            Error::MissingStructField {
-                field_name: first_field_name.clone(),
-                struct_fields: available_fields.clone(),
-            }
-        })?;
+        let first_array =
+            source
+                .column_by_name(first_field_name)
+                .ok_or_else(|| Error::MissingStructField {
+                    field_name: first_field_name.clone(),
+                    struct_fields: available_fields.clone(),
+                })?;
         let element_type = first_array.data_type().clone();
 
         // Collect all field arrays, ensuring they all have the same type
@@ -344,12 +337,13 @@ impl Transform for StructToFixedList {
         field_arrays.push(first_array);
 
         for field_name in &self.field_names[1..] {
-            let array = source.column_by_name(field_name).ok_or_else(|| {
-                Error::MissingStructField {
-                    field_name: field_name.clone(),
-                    struct_fields: available_fields.clone(),
-                }
-            })?;
+            let array =
+                source
+                    .column_by_name(field_name)
+                    .ok_or_else(|| Error::MissingStructField {
+                        field_name: field_name.clone(),
+                        struct_fields: available_fields.clone(),
+                    })?;
 
             // Verify type consistency
             if array.data_type() != &element_type {
@@ -377,7 +371,7 @@ impl Transform for StructToFixedList {
 
         // Concatenate all slices into a single array
         let refs: Vec<&dyn Array> = concatenated_arrays.iter().map(|a| a.as_ref()).collect();
-        let values = arrow::compute::concat(&refs)?;
+        let values = re_arrow_util::concat_arrays(&refs)?;
 
         let field = Arc::new(Field::new("item", element_type, true));
 
@@ -423,28 +417,31 @@ impl Transform for UnwrapListStructField {
             })?;
 
         // Extract the field
-        let field_array = struct_array.column_by_name(&self.field_name).ok_or_else(|| {
-            let available_fields = struct_array
-                .fields()
-                .iter()
-                .map(|f| f.name().clone())
-                .collect();
-            Error::FieldNotFound {
-                field_name: self.field_name.clone(),
-                available_fields,
-            }
-        })?;
+        let field_array = struct_array
+            .column_by_name(&self.field_name)
+            .ok_or_else(|| {
+                let available_fields = struct_array
+                    .fields()
+                    .iter()
+                    .map(|f| f.name().clone())
+                    .collect();
+                Error::FieldNotFound {
+                    field_name: self.field_name.clone(),
+                    available_fields,
+                }
+            })?;
 
+        // TODO: This still looks fishy.
         // Downcast to ListArray
         field_array
             .as_any()
             .downcast_ref::<ListArray>()
             .ok_or_else(|| Error::FieldTypeMismatch {
                 field_name: self.field_name.clone(),
-                expected_type: "ListArray".to_string(),
+                expected_type: std::any::type_name::<Self::Source>().to_owned(),
                 actual_type: field_array.data_type().clone(),
             })
-            .map(Clone::clone)
+            .cloned()
     }
 }
 
@@ -485,10 +482,7 @@ where
     type Target = PrimitiveArray<T>;
 
     fn transform(&self, source: &PrimitiveArray<T>) -> Result<PrimitiveArray<T>, Error> {
-        let result: PrimitiveArray<T> = source
-            .iter()
-            .map(|opt| opt.map(|v| (self.f)(v)))
-            .collect();
+        let result: PrimitiveArray<T> = source.iter().map(|opt| opt.map(|v| (self.f)(v))).collect();
         Ok(result)
     }
 }
@@ -589,11 +583,11 @@ where
             .as_any()
             .downcast_ref::<PrimitiveArray<T>>()
             .ok_or_else(|| Error::TypeMismatch {
-                expected: std::any::type_name::<PrimitiveArray<T>>().to_string(),
+                expected: std::any::type_name::<PrimitiveArray<T>>().to_owned(),
                 actual: casted.data_type().clone(),
                 context: "cast result".to_string(),
             })
-            .map(Clone::clone)
+            .cloned()
     }
 }
 
@@ -673,15 +667,14 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
 
     use arrow::{
         array::{
-            ArrayRef, Float64Builder, ListArray, ListBuilder, RecordBatch, RecordBatchOptions,
-            StructBuilder,
+            ArrayRef, Float32Array, Float64Array, Float64Builder, ListArray, ListBuilder,
+            RecordBatch, RecordBatchOptions, StructBuilder,
         },
         datatypes::{DataType, Field, Fields, Schema},
     };
@@ -855,9 +848,12 @@ mod test {
 
         let pipeline = UnwrapListStructField::new("poses")
             .then(MapList::new(StructToFixedList::new(["x", "y"])))
-            .then(MapList::new(MapFixedSizeList::new(
-                MapPrimitive::<arrow::datatypes::Float64Type, _>::new(|x| x + 1.0),
-            )));
+            .then(MapList::new(MapFixedSizeList::new(MapPrimitive::<
+                arrow::datatypes::Float64Type,
+                _,
+            >::new(
+                |x| x + 1.0
+            ))));
 
         let result = pipeline.transform(&array).unwrap();
 
@@ -870,9 +866,10 @@ mod test {
 
         let pipeline = UnwrapListStructField::new("poses")
             .then(MapList::new(StructToFixedList::new(["x", "y"])))
-            .then(MapList::new(MapFixedSizeList::new(
-                Cast::<Float64Array, Float32Array>::new(),
-            )));
+            .then(MapList::new(MapFixedSizeList::new(Cast::<
+                Float64Array,
+                Float32Array,
+            >::new())));
 
         let result = pipeline.transform(&array).unwrap();
 
@@ -885,9 +882,11 @@ mod test {
 
         let pipeline = UnwrapListStructField::new("poses")
             .then(MapList::new(StructToFixedList::new(["x", "y"])))
-            .then(MapList::new(MapFixedSizeList::new(
-                ReplaceNull::<arrow::datatypes::Float64Type>::new(1337.0),
-            )));
+            .then(MapList::new(MapFixedSizeList::new(ReplaceNull::<
+                arrow::datatypes::Float64Type,
+            >::new(
+                1337.0
+            ))));
 
         let result = pipeline.transform(&array).unwrap();
 
