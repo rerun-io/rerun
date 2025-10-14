@@ -190,6 +190,14 @@ impl ApiError {
             source: Some(Box::new(err)),
         }
     }
+
+    /// Helper method to downcast the source error to a `ClientConnectionError` if possible.
+    #[inline]
+    pub fn as_client_connection_error(&self) -> Option<&ClientConnectionError> {
+        self.source
+            .as_deref()?
+            .downcast_ref::<ClientConnectionError>()
+    }
 }
 
 impl std::fmt::Display for ApiError {

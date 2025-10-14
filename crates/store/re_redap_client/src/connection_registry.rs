@@ -86,11 +86,22 @@ impl From<ConnectionError> for ClientConnectionError {
 }
 
 impl ClientConnectionError {
+    #[inline]
     pub fn is_token_error(&self) -> bool {
         matches!(
             self,
             Self::UnauthenticatedMissingToken(_) | Self::UnauthenticatedBadToken(_)
         )
+    }
+
+    #[inline]
+    pub fn is_missing_token(&self) -> bool {
+        matches!(self, Self::UnauthenticatedMissingToken(_))
+    }
+
+    #[inline]
+    pub fn is_wrong_token(&self) -> bool {
+        matches!(self, Self::UnauthenticatedBadToken(_))
     }
 }
 

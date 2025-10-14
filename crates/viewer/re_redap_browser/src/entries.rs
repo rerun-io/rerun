@@ -16,40 +16,11 @@ use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableEntry};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, ext::DatasetEntry};
 use re_protos::external::prost;
 use re_protos::external::prost::Name as _;
-use re_redap_client::{
-    ApiError, ClientConnectionError, ConnectionClient, ConnectionRegistryHandle,
-};
+use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
 use re_ui::{Icon, icons};
 use re_viewer_context::AsyncRuntimeHandle;
 
 pub type EntryResult<T> = Result<T, ApiError>;
-
-pub trait AuthApiErrorExt {
-    fn client_connection_error(&self) -> Option<&ClientConnectionError>;
-    fn is_missing_token(&self) -> bool;
-    fn is_wrong_token(&self) -> bool;
-}
-
-impl AuthApiErrorExt for ApiError {
-    fn client_connection_error(&self) -> Option<&ClientConnectionError> {
-        use std::error::Error as _;
-        self.source()?.downcast_ref::<ClientConnectionError>()
-    }
-
-    fn is_missing_token(&self) -> bool {
-        matches!(
-            self.client_connection_error(),
-            Some(ClientConnectionError::UnauthenticatedMissingToken(_))
-        )
-    }
-
-    fn is_wrong_token(&self) -> bool {
-        matches!(
-            self.client_connection_error(),
-            Some(ClientConnectionError::UnauthenticatedBadToken(_))
-        )
-    }
-}
 
 pub struct Dataset {
     pub dataset_entry: DatasetEntry,
