@@ -82,10 +82,13 @@ struct Args {
     #[clap(long, default_value = "false")]
     profile: bool,
 
-    /// If true, connect to a running Rerun viewer
-    /// instead of writing to a memory buffer.
+    /// If true, connect to a running Rerun viewer instead of writing to a memory buffer.
     #[clap(long, default_value = "false")]
     connect: bool,
+
+    /// If true, perform an encode/decode roundtrip on the logged data.
+    #[clap(long, default_value = "false")]
+    check: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -98,6 +101,7 @@ fn main() -> anyhow::Result<()> {
         benchmark,
         profile,
         connect,
+        check,
     } = Args::parse();
 
     // Start profiler first thing:
@@ -130,7 +134,7 @@ fn main() -> anyhow::Result<()> {
 
     // Being able to log fast isn't particularly useful if the data happens to be corrupt at the
     // other end, so make sure we can encode/decode everything that was logged.
-    if let Some(storage) = storage {
+    if check && let Some(storage) = storage {
         use rerun::external::re_log_encoding;
 
         let msgs: anyhow::Result<Vec<_>> = storage
