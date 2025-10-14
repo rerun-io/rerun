@@ -16,7 +16,7 @@ use re_protos::{
     headers::RerunHeadersInjectorExt as _,
 };
 
-use crate::tests::common::register_with_dataset;
+use crate::tests::common::register_with_dataset_id;
 use crate::{RecordBatchExt as _, create_simple_recording};
 
 pub async fn register_and_scan_simple_dataset(fe: impl RerunCloudService) {
@@ -60,7 +60,7 @@ pub async fn register_and_scan_simple_dataset(fe: impl RerunCloudService) {
             .unwrap()
     };
 
-    register_with_dataset(
+    register_with_dataset_id(
         &fe,
         dataset_id,
         vec![

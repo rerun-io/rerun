@@ -790,6 +790,22 @@ impl RerunCloudService for RerunCloudHandler {
 
         let chunk_stores = self.get_chunk_stores(entry_id, &partition_ids).await?;
 
+        if chunk_stores.is_empty() {
+            let stream = futures::stream::iter([{
+                let batch = QueryDatasetResponse::create_empty_dataframe();
+                let data =
+                    Some(batch.encode().map_err(|err| {
+                        tonic::Status::internal(format!("encoding failed: {err:#}"))
+                    })?);
+
+                Ok(QueryDatasetResponse { data })
+            }]);
+
+            return Ok(tonic::Response::new(
+                Box::pin(stream) as Self::QueryDatasetStream
+            ));
+        }
+
         let stream = futures::stream::iter(chunk_stores.into_iter().map(
             move |(partition_id, layer_name, store_handle)| {
                 let num_chunks = store_handle.read().num_chunks();

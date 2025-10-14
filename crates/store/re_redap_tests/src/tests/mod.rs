@@ -1,6 +1,7 @@
 mod common;
 mod dataset_schema;
 mod entries_table;
+mod query_dataset;
 mod register_partition;
 
 macro_rules! define_redap_tests {
@@ -45,6 +46,8 @@ define_redap_tests! {
     dataset_schema::empty_dataset_schema,
     dataset_schema::simple_dataset_schema,
     entries_table::list_entries_table,
+    query_dataset::query_empty_dataset,
+    query_dataset::query_simple_dataset,
     register_partition::register_and_scan_empty_dataset,
     register_partition::register_and_scan_simple_dataset,
 }

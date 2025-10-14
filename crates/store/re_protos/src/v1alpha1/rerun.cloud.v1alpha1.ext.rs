@@ -82,6 +82,42 @@ pub struct QueryDatasetRequest {
     pub query: Option<Query>,
 }
 
+impl Default for QueryDatasetRequest {
+    fn default() -> Self {
+        Self {
+            partition_ids: vec![],
+            chunk_ids: vec![],
+            entity_paths: vec![],
+            select_all_entity_paths: true,
+            fuzzy_descriptors: vec![],
+            exclude_static_data: false,
+            exclude_temporal_data: false,
+            scan_parameters: None,
+            query: None,
+        }
+    }
+}
+
+impl From<QueryDatasetRequest> for crate::cloud::v1alpha1::QueryDatasetRequest {
+    fn from(value: QueryDatasetRequest) -> Self {
+        Self {
+            partition_ids: value.partition_ids.into_iter().map(Into::into).collect(),
+            chunk_ids: value
+                .chunk_ids
+                .into_iter()
+                .map(|chunk_id| chunk_id.as_tuid().into())
+                .collect(),
+            entity_paths: value.entity_paths.into_iter().map(Into::into).collect(),
+            select_all_entity_paths: value.select_all_entity_paths,
+            fuzzy_descriptors: value.fuzzy_descriptors,
+            exclude_static_data: value.exclude_static_data,
+            exclude_temporal_data: value.exclude_temporal_data,
+            scan_parameters: value.scan_parameters.map(Into::into),
+            query: value.query.map(Into::into),
+        }
+    }
+}
+
 impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetRequest {
     type Error = tonic::Status;
 
@@ -171,6 +207,11 @@ impl QueryDatasetResponse {
 
     pub fn schema() -> arrow::datatypes::Schema {
         Schema::new(Self::fields())
+    }
+
+    pub fn create_empty_dataframe() -> RecordBatch {
+        let schema = Arc::new(Self::schema());
+        RecordBatch::new_empty(schema)
     }
 
     pub fn create_dataframe(

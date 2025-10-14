@@ -278,6 +278,7 @@ impl RecordBatchExt for arrow::array::RecordBatch {
         }
     }
 
+    /// Remove the named columns.
     fn unfiltered_columns(&self, columns: &[&str]) -> Self {
         let schema = self.schema();
         let columns = schema
@@ -291,6 +292,7 @@ impl RecordBatchExt for arrow::array::RecordBatch {
         self.filtered_columns(&columns)
     }
 
+    /// Only keep the named columns.
     fn filtered_columns(&self, columns: &[&str]) -> Self {
         let mut fields = Vec::new();
         let mut arrays = Vec::new();

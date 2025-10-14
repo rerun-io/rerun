@@ -1,0 +1,9 @@
+---
+source: crates/store/re_redap_tests/src/tests/query_dataset.rs
+expression: merged_chunk_info.format_schema_snapshot()
+---
+chunk_id: FixedSizeBinary[16]
+chunk_is_static: bool
+chunk_key: Binary
+chunk_partition_id: Utf8
+rerun_partition_layer: Utf8
