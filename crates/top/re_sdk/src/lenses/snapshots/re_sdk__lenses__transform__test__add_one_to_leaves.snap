@@ -1,5 +1,5 @@
 ---
-source: crates/top/re_sdk/src/lenses/optics.rs
+source: crates/top/re_sdk/src/lenses/transform.rs
 expression: "format!(\"{}\", DisplayRB::from(result))"
 ---
 ┌──────────────────────────────────────────────────────────────┐
