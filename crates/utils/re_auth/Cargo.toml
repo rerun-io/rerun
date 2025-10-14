@@ -28,7 +28,6 @@ cli = [
 
 oauth = [
   "dep:base64",
-  "dep:const_format",
   "dep:directories",
   "dep:ehttp",
   "dep:serde",
@@ -49,7 +48,6 @@ tower.workspace = true
 
 ## Optional dependencies
 base64 = { workspace = true, optional = true }
-const_format = { workspace = true, optional = true }
 indicatif = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
