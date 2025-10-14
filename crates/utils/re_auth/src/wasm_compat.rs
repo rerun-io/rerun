@@ -11,14 +11,15 @@
 pub(crate) struct ForceSendFuture<F>(F);
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-#[allow(unsafe_code)] // Only used on `wasm32-unknown-unknown`, which implies single-threaded.
+#[expect(unsafe_code)]
+/// SAFETY: Only used on `wasm32-unknown-unknown`, which implies single-threaded.
 unsafe impl<F> Send for ForceSendFuture<F> {}
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 impl<F: Future> Future for ForceSendFuture<F> {
     type Output = F::Output;
 
-    #[allow(unsafe_code)] // Needed to project the pin onto `self.0`
+    #[expect(unsafe_code)] // Needed to project the pin onto `self.0`
     fn poll(
         self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,

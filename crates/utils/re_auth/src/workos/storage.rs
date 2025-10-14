@@ -65,10 +65,11 @@ mod file {
 
 #[cfg(target_arch = "wasm32")]
 mod web {
-    use super::*;
+    use super::{Credentials, LoadError, StoreError};
 
     // const STORAGE_KEY: &'static str = "rerun_auth";
 
+    #[expect(clippy::unnecessary_wraps)] // for compat with non-Wasm
     // TODO(jan): local storage
     pub fn load() -> Result<Option<Credentials>, LoadError> {
         Ok(None)
@@ -76,6 +77,8 @@ mod web {
 
     pub fn store(credentials: &Credentials) -> Result<(), StoreError> {
         let _ = credentials;
-        unimplemented!("storing credentials in localStorage is not yet supported")
+        // This shouldn't actually be called anywhere, because no tokens are stored
+        // in local storage, which means nothing to refresh yet, either.
+        unreachable!("storing credentials in localStorage is not yet supported")
     }
 }

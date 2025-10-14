@@ -91,5 +91,5 @@ pub(crate) async fn refresh(refresh_token: &RefreshToken) -> Result<Authenticati
 const JWKS_URL_BASE: &str = "https://api.workos.com/sso/jwks";
 
 pub async fn jwks(client_id: &str) -> Result<jsonwebtoken::jwk::JwkSet, Error> {
-    get(format_args!("{JWKS_URL_BASE}/{client_id}")).await
+    get(format!("{JWKS_URL_BASE}/{client_id}")).await
 }

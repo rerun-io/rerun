@@ -23,7 +23,8 @@
 // }
 
 use super::{AUTHORIZATION_KEY, TOKEN_PREFIX};
-use crate::credentials::CredentialsProvider;
+use crate::Jwt;
+use crate::credentials::{CredentialsProvider, StaticCredentialsProvider};
 use http::header::InvalidHeaderValue;
 use std::task::{Context, Poll};
 use std::{pin::Pin, sync::Arc};
@@ -39,7 +40,14 @@ impl AuthDecorator {
     pub fn new(provider: Arc<dyn CredentialsProvider + Send + Sync>) -> Self {
         Self { provider }
     }
+
+    pub fn from_token(token: Jwt) -> Self {
+        Self {
+            provider: Arc::new(StaticCredentialsProvider::new(token)),
+        }
+    }
 }
+
 impl<S> Layer<S> for AuthDecorator {
     type Service = AuthService<S>;
 
@@ -58,6 +66,7 @@ pub struct AuthService<S> {
 }
 
 type BoxFuture<'a, T> = Pin<Box<dyn std::future::Future<Output = T> + Send + 'a>>;
+
 impl<S, ReqBody, ResBody> Service<http::Request<ReqBody>> for AuthService<S>
 where
     S: Service<http::Request<ReqBody>, Response = http::Response<ResBody>> + Clone + Send + 'static,

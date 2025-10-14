@@ -233,7 +233,6 @@ impl InMemoryCredentials {
 }
 
 impl Credentials {
-    #[allow(dead_code)] // only used on CLI path, causes warnings downstream
     /// Deserializes credentials from an authentication response.
     ///
     /// Assumes the credentials are valid and not expired.
@@ -241,7 +240,7 @@ impl Credentials {
         res: api::AuthenticationResponse,
     ) -> Result<InMemoryCredentials, MalformedTokenError> {
         // SAFETY: The token comes from a trusted source, which is the authentication API.
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         let access_token = unsafe { AccessToken::unverified(Jwt(res.access_token))? };
         Ok(InMemoryCredentials(Self {
             user: res.user,
@@ -302,7 +301,7 @@ impl AccessToken {
     /// - The token should come from a trusted source, like the `WorkOS` API.
     // Note: Misusing this will not cause UB, but we're still marking it unsafe
     // to ensure it is not used lightly.
-    #[allow(unsafe_code)]
+    #[expect(unsafe_code)]
     pub(crate) unsafe fn unverified(jwt: Jwt) -> Result<Self, MalformedTokenError> {
         use base64::prelude::*;
 
@@ -329,7 +328,7 @@ impl AccessToken {
 impl std::fmt::Debug for AccessToken {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AccessToken")
-            .field("token", &"...")
+            .field("token", &"…")
             .field("expires_at", &self.expires_at)
             .finish()
     }
@@ -356,6 +355,6 @@ pub(crate) struct RefreshToken(String);
 
 impl std::fmt::Debug for RefreshToken {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("RefreshToken").field(&"...").finish()
+        f.debug_tuple("RefreshToken").field(&"…").finish()
     }
 }
