@@ -89,6 +89,8 @@ impl TimestampCell {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::cast_possible_wrap)] // ok in tests
+
     use re_log_types::TimeType;
 
     use super::*;

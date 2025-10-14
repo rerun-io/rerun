@@ -1,3 +1,5 @@
+#![expect(clippy::cast_possible_wrap)] // u64 -> i64 is fine
+
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
