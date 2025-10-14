@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayRef, BooleanBufferBuilder, FixedSizeListArray, Float32Array, Float64Array,
-    Float64Builder, ListArray, PrimitiveArray, StructArray, ArrowPrimitiveType,
+    Array, ArrayRef, FixedSizeListArray, Float32Array, Float64Array, ListArray, PrimitiveArray,
+    StructArray, ArrowPrimitiveType,
 };
 use arrow::compute::cast;
 use arrow::datatypes::{DataType, Field};
@@ -448,44 +448,48 @@ impl Transform for UnwrapListStructField {
     }
 }
 
-/// Maps a function over each element in a Float64Array.
+/// Maps a function over each element in a primitive array.
 ///
 /// Applies the given function to each non-null element, preserving null values.
+/// Works with any Arrow primitive type.
 #[derive(Clone)]
-pub struct MapFloat64<F>
+pub struct MapPrimitive<T, F>
 where
-    F: Fn(f64) -> f64,
+    T: ArrowPrimitiveType,
+    F: Fn(T::Native) -> T::Native,
 {
     f: F,
+    _phantom: std::marker::PhantomData<T>,
 }
 
-impl<F> MapFloat64<F>
+impl<T, F> MapPrimitive<T, F>
 where
-    F: Fn(f64) -> f64,
+    T: ArrowPrimitiveType,
+    F: Fn(T::Native) -> T::Native,
 {
-    /// Create a new mapper that applies the given function to each f64 element.
+    /// Create a new mapper that applies the given function to each element.
     pub fn new(f: F) -> Self {
-        Self { f }
+        Self {
+            f,
+            _phantom: std::marker::PhantomData,
+        }
     }
 }
 
-impl<F> Transform for MapFloat64<F>
+impl<T, F> Transform for MapPrimitive<T, F>
 where
-    F: Fn(f64) -> f64,
+    T: ArrowPrimitiveType,
+    F: Fn(T::Native) -> T::Native,
 {
-    type Source = Float64Array;
-    type Target = Float64Array;
+    type Source = PrimitiveArray<T>;
+    type Target = PrimitiveArray<T>;
 
-    fn transform(&self, source: &Float64Array) -> Result<Float64Array, Error> {
-        let mut builder = Float64Builder::with_capacity(source.len());
-        for i in 0..source.len() {
-            if source.is_null(i) {
-                builder.append_null();
-            } else {
-                builder.append_value((self.f)(source.value(i)));
-            }
-        }
-        Ok(builder.finish())
+    fn transform(&self, source: &PrimitiveArray<T>) -> Result<PrimitiveArray<T>, Error> {
+        let result: PrimitiveArray<T> = source
+            .iter()
+            .map(|opt| opt.map(|v| (self.f)(v)))
+            .collect();
+        Ok(result)
     }
 }
 
@@ -733,7 +737,9 @@ mod test {
 
         let pipeline = UnwrapListStructField::new("poses")
             .then(MapList::new(StructToFixedList::new(["x", "y"])))
-            .then(MapList::new(MapFixedSizeList::new(MapFloat64::new(|x| x + 1.0))));
+            .then(MapList::new(MapFixedSizeList::new(
+                MapPrimitive::<arrow::datatypes::Float64Type, _>::new(|x| x + 1.0),
+            )));
 
         let result = pipeline.transform(&array).unwrap();
 
