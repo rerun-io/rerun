@@ -12,16 +12,21 @@ use crate::{
     TransformResolutionCache, image_view_coordinates,
 };
 
-/// Transform from an entity towards a given root.
+/// Details on how to transform from a source to a target frame.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TransformInfo {
     /// Root this transform belongs to.
     ///
     /// ⚠️ This is the root of the tree this transform belongs to,
     /// not necessarily what the transform transforms into.
+    ///
+    /// Implementation note:
+    /// We could add target and maybe even source to this, but we want to keep this struct small'ish.
+    /// On that note, it may be good to split this in the future, as most of the time we're only interested in the
+    /// source->target affine transform.
     root: EntityPathHash,
 
-    /// The transform from the entity to the root's space.
+    /// The transform from the entity to the target's space.
     ///
     /// ⚠️ Does not include per instance poses! ⚠️
     /// Include 3D-from-2D / 2D-from-3D pinhole transform if present.
@@ -34,10 +39,12 @@ pub struct TransformInfo {
     /// If there are poses there may be more than one element.
     ///
     /// Does not take into account archetype specific transforms.
-    target_from_instances_overall: SmallVec1<[glam::Affine3A; 1]>,
+    target_from_instances: SmallVec1<[glam::Affine3A; 1]>,
 
-    /// Like [`Self::target_from_instances_overall`] but _on top_ also has archetype specific transforms applied
+    /// Like [`Self::target_from_instances`] but _on top_ also has archetype specific transforms applied
     /// if there are any present.
+    ///
+    /// For example, this may have different poses for spheres & boxes.
     target_from_archetype: IntMap<ArchetypeName, SmallVec1<[glam::Affine3A; 1]>>,
 }
 
@@ -46,7 +53,7 @@ impl TransformInfo {
         Self {
             root,
             target_from_entity: glam::Affine3A::IDENTITY,
-            target_from_instances_overall: SmallVec1::new(glam::Affine3A::IDENTITY),
+            target_from_instances: SmallVec1::new(glam::Affine3A::IDENTITY),
             target_from_archetype: Default::default(),
         }
     }
@@ -62,7 +69,7 @@ impl TransformInfo {
     /// Warns that multiple transforms within the entity are not supported.
     #[inline]
     fn warn_on_per_instance_transform(&self, entity_name: &EntityPath, archetype: ArchetypeName) {
-        if self.target_from_instances_overall.len() > 1 {
+        if self.target_from_instances.len() > 1 {
             re_log::warn_once!(
                 "There are multiple poses for entity {entity_name:?}. {archetype:?} supports only one transform per entity. Using the first one."
             );
@@ -81,7 +88,7 @@ impl TransformInfo {
         if let Some(transform) = self.target_from_archetype.get(&archetype) {
             *transform.first()
         } else {
-            *self.target_from_instances_overall.first()
+            *self.target_from_instances.first()
         }
     }
 
@@ -94,7 +101,7 @@ impl TransformInfo {
         if let Some(transform) = self.target_from_archetype.get(&archetype) {
             transform
         } else {
-            &self.target_from_instances_overall
+            &self.target_from_instances
         }
     }
 
@@ -107,7 +114,7 @@ impl TransformInfo {
         let Self {
             root,
             target_from_entity: reference_from_source,
-            target_from_instances_overall: reference_from_source_instances_overall,
+            target_from_instances: reference_from_source_instances_overall,
             target_from_archetype: reference_from_source_archetypes,
         } = self;
 
@@ -129,7 +136,7 @@ impl TransformInfo {
         Self {
             root: *root,
             target_from_entity: target_from_source,
-            target_from_instances_overall: target_from_source_instances_overall,
+            target_from_instances: target_from_source_instances_overall,
             target_from_archetype: target_from_source_archetypes,
         }
     }
@@ -314,7 +321,7 @@ impl TransformForest {
             let transform_root_from_child = TransformInfo {
                 root,
                 target_from_entity: root_from_entity,
-                target_from_instances_overall: root_from_instances_overall,
+                target_from_instances: root_from_instances_overall,
                 target_from_archetype: root_from_archetype,
             };
 
@@ -379,7 +386,7 @@ impl TransformForest {
                 root: target_root,
                 target_from_entity: root_from_entity,
                 // Don't care about instance transforms on the target frame, as they don't tree-propagate.
-                target_from_instances_overall: _,
+                target_from_instances: _,
                 // Don't care about archetype specific transforms on the target frame, as they don't tree-propagate.
                 target_from_archetype: _,
             } = &root_from_target;
