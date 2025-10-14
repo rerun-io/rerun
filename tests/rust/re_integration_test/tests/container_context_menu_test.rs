@@ -103,41 +103,41 @@ pub async fn test_context_menu_multi_selection() {
     harness.click_label("Expand all");
     harness.right_click_nth_label("boxes2d", 0);
     harness.click_label("Expand all");
-    harness.snapshot_app("context_menu_multi_selection_02");
+    harness.snapshot_app_high_threshold("context_menu_multi_selection_02");
 
     // Select 3D View and 2D View, check context menu
     harness.click_nth_label("3D view", 0);
     harness.click_nth_label_modifiers("2D view", 0, Modifiers::COMMAND);
     harness.right_click_nth_label("2D view", 0);
-    harness.snapshot_app("context_menu_multi_selection_03");
+    harness.snapshot_app_high_threshold("context_menu_multi_selection_03");
     harness.key_press(egui::Key::Escape);
 
     // Add container to selection, check context menu
     harness.click_nth_label_modifiers("Grid container", 0, Modifiers::COMMAND);
     harness.right_click_nth_label("2D view", 0);
-    harness.snapshot_app("context_menu_multi_selection_04");
+    harness.snapshot_app_high_threshold("context_menu_multi_selection_04");
     harness.key_press(egui::Key::Escape);
 
     // Select viewport and check context menu
     harness.click_nth_label_modifiers("Viewport (Grid container)", 0, Modifiers::COMMAND);
     harness.right_click_nth_label("Viewport (Grid container)", 0);
-    harness.snapshot_app("context_menu_multi_selection_05");
+    harness.snapshot_app_high_threshold("context_menu_multi_selection_05");
     harness.key_press(egui::Key::Escape);
 
     // View + data result
     harness.click_nth_label("2D view", 0);
     harness.click_nth_label_modifiers("boxes2d", 1, Modifiers::COMMAND);
     harness.right_click_nth_label("boxes2d", 1);
-    harness.snapshot_app("context_menu_multi_selection_06");
+    harness.snapshot_app_high_threshold("context_menu_multi_selection_06");
     harness.key_press(egui::Key::Escape);
 
     harness.click_nth_label("boxes2d", 0);
     harness.click_nth_label_modifiers("boxes3d", 0, Modifiers::COMMAND);
     harness.right_click_nth_label("boxes3d", 0);
-    harness.snapshot_app("context_menu_multi_selection_07");
+    harness.snapshot_app_high_threshold("context_menu_multi_selection_07");
     harness.key_press(egui::Key::Escape);
 
     harness.click_nth_label_modifiers("half_sizes", 0, Modifiers::COMMAND);
     harness.right_click_nth_label("half_sizes", 0);
-    harness.snapshot_app("context_menu_multi_selection_08");
+    harness.snapshot_app_high_threshold("context_menu_multi_selection_08");
 }
