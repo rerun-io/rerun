@@ -1312,6 +1312,12 @@ class Entry:
 
         """
 
+class EntryNotFoundError(Exception):
+    """Raised when a requested entry is not found in the catalog."""
+
+class EntryExistsError(Exception):
+    """Raised when trying to create an entry that already exists in the catalog."""
+
 class DatasetEntry(Entry):
     @property
     def manifest_url(self) -> str:
