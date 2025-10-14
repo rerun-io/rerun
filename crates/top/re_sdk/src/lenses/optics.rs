@@ -68,22 +68,6 @@ pub enum Error {
     /// Custom user-defined error for transformations implemented outside this module.
     ///
     /// This allows users to implement their own transformations with custom error messages.
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// impl Transform for MyCustomTransform {
-    ///     type Source = MyArray;
-    ///     type Target = MyOtherArray;
-    ///
-    ///     fn transform(&self, source: &MyArray) -> Result<MyOtherArray, Error> {
-    ///         if !self.validate(source) {
-    ///             return Err(Error::custom("Invalid data: values must be positive"));
-    ///         }
-    ///         // ... transformation logic
-    ///     }
-    /// }
-    /// ```
     #[error("{0}")]
     Custom(String),
 }
@@ -102,13 +86,6 @@ impl Error {
 ///
 /// Transformations are read-only operations that may fail (e.g., missing field, type mismatch).
 /// They can be composed using the `then` method to create complex transformation pipelines.
-///
-/// # Examples
-///
-/// ```ignore
-/// let transform = GetField::new("x").then(ToFloat32::new());
-/// let result = transform.transform(&my_array)?;
-/// ```
 pub trait Transform {
     type Source: Array;
     type Target: Array;
@@ -144,13 +121,6 @@ where
 /// Extension trait for composing transformations.
 pub trait TransformExt: Transform {
     /// Chain this transformation with another transformation.
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// let pipeline = GetField::new("data")
-    ///     .then(MapList::new(ToFloat32::new()));
-    /// ```
     fn then<T2>(self, next: T2) -> Compose<Self, T2>
     where
         Self: Sized,
@@ -168,13 +138,6 @@ impl<T: Transform> TransformExt for T {}
 /// Extracts a field from a struct array.
 ///
 /// Returns the field's array if it exists, otherwise returns an error.
-///
-/// # Examples
-///
-/// ```ignore
-/// let get_x = GetField::new("x");
-/// let x_values = get_x.transform(&struct_array)?;
-/// ```
 #[derive(Clone)]
 pub struct GetField {
     field_name: String,
@@ -215,14 +178,6 @@ impl Transform for GetField {
 ///
 /// Applies the inner transformation to the flattened values array while preserving
 /// the list structure (offsets and null bitmap).
-///
-/// # Examples
-///
-/// ```ignore
-/// // Convert all floats in a list to f32
-/// let transform = MapList::new(ToFloat32::new());
-/// let result = transform.transform(&list_of_f64)?;
-/// ```
 #[derive(Clone)]
 pub struct MapList<T> {
     transform: T,
@@ -270,14 +225,6 @@ where
 ///
 /// Applies the inner transformation to the flattened values array while preserving
 /// the fixed-size list structure (element count and null bitmap).
-///
-/// # Examples
-///
-/// ```ignore
-/// // Add 1.0 to each element in fixed-size lists
-/// let transform = MapFixedSizeList::new(MapFloat64::new(|x| x + 1.0));
-/// let result = transform.transform(&fixed_list_array)?;
-/// ```
 #[derive(Clone)]
 pub struct MapFixedSizeList<T> {
     transform: T,
@@ -327,14 +274,6 @@ where
 /// This transformation extracts the x and y fields from each struct and packs them
 /// into a fixed-size list of 2 elements. Null handling: if either x or y is null,
 /// the entire list entry is marked as null.
-///
-/// # Examples
-///
-/// ```ignore
-/// // Transform struct{x: f64, y: f64} to FixedSizeList[2] of f64
-/// let transform = StructToPoint2D::new();
-/// let points = transform.transform(&struct_array)?;
-/// ```
 #[derive(Clone)]
 pub struct StructToPoint2D;
 
@@ -429,14 +368,6 @@ impl Transform for StructToPoint2D {
 ///
 /// This is useful for nested structures like `List<Struct<field: List<T>>>`,
 /// where you want to extract the inner field directly.
-///
-/// # Examples
-///
-/// ```ignore
-/// // Transform List<Struct<poses: List<Point>>> to List<Point>
-/// let transform = UnwrapListStructField::new("poses");
-/// let poses = transform.transform(&nested_list)?;
-/// ```
 #[derive(Clone)]
 pub struct UnwrapListStructField {
     field_name: String,
@@ -494,14 +425,6 @@ impl Transform for UnwrapListStructField {
 /// Maps a function over each element in a Float64Array.
 ///
 /// Applies the given function to each non-null element, preserving null values.
-///
-/// # Examples
-///
-/// ```ignore
-/// // Add 1.0 to each element
-/// let transform = MapFloat64::new(|x| x + 1.0);
-/// let result = transform.transform(&float_array)?;
-/// ```
 #[derive(Clone)]
 pub struct MapFloat64<F>
 where
@@ -544,13 +467,6 @@ where
 ///
 /// This is a lossy conversion that reduces precision from 64-bit to 32-bit floats.
 /// Null values are preserved.
-///
-/// # Examples
-///
-/// ```ignore
-/// let transform = ToFloat32::new();
-/// let f32_array = transform.transform(&f64_array)?;
-/// ```
 #[derive(Clone)]
 pub struct ToFloat32;
 
