@@ -1,6 +1,6 @@
 //! Decide whether or not to enable the `hot_reload_design_tokens` feature.
 
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 fn main() {
     use re_build_tools::Environment;

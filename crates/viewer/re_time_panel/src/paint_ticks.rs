@@ -98,7 +98,7 @@ fn paint_time_range_ticks(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn paint_ticks(
     egui_ctx: &egui::Context,
     dark_mode: bool,

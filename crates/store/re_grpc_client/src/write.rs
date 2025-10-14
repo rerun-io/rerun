@@ -12,7 +12,7 @@ use tonic::transport::Endpoint;
 use web_time::Instant;
 
 use re_chunk::external::crossbeam::atomic::AtomicCell;
-use re_log_encoding::Compression;
+use re_log_encoding::codec::Compression;
 use re_log_types::LogMsg;
 use re_protos::sdk_comms::v1alpha1::{
     WriteMessagesRequest, message_proxy_service_client::MessageProxyServiceClient,

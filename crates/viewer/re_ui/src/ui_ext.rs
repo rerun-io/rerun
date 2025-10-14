@@ -1,7 +1,7 @@
 use std::hash::Hash;
 
 use egui::{
-    CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Widget as _, WidgetText,
+    CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Widget as _, WidgetInfo, WidgetText,
     emath::{GuiRounding as _, Rot2},
     pos2,
 };
@@ -140,16 +140,20 @@ pub trait UiExt {
         } else {
             self.ui().visuals().widgets.noninteractive.fg_stroke.color
         };
+        let alt_text = alt_text.into();
         let mut response = self.ui_mut().add(egui::Button::new(
             icon.as_image()
                 .fit_to_exact_size(size_points)
-                .alt_text(alt_text.into())
+                .alt_text(alt_text.clone())
                 .tint(tint),
         ));
         if response.clicked() {
             *selected = !*selected;
             response.mark_changed();
         }
+        response.widget_info(|| {
+            WidgetInfo::selected(egui::WidgetType::Button, true, *selected, alt_text.clone())
+        });
         response
     }
 
@@ -208,7 +212,7 @@ pub trait UiExt {
         self.checkbox_indeterminate(checked, text, false)
     }
 
-    #[allow(clippy::disallowed_types)]
+    #[expect(clippy::disallowed_types)]
     fn checkbox_indeterminate(
         &mut self,
         checked: &mut bool,
@@ -566,7 +570,6 @@ pub trait UiExt {
     /// Two-column grid to be used in selection view.
     ///
     /// Use this when you expect the right column to have multi-line entries.
-    #[allow(clippy::unused_self)]
     fn selection_grid(&self, id: &str) -> egui::Grid {
         // Spread rows a bit to make it easier to see the groupings
         let spacing = egui::vec2(8.0, 16.0);
@@ -626,7 +629,6 @@ pub trait UiExt {
     }
 
     /// Convenience function to create a [`list_item::ListItem`].
-    #[allow(clippy::unused_self)]
     fn list_item(&self) -> list_item::ListItem {
         list_item::ListItem::new()
     }
@@ -671,7 +673,6 @@ pub trait UiExt {
     }
 
     /// Convenience function to create a [`crate::SectionCollapsingHeader`].
-    #[allow(clippy::unused_self)]
     fn section_collapsing_header<'a>(
         &self,
         label: impl Into<egui::WidgetText>,

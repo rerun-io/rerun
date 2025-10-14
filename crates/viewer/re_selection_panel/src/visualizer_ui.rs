@@ -12,8 +12,8 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    DataResult, QueryContext, UiLayout, ViewContext, ViewSystemIdentifier, VisualizerCollection,
-    VisualizerSystem,
+    BlueprintContext as _, DataResult, QueryContext, UiLayout, ViewContext, ViewSystemIdentifier,
+    VisualizerCollection, VisualizerSystem,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -474,7 +474,7 @@ fn editable_blueprint_component_list_item(
 }
 
 /// "More" menu for a component line in the visualizer ui.
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn menu_more(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,

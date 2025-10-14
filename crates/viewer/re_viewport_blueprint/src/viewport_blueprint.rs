@@ -24,7 +24,8 @@ use re_types::{
     Archetype as _, ViewClassIdentifier, blueprint::components::ViewerRecommendationHash,
 };
 use re_viewer_context::{
-    ContainerId, Contents, Item, ViewId, ViewerContext, VisitorControlFlow, blueprint_id_to_tile_id,
+    BlueprintContext as _, ContainerId, Contents, Item, ViewId, ViewerContext, VisitorControlFlow,
+    blueprint_id_to_tile_id,
 };
 
 use crate::{VIEWPORT_PATH, ViewBlueprint, ViewportCommand, container::ContainerBlueprint};
@@ -742,7 +743,6 @@ impl ViewportBlueprint {
         }
     }
 
-    #[allow(clippy::unused_self)]
     pub fn views_containing_entity_path(
         &self,
         ctx: &ViewerContext<'_>,

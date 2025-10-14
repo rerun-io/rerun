@@ -11,15 +11,16 @@ use re_protos::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind, FetchChunksRequest,
         FindEntriesRequest, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
         GetPartitionTableSchemaRequest, GetPartitionTableSchemaResponse, QueryDatasetRequest,
-        QueryDatasetResponse, ReadDatasetEntryRequest, ReadTableEntryRequest,
-        RegisterWithDatasetResponse, ScanPartitionTableRequest, ScanPartitionTableResponse,
+        QueryDatasetResponse, QueryTasksOnCompletionResponse, QueryTasksResponse,
+        ReadDatasetEntryRequest, ReadTableEntryRequest, RegisterWithDatasetResponse,
+        ScanPartitionTableRequest, ScanPartitionTableResponse,
         ext::{
             CreateDatasetEntryResponse, DataSource, DataSourceKind, DatasetDetails, DatasetEntry,
             EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails as _,
-            ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse,
-            RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, TableEntry,
-            UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest,
-            UpdateEntryResponse,
+            QueryTasksOnCompletionRequest, QueryTasksRequest, ReadDatasetEntryResponse,
+            ReadTableEntryResponse, RegisterTableResponse, RegisterWithDatasetRequest,
+            RegisterWithDatasetTaskDescriptor, TableEntry, UpdateDatasetEntryRequest,
+            UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
         },
         rerun_cloud_service_client::RerunCloudServiceClient,
     },
@@ -32,7 +33,7 @@ use re_protos::{
     missing_field,
 };
 
-use crate::{StreamEntryError, StreamError};
+use crate::{StreamEntryError, StreamError, StreamTasksError};
 
 pub type FetchChunksResponseStream = std::pin::Pin<
     Box<
@@ -495,7 +496,7 @@ where
         Ok(response.table_entry)
     }
 
-    #[allow(clippy::fn_params_excessive_bools)]
+    #[expect(clippy::fn_params_excessive_bools)]
     pub async fn do_maintenance(
         &mut self,
         dataset_id: EntryId,
@@ -547,5 +548,35 @@ where
             .into_iter()
             .map(|entry| entry.name.clone())
             .collect())
+    }
+
+    // -- Tasks API --
+    pub async fn query_tasks_on_completion(
+        &mut self,
+        task_ids: Vec<TaskId>,
+        timeout: std::time::Duration,
+    ) -> Result<tonic::Streaming<QueryTasksOnCompletionResponse>, StreamError> {
+        let q = QueryTasksOnCompletionRequest { task_ids, timeout };
+        let response = self
+            .inner()
+            .query_tasks_on_completion(tonic::Request::new(q.try_into()?))
+            .await
+            .map_err(|err| StreamTasksError::StreamingTaskResults(err.into()))?
+            .into_inner();
+        Ok(response)
+    }
+
+    pub async fn query_tasks(
+        &mut self,
+        task_ids: Vec<TaskId>,
+    ) -> Result<QueryTasksResponse, StreamError> {
+        let q = QueryTasksRequest { task_ids };
+        let response = self
+            .inner()
+            .query_tasks(tonic::Request::new(q.try_into()?))
+            .await
+            .map_err(|err| StreamTasksError::StreamingTaskResults(err.into()))?
+            .into_inner();
+        Ok(response)
     }
 }

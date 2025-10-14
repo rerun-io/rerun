@@ -7,11 +7,10 @@ use re_chunk::{ChunkError, ChunkResult};
 use re_log_types::LogMsg;
 use re_protos::log_msg::v1alpha1::LogMsg as LogMsgProto;
 
-use crate::FileHeader;
-use crate::Serializer;
-use crate::codec;
-use crate::codec::file::{self, encoder};
-use crate::{Compression, EncodingOptions};
+use crate::codec::file::{FileHeader, MessageHeader, MessageKind};
+use crate::codec::{Compression, Serializer};
+
+pub use crate::codec::file::EncodingOptions; // for convenience
 
 // ----------------------------------------------------------------------------
 
@@ -31,7 +30,7 @@ pub enum EncodeError {
     Arrow(#[from] arrow::error::ArrowError),
 
     #[error("{0}")]
-    Codec(#[from] codec::CodecError),
+    Codec(#[from] crate::codec::CodecError),
 
     #[error("Chunk error: {0}")]
     Chunk(Box<ChunkError>),
@@ -140,7 +139,7 @@ impl<W: std::io::Write> Encoder<W> {
         self.scratch.clear();
         match self.serializer {
             Serializer::Protobuf => {
-                encoder::encode(&mut self.scratch, message, self.compression)?;
+                crate::codec::file::encoder::encode(&mut self.scratch, message, self.compression)?;
 
                 w.write_all(&self.scratch)
                     .map(|_| self.scratch.len() as _)
@@ -164,7 +163,7 @@ impl<W: std::io::Write> Encoder<W> {
         self.scratch.clear();
         match self.serializer {
             Serializer::Protobuf => {
-                encoder::encode_proto(&mut self.scratch, message)?;
+                crate::codec::file::encoder::encode_proto(&mut self.scratch, message)?;
 
                 w.write_all(&self.scratch)
                     .map(|_| self.scratch.len() as _)
@@ -192,8 +191,8 @@ impl<W: std::io::Write> Encoder<W> {
 
         match self.serializer {
             Serializer::Protobuf => {
-                file::MessageHeader {
-                    kind: file::MessageKind::End,
+                MessageHeader {
+                    kind: MessageKind::End,
                     len: 0,
                 }
                 .encode(w)?;

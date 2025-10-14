@@ -1,5 +1,5 @@
 // Allow unwrap() in benchmarks
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 #[cfg(not(all(feature = "decoder", feature = "encoder")))]
 compile_error!("msg_encode_benchmark requires 'decoder' and 'encoder' features.");
@@ -50,8 +50,7 @@ fn encode_log_msgs(
 }
 
 fn decode_log_msgs(mut bytes: &[u8]) -> Vec<LogMsg> {
-    let messages = re_log_encoding::decoder::Decoder::new(&mut bytes)
-        .unwrap()
+    let messages = re_log_encoding::DecoderApp::decode_lazy(&mut bytes)
         .collect::<Result<Vec<LogMsg>, _>>()
         .unwrap();
     assert!(bytes.is_empty());

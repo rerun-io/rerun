@@ -44,7 +44,7 @@ impl ChunkStore {
                 let num_rows = chunk.num_rows();
 
                 // Get the sorted times:
-                #[allow(clippy::unwrap_used)] // We already know the chunk has the timeline
+                #[expect(clippy::unwrap_used)] // We already know the chunk has the timeline
                 let time_column = chunk.timelines().get(timeline).unwrap();
                 let times = time_column.times_raw();
 
@@ -105,7 +105,7 @@ impl ChunkStore {
         }
         for mut chunk in new_chunks {
             chunk.sort_if_unsorted();
-            #[allow(clippy::unwrap_used)] // The chunk came from the store, so it should be fine
+            #[expect(clippy::unwrap_used)] // The chunk came from the store, so it should be fine
             events.append(&mut self.insert_chunk(&chunk.into()).unwrap());
         }
 

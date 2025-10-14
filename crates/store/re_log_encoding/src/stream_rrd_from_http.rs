@@ -71,7 +71,7 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
     ehttp::streaming::fetch(ehttp::Request::get(&url), {
-        let decoder = RefCell::new(StreamDecoder::new());
+        let decoder = RefCell::new(crate::Decoder::new());
         move |part| match part {
             Ok(part) => match part {
                 ehttp::streaming::Part::Response(ehttp::PartialResponse {
@@ -130,7 +130,7 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
 
 #[cfg(target_arch = "wasm32")]
 // TODO(#6330): remove unwrap()
-#[allow(clippy::unwrap_used)]
+#[expect(clippy::unwrap_used)]
 mod web_event_listener {
     use super::HttpMessageCallback;
     use js_sys::Uint8Array;
@@ -171,7 +171,7 @@ pub use web_event_listener::stream_rrd_from_event_listener;
 
 #[cfg(target_arch = "wasm32")]
 // TODO(#6330): remove unwrap()
-#[allow(clippy::unwrap_used)]
+#[expect(clippy::unwrap_used)]
 pub mod web_decode {
     use super::{HttpMessage, HttpMessageCallback};
     use std::sync::Arc;
@@ -186,7 +186,7 @@ pub mod web_decode {
     async fn decode_rrd_async(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
         let mut last_yield = web_time::Instant::now();
 
-        match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
+        match crate::Decoder::decode_eager(rrd_bytes.as_slice()) {
             Ok(decoder) => {
                 for msg in decoder {
                     match msg {
@@ -241,5 +241,3 @@ pub mod web_decode {
 
 #[cfg(target_arch = "wasm32")]
 use web_decode::decode_rrd;
-
-use crate::decoder::stream::StreamDecoder;

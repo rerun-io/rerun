@@ -87,7 +87,7 @@ impl CompareCommand {
                 chunks2.clone().into_iter().map(Some).collect_vec();
             'outer: for chunk1 in &chunks1 {
                 for chunk2 in chunks2_opt.iter_mut().filter(|c| c.is_some()) {
-                    #[allow(clippy::unwrap_used)]
+                    #[expect(clippy::unwrap_used)]
                     if re_chunk::Chunk::ensure_similar(chunk1, chunk2.as_ref().unwrap()).is_ok() {
                         *chunk2 = None;
                         continue 'outer;
@@ -158,7 +158,7 @@ fn load_chunks(
     // in `Decoder` requires `SetStoreInfo` to arrive before the corresponding `ArrowMsg`. Ideally
     // this tool would cache orphan `ArrowMsg` until a matching `SetStoreInfo` arrives.
     let mut stores: std::collections::HashMap<StoreId, EntityDb> = Default::default();
-    let decoder = re_log_encoding::decoder::Decoder::new(rrd_file)?;
+    let decoder = re_log_encoding::DecoderApp::decode_lazy(rrd_file);
     for msg in decoder {
         let msg = msg.context("decode rrd message")?;
         stores
@@ -186,7 +186,7 @@ fn load_chunks(
         "more than one data recording found in rrd file"
     );
 
-    #[allow(clippy::unwrap_used)] // safe, ensured above
+    #[expect(clippy::unwrap_used)] // safe, ensured above
     let store = stores.pop().unwrap();
     let engine = store.storage_engine();
 

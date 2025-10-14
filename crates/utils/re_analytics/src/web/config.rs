@@ -1,4 +1,4 @@
-#![allow(clippy::todo, clippy::unused_self)]
+#![expect(clippy::unused_self)]
 
 use std::collections::HashMap;
 
@@ -47,12 +47,12 @@ fn get_local_storage() -> Result<Storage, ConfigError> {
 impl Config {
     const STORAGE_KEY: &'static str = "rerun_config";
 
-    #[allow(clippy::unnecessary_wraps)]
+    #[expect(clippy::unnecessary_wraps)]
     pub fn new() -> Result<Self, ConfigError> {
         Ok(Self::default())
     }
 
-    #[allow(clippy::map_err_ignore)]
+    #[expect(clippy::map_err_ignore)]
     pub fn load() -> Result<Option<Self>, ConfigError> {
         let storage = get_local_storage()?;
         let value = storage
@@ -71,7 +71,7 @@ impl Config {
         }
     }
 
-    #[allow(clippy::map_err_ignore)]
+    #[expect(clippy::map_err_ignore)]
     pub fn save(&self) -> Result<(), ConfigError> {
         let storage = get_local_storage()?;
         let string = serde_json::to_string(self)?;

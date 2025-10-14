@@ -136,14 +136,14 @@ pub fn test_transform_clamping() {
 
     let view_ids = setup_blueprint(&mut test_context);
     run_view_ui_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         view_ids,
         "transform_clamping",
         egui::vec2(300.0, 300.0),
     );
 }
 
-#[allow(clippy::unwrap_used)]
+#[expect(clippy::unwrap_used)]
 fn setup_blueprint(test_context: &mut TestContext) -> (ViewId, ViewId) {
     test_context.setup_viewport_blueprint(|_ctx, blueprint| {
         let view_blueprint_boxes = ViewBlueprint::new(
@@ -176,7 +176,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> (ViewId, ViewId) {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
+    test_context: &TestContext,
     (view_id_boxes, view_id_spheres): (ViewId, ViewId),
     name: &str,
     size: egui::Vec2,

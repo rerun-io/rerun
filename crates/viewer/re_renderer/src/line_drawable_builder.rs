@@ -282,7 +282,7 @@ impl<'ctx> LineBatchBuilder<'_, 'ctx> {
         &mut self,
         segments: impl ExactSizeIterator<Item = (glam::Vec3, glam::Vec3)>,
     ) -> LineStripBuilder<'_, 'ctx> {
-        #![allow(clippy::tuple_array_conversions)] // false positive
+        #![expect(clippy::tuple_array_conversions)] // false positive
 
         let old_strip_count = self.0.strips_buffer.len();
         let mut strip_index = old_strip_count as u32;

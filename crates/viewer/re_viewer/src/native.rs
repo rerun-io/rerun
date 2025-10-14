@@ -58,7 +58,6 @@ pub fn eframe_options(force_wgpu_backend: Option<&str>) -> eframe::NativeOptions
     }
 }
 
-#[allow(clippy::unnecessary_wraps)]
 fn icon_data() -> egui::IconData {
     re_tracing::profile_function!();
 

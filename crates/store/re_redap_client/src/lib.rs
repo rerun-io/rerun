@@ -125,6 +125,12 @@ pub enum StreamPartitionError {
 }
 
 #[derive(thiserror::Error, Debug)]
+pub enum StreamTasksError {
+    #[error("Failed receiving tasks completions stream\nDetails:{0}")]
+    StreamingTaskResults(TonicStatusError),
+}
+
+#[derive(thiserror::Error, Debug)]
 pub enum StreamError {
     #[error(transparent)]
     ClientConnectionError(#[from] ClientConnectionError),
@@ -136,6 +142,9 @@ pub enum StreamError {
     PartitionError(#[from] StreamPartitionError),
 
     #[error(transparent)]
+    TasksError(#[from] StreamTasksError),
+
+    #[error(transparent)]
     Tokio(#[from] tokio::task::JoinError),
 
     #[error(transparent)]
@@ -145,7 +154,7 @@ pub enum StreamError {
     ChunkError(#[from] re_chunk::ChunkError),
 
     #[error(transparent)]
-    DecodeError(#[from] re_log_encoding::decoder::DecodeError),
+    DecodeError(#[from] re_log_encoding::DecodeError),
 
     #[error(transparent)]
     TypeConversionError(#[from] re_protos::TypeConversionError),

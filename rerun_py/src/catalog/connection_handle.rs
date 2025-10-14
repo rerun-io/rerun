@@ -297,7 +297,7 @@ impl ConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    #[allow(clippy::fn_params_excessive_bools, clippy::too_many_arguments)]
+    #[expect(clippy::fn_params_excessive_bools, clippy::too_many_arguments)]
     pub fn do_maintenance(
         &self,
         py: Python<'_>,
@@ -343,24 +343,17 @@ impl ConnectionHandle {
         )
     }
 
-    // TODO(ab): migrate this to the `ConnectionClient` API.
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn query_tasks(&self, py: Python<'_>, task_ids: &[TaskId]) -> PyResult<RecordBatch> {
+    pub fn query_tasks(&self, py: Python<'_>, task_ids: Vec<TaskId>) -> PyResult<RecordBatch> {
         wait_for_future(
             py,
             async {
-                let request = re_protos::cloud::v1alpha1::QueryTasksRequest {
-                    ids: task_ids.to_vec(),
-                };
-
                 let status_table = self
                     .client()
                     .await?
-                    .inner()
-                    .query_tasks(request)
+                    .query_tasks(task_ids)
                     .await
                     .map_err(to_py_err)?
-                    .into_inner()
                     .dataframe_part()
                     .map_err(to_py_err)?
                     .decode()
@@ -373,7 +366,6 @@ impl ConnectionHandle {
     }
 
     /// Wait for the provided tasks to finish.
-    // TODO(ab): migrate this to the `ConnectionClient` API.
     #[tracing::instrument(level = "info", skip_all)]
     pub fn wait_for_tasks(
         &self,
@@ -386,23 +378,12 @@ impl ConnectionHandle {
         wait_for_future(
             py,
             async {
-                let timeout: prost_types::Duration = timeout.try_into().map_err(|err| {
-                    PyValueError::new_err(format!(
-                        "failed to convert timeout to serialized duration: {err}"
-                    ))
-                })?;
-                let request = re_protos::cloud::v1alpha1::QueryTasksOnCompletionRequest {
-                    ids: task_ids,
-                    timeout: Some(timeout),
-                };
                 let mut response_stream = self
                     .client()
                     .await?
-                    .inner()
-                    .query_tasks_on_completion(request)
+                    .query_tasks_on_completion(task_ids, timeout)
                     .await
-                    .map_err(to_py_err)?
-                    .into_inner();
+                    .map_err(to_py_err)?;
 
                 let mut errors: Vec<String> = Vec::new();
 
@@ -427,9 +408,9 @@ impl ConnectionHandle {
                     }
 
                     let col_indices = [
-                        QueryTasksResponse::TASK_ID,
-                        QueryTasksResponse::EXEC_STATUS,
-                        QueryTasksResponse::MSGS,
+                        QueryTasksResponse::FIELD_TASK_ID,
+                        QueryTasksResponse::FIELD_EXEC_STATUS,
+                        QueryTasksResponse::FIELD_MSGS,
                     ]
                     .iter()
                     .map(|name| schema.index_of(name))

@@ -187,7 +187,7 @@ fn collect_docstrings(root: &Item) -> Docstrings {
     }
 }
 
-#[allow(dead_code)] // unused fields exist only to make deserialization work
+#[expect(dead_code)] // unused fields exist only to make deserialization work
 #[derive(Debug, Deserialize)]
 struct SphinxObjectInv {
     // load-bearing fields: do not remove!

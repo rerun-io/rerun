@@ -78,7 +78,6 @@ fn get_or_guess_version(batch: &RecordBatch) -> Result<semver::Version, Error> {
             // Rerun cloud schemas currently come without metadata,
             // so we need to run the full migration just in case.
             // TODO(rerun-io/dataplatform#1605): Always include version
-            re_log::debug!("No version found - assuming very old");
             Ok(semver::Version::new(0, 0, 1))
         }
     }

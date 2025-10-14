@@ -8,7 +8,7 @@ use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::{Archetype as _, archetypes::Points2D, datatypes::VisibleTimeRange};
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::{ViewClass as _, ViewId};
+use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 fn intra_timestamp_data(test_context: &mut TestContext) {
@@ -104,8 +104,10 @@ fn intra_timestamp_data(test_context: &mut TestContext) {
         )
     });
 
-    let mut time_ctrl = test_context.recording_config.time_ctrl.write();
-    time_ctrl.set_timeline(timeline);
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
+    );
 }
 
 #[test]
@@ -223,9 +225,13 @@ fn visible_timerange_data(test_context: &mut TestContext) {
         }
     }
 
-    let mut time_ctrl = test_context.recording_config.time_ctrl.write();
-    time_ctrl.set_timeline(timeline);
-    time_ctrl.set_time(TimeReal::from_secs(4.5));
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [
+            TimeControlCommand::SetActiveTimeline(*timeline.name()),
+            TimeControlCommand::SetTime(TimeReal::from_secs(4.5)),
+        ],
+    );
 }
 
 #[test]

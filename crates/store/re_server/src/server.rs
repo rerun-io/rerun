@@ -39,7 +39,7 @@ pub struct Server {
 /// `ServerHandle` is a tiny helper abstraction that enables us to
 /// deal with the gRPC server lifecycle more easily.
 pub struct ServerHandle {
-    shutdown: Sender<()>,
+    shutdown: Option<Sender<()>>,
     ready: mpsc::Receiver<SocketAddr>,
     failed: mpsc::Receiver<String>,
 }
@@ -73,9 +73,12 @@ impl ServerHandle {
         self.failed.recv().await;
     }
 
-    /// Signal to the gRPC server to shutdown.
-    pub async fn shutdown(self) {
-        let _ = self.shutdown.send(());
+    /// Signal to the gRPC server to shutdown, and then wait for it.
+    pub async fn shutdown_and_wait(mut self) {
+        if let Some(shutdown) = self.shutdown.take() {
+            shutdown.send(()).ok();
+            self.wait_for_shutdown().await;
+        }
     }
 }
 
@@ -151,7 +154,7 @@ impl Server {
         });
 
         ServerHandle {
-            shutdown: shutdown_tx,
+            shutdown: Some(shutdown_tx),
             ready: ready_rx,
             failed: failed_rx,
         }

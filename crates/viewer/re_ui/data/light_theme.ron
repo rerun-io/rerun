@@ -48,6 +48,11 @@
       "color": "{Blue.300}"
     },
 
+    "viewport_background": {
+      "color": "{Gray.1000}"
+    },
+
+
     "highlight_color": {
       // Background color for widgets that should catch the user's attention
       "color": "{Blue.750}"
@@ -275,18 +280,18 @@
     },
 
     "code_index_color": {
-      "color": "#BF68AF"
+      "color": "#894783"
     },
     "code_primitive_color": {
-      "color": "#32AA79"
+      "color": "#007745"
     },
     "code_string_color": {
-      "color": "#7782EA"
+      "color": "#545AA6"
     },
 
     // TODO(ab, katya): review these
     "code_keyword_color": {
-      "color": "#D176BF",
+      "color": "#855E00",
     },
     "table_filter_frame_stroke": {
       "color": "{Gray.400}",

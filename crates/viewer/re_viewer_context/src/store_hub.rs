@@ -10,14 +10,13 @@ use re_chunk_store::{
     GarbageCollectionTarget,
 };
 use re_entity_db::{EntityDb, StoreBundle};
-use re_global_context::RecordingOrTable;
 use re_log_types::{AbsoluteTimeRange, ApplicationId, StoreId, StoreKind, TableId};
 use re_query::QueryCachesStats;
 use re_types::{archetypes, components::Timestamp};
 
 use crate::{
-    BlueprintUndoState, CacheMemoryReport, Caches, StorageContext, StoreContext, TableStore,
-    TableStores,
+    BlueprintUndoState, CacheMemoryReport, Caches, RecordingOrTable, StorageContext, StoreContext,
+    TableStore, TableStores,
 };
 
 /// Interface for accessing all blueprints and recordings
@@ -417,7 +416,7 @@ impl StoreHub {
     ///
     /// Will ignore this request if the application id has no matching recording,
     /// unless no app id has been set yet at all so far.
-    #[allow(clippy::needless_pass_by_value)]
+    #[expect(clippy::needless_pass_by_value)]
     pub fn set_active_app(&mut self, app_id: ApplicationId) {
         // If we don't know of a blueprint for this `ApplicationId` yet,
         // try to load one from the persisted store

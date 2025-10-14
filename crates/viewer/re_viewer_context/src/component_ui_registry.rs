@@ -10,7 +10,10 @@ use re_log_types::{Instance, StoreId};
 use re_types::{ComponentDescriptor, ComponentType};
 use re_ui::{UiExt as _, UiLayout};
 
-use crate::{ComponentFallbackProvider, MaybeMutRef, QueryContext, ViewerContext};
+use crate::{
+    ComponentFallbackProvider, MaybeMutRef, QueryContext, ViewerContext,
+    blueprint_helpers::BlueprintContext as _,
+};
 
 /// Describes where an edit should be written to if any
 pub struct EditTarget {
@@ -335,7 +338,7 @@ impl ComponentUiRegistry {
     ///
     /// Has a fallback to show an info text if the instance is not specific,
     /// but in these cases `LatestAtComponentResults::data_ui` should be used instead!
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn component_ui(
         &self,
         ctx: &ViewerContext<'_>,
@@ -398,7 +401,7 @@ impl ComponentUiRegistry {
     }
 
     /// Show a UI for a single raw component.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn component_ui_raw(
         &self,
         ctx: &ViewerContext<'_>,
@@ -478,7 +481,7 @@ impl ComponentUiRegistry {
     }
 
     /// Show a UI corresponding to the provided variant name.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn variant_ui_raw(
         &self,
         ctx: &ViewerContext<'_>,
@@ -536,7 +539,7 @@ impl ComponentUiRegistry {
     /// Changes will be written to the blueprint store at the given override path.
     /// Any change is expected to be effective next frame and passed in via the `component_query_result` parameter.
     /// (Otherwise, this method is agnostic to where the component data is stored.)
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn multiline_edit_ui(
         &self,
         ctx: &QueryContext<'_>,
@@ -567,7 +570,7 @@ impl ComponentUiRegistry {
     /// Changes will be written to the blueprint store at the given override path.
     /// Any change is expected to be effective next frame and passed in via the `component_query_result` parameter.
     /// (Otherwise, this method is agnostic to where the component data is stored.)
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn singleline_edit_ui(
         &self,
         ctx: &QueryContext<'_>,
@@ -593,7 +596,7 @@ impl ComponentUiRegistry {
         );
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn edit_ui(
         &self,
         ctx: &QueryContext<'_>,
@@ -631,7 +634,7 @@ impl ComponentUiRegistry {
     }
 
     /// For blueprint editing
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn edit_ui_raw(
         &self,
         ctx: &QueryContext<'_>,

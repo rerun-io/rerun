@@ -63,7 +63,7 @@ impl StorageEngine {
     /// anywhere else before constructing this type, otherwise the [`StorageEngine`] cannot make
     /// any safety guarantees.
     #[inline]
-    #[allow(unsafe_code)]
+    #[expect(unsafe_code)]
     pub unsafe fn new(store: ChunkStoreHandle, cache: QueryCacheHandle) -> Self {
         Self { store, cache }
     }

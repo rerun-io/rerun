@@ -441,7 +441,6 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         }
     }
 
-    #[allow(clippy::fn_params_excessive_bools)]
     fn tab_ui(
         &mut self,
         tiles: &mut egui_tiles::Tiles<ViewId>,
@@ -450,11 +449,18 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         tile_id: egui_tiles::TileId,
         tab_state: &egui_tiles::TabState,
     ) -> egui::Response {
-        let tab_widget = TabWidget::new(self, ui, tiles, tile_id, tab_state, 1.0);
+        let mut tab_widget = TabWidget::new(self, ui, tiles, tile_id, tab_state, 1.0);
 
         let response = ui
             .interact(tab_widget.rect, id, egui::Sense::click_and_drag())
             .on_hover_cursor(egui::CursorIcon::Grab);
+
+        let label = tab_widget.label.take();
+        response.widget_info(|| {
+            let mut info = egui::WidgetInfo::new(egui::WidgetType::Label);
+            info.label = label.clone();
+            info
+        });
 
         // Show a gap when dragged
         if ui.is_rect_visible(tab_widget.rect) && !tab_state.is_being_dragged {
@@ -708,6 +714,7 @@ struct TabWidget {
     bg_color: egui::Color32,
     text_color: egui::Color32,
     unnamed_style: bool,
+    label: Option<String>,
 }
 
 impl TabWidget {
@@ -722,29 +729,32 @@ impl TabWidget {
         let tokens = ui.tokens();
 
         struct TabDesc {
-            label: egui::WidgetText,
+            widget_text: egui::WidgetText,
             user_named: bool,
             icon: &'static re_ui::Icon,
             item: Option<Item>,
+            label: Option<String>,
         }
 
         let tab_desc = match tiles.get(tile_id) {
             Some(egui_tiles::Tile::Pane(view_id)) => {
                 if let Some(view) = tab_viewer.viewport_blueprint.view(view_id) {
                     TabDesc {
-                        label: tab_viewer.tab_title_for_pane(view_id),
+                        widget_text: tab_viewer.tab_title_for_pane(view_id),
                         user_named: view.display_name.is_some(),
                         icon: view.class(tab_viewer.ctx.view_class_registry()).icon(),
                         item: Some(Item::View(*view_id)),
+                        label: Some(view.display_name_or_default().into()),
                     }
                 } else {
                     re_log::warn_once!("View {view_id} not found");
 
                     TabDesc {
-                        label: tab_viewer.ctx.egui_ctx().error_text("Unknown view").into(),
+                        widget_text: tab_viewer.ctx.egui_ctx().error_text("Unknown view").into(),
                         icon: &re_ui::icons::VIEW_GENERIC,
                         user_named: false,
                         item: None,
+                        label: None,
                     }
                 }
             }
@@ -775,10 +785,11 @@ impl TabWidget {
                     };
 
                     TabDesc {
-                        label,
+                        widget_text: label,
                         user_named,
                         icon: icon_for_container_kind(&container.kind()),
                         item: Some(Item::Container(*container_id)),
+                        label: None,
                     }
                 } else {
                     // If the container is a tab with a single child, we can display the child's name instead. This
@@ -793,7 +804,7 @@ impl TabWidget {
                     re_log::warn_once!("Container for tile ID {tile_id:?} not found");
 
                     TabDesc {
-                        label: tab_viewer
+                        widget_text: tab_viewer
                             .ctx
                             .egui_ctx()
                             .error_text("Unknown container")
@@ -801,6 +812,7 @@ impl TabWidget {
                         icon: &re_ui::icons::VIEW_GENERIC,
                         user_named: false,
                         item: None,
+                        label: None,
                     }
                 }
             }
@@ -808,7 +820,7 @@ impl TabWidget {
                 re_log::warn_once!("Tile {tile_id:?} not found");
 
                 TabDesc {
-                    label: tab_viewer
+                    widget_text: tab_viewer
                         .ctx
                         .egui_ctx()
                         .error_text("Internal error")
@@ -816,6 +828,7 @@ impl TabWidget {
                     icon: &re_ui::icons::VIEW_UNKNOWN,
                     user_named: false,
                     item: None,
+                    label: None,
                 }
             }
         };
@@ -835,9 +848,9 @@ impl TabWidget {
 
         // tab title
         let text = if tab_desc.user_named {
-            tab_desc.label
+            tab_desc.widget_text
         } else {
-            tab_desc.label.italics() // TODO(ab): use design tokens
+            tab_desc.widget_text.italics() // TODO(ab): use design tokens
         };
 
         let font_id = egui::TextStyle::Button.resolve(ui.style());
@@ -890,6 +903,7 @@ impl TabWidget {
             bg_color,
             text_color,
             unnamed_style: !tab_desc.user_named,
+            label: tab_desc.label,
         }
     }
 

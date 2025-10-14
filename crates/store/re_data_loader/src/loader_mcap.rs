@@ -175,7 +175,7 @@ fn load_mcap_mmap(
     let file = File::open(filepath)?;
 
     // SAFETY: file-backed memory maps are marked unsafe because of potential UB when using the map and the underlying file is modified.
-    #[allow(unsafe_code)]
+    #[expect(unsafe_code)]
     let mmap = unsafe { memmap2::Mmap::map(&file)? };
 
     load_mcap(&mmap, settings, tx, selected_layers, raw_fallback_enabled)
@@ -247,7 +247,7 @@ pub fn store_info(store_id: StoreId) -> SetStoreInfo {
 
 /// Checks if a file is an MCAP file.
 fn is_mcap_file(filepath: &Path) -> bool {
-    !filepath.is_dir()
+    filepath.is_file()
         && filepath
             .extension()
             .map(|ext| ext.eq_ignore_ascii_case("mcap"))

@@ -33,6 +33,7 @@ pub mod reflection;
 mod result;
 mod tuid;
 mod view;
+mod wrapper_component;
 
 pub use self::{
     archetype::{Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentIdentifier},
@@ -54,6 +55,7 @@ pub use self::{
     },
     tuid::tuids_to_arrow,
     view::{View, ViewClassIdentifier},
+    wrapper_component::WrapperComponent,
 };
 
 /// Fundamental [`Archetype`]s that are implemented in `re_types_core` directly for convenience and
@@ -146,7 +148,7 @@ macro_rules! static_assert_struct_has_fields {
 /// For that reason, this method favors a nice user experience over error handling: errors will
 /// merely be logged, not returned (except in debug builds, where all errors panic).
 #[doc(hidden)] // public so we can access it from re_types too
-#[allow(clippy::unnecessary_wraps)] // clippy gets confused in debug builds
+#[expect(clippy::unnecessary_wraps)] // clippy gets confused in debug builds
 pub fn try_serialize_field<L: Loggable>(
     descriptor: ComponentDescriptor,
     instances: impl IntoIterator<Item = impl Into<L>>,

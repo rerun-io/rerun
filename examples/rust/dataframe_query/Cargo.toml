@@ -7,9 +7,7 @@ license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
-rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
-  "dataframe",
-] }
+rerun = { path = "../../../crates/top/rerun", default-features = false, features = ["dataframe"] }
 
 itertools.workspace = true
 unindent.workspace = true

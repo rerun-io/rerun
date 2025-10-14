@@ -10,7 +10,7 @@ use cargo_metadata::{CargoOpt, Metadata, MetadataCommand, Package, PackageId, ca
 use crate::should_output_cargo_build_instructions;
 
 fn should_run() -> bool {
-    #![allow(clippy::match_same_arms)]
+    #![expect(clippy::match_same_arms)]
     use super::Environment;
 
     match Environment::detect() {

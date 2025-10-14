@@ -1,4 +1,4 @@
-#![allow(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+#![expect(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 use std::collections::BTreeMap;
 

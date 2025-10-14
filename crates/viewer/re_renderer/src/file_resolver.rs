@@ -781,7 +781,7 @@ mod tests_file_resolver {
     }
 
     #[test]
-    #[allow(clippy::should_panic_without_expect)] // TODO(cmc): check error contents
+    #[expect(clippy::should_panic_without_expect)] // TODO(cmc): check error contents
     #[should_panic]
     fn cyclic_direct() {
         let fs = MemFileSystem::get();
@@ -822,7 +822,7 @@ mod tests_file_resolver {
     }
 
     #[test]
-    #[allow(clippy::should_panic_without_expect)] // TODO(cmc): check error contents
+    #[expect(clippy::should_panic_without_expect)] // TODO(cmc): check error contents
     #[should_panic]
     fn cyclic_indirect() {
         let fs = MemFileSystem::get();

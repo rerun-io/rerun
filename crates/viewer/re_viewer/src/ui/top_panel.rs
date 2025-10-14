@@ -406,7 +406,7 @@ fn panel_buttons_r2l(
     let selection = app.state.selection_state.selected_items();
     let rec_cfg = store_hub
         .active_store_id()
-        .and_then(|id| app.state.recording_configs.get(id));
+        .and_then(|id| app.state.time_controls.get(id));
     app.state.share_modal.button_ui(
         ui,
         store_hub,
@@ -468,7 +468,6 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
         text: impl Into<String>,
         add_contents_on_hover: impl FnOnce(&mut egui::Ui),
     ) {
-        #[allow(clippy::blocks_in_conditions)]
         let text = text.into();
         if ui
             .add(

@@ -20,7 +20,12 @@ pub mod headers;
 // Note: Be careful with `#[path]` attributes: https://github.com/rust-lang/rust/issues/35016
 mod v1alpha1 {
     // Note: `allow(clippy::all)` does NOT allow all lints
-    #![allow(clippy::all, clippy::pedantic, clippy::nursery)]
+    #![expect(
+        clippy::all,
+        clippy::allow_attributes,
+        clippy::nursery,
+        clippy::pedantic
+    )]
 
     #[path = "./rerun.common.v1alpha1.rs"]
     pub mod rerun_common_v1alpha1;
@@ -133,7 +138,6 @@ impl TypeConversionError {
         }
     }
 
-    #[allow(clippy::needless_pass_by_value)] // false-positive
     #[inline]
     pub fn invalid_field<T: prost::Name>(field_name: &'static str, reason: &impl ToString) -> Self {
         Self::InvalidField {

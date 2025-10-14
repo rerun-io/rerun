@@ -74,6 +74,7 @@ impl EntryError {
                 | StreamError::DecodeError(_)
                 | StreamError::EntryError(_)
                 | StreamError::PartitionError(_)
+                | StreamError::TasksError(_)
                 | StreamError::TypeConversionError(_)
                 | StreamError::MissingDataframeColumn(_)
                 | StreamError::MissingData(_)

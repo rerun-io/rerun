@@ -16,7 +16,7 @@ For more information about CMake config options see [C++ SDK CMake](cmake_setup_
 
 ## Install arrow-cpp with Pixi
 
-[Pixi](https://prefix.dev/docs/pixi/overview) is a convenient tool for managing cross-platform project dependencies. In
+[Pixi](https://pixi.sh/latest/) is a convenient tool for managing cross-platform project dependencies. In
 fact, Rerun uses it for our own internal development dependency management, and you will find `pixi.toml` files in most
 of our external examples.
 
@@ -41,7 +41,7 @@ Alternatively if you are already a `cargo` user, you can install `pixi` via:
 cargo install pixi
 ```
 
-See the [Pixi installation guide](https://prefix.dev/docs/pixi/overview#installation) for other installation options.
+See the [Pixi installation guide](https://pixi.sh/latest/installation/) for other installation options.
 
 ### Adding Pixi to your own project
 
