@@ -41,6 +41,7 @@ serde.workspace = true
 thiserror.workspace = true
 tonic-prost.workspace = true
 tower.workspace = true
+tracing.workspace = true
 url = { workspace = true, features = ["serde"] }
 
 # Native dependencies:

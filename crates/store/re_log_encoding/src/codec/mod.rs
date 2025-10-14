@@ -1,6 +1,5 @@
 pub(crate) mod arrow;
 pub mod file;
-pub mod wire;
 
 // ---
 

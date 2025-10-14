@@ -9,7 +9,6 @@ use datafusion::{
 };
 use tracing::instrument;
 
-use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::cloud::v1alpha1::ext::EntryDetails;
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest};
@@ -152,7 +151,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
             .ok_or(DataFusionError::Execution(
                 "DataFrame missing from PartitionList response".to_owned(),
             ))?
-            .decode()
+            .try_into()
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }
 }

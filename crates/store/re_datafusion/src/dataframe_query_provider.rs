@@ -20,7 +20,6 @@ use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use datafusion::{error::DataFusionError, execution::SendableRecordBatchStream};
 use futures_util::{Stream, StreamExt as _};
-use re_log_encoding::codec::wire::encoder::Encode as _;
 use tokio::runtime::Handle;
 use tokio::sync::Notify;
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -414,11 +413,7 @@ async fn chunk_stream_io_loop(
     chunk_infos: Vec<RecordBatch>,
     output_channel: Sender<Result<ChunksWithPartition, re_redap_client::ApiError>>,
 ) -> Result<(), DataFusionError> {
-    let chunk_infos = chunk_infos
-        .into_iter()
-        .map(|batch| batch.encode())
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|err| exec_datafusion_err!("{err}"))?;
+    let chunk_infos: Vec<_> = chunk_infos.into_iter().map(Into::into).collect();
 
     // TODO(zehiko) same as previously with get_chunks, we keep sending 1 request per partition.
     // As these batches are sorted per partition (see docs above), this ensures that ordering by

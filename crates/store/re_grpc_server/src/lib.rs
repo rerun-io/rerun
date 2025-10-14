@@ -13,7 +13,6 @@ use tonic::transport::{Server, server::TcpIncoming};
 use tower_http::cors::CorsLayer;
 
 use re_byte_size::SizeBytes;
-use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{DataSourceMessage, TableMsg};
 use re_protos::sdk_comms::v1alpha1::{
     ReadTablesRequest, ReadTablesResponse, WriteMessagesRequest, WriteTableRequest,
@@ -428,7 +427,7 @@ pub fn spawn_with_recv(
     tokio::spawn(async move {
         loop {
             let msg = match broadcast_table_rx.recv().await {
-                Ok(msg) => msg.data.decode().map(|data| TableMsg {
+                Ok(msg) => msg.data.try_into().map(|data| TableMsg {
                     id: msg.id.into(),
                     data,
                 }),

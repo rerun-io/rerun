@@ -747,6 +747,153 @@ impl From<crate::common::v1alpha1::semantic_version::Meta> for re_build_info::Me
     }
 }
 
+// --- DataframePart / RerunChunk <-> RecordBatch ---
+
+impl TryFrom<crate::common::v1alpha1::RerunChunk> for arrow::array::RecordBatch {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::RerunChunk) -> Result<Self, Self::Error> {
+        Self::try_from(&value)
+    }
+}
+
+impl TryFrom<&crate::common::v1alpha1::RerunChunk> for arrow::array::RecordBatch {
+    type Error = TypeConversionError;
+
+    fn try_from(value: &crate::common::v1alpha1::RerunChunk) -> Result<Self, Self::Error> {
+        match value.encoder_version() {
+            crate::common::v1alpha1::EncoderVersion::Unspecified => {
+                return Err(missing_field!(
+                    crate::common::v1alpha1::RerunChunk,
+                    "encoder_version"
+                ));
+            }
+
+            crate::common::v1alpha1::EncoderVersion::V0 => {
+                let Some(batch) = record_batch_from_ipc_bytes(&value.payload)? else {
+                    return Err(invalid_field!(
+                        crate::common::v1alpha1::RerunChunk,
+                        "payload",
+                        "empty",
+                    ));
+                };
+                Ok(batch)
+            }
+        }
+    }
+}
+
+impl From<arrow::array::RecordBatch> for crate::common::v1alpha1::RerunChunk {
+    fn from(value: arrow::array::RecordBatch) -> Self {
+        Self::from(&value)
+    }
+}
+
+impl From<&arrow::array::RecordBatch> for crate::common::v1alpha1::RerunChunk {
+    fn from(value: &arrow::array::RecordBatch) -> Self {
+        let version = crate::common::v1alpha1::EncoderVersion::V0;
+        Self {
+            encoder_version: version as i32,
+            payload: record_batch_to_ipc_bytes(value).into(),
+        }
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::DataframePart> for arrow::array::RecordBatch {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::DataframePart) -> Result<Self, Self::Error> {
+        Self::try_from(&value)
+    }
+}
+
+impl TryFrom<&crate::common::v1alpha1::DataframePart> for arrow::array::RecordBatch {
+    type Error = TypeConversionError;
+
+    fn try_from(value: &crate::common::v1alpha1::DataframePart) -> Result<Self, Self::Error> {
+        match value.encoder_version() {
+            crate::common::v1alpha1::EncoderVersion::Unspecified => {
+                return Err(missing_field!(
+                    crate::common::v1alpha1::RerunChunk,
+                    "encoder_version"
+                ));
+            }
+
+            crate::common::v1alpha1::EncoderVersion::V0 => {
+                let Some(bytes) = value.payload.as_ref() else {
+                    return Err(missing_field!(
+                        crate::common::v1alpha1::DataframePart,
+                        "payload"
+                    ));
+                };
+                let Some(batch) = record_batch_from_ipc_bytes(bytes)? else {
+                    return Err(invalid_field!(
+                        crate::common::v1alpha1::RerunChunk,
+                        "payload",
+                        "empty"
+                    ));
+                };
+                Ok(batch)
+            }
+        }
+    }
+}
+
+impl From<arrow::array::RecordBatch> for crate::common::v1alpha1::DataframePart {
+    fn from(value: arrow::array::RecordBatch) -> Self {
+        Self::from(&value)
+    }
+}
+
+impl From<&arrow::array::RecordBatch> for crate::common::v1alpha1::DataframePart {
+    fn from(value: &arrow::array::RecordBatch) -> Self {
+        let version = crate::common::v1alpha1::EncoderVersion::V0;
+        Self {
+            encoder_version: version as i32,
+            payload: Some(record_batch_to_ipc_bytes(value).into()),
+        }
+    }
+}
+
+/// `RecordBatch` to IPC bytes. No I/O, no failures.
+#[tracing::instrument(level = "debug", skip_all)]
+fn record_batch_to_ipc_bytes(batch: &arrow::array::RecordBatch) -> Vec<u8> {
+    let schema = batch.schema_ref().as_ref();
+
+    let mut out = Vec::new();
+
+    let mut sw = {
+        let _span = tracing::trace_span!("schema").entered();
+        arrow::ipc::writer::StreamWriter::try_new(&mut out, schema)
+            .expect("encoding the schema of a valid RecordBatch as IPC bytes into a growable in-memory buffer cannot possibly fail")
+    };
+
+    {
+        let _span = tracing::trace_span!("data").entered();
+        sw.write(batch)
+            .expect("encoding the data of a valid RecordBatch as IPC bytes into a growable in-memory buffer cannot possibly fail");
+    }
+
+    sw.finish()
+        .expect("encoding a valid RecordBatch as IPC bytes into a growable in-memory buffer cannot possibly fail");
+
+    out
+}
+
+/// IPC bytes to `RecordBatch`. `Ok(None)` if there's no data.
+#[tracing::instrument(level = "debug", skip_all)]
+fn record_batch_from_ipc_bytes(
+    bytes: &[u8],
+) -> Result<Option<arrow::array::RecordBatch>, ArrowError> {
+    let mut stream = {
+        let _span = tracing::trace_span!("schema").entered();
+        arrow::ipc::reader::StreamReader::try_new(bytes, None)?
+    };
+
+    let _span = tracing::trace_span!("data").entered();
+    stream.next().transpose()
+}
+
 // ---
 
 #[cfg(test)]
