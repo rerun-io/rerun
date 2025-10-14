@@ -137,7 +137,7 @@ pub fn arrays_to_list_array(
             .map(|array| array.map_or(0, |array| array.len())),
     );
 
-    #[allow(clippy::from_iter_instead_of_collect)]
+    #[expect(clippy::from_iter_instead_of_collect)]
     let nulls = NullBuffer::from_iter(arrays.iter().map(Option::is_some));
 
     Some(ListArray::new(field.into(), offsets, data, nulls.into()))
@@ -197,10 +197,10 @@ pub fn pad_list_array_back(list_array: &ListArray, target_len: usize) -> ListArr
 
     let nulls = {
         if let Some(nulls) = list_array.nulls() {
-            #[allow(clippy::from_iter_instead_of_collect)]
+            #[expect(clippy::from_iter_instead_of_collect)]
             NullBuffer::from_iter(nulls.iter().chain(repeat_n(false, missing_len)))
         } else {
-            #[allow(clippy::from_iter_instead_of_collect)]
+            #[expect(clippy::from_iter_instead_of_collect)]
             NullBuffer::from_iter(
                 repeat_n(true, list_array.len()).chain(repeat_n(false, missing_len)),
             )
@@ -235,10 +235,10 @@ pub fn pad_list_array_front(list_array: &ListArray, target_len: usize) -> ListAr
 
     let nulls = {
         if let Some(nulls) = list_array.nulls() {
-            #[allow(clippy::from_iter_instead_of_collect)]
+            #[expect(clippy::from_iter_instead_of_collect)]
             NullBuffer::from_iter(repeat_n(false, missing_len).chain(nulls.iter()))
         } else {
-            #[allow(clippy::from_iter_instead_of_collect)]
+            #[expect(clippy::from_iter_instead_of_collect)]
             NullBuffer::from_iter(
                 repeat_n(false, missing_len).chain(repeat_n(true, list_array.len())),
             )
@@ -271,7 +271,7 @@ pub fn new_list_array_of_empties(child_datatype: &DataType, len: usize) -> ListA
 ///
 /// Returns an error if the arrays don't share the exact same datatype.
 pub fn concat_arrays(arrays: &[&dyn Array]) -> arrow::error::Result<ArrayRef> {
-    #[allow(clippy::disallowed_methods)] // that's the whole point
+    #[expect(clippy::disallowed_methods)] // that's the whole point
     let mut array = arrow::compute::concat(arrays)?;
     array.shrink_to_fit(); // VERY IMPORTANT! https://github.com/rerun-io/rerun/issues/7222
     Ok(array)
@@ -300,8 +300,8 @@ pub fn filter_array<A: Array + Clone + 'static>(array: &A, filter: &BooleanArray
         "filter masks with nulls bits are technically valid, but generally a sign that something went wrong",
     );
 
-    #[allow(clippy::disallowed_methods)] // that's the whole point
-    #[allow(clippy::unwrap_used)]
+    #[expect(clippy::disallowed_methods)] // that's the whole point
+    #[expect(clippy::unwrap_used)]
     let mut array = arrow::compute::filter(array, filter)
         // Unwrap: this literally cannot fail.
         .unwrap()
@@ -354,7 +354,7 @@ where
         };
 
         if starts_at_zero() && is_consecutive() {
-            #[allow(clippy::unwrap_used)]
+            #[expect(clippy::unwrap_used)]
             return array
                 .clone()
                 .as_any()
@@ -365,8 +365,8 @@ where
         }
     }
 
-    #[allow(clippy::disallowed_methods)] // that's the whole point
-    #[allow(clippy::unwrap_used)]
+    #[expect(clippy::disallowed_methods)] // that's the whole point
+    #[expect(clippy::unwrap_used)]
     let mut array = arrow::compute::take(array, indices, Default::default())
         // Unwrap: this literally cannot fail.
         .unwrap()
@@ -399,7 +399,7 @@ pub fn extract_fixed_size_array_element(
     // We have forbidden using arrow::take, but it really is what we want here
     // `take_array` results in an unwrap so it appears not to be the right choice.
     // TODO(jleibs): Follow up with cmc on if there's a different way to do this.
-    #[allow(clippy::disallowed_methods)]
+    #[expect(clippy::disallowed_methods)]
     arrow::compute::kernels::take::take(data.values(), &indices, None)
 }
 

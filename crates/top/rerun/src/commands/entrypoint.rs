@@ -182,7 +182,7 @@ When persisted, the state will be stored at the following locations:
     ///
     /// The default is `rerun+http://127.0.0.1:9876/proxy`.
     #[clap(long)]
-    #[allow(clippy::option_option)] // Tri-state: none, --connect, --connect <url>.
+    #[expect(clippy::option_option)] // Tri-state: none, --connect, --connect <url>.
     connect: Option<Option<String>>,
 
     /// This is a hint that we expect a recording to stream in very soon.
@@ -757,7 +757,7 @@ fn run_impl(
     };
 
     // All URLs that we want to process.
-    #[allow(unused_mut)]
+    #[allow(clippy::allow_attributes, unused_mut)]
     let mut url_or_paths = args.url_or_paths.clone();
 
     // Passing `--connect` accounts to adding a proxy URL to the list of URLs that we want to process.
@@ -855,7 +855,7 @@ fn run_impl(
 
 #[cfg(feature = "native_viewer")]
 #[expect(clippy::too_many_arguments)]
-#[allow(unused_variables)]
+#[allow(clippy::allow_attributes, unused_variables)]
 fn start_native_viewer(
     args: &Args,
     url_or_paths: Vec<String>,
@@ -873,7 +873,7 @@ fn start_native_viewer(
     let connect = args.connect.is_some();
     let renderer = args.renderer.as_deref();
 
-    #[allow(unused_mut)]
+    #[allow(clippy::allow_attributes, unused_mut)]
     let ReceiversFromUrlParams {
         mut log_receivers,
         urls_to_pass_on_to_viewer,
@@ -882,7 +882,7 @@ fn start_native_viewer(
         &UrlParamProcessingConfig::native_viewer(),
         &connection_registry,
     )?;
-    #[allow(unused_mut)]
+    #[allow(clippy::allow_attributes, unused_mut)]
     let mut table_receivers = Vec::new();
 
     // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
@@ -1156,7 +1156,7 @@ fn save_or_test_receive(
         "--save"
     })?;
 
-    #[allow(unused_mut)]
+    #[allow(clippy::allow_attributes, unused_mut)]
     let mut log_receivers = receivers.log_receivers;
 
     #[cfg(feature = "server")]
@@ -1395,7 +1395,7 @@ impl UrlParamProcessingConfig {
         }
     }
 
-    #[allow(dead_code)] // May be unused depending on feature flags.
+    #[allow(clippy::allow_attributes, dead_code)] // May be unused depending on feature flags.
     fn grpc_server_and_web_viewer() -> Self {
         // GRPC with web viewer can handle everything except files directly.
         Self {
@@ -1405,7 +1405,7 @@ impl UrlParamProcessingConfig {
         }
     }
 
-    #[allow(dead_code)] // May be unused depending on feature flags.
+    #[allow(clippy::allow_attributes, dead_code)] // May be unused depending on feature flags.
     fn native_viewer() -> Self {
         // Native viewer passes everything on to the viewer unchanged.
         Self {

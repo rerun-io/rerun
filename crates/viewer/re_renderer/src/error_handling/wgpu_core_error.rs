@@ -129,11 +129,9 @@ impl_trait![
 impl DedupableError for wgpu_core::pipeline::CreateShaderModuleError {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         type_of_var(self).hash(state);
-        #[allow(clippy::enum_glob_use)]
-        use wgpu_core::pipeline::CreateShaderModuleError::*;
         match self {
-            Parsing(err) => err.source.hash(state),
-            Validation(err) => err.source.hash(state),
+            Self::Parsing(err) => err.source.hash(state),
+            Self::Validation(err) => err.source.hash(state),
             _ => {}
         }
     }
@@ -144,11 +142,9 @@ impl DedupableError for wgpu_core::pipeline::CreateShaderModuleError {
         }
         let rhs = rhs.downcast_ref::<Self>().unwrap();
 
-        #[allow(clippy::enum_glob_use)]
-        use wgpu_core::pipeline::CreateShaderModuleError::*;
         match (self, rhs) {
-            (Parsing(err1), Parsing(err2)) => err1.source == err2.source,
-            (Validation(err1), Validation(err2)) => err1.source == err2.source,
+            (Self::Parsing(err1), Self::Parsing(err2)) => err1.source == err2.source,
+            (Self::Validation(err1), Self::Validation(err2)) => err1.source == err2.source,
             _ => true,
         }
     }

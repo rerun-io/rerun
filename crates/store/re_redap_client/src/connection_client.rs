@@ -496,7 +496,7 @@ where
         Ok(response.table_entry)
     }
 
-    #[allow(clippy::fn_params_excessive_bools)]
+    #[expect(clippy::fn_params_excessive_bools)]
     pub async fn do_maintenance(
         &mut self,
         dataset_id: EntryId,

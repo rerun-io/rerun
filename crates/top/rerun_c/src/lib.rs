@@ -3,7 +3,7 @@
 //! The functions here must match `rerun_cpp/src/rerun/c/rerun.h`.
 
 #![crate_type = "staticlib"]
-#![allow(clippy::missing_safety_doc, clippy::undocumented_unsafe_blocks)] // Too much unsafe
+#![expect(clippy::missing_safety_doc, clippy::undocumented_unsafe_blocks)] // Too much unsafe
 
 mod arrow_utils;
 mod component_type_registry;

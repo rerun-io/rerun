@@ -1,0 +1,5 @@
+---
+source: crates/store/re_redap_tests/src/tests/dataset_schema.rs
+expression: schema.format_snapshot()
+---
+

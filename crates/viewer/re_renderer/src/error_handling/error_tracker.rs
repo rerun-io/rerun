@@ -18,7 +18,7 @@ pub struct ErrorEntry {
 
     /// Description of the error.
     // TODO(#4507): Expecting to need this once we use this in views. Also very useful for debugging.
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     description: String,
 }
 

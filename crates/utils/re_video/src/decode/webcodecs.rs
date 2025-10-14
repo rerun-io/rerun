@@ -96,21 +96,21 @@ pub enum WebError {
 // SAFETY: There is no way to access the same JS object from different OS threads
 //         in a way that could result in a data race.
 
-#[allow(unsafe_code)]
+#[expect(unsafe_code)]
 // Clippy did not recognize a safety comment on these impls no matter what I tried:
-#[allow(clippy::undocumented_unsafe_blocks)]
+#[expect(clippy::undocumented_unsafe_blocks)]
 unsafe impl Send for WebVideoDecoder {}
 
-#[allow(unsafe_code)]
-#[allow(clippy::undocumented_unsafe_blocks)]
+#[expect(unsafe_code)]
+#[expect(clippy::undocumented_unsafe_blocks)]
 unsafe impl Sync for WebVideoDecoder {}
 
-#[allow(unsafe_code)]
-#[allow(clippy::undocumented_unsafe_blocks)]
+#[expect(unsafe_code)]
+#[expect(clippy::undocumented_unsafe_blocks)]
 unsafe impl Send for WebVideoFrame {}
 
-#[allow(unsafe_code)]
-#[allow(clippy::undocumented_unsafe_blocks)]
+#[expect(unsafe_code)]
+#[expect(clippy::undocumented_unsafe_blocks)]
 unsafe impl Sync for WebVideoFrame {}
 
 static IS_SAFARI: LazyLock<bool> = LazyLock::new(|| {

@@ -1329,7 +1329,7 @@ impl RecordingStream {
 
     // NOTE: For bw and fw compatibility reasons, we need our logging APIs to be fallible, even
     // though they really aren't at the moment.
-    #[allow(clippy::unnecessary_wraps)]
+    #[expect(clippy::unnecessary_wraps)]
     fn log_serialized_batches_impl(
         &self,
         row_id: RowId,
@@ -1513,7 +1513,7 @@ impl RecordingStream {
     }
 }
 
-#[allow(clippy::needless_pass_by_value)]
+#[expect(clippy::needless_pass_by_value)]
 fn forwarding_thread(
     store_info: StoreInfo,
     mut sink: Box<dyn LogSink>,
@@ -3154,7 +3154,7 @@ mod tests {
     }
 
     impl ScopedEnvVarSet {
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         fn new(key: &'static str, value: &'static str) -> Self {
             // SAFETY: only used in tests.
             unsafe { std::env::set_var(key, value) };
@@ -3163,7 +3163,7 @@ mod tests {
     }
 
     impl Drop for ScopedEnvVarSet {
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         fn drop(&mut self) {
             // SAFETY: only used in tests.
             unsafe {
@@ -3176,7 +3176,7 @@ mod tests {
 
     fn clear_environment() {
         // SAFETY: only used in tests.
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         unsafe {
             std::env::remove_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED");
             std::env::remove_var("RERUN_FLUSH_NUM_BYTES");

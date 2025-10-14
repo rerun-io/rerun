@@ -136,7 +136,7 @@ impl EntityDb {
         let cache = QueryCacheHandle::new(QueryCache::new(store.clone()));
 
         // Safety: these handles are never going to be leaked outside of the `EntityDb`.
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         let storage_engine = unsafe { StorageEngine::new(store, cache) };
 
         Self {

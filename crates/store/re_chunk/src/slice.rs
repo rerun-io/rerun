@@ -118,7 +118,7 @@ impl Chunk {
         chunk.is_sorted = is_sorted || chunk.is_sorted_uncached();
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // debug-only
+        #[expect(clippy::unwrap_used)] // debug-only
         chunk.sanity_check().unwrap();
 
         chunk
@@ -161,7 +161,7 @@ impl Chunk {
         };
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // debug-only
+        #[expect(clippy::unwrap_used)] // debug-only
         chunk.sanity_check().unwrap();
 
         chunk
@@ -206,7 +206,7 @@ impl Chunk {
         };
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // debug-only
+        #[expect(clippy::unwrap_used)] // debug-only
         chunk.sanity_check().unwrap();
 
         chunk
@@ -249,7 +249,7 @@ impl Chunk {
         };
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // debug-only
+        #[expect(clippy::unwrap_used)] // debug-only
         chunk.sanity_check().unwrap();
 
         chunk
@@ -345,7 +345,7 @@ impl Chunk {
         chunk.is_sorted = is_sorted || chunk.is_sorted_uncached();
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // debug-only
+        #[expect(clippy::unwrap_used)] // debug-only
         chunk.sanity_check().unwrap();
 
         chunk
@@ -493,7 +493,7 @@ impl Chunk {
         };
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // debug-only
+        #[expect(clippy::unwrap_used)] // debug-only
         {
             chunk.sanity_check().unwrap();
         }
@@ -581,7 +581,7 @@ impl Chunk {
         chunk.is_sorted = is_sorted || chunk.is_sorted_uncached();
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // debug-only
+        #[expect(clippy::unwrap_used)] // debug-only
         chunk.sanity_check().unwrap();
 
         Some(chunk)
@@ -664,7 +664,7 @@ impl Chunk {
         chunk.is_sorted = is_sorted || chunk.is_sorted_uncached();
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // debug-only
+        #[expect(clippy::unwrap_used)] // debug-only
         chunk.sanity_check().unwrap();
 
         chunk

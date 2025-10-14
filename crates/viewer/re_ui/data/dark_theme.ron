@@ -48,6 +48,10 @@
       "color": "{Blue.700}"
     },
 
+    "viewport_background": {
+      "color": "{Gray.0}"
+    },
+
     "highlight_color": {
       // Background color for widgets that should catch the user's attention
       "color": "{Blue.500}",
@@ -275,20 +279,25 @@
       "color": "{Gray.700}"
     },
 
+    //array indices
     "code_index_color": {
-      "color": "#D176BF"
+      "color": "#CC9CC6"
     },
+
+    //numbers, bool, null
     "code_primitive_color": {
-      "color": "#4ACB94"
+      "color": "#84BE99"
     },
+
     "code_string_color": {
-      "color": "#818EF8"
+      "color": "#A1AAE1"
     },
 
     // TODO(ab, katya): review these
     "code_keyword_color": {
-      "color": "#D176BF",
+      "color": "#C8A973",
     },
+
     "table_filter_frame_stroke": {
       "color": "{Gray.400}",
       "width": 1

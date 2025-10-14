@@ -4,6 +4,7 @@
 #![allow(unused_braces)]
 #![allow(unused_imports)]
 #![allow(unused_parens)]
+#![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::map_flatten)]
@@ -12,6 +13,7 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
+#![allow(clippy::wildcard_imports)]
 
 use ::re_types_core::SerializationResult;
 use ::re_types_core::try_serialize_field;
@@ -19,7 +21,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Configuration for the background of a view.
+/// **Archetype**: Configuration for the background of a spatial view.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default)]

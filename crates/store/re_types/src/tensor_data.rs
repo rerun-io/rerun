@@ -1,9 +1,9 @@
 //! Internal helpers; not part of the public API.
-#![allow(missing_docs)]
+#![expect(missing_docs)]
 
 use half::f16;
 
-#[allow(unused_imports)] // Used for docstring links
+#[expect(unused_imports)] // Used for docstring links
 use crate::datatypes::TensorData;
 
 // ----------------------------------------------------------------------------

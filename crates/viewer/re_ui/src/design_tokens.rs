@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 #![expect(clippy::unused_self)] // TODO(emilk): move hard-coded values into .ron files
 
 use anyhow::Context as _;
@@ -78,6 +78,9 @@ pub struct DesignTokens {
 
     pub success_text_color: Color32,
     pub info_text_color: Color32,
+
+    /// Background color for viewport views.
+    pub viewport_background: Color32,
 
     /// Background color for widgets that should catch the user's attention.
     pub highlight_color: Color32,
@@ -267,6 +270,8 @@ impl DesignTokens {
 
             success_text_color: get_color("success_text_color"),
             info_text_color: get_color("info_text_color"),
+
+            viewport_background: get_color("viewport_background"),
 
             highlight_color: get_color("highlight_color"),
 
@@ -943,7 +948,7 @@ fn follow_path<'json>(mut value: &'json ron::Value, path: &str) -> Option<&'json
 
 // ----------------------------------------------------------------------------
 
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[derive(Debug, serde::Deserialize)]
 struct Typography {
     fontSize: String,

@@ -16,7 +16,7 @@ pub struct DataTypeUi<'a> {
     /// A closure for showing a list item with info about nested fields.
     ///
     /// Only set if the type actually has nested fields.
-    #[allow(clippy::type_complexity)]
+    #[expect(clippy::type_complexity)]
     pub content: Option<Box<dyn FnOnce(&mut egui::Ui) + 'a>>,
 }
 

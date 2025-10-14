@@ -329,7 +329,7 @@ impl InMemoryStore {
 }
 
 fn generate_entries_table(entries: &[EntryDetails]) -> Result<RecordBatch, Error> {
-    #[allow(clippy::type_complexity)]
+    #[expect(clippy::type_complexity)]
     let (id, name, entry_kind, created_at, updated_at): (
         Vec<Tuid>,
         Vec<String>,

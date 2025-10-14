@@ -54,7 +54,7 @@ pub enum Permission {
     Unknown(String),
 }
 
-#[allow(dead_code)] // fields may become used at some point in the near future
+#[allow(clippy::allow_attributes, dead_code)] // fields may become used at some point in the near future
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     /// Issuer
@@ -89,7 +89,7 @@ pub struct Claims {
     pub iat: i64,
 }
 
-#[allow(dead_code)] // fields may become used at some point in the near future
+#[allow(clippy::allow_attributes, dead_code)] // fields may become used at some point in the near future
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Act {
     sub: String,
@@ -349,7 +349,7 @@ impl Credentials {
         Ok(())
     }
 
-    #[allow(dead_code)] // only used on CLI path, causes warnings downstream
+    #[allow(clippy::allow_attributes, dead_code)] // only used on CLI path, causes warnings downstream
     /// Verifies that contents of `res` are valid and produces [`Credentials`].
     ///
     /// Assumes that tokens are freshly generated and are not about to expire.

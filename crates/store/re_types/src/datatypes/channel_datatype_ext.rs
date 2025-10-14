@@ -6,7 +6,7 @@ impl ChannelDatatype {
     /// Number of bits used to represent this element type.
     #[inline]
     pub fn bits(self) -> usize {
-        #[allow(clippy::match_same_arms)]
+        #[expect(clippy::match_same_arms)]
         match self {
             Self::U8 => 8,
             Self::U16 => 16,

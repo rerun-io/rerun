@@ -4,6 +4,7 @@
 #![allow(unused_braces)]
 #![allow(unused_imports)]
 #![allow(unused_parens)]
+#![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::map_flatten)]
@@ -12,6 +13,7 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
+#![allow(clippy::wildcard_imports)]
 
 use ::re_types_core::SerializationResult;
 use ::re_types_core::try_serialize_field;
@@ -26,6 +28,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct BarChartView {
     /// Configures the legend of the plot.
     pub plot_legend: crate::blueprint::archetypes::PlotLegend,
+
+    /// Configures the background of the plot.
+    pub background: crate::blueprint::archetypes::PlotBackground,
 }
 
 impl ::re_types_core::View for BarChartView {
@@ -35,45 +40,15 @@ impl ::re_types_core::View for BarChartView {
     }
 }
 
-impl<T: Into<crate::blueprint::archetypes::PlotLegend>> From<T> for BarChartView {
-    fn from(v: T) -> Self {
-        Self {
-            plot_legend: v.into(),
-        }
-    }
-}
-
-impl std::borrow::Borrow<crate::blueprint::archetypes::PlotLegend> for BarChartView {
-    #[inline]
-    fn borrow(&self) -> &crate::blueprint::archetypes::PlotLegend {
-        &self.plot_legend
-    }
-}
-
-impl std::ops::Deref for BarChartView {
-    type Target = crate::blueprint::archetypes::PlotLegend;
-
-    #[inline]
-    fn deref(&self) -> &crate::blueprint::archetypes::PlotLegend {
-        &self.plot_legend
-    }
-}
-
-impl std::ops::DerefMut for BarChartView {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::archetypes::PlotLegend {
-        &mut self.plot_legend
-    }
-}
-
 impl ::re_byte_size::SizeBytes for BarChartView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.plot_legend.heap_size_bytes()
+        self.plot_legend.heap_size_bytes() + self.background.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::archetypes::PlotLegend>::is_pod()
+            && <crate::blueprint::archetypes::PlotBackground>::is_pod()
     }
 }

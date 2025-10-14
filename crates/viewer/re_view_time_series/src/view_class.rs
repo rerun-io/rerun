@@ -7,13 +7,13 @@ use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_nanos;
 use re_log_types::{EntityPath, TimeInt};
 use re_types::{
-    ComponentBatch as _, View as _, ViewClassIdentifier,
+    Archetype as _, ComponentBatch as _, View as _, ViewClassIdentifier,
     archetypes::{SeriesLines, SeriesPoints},
     blueprint::{
-        archetypes::{PlotLegend, ScalarAxis, TimeAxis},
-        components::{Corner2D, LinkAxis, LockRangeDuringZoom},
+        archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis},
+        components::{Corner2D, Enabled, LinkAxis, LockRangeDuringZoom},
     },
-    components::{AggregationPolicy, Range1D, SeriesVisible, Visible},
+    components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible},
     datatypes::TimeRange,
 };
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
@@ -209,6 +209,7 @@ impl ViewClass for TimeSeriesView {
 
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
             let ctx = self.view_context(ctx, view_id, state);
+            view_property_ui::<PlotBackground>(&ctx, ui, self);
             view_property_ui::<PlotLegend>(&ctx, ui, self);
             view_property_ui::<TimeAxis>(&ctx, ui, self);
             view_property_ui::<ScalarAxis>(&ctx, ui, self);
@@ -356,6 +357,22 @@ impl ViewClass for TimeSeriesView {
         let view_id = query.view_id;
 
         let view_ctx = self.view_context(ctx, view_id, state);
+        let background = ViewProperty::from_archetype::<PlotBackground>(
+            blueprint_db,
+            ctx.blueprint_query,
+            view_id,
+        );
+        let background_color = background.component_or_fallback::<Color>(
+            &view_ctx,
+            self,
+            &PlotBackground::descriptor_color(),
+        )?;
+        let show_grid = background.component_or_fallback::<Enabled>(
+            &view_ctx,
+            self,
+            &PlotBackground::descriptor_show_grid(),
+        )?;
+
         let plot_legend =
             ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
         let legend_visible = plot_legend.component_or_fallback::<Visible>(
@@ -443,9 +460,6 @@ impl ViewClass for TimeSeriesView {
         };
         state.time_offset = time_offset;
 
-        // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
-        let plot_id_src = ("plot", &timeline_name);
-
         let lock_y_during_zoom = y_zoom_lock;
 
         // We don't want to allow vertical when y is locked or else the view "bounces" when we scroll and
@@ -463,220 +477,232 @@ impl ViewClass for TimeSeriesView {
 
         let min_axis_thickness = ui.tokens().small_icon_size.y;
 
-        let mut plot = Plot::new(plot_id_src)
-            .id(plot_id)
-            .auto_bounds(state.saved_auto_bounds) // Note that this only sets the initial default.
-            .allow_zoom([true, !lock_y_during_zoom])
-            .custom_x_axes(vec![
-                egui_plot::AxisHints::new_x()
-                    .min_thickness(min_axis_thickness)
-                    .formatter(move |time, _| {
-                        re_log_types::TimeCell::new(
-                            time_type,
-                            (time.value as i64).saturating_add(time_offset),
+        ui.scope(|ui| {
+            // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
+            let plot_id_src = ("plot", &timeline_name);
+
+            ui.style_mut().visuals.extreme_bg_color = background_color.into();
+
+            let mut plot = Plot::new(plot_id_src)
+                .id(plot_id)
+                .show_grid(**show_grid)
+                .auto_bounds(state.saved_auto_bounds) // Note that this only sets the initial default.
+                .allow_zoom([true, !lock_y_during_zoom])
+                .custom_x_axes(vec![
+                    egui_plot::AxisHints::new_x()
+                        .min_thickness(min_axis_thickness)
+                        .formatter(move |time, _| {
+                            re_log_types::TimeCell::new(
+                                time_type,
+                                (time.value as i64).saturating_add(time_offset),
+                            )
+                            .format_compact(timestamp_format)
+                        }),
+                ])
+                .custom_y_axes(vec![
+                    egui_plot::AxisHints::new_y()
+                        .min_thickness(min_axis_thickness)
+                        .formatter(move |mark, _| format_y_axis(mark)),
+                ])
+                .label_formatter(move |name, value| {
+                    let name = if name.is_empty() { "y" } else { name };
+                    let label = time_type.format(
+                        TimeInt::new_temporal((value.x as i64).saturating_add(time_offset)),
+                        timestamp_format,
+                    );
+
+                    let y_value = re_format::format_f64(value.y);
+
+                    if aggregator == AggregationPolicy::Off || aggregation_factor <= 1.0 {
+                        format!("{timeline_name}: {label}\n{name}: {y_value}")
+                    } else {
+                        format!(
+                            "{timeline_name}: {label}\n{name}: {y_value}\n\
+                        {aggregator} aggregation over approx. {aggregation_factor:.1} time points",
                         )
-                        .format_compact(timestamp_format)
-                    }),
-            ])
-            .custom_y_axes(vec![
-                egui_plot::AxisHints::new_y()
-                    .min_thickness(min_axis_thickness)
-                    .formatter(move |mark, _| format_y_axis(mark)),
-            ])
-            .label_formatter(move |name, value| {
-                let name = if name.is_empty() { "y" } else { name };
-                let label = time_type.format(
-                    TimeInt::new_temporal((value.x as i64).saturating_add(time_offset)),
-                    timestamp_format,
+                    }
+                });
+
+            if state.reset_bounds_next_frame {
+                plot = plot.reset();
+            }
+
+            match link_x_axis {
+                LinkAxis::Independent => {}
+                LinkAxis::LinkToGlobal => {
+                    plot = plot.link_axis(timeline.name().as_str(), [true, false]);
+                }
+            }
+
+            // Sharing the same cursor is always nice:
+            plot = plot.link_cursor(timeline.name().as_str(), [true, false]);
+
+            if *legend_visible.0 {
+                plot = plot.legend(
+                    Legend::default()
+                        .position(legend_corner.into())
+                        .color_conflict_handling(ColorConflictHandling::PickFirst),
+                );
+            }
+
+            match timeline.typ() {
+                TimeType::Sequence => {}
+                TimeType::DurationNs | TimeType::TimestampNs => {
+                    let canvas_size = ui.available_size();
+                    plot =
+                        plot.x_grid_spacer(move |spacer| nanos_grid_spacer(canvas_size, &spacer));
+                }
+            }
+
+            let mut plot_double_clicked = false;
+            let egui_plot::PlotResponse {
+                inner: _,
+                response,
+                transform,
+                hovered_plot_item,
+            } = plot.show(ui, |plot_ui| {
+                if plot_ui.response().secondary_clicked()
+                    && let Some(pointer) = plot_ui.pointer_coordinate()
+                {
+                    let time = re_log_types::TimeReal::from(pointer.x as i64 + time_offset);
+                    ctx.send_time_commands([
+                        TimeControlCommand::SetTime(time),
+                        TimeControlCommand::Pause,
+                    ]);
+                }
+
+                plot_double_clicked = plot_ui.response().double_clicked();
+
+                // Let the user pick y_range from the blueprint:
+                plot_ui.set_plot_bounds_y(y_range);
+
+                // Needed by for the visualizers' fallback provider.
+                state.default_names_for_entities = EntityPath::short_names_with_disambiguation(
+                    all_plot_series
+                        .iter()
+                        .map(|series| series.instance_path.entity_path.clone())
+                        // `short_names_with_disambiguation` expects no duplicate entities
+                        .collect::<nohash_hasher::IntSet<_>>(),
                 );
 
-                let y_value = re_format::format_f64(value.y);
-
-                if aggregator == AggregationPolicy::Off || aggregation_factor <= 1.0 {
-                    format!("{timeline_name}: {label}\n{name}: {y_value}")
+                if state.is_dragging_time_cursor {
+                    if !state.was_dragging_time_cursor {
+                        state.saved_auto_bounds = plot_ui.auto_bounds();
+                    }
+                    // Freeze any change to the plot boundaries to avoid weird interaction with the time cursor.
+                    plot_ui.set_auto_bounds([false, false]);
+                } else if state.was_dragging_time_cursor {
+                    plot_ui.set_auto_bounds(state.saved_auto_bounds);
                 } else {
-                    format!(
-                        "{timeline_name}: {label}\n{name}: {y_value}\n\
-                        {aggregator} aggregation over approx. {aggregation_factor:.1} time points",
-                    )
+                    plot_ui.set_auto_bounds([
+                        // X bounds are handled by egui plot - either to auto or manually controlled.
+                        state.reset_bounds_next_frame
+                            || (plot_ui.auto_bounds().x && link_x_axis == LinkAxis::Independent),
+                        // Y bounds are always handled by the blueprint.
+                        false,
+                    ]);
                 }
+
+                state.reset_bounds_next_frame = false;
+                state.was_dragging_time_cursor = state.is_dragging_time_cursor;
+
+                add_series_to_plot(
+                    plot_ui,
+                    &query.highlights,
+                    &all_plot_series,
+                    time_offset,
+                    &mut state.scalar_range,
+                );
             });
 
-        if state.reset_bounds_next_frame {
-            plot = plot.reset();
-        }
-
-        match link_x_axis {
-            LinkAxis::Independent => {}
-            LinkAxis::LinkToGlobal => {
-                plot = plot.link_axis(timeline.name().as_str(), [true, false]);
-            }
-        }
-
-        // Sharing the same cursor is always nice:
-        plot = plot.link_cursor(timeline.name().as_str(), [true, false]);
-
-        if *legend_visible.0 {
-            plot = plot.legend(
-                Legend::default()
-                    .position(legend_corner.into())
-                    .color_conflict_handling(ColorConflictHandling::PickFirst),
-            );
-        }
-
-        match timeline.typ() {
-            TimeType::Sequence => {}
-            TimeType::DurationNs | TimeType::TimestampNs => {
-                let canvas_size = ui.available_size();
-                plot = plot.x_grid_spacer(move |spacer| nanos_grid_spacer(canvas_size, &spacer));
-            }
-        }
-
-        let mut plot_double_clicked = false;
-        let egui_plot::PlotResponse {
-            inner: _,
-            response,
-            transform,
-            hovered_plot_item,
-        } = plot.show(ui, |plot_ui| {
-            if plot_ui.response().secondary_clicked()
-                && let Some(pointer) = plot_ui.pointer_coordinate()
-            {
-                let time = re_log_types::TimeReal::from(pointer.x as i64 + time_offset);
-                ctx.send_time_commands([
-                    TimeControlCommand::SetTime(time),
-                    TimeControlCommand::Pause,
-                ]);
-            }
-
-            plot_double_clicked = plot_ui.response().double_clicked();
-
-            // Let the user pick y_range from the blueprint:
-            plot_ui.set_plot_bounds_y(y_range);
-
-            // Needed by for the visualizers' fallback provider.
-            state.default_names_for_entities = EntityPath::short_names_with_disambiguation(
-                all_plot_series
-                    .iter()
-                    .map(|series| series.instance_path.entity_path.clone())
-                    // `short_names_with_disambiguation` expects no duplicate entities
-                    .collect::<nohash_hasher::IntSet<_>>(),
-            );
-
-            if state.is_dragging_time_cursor {
-                if !state.was_dragging_time_cursor {
-                    state.saved_auto_bounds = plot_ui.auto_bounds();
+            // Interact with the plot items (lines, scatters, etc.)
+            let hovered_data_result = hovered_plot_item
+                .and_then(|hovered_plot_item| plot_item_id_to_instance_path.get(&hovered_plot_item))
+                .map(|instance_path| {
+                    re_viewer_context::Item::DataResult(query.view_id, instance_path.clone())
+                });
+            if let Some(hovered) = hovered_data_result.clone().or_else(|| {
+                if response.hovered() {
+                    Some(re_viewer_context::Item::View(query.view_id))
+                } else {
+                    None
                 }
-                // Freeze any change to the plot boundaries to avoid weird interaction with the time cursor.
-                plot_ui.set_auto_bounds([false, false]);
-            } else if state.was_dragging_time_cursor {
-                plot_ui.set_auto_bounds(state.saved_auto_bounds);
-            } else {
-                plot_ui.set_auto_bounds([
-                    // X bounds are handled by egui plot - either to auto or manually controlled.
-                    state.reset_bounds_next_frame
-                        || (plot_ui.auto_bounds().x && link_x_axis == LinkAxis::Independent),
-                    // Y bounds are always handled by the blueprint.
-                    false,
-                ]);
+            }) {
+                ctx.handle_select_hover_drag_interactions(&response, hovered, false);
             }
 
-            state.reset_bounds_next_frame = false;
-            state.was_dragging_time_cursor = state.is_dragging_time_cursor;
+            // Can determine whether we're resetting only now since we need to know whether there's a plot item hovered.
+            let is_resetting = plot_double_clicked && hovered_data_result.is_none();
 
-            add_series_to_plot(
-                plot_ui,
-                &query.highlights,
-                &all_plot_series,
-                time_offset,
-                &mut state.scalar_range,
-            );
-        });
-
-        // Interact with the plot items (lines, scatters, etc.)
-        let hovered_data_result = hovered_plot_item
-            .and_then(|hovered_plot_item| plot_item_id_to_instance_path.get(&hovered_plot_item))
-            .map(|instance_path| {
-                re_viewer_context::Item::DataResult(query.view_id, instance_path.clone())
-            });
-        if let Some(hovered) = hovered_data_result.clone().or_else(|| {
-            if response.hovered() {
-                Some(re_viewer_context::Item::View(query.view_id))
-            } else {
-                None
+            // Write new y_range if it has changed.
+            let new_y_range =
+                Range1D::new(transform.bounds().min()[1], transform.bounds().max()[1]);
+            if is_resetting {
+                scalar_axis.reset_blueprint_component(ctx, ScalarAxis::descriptor_range());
+                state.reset_bounds_next_frame = true;
+                ui.ctx().request_repaint(); // Make sure we get another frame with the reset actually applied.
+            } else if new_y_range != y_range {
+                scalar_axis.save_blueprint_component(
+                    ctx,
+                    &ScalarAxis::descriptor_range(),
+                    &new_y_range,
+                );
+                ui.ctx().request_repaint(); // Make sure we get another frame with this new range applied.
             }
-        }) {
-            ctx.handle_select_hover_drag_interactions(&response, hovered, false);
-        }
 
-        // Can determine whether we're resetting only now since we need to know whether there's a plot item hovered.
-        let is_resetting = plot_double_clicked && hovered_data_result.is_none();
+            // Decide if the time cursor should be displayed, and if so where:
+            let time_x = current_time
+                .map(|current_time| (current_time.saturating_sub(time_offset)) as f64)
+                .filter(|&x| {
+                    // only display the time cursor when it's actually above the plot area
+                    transform.bounds().min()[0] <= x && x <= transform.bounds().max()[0]
+                })
+                .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
 
-        // Write new y_range if it has changed.
-        let new_y_range = Range1D::new(transform.bounds().min()[1], transform.bounds().max()[1]);
-        if is_resetting {
-            scalar_axis.reset_blueprint_component(ctx, ScalarAxis::descriptor_range());
-            state.reset_bounds_next_frame = true;
-            ui.ctx().request_repaint(); // Make sure we get another frame with the reset actually applied.
-        } else if new_y_range != y_range {
-            scalar_axis.save_blueprint_component(
+            // Sync visibility of hidden items with the blueprint (user can hide items via the legend).
+            update_series_visibility_overrides_from_plot(
                 ctx,
-                &ScalarAxis::descriptor_range(),
-                &new_y_range,
+                query,
+                &all_plot_series,
+                ui.ctx(),
+                plot_id,
             );
-            ui.ctx().request_repaint(); // Make sure we get another frame with this new range applied.
-        }
 
-        // Decide if the time cursor should be displayed, and if so where:
-        let time_x = current_time
-            .map(|current_time| (current_time.saturating_sub(time_offset)) as f64)
-            .filter(|&x| {
-                // only display the time cursor when it's actually above the plot area
-                transform.bounds().min()[0] <= x && x <= transform.bounds().max()[0]
-            })
-            .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
+            if let Some(mut time_x) = time_x {
+                let interact_radius = ui.style().interaction.resize_grab_radius_side;
+                let line_rect =
+                    egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
+                        .expand(interact_radius);
 
-        // Sync visibility of hidden items with the blueprint (user can hide items via the legend).
-        update_series_visibility_overrides_from_plot(
-            ctx,
-            query,
-            &all_plot_series,
-            ui.ctx(),
-            plot_id,
-        );
+                let time_drag_id = ui.id().with("time_drag");
+                let response = ui
+                    .interact(line_rect, time_drag_id, egui::Sense::drag())
+                    .on_hover_and_drag_cursor(egui::CursorIcon::ResizeHorizontal);
 
-        if let Some(mut time_x) = time_x {
-            let interact_radius = ui.style().interaction.resize_grab_radius_side;
-            let line_rect = egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
-                .expand(interact_radius);
+                state.is_dragging_time_cursor = false;
+                if response.dragged()
+                    && let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos())
+                {
+                    let new_offset_time = transform.value_from_position(pointer_pos).x;
+                    let new_time = time_offset + new_offset_time.round() as i64;
 
-            let time_drag_id = ui.id().with("time_drag");
-            let response = ui
-                .interact(line_rect, time_drag_id, egui::Sense::drag())
-                .on_hover_and_drag_cursor(egui::CursorIcon::ResizeHorizontal);
+                    // Avoid frame-delay:
+                    time_x = pointer_pos.x;
 
-            state.is_dragging_time_cursor = false;
-            if response.dragged()
-                && let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos())
-            {
-                let new_offset_time = transform.value_from_position(pointer_pos).x;
-                let new_time = time_offset + new_offset_time.round() as i64;
+                    ctx.send_time_commands([
+                        TimeControlCommand::SetTime(new_time.into()),
+                        TimeControlCommand::Pause,
+                    ]);
 
-                // Avoid frame-delay:
-                time_x = pointer_pos.x;
+                    state.is_dragging_time_cursor = true;
+                }
 
-                ctx.send_time_commands([
-                    TimeControlCommand::SetTime(new_time.into()),
-                    TimeControlCommand::Pause,
-                ]);
-
-                state.is_dragging_time_cursor = true;
+                ui.paint_time_cursor(ui.painter(), &response, time_x, response.rect.y_range());
             }
 
-            ui.paint_time_cursor(ui.painter(), &response, time_x, response.rect.y_range());
-        }
-
-        Ok(())
+            Ok(())
+        })
+        .inner
     }
 }
 
@@ -931,6 +957,28 @@ impl TypedComponentFallbackProvider<Range1D> for TimeSeriesView {
     }
 }
 
+impl TypedComponentFallbackProvider<Color> for TimeSeriesView {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Color {
+        // Color is a fairly common component, make sure this is the right context.
+        if ctx.archetype_name == Some(PlotBackground::name()) {
+            ctx.viewer_ctx().tokens().viewport_background.into()
+        } else {
+            Color::default()
+        }
+    }
+}
+
+impl TypedComponentFallbackProvider<Enabled> for TimeSeriesView {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Enabled {
+        // Enabled is a fairly general component, make sure this is the right context.
+        if ctx.archetype_name == Some(PlotBackground::name()) {
+            Enabled(true.into())
+        } else {
+            Enabled::default()
+        }
+    }
+}
+
 /// Make sure the range is finite and positive, or `egui_plot` might be buggy.
 fn make_range_sane(y_range: Range1D) -> Range1D {
     let (mut start, mut end) = (y_range.start(), y_range.end());
@@ -954,7 +1002,7 @@ fn make_range_sane(y_range: Range1D) -> Range1D {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(TimeSeriesView => [Corner2D, Range1D]);
+re_viewer_context::impl_component_fallback_provider!(TimeSeriesView => [Corner2D, Range1D, Color, Enabled]);
 
 #[test]
 fn test_help_view() {

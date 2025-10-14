@@ -212,7 +212,7 @@ macro_rules! impl_multi_sink_tuple {
         where
             $($T: LogSink + MultiSinkCompatible,)*
         {
-            #[allow(non_snake_case)] // so that we only need one metavar
+            #[expect(non_snake_case)] // so that we only need one metavar
             #[inline]
             fn into_multi_sink(self) -> MultiSink {
                 let ($($T,)*) = self;

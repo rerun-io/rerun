@@ -17,6 +17,7 @@ map_background.py linguist-generated=true
 map_zoom.py linguist-generated=true
 near_clip_plane.py linguist-generated=true
 panel_blueprint.py linguist-generated=true
+plot_background.py linguist-generated=true
 plot_legend.py linguist-generated=true
 scalar_axis.py linguist-generated=true
 tensor_scalar_mapping.py linguist-generated=true

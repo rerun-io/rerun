@@ -212,7 +212,7 @@ impl ItemCollection {
             EntityPath,
         }
 
-        #[allow(clippy::match_same_arms)]
+        #[expect(clippy::match_same_arms)]
         let clipboard_texts_per_type = self
             .iter()
             .filter_map(|(item, _)| match item {

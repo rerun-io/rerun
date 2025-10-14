@@ -74,7 +74,6 @@ fn main() -> anyhow::Result<()> {
 
     // Inform the Rerun Viewer that we do not support that kind of file.
     if !is_file || !is_rust_file {
-        #[allow(clippy::exit)]
         std::process::exit(EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE);
     }
 

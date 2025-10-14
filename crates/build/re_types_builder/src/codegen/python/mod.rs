@@ -561,7 +561,7 @@ fn write_init_file(
     files_to_write.insert(path, code);
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 fn lib_source_code(archetype_names: &[String]) -> String {
     let manifest = quote_manifest(archetype_names);
     let archetype_names = archetype_names.join(", ");
