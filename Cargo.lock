@@ -9601,6 +9601,7 @@ dependencies = [
  "ahash",
  "bitflags 2.9.4",
  "glam",
+ "insta",
  "itertools 0.14.0",
  "nohash-hasher",
  "re_chunk_store",
@@ -9609,6 +9610,7 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_types",
+ "thiserror 1.0.69",
  "vec1",
 ]
 

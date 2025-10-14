@@ -15,7 +15,7 @@ pub enum DataResultNodeOrPath<'a> {
 impl<'a> DataResultNodeOrPath<'a> {
     pub fn from_path_lookup(result_tree: &'a DataResultTree, path: &'a EntityPath) -> Self {
         result_tree
-            .lookup_node_by_path(path)
+            .lookup_node_by_path(path.hash())
             .map_or(DataResultNodeOrPath::Path(path), |node| {
                 DataResultNodeOrPath::DataResultNode(node)
             })

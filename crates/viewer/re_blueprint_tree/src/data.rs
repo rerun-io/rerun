@@ -574,7 +574,7 @@ impl DataResultData {
     pub fn update_visibility(&self, ctx: &ViewerContext<'_>, visible: bool) {
         let query_result = ctx.lookup_query_result(self.view_id);
         let result_tree = &query_result.tree;
-        if let Some(data_result) = result_tree.lookup_result_by_path(&self.entity_path) {
+        if let Some(data_result) = result_tree.lookup_result_by_path(self.entity_path.hash()) {
             data_result.save_visible(ctx, &query_result.tree, visible);
         }
     }
