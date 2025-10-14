@@ -81,9 +81,11 @@ pub trait HarnessExt {
     fn set_blueprint_panel_opened(&mut self, opened: bool) {
         self.set_panel_opened("Blueprint panel toggle", opened);
     }
+
     fn set_selection_panel_opened(&mut self, opened: bool) {
         self.set_panel_opened("Selection panel toggle", opened);
     }
+
     fn set_time_panel_opened(&mut self, opened: bool) {
         self.set_panel_opened("Time panel toggle", opened);
     }
@@ -321,8 +323,7 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         if is_open != opened {
             self.click_label(panel_label);
         }
-        // The toggle button is hovered now, move the pointer away
-        self.input_mut().events.push(egui::Event::PointerGone);
+        self.remove_cursor();
         self.run_ok();
     }
 }
