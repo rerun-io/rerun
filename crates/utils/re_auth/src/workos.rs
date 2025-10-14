@@ -21,7 +21,7 @@ const ISSUER_URL_BASE: &str = "https://api.workos.com/user_management";
 // When doing so, don't forget to replace it everywhere. :)
 pub(crate) const WORKOS_CLIENT_ID: &str = match option_env!("WORKOS_CLIENT_ID") {
     Some(v) => v,
-    None => "client_01JZ3JVQW6JNVXME6HV9G4VR0H",
+    None => "client_01JZ3JVR1PEVQMS73V86MC4CE2",
 };
 pub(crate) const DEFAULT_ISSUER: &str =
     const_format::concatcp!(ISSUER_URL_BASE, "/", WORKOS_CLIENT_ID);
