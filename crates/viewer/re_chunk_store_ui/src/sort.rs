@@ -51,8 +51,8 @@ pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
             },
             |ui| {
                 ui.button(match (is_sorted, direction) {
-                    (true, SortDirection::Ascending) => "↓",
-                    (true, SortDirection::Descending) => "↑",
+                    (true, SortDirection::Ascending) => "↑",
+                    (true, SortDirection::Descending) => "↓",
                     _ => "",
                 })
                 .clicked()

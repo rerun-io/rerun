@@ -22,8 +22,8 @@ impl SortDirection {
 
     pub fn icon(&self) -> &'static re_ui::Icon {
         match self {
-            Self::Ascending => &re_ui::icons::ARROW_DOWN,
-            Self::Descending => &re_ui::icons::ARROW_UP,
+            Self::Ascending => &re_ui::icons::ARROW_UP,
+            Self::Descending => &re_ui::icons::ARROW_DOWN,
         }
     }
 
