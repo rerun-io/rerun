@@ -8498,6 +8498,7 @@ dependencies = [
  "re_tracing",
  "re_types",
  "re_types_core",
+ "saturating_cast",
  "similar-asserts",
  "tap",
  "thiserror 1.0.69",
