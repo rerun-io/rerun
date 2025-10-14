@@ -10,49 +10,66 @@ use arrow::error::ArrowError;
 // ## Arrow Transformations
 //
 // This module provides composable transformations for Arrow arrays.
-// All operations preserve row count (affine transformations).
+// Transformations are composable operations that convert one array type to another,
+// preserving structural properties like row counts and null handling.
 
-/// A transformation that projects from one Arrow array type to another.
+/// A transformation that converts one Arrow array type to another.
 ///
-/// This is a read-only projection that may fail (e.g., missing field).
-/// Mathematical property: Affine transformation (0 or 1 output per input).
-trait Projection: Clone {
-    type Source: Array + Clone;
-    type Target: Array + Clone;
+/// Transformations are read-only operations that may fail (e.g., missing field, type mismatch).
+/// They can be composed using the `then` method to create complex transformation pipelines.
+///
+/// # Examples
+///
+/// ```ignore
+/// let transform = GetField::new("x").then(ToFloat32::new());
+/// let result = transform.transform(&my_array)?;
+/// ```
+pub trait Transform {
+    type Source: Array;
+    type Target: Array;
 
-    /// Project from source array to target array.
-    fn project(&self, source: &Self::Source) -> Result<Self::Target, ArrowError>;
+    /// Apply the transformation to the source array.
+    fn transform(&self, source: &Self::Source) -> Result<Self::Target, ArrowError>;
 }
 
-/// Composes two projections into a single projection.
+/// Composes two transformations into a single transformation.
+///
+/// This is the result of calling `.then()` on a transformation.
 #[derive(Clone)]
-struct Compose<P1, P2> {
-    first: P1,
-    second: P2,
+pub struct Compose<T1, T2> {
+    first: T1,
+    second: T2,
 }
 
-impl<P1, P2, M> Projection for Compose<P1, P2>
+impl<T1, T2, M> Transform for Compose<T1, T2>
 where
-    P1: Projection<Target = M>,
-    P2: Projection<Source = M>,
+    T1: Transform<Target = M>,
+    T2: Transform<Source = M>,
     M: Array,
 {
-    type Source = P1::Source;
-    type Target = P2::Target;
+    type Source = T1::Source;
+    type Target = T2::Target;
 
-    fn project(&self, source: &Self::Source) -> Result<Self::Target, ArrowError> {
-        let mid = self.first.project(source)?;
-        self.second.project(&mid)
+    fn transform(&self, source: &Self::Source) -> Result<Self::Target, ArrowError> {
+        let mid = self.first.transform(source)?;
+        self.second.transform(&mid)
     }
 }
 
-/// Extension trait for composing projections.
-trait ProjectionExt: Projection {
-    /// Chain this projection with another projection.
-    fn then<P2>(self, next: P2) -> Compose<Self, P2>
+/// Extension trait for composing transformations.
+pub trait TransformExt: Transform {
+    /// Chain this transformation with another transformation.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let pipeline = GetField::new("data")
+    ///     .then(MapList::new(ToFloat32::new()));
+    /// ```
+    fn then<T2>(self, next: T2) -> Compose<Self, T2>
     where
         Self: Sized,
-        P2: Projection<Source = Self::Target>,
+        T2: Transform<Source = Self::Target>,
     {
         Compose {
             first: self,
@@ -61,26 +78,42 @@ trait ProjectionExt: Projection {
     }
 }
 
-impl<T: Projection> ProjectionExt for T {}
+impl<T: Transform> TransformExt for T {}
 
 /// Extracts a field from a struct array.
 ///
-/// Fails if the field doesn't exist.
+/// Returns the field's array if it exists, otherwise returns an error.
+///
+/// # Examples
+///
+/// ```ignore
+/// let get_x = GetField::new("x");
+/// let x_values = get_x.transform(&struct_array)?;
+/// ```
 #[derive(Clone)]
-struct ExtractStructField {
+pub struct GetField {
     field_name: String,
 }
 
-impl Projection for ExtractStructField {
+impl GetField {
+    /// Create a new field extractor for the given field name.
+    pub fn new(field_name: impl Into<String>) -> Self {
+        Self {
+            field_name: field_name.into(),
+        }
+    }
+}
+
+impl Transform for GetField {
     type Source = StructArray;
     type Target = ArrayRef;
 
-    fn project(&self, source: &StructArray) -> Result<ArrayRef, ArrowError> {
+    fn transform(&self, source: &StructArray) -> Result<ArrayRef, ArrowError> {
         source
             .column_by_name(&self.field_name)
             .ok_or_else(|| {
                 arrow::error::ArrowError::InvalidArgumentError(format!(
-                    "Field {} not found",
+                    "Field '{}' not found in struct",
                     self.field_name
                 ))
             })
@@ -88,34 +121,50 @@ impl Projection for ExtractStructField {
     }
 }
 
-/// Applies a projection to the elements within a list array.
+/// Maps a transformation over the elements within a list array.
 ///
-/// Wraps an inner projection and applies it to the flattened values array.
-/// Mathematical property: Non-affine transformation (operates on N elements).
+/// Applies the inner transformation to the flattened values array while preserving
+/// the list structure (offsets and null bitmap).
+///
+/// # Examples
+///
+/// ```ignore
+/// // Convert all floats in a list to f32
+/// let transform = MapList::new(ToFloat32::new());
+/// let result = transform.transform(&list_of_f64)?;
+/// ```
 #[derive(Clone)]
-struct Over<P> {
-    projection: P,
+pub struct MapList<T> {
+    transform: T,
 }
 
-impl<P, S, T> Projection for Over<P>
+impl<T> MapList<T> {
+    /// Create a new list mapper that applies the given transformation to list elements.
+    pub fn new(transform: T) -> Self {
+        Self { transform }
+    }
+}
+
+impl<T, S, U> Transform for MapList<T>
 where
-    P: Projection<Source = S, Target = T>,
-    S: Array + Clone + 'static,
-    T: Array + Clone + 'static,
+    T: Transform<Source = S, Target = U>,
+    S: Array + 'static,
+    U: Array + 'static,
 {
     type Source = ListArray;
     type Target = ListArray;
 
-    fn project(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
+    fn transform(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
         let values = source.values();
         let downcast = values.as_any().downcast_ref::<S>().ok_or_else(|| {
             arrow::error::ArrowError::InvalidArgumentError(format!(
-                "Type mismatch: expected {}",
-                std::any::type_name::<S>()
+                "Type mismatch in list values: expected {}, got {:?}",
+                std::any::type_name::<S>(),
+                values.data_type()
             ))
         })?;
 
-        let transformed = self.projection.project(downcast)?;
+        let transformed = self.transform.transform(downcast)?;
         let new_field = Arc::new(Field::new("item", transformed.data_type().clone(), true));
 
         let (_, offsets, _, nulls) = source.clone().into_parts();
@@ -128,34 +177,50 @@ where
     }
 }
 
-/// Applies a projection to the elements within a fixed-size list array.
+/// Maps a transformation over the elements within a fixed-size list array.
 ///
-/// Wraps an inner projection and applies it to the flattened values array.
-/// Mathematical property: Non-affine transformation (operates on N elements).
+/// Applies the inner transformation to the flattened values array while preserving
+/// the fixed-size list structure (element count and null bitmap).
+///
+/// # Examples
+///
+/// ```ignore
+/// // Add 1.0 to each element in fixed-size lists
+/// let transform = MapFixedSizeList::new(MapFloat64::new(|x| x + 1.0));
+/// let result = transform.transform(&fixed_list_array)?;
+/// ```
 #[derive(Clone)]
-struct OverFixedSize<P> {
-    projection: P,
+pub struct MapFixedSizeList<T> {
+    transform: T,
 }
 
-impl<P, S, T> Projection for OverFixedSize<P>
+impl<T> MapFixedSizeList<T> {
+    /// Create a new fixed-size list mapper that applies the given transformation to list elements.
+    pub fn new(transform: T) -> Self {
+        Self { transform }
+    }
+}
+
+impl<T, S, U> Transform for MapFixedSizeList<T>
 where
-    P: Projection<Source = S, Target = T>,
-    S: Array + Clone + 'static,
-    T: Array + Clone + 'static,
+    T: Transform<Source = S, Target = U>,
+    S: Array + 'static,
+    U: Array + 'static,
 {
     type Source = FixedSizeListArray;
     type Target = FixedSizeListArray;
 
-    fn project(&self, source: &FixedSizeListArray) -> Result<FixedSizeListArray, ArrowError> {
+    fn transform(&self, source: &FixedSizeListArray) -> Result<FixedSizeListArray, ArrowError> {
         let values = source.values();
         let downcast = values.as_any().downcast_ref::<S>().ok_or_else(|| {
             arrow::error::ArrowError::InvalidArgumentError(format!(
-                "Type mismatch: expected {}",
-                std::any::type_name::<S>()
+                "Type mismatch in fixed-size list values: expected {}, got {:?}",
+                std::any::type_name::<S>(),
+                values.data_type()
             ))
         })?;
 
-        let transformed = self.projection.project(downcast)?;
+        let transformed = self.transform.transform(downcast)?;
         let field = Arc::new(Field::new("item", transformed.data_type().clone(), true));
         let size = source.value_length();
         let nulls = source.nulls().cloned();
@@ -171,15 +236,38 @@ where
 
 /// Converts a struct with {x, y} fields to a fixed-size list array of length 2.
 ///
-/// Loses field name information during conversion.
+/// This transformation extracts the x and y fields from each struct and packs them
+/// into a fixed-size list of 2 elements. Null handling: if either x or y is null,
+/// the entire list entry is marked as null.
+///
+/// # Examples
+///
+/// ```ignore
+/// // Transform struct{x: f64, y: f64} to FixedSizeList[2] of f64
+/// let transform = StructToPoint2D::new();
+/// let points = transform.transform(&struct_array)?;
+/// ```
 #[derive(Clone)]
-struct ConvertPointStructToFixedList;
+pub struct StructToPoint2D;
 
-impl Projection for ConvertPointStructToFixedList {
+impl StructToPoint2D {
+    /// Create a new struct-to-point-2D transformer.
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for StructToPoint2D {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Transform for StructToPoint2D {
     type Source = StructArray;
     type Target = FixedSizeListArray;
 
-    fn project(&self, source: &StructArray) -> Result<FixedSizeListArray, ArrowError> {
+    fn transform(&self, source: &StructArray) -> Result<FixedSizeListArray, ArrowError> {
         let x_array = source
             .column_by_name("x")
             .ok_or_else(|| {
@@ -207,21 +295,18 @@ impl Projection for ConvertPointStructToFixedList {
         let mut null_buffer = BooleanBufferBuilder::new(len);
 
         for i in 0..len {
-            if source.is_null(i) {
+            // Mark the list entry as null if the struct is null or either field is null
+            let is_valid = !source.is_null(i) && !x_array.is_null(i) && !y_array.is_null(i);
+
+            if is_valid {
+                builder.append_value(x_array.value(i));
+                builder.append_value(y_array.value(i));
+                null_buffer.append(true);
+            } else {
+                // Append placeholder nulls for the list elements
                 builder.append_null();
                 builder.append_null();
                 null_buffer.append(false);
-            } else {
-                if x_array.is_null(i) || y_array.is_null(i) {
-                    // Still append placeholder values, but mark the list entry as null
-                    builder.append_null();
-                    builder.append_null();
-                    null_buffer.append(false);
-                } else {
-                    builder.append_value(x_array.value(i));
-                    builder.append_value(y_array.value(i));
-                    null_buffer.append(true);
-                }
             }
         }
 
@@ -240,20 +325,37 @@ impl Projection for ConvertPointStructToFixedList {
 }
 
 
-/// Unwraps a single-element struct array within a list and extracts a field.
+/// Unwraps a struct array within a list and extracts a field from it.
 ///
-/// Input: ListArray[StructArray] -> Output: the field from the struct.
-/// Fails if the field doesn't exist or isn't a ListArray.
+/// This is useful for nested structures like `List<Struct<field: List<T>>>`,
+/// where you want to extract the inner field directly.
+///
+/// # Examples
+///
+/// ```ignore
+/// // Transform List<Struct<poses: List<Point>>> to List<Point>
+/// let transform = UnwrapListStructField::new("poses");
+/// let poses = transform.transform(&nested_list)?;
+/// ```
 #[derive(Clone)]
-struct UnwrapStructAndExtractField {
+pub struct UnwrapListStructField {
     field_name: String,
 }
 
-impl Projection for UnwrapStructAndExtractField {
+impl UnwrapListStructField {
+    /// Create a new transformer that unwraps a struct within a list and extracts the given field.
+    pub fn new(field_name: impl Into<String>) -> Self {
+        Self {
+            field_name: field_name.into(),
+        }
+    }
+}
+
+impl Transform for UnwrapListStructField {
     type Source = ListArray;
     type Target = ListArray;
 
-    fn project(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
+    fn transform(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
         // Get the struct array from the list values
         let struct_array = source
             .values()
@@ -261,7 +363,7 @@ impl Projection for UnwrapStructAndExtractField {
             .downcast_ref::<StructArray>()
             .ok_or_else(|| {
                 arrow::error::ArrowError::InvalidArgumentError(
-                    "Expected ListArray of StructArray".into(),
+                    "Expected list values to be a StructArray".into(),
                 )
             })?;
 
@@ -270,7 +372,7 @@ impl Projection for UnwrapStructAndExtractField {
             .column_by_name(&self.field_name)
             .ok_or_else(|| {
                 arrow::error::ArrowError::InvalidArgumentError(format!(
-                    "Field {} not found",
+                    "Field '{}' not found in struct",
                     self.field_name
                 ))
             })?;
@@ -281,7 +383,7 @@ impl Projection for UnwrapStructAndExtractField {
             .downcast_ref::<ListArray>()
             .ok_or_else(|| {
                 arrow::error::ArrowError::InvalidArgumentError(format!(
-                    "Field {} is not a ListArray",
+                    "Field '{}' is not a ListArray",
                     self.field_name
                 ))
             })
@@ -289,23 +391,43 @@ impl Projection for UnwrapStructAndExtractField {
     }
 }
 
-/// Applies a function to each element in a Float64Array.
+/// Maps a function over each element in a Float64Array.
+///
+/// Applies the given function to each non-null element, preserving null values.
+///
+/// # Examples
+///
+/// ```ignore
+/// // Add 1.0 to each element
+/// let transform = MapFloat64::new(|x| x + 1.0);
+/// let result = transform.transform(&float_array)?;
+/// ```
 #[derive(Clone)]
-struct MapFloat64<F>
+pub struct MapFloat64<F>
 where
-    F: Fn(f64) -> f64 + Clone,
+    F: Fn(f64) -> f64,
 {
     f: F,
 }
 
-impl<F> Projection for MapFloat64<F>
+impl<F> MapFloat64<F>
 where
-    F: Fn(f64) -> f64 + Clone,
+    F: Fn(f64) -> f64,
+{
+    /// Create a new mapper that applies the given function to each f64 element.
+    pub fn new(f: F) -> Self {
+        Self { f }
+    }
+}
+
+impl<F> Transform for MapFloat64<F>
+where
+    F: Fn(f64) -> f64,
 {
     type Source = Float64Array;
     type Target = Float64Array;
 
-    fn project(&self, source: &Float64Array) -> Result<Float64Array, ArrowError> {
+    fn transform(&self, source: &Float64Array) -> Result<Float64Array, ArrowError> {
         let mut builder = Float64Builder::with_capacity(source.len());
         for i in 0..source.len() {
             if source.is_null(i) {
@@ -320,15 +442,36 @@ where
 
 /// Converts Float64Array to Float32Array.
 ///
-/// Lossy conversion - reduces precision from 64-bit to 32-bit floats.
+/// This is a lossy conversion that reduces precision from 64-bit to 32-bit floats.
+/// Null values are preserved.
+///
+/// # Examples
+///
+/// ```ignore
+/// let transform = ToFloat32::new();
+/// let f32_array = transform.transform(&f64_array)?;
+/// ```
 #[derive(Clone)]
-struct ConvertFloat64ToFloat32;
+pub struct ToFloat32;
 
-impl Projection for ConvertFloat64ToFloat32 {
+impl ToFloat32 {
+    /// Create a new f64-to-f32 converter.
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for ToFloat32 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Transform for ToFloat32 {
     type Source = Float64Array;
     type Target = Float32Array;
 
-    fn project(&self, source: &Float64Array) -> Result<Float32Array, ArrowError> {
+    fn transform(&self, source: &Float64Array) -> Result<Float32Array, ArrowError> {
         let mut builder = Float32Builder::with_capacity(source.len());
         for i in 0..source.len() {
             if source.is_null(i) {
@@ -508,14 +651,10 @@ mod test {
         let array = create_nasty_component_column();
         println!("{}", DisplayRB::from(array.clone()));
 
-        let pipeline = UnwrapStructAndExtractField {
-            field_name: "poses".into(),
-        }
-        .then(Over {
-            projection: ConvertPointStructToFixedList,
-        });
+        let pipeline = UnwrapListStructField::new("poses")
+            .then(MapList::new(StructToPoint2D::new()));
 
-        let result: ListArray = pipeline.project(&array).unwrap();
+        let result: ListArray = pipeline.transform(&array).unwrap();
 
         insta::assert_snapshot!("simple", format!("{}", DisplayRB::from(result.clone())));
     }
@@ -524,19 +663,11 @@ mod test {
     fn add_one_to_leaves() {
         let array = create_nasty_component_column();
 
-        let pipeline = UnwrapStructAndExtractField {
-            field_name: "poses".into(),
-        }
-        .then(Over {
-            projection: ConvertPointStructToFixedList,
-        })
-        .then(Over {
-            projection: OverFixedSize {
-                projection: MapFloat64 { f: |x| x + 1.0 },
-            },
-        });
+        let pipeline = UnwrapListStructField::new("poses")
+            .then(MapList::new(StructToPoint2D::new()))
+            .then(MapList::new(MapFixedSizeList::new(MapFloat64::new(|x| x + 1.0))));
 
-        let result = pipeline.project(&array).unwrap();
+        let result = pipeline.transform(&array).unwrap();
 
         insta::assert_snapshot!("add_one_to_leaves", format!("{}", DisplayRB::from(result)));
     }
@@ -545,19 +676,11 @@ mod test {
     fn convert_to_f32() {
         let array = create_nasty_component_column();
 
-        let pipeline = UnwrapStructAndExtractField {
-            field_name: "poses".into(),
-        }
-        .then(Over {
-            projection: ConvertPointStructToFixedList,
-        })
-        .then(Over {
-            projection: OverFixedSize {
-                projection: ConvertFloat64ToFloat32,
-            },
-        });
+        let pipeline = UnwrapListStructField::new("poses")
+            .then(MapList::new(StructToPoint2D::new()))
+            .then(MapList::new(MapFixedSizeList::new(ToFloat32::new())));
 
-        let result = pipeline.project(&array).unwrap();
+        let result = pipeline.transform(&array).unwrap();
 
         insta::assert_snapshot!("convert_to_f32", format!("{}", DisplayRB::from(result)));
     }
