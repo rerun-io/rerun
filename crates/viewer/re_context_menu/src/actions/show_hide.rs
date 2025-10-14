@@ -123,7 +123,7 @@ fn data_result_visible(
             let query_result = ctx.viewer_context.lookup_query_result(*view_id);
             query_result
                 .tree
-                .lookup_result_by_path(&instance_path.entity_path)
+                .lookup_result_by_path(instance_path.entity_path.hash())
                 .map(|data_result| data_result.is_visible())
         })
         .flatten()
@@ -138,7 +138,7 @@ fn set_data_result_visible(
     if let Some(query_result) = ctx.viewer_context.query_results.get(view_id) {
         if let Some(data_result) = query_result
             .tree
-            .lookup_result_by_path(&instance_path.entity_path)
+            .lookup_result_by_path(instance_path.entity_path.hash())
         {
             data_result.save_visible(ctx.viewer_context, &query_result.tree, visible);
         }

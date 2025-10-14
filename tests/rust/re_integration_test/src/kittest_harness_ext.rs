@@ -1,5 +1,7 @@
 use std::{collections::BTreeSet, sync::Arc};
 
+use egui::accesskit::Toggled;
+use egui_kittest::kittest::NodeT as _;
 use egui_kittest::{SnapshotOptions, kittest::Queryable as _};
 use parking_lot::Mutex;
 use re_sdk::{
@@ -66,6 +68,7 @@ pub trait HarnessExt {
     fn click_label(&mut self, label: &str);
     fn right_click_label(&mut self, label: &str);
     fn right_click_nth_label(&mut self, label: &str, index: usize);
+    fn hover_label_contains(&mut self, label: &str);
 
     // Takes a snapshot of the current app state with good-enough snapshot options.
     fn snapshot_app(&mut self, snapshot_name: &str);
@@ -73,16 +76,19 @@ pub trait HarnessExt {
     // Prints the current viewer state.
     fn debug_viewer_state(&mut self);
 
-    fn toggle_blueprint_panel(&mut self) {
-        self.click_label("Blueprint panel toggle");
+    // Opens / closes app panels
+    fn set_panel_opened(&mut self, panel_label: &str, opened: bool);
+
+    fn set_blueprint_panel_opened(&mut self, opened: bool) {
+        self.set_panel_opened("Blueprint panel toggle", opened);
     }
 
-    fn toggle_time_panel(&mut self) {
-        self.click_label("Time panel toggle");
+    fn set_selection_panel_opened(&mut self, opened: bool) {
+        self.set_panel_opened("Selection panel toggle", opened);
     }
 
-    fn toggle_selection_panel(&mut self) {
-        self.click_label("Selection panel toggle");
+    fn set_time_panel_opened(&mut self, opened: bool) {
+        self.set_panel_opened("Time panel toggle", opened);
     }
 }
 
@@ -245,6 +251,11 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         self.run_ok();
     }
 
+    fn hover_label_contains(&mut self, label: &str) {
+        self.get_by_label_contains(label).hover();
+        self.run_ok();
+    }
+
     fn debug_viewer_state(&mut self) {
         println!(
             "Active recording: {:#?}",
@@ -272,7 +283,9 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         // https://github.com/rerun-io/rerun/issues/11448
         self.snapshot_options(
             snapshot_name,
-            &SnapshotOptions::new().failed_pixel_count_threshold(20),
+            &SnapshotOptions::new()
+                .threshold(1.5) // Anti-aliasing implementations have considerable platform-specific differences
+                .failed_pixel_count_threshold(20),
         );
     }
 
@@ -308,5 +321,15 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
             "Expected one new container id, got {container_ids:?}"
         );
         *container_ids[0]
+    }
+
+    fn set_panel_opened(&mut self, panel_label: &str, opened: bool) {
+        let node = self.get_by_label(panel_label);
+        let is_open = Some(Toggled::True) == node.accesskit_node().data().toggled();
+        if is_open != opened {
+            self.click_label(panel_label);
+        }
+        self.remove_cursor();
+        self.run_ok();
     }
 }

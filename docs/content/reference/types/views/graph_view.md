@@ -8,6 +8,8 @@ A graph view to display time-variying, directed or undirected graph visualizatio
 
 ## Properties
 
+### `background`
+Configures the background of the graph.
 ### `visual_bounds`
 Everything within these bounds is guaranteed to be visible.
 

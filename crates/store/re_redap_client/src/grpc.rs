@@ -11,7 +11,7 @@ use re_uri::{Origin, TimeSelection};
 
 use tokio_stream::{Stream, StreamExt as _};
 
-use crate::{ConnectionClient, MAX_DECODING_MESSAGE_SIZE, StreamError};
+use crate::{ApiError, ConnectionClient, MAX_DECODING_MESSAGE_SIZE};
 
 // TODO(ab): do not publish this out of this crate (for now it is still being used by rerun_py
 // the viewer grpc connection). Ideally we'd only publish `ClientConnectionError`.
@@ -195,19 +195,17 @@ pub(crate) async fn client(
 #[cfg(not(target_arch = "wasm32"))]
 pub fn fetch_chunks_response_to_chunk_and_partition_id<S>(
     response: S,
-) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>>
+) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, ApiError>>
 where
     S: Stream<Item = Result<re_protos::cloud::v1alpha1::FetchChunksResponse, tonic::Status>>,
 {
-    use crate::StreamPartitionError;
-
     response
         .then(|resp| {
             // We want to make sure to offload that compute-heavy work to the compute worker pool: it's
             // not going to make this one single pipeline any faster, but it will prevent starvation of
             // the Tokio runtime (which would slow down every other futures currently scheduled!).
             tokio::task::spawn_blocking(move || {
-                let r = resp.map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?;
+                let r = resp.map_err(|err| ApiError::tonic(err, "failed to get item in /FetchChunks response stream"))?;
                 let _span =
                     tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = r.chunks.len())
                         .entered();
@@ -219,10 +217,10 @@ where
 
                         let arrow_msg =
                             re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
-                                .map_err(Into::<StreamError>::into)?;
+                                .map_err(|err| ApiError::serialization(err, "failed to get arrow data for item in /FetchChunks response stream"))?;
 
                         let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
-                            .map_err(Into::<StreamError>::into)?;
+                            .map_err(|err| ApiError::serialization(err, "failed to parse item in /FetchChunks response stream"))?;
 
                         Ok((chunk, partition_id))
                     })
@@ -230,7 +228,7 @@ where
             })
         })
         .map(|res| {
-            res.map_err(Into::<StreamError>::into)
+            res.map_err(|err| ApiError::internal(err, "failed to sync on /FetchChunks response stream"))
                 .and_then(std::convert::identity)
         })
 }
@@ -239,14 +237,14 @@ where
 #[cfg(target_arch = "wasm32")]
 pub fn fetch_chunks_response_to_chunk_and_partition_id<S>(
     response: S,
-) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>>
+) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, ApiError>>
 where
     S: Stream<Item = Result<re_protos::cloud::v1alpha1::FetchChunksResponse, tonic::Status>>,
 {
-    use crate::StreamPartitionError;
-
     response.map(|resp| {
-        let resp = resp.map_err(|err| StreamPartitionError::StreamingChunks(err.into()))?;
+        let resp = resp.map_err(|err| {
+            ApiError::tonic(err, "failed to get item in /FetchChunks response stream")
+        })?;
 
         let _span =
             tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = resp.chunks.len())
@@ -259,10 +257,20 @@ where
 
                 let arrow_msg =
                     re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
-                        .map_err(Into::<StreamError>::into)?;
+                        .map_err(|err| {
+                            ApiError::serialization(
+                                err,
+                                "failed to get arrow data for item in /FetchChunks response stream",
+                            )
+                        })?;
 
-                let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
-                    .map_err(Into::<StreamError>::into)?;
+                let chunk =
+                    re_chunk::Chunk::from_record_batch(&arrow_msg.batch).map_err(|err| {
+                        ApiError::serialization(
+                            err,
+                            "failed to parse item in /FetchChunks response stream",
+                        )
+                    })?;
 
                 Ok((chunk, partition_id))
             })
@@ -284,7 +292,7 @@ pub async fn stream_blueprint_and_partition_from_server(
     tx: re_smart_channel::Sender<DataSourceMessage>,
     uri: re_uri::DatasetPartitionUri,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> Result<(), StreamError> {
+) -> Result<(), ApiError> {
     re_log::debug!("Loading {uri}…");
 
     let dataset_entry = client.read_dataset_entry(uri.dataset_id.into()).await?;
@@ -382,7 +390,7 @@ async fn stream_partition_from_server(
     time_range: Option<TimeSelection>,
     fragment: re_uri::Fragment,
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
-) -> Result<(), StreamError> {
+) -> Result<(), ApiError> {
     let exclude_static_data = false;
     let exclude_temporal_data = true;
     let static_chunk_stream = client
@@ -494,7 +502,18 @@ async fn stream_partition_from_server(
             let (chunk, _partition_id) = chunk;
 
             if tx
-                .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?).into())
+                .send(
+                    LogMsg::ArrowMsg(
+                        store_id.clone(),
+                        chunk.to_arrow_msg().map_err(|err| {
+                            ApiError::serialization(
+                                err,
+                                "failed to parse chunk in /FetchChunks response stream",
+                            )
+                        })?,
+                    )
+                    .into(),
+                )
                 .is_err()
             {
                 re_log::debug!("Receiver disconnected");

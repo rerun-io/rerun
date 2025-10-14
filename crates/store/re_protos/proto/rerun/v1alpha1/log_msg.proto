@@ -58,7 +58,7 @@ message ArrowMsg {
   // Compression algorithm used.
   Compression compression = 2;
 
-  int32 uncompressed_size = 3;
+  uint64 uncompressed_size = 3;
 
   // Encoding of the payload.
   Encoding encoding = 4;

@@ -43,7 +43,7 @@ pub(crate) fn encode(
                     Compression::Off => proto::Compression::None as i32,
                     Compression::LZ4 => proto::Compression::Lz4 as i32,
                 },
-                uncompressed_size: payload.uncompressed_size as i32,
+                uncompressed_size: payload.uncompressed_size,
                 encoding: Encoding::ArrowIpc as i32,
                 payload: payload.data.into(),
                 is_static: re_sorbet::is_static_chunk(batch),

@@ -9240,7 +9240,6 @@ dependencies = [
  "re_dataframe_ui",
  "re_datafusion",
  "re_log",
- "re_log_encoding",
  "re_log_types",
  "re_protos",
  "re_redap_client",
@@ -9249,7 +9248,6 @@ dependencies = [
  "re_uri",
  "re_viewer_context",
  "serde",
- "thiserror 1.0.69",
  "url",
 ]
 
@@ -9607,6 +9605,7 @@ dependencies = [
  "ahash",
  "bitflags 2.9.4",
  "glam",
+ "insta",
  "itertools 0.14.0",
  "nohash-hasher",
  "re_chunk_store",
@@ -9615,6 +9614,7 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_types",
+ "thiserror 1.0.69",
  "vec1",
 ]
 

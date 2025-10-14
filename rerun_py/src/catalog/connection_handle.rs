@@ -19,13 +19,14 @@ use re_protos::{
         EntryFilter,
         ext::{DatasetDetails, DatasetEntry, EntryDetails, TableEntry},
     },
-    cloud::v1alpha1::{GetDatasetSchemaRequest, QueryDatasetRequest, QueryTasksResponse},
+    cloud::v1alpha1::{QueryDatasetRequest, QueryTasksResponse},
     common::v1alpha1::{
         TaskId,
         ext::{IfDuplicateBehavior, ScanParameters},
     },
+    invalid_schema, missing_field,
 };
-use re_redap_client::{ConnectionClient, ConnectionRegistryHandle};
+use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
 
 use crate::catalog::to_py_err;
 use crate::utils::wait_for_future;
@@ -223,7 +224,6 @@ impl ConnectionHandle {
         )
     }
 
-    // TODO(ab): migrate this to the `ConnectionClient` API.
     #[tracing::instrument(level = "info", skip_all)]
     pub fn get_dataset_schema(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<ArrowSchema> {
         wait_for_future(
@@ -231,16 +231,8 @@ impl ConnectionHandle {
             async {
                 self.client()
                     .await?
-                    .inner()
-                    .get_dataset_schema(
-                        tonic::Request::new(GetDatasetSchemaRequest {})
-                            .with_entry_id(entry_id)
-                            .map_err(to_py_err)?,
-                    )
+                    .get_dataset_schema(entry_id)
                     .await
-                    .map_err(to_py_err)?
-                    .into_inner()
-                    .schema()
                     .map_err(to_py_err)
             }
             .in_current_span(),
@@ -391,9 +383,22 @@ impl ConnectionHandle {
                 // will complete the stream
                 while let Some(response) = response_stream.next().await {
                     let item = response
+                        .map_err(|err| {
+                            ApiError::tonic(
+                                err,
+                                "failed waiting for tasks done: error receiving completion notifications",
+                            )
+                        })
                         .map_err(to_py_err)?
                         .data
-                        .ok_or_else(|| PyValueError::new_err("received response without data"))?
+                        .ok_or_else(|| {
+                            let err = missing_field!(QueryTasksResponse, "data");
+                            let err = ApiError::serialization(
+                                err,
+                                "failed waiting for tasks done: received item without data",
+                            );
+                            to_py_err(err)
+                        })?
                         .decode()
                         .map_err(to_py_err)?;
 
@@ -402,9 +407,12 @@ impl ConnectionHandle {
 
                     let schema = item.schema();
                     if !schema.contains(&QueryTasksResponse::schema()) {
-                        return Err(PyValueError::new_err(
-                            "invalid schema for QueryTasksResponse",
-                        ));
+                        let err = invalid_schema!(QueryTasksResponse);
+                        let err = ApiError::serialization(
+                            err,
+                            "failed waiting for tasks done: received item with invalid schema",
+                        );
+                        return Err(to_py_err(err));
                     }
 
                     let col_indices = [
@@ -415,7 +423,12 @@ impl ConnectionHandle {
                     .iter()
                     .map(|name| schema.index_of(name))
                     .collect::<Result<Vec<_>, _>>()
-                    .map_err(|err| PyValueError::new_err(format!("missing column: {err}")))?;
+                    .map_err(|err| {
+                        to_py_err(ApiError::serialization(
+                            err,
+                            "failed waiting for tasks done: missing column on item",
+                        ))
+                    })?;
 
                     let projected = item.project(&col_indices).map_err(to_py_err)?;
 

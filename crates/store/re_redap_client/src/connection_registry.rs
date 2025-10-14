@@ -58,19 +58,19 @@ impl ConnectionRegistry {
 pub enum ClientConnectionError {
     /// Native connection error
     #[cfg(not(target_arch = "wasm32"))]
-    #[error("Connection error\nDetails:{0}")]
+    #[error("connection error\nDetails:{0}")]
     Tonic(#[from] tonic::transport::Error),
 
     #[error("server is expecting an unencrypted connection (try `rerun+http://` if you are sure)")]
     UnencryptedServer,
 
-    #[error("the server requires an authentication token, but none was provided\nDetails:{0}")]
+    #[error("the server requires an authentication token but none was provided\nDetails:{0}")]
     UnauthenticatedMissingToken(TonicStatusError),
 
     #[error("the server rejected the provided authentication token\nDetails:{0}")]
     UnauthenticatedBadToken(TonicStatusError),
 
-    #[error("failed to obtain server version\nDetails:{0}")]
+    #[error("failed to validate credentials\nDetails:{0}")]
     AuthCheckError(TonicStatusError),
 }
 
@@ -86,11 +86,22 @@ impl From<ConnectionError> for ClientConnectionError {
 }
 
 impl ClientConnectionError {
+    #[inline]
     pub fn is_token_error(&self) -> bool {
         matches!(
             self,
             Self::UnauthenticatedMissingToken(_) | Self::UnauthenticatedBadToken(_)
         )
+    }
+
+    #[inline]
+    pub fn is_missing_token(&self) -> bool {
+        matches!(self, Self::UnauthenticatedMissingToken(_))
+    }
+
+    #[inline]
+    pub fn is_wrong_token(&self) -> bool {
+        matches!(self, Self::UnauthenticatedBadToken(_))
     }
 }
 
