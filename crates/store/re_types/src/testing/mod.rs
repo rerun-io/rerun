@@ -1,4 +1,4 @@
-#![allow(missing_docs)] // It's only for testing
+#![expect(missing_docs)] // It's only for testing
 
 use re_types_core::ComponentDescriptor;
 

@@ -599,6 +599,7 @@ missing_crate_level_docs = "warn"
 
 # See also clippy.toml
 [workspace.lints.clippy]
+allow_attributes = "warn"
 as_ptr_cast_mut = "warn"
 await_holding_lock = "warn"
 bool_to_int_with_if = "warn"
@@ -764,7 +765,6 @@ map_unwrap_or = "allow" # so is this one
 ref_patterns = "allow" # It's nice to avoid ref pattern, but there are some situations that are hard (impossible?) to express without.
 
 # TODO(emilk): enable more of these lints:
-allow_attributes = "allow"
 iter_over_hash_type = "allow"
 let_underscore_untyped = "allow"
 missing_assert_message = "allow"

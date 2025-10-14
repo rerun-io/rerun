@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 #![expect(clippy::unused_self)] // TODO(emilk): move hard-coded values into .ron files
 
 use anyhow::Context as _;
@@ -943,7 +943,7 @@ fn follow_path<'json>(mut value: &'json ron::Value, path: &str) -> Option<&'json
 
 // ----------------------------------------------------------------------------
 
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[derive(Debug, serde::Deserialize)]
 struct Typography {
     fontSize: String,

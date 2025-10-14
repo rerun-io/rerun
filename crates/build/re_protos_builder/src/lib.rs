@@ -3,7 +3,7 @@
 //! definitions in the same file.
 //!
 
-#![allow(clippy::unwrap_used, clippy::exit)]
+#![expect(clippy::exit)]
 
 /// Generate rust from protobuf definitions. We rely on `tonic_build` to do the heavy lifting.
 /// `tonic_build` relies on `prost` which itself relies on `protoc`.

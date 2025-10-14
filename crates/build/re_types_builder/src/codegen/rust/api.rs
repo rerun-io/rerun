@@ -165,6 +165,7 @@ fn generate_object_file(
     code.push_str("#![allow(unused_braces)]\n");
     code.push_str("#![allow(unused_imports)]\n");
     code.push_str("#![allow(unused_parens)]\n");
+    code.push_str("#![allow(clippy::allow_attributes)]\n");
     code.push_str("#![allow(clippy::clone_on_copy)]\n");
     code.push_str("#![allow(clippy::cloned_instead_of_copied)]\n");
     code.push_str("#![allow(clippy::map_flatten)]\n");
@@ -173,6 +174,7 @@ fn generate_object_file(
     code.push_str("#![allow(clippy::redundant_closure)]\n");
     code.push_str("#![allow(clippy::too_many_arguments)]\n"); // e.g. `AffixFuzzer1::new`
     code.push_str("#![allow(clippy::too_many_lines)]\n");
+    code.push_str("#![allow(clippy::wildcard_imports)]\n");
     if obj.is_deprecated() {
         code.push_str("#![expect(deprecated)]\n");
     }
@@ -932,7 +934,6 @@ fn quote_trait_impls_for_datatype_or_component(
             quote! {
                 #[inline]
                 fn arrow_datatype() -> arrow::datatypes::DataType {
-                    #![allow(clippy::wildcard_imports)]
                     use arrow::datatypes::*;
                     #datatype
                 }
@@ -948,7 +949,6 @@ fn quote_trait_impls_for_datatype_or_component(
                     // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                     // re_tracing::profile_function!();
 
-                    #![allow(clippy::wildcard_imports)]
                     use arrow::{array::*, buffer::*, datatypes::*};
                     use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
 
@@ -984,7 +984,6 @@ fn quote_trait_impls_for_datatype_or_component(
                 // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                 // re_tracing::profile_function!();
 
-                #![allow(clippy::wildcard_imports)]
                 use arrow::{array::*, buffer::*, datatypes::*};
                 use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
 
@@ -1007,7 +1006,6 @@ fn quote_trait_impls_for_datatype_or_component(
                     // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                     // re_tracing::profile_function!();
 
-                    #![allow(clippy::wildcard_imports)]
                     #![allow(clippy::manual_is_variant_and)]
                     use arrow::{array::*, buffer::*, datatypes::*};
                     use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
@@ -1048,8 +1046,6 @@ fn quote_trait_impls_for_datatype_or_component(
 }
 
 fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenStream {
-    #![allow(clippy::collapsible_else_if)]
-
     let Object {
         fqname, name, kind, ..
     } = obj;

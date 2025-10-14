@@ -41,7 +41,7 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod + Send + Sync>(
 ) -> Vec<BindGroupEntry> {
     re_tracing::profile_function!(label.get().unwrap_or_default());
 
-    #[allow(clippy::let_unit_value)]
+    #[expect(clippy::let_unit_value)]
     let _ = UniformBufferSizeCheck::<T>::CHECK;
 
     if content.len() == 0 {

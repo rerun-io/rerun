@@ -125,7 +125,7 @@ impl Tuid {
     };
 
     /// Create a new unique [`Tuid`] based on the current time.
-    #[allow(clippy::new_without_default)]
+    #[expect(clippy::new_without_default)]
     #[inline]
     pub fn new() -> Self {
         use std::cell::RefCell;

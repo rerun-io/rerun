@@ -2,8 +2,6 @@
 //!
 //! See also the `any_values_column_updates` example, which achieves the same thing in a single operation.
 
-#![allow(clippy::from_iter_instead_of_collect)]
-
 use std::sync::Arc;
 
 use rerun::external::arrow;

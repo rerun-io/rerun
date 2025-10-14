@@ -1,3 +1,5 @@
+#![allow(clippy::allow_attributes)] // TODO(emilk): remove
+
 use crate::codec::{Compression, Serializer};
 
 // --- FileHeader ---
@@ -52,7 +54,6 @@ impl EncodingOptions {
 
 /// On failure to decode [`EncodingOptions`]
 #[derive(thiserror::Error, Debug)]
-#[allow(clippy::enum_variant_names)]
 pub enum OptionsError {
     #[error("Reserved bytes not zero")]
     UnknownReservedBytes,

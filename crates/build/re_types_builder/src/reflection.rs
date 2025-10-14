@@ -8,7 +8,7 @@ use core::mem;
 extern crate flatbuffers;
 use self::flatbuffers::{EndianScalar, Follow};
 
-#[allow(unused_imports, dead_code)]
+#[expect(unused_imports, dead_code)]
 pub mod reflection {
 
     use core::cmp::Ordering;
@@ -31,7 +31,7 @@ pub mod reflection {
         since = "2.0.0",
         note = "Use associated constants instead. This will no longer be generated in 2021."
     )]
-    #[allow(non_camel_case_types)]
+    #[expect(non_camel_case_types)]
     pub const ENUM_VALUES_BASE_TYPE: [BaseType; 20] = [
         BaseType::None,
         BaseType::UType,
@@ -58,7 +58,7 @@ pub mod reflection {
     #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
     #[repr(transparent)]
     pub struct BaseType(pub i8);
-    #[allow(non_upper_case_globals)]
+    #[expect(non_upper_case_globals)]
     impl BaseType {
         pub const None: Self = Self(0);
         pub const UType: Self = Self(1);
@@ -165,7 +165,7 @@ pub mod reflection {
             self.0.to_le()
         }
         #[inline]
-        #[allow(clippy::wrong_self_convention)]
+        #[expect(clippy::wrong_self_convention)]
         fn from_little_endian(v: i8) -> Self {
             let b = i8::from_le(v);
             Self(b)
@@ -184,7 +184,7 @@ pub mod reflection {
     }
 
     impl flatbuffers::SimpleToVerifyInSlice for BaseType {}
-    #[allow(non_upper_case_globals)]
+    #[expect(non_upper_case_globals)]
     mod bitflags_advanced_features {
         flatbuffers::bitflags::bitflags! {
           /// New schema language features that are not supported by old code generators.
@@ -223,7 +223,7 @@ pub mod reflection {
             self.bits().to_le()
         }
         #[inline]
-        #[allow(clippy::wrong_self_convention)]
+        #[expect(clippy::wrong_self_convention)]
         fn from_little_endian(v: u64) -> Self {
             let b = u64::from_le(v);
             unsafe { Self::from_bits_retain(b) }
@@ -271,7 +271,7 @@ pub mod reflection {
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
             Type { _tab: table }
         }
-        #[allow(unused_mut)]
+        #[expect(unused_mut)]
         pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
             _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
             args: &'args TypeArgs,
@@ -473,7 +473,7 @@ pub mod reflection {
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
             KeyValue { _tab: table }
         }
-        #[allow(unused_mut)]
+        #[expect(unused_mut)]
         pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
             _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
             args: &'args KeyValueArgs<'args>,
@@ -616,7 +616,7 @@ pub mod reflection {
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
             EnumVal { _tab: table }
         }
-        #[allow(unused_mut)]
+        #[expect(unused_mut)]
         pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
             _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
             args: &'args EnumValArgs<'args>,
@@ -855,7 +855,7 @@ pub mod reflection {
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
             Enum { _tab: table }
         }
-        #[allow(unused_mut)]
+        #[expect(unused_mut)]
         pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
             _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
             args: &'args EnumArgs<'args>,
@@ -1175,7 +1175,7 @@ pub mod reflection {
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
             Field { _tab: table }
         }
-        #[allow(unused_mut)]
+        #[expect(unused_mut)]
         pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
             _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
             args: &'args FieldArgs<'args>,
@@ -1588,7 +1588,7 @@ pub mod reflection {
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
             Object { _tab: table }
         }
-        #[allow(unused_mut)]
+        #[expect(unused_mut)]
         pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
             _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
             args: &'args ObjectArgs<'args>,
@@ -1900,7 +1900,7 @@ pub mod reflection {
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
             RPCCall { _tab: table }
         }
-        #[allow(unused_mut)]
+        #[expect(unused_mut)]
         pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
             _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
             args: &'args RPCCallArgs<'args>,
@@ -2149,7 +2149,7 @@ pub mod reflection {
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
             Service { _tab: table }
         }
-        #[allow(unused_mut)]
+        #[expect(unused_mut)]
         pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
             _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
             args: &'args ServiceArgs<'args>,
@@ -2407,7 +2407,7 @@ pub mod reflection {
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
             SchemaFile { _tab: table }
         }
-        #[allow(unused_mut)]
+        #[expect(unused_mut)]
         pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
             _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
             args: &'args SchemaFileArgs<'args>,
@@ -2573,7 +2573,7 @@ pub mod reflection {
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
             Schema { _tab: table }
         }
-        #[allow(unused_mut)]
+        #[expect(unused_mut)]
         pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
             _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
             args: &'args SchemaArgs<'args>,

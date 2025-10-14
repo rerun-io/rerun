@@ -402,7 +402,7 @@ impl ViewerContext<'_> {
 
     /// Are we running inside the Safari browser?
     pub fn is_safari_browser(&self) -> bool {
-        #![allow(clippy::unused_self)]
+        #![expect(clippy::unused_self)]
 
         #[cfg(target_arch = "wasm32")]
         fn is_safari_browser_inner() -> Option<bool> {

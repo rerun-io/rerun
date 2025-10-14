@@ -13,7 +13,7 @@ impl CommandSender {
     /// Save some bytes to disk, after first showing a save dialog.
     ///
     /// [This may only be called on the main thread](https://docs.rs/rfd/latest/rfd/#macos-non-windowed-applications-async-and-threading).
-    #[allow(clippy::unused_self)] // Not used on Wasm
+    #[allow(clippy::allow_attributes, clippy::unused_self)] // Not used on Wasm
     pub fn save_file_dialog(
         &self,
         _: re_capabilities::MainThreadToken,

@@ -143,7 +143,7 @@ pub fn test_transform_clamping() {
     );
 }
 
-#[allow(clippy::unwrap_used)]
+#[expect(clippy::unwrap_used)]
 fn setup_blueprint(test_context: &mut TestContext) -> (ViewId, ViewId) {
     test_context.setup_viewport_blueprint(|_ctx, blueprint| {
         let view_blueprint_boxes = ViewBlueprint::new(

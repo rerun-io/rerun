@@ -217,7 +217,6 @@ impl LeRobotDataset {
 /// This is a wrapper struct for the metadata files in the `meta` directory of a
 /// `LeRobot` dataset. For more see [`LeRobotDataset`].
 #[derive(Debug, Clone)]
-#[allow(dead_code)] // TODO(gijsd): The list of tasks is not used yet!
 pub struct LeRobotDatasetMetadata {
     pub info: LeRobotDatasetInfo,
     pub episodes: BTreeMap<EpisodeIndex, LeRobotDatasetEpisode>,

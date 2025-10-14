@@ -408,7 +408,6 @@ fn create_view_builder(
 }
 
 /// Handle picking and related ui interactions.
-#[allow(clippy::too_many_arguments)]
 fn handle_picking_and_ui_interactions(
     ctx: &ViewerContext<'_>,
     render_ctx: &RenderContext,

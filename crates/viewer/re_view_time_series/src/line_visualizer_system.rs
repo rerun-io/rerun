@@ -163,7 +163,6 @@ impl SeriesLinesSystem {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn load_series(
         &self,
         ctx: &ViewContext<'_>,

@@ -60,7 +60,7 @@ fn ns_view_from_handle(handle: &AppKitWindowHandle) -> Option<&NSView> {
         // - We've verified the pointer is non-null
         // - The pointer comes from the windowing system, so it should be valid
         // - NSView pointers from AppKit are expected to remain valid for the window lifetime
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         unsafe {
             ns_view_ptr.as_ref()
         }

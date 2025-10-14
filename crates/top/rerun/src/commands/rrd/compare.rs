@@ -87,7 +87,7 @@ impl CompareCommand {
                 chunks2.clone().into_iter().map(Some).collect_vec();
             'outer: for chunk1 in &chunks1 {
                 for chunk2 in chunks2_opt.iter_mut().filter(|c| c.is_some()) {
-                    #[allow(clippy::unwrap_used)]
+                    #[expect(clippy::unwrap_used)]
                     if re_chunk::Chunk::ensure_similar(chunk1, chunk2.as_ref().unwrap()).is_ok() {
                         *chunk2 = None;
                         continue 'outer;
@@ -186,7 +186,7 @@ fn load_chunks(
         "more than one data recording found in rrd file"
     );
 
-    #[allow(clippy::unwrap_used)] // safe, ensured above
+    #[expect(clippy::unwrap_used)] // safe, ensured above
     let store = stores.pop().unwrap();
     let engine = store.storage_engine();
 

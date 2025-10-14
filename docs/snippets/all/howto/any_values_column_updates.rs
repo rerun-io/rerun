@@ -2,7 +2,7 @@
 //!
 //! This is semantically equivalent to the `any_values_row_updates` example, albeit much faster.
 
-#![allow(clippy::from_iter_instead_of_collect)]
+#![expect(clippy::from_iter_instead_of_collect)]
 
 use std::sync::Arc;
 

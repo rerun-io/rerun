@@ -153,7 +153,6 @@ impl AppState {
     }
 
     /// Currently selected section of time, if any.
-    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     pub fn loop_selection(
         &self,
         store_context: Option<&StoreContext<'_>>,

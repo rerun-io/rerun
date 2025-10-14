@@ -7,7 +7,6 @@ use re_viewer_context::{ColormapWithRange, ImageInfo, ImageStatsCache, ViewerCon
 
 use crate::contexts::SpatialSceneEntityContext;
 
-#[allow(clippy::too_many_arguments)]
 pub fn textured_rect_from_image(
     ctx: &ViewerContext<'_>,
     ent_path: &EntityPath,

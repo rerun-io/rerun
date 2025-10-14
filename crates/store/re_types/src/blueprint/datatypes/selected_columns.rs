@@ -4,6 +4,7 @@
 #![allow(unused_braces)]
 #![allow(unused_imports)]
 #![allow(unused_parens)]
+#![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::map_flatten)]
@@ -12,6 +13,7 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
+#![allow(clippy::wildcard_imports)]
 
 use ::re_types_core::SerializationResult;
 use ::re_types_core::try_serialize_field;
@@ -36,7 +38,6 @@ pub struct SelectedColumns {
 impl ::re_types_core::Loggable for SelectedColumns {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
-        #![allow(clippy::wildcard_imports)]
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new(
@@ -66,7 +67,6 @@ impl ::re_types_core::Loggable for SelectedColumns {
     where
         Self: Clone + 'a,
     {
-        #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -139,7 +139,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                                         time_columns_inner_data.iter().map(|datum| datum.0.len()),
                                     );
 
-                                    #[allow(clippy::unwrap_used)]
+                                    #[expect(clippy::unwrap_used)]
                                     let capacity = offsets.last().copied().unwrap() as usize;
                                     let mut buffer_builder =
                                         arrow::array::builder::BufferBuilder::<u8>::new(capacity);
@@ -148,7 +148,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                                     }
                                     let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
 
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     as_array_ref(unsafe {
                                         StringArray::new_unchecked(
                                             offsets,
@@ -205,7 +205,6 @@ impl ::re_types_core::Loggable for SelectedColumns {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -290,8 +289,6 @@ impl ::re_types_core::Loggable for SelectedColumns {
                                                             ),
                                                         );
                                                     }
-
-                                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                                     let data = arrow_data_inner_buf
                                                         .slice_with_length(start, len);
                                                     Ok(data)
@@ -334,7 +331,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                                                 );
                                             }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                             let data = unsafe {
                                                 arrow_data_inner.get_unchecked(start..end)
                                             };
@@ -414,7 +411,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                                                 );
                                             }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                             let data = unsafe {
                                                 arrow_data_inner.get_unchecked(start..end)
                                             };

@@ -91,7 +91,7 @@ fn collect_snippets_recursively(
 ) -> anyhow::Result<Vec<Snippet>> {
     let mut snippets = vec![];
 
-    #[allow(clippy::unwrap_used)] // we just use unwrap for string <-> path conversion here
+    #[expect(clippy::unwrap_used)] // we just use unwrap for string <-> path conversion here
     for snippet in dir.read_dir()? {
         let snippet = snippet?;
         let meta = snippet.metadata()?;

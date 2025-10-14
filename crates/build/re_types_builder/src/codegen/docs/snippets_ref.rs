@@ -37,7 +37,7 @@ struct OptOut {
 }
 
 /// Everything we know about a snippet, including which objects (archetypes, components, etc) it references.
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(Debug, Clone)]
 struct Snippet<'o> {
     path: PathBuf,
@@ -208,7 +208,7 @@ impl SnippetsRefCodeGenerator {
 
             // NOTE: `/` is written with a UTF8 zero-width word joiner (<https://unicode-explorer.com/c/2060>)
             // on both sides in order to force the markdown renderer to *not* split it into two lines ("archetype/\nthing").
-            #[allow(clippy::invisible_characters)]
+            #[expect(clippy::invisible_characters)]
             let snippet_name_qualified = &snippet.name_qualified.replace('/', "⁠/⁠");
 
             let row = format!(
@@ -320,7 +320,7 @@ impl SnippetsRefCodeGenerator {
         );
         // NOTE: `C++` is written with a UTF8 zero-width word joiner (<https://unicode-explorer.com/c/2060>) in
         // order to force the markdown renderer to *not* split it into two lines ("C+\n+").
-        #[allow(clippy::invisible_characters)]
+        #[expect(clippy::invisible_characters)]
         let out = format!(
             "
 {autogen_warning}
@@ -379,7 +379,7 @@ _All snippets, organized by the blueprint-related [`Archetype`](https://rerun.io
 "
         );
 
-        #[allow(clippy::string_add)]
+        #[expect(clippy::string_add)]
         files_to_write.insert(self.out_dir.join("INDEX.md"), out.trim().to_owned() + "\n");
 
         Ok(files_to_write)
@@ -394,7 +394,7 @@ fn collect_snippets_recursively<'o>(
 ) -> anyhow::Result<Snippets<'o>> {
     let mut snippets = Snippets::default();
 
-    #[allow(clippy::unwrap_used)] // we just use unwrap for string <-> path conversion here
+    #[expect(clippy::unwrap_used)] // we just use unwrap for string <-> path conversion here
     for snippet in dir.read_dir()? {
         let snippet = snippet?;
         let meta = snippet.metadata()?;

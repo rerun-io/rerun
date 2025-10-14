@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-#[allow(clippy::unwrap_used)]
+#[expect(clippy::unwrap_used)]
 fn check_tags(rec: &rerun::RecordingStream) {
     // When this snippet runs through the snippet comparison machinery, this environment variable
     // will point to the output RRD.

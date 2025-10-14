@@ -4,6 +4,7 @@
 #![allow(unused_braces)]
 #![allow(unused_imports)]
 #![allow(unused_parens)]
+#![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::map_flatten)]
@@ -12,6 +13,7 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
+#![allow(clippy::wildcard_imports)]
 
 use ::re_types_core::SerializationResult;
 use ::re_types_core::try_serialize_field;
@@ -33,7 +35,6 @@ pub struct MultiEnum {
 impl ::re_types_core::Loggable for MultiEnum {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
-        #![allow(clippy::wildcard_imports)]
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new(
@@ -55,7 +56,6 @@ impl ::re_types_core::Loggable for MultiEnum {
     where
         Self: Clone + 'a,
     {
-        #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -133,7 +133,6 @@ impl ::re_types_core::Loggable for MultiEnum {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
