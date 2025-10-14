@@ -46,7 +46,7 @@ impl PyTask {
     //TODO(ab): add method to poll about status
 }
 
-#[expect(rustdoc::broken_intra_doc_links)]
+#[allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)]
 /// A collection of [`Task`].
 #[pyclass(name = "Tasks")] // NOLINT: skip pyclass_eq, non-trivial implementation
 pub struct PyTasks {
