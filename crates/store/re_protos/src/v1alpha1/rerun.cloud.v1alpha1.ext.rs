@@ -173,14 +173,23 @@ impl QueryDatasetResponse {
     pub const FIELD_CHUNK_PARTITION_ID: &str = "chunk_partition_id";
     pub const FIELD_CHUNK_LAYER_NAME: &str = "rerun_partition_layer";
     pub const FIELD_CHUNK_KEY: &str = "chunk_key";
+    pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
     pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
 
     pub fn field_chunk_id() -> Field {
-        Field::new(Self::FIELD_CHUNK_ID, DataType::FixedSizeBinary(16), false)
+        Field::new(Self::FIELD_CHUNK_ID, DataType::FixedSizeBinary(16), false).with_metadata(
+            [("rerun:kind".to_owned(), "control".to_owned())]
+                .into_iter()
+                .collect(),
+        )
     }
 
     pub fn field_chunk_partition_id() -> Field {
-        Field::new(Self::FIELD_CHUNK_PARTITION_ID, DataType::Utf8, false)
+        Field::new(Self::FIELD_CHUNK_PARTITION_ID, DataType::Utf8, false).with_metadata(
+            [("rerun:kind".to_owned(), "control".to_owned())]
+                .into_iter()
+                .collect(),
+        )
     }
 
     pub fn field_chunk_layer_name() -> Field {
@@ -191,8 +200,20 @@ impl QueryDatasetResponse {
         Field::new(Self::FIELD_CHUNK_KEY, DataType::Binary, false)
     }
 
+    pub fn field_chunk_entity_path() -> Field {
+        Field::new(Self::FIELD_CHUNK_ENTITY_PATH, DataType::Utf8, false).with_metadata(
+            [("rerun:kind".to_owned(), "control".to_owned())]
+                .into_iter()
+                .collect(),
+        )
+    }
+
     pub fn field_chunk_is_static() -> Field {
-        Field::new(Self::FIELD_CHUNK_IS_STATIC, DataType::Boolean, false)
+        Field::new(Self::FIELD_CHUNK_IS_STATIC, DataType::Boolean, false).with_metadata(
+            [("rerun:kind".to_owned(), "control".to_owned())]
+                .into_iter()
+                .collect(),
+        )
     }
 
     pub fn fields() -> Vec<Field> {
@@ -201,6 +222,7 @@ impl QueryDatasetResponse {
             Self::field_chunk_partition_id(),
             Self::field_chunk_layer_name(),
             Self::field_chunk_key(),
+            Self::field_chunk_entity_path(),
             Self::field_chunk_is_static(),
         ]
     }
@@ -219,6 +241,7 @@ impl QueryDatasetResponse {
         chunk_partition_ids: Vec<String>,
         chunk_layer_names: Vec<String>,
         chunk_keys: Vec<&[u8]>,
+        chunk_entity_paths: Vec<String>,
         chunk_is_static: Vec<bool>,
     ) -> arrow::error::Result<RecordBatch> {
         let schema = Arc::new(Self::schema());
@@ -230,6 +253,7 @@ impl QueryDatasetResponse {
             Arc::new(StringArray::from(chunk_partition_ids)),
             Arc::new(StringArray::from(chunk_layer_names)),
             Arc::new(BinaryArray::from(chunk_keys)),
+            Arc::new(StringArray::from(chunk_entity_paths)),
             Arc::new(BooleanArray::from(chunk_is_static)),
         ];
 
@@ -1847,6 +1871,7 @@ mod tests {
         let chunk_partition_id = vec!["partition_id_1".to_owned(), "partition_id_2".to_owned()];
         let chunk_layer_names = vec!["layer1".to_owned(), "layer2".to_owned()];
         let chunk_keys = vec![b"key1".to_byte_slice(), b"key2".to_byte_slice()];
+        let chunk_entity_paths = vec!["/".to_owned(), "/".to_owned()];
         let chunk_is_static = vec![true, false];
 
         QueryDatasetResponse::create_dataframe(
@@ -1854,6 +1879,7 @@ mod tests {
             chunk_partition_id,
             chunk_layer_names,
             chunk_keys,
+            chunk_entity_paths,
             chunk_is_static,
         )
         .unwrap();

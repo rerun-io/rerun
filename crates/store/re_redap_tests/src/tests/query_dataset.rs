@@ -7,7 +7,7 @@ use re_protos::{
         CreateDatasetEntryRequest, QueryDatasetResponse, ext::QueryDatasetRequest,
         rerun_cloud_service_server::RerunCloudService,
     },
-    headers::RerunHeadersInjectorExt,
+    headers::RerunHeadersInjectorExt as _,
 };
 
 use crate::tests::common;
@@ -107,15 +107,26 @@ async fn query_dataset_snapshot(
         .collect::<Vec<_>>()
         .await;
 
-    let merged_chunk_info = common::concat_record_batches(chunk_info);
+    let merged_chunk_info = common::concat_record_batches(&chunk_info);
+
+    // these are the only required columns
+    let required_field = QueryDatasetResponse::fields();
+    let required_column_names = required_field
+        .iter()
+        .map(|f| f.name().as_str())
+        .collect::<Vec<_>>();
+    let required_chunk_info = merged_chunk_info.filtered_columns(&required_column_names);
 
     insta::assert_snapshot!(
         format!("{snapshot_name}_schema"),
-        merged_chunk_info.format_schema_snapshot()
+        required_chunk_info.format_schema_snapshot()
     );
 
-    let filtered_chunk_info =
-        merged_chunk_info.unfiltered_columns(&[QueryDatasetResponse::FIELD_CHUNK_KEY]);
+    // these columns are not stable, so we cannot snapshot them
+    let filtered_chunk_info = required_chunk_info
+        .unfiltered_columns(&[QueryDatasetResponse::FIELD_CHUNK_KEY])
+        .auto_sort_rows()
+        .unwrap();
 
     insta::assert_snapshot!(
         format!("{snapshot_name}_data"),

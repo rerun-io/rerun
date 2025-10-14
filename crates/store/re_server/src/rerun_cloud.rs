@@ -814,6 +814,7 @@ impl RerunCloudService for RerunCloudHandler {
                 let mut chunk_partition_ids = Vec::with_capacity(num_chunks);
                 let chunk_layer_names = vec![layer_name.clone(); num_chunks];
                 let mut chunk_keys = Vec::with_capacity(num_chunks);
+                let mut chunk_entity_path = Vec::with_capacity(num_chunks);
                 let mut chunk_is_static = Vec::with_capacity(num_chunks);
 
                 let mut timelines = BTreeMap::new();
@@ -853,6 +854,7 @@ impl RerunCloudService for RerunCloudHandler {
 
                     chunk_partition_ids.push(partition_id.id.clone());
                     chunk_ids.push(chunk.id());
+                    chunk_entity_path.push(chunk.entity_path().to_string());
                     chunk_is_static.push(chunk.is_static());
                     chunk_keys.push(
                         ChunkKey {
@@ -871,6 +873,7 @@ impl RerunCloudService for RerunCloudHandler {
                     chunk_partition_ids,
                     chunk_layer_names,
                     chunk_key_refs,
+                    chunk_entity_path,
                     chunk_is_static,
                 )
                 .map_err(|err| {

@@ -122,13 +122,13 @@ async fn register_with_dataset(
 /// This function implicitly tests the following properties:
 /// - There is always at least one record batch, even if it is empty.
 /// - All record batches have the same schema.
-pub fn concat_record_batches(record_batches: Vec<RecordBatch>) -> RecordBatch {
+pub fn concat_record_batches(record_batches: &[RecordBatch]) -> RecordBatch {
     arrow::compute::concat_batches(
         record_batches
             .first()
             .expect("at least one record batch must pass passed")
             .schema_ref(),
-        &record_batches,
+        record_batches,
     )
     .expect("record batches should be concatenable")
     .auto_sort_rows()
