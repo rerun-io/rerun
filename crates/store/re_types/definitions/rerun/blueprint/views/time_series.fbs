@@ -15,6 +15,9 @@ table TimeSeriesView (
     /// Configures the legend of the plot.
     plot_legend: rerun.blueprint.archetypes.PlotLegend (order: 2000);
 
+    /// Configures the background of the plot.
+    background: rerun.blueprint.archetypes.PlotBackground (order: 3000);
+
     /// Configures which range on each timeline is shown by this view (unless specified differently per entity).
     ///
     /// If not specified, the default is to show the entire timeline.

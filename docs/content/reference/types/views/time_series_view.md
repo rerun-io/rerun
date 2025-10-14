@@ -20,6 +20,11 @@ Configures the legend of the plot.
 
 * `corner`: To what corner the legend is aligned.
 * `visible`: Whether the legend is shown at all.
+### `background`
+Configures the background of the plot.
+
+* `color`: Color used for the background.
+* `show_grid`: Should the grid be drawn?
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
