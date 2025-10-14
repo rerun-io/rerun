@@ -219,7 +219,7 @@ pub(crate) fn load(
 /// (whether it is builtin, custom or external) was capable of loading the data, in which case
 /// [`DataLoaderError::Incompatible`] will be returned.
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::needless_pass_by_value)]
+#[expect(clippy::needless_pass_by_value)]
 pub(crate) fn load(
     settings: &crate::DataLoaderSettings,
     path: &std::path::Path,

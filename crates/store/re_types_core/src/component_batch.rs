@@ -2,7 +2,8 @@ use crate::{ArchetypeName, ComponentDescriptor, ComponentType, Loggable, Seriali
 
 use arrow::array::ListArray as ArrowListArray;
 
-#[allow(unused_imports, clippy::unused_trait_names)] // used in docstrings
+// used in docstrings:
+#[allow(clippy::allow_attributes, unused_imports, clippy::unused_trait_names)]
 use crate::Archetype;
 
 // ---
@@ -101,7 +102,7 @@ pub trait ComponentBatch {
     }
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 fn assert_component_batch_object_safe() {
     let _: &dyn ComponentBatch;
 }

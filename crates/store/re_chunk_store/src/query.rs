@@ -16,7 +16,7 @@ use re_types_core::{
 use crate::{ChunkStore, store::ChunkIdSetPerTime};
 
 // Used all over in docstrings.
-#[allow(unused_imports)]
+#[expect(unused_imports)]
 use crate::RowId;
 
 // ---

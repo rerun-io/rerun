@@ -72,7 +72,6 @@ pub trait HarnessExt {
     fn snapshot_app(&mut self, snapshot_name: &str);
 
     // Prints the current viewer state.
-    #[allow(unused)]
     fn debug_viewer_state(&mut self);
 
     fn toggle_blueprint_panel(&mut self) {
@@ -279,7 +278,9 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         // https://github.com/rerun-io/rerun/issues/11448
         self.snapshot_options(
             snapshot_name,
-            &SnapshotOptions::new().failed_pixel_count_threshold(20),
+            &SnapshotOptions::new()
+                .threshold(1.5) // Anti-aliasing implementations have considerable platform-specific differences
+                .failed_pixel_count_threshold(20),
         );
     }
 

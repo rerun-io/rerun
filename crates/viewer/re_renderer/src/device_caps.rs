@@ -101,7 +101,7 @@ impl DeviceCapabilityTier {
     }
 
     /// Required features for the given device tier.
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     pub fn features(&self) -> wgpu::Features {
         wgpu::Features::empty()
     }

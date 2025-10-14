@@ -14,7 +14,7 @@ impl TypedComponentFallbackProvider<Color> for SpatialView3D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Color {
         // Color is a fairly common component, make sure this is the right context.
         if ctx.archetype_name == Some(Background::name()) {
-            Color::WHITE
+            ctx.viewer_ctx().tokens().viewport_background.into()
         } else if ctx.archetype_name == Some(LineGrid3D::name()) {
             Color::from_unmultiplied_rgba(128, 128, 128, 60)
         } else {

@@ -313,7 +313,7 @@ fn handle_auth_request(
     Ok(Some(response))
 }
 
-#[allow(dead_code)] // fields may become used at some point in the near future
+#[expect(dead_code)] // fields may become used at some point in the near future
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AuthenticationResponse {
@@ -338,7 +338,7 @@ impl From<AuthenticationResponse> for workos::api::AuthenticationResponse {
     }
 }
 
-#[allow(dead_code)] // fields may become used at some point in the near future
+#[expect(dead_code)] // fields may become used at some point in the near future
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct User {
@@ -365,14 +365,14 @@ impl From<User> for workos::User {
     }
 }
 
-#[allow(dead_code)] // fields may become used at some point in the near future
+#[expect(dead_code)] // fields may become used at some point in the near future
 #[derive(Debug, Clone, serde::Deserialize)]
 struct Impersonator {
     email: String,
     reason: Option<String>,
 }
 
-#[allow(clippy::upper_case_acronyms)] // It's better than a serde(rename)
+#[expect(clippy::upper_case_acronyms)] // It's better than a serde(rename)
 #[derive(Debug, Clone, serde::Deserialize)]
 enum AuthenticationMethod {
     SSO,
@@ -386,7 +386,7 @@ enum AuthenticationMethod {
     Impersonation,
 }
 
-#[allow(dead_code)] // fields may become used at some point in the near future
+#[expect(dead_code)] // fields may become used at some point in the near future
 #[derive(Debug, Clone, serde::Deserialize)]
 struct OauthTokens {
     access_token: String,

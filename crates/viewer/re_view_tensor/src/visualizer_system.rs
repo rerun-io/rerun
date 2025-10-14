@@ -119,7 +119,7 @@ pub fn tensor_data_range_heuristic(
 
     // Apply heuristic for ranges that are typically expected depending on the data type and the finite (!) range.
     // (we ignore NaN/Inf values heres, since they are usually there by accident!)
-    #[allow(clippy::tuple_array_conversions)]
+    #[expect(clippy::tuple_array_conversions)]
     ValueRange::from(if data_type.is_float() && 0.0 <= min && max <= 1.0 {
         // Float values that are all between 0 and 1, assume that this is the range.
         [0.0, 1.0]

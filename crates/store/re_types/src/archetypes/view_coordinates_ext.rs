@@ -1,4 +1,4 @@
-#![allow(non_snake_case)]
+#![expect(non_snake_case)]
 
 use crate::{components, view_coordinates::ViewDir};
 

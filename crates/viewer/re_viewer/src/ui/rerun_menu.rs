@@ -453,7 +453,7 @@ fn debug_menu_options_ui(
     );
 
     ui.menu_button("Crash", |ui| {
-        #[allow(clippy::manual_assert)]
+        #[expect(clippy::manual_assert)]
         if ui.button("panic!").clicked() {
             panic!("Intentional panic");
         }
@@ -483,7 +483,7 @@ fn debug_menu_options_ui(
             pub const SEGFAULT_ADDRESS: u32 = 0x42;
 
             let bad_ptr: *mut u8 = SEGFAULT_ADDRESS as _;
-            #[allow(unsafe_code)]
+            #[expect(unsafe_code)]
             // SAFETY: this is not safe. We are _trying_ to crash.
             unsafe {
                 std::ptr::write_volatile(bad_ptr, 1);

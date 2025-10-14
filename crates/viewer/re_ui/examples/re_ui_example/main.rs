@@ -390,7 +390,6 @@ impl eframe::App for ExampleApp {
         while let Some(cmd) = self.command_receiver.recv() {
             self.latest_cmd = cmd.text().to_owned();
 
-            #[allow(clippy::single_match)]
             match cmd {
                 UICommand::ToggleCommandPalette => self.cmd_palette.toggle(),
                 UICommand::ZoomIn => {

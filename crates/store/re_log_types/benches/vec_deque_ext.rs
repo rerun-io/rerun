@@ -38,7 +38,7 @@ mod constants {
     pub const NUM_MODIFIED_ELEMENTS: usize = 1_000;
 }
 
-#[allow(clippy::wildcard_imports)]
+#[expect(clippy::wildcard_imports)]
 use self::constants::*;
 
 // ---

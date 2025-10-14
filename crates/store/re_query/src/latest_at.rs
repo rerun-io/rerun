@@ -126,15 +126,11 @@ impl QueryCache {
                     //
                     // For (recursive) parents, we need to deserialize the data to make sure the
                     // recursive flag is set.
-                    #[allow(clippy::collapsible_if)] // readability
-                    if clear_entity_path == *entity_path || found_recursive_clear {
-                        if let Some(index) = cached.index(&query.timeline()) {
-                            if compare_indices(index, max_clear_index)
-                                == std::cmp::Ordering::Greater
-                            {
-                                max_clear_index = index;
-                            }
-                        }
+                    if (clear_entity_path == *entity_path || found_recursive_clear)
+                        && let Some(index) = cached.index(&query.timeline())
+                        && compare_indices(index, max_clear_index) == std::cmp::Ordering::Greater
+                    {
+                        max_clear_index = index;
                     }
                 }
 

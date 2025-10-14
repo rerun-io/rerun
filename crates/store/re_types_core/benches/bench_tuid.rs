@@ -1,5 +1,5 @@
 // Allow unwrap() in benchmarks
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 use criterion::{Criterion, criterion_group, criterion_main};
 
