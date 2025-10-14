@@ -1,3 +1,5 @@
+//! Composable transformations for Arrow arrays.
+
 use std::sync::Arc;
 
 use arrow::array::{
@@ -102,7 +104,9 @@ impl Error {
 /// Transformations are read-only operations that may fail (e.g., missing field, type mismatch).
 /// They can be composed using the `then` method to create complex transformation pipelines.
 pub trait Transform {
+    /// The source array type.
     type Source: Array;
+    /// The target array type.
     type Target: Array;
 
     /// Apply the transformation to the source array.
@@ -575,7 +579,7 @@ where
             .ok_or_else(|| Error::TypeMismatch {
                 expected: std::any::type_name::<PrimitiveArray<T>>().to_owned(),
                 actual: casted.data_type().clone(),
-                context: "cast result".to_string(),
+                context: "cast result".to_owned(),
             })
             .cloned()
     }
@@ -590,6 +594,7 @@ where
 pub struct Identity;
 
 impl Identity {
+    /// Create a new identity transformation.
     pub fn new() -> Self {
         Self
     }
@@ -611,6 +616,7 @@ pub struct Constant {
 }
 
 impl Constant {
+    /// Create a new constant transformation that always returns the given value.
     pub fn new(value: ListArray) -> Self {
         Self { value }
     }
@@ -634,6 +640,7 @@ impl<F> Func<F>
 where
     F: Fn(&ListArray) -> Result<ListArray, Error>,
 {
+    /// Create a new function transformation from a closure.
     pub fn new(func: F) -> Self {
         Self { func }
     }
