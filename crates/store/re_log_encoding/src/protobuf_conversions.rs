@@ -210,7 +210,7 @@ pub fn arrow_msg_to_proto(
             }
             crate::codec::Compression::LZ4 => re_protos::log_msg::v1alpha1::Compression::Lz4 as i32,
         },
-        uncompressed_size: payload.uncompressed_size as i32,
+        uncompressed_size: payload.uncompressed_size,
         encoding: re_protos::log_msg::v1alpha1::Encoding::ArrowIpc as i32,
         payload: payload.data.into(),
         is_static: re_sorbet::is_static_chunk(batch),

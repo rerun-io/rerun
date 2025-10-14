@@ -32,6 +32,9 @@ pub enum EncodeError {
     #[error("{0}")]
     Codec(#[from] crate::codec::CodecError),
 
+    #[error("Integer overflow: {0}")]
+    Overflow(#[from] std::num::TryFromIntError),
+
     #[error("Chunk error: {0}")]
     Chunk(Box<ChunkError>),
 

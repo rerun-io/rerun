@@ -62,8 +62,8 @@ pub struct ArrowMsg {
     /// Compression algorithm used.
     #[prost(enumeration = "Compression", tag = "2")]
     pub compression: i32,
-    #[prost(int32, tag = "3")]
-    pub uncompressed_size: i32,
+    #[prost(uint64, tag = "3")]
+    pub uncompressed_size: u64,
     /// Encoding of the payload.
     #[prost(enumeration = "Encoding", tag = "4")]
     pub encoding: i32,
