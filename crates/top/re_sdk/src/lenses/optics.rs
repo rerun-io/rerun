@@ -24,21 +24,6 @@ trait Projection: Clone {
     fn project(&self, source: &Self::Source) -> Result<Self::Target, ArrowError>;
 }
 
-/// Applies a transformation to multiple elements within a container.
-///
-/// Example: Transform each element in a list using an inner projection.
-/// Mathematical property: Non-affine transformation (0 to N outputs per input).
-trait ElementwiseTransform: Clone {
-    type Container: Array + Clone;
-    type Element: Array + Clone;
-
-    /// Apply a projection to all elements in the container.
-    fn transform<P>(&self, source: &Self::Container, projection: &P) -> Result<Self::Container, ArrowError>
-    where
-        P: Projection<Source = Self::Element>,
-        P::Target: Array + 'static;
-}
-
 /// Composes two projections into a single projection.
 #[derive(Clone)]
 struct Compose<P1, P2> {
@@ -74,41 +59,9 @@ trait ProjectionExt: Projection {
             second: next,
         }
     }
-
-    /// Chain this projection with an elementwise transformation.
-    fn then_each<T, P2>(self, transform: T, inner: P2) -> Compose<Self, ApplyToElements<T, P2>>
-    where
-        Self: Sized,
-        T: ElementwiseTransform<Container = Self::Target>,
-        P2: Projection<Source = T::Element>,
-        P2::Target: Array + 'static,
-    {
-        self.then(ApplyToElements { transform, projection: inner })
-    }
 }
 
 impl<T: Projection> ProjectionExt for T {}
-
-/// Applies a projection to each element in a container.
-#[derive(Clone)]
-struct ApplyToElements<T, P> {
-    transform: T,
-    projection: P,
-}
-
-impl<T, P> Projection for ApplyToElements<T, P>
-where
-    T: ElementwiseTransform,
-    P: Projection<Source = T::Element>,
-    P::Target: Array + 'static,
-{
-    type Source = T::Container;
-    type Target = T::Container;
-
-    fn project(&self, source: &Self::Source) -> Result<Self::Target, ArrowError> {
-        self.transform.transform(source, &self.projection)
-    }
-}
 
 /// Extracts a field from a struct array.
 ///
@@ -135,47 +88,81 @@ impl Projection for ExtractStructField {
     }
 }
 
-/// Transforms the elements within a list array.
+/// Applies a projection to the elements within a list array.
 ///
-/// Applies a projection to the flattened values array inside the list.
-/// Generic over element type for type safety.
+/// Wraps an inner projection and applies it to the flattened values array.
+/// Mathematical property: Non-affine transformation (operates on N elements).
 #[derive(Clone)]
-struct TransformListElements<E> {
-    _phantom: std::marker::PhantomData<E>,
+struct Over<P> {
+    projection: P,
 }
 
-impl<E> TransformListElements<E> {
-    fn new() -> Self {
-        Self {
-            _phantom: std::marker::PhantomData,
-        }
-    }
-}
+impl<P, S, T> Projection for Over<P>
+where
+    P: Projection<Source = S, Target = T>,
+    S: Array + Clone + 'static,
+    T: Array + Clone + 'static,
+{
+    type Source = ListArray;
+    type Target = ListArray;
 
-impl<E: Array + Clone + 'static> ElementwiseTransform for TransformListElements<E> {
-    type Container = ListArray;
-    type Element = E;
-
-    fn transform<P>(&self, source: &Self::Container, projection: &P) -> Result<Self::Container, ArrowError>
-    where
-        P: Projection<Source = Self::Element>,
-        P::Target: Array + 'static,
-    {
+    fn project(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
         let values = source.values();
-        let downcast = values.as_any().downcast_ref::<E>().ok_or_else(|| {
+        let downcast = values.as_any().downcast_ref::<S>().ok_or_else(|| {
             arrow::error::ArrowError::InvalidArgumentError(format!(
                 "Type mismatch: expected {}",
-                std::any::type_name::<E>()
+                std::any::type_name::<S>()
             ))
         })?;
 
-        let transformed = projection.project(downcast)?;
+        let transformed = self.projection.project(downcast)?;
         let new_field = Arc::new(Field::new("item", transformed.data_type().clone(), true));
 
         let (_, offsets, _, nulls) = source.clone().into_parts();
         Ok(ListArray::new(
             new_field,
             offsets,
+            Arc::new(transformed),
+            nulls,
+        ))
+    }
+}
+
+/// Applies a projection to the elements within a fixed-size list array.
+///
+/// Wraps an inner projection and applies it to the flattened values array.
+/// Mathematical property: Non-affine transformation (operates on N elements).
+#[derive(Clone)]
+struct OverFixedSize<P> {
+    projection: P,
+}
+
+impl<P, S, T> Projection for OverFixedSize<P>
+where
+    P: Projection<Source = S, Target = T>,
+    S: Array + Clone + 'static,
+    T: Array + Clone + 'static,
+{
+    type Source = FixedSizeListArray;
+    type Target = FixedSizeListArray;
+
+    fn project(&self, source: &FixedSizeListArray) -> Result<FixedSizeListArray, ArrowError> {
+        let values = source.values();
+        let downcast = values.as_any().downcast_ref::<S>().ok_or_else(|| {
+            arrow::error::ArrowError::InvalidArgumentError(format!(
+                "Type mismatch: expected {}",
+                std::any::type_name::<S>()
+            ))
+        })?;
+
+        let transformed = self.projection.project(downcast)?;
+        let field = Arc::new(Field::new("item", transformed.data_type().clone(), true));
+        let size = source.value_length();
+        let nulls = source.nulls().cloned();
+
+        Ok(FixedSizeListArray::new(
+            field,
+            size,
             Arc::new(transformed),
             nulls,
         ))
@@ -354,54 +341,6 @@ impl Projection for ConvertFloat64ToFloat32 {
     }
 }
 
-/// Transforms the elements within a fixed-size list array.
-///
-/// Applies a projection to the flattened values array inside the list.
-/// Generic over element type for type safety.
-#[derive(Clone)]
-struct TransformFixedSizeListElements<E> {
-    _phantom: std::marker::PhantomData<E>,
-}
-
-impl<E> TransformFixedSizeListElements<E> {
-    fn new() -> Self {
-        Self {
-            _phantom: std::marker::PhantomData,
-        }
-    }
-}
-
-impl<E: Array + Clone + 'static> ElementwiseTransform for TransformFixedSizeListElements<E> {
-    type Container = FixedSizeListArray;
-    type Element = E;
-
-    fn transform<P>(&self, source: &Self::Container, projection: &P) -> Result<Self::Container, ArrowError>
-    where
-        P: Projection<Source = Self::Element>,
-        P::Target: Array + 'static,
-    {
-        let values = source.values();
-        let downcast = values.as_any().downcast_ref::<E>().ok_or_else(|| {
-            arrow::error::ArrowError::InvalidArgumentError(format!(
-                "Type mismatch: expected {}",
-                std::any::type_name::<E>()
-            ))
-        })?;
-
-        let transformed = projection.project(downcast)?;
-        let field = Arc::new(Field::new("item", transformed.data_type().clone(), true));
-        let size = source.value_length();
-        let nulls = source.nulls().cloned();
-
-        Ok(FixedSizeListArray::new(
-            field,
-            size,
-            Arc::new(transformed),
-            nulls,
-        ))
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -572,7 +511,9 @@ mod test {
         let pipeline = UnwrapStructAndExtractField {
             field_name: "poses".into(),
         }
-        .then_each(TransformListElements::new(), ConvertPointStructToFixedList);
+        .then(Over {
+            projection: ConvertPointStructToFixedList,
+        });
 
         let result: ListArray = pipeline.project(&array).unwrap();
 
@@ -586,10 +527,13 @@ mod test {
         let pipeline = UnwrapStructAndExtractField {
             field_name: "poses".into(),
         }
-        .then_each(TransformListElements::new(), ConvertPointStructToFixedList)
-        .then_each(TransformListElements::new(), ApplyToElements {
-            transform: TransformFixedSizeListElements::new(),
-            projection: MapFloat64 { f: |x| x + 1.0 },
+        .then(Over {
+            projection: ConvertPointStructToFixedList,
+        })
+        .then(Over {
+            projection: OverFixedSize {
+                projection: MapFloat64 { f: |x| x + 1.0 },
+            },
         });
 
         let result = pipeline.project(&array).unwrap();
@@ -604,10 +548,13 @@ mod test {
         let pipeline = UnwrapStructAndExtractField {
             field_name: "poses".into(),
         }
-        .then_each(TransformListElements::new(), ConvertPointStructToFixedList)
-        .then_each(TransformListElements::new(), ApplyToElements {
-            transform: TransformFixedSizeListElements::new(),
-            projection: ConvertFloat64ToFloat32,
+        .then(Over {
+            projection: ConvertPointStructToFixedList,
+        })
+        .then(Over {
+            projection: OverFixedSize {
+                projection: ConvertFloat64ToFloat32,
+            },
         });
 
         let result = pipeline.project(&array).unwrap();
