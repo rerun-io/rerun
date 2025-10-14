@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header, jwk::JwkSet};
+use saturating_cast::SaturatingCast as _;
 use serde::{Deserialize, Serialize};
 
 use crate::Jwt;
@@ -407,7 +408,7 @@ impl AccessToken {
 
     pub fn is_expired(&self) -> bool {
         // Time in seconds since unix epoch
-        let now = jsonwebtoken::get_current_timestamp() as i64;
+        let now = jsonwebtoken::get_current_timestamp().saturating_cast::<i64>();
         let seconds_left = now - self.expires_at;
         seconds_left <= SOFT_EXPIRE_SECS
     }

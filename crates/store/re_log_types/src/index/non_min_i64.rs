@@ -105,9 +105,9 @@ impl NonMinI64 {
 
     /// Calculates the midpoint (average) between `self` and `rhs`.
     #[inline]
-    pub fn midpoint(&self, rhs: NonMinI64) -> Self {
+    pub fn midpoint(&self, rhs: Self) -> Self {
         // if neither lhs or rhs is the minimum value, the midpoint can't be either
-        #[allow(clippy::unwrap_used)]
+        #[expect(clippy::unwrap_used)]
         Self::new(self.get().midpoint(rhs.get())).unwrap()
     }
 }

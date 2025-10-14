@@ -376,7 +376,7 @@ impl Analytics {
                 // Insert event ID
                 event.props.insert(
                     "event_id".into(),
-                    (self.event_id.fetch_add(1, Ordering::Relaxed) as i64).into(),
+                    self.event_id.fetch_add(1, Ordering::Relaxed).into(),
                 );
             }
 

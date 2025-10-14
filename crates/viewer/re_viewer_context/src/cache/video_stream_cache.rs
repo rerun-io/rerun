@@ -1,5 +1,3 @@
-#![expect(clippy::cast_possible_wrap)] // u64 -> i64 is fine
-
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
@@ -740,6 +738,8 @@ fn adjust_gops_for_removed_samples_front(video_data: &mut re_video::VideoDataDes
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::cast_possible_wrap)] // u64 -> i64 is fine
+
     use re_chunk::{ChunkBuilder, RowId, TimePoint, Timeline};
     use re_chunk_store::ChunkStoreDiff;
     use re_log_types::StoreId;
