@@ -7,7 +7,7 @@ table GraphView (
     "attr.rerun.view_identifier": "Graph"
 ) {
 
-    /// Configures the background of the plot.
+    /// Configures the background of the graph.
     background: rerun.blueprint.archetypes.GraphBackground (order: 500);
 
     /// Everything within these bounds is guaranteed to be visible.
