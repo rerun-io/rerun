@@ -7,7 +7,7 @@ use re_log_types::{EntityPath, EntityPathHash};
 use re_types::{archetypes, components::ImagePlaneDistance};
 use re_view::DataResultQuery as _;
 use re_viewer_context::{
-    IdentifiedViewSystem, ViewContext, ViewContextSystem, ViewContextSystemStaticExecResult,
+    IdentifiedViewSystem, ViewContext, ViewContextSystem, ViewContextSystemOncePerFrameResult,
 };
 
 use crate::{caches::TransformDatabaseStoreCache, visualizers::CamerasVisualizer};
@@ -40,14 +40,14 @@ impl IdentifiedViewSystem for TransformTreeContext {
     }
 }
 
-struct TransformTreeContextStaticExecResult {
+struct TransformTreeContextOncePerFrameResult {
     transform_forest: Arc<re_tf::TransformForest>,
 }
 
 impl ViewContextSystem for TransformTreeContext {
-    fn execute_static(
+    fn execute_once_per_frame(
         ctx: &re_viewer_context::ViewerContext<'_>,
-    ) -> ViewContextSystemStaticExecResult {
+    ) -> ViewContextSystemOncePerFrameResult {
         let caches = ctx.store_context.caches;
         let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
             c.read_lock_transform_cache(ctx.recording())
@@ -56,7 +56,7 @@ impl ViewContextSystem for TransformTreeContext {
         let transform_forest =
             re_tf::TransformForest::new(ctx.recording(), &transform_cache, &ctx.current_query());
 
-        Box::new(TransformTreeContextStaticExecResult {
+        Box::new(TransformTreeContextOncePerFrameResult {
             transform_forest: Arc::new(transform_forest),
         })
     }
@@ -65,11 +65,11 @@ impl ViewContextSystem for TransformTreeContext {
         &mut self,
         ctx: &re_viewer_context::ViewContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
-        static_execution_result: &ViewContextSystemStaticExecResult,
+        static_execution_result: &ViewContextSystemOncePerFrameResult,
     ) {
         self.target_path = query.space_origin.hash();
         self.transform_forest = static_execution_result
-            .downcast_ref::<TransformTreeContextStaticExecResult>()
+            .downcast_ref::<TransformTreeContextOncePerFrameResult>()
             .expect("Unexpected static execution result type")
             .transform_forest
             .clone();
@@ -92,7 +92,7 @@ impl ViewContextSystem for TransformTreeContext {
 }
 
 impl TransformTreeContext {
-    /// Traransform info to get from the entity's transform to the origin transform frame.
+    /// Transform info to get from the entity's transform to the origin transform frame.
     #[inline]
     pub fn transform_info_for_entity(
         &self,
