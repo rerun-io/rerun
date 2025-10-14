@@ -989,7 +989,7 @@ pub mod ar_mesh_geometry {
         #[prost(float, optional, tag = "3")]
         pub z: ::core::option::Option<f32>,
     }
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct Face {
         /// / Indices of vertices defining the face from correspondent array of parent
         /// / message. A typical face is triangular.
@@ -1231,7 +1231,7 @@ pub mod object {
     }
 }
 /// The edge connecting two keypoints together
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Edge {
     /// keypoint id of the edge's source
     #[prost(int32, tag = "1")]
