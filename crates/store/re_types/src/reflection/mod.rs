@@ -3542,6 +3542,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.blueprint.archetypes.GraphBackground"),
+            ArchetypeReflection {
+                display_name: "Graph background",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "color",
+                    display_name: "Color",
+                    component_type: "rerun.components.Color".into(),
+                    docstring_md: "Color used for the background.",
+                    is_required: false,
+                }],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.blueprint.archetypes.LineGrid3D"),
             ArchetypeReflection {
                 display_name: "Line grid 3D",
