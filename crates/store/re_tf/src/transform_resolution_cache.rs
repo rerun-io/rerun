@@ -23,13 +23,13 @@ use crate::component_type_info::TransformComponentTypeInfo;
 /// Resolves all transform components at a given entity to an affine transform.
 ///
 /// It only handles resulting transforms individually to each entity, not how these transforms propagate in the tree.
-/// For transform tree propagation see [`crate::TransformTree`].
+/// For transform tree propagation see [`crate::TransformForest`].
 ///
 /// There are different kinds of transforms handled here:
 /// * [`archetypes::Transform3D`]
-///   Tree transforms that should propagate in the tree (via [`crate::TransformTree`]).
+///   Tree transforms that should propagate in the tree (via [`crate::TransformForest`]).
 /// * [`archetypes::InstancePoses3D`]
-///   Instance poses that should be applied to the tree transforms (via [`crate::TransformTree`]) but not propagate.
+///   Instance poses that should be applied to the tree transforms (via [`crate::TransformForest`]) but not propagate.
 /// * [`components::PinholeProjection`] and [`components::ViewCoordinates`]
 ///   Pinhole projections & associated view coordinates used for visualizing cameras in 3D and embedding 2D in 3D
 ///
@@ -233,6 +233,8 @@ pub struct TransformsForEntity {
 pub struct ResolvedPinholeProjection {
     pub image_from_camera: components::PinholeProjection,
 
+    pub resolution: Option<components::Resolution>,
+
     /// View coordinates at this pinhole camera.
     ///
     /// This is needed to orient 2D in 3D and 3D in 2D the right way around
@@ -397,7 +399,7 @@ impl TransformResolutionCache {
     /// Makes sure the transform cache is up to date with the latest data.
     ///
     /// This needs to be called once per frame prior to any transform propagation.
-    /// (which is done by [`crate::TransformTree`])
+    /// (which is done by [`crate::TransformForest`])
     ///
     /// See also [`Self::add_chunks`].
     // TODO(andreas): easy optimization: apply only updates for a single timeline at a time.
@@ -1132,6 +1134,13 @@ fn query_and_resolve_pinhole_projection_at_entity(
         )
         .map(|(_index, image_from_camera)| ResolvedPinholeProjection {
             image_from_camera,
+            resolution: entity_db
+                .latest_at_component::<components::Resolution>(
+                    entity_path,
+                    query,
+                    &archetypes::Pinhole::descriptor_resolution(),
+                )
+                .map(|(_index, resolution)| resolution),
             view_coordinates: {
                 query_view_coordinates(entity_path, entity_db, query)
                     .unwrap_or(archetypes::Pinhole::DEFAULT_CAMERA_XYZ)
@@ -1590,7 +1599,7 @@ mod tests {
                 .with_archetype(
                     RowId::new(),
                     TimePoint::default(),
-                    &archetypes::Pinhole::new(image_from_camera_prior),
+                    &archetypes::Pinhole::new(image_from_camera_prior).with_resolution([1.0, 1.0]),
                 )
                 .build()
                 .unwrap();
@@ -1598,7 +1607,7 @@ mod tests {
                 .with_archetype(
                     RowId::new(),
                     TimePoint::default(),
-                    &archetypes::Pinhole::new(image_from_camera_final),
+                    &archetypes::Pinhole::new(image_from_camera_final).with_resolution([2.0, 2.0]),
                 )
                 .build()
                 .unwrap();
@@ -1632,6 +1641,7 @@ mod tests {
                 transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), TimeInt::MIN)),
                 Some(&ResolvedPinholeProjection {
                     image_from_camera: image_from_camera_final,
+                    resolution: Some([2.0, 2.0].into()),
                     view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
                 })
             );
@@ -1643,6 +1653,7 @@ mod tests {
                 transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), 1)),
                 Some(&ResolvedPinholeProjection {
                     image_from_camera: image_from_camera_final,
+                    resolution: Some([2.0, 2.0].into()),
                     view_coordinates: components::ViewCoordinates::BLU,
                 })
             );
@@ -1656,6 +1667,7 @@ mod tests {
                 transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), 123)),
                 Some(&ResolvedPinholeProjection {
                     image_from_camera: image_from_camera_final,
+                    resolution: Some([2.0, 2.0].into()),
                     view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
                 })
             );
@@ -1728,6 +1740,7 @@ mod tests {
                 transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), 1)),
                 Some(&ResolvedPinholeProjection {
                     image_from_camera,
+                    resolution: None,
                     view_coordinates: components::ViewCoordinates::BLU,
                 })
             );
@@ -2099,6 +2112,7 @@ mod tests {
             transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 1)),
             Some(&ResolvedPinholeProjection {
                 image_from_camera,
+                resolution: None,
                 view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
             })
         );
@@ -2106,6 +2120,7 @@ mod tests {
             transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 2)),
             Some(&ResolvedPinholeProjection {
                 image_from_camera,
+                resolution: None,
                 view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
             })
         );
@@ -2113,6 +2128,7 @@ mod tests {
             transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 3)),
             Some(&ResolvedPinholeProjection {
                 image_from_camera,
+                resolution: None,
                 view_coordinates: components::ViewCoordinates::BLU,
             })
         );

@@ -84,6 +84,7 @@ class GraphView(View):
             AsComponents | Iterable[DescribedComponentBatch | AsComponents | Iterable[DescribedComponentBatch]],
         ]
         | None = None,
+        background: blueprint_archetypes.GraphBackground | None = None,
         visual_bounds: blueprint_archetypes.VisualBounds2D | None = None,
         force_link: blueprint_archetypes.ForceLink | None = None,
         force_many_body: blueprint_archetypes.ForceManyBody | None = None,
@@ -126,6 +127,8 @@ class GraphView(View):
             do not yet support `$origin` relative paths or glob expressions.
             This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
 
+        background:
+            Configures the background of the graph.
         visual_bounds:
             Everything within these bounds is guaranteed to be visible.
 
@@ -144,6 +147,11 @@ class GraphView(View):
         """
 
         properties: dict[str, AsComponents] = {}
+        if background is not None:
+            if not isinstance(background, blueprint_archetypes.GraphBackground):
+                background = blueprint_archetypes.GraphBackground(background)
+            properties["GraphBackground"] = background
+
         if visual_bounds is not None:
             if not isinstance(visual_bounds, blueprint_archetypes.VisualBounds2D):
                 visual_bounds = blueprint_archetypes.VisualBounds2D(visual_bounds)

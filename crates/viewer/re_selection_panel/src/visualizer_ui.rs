@@ -26,7 +26,7 @@ pub fn visualizer_ui(
     let query_result = ctx.lookup_query_result(view.id);
     let Some(data_result) = query_result
         .tree
-        .lookup_result_by_path(entity_path)
+        .lookup_result_by_path(entity_path.hash())
         .cloned()
     else {
         ui.error_label("Entity not found in view");

@@ -6,6 +6,10 @@ namespace rerun.blueprint.views;
 table GraphView (
     "attr.rerun.view_identifier": "Graph"
 ) {
+
+    /// Configures the background of the graph.
+    background: rerun.blueprint.archetypes.GraphBackground (order: 500);
+
     /// Everything within these bounds is guaranteed to be visible.
     ///
     /// Somethings outside of these bounds may also be visible due to letterboxing.

@@ -158,13 +158,13 @@ impl TestContextExt for TestContext {
         let mut view_states = self.view_states.lock();
         let view_state = view_states.get_mut_or_create(view_id, view_class);
 
-        let context_system_static_exec_results = class_registry
-            .run_static_context_systems_for_views(ctx, std::iter::once(class_identifier));
+        let context_system_once_per_frame_results = class_registry
+            .run_once_per_frame_context_systems(ctx, std::iter::once(class_identifier));
         let (view_query, system_execution_output) = execute_systems_for_view(
             ctx,
             &view_blueprint,
             view_state,
-            &context_system_static_exec_results,
+            &context_system_once_per_frame_results,
         );
 
         view_class

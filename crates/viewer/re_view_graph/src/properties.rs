@@ -1,10 +1,10 @@
 use re_types::{
     Archetype as _,
     blueprint::{
-        archetypes,
+        archetypes::{self, GraphBackground},
         components::{Enabled, ForceDistance, ForceIterations, ForceStrength, VisualBounds2D},
     },
-    components::Position2D,
+    components::{Color, Position2D},
 };
 use re_viewer_context::{TypedComponentFallbackProvider, ViewStateExt as _};
 
@@ -70,4 +70,15 @@ impl TypedComponentFallbackProvider<Position2D> for GraphView {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(GraphView => [VisualBounds2D, Enabled, ForceDistance, ForceStrength, ForceIterations, Position2D]);
+impl TypedComponentFallbackProvider<Color> for GraphView {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Color {
+        // Color is a fairly common component, make sure this is the right context.
+        if ctx.archetype_name == Some(GraphBackground::name()) {
+            ctx.viewer_ctx().tokens().viewport_background.into()
+        } else {
+            Color::default()
+        }
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(GraphView => [VisualBounds2D, Enabled, ForceDistance, ForceStrength, ForceIterations, Position2D, Color]);

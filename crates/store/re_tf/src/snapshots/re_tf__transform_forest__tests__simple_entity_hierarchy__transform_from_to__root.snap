@@ -1,0 +1,384 @@
+---
+source: crates/store/re_tf/src/transform_forest.rs
+expression: "pretty_print_entity_path_hashes_in(transform_forest.transform_from_to(target.hash(),\nsources.iter().map(|s| s.hash()), &|_| { 1.0 }).collect::<Vec<_>>(),\n&all_entity_paths)"
+---
+[
+    (
+        /,
+        Ok(
+            TransformInfo {
+                root: /,
+                target_from_entity: Affine3A {
+                    matrix3: Mat3A {
+                        x_axis: Vec3A(
+                            1.0,
+                            0.0,
+                            0.0,
+                        ),
+                        y_axis: Vec3A(
+                            0.0,
+                            1.0,
+                            0.0,
+                        ),
+                        z_axis: Vec3A(
+                            0.0,
+                            0.0,
+                            1.0,
+                        ),
+                    },
+                    translation: Vec3A(
+                        0.0,
+                        0.0,
+                        0.0,
+                    ),
+                },
+                target_from_instances: [
+                    Affine3A {
+                        matrix3: Mat3A {
+                            x_axis: Vec3A(
+                                1.0,
+                                0.0,
+                                0.0,
+                            ),
+                            y_axis: Vec3A(
+                                0.0,
+                                1.0,
+                                0.0,
+                            ),
+                            z_axis: Vec3A(
+                                0.0,
+                                0.0,
+                                1.0,
+                            ),
+                        },
+                        translation: Vec3A(
+                            0.0,
+                            0.0,
+                            0.0,
+                        ),
+                    },
+                ],
+                target_from_archetype: {},
+            },
+        ),
+    ),
+    (
+        /top,
+        Ok(
+            TransformInfo {
+                root: /,
+                target_from_entity: Affine3A {
+                    matrix3: Mat3A {
+                        x_axis: Vec3A(
+                            1.0,
+                            0.0,
+                            0.0,
+                        ),
+                        y_axis: Vec3A(
+                            0.0,
+                            1.0,
+                            0.0,
+                        ),
+                        z_axis: Vec3A(
+                            0.0,
+                            0.0,
+                            1.0,
+                        ),
+                    },
+                    translation: Vec3A(
+                        1.0,
+                        0.0,
+                        0.0,
+                    ),
+                },
+                target_from_instances: [
+                    Affine3A {
+                        matrix3: Mat3A {
+                            x_axis: Vec3A(
+                                1.0,
+                                0.0,
+                                0.0,
+                            ),
+                            y_axis: Vec3A(
+                                0.0,
+                                1.0,
+                                0.0,
+                            ),
+                            z_axis: Vec3A(
+                                0.0,
+                                0.0,
+                                1.0,
+                            ),
+                        },
+                        translation: Vec3A(
+                            11.0,
+                            0.0,
+                            0.0,
+                        ),
+                    },
+                    Affine3A {
+                        matrix3: Mat3A {
+                            x_axis: Vec3A(
+                                1.0,
+                                0.0,
+                                0.0,
+                            ),
+                            y_axis: Vec3A(
+                                0.0,
+                                1.0,
+                                0.0,
+                            ),
+                            z_axis: Vec3A(
+                                0.0,
+                                0.0,
+                                1.0,
+                            ),
+                        },
+                        translation: Vec3A(
+                            21.0,
+                            0.0,
+                            0.0,
+                        ),
+                    },
+                ],
+                target_from_archetype: {
+                    "rerun.archetypes.Boxes3D": [
+                        Affine3A {
+                            matrix3: Mat3A {
+                                x_axis: Vec3A(
+                                    1.0,
+                                    0.0,
+                                    0.0,
+                                ),
+                                y_axis: Vec3A(
+                                    0.0,
+                                    1.0,
+                                    0.0,
+                                ),
+                                z_axis: Vec3A(
+                                    0.0,
+                                    0.0,
+                                    1.0,
+                                ),
+                            },
+                            translation: Vec3A(
+                                11.0,
+                                10.0,
+                                0.0,
+                            ),
+                        },
+                        Affine3A {
+                            matrix3: Mat3A {
+                                x_axis: Vec3A(
+                                    1.0,
+                                    0.0,
+                                    0.0,
+                                ),
+                                y_axis: Vec3A(
+                                    0.0,
+                                    1.0,
+                                    0.0,
+                                ),
+                                z_axis: Vec3A(
+                                    0.0,
+                                    0.0,
+                                    1.0,
+                                ),
+                            },
+                            translation: Vec3A(
+                                21.0,
+                                20.0,
+                                0.0,
+                            ),
+                        },
+                    ],
+                },
+            },
+        ),
+    ),
+    (
+        /top/pinhole,
+        Ok(
+            TransformInfo {
+                root: /top/pinhole,
+                target_from_entity: Affine3A {
+                    matrix3: Mat3A {
+                        x_axis: Vec3A(
+                            1.0,
+                            0.0,
+                            0.0,
+                        ),
+                        y_axis: Vec3A(
+                            0.0,
+                            0.5,
+                            0.0,
+                        ),
+                        z_axis: Vec3A(
+                            0.0,
+                            0.0,
+                            0.6666667,
+                        ),
+                    },
+                    translation: Vec3A(
+                        -49.0,
+                        -49.0,
+                        1.0,
+                    ),
+                },
+                target_from_instances: [
+                    Affine3A {
+                        matrix3: Mat3A {
+                            x_axis: Vec3A(
+                                1.0,
+                                0.0,
+                                0.0,
+                            ),
+                            y_axis: Vec3A(
+                                0.0,
+                                0.5,
+                                0.0,
+                            ),
+                            z_axis: Vec3A(
+                                0.0,
+                                0.0,
+                                0.6666667,
+                            ),
+                        },
+                        translation: Vec3A(
+                            -49.0,
+                            -49.0,
+                            1.0,
+                        ),
+                    },
+                ],
+                target_from_archetype: {},
+            },
+        ),
+    ),
+    (
+        /top/child3d,
+        Ok(
+            TransformInfo {
+                root: /,
+                target_from_entity: Affine3A {
+                    matrix3: Mat3A {
+                        x_axis: Vec3A(
+                            1.0,
+                            0.0,
+                            0.0,
+                        ),
+                        y_axis: Vec3A(
+                            0.0,
+                            1.0,
+                            0.0,
+                        ),
+                        z_axis: Vec3A(
+                            0.0,
+                            0.0,
+                            1.0,
+                        ),
+                    },
+                    translation: Vec3A(
+                        1.0,
+                        0.0,
+                        1.0,
+                    ),
+                },
+                target_from_instances: [
+                    Affine3A {
+                        matrix3: Mat3A {
+                            x_axis: Vec3A(
+                                1.0,
+                                0.0,
+                                0.0,
+                            ),
+                            y_axis: Vec3A(
+                                0.0,
+                                1.0,
+                                0.0,
+                            ),
+                            z_axis: Vec3A(
+                                0.0,
+                                0.0,
+                                1.0,
+                            ),
+                        },
+                        translation: Vec3A(
+                            1.0,
+                            0.0,
+                            1.0,
+                        ),
+                    },
+                ],
+                target_from_archetype: {},
+            },
+        ),
+    ),
+    (
+        /top/nonexistent,
+        Err(
+            UnknownSourceFrame(
+                /top/nonexistent,
+            ),
+        ),
+    ),
+    (
+        /top/pinhole/child2d,
+        Ok(
+            TransformInfo {
+                root: /top/pinhole,
+                target_from_entity: Affine3A {
+                    matrix3: Mat3A {
+                        x_axis: Vec3A(
+                            1.0,
+                            0.0,
+                            0.0,
+                        ),
+                        y_axis: Vec3A(
+                            0.0,
+                            0.5,
+                            0.0,
+                        ),
+                        z_axis: Vec3A(
+                            0.0,
+                            0.0,
+                            0.6666667,
+                        ),
+                    },
+                    translation: Vec3A(
+                        -47.0,
+                        -49.0,
+                        1.0,
+                    ),
+                },
+                target_from_instances: [
+                    Affine3A {
+                        matrix3: Mat3A {
+                            x_axis: Vec3A(
+                                1.0,
+                                0.0,
+                                0.0,
+                            ),
+                            y_axis: Vec3A(
+                                0.0,
+                                0.5,
+                                0.0,
+                            ),
+                            z_axis: Vec3A(
+                                0.0,
+                                0.0,
+                                0.6666667,
+                            ),
+                        },
+                        translation: Vec3A(
+                            -47.0,
+                            -49.0,
+                            1.0,
+                        ),
+                    },
+                ],
+                target_from_archetype: {},
+            },
+        ),
+    ),
+]
