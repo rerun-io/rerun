@@ -770,11 +770,17 @@ impl TryFrom<&crate::common::v1alpha1::RerunChunk> for arrow::array::RecordBatch
             }
 
             crate::common::v1alpha1::EncoderVersion::V0 => {
-                let Some(batch) = record_batch_from_ipc_bytes(&value.payload)? else {
+                let Some(bytes) = value.payload.as_ref() else {
+                    return Err(missing_field!(
+                        crate::common::v1alpha1::DataframePart,
+                        "payload"
+                    ));
+                };
+                let Some(batch) = record_batch_from_ipc_bytes(bytes)? else {
                     return Err(invalid_field!(
                         crate::common::v1alpha1::RerunChunk,
                         "payload",
-                        "empty",
+                        "empty"
                     ));
                 };
                 Ok(batch)
@@ -794,7 +800,7 @@ impl From<&arrow::array::RecordBatch> for crate::common::v1alpha1::RerunChunk {
         let version = crate::common::v1alpha1::EncoderVersion::V0;
         Self {
             encoder_version: version as i32,
-            payload: record_batch_to_ipc_bytes(value).into(),
+            payload: Some(record_batch_to_ipc_bytes(value).into()),
         }
     }
 }
