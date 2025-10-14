@@ -12,6 +12,7 @@ use arrow::error::ArrowError;
 // * The number of rows is identical, so transforming the contents is an affine mapping.
 
 // Base trait for all arrow optics - provides a read-only view/projection
+// Affine: focuses on 0 or 1 target
 trait ArrowOptic: Clone {
     type Source: Array + Clone;
     type Target: Array + Clone;
@@ -26,6 +27,19 @@ trait ArrowOptic: Clone {
 trait ArrowPrism: ArrowOptic {
     /// Review/inject target back into source structure
     fn review(&self, target: Self::Target) -> Result<Self::Source, ArrowError>;
+}
+
+// Traversal: Non-affine projection that applies an inner optic to multiple elements
+// Focuses on 0 to N targets within a container structure
+trait ArrowTraversal: Clone {
+    type Container: Array + Clone;
+    type Element: Array + Clone;
+
+    /// Apply an optic to all elements in the container
+    fn traverse<O>(&self, source: &Self::Container, optic: &O) -> Result<Self::Container, ArrowError>
+    where
+        O: ArrowOptic<Source = Self::Element>,
+        O::Target: Array + 'static;
 }
 
 #[derive(Clone)]
@@ -61,9 +75,41 @@ trait OpticExt: ArrowOptic {
             second: next,
         }
     }
+
+    /// Compose with a traversal, applying an inner optic to all elements
+    fn then_over<T, O2>(self, traversal: T, inner: O2) -> Compose<Self, Over<T, O2>>
+    where
+        Self: Sized,
+        T: ArrowTraversal<Container = Self::Target>,
+        O2: ArrowOptic<Source = T::Element>,
+        O2::Target: Array + 'static,
+    {
+        self.then(Over { traversal, optic: inner })
+    }
 }
 
 impl<T: ArrowOptic> OpticExt for T {}
+
+// Over: Apply an optic through a traversal to all elements
+#[derive(Clone)]
+struct Over<T, O> {
+    traversal: T,
+    optic: O,
+}
+
+impl<T, O> ArrowOptic for Over<T, O>
+where
+    T: ArrowTraversal,
+    O: ArrowOptic<Source = T::Element>,
+    O::Target: Array + 'static,
+{
+    type Source = T::Container;
+    type Target = T::Container;
+
+    fn preview(&self, source: &Self::Source) -> Result<Self::Target, ArrowError> {
+        self.traversal.traverse(source, &self.optic)
+    }
+}
 
 // Prism: Extract field from StructArray
 // Partial because field may not exist; reversible because we can inject field back
@@ -103,27 +149,38 @@ impl ArrowPrism for StructFieldPrism {
 
 // Traversal: Transform each element in ListArray using an inner optic
 // This is a traversal pattern - applies inner optic to all list elements
+// Generic over the element type for type safety
 #[derive(Clone)]
-struct ListTraversal<O> {
-    inner_optic: O,
+struct ListTraversal<E> {
+    _phantom: std::marker::PhantomData<E>,
 }
 
-impl<O> ArrowOptic for ListTraversal<O>
-where
-    O: ArrowOptic,
-    O::Source: Array + 'static,
-    O::Target: Array + 'static,
-{
-    type Source = ListArray;
-    type Target = ListArray;
+impl<E> ListTraversal<E> {
+    fn new() -> Self {
+        Self {
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
 
-    fn preview(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
+impl<E: Array + Clone + 'static> ArrowTraversal for ListTraversal<E> {
+    type Container = ListArray;
+    type Element = E;
+
+    fn traverse<O>(&self, source: &Self::Container, optic: &O) -> Result<Self::Container, ArrowError>
+    where
+        O: ArrowOptic<Source = Self::Element>,
+        O::Target: Array + 'static,
+    {
         let values = source.values();
-        let downcast = values.as_any().downcast_ref::<O::Source>().ok_or_else(|| {
-            arrow::error::ArrowError::InvalidArgumentError("Type mismatch in ListTraversal".into())
+        let downcast = values.as_any().downcast_ref::<E>().ok_or_else(|| {
+            arrow::error::ArrowError::InvalidArgumentError(format!(
+                "Type mismatch in ListTraversal: expected {}",
+                std::any::type_name::<E>()
+            ))
         })?;
 
-        let transformed = self.inner_optic.preview(downcast)?;
+        let transformed = optic.preview(downcast)?;
         let new_field = Arc::new(Field::new("item", transformed.data_type().clone(), true));
 
         let (_, offsets, _, nulls) = source.clone().into_parts();
@@ -334,32 +391,38 @@ impl ArrowOptic for Float64ToFloat32Optic {
 
 // Traversal: Transform FixedSizeListArray values using inner optic
 // Applies inner optic to the flattened values array
+// Generic over the element type for type safety
 #[derive(Clone)]
-struct FixedSizeListTraversal<O> {
-    inner_optic: O,
+struct FixedSizeListTraversal<E> {
+    _phantom: std::marker::PhantomData<E>,
 }
 
-impl<O> ArrowOptic for FixedSizeListTraversal<O>
-where
-    O: ArrowOptic,
-    O::Source: Array + 'static,
-    O::Target: Array + 'static,
-{
-    type Source = FixedSizeListArray;
-    type Target = FixedSizeListArray;
+impl<E> FixedSizeListTraversal<E> {
+    fn new() -> Self {
+        Self {
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
 
-    fn preview(&self, source: &FixedSizeListArray) -> Result<FixedSizeListArray, ArrowError> {
-        let values = source
-            .values()
-            .as_any()
-            .downcast_ref::<O::Source>()
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError(
-                    "Type mismatch in FixedSizeListTraversal".into(),
-                )
-            })?;
+impl<E: Array + Clone + 'static> ArrowTraversal for FixedSizeListTraversal<E> {
+    type Container = FixedSizeListArray;
+    type Element = E;
 
-        let transformed = self.inner_optic.preview(values)?;
+    fn traverse<O>(&self, source: &Self::Container, optic: &O) -> Result<Self::Container, ArrowError>
+    where
+        O: ArrowOptic<Source = Self::Element>,
+        O::Target: Array + 'static,
+    {
+        let values = source.values();
+        let downcast = values.as_any().downcast_ref::<E>().ok_or_else(|| {
+            arrow::error::ArrowError::InvalidArgumentError(format!(
+                "Type mismatch in FixedSizeListTraversal: expected {}",
+                std::any::type_name::<E>()
+            ))
+        })?;
+
+        let transformed = optic.preview(downcast)?;
         let field = Arc::new(Field::new("item", transformed.data_type().clone(), true));
         let size = source.value_length();
         let nulls = source.nulls().cloned();
@@ -545,9 +608,7 @@ mod test {
         let pipeline = UnwrapSingleStructFieldPrism {
             field_name: "poses".into(),
         }
-        .then(ListTraversal {
-            inner_optic: PointStructToFixedListOptic,
-        });
+        .then_over(ListTraversal::new(), PointStructToFixedListOptic);
 
         let result: ListArray = pipeline.preview(&array).unwrap();
 
@@ -561,13 +622,10 @@ mod test {
         let pipeline = UnwrapSingleStructFieldPrism {
             field_name: "poses".into(),
         }
-        .then(ListTraversal {
-            inner_optic: PointStructToFixedListOptic,
-        })
-        .then(ListTraversal {
-            inner_optic: FixedSizeListTraversal {
-                inner_optic: Float64MapOptic { f: |x| x + 1.0 },
-            },
+        .then_over(ListTraversal::new(), PointStructToFixedListOptic)
+        .then_over(ListTraversal::new(), Over {
+            traversal: FixedSizeListTraversal::new(),
+            optic: Float64MapOptic { f: |x| x + 1.0 },
         });
 
         let result = pipeline.preview(&array).unwrap();
@@ -582,13 +640,10 @@ mod test {
         let pipeline = UnwrapSingleStructFieldPrism {
             field_name: "poses".into(),
         }
-        .then(ListTraversal {
-            inner_optic: PointStructToFixedListOptic,
-        })
-        .then(ListTraversal {
-            inner_optic: FixedSizeListTraversal {
-                inner_optic: Float64ToFloat32Optic,
-            },
+        .then_over(ListTraversal::new(), PointStructToFixedListOptic)
+        .then_over(ListTraversal::new(), Over {
+            traversal: FixedSizeListTraversal::new(),
+            optic: Float64ToFloat32Optic,
         });
 
         let result = pipeline.preview(&array).unwrap();
