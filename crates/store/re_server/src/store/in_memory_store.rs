@@ -17,7 +17,7 @@ use re_protos::{
         EntryKind, SystemTableKind,
         ext::{EntryDetails, SystemTable},
     },
-    common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId},
+    common::v1alpha1::ext::IfDuplicateBehavior,
 };
 use re_tuid::Tuid;
 use re_types_core::{ComponentBatch as _, Loggable as _};
@@ -54,66 +54,44 @@ impl InMemoryStore {
             .unwrap_or(ChunkStoreConfig::CHANGELOG_DISABLED)
     }
 
+    /// Returns the chunks corresponding to the provided chunk keys.
+    ///
+    /// The chunks are returned in the same order as they are requested.
     pub fn chunks_from_chunk_keys(
         &self,
         chunk_keys: &[ChunkKey],
     ) -> Result<Vec<(StoreId, Arc<Chunk>)>, Error> {
-        // sort keys per dataset, partition, layer
-        let mut chunk_key_index: HashMap<
-            &EntryId,
-            HashMap<&PartitionId, HashMap<&str, Vec<&ChunkKey>>>,
-        > = Default::default();
+        chunk_keys
+            .iter()
+            .map(|chunk_key| {
+                //TODO(ab): per-chunk store lookup and locking might be costly?
+                let store_handle = self
+                    .dataset(chunk_key.dataset_id)?
+                    .partition(&chunk_key.partition_id)?
+                    .layer(&chunk_key.layer_name)
+                    .ok_or_else(|| {
+                        Error::LayerNameNotFound(
+                            chunk_key.layer_name.clone(),
+                            chunk_key.partition_id.clone(),
+                            chunk_key.dataset_id,
+                        )
+                    })?
+                    .store_handle()
+                    .read();
 
-        for chunk_key in chunk_keys {
-            chunk_key_index
-                .entry(&chunk_key.dataset_id)
-                .or_default()
-                .entry(&chunk_key.partition_id)
-                .or_default()
-                .entry(&chunk_key.layer_name)
-                .or_default()
-                .push(chunk_key);
-        }
-
-        let mut result = Vec::with_capacity(chunk_keys.len());
-
-        for (dataset_id, partition_index) in chunk_key_index {
-            let dataset = self.dataset(*dataset_id)?;
-
-            for (partition_id, layer_index) in partition_index {
-                let partition = dataset.partition(partition_id)?;
+                let chunk = store_handle
+                    .chunk(&chunk_key.chunk_id)
+                    .ok_or_else(|| Error::ChunkNotFound(chunk_key.clone()))?;
 
                 let store_id = StoreId::new(
                     StoreKind::Recording,
-                    dataset_id.to_string(),
-                    partition_id.id.as_str(),
+                    chunk_key.dataset_id.to_string(),
+                    chunk_key.partition_id.id.as_str(),
                 );
 
-                for (layer_name, chunk_keys) in layer_index {
-                    let store_handle = partition
-                        .layer(layer_name)
-                        .ok_or_else(|| {
-                            Error::LayerNameNotFound(
-                                layer_name.to_owned(),
-                                partition_id.clone(),
-                                *dataset_id,
-                            )
-                        })?
-                        .store_handle()
-                        .read();
-
-                    for chunk_key in chunk_keys {
-                        let chunk = store_handle
-                            .chunk(&chunk_key.chunk_id)
-                            .ok_or_else(|| Error::ChunkNotFound(chunk_key.clone()))?;
-
-                        result.push((store_id.clone(), Arc::clone(chunk)));
-                    }
-                }
-            }
-        }
-
-        Ok(result)
+                Ok((store_id.clone(), Arc::clone(chunk)))
+            })
+            .collect()
     }
 
     /// Load a directory of RRDs.
