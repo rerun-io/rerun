@@ -10,7 +10,7 @@ use re_viewer_context::{Looping, PlayState, TimeControl, TimeControlCommand};
 pub struct TimeControlUi;
 
 impl TimeControlUi {
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     pub fn timeline_selector_ui(
         &self,
         time_ctrl: &TimeControl,
@@ -101,7 +101,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         });
     }
 
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     pub fn fps_ui(
         &self,
         time_ctrl: &TimeControl,
@@ -142,7 +142,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         });
     }
 
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     fn play_button_ui(
         &self,
         time_ctrl: &TimeControl,
@@ -159,7 +159,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         }
     }
 
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     fn follow_button_ui(
         &self,
         time_ctrl: &TimeControl,
@@ -176,7 +176,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         }
     }
 
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     fn pause_button_ui(
         &self,
         time_ctrl: &TimeControl,
@@ -193,7 +193,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         }
     }
 
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     fn step_time_button_ui(&self, ui: &mut egui::Ui, time_commands: &mut Vec<TimeControlCommand>) {
         if ui
             .large_button(&re_ui::icons::ARROW_LEFT)
@@ -212,7 +212,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         }
     }
 
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     fn loop_button_ui(
         &self,
         time_ctrl: &TimeControl,
@@ -245,7 +245,6 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                 }
                 Looping::Selection => {
                     // ui.visuals_mut().selection.bg_fill = re_ui::ReUi::loop_selection_color(); // we have one color for the button, and a slightly different shade of it for the actual selection :/
-                    #[allow(clippy::collapsible_else_if)]
                     if ui
                         .large_button_selected(icon, true)
                         .on_hover_text("Looping selection")
@@ -258,7 +257,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         });
     }
 
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     pub fn playback_speed_ui(
         &self,
         time_ctrl: &TimeControl,

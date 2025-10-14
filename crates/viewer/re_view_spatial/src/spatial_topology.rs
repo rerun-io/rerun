@@ -101,7 +101,7 @@ impl SubSpace {
 
     /// Whether 2D content in this subspace can be displayed.
     #[inline]
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     pub fn supports_2d_content(&self) -> bool {
         // There's currently no way to prevent a subspace from displaying 2D content.
         true
@@ -463,7 +463,7 @@ mod tests {
         );
 
         // Add splitting entities to the root space - this should not cause any splits.
-        #[allow(clippy::single_element_loop)]
+        #[expect(clippy::single_element_loop)]
         for (name, flags) in [
             (PinholeProjection::name(), SubSpaceConnectionFlags::Pinhole),
             // Add future ways of splitting here (in the past `DisconnectedSpace` was used here).

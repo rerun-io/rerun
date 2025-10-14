@@ -31,14 +31,14 @@ impl Reporter {
     /// Error about a file as a whole.
     ///
     /// Use sparingly for things like failing to write a file or failing to format it.
-    #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
+    #[expect(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn error_file(&self, path: &Utf8Path, text: impl ToString) {
         self.errors
             .send(format!("{path}: {}", text.to_string()))
             .ok();
     }
 
-    #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
+    #[expect(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn error(&self, virtpath: &str, fqname: &str, text: impl ToString) {
         self.errors
             .send(format!(
@@ -49,12 +49,12 @@ impl Reporter {
             .ok();
     }
 
-    #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
+    #[expect(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn warn_no_context(&self, text: impl ToString) {
         self.warnings.send(text.to_string()).ok();
     }
 
-    #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
+    #[expect(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn warn(&self, virtpath: &str, fqname: &str, text: impl ToString) {
         self.warnings
             .send(format!(
@@ -65,7 +65,7 @@ impl Reporter {
             .ok();
     }
 
-    #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
+    #[expect(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn error_any(&self, text: impl ToString) {
         self.errors.send(text.to_string()).ok();
     }

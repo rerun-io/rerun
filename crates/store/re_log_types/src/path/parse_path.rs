@@ -300,7 +300,7 @@ fn tokenize_data_path(path: &str) -> Vec<&str> {
 }
 
 pub fn tokenize_by<'s>(path: &'s str, special_chars: &[u8]) -> Vec<&'s str> {
-    #![allow(clippy::unwrap_used)]
+    #![expect(clippy::unwrap_used)]
 
     // We parse on bytes, and take care to only split on either side of a one-byte ASCII,
     // making the `from_utf8(…)`s below safe to unwrap.

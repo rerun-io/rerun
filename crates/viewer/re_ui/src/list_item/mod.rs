@@ -7,7 +7,7 @@ mod custom_content;
 mod debug_content;
 mod item_buttons;
 mod label_content;
-#[allow(clippy::module_inception)]
+#[expect(clippy::module_inception)]
 mod list_item;
 mod property_content;
 mod scope;

@@ -1226,7 +1226,6 @@ impl RerunCloudService for RerunCloudHandler {
 }
 
 /// Retrieves the entry ID based on HTTP headers.
-#[expect(clippy::result_large_err)] // it's just a tonic::Status
 fn get_entry_id_from_headers<T>(
     store: &InMemoryStore,
     req: &tonic::Request<T>,

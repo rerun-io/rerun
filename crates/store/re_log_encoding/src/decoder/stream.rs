@@ -850,7 +850,7 @@ mod tests {
 // Legacy tests from the old decoder implementation.
 #[cfg(all(test, feature = "decoder", feature = "encoder"))]
 mod tests_legacy {
-    #![allow(clippy::unwrap_used)] // acceptable for tests
+    #![expect(clippy::unwrap_used)] // acceptable for tests
 
     use re_build_info::CrateVersion;
     use re_chunk::RowId;

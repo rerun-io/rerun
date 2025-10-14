@@ -297,7 +297,7 @@ impl ConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    #[allow(clippy::fn_params_excessive_bools, clippy::too_many_arguments)]
+    #[expect(clippy::fn_params_excessive_bools, clippy::too_many_arguments)]
     pub fn do_maintenance(
         &self,
         py: Python<'_>,

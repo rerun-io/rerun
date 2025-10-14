@@ -16,7 +16,7 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: Configuration for the background of a view.
+    /// **Archetype**: Configuration for the background of a spatial view.
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///

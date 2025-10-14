@@ -22,7 +22,7 @@ impl Angle {
     /// Converts the value to radians.
     ///
     /// Deprecated method to mimic previous enum variant.
-    #[allow(non_snake_case)]
+    #[expect(non_snake_case)]
     #[deprecated(since = "0.18.0", note = "Use `Angle::from_degrees` instead.")]
     #[inline]
     pub fn Degrees(degrees: f32) -> Self {
@@ -32,7 +32,7 @@ impl Angle {
     /// Create a new angle from radians.
     ///
     /// Deprecated method to mimic previous enum variant.
-    #[allow(non_snake_case)]
+    #[expect(non_snake_case)]
     #[deprecated(since = "0.18.0", note = "Use `Angle::from_radians` instead.")]
     #[inline]
     pub fn Radians(radians: f32) -> Self {

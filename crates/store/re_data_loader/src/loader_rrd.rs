@@ -247,7 +247,7 @@ struct RetryableFileReader {
     rx_file_notifs: Receiver<notify::Result<notify::Event>>,
     rx_ticker: Receiver<std::time::Instant>,
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     watcher: notify::RecommendedWatcher,
 }
 

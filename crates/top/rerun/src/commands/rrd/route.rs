@@ -117,7 +117,7 @@ fn process_messages<W: std::io::Write>(
             Ok(mut msg) => {
                 num_total_msgs += 1;
 
-                #[allow(deprecated)]
+                #[expect(deprecated)]
                 match &mut msg {
                     // This needs to come first, as an
                     Msg::BlueprintActivationCommand(_) if drop_blueprint_activation_cmds => {

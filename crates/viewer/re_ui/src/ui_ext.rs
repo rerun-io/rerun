@@ -212,7 +212,7 @@ pub trait UiExt {
         self.checkbox_indeterminate(checked, text, false)
     }
 
-    #[allow(clippy::disallowed_types)]
+    #[expect(clippy::disallowed_types)]
     fn checkbox_indeterminate(
         &mut self,
         checked: &mut bool,
@@ -570,7 +570,6 @@ pub trait UiExt {
     /// Two-column grid to be used in selection view.
     ///
     /// Use this when you expect the right column to have multi-line entries.
-    #[allow(clippy::unused_self)]
     fn selection_grid(&self, id: &str) -> egui::Grid {
         // Spread rows a bit to make it easier to see the groupings
         let spacing = egui::vec2(8.0, 16.0);
@@ -630,7 +629,6 @@ pub trait UiExt {
     }
 
     /// Convenience function to create a [`list_item::ListItem`].
-    #[allow(clippy::unused_self)]
     fn list_item(&self) -> list_item::ListItem {
         list_item::ListItem::new()
     }
@@ -675,7 +673,6 @@ pub trait UiExt {
     }
 
     /// Convenience function to create a [`crate::SectionCollapsingHeader`].
-    #[allow(clippy::unused_self)]
     fn section_collapsing_header<'a>(
         &self,
         label: impl Into<egui::WidgetText>,

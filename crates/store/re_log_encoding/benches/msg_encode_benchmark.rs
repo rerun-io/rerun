@@ -1,5 +1,5 @@
 // Allow unwrap() in benchmarks
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 #[cfg(not(all(feature = "decoder", feature = "encoder")))]
 compile_error!("msg_encode_benchmark requires 'decoder' and 'encoder' features.");

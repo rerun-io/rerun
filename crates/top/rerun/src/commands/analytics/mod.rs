@@ -29,7 +29,7 @@ pub enum AnalyticsCommands {
 impl AnalyticsCommands {
     pub fn run(&self) -> Result<(), re_analytics::cli::CliError> {
         match self {
-            #[allow(clippy::unit_arg)]
+            #[expect(clippy::unit_arg)]
             Self::Details => Ok(re_analytics::cli::print_details()),
             Self::Clear => re_analytics::cli::clear(),
             Self::Email { email } => {

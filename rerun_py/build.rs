@@ -9,7 +9,7 @@ fn main() {
         && !re_build_tools::is_tracked_env_var_set("RERUN_ALLOW_MISSING_BIN")
     {
         #[cfg(target_os = "windows")]
-        #[allow(clippy::unwrap_used)]
+        #[expect(clippy::unwrap_used)]
         let rerun_bin = std::env::current_dir()
             .unwrap()
             .join("rerun_sdk/rerun_cli/rerun.exe");

@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 use std::{collections::HashSet, fmt::Formatter, fs, sync::Arc};
 
@@ -333,7 +333,7 @@ impl std::fmt::Display for TestCase {
 }
 
 impl TestCase {
-    #[allow(clippy::needless_pass_by_value)]
+    #[expect(clippy::needless_pass_by_value)]
     fn from_component<C: Component>(component: C, label: &'static str) -> Self {
         let component_type = C::name();
         let component_data = ComponentBatch::to_arrow(&component).unwrap();

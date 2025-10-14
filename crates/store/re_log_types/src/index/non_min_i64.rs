@@ -4,7 +4,7 @@
 // Copyright (c) 2020 Lucien Greathouse | MIT or Apache 2
 
 // We need unsafety in order to hijack `NonZeroI64` for our purposes.
-#![allow(
+#![expect(
     unsafe_code,
     clippy::undocumented_unsafe_blocks,
     unsafe_op_in_unsafe_fn
