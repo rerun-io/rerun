@@ -35,6 +35,9 @@ pub struct TimeSeriesView {
     /// Configures the legend of the plot.
     pub plot_legend: crate::blueprint::archetypes::PlotLegend,
 
+    /// Configures the background of the plot.
+    pub background: crate::blueprint::archetypes::PlotBackground,
+
     /// Configures which range on each timeline is shown by this view (unless specified differently per entity).
     ///
     /// If not specified, the default is to show the entire timeline.
@@ -55,6 +58,7 @@ impl ::re_byte_size::SizeBytes for TimeSeriesView {
         self.axis_x.heap_size_bytes()
             + self.axis_y.heap_size_bytes()
             + self.plot_legend.heap_size_bytes()
+            + self.background.heap_size_bytes()
             + self.time_ranges.heap_size_bytes()
     }
 
@@ -63,6 +67,7 @@ impl ::re_byte_size::SizeBytes for TimeSeriesView {
         <crate::blueprint::archetypes::TimeAxis>::is_pod()
             && <crate::blueprint::archetypes::ScalarAxis>::is_pod()
             && <crate::blueprint::archetypes::PlotLegend>::is_pod()
+            && <crate::blueprint::archetypes::PlotBackground>::is_pod()
             && <crate::blueprint::archetypes::VisibleTimeRanges>::is_pod()
     }
 }

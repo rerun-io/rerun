@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../../blueprint/components/background_kind.hpp"
+#include "../../blueprint/components/enabled.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
@@ -16,59 +16,56 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: Configuration for the background of a spatial view.
+    /// **Archetype**: Configuration of a background in a plot view.
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
-    struct Background {
-        /// The type of the background.
-        std::optional<ComponentBatch> kind;
-
-        /// Color used for the solid background type.
+    struct PlotBackground {
+        /// Color used for the background.
         std::optional<ComponentBatch> color;
+
+        /// Should the grid be drawn?
+        std::optional<ComponentBatch> show_grid;
 
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
-        static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.Background";
+        static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.PlotBackground";
 
-        /// `ComponentDescriptor` for the `kind` field.
-        static constexpr auto Descriptor_kind = ComponentDescriptor(
-            ArchetypeName, "Background:kind",
-            Loggable<rerun::blueprint::components::BackgroundKind>::ComponentType
-        );
         /// `ComponentDescriptor` for the `color` field.
         static constexpr auto Descriptor_color = ComponentDescriptor(
-            ArchetypeName, "Background:color", Loggable<rerun::components::Color>::ComponentType
+            ArchetypeName, "PlotBackground:color", Loggable<rerun::components::Color>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `show_grid` field.
+        static constexpr auto Descriptor_show_grid = ComponentDescriptor(
+            ArchetypeName, "PlotBackground:show_grid",
+            Loggable<rerun::blueprint::components::Enabled>::ComponentType
         );
 
       public:
-        Background() = default;
-        Background(Background&& other) = default;
-        Background(const Background& other) = default;
-        Background& operator=(const Background& other) = default;
-        Background& operator=(Background&& other) = default;
+        PlotBackground() = default;
+        PlotBackground(PlotBackground&& other) = default;
+        PlotBackground(const PlotBackground& other) = default;
+        PlotBackground& operator=(const PlotBackground& other) = default;
+        PlotBackground& operator=(PlotBackground&& other) = default;
 
-        explicit Background(rerun::blueprint::components::BackgroundKind _kind)
-            : kind(ComponentBatch::from_loggable(std::move(_kind), Descriptor_kind).value_or_throw()
-              ) {}
-
-        /// Update only some specific fields of a `Background`.
-        static Background update_fields() {
-            return Background();
+        /// Update only some specific fields of a `PlotBackground`.
+        static PlotBackground update_fields() {
+            return PlotBackground();
         }
 
-        /// Clear all the fields of a `Background`.
-        static Background clear_fields();
+        /// Clear all the fields of a `PlotBackground`.
+        static PlotBackground clear_fields();
 
-        /// The type of the background.
-        Background with_kind(const rerun::blueprint::components::BackgroundKind& _kind) && {
-            kind = ComponentBatch::from_loggable(_kind, Descriptor_kind).value_or_throw();
+        /// Color used for the background.
+        PlotBackground with_color(const rerun::components::Color& _color) && {
+            color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
             return std::move(*this);
         }
 
-        /// Color used for the solid background type.
-        Background with_color(const rerun::components::Color& _color) && {
-            color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
+        /// Should the grid be drawn?
+        PlotBackground with_show_grid(const rerun::blueprint::components::Enabled& _show_grid) && {
+            show_grid =
+                ComponentBatch::from_loggable(_show_grid, Descriptor_show_grid).value_or_throw();
             return std::move(*this);
         }
 
@@ -98,10 +95,10 @@ namespace rerun {
 
     /// \private
     template <>
-    struct AsComponents<blueprint::archetypes::Background> {
+    struct AsComponents<blueprint::archetypes::PlotBackground> {
         /// Serialize all set component batches.
         static Result<Collection<ComponentBatch>> as_batches(
-            const blueprint::archetypes::Background& archetype
+            const blueprint::archetypes::PlotBackground& archetype
         );
     };
 } // namespace rerun
