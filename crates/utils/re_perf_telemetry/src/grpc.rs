@@ -684,7 +684,7 @@ impl tonic::service::Interceptor for TracingExtractorInterceptor {
 
         // Convert the trace information back into `tracing` and inject it into the current span (if any).
         use tracing_opentelemetry::OpenTelemetrySpanExt as _;
-        tracing::Span::current().set_parent(parent_ctx).ok(); // Errors are expect if telemetry is disabled
+        tracing::Span::current().set_parent(parent_ctx).ok(); // Errors are expected if telemetry is disabled
 
         Ok(req)
     }
