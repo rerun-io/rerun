@@ -5,13 +5,66 @@ use arrow::array::{
     Float64Array, Float64Builder, ListArray, StructArray,
 };
 use arrow::datatypes::{DataType, Field};
-use arrow::error::ArrowError;
 
 // ## Arrow Transformations
 //
 // This module provides composable transformations for Arrow arrays.
 // Transformations are composable operations that convert one array type to another,
 // preserving structural properties like row counts and null handling.
+
+/// Errors that can occur during array transformations.
+#[derive(Debug, Clone, thiserror::Error)]
+pub enum Error {
+    /// A required field was not found in a struct array.
+    #[error("Field '{field_name}' not found. Available fields: [{}]", available_fields.join(", "))]
+    FieldNotFound {
+        field_name: String,
+        available_fields: Vec<String>,
+    },
+
+    /// A field exists but has the wrong type.
+    #[error("Field '{field_name}' has wrong type: expected {expected_type}, got {actual_type:?}")]
+    FieldTypeMismatch {
+        field_name: String,
+        expected_type: String,
+        actual_type: DataType,
+    },
+
+    /// Array type mismatch during transformation.
+    #[error("Type mismatch in {context}: expected {expected}, got {actual:?}")]
+    TypeMismatch {
+        expected: String,
+        actual: DataType,
+        context: String,
+    },
+
+    /// A required field is missing from a struct.
+    #[error("Struct is missing required field '{field_name}'. Available fields: [{}]", struct_fields.join(", "))]
+    MissingStructField {
+        field_name: String,
+        struct_fields: Vec<String>,
+    },
+
+    /// List values have unexpected type.
+    #[error("List contains unexpected value type: expected {expected}, got {actual:?}")]
+    UnexpectedListValueType {
+        expected: String,
+        actual: DataType,
+    },
+
+    /// Fixed-size list values have unexpected type.
+    #[error("Fixed-size list contains unexpected value type: expected {expected}, got {actual:?}")]
+    UnexpectedFixedSizeListValueType {
+        expected: String,
+        actual: DataType,
+    },
+
+    /// Struct values in list have wrong type.
+    #[error("Expected list to contain struct values, but got {actual:?}")]
+    ExpectedStructInList {
+        actual: DataType,
+    },
+}
 
 /// A transformation that converts one Arrow array type to another.
 ///
@@ -29,7 +82,7 @@ pub trait Transform {
     type Target: Array;
 
     /// Apply the transformation to the source array.
-    fn transform(&self, source: &Self::Source) -> Result<Self::Target, ArrowError>;
+    fn transform(&self, source: &Self::Source) -> Result<Self::Target, Error>;
 }
 
 /// Composes two transformations into a single transformation.
@@ -50,7 +103,7 @@ where
     type Source = T1::Source;
     type Target = T2::Target;
 
-    fn transform(&self, source: &Self::Source) -> Result<Self::Target, ArrowError> {
+    fn transform(&self, source: &Self::Source) -> Result<Self::Target, Error> {
         let mid = self.first.transform(source)?;
         self.second.transform(&mid)
     }
@@ -108,14 +161,19 @@ impl Transform for GetField {
     type Source = StructArray;
     type Target = ArrayRef;
 
-    fn transform(&self, source: &StructArray) -> Result<ArrayRef, ArrowError> {
+    fn transform(&self, source: &StructArray) -> Result<ArrayRef, Error> {
         source
             .column_by_name(&self.field_name)
             .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError(format!(
-                    "Field '{}' not found in struct",
-                    self.field_name
-                ))
+                let available_fields = source
+                    .fields()
+                    .iter()
+                    .map(|f| f.name().clone())
+                    .collect();
+                Error::FieldNotFound {
+                    field_name: self.field_name.clone(),
+                    available_fields,
+                }
             })
             .map(Clone::clone)
     }
@@ -154,14 +212,13 @@ where
     type Source = ListArray;
     type Target = ListArray;
 
-    fn transform(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
+    fn transform(&self, source: &ListArray) -> Result<ListArray, Error> {
         let values = source.values();
         let downcast = values.as_any().downcast_ref::<S>().ok_or_else(|| {
-            arrow::error::ArrowError::InvalidArgumentError(format!(
-                "Type mismatch in list values: expected {}, got {:?}",
-                std::any::type_name::<S>(),
-                values.data_type()
-            ))
+            Error::UnexpectedListValueType {
+                expected: std::any::type_name::<S>().to_string(),
+                actual: values.data_type().clone(),
+            }
         })?;
 
         let transformed = self.transform.transform(downcast)?;
@@ -210,14 +267,13 @@ where
     type Source = FixedSizeListArray;
     type Target = FixedSizeListArray;
 
-    fn transform(&self, source: &FixedSizeListArray) -> Result<FixedSizeListArray, ArrowError> {
+    fn transform(&self, source: &FixedSizeListArray) -> Result<FixedSizeListArray, Error> {
         let values = source.values();
         let downcast = values.as_any().downcast_ref::<S>().ok_or_else(|| {
-            arrow::error::ArrowError::InvalidArgumentError(format!(
-                "Type mismatch in fixed-size list values: expected {}, got {:?}",
-                std::any::type_name::<S>(),
-                values.data_type()
-            ))
+            Error::UnexpectedFixedSizeListValueType {
+                expected: std::any::type_name::<S>().to_string(),
+                actual: values.data_type().clone(),
+            }
         })?;
 
         let transformed = self.transform.transform(downcast)?;
@@ -267,27 +323,39 @@ impl Transform for StructToPoint2D {
     type Source = StructArray;
     type Target = FixedSizeListArray;
 
-    fn transform(&self, source: &StructArray) -> Result<FixedSizeListArray, ArrowError> {
+    fn transform(&self, source: &StructArray) -> Result<FixedSizeListArray, Error> {
+        let available_fields: Vec<String> = source
+            .fields()
+            .iter()
+            .map(|f| f.name().clone())
+            .collect();
+
         let x_array = source
             .column_by_name("x")
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError("Missing x field".into())
+            .ok_or_else(|| Error::MissingStructField {
+                field_name: "x".to_string(),
+                struct_fields: available_fields.clone(),
             })?
             .as_any()
             .downcast_ref::<Float64Array>()
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError("x must be Float64".into())
+            .ok_or_else(|| Error::FieldTypeMismatch {
+                field_name: "x".to_string(),
+                expected_type: "Float64".to_string(),
+                actual_type: source.column_by_name("x").unwrap().data_type().clone(),
             })?;
 
         let y_array = source
             .column_by_name("y")
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError("Missing y field".into())
+            .ok_or_else(|| Error::MissingStructField {
+                field_name: "y".to_string(),
+                struct_fields: available_fields,
             })?
             .as_any()
             .downcast_ref::<Float64Array>()
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError("y must be Float64".into())
+            .ok_or_else(|| Error::FieldTypeMismatch {
+                field_name: "y".to_string(),
+                expected_type: "Float64".to_string(),
+                actual_type: source.column_by_name("y").unwrap().data_type().clone(),
             })?;
 
         let len = source.len();
@@ -355,37 +423,37 @@ impl Transform for UnwrapListStructField {
     type Source = ListArray;
     type Target = ListArray;
 
-    fn transform(&self, source: &ListArray) -> Result<ListArray, ArrowError> {
+    fn transform(&self, source: &ListArray) -> Result<ListArray, Error> {
         // Get the struct array from the list values
-        let struct_array = source
-            .values()
+        let values = source.values();
+        let struct_array = values
             .as_any()
             .downcast_ref::<StructArray>()
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError(
-                    "Expected list values to be a StructArray".into(),
-                )
+            .ok_or_else(|| Error::ExpectedStructInList {
+                actual: values.data_type().clone(),
             })?;
 
         // Extract the field
-        let field_array = struct_array
-            .column_by_name(&self.field_name)
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError(format!(
-                    "Field '{}' not found in struct",
-                    self.field_name
-                ))
-            })?;
+        let field_array = struct_array.column_by_name(&self.field_name).ok_or_else(|| {
+            let available_fields = struct_array
+                .fields()
+                .iter()
+                .map(|f| f.name().clone())
+                .collect();
+            Error::FieldNotFound {
+                field_name: self.field_name.clone(),
+                available_fields,
+            }
+        })?;
 
         // Downcast to ListArray
         field_array
             .as_any()
             .downcast_ref::<ListArray>()
-            .ok_or_else(|| {
-                arrow::error::ArrowError::InvalidArgumentError(format!(
-                    "Field '{}' is not a ListArray",
-                    self.field_name
-                ))
+            .ok_or_else(|| Error::FieldTypeMismatch {
+                field_name: self.field_name.clone(),
+                expected_type: "ListArray".to_string(),
+                actual_type: field_array.data_type().clone(),
             })
             .map(Clone::clone)
     }
@@ -427,7 +495,7 @@ where
     type Source = Float64Array;
     type Target = Float64Array;
 
-    fn transform(&self, source: &Float64Array) -> Result<Float64Array, ArrowError> {
+    fn transform(&self, source: &Float64Array) -> Result<Float64Array, Error> {
         let mut builder = Float64Builder::with_capacity(source.len());
         for i in 0..source.len() {
             if source.is_null(i) {
@@ -471,7 +539,7 @@ impl Transform for ToFloat32 {
     type Source = Float64Array;
     type Target = Float32Array;
 
-    fn transform(&self, source: &Float64Array) -> Result<Float32Array, ArrowError> {
+    fn transform(&self, source: &Float64Array) -> Result<Float32Array, Error> {
         let mut builder = Float32Builder::with_capacity(source.len());
         for i in 0..source.len() {
             if source.is_null(i) {
