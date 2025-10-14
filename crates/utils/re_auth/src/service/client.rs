@@ -58,11 +58,10 @@ pub struct AuthService<S> {
 }
 
 type BoxFuture<'a, T> = Pin<Box<dyn std::future::Future<Output = T> + Send + 'a>>;
-
 impl<S, ReqBody, ResBody> Service<http::Request<ReqBody>> for AuthService<S>
 where
     S: Service<http::Request<ReqBody>, Response = http::Response<ResBody>> + Clone + Send + 'static,
-    S::Future: Send + 'static,
+    S::Future: crate::wasm_compat::SendIfNotWasm + 'static,
     S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
     ReqBody: Send + 'static,
 {
@@ -96,14 +95,18 @@ where
                         Ok(token) => {
                             req.headers_mut().insert(AUTHORIZATION_KEY, token);
 
-                            inner.call(req).await.map_err(|err| err.into())
+                            crate::wasm_compat::make_future_send_on_wasm(inner.call(req))
+                                .await
+                                .map_err(|err| err.into())
                         }
                         Err(err) => Err(err.into()),
                     }
                 }
 
                 // will probably turn into a 403
-                Ok(None) => inner.call(req).await.map_err(|err| err.into()),
+                Ok(None) => crate::wasm_compat::make_future_send_on_wasm(inner.call(req))
+                    .await
+                    .map_err(|err| err.into()),
 
                 Err(err) => Err(err.into()),
             }

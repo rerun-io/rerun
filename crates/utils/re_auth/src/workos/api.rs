@@ -27,7 +27,11 @@ pub struct HttpError {
 }
 
 async fn send<Res: serde::de::DeserializeOwned>(request: ehttp::Request) -> Result<Res, Error> {
-    let res = ehttp::fetch_async(request).await.map_err(Error::Request)?;
+    // `fetch_async` holds a `JsValue` across an await point, which is not `Send`.
+    // But wasm is single-threaded, so we don't care.
+    let res = crate::wasm_compat::make_future_send_on_wasm(ehttp::fetch_async(request))
+        .await
+        .map_err(Error::Request)?;
 
     if !res.ok {
         if !res.bytes.is_empty() {

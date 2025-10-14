@@ -47,3 +47,5 @@ pub const ERROR_MESSAGE_MISSING_CREDENTIALS: &str = "missing credentials";
 ///
 /// The associated status code will always be `Unauthenticated`.
 pub const ERROR_MESSAGE_INVALID_CREDENTIALS: &str = "invalid credentials";
+
+mod wasm_compat;

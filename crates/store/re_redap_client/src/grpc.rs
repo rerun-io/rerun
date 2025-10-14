@@ -1,4 +1,3 @@
-#[cfg(not(target_arch = "wasm32"))]
 use std::sync::Arc;
 
 use re_auth::client::AuthDecorator;
@@ -90,25 +89,22 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, ApiErr
 }
 
 #[cfg(target_arch = "wasm32")]
-pub type RedapClientInner = tonic::service::interceptor::InterceptedService<
+pub type RedapClientInner = re_auth::client::AuthService<
     tonic::service::interceptor::InterceptedService<
         re_protos::headers::PropagateHeaders<tonic_web_wasm_client::Client>,
         re_protos::headers::RerunVersionInterceptor,
     >,
-    re_auth::client::AuthDecorator,
 >;
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) async fn client(
     origin: Origin,
-    token: Option<re_auth::Jwt>,
-) -> Result<RedapClient, ApiError> {
+    credentials: Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>,
+) -> Result<RedapClient, ConnectionError> {
     let channel = channel(origin).await?;
 
-    let auth = AuthDecorator::new(token);
-
     let middlewares = tower::ServiceBuilder::new()
-        .layer(tonic::service::interceptor::InterceptorLayer::new(auth))
+        .layer(AuthDecorator::new(credentials))
         .layer({
             let name = Some("rerun-web".to_owned());
             let version = None;
@@ -155,7 +151,7 @@ pub type RedapClient = RerunCloudServiceClient<RedapClientInner>;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) async fn client(
     origin: Origin,
-    credentials: Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync>,
+    credentials: Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>,
 ) -> Result<RedapClient, ConnectionError> {
     let channel = channel(origin).await?;
 

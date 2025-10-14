@@ -67,11 +67,15 @@ mod file {
 mod web {
     use super::*;
 
+    // const STORAGE_KEY: &'static str = "rerun_auth";
+
+    // TODO(jan): local storage
     pub fn load() -> Result<Option<Credentials>, LoadError> {
-        todo!()
+        Ok(None)
     }
 
-    pub fn store(credentials: Credentials) -> Result<(), StoreError> {
-        todo!()
+    pub fn store(credentials: &Credentials) -> Result<(), StoreError> {
+        let _ = credentials;
+        unimplemented!("storing credentials in localStorage is not yet supported")
     }
 }

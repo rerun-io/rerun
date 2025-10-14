@@ -14,15 +14,6 @@ mod storage;
 /// during network transit.
 const SOFT_EXPIRE_SECS: i64 = 60;
 
-// TODO: implement client-side credential providers
-// - StaticCredentialProvider: `REDAP_TOKEN` env or `fallback_token`
-// - OauthCredentialProvider: Uses same strategy as CLI
-//   - Read credentials from disk
-//   - Refresh if necessary
-//
-// TODO: stronger consistency guarantees
-// - When storing credentials for refresh on native, lock the file
-
 const ISSUER_URL_BASE: &str = "https://api.workos.com/user_management";
 
 // TODO(jan): This is the client ID for the WorkOS public staging environment
