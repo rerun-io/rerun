@@ -102,5 +102,5 @@ pub(crate) async fn refresh(refresh_token: &RefreshToken) -> Result<Authenticati
 }
 
 pub async fn jwks() -> Result<jsonwebtoken::jwk::JwkSet, Error> {
-    get(format!("/jwks")).await
+    get("/jwks").await
 }

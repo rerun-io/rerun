@@ -14,12 +14,14 @@ mod storage;
 /// during network transit.
 const SOFT_EXPIRE_SECS: i64 = 60;
 
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) static OAUTH_CLIENT_ID: LazyLock<String> = LazyLock::new(|| {
     std::env::var("RERUN_OAUTH_CLIENT_ID")
         .ok()
         .unwrap_or_else(|| "client_01JZ3JVR1PEVQMS73V86MC4CE2".into())
 });
 
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) static OAUTH_ISSUER_URL: LazyLock<String> = LazyLock::new(|| {
     std::env::var("RERUN_OAUTH_ISSUER_URL")
         .ok()

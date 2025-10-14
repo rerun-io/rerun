@@ -26,13 +26,7 @@ cli = [
   "oauth",
 ]
 
-oauth = [
-  "dep:base64",
-  "dep:directories",
-  "dep:ehttp",
-  "dep:serde",
-  "dep:serde_json",
-]
+oauth = ["dep:base64", "dep:directories", "dep:ehttp", "dep:serde", "dep:serde_json"]
 
 [dependencies]
 re_log.workspace = true
