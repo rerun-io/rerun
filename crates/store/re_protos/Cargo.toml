@@ -39,7 +39,7 @@ prost.workspace = true
 pyo3 = { workspace = true, optional = true }
 serde.workspace = true
 thiserror.workspace = true
-tonic-prost = { workspace = true, default-features = false }
+tonic-prost.workspace = true
 tower.workspace = true
 url = { workspace = true, features = ["serde"] }
 
