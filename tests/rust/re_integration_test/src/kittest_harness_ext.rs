@@ -281,17 +281,7 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         );
     }
 
-    fn set_panel_opened(&mut self, panel_label: &str, opened: bool) {
-        let node = self.get_by_label(panel_label);
-        let is_open = Some(Toggled::True) == node.accesskit_node().data().toggled();
-        if is_open != opened {
-            self.click_label(panel_label);
-        }
-        // The toggle button is hovered now, move the pointer away
-        self.input_mut().events.push(egui::Event::PointerGone);
-        self.run_ok();
-
-        fn add_blueprint_container(
+    fn add_blueprint_container(
         &mut self,
         kind: egui_tiles::ContainerKind,
         parent_container: Option<re_viewer_context::ContainerId>,

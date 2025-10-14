@@ -97,7 +97,7 @@ pub async fn test_container_selection_context_menu() {
     });
 
     harness.click_label("Vertical container");
-    harness.toggle_selection_panel();
+    harness.set_selection_panel_opened(true);
 
     // There are multiple nodes with that label, second and third are
     // the ones on the selection panel.
