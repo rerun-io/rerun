@@ -10,7 +10,7 @@ use re_viewport_blueprint::ViewBlueprint;
 fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
     harness.init_recording();
-    harness.toggle_selection_panel();
+    harness.set_selection_panel_opened(false);
 
     // Log some data
     harness.log_entity("group/boxes3d", |builder| {
