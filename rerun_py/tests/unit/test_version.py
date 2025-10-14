@@ -9,7 +9,7 @@ import tomli
 
 def test_version() -> None:
     cargo_toml_path = Path(__file__).parent.parent.parent.parent / "Cargo.toml"
-    cargo_toml = tomli.loads(cargo_toml_path.read_text())
+    cargo_toml = tomli.loads(cargo_toml_path.read_text(encoding="utf-8"))
     assert rr.__version__ == cargo_toml["workspace"]["package"]["version"]
 
     ver = semver.VersionInfo.parse(rr.__version__)
