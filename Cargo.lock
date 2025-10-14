@@ -6036,8 +6036,7 @@ dependencies = [
 [[package]]
 name = "lz4_flex"
 version = "0.11.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08ab2867e3eeeca90e844d1940eab391c9dc5228783db2ed999acbc0a9ed375a"
+source = "git+https://github.com/rerun-io/lz4_flex.git?branch=cmc%2Fdecoding_bug#764b423413f8fe1ff99088244d93c41c6dd46b98"
 dependencies = [
  "twox-hash",
 ]
