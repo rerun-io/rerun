@@ -544,6 +544,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     .iter()
                     .enumerate()
                     .filter_map(|(index, is_recursive)| {
+                        // can't fail - we're iterating over a 32-bit container
+                        #[expect(clippy::cast_possible_wrap)]
                         (is_recursive == Some(true)).then_some(index as i32)
                     })
                     .collect_vec(),
