@@ -47,10 +47,10 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
 
     let mut view3d =
         ViewBlueprint::new_with_root_wildcard(re_view_spatial::SpatialView3D::identifier());
-    view3d.display_name = Some("3D View".into());
+    view3d.display_name = Some("3D view".into());
     let mut view2d =
         ViewBlueprint::new_with_root_wildcard(re_view_spatial::SpatialView2D::identifier());
-    view2d.display_name = Some("2D View".into());
+    view2d.display_name = Some("2D view".into());
 
     harness.setup_viewport_blueprint(move |_viewer_context, blueprint| {
         blueprint.add_views(std::iter::once(view3d), Some(vertical_cid), None);
@@ -67,23 +67,23 @@ pub async fn test_context_menu_invalid_sub_container() {
     harness.snapshot_app("context_menu_invalid_sub_container_01");
 
     // Test context menus of view panel title widgets
-    harness.right_click_nth_label("3D View", 1);
+    harness.right_click_nth_label("3D view", 1);
     harness.hover_label_contains("Move to new container");
     harness.snapshot_app("context_menu_invalid_sub_container_02");
     harness.key_press(egui::Key::Escape);
 
-    harness.right_click_nth_label("2D View", 1);
+    harness.right_click_nth_label("2D view", 1);
     harness.hover_label_contains("Move to new container");
     harness.snapshot_app("context_menu_invalid_sub_container_03");
     harness.key_press(egui::Key::Escape);
 
     // Test context menus of view items in the blueprint panel
-    harness.right_click_nth_label("3D View", 0);
+    harness.right_click_nth_label("3D view", 0);
     harness.hover_label_contains("Move to new container");
     harness.snapshot_app("context_menu_invalid_sub_container_04");
     harness.key_press(egui::Key::Escape);
 
-    harness.right_click_nth_label("2D View", 0);
+    harness.right_click_nth_label("2D view", 0);
     harness.hover_label_contains("Move to new container");
     harness.snapshot_app("context_menu_invalid_sub_container_05");
     harness.key_press(egui::Key::Escape);
