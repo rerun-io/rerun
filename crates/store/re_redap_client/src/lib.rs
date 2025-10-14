@@ -76,100 +76,144 @@ impl std::error::Error for TonicStatusError {
     }
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum StreamEntryError {
-    #[error("Failed reading entry\nDetails:{0}")]
-    Read(TonicStatusError),
-
-    #[error("Failed finding entry\nDetails:{0}")]
-    Find(TonicStatusError),
-
-    #[error("Failed deleting entry\nDetails:{0}")]
-    Delete(TonicStatusError),
-
-    #[error("Failed updating entry\nDetails:{0}")]
-    Update(TonicStatusError),
-
-    #[error("Failed creating entry\nDetails:{0}")]
-    Create(TonicStatusError),
-
-    #[error("Failed reading partition table scheme\nDetails:{0}")]
-    GetPartitionTableSchema(TonicStatusError),
-
-    #[error("Failed reading layer table scheme\nDetails:{0}")]
-    GetDatasetManifestSchema(TonicStatusError),
-
-    #[error("Failed scanning the partition table \nDetails:{0}")]
-    ScanPartitionTable(TonicStatusError),
-
-    #[error("Failed reading entry's partitions\nDetails:{0}")]
-    ReadPartitions(TonicStatusError),
-
-    #[error("Failed registering data source with entry\nDetails:{0}")]
-    RegisterData(TonicStatusError),
-
-    #[error("Failed registering table\nDetails:{0}")]
-    RegisterTable(TonicStatusError),
-
-    #[error("Error while doing maintenance on entry\nDetails:{0}")]
-    Maintenance(TonicStatusError),
-
-    #[error("Invalid entry id\nDetails:{0}")]
-    InvalidId(TonicStatusError),
+#[derive(Debug)]
+pub struct ApiError {
+    pub message: String,
+    pub kind: ApiErrorKind,
+    pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum StreamPartitionError {
-    #[error("Failed streaming partition chunks\nDetails:{0}")]
-    StreamingChunks(TonicStatusError),
+#[derive(Debug)]
+pub enum ApiErrorKind {
+    NotFound,
+    AlreadyExists,
+    PermissionDenied,
+    Unauthenticated,
+    Connection,
+    Timeout,
+    Internal,
+    InvalidArguments,
+    Serialization,
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum StreamTasksError {
-    #[error("Failed receiving tasks completions stream\nDetails:{0}")]
-    StreamingTaskResults(TonicStatusError),
+impl From<tonic::Code> for ApiErrorKind {
+    fn from(code: tonic::Code) -> Self {
+        match code {
+            tonic::Code::NotFound => Self::NotFound,
+            tonic::Code::AlreadyExists => Self::AlreadyExists,
+            tonic::Code::PermissionDenied => Self::PermissionDenied,
+            tonic::Code::Unauthenticated => Self::Unauthenticated,
+            tonic::Code::Unavailable => Self::Connection,
+            tonic::Code::InvalidArgument => Self::InvalidArguments,
+            tonic::Code::DeadlineExceeded => Self::Timeout,
+            _ => Self::Internal,
+        }
+    }
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum StreamError {
-    #[error(transparent)]
-    ClientConnectionError(#[from] ClientConnectionError),
-
-    #[error(transparent)]
-    EntryError(#[from] StreamEntryError),
-
-    #[error(transparent)]
-    PartitionError(#[from] StreamPartitionError),
-
-    #[error(transparent)]
-    TasksError(#[from] StreamTasksError),
-
-    #[error(transparent)]
-    Tokio(#[from] tokio::task::JoinError),
-
-    #[error(transparent)]
-    CodecError(#[from] re_log_encoding::codec::CodecError),
-
-    #[error(transparent)]
-    ChunkError(#[from] re_chunk::ChunkError),
-
-    #[error(transparent)]
-    DecodeError(#[from] re_log_encoding::DecodeError),
-
-    #[error(transparent)]
-    TypeConversionError(#[from] re_protos::TypeConversionError),
-
-    #[error("Column '{0}' is missing from the dataframe")]
-    MissingDataframeColumn(String),
-
-    #[error("{0}")]
-    MissingData(String),
-
-    #[error("arrow error: {0}")]
-    ArrowError(#[from] arrow::error::ArrowError),
+impl From<&ClientConnectionError> for ApiErrorKind {
+    fn from(err: &ClientConnectionError) -> Self {
+        match err {
+            ClientConnectionError::UnencryptedServer => Self::InvalidArguments,
+            ClientConnectionError::UnauthenticatedMissingToken(_)
+            | ClientConnectionError::UnauthenticatedBadToken(_) => Self::Unauthenticated,
+            ClientConnectionError::AuthCheckError(_) => Self::Connection,
+            #[cfg(not(target_arch = "wasm32"))]
+            ClientConnectionError::Tonic(_) => Self::Connection,
+        }
+    }
 }
 
-const _: () = assert!(
-    std::mem::size_of::<StreamError>() <= 80,
-    "Error type is too large. Try to reduce its size by boxing some of its variants.",
-);
+impl std::fmt::Display for ApiErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NotFound => write!(f, "NotFound"),
+            Self::AlreadyExists => write!(f, "AlreadyExists"),
+            Self::PermissionDenied => write!(f, "PermissionDenied"),
+            Self::Unauthenticated => write!(f, "Unauthenticated"),
+            Self::Connection => write!(f, "Connection"),
+            Self::Internal => write!(f, "Internal"),
+            Self::InvalidArguments => write!(f, "InvalidArguments"),
+            Self::Serialization => write!(f, "Serialization"),
+            Self::Timeout => write!(f, "Timeout"),
+        }
+    }
+}
+
+impl ApiError {
+    pub fn tonic(err: tonic::Status, message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::from(err.code()),
+            source: Some(Box::new(err)),
+        }
+    }
+
+    pub fn serialization(
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::Serialization,
+            source: Some(Box::new(err)),
+        }
+    }
+
+    pub fn internal(
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::Internal,
+            source: Some(Box::new(err)),
+        }
+    }
+
+    pub fn connection(
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::Connection,
+            source: Some(Box::new(err)),
+        }
+    }
+
+    pub fn client_connection(err: ClientConnectionError, message: impl Into<String>) -> Self {
+        let kind = ApiErrorKind::from(&err);
+        Self {
+            message: message.into(),
+            kind,
+            source: Some(Box::new(err)),
+        }
+    }
+
+    /// Helper method to downcast the source error to a `ClientConnectionError` if possible.
+    #[inline]
+    pub fn as_client_connection_error(&self) -> Option<&ClientConnectionError> {
+        self.source
+            .as_deref()?
+            .downcast_ref::<ClientConnectionError>()
+    }
+}
+
+impl std::fmt::Display for ApiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.kind, self.message)?;
+        if let Some(source) = &self.source {
+            write!(f, ": {source}")?;
+        }
+        Ok(())
+    }
+}
+
+impl std::error::Error for ApiError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.source
+            .as_deref()
+            .map(|e| e as &(dyn std::error::Error + 'static))
+    }
+}

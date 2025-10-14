@@ -54,7 +54,7 @@ pub(crate) fn read_arrow_from_bytes<R: std::io::Read>(
 
 #[cfg(feature = "encoder")]
 pub(crate) struct Payload {
-    pub uncompressed_size: usize,
+    pub uncompressed_size: u64,
     pub data: Vec<u8>,
 }
 
@@ -68,7 +68,10 @@ pub(crate) fn encode_arrow(
 
     let mut uncompressed = Vec::new();
     write_arrow_to_bytes(&mut uncompressed, batch)?;
-    let uncompressed_size = uncompressed.len();
+
+    // This will never fail until we have 128bit-native CPUs, but `as` is too dangerous and very
+    // sensitive to refactorings.
+    let uncompressed_size = uncompressed.len().try_into()?;
 
     let data = match compression {
         crate::codec::Compression::Off => uncompressed,

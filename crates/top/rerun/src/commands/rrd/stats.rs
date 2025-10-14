@@ -451,10 +451,10 @@ fn compute_stats(app: bool, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
             app,
             transport: ChunkStatsTransport {
                 ipc_size_bytes_compressed: payload.len() as _,
-                ipc_size_bytes_uncompressed: *uncompressed_size as _,
+                ipc_size_bytes_uncompressed: *uncompressed_size,
 
                 ipc_schema_size_bytes,
-                ipc_data_size_bytes: *uncompressed_size as u64 - ipc_schema_size_bytes,
+                ipc_data_size_bytes: *uncompressed_size - ipc_schema_size_bytes,
             },
         }));
     }
