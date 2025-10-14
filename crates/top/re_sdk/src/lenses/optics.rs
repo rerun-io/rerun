@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayRef, BooleanBufferBuilder, FixedSizeListArray, Float32Array, Float32Builder,
-    Float64Array, Float64Builder, ListArray, StructArray,
+    Array, ArrayRef, BooleanBufferBuilder, FixedSizeListArray, Float32Array, Float64Array,
+    Float64Builder, ListArray, PrimitiveArray, StructArray, ArrowPrimitiveType,
 };
+use arrow::compute::cast;
 use arrow::datatypes::{DataType, Field};
 use arrow::error::ArrowError;
 
@@ -14,7 +15,7 @@ use arrow::error::ArrowError;
 // preserving structural properties like row counts and null handling.
 
 /// Errors that can occur during array transformations.
-#[derive(Debug, Clone, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// A required field was not found in a struct array.
     #[error("Field '{field_name}' not found. Available fields: [{}]", available_fields.join(", "))]
@@ -470,42 +471,68 @@ where
     }
 }
 
-/// Converts Float64Array to Float32Array.
+/// Casts a primitive array from one type to another using Arrow's type casting.
 ///
-/// This is a lossy conversion that reduces precision from 64-bit to 32-bit floats.
-/// Null values are preserved.
+/// This uses Arrow's `cast` function for primitive type conversions. Null values are preserved.
+/// Some conversions may be lossy (e.g., f64 to f32, i64 to i32).
+///
+/// The source and target types are specified via generic parameters to maintain type safety.
+/// The target data type is automatically deduced from the target's `ArrowPrimitiveType`.
 #[derive(Clone)]
-pub struct ToFloat32;
+pub struct Cast<S, T> {
+    _phantom: std::marker::PhantomData<(S, T)>,
+}
 
-impl ToFloat32 {
-    /// Create a new f64-to-f32 converter.
+impl<S, T> Cast<PrimitiveArray<S>, PrimitiveArray<T>>
+where
+    S: ArrowPrimitiveType,
+    T: ArrowPrimitiveType,
+{
+    /// Create a new cast transformation.
+    ///
+    /// The target data type is automatically deduced from the target primitive type `T`.
     pub fn new() -> Self {
-        Self
+        Self {
+            _phantom: std::marker::PhantomData,
+        }
     }
 }
 
-impl Default for ToFloat32 {
+impl<S, T> Default for Cast<PrimitiveArray<S>, PrimitiveArray<T>>
+where
+    S: ArrowPrimitiveType,
+    T: ArrowPrimitiveType,
+{
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Transform for ToFloat32 {
-    type Source = Float64Array;
-    type Target = Float32Array;
+impl<S, T> Transform for Cast<PrimitiveArray<S>, PrimitiveArray<T>>
+where
+    S: ArrowPrimitiveType,
+    T: ArrowPrimitiveType,
+{
+    type Source = PrimitiveArray<S>;
+    type Target = PrimitiveArray<T>;
 
-    fn transform(&self, source: &Float64Array) -> Result<Float32Array, Error> {
-        let mut builder = Float32Builder::with_capacity(source.len());
-        for i in 0..source.len() {
-            if source.is_null(i) {
-                builder.append_null();
-            } else {
-                builder.append_value(source.value(i) as f32);
-            }
-        }
-        Ok(builder.finish())
+    fn transform(&self, source: &PrimitiveArray<S>) -> Result<PrimitiveArray<T>, Error> {
+        let source_ref: &dyn Array = source;
+        let target_type = T::DATA_TYPE;
+        let casted = cast(source_ref, &target_type)?;
+
+        casted
+            .as_any()
+            .downcast_ref::<PrimitiveArray<T>>()
+            .ok_or_else(|| Error::TypeMismatch {
+                expected: std::any::type_name::<PrimitiveArray<T>>().to_string(),
+                actual: casted.data_type().clone(),
+                context: "cast result".to_string(),
+            })
+            .map(Clone::clone)
     }
 }
+
 
 #[cfg(test)]
 mod test {
@@ -701,7 +728,9 @@ mod test {
 
         let pipeline = UnwrapListStructField::new("poses")
             .then(MapList::new(StructToPoint2D::new()))
-            .then(MapList::new(MapFixedSizeList::new(ToFloat32::new())));
+            .then(MapList::new(MapFixedSizeList::new(
+                Cast::<Float64Array, Float32Array>::new(),
+            )));
 
         let result = pipeline.transform(&array).unwrap();
 
