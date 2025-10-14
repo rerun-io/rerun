@@ -5,6 +5,7 @@ use arrow::array::{
     Float64Array, Float64Builder, ListArray, StructArray,
 };
 use arrow::datatypes::{DataType, Field};
+use arrow::error::ArrowError;
 
 // ## Arrow Transformations
 //
@@ -70,6 +71,12 @@ pub enum Error {
     /// This allows users to implement their own transformations with custom error messages.
     #[error("{0}")]
     Custom(String),
+
+    /// Arrow library error.
+    ///
+    /// This is used to wrap errors from the underlying Arrow library operations.
+    #[error(transparent)]
+    Arrow(#[from] ArrowError),
 }
 
 impl Error {
