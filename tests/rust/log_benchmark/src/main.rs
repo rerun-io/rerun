@@ -124,5 +124,33 @@ fn main() -> anyhow::Result<()> {
 
     rec.flush_blocking()?;
 
+    // Being able to log fast isn't particularly useful if the data happens to be corrupt at the
+    // other end, so make sure we can encode/decode everything that was logged.
+    if let Some(storage) = storage {
+        let msgs: anyhow::Result<Vec<_>> = storage
+            .take()
+            .into_iter()
+            .map(|msg| {
+                Ok(re_log_encoding::protobuf_conversions::log_msg_to_proto(
+                    msg,
+                    re_log_encoding::codec::Compression::LZ4,
+                )?)
+            })
+            .collect();
+
+        let mut app_id_injector = DummyApplicationIdInjector::new("dummy");
+        let msgs: anyhow::Result<Vec<_>> = msgs?
+            .into_iter()
+            .map(|msg| {
+                Ok(re_log_encoding::protobuf_conversions::log_msg_from_proto(
+                    &mut app_id_injector,
+                    msg,
+                )?)
+            })
+            .collect();
+
+        let _ = msgs?;
+    }
+
     Ok(())
 }
