@@ -257,7 +257,7 @@ pub fn instance_path_button_to(
 }
 
 /// Show an instance id and make it selectable.
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn instance_path_button_to_ex(
     ctx: &ViewerContext<'_>,
     query: &re_chunk_store::LatestAtQuery,

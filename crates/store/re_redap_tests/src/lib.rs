@@ -15,7 +15,7 @@
 //! ```
 
 // this is a test suite
-#![allow(clippy::unwrap_used, clippy::disallowed_methods)]
+#![expect(clippy::unwrap_used, clippy::disallowed_methods)]
 
 mod tests;
 mod utils;

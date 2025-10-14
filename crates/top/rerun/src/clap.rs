@@ -62,7 +62,7 @@ pub struct RerunArgs {
     ///
     /// The default is `rerun+http://127.0.0.1:9876/proxy`.
     #[clap(long)]
-    #[allow(clippy::option_option)]
+    #[expect(clippy::option_option)]
     connect: Option<Option<String>>,
 
     /// Connects and sends the logged data to a web-based Rerun viewer.
@@ -165,7 +165,7 @@ impl RerunArgs {
         }
     }
 
-    #[allow(clippy::unnecessary_wraps)] // False positive on some feature flags
+    #[expect(clippy::unnecessary_wraps)] // False positive on some feature flags
     fn to_behavior(&self) -> anyhow::Result<RerunBehavior> {
         if self.stdout {
             return Ok(RerunBehavior::Stdout);

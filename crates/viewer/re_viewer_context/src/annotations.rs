@@ -140,7 +140,7 @@ pub struct ResolvedAnnotationInfo {
 
 impl ResolvedAnnotationInfo {
     pub fn color(&self) -> Option<egui::Color32> {
-        #![allow(clippy::manual_map)] // for readability
+        #![expect(clippy::manual_map)] // for readability
 
         if let Some(info) = &self.annotation_info {
             // Use annotation context based color.

@@ -11,7 +11,6 @@ use crate::{
 
 /// Image data format that can be converted to a wgpu texture.
 // TODO(andreas): Right now this combines both color space and pixel format. Consider separating them similar to how we do on user facing APIs.
-#[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug)]
 pub enum SourceImageDataFormat {
     /// The source format is already in a wgpu compatible format.

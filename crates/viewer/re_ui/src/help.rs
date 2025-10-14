@@ -26,7 +26,7 @@ pub struct ControlRow {
 
 impl ControlRow {
     /// Create a new control row.
-    #[allow(clippy::needless_pass_by_value)]
+    #[expect(clippy::needless_pass_by_value)]
     pub fn new(text: impl ToString, items: Atoms<'static>) -> Self {
         Self {
             text: text.to_string(),
@@ -41,7 +41,7 @@ impl Help {
     }
 
     /// Create a new help popup.
-    #[allow(clippy::needless_pass_by_value)]
+    #[expect(clippy::needless_pass_by_value)]
     pub fn new(title: impl ToString) -> Self {
         Self {
             title: Some(title.to_string()),
@@ -51,7 +51,6 @@ impl Help {
     }
 
     /// Create a new help popup.
-    #[allow(clippy::needless_pass_by_value)]
     pub fn new_without_title() -> Self {
         Self {
             title: None,
@@ -61,7 +60,7 @@ impl Help {
     }
 
     /// Add a docs link, to be shown in the top right corner.
-    #[allow(clippy::needless_pass_by_value)]
+    #[expect(clippy::needless_pass_by_value)]
     #[inline]
     pub fn docs_link(mut self, docs_link: impl ToString) -> Self {
         self.docs_link = Some(docs_link.to_string());
@@ -69,7 +68,7 @@ impl Help {
     }
 
     /// Add a markdown section.
-    #[allow(clippy::needless_pass_by_value)]
+    #[expect(clippy::needless_pass_by_value)]
     #[inline]
     pub fn markdown(mut self, markdown: impl ToString) -> Self {
         self.sections
@@ -90,7 +89,6 @@ impl Help {
     /// ```rust
     /// re_ui::Help::new("Example").control("Pan", ("click", "+", "drag"));
     /// ```
-    #[allow(clippy::needless_pass_by_value)]
     #[inline]
     pub fn control(mut self, label: impl ToString, items: impl IntoAtoms<'static>) -> Self {
         if let Some(HelpSection::Controls(controls)) = self.sections.last_mut() {

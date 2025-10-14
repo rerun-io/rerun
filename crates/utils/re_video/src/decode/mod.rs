@@ -209,7 +209,7 @@ pub fn new_decoder(
     decode_settings: &DecodeSettings,
     output_sender: crossbeam::channel::Sender<FrameResult>,
 ) -> Result<Box<dyn AsyncDecoder>> {
-    #![allow(unused_variables, clippy::needless_return)] // With some feature flags
+    #![allow(clippy::allow_attributes, unused_variables, clippy::needless_return)] // With some feature flags
 
     re_tracing::profile_function!();
 
@@ -475,7 +475,7 @@ impl PixelFormat {
 /// Pixel layout used by [`PixelFormat::Yuv`].
 ///
 /// For details see `re_renderer`'s `YuvPixelLayout` type.
-#[allow(non_camel_case_types)]
+#[expect(non_camel_case_types)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum YuvPixelLayout {
     Y_U_V444,

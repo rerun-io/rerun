@@ -416,7 +416,7 @@ impl StoreHub {
     ///
     /// Will ignore this request if the application id has no matching recording,
     /// unless no app id has been set yet at all so far.
-    #[allow(clippy::needless_pass_by_value)]
+    #[expect(clippy::needless_pass_by_value)]
     pub fn set_active_app(&mut self, app_id: ApplicationId) {
         // If we don't know of a blueprint for this `ApplicationId` yet,
         // try to load one from the persisted store

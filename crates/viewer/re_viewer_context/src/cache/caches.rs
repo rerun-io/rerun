@@ -80,7 +80,7 @@ impl Caches {
     ///
     /// Adds the cache lazily if it wasn't already there.
     pub fn entry<C: Cache + Default, R>(&self, f: impl FnOnce(&mut C) -> R) -> R {
-        #[allow(clippy::unwrap_or_default)] // or_default doesn't work here.
+        #[expect(clippy::unwrap_or_default)] // or_default doesn't work here.
         f(self
             .caches
             .lock()

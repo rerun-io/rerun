@@ -13,7 +13,7 @@ use re_viewer_context::{MaybeMutRef, ViewerContext};
 /// Navigates from welcome to settings screen and snapshots it.
 #[tokio::test]
 async fn settings_screen() {
-    #![allow(unsafe_code)] // It's only a test
+    #![expect(unsafe_code)] // It's only a test
 
     // SAFETY: it's only a test
     unsafe {

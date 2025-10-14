@@ -20,13 +20,13 @@ pub trait CommandExt {
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>;
 
-    #[allow(unused)]
+    #[expect(unused)]
     fn with_env<K, V>(self, key: K, val: V) -> Self
     where
         K: AsRef<OsStr>,
         V: AsRef<OsStr>;
 
-    #[allow(unused)]
+    #[expect(unused)]
     fn run(self) -> io::Result<()>;
 
     fn output(self) -> anyhow::Result<Vec<u8>>;

@@ -18,7 +18,7 @@ use crate::{
 };
 
 // Used all over in docstrings.
-#[allow(unused_imports)]
+#[expect(unused_imports)]
 use crate::RowId;
 
 // ---

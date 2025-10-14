@@ -100,7 +100,7 @@ impl Chunk {
         );
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // dev only
+        #[expect(clippy::unwrap_used)] // dev only
         self.sanity_check().unwrap();
     }
 
@@ -148,7 +148,7 @@ impl Chunk {
         );
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // dev only
+        #[expect(clippy::unwrap_used)] // dev only
         chunk.sanity_check().unwrap();
 
         chunk
@@ -260,7 +260,7 @@ impl Chunk {
                 let datatype = original.data_type().clone();
                 let offsets =
                     ArrowOffsets::from_lengths(sorted_arrays.iter().map(|array| array.len()));
-                #[allow(clippy::unwrap_used)] // these are slices of the same outer array
+                #[expect(clippy::unwrap_used)] // these are slices of the same outer array
                 let values = re_arrow_util::concat_arrays(&sorted_arrays).unwrap();
                 let validity = original
                     .nulls()

@@ -133,6 +133,7 @@ pub fn string_from_quoted(
         let trimmed = line.trim_start();
 
         let line_is_attr = trimmed.starts_with("#[allow(")
+            || trimmed.starts_with("#[expect(")
             || trimmed.starts_with("#[inline]")
             || trimmed.starts_with("#[doc(hidden)]")
             || trimmed.starts_with("#[rustfmt::skip]")

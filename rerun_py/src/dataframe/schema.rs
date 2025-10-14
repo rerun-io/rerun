@@ -87,7 +87,7 @@ impl PySchema {
             .collect()
     }
 
-    #[allow(rustdoc::broken_intra_doc_links)]
+    #[allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)]
     /// Look up the column descriptor for a specific entity path and component.
     ///
     /// Parameters
@@ -122,8 +122,11 @@ impl PySchema {
         })
     }
 
-    #[expect(rustdoc::private_doc_tests)]
-    #[allow(rustdoc::invalid_rust_codeblocks)]
+    #[allow(
+        clippy::allow_attributes,
+        rustdoc::invalid_rust_codeblocks,
+        rustdoc::private_doc_tests
+    )]
     /// Look up the column descriptor for a specific selector.
     ///
     /// Parameters

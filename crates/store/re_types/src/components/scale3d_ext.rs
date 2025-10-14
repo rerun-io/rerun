@@ -12,7 +12,7 @@ impl Scale3D {
     /// Scale the same amount along all axis.
     ///
     /// Deprecated method to mimic previous enum variant.
-    #[allow(non_snake_case)]
+    #[expect(non_snake_case)]
     #[deprecated(since = "0.18.0", note = "Use `Scale3D::uniform` instead.")]
     pub fn Uniform(value: f32) -> Self {
         Self::uniform(value)
@@ -21,7 +21,7 @@ impl Scale3D {
     /// Scale individually along each axis.
     ///
     /// Deprecated method to mimic previous enum variant.
-    #[allow(non_snake_case)]
+    #[expect(non_snake_case)]
     #[deprecated(since = "0.18.0", note = "Use `Scale3D::from` instead.")]
     pub fn ThreeD(value: impl Into<Vec3D>) -> Self {
         Self::from(value.into())

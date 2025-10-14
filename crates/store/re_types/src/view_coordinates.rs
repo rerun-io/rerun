@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+#![expect(missing_docs)]
 
 /// The six cardinal directions for 3D view-space and image-space.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

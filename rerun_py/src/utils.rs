@@ -43,7 +43,7 @@ pub fn py_rerun_warn_cstr(msg: &std::ffi::CStr) -> PyResult<()> {
 }
 
 /// Logs a warning using rerun logging system and issues the warning to python runtime.
-#[allow(dead_code)]
+#[expect(dead_code)]
 pub fn py_rerun_warn(msg: &str) -> PyResult<()> {
     let cmsg = CString::new(msg)?;
     py_rerun_warn_cstr(&cmsg)

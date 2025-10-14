@@ -474,7 +474,7 @@ fn editable_blueprint_component_list_item(
 }
 
 /// "More" menu for a component line in the visualizer ui.
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn menu_more(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,

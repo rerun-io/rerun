@@ -201,7 +201,6 @@ fn image_decode_srgb_gamma_heuristic(image_stats: &ImageStats, image_format: Ima
     } else {
         let (min, max) = image_stats.finite_range;
 
-        #[allow(clippy::if_same_then_else)]
         if 0.0 <= min && max <= 255.0 {
             // If the range is suspiciously reminding us of a "regular image", assume sRGB.
             true
