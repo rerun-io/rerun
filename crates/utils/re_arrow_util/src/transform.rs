@@ -77,6 +77,7 @@ pub enum Error {
 pub trait Transform {
     /// The source array type.
     type Source: Array;
+
     /// The target array type.
     type Target: Array;
 
