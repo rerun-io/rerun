@@ -104,7 +104,7 @@ impl TransformAspect {
     }
 }
 
-/// Points in time that have changes on a given entity,
+/// Points in time at which a given entity has changed,
 /// i.e. the cache is invalid for these times.
 #[derive(Debug, Clone)]
 struct InvalidatedTransforms {
