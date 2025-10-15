@@ -9,8 +9,7 @@ use re_chunk::Span;
 use re_log::external::log::warn;
 
 use crate::{
-    EncodingOptions,
-    codec::file::{FileHeader, MessageHeader, MessageKind},
+    codec::file::{EncodingOptions, FileHeader, MessageHeader, MessageKind},
     decoder::DecodeError,
 };
 
@@ -454,7 +453,7 @@ mod tests {
         encoder::EncodingOptions,
     };
 
-    #[allow(clippy::unwrap_used)] // acceptable for tests
+    #[expect(clippy::unwrap_used)] // acceptable for tests
     fn fake_log_messages() -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
 

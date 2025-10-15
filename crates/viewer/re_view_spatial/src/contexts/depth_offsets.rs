@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ahash::HashMap;
+use saturating_cast::SaturatingCast as _;
 
 use re_log_types::EntityPathHash;
 use re_types::{Loggable as _, components::DrawOrder};
@@ -29,7 +30,7 @@ impl ViewContextSystem for EntityDepthOffsets {
         &mut self,
         ctx: &re_viewer_context::ViewContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
-        _static_execution_result: &re_viewer_context::ViewContextSystemStaticExecResult,
+        _once_per_frame_result: &re_viewer_context::ViewContextSystemOncePerFrameResult,
     ) {
         let mut entities_per_draw_order = BTreeMap::new();
         for (visualizer, draw_order_descriptor) in visualizers_processing_draw_order() {
@@ -53,13 +54,14 @@ impl ViewContextSystem for EntityDepthOffsets {
             .values()
             .map(|entities| entities.len())
             .sum();
-        let mut depth_offset = -((num_entities_with_draw_order / 2) as re_renderer::DepthOffset);
+        let mut depth_offset =
+            -(num_entities_with_draw_order / 2).saturating_cast::<re_renderer::DepthOffset>();
         self.per_entity_and_visualizer = entities_per_draw_order
             .into_values()
             .flat_map(|keys| {
                 keys.into_iter()
                     .map(|key| {
-                        depth_offset += 1;
+                        depth_offset = depth_offset.saturating_add(1);
                         (key, depth_offset)
                     })
                     .collect::<Vec<_>>()

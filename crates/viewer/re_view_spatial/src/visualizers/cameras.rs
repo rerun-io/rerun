@@ -49,7 +49,6 @@ struct CameraComponentDataWithFallbacks {
 }
 
 impl CamerasVisualizer {
-    #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
         tokens: &re_ui::DesignTokens,
@@ -74,9 +73,8 @@ impl CamerasVisualizer {
         let instance = Instance::from(0);
         let ent_path = &data_result.entity_path;
 
-        // Assuming the fallback provider did the right thing, this value should always be set.
         // If the camera is our reference, there is nothing for us to display.
-        if transforms.reference_path() == ent_path {
+        if transforms.target_path() == ent_path.hash() {
             self.space_cameras.push(SpaceCamera3D {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
@@ -87,11 +85,8 @@ impl CamerasVisualizer {
             return;
         }
 
-        // The camera transform does not include the pinhole transform.
-        let Some(transform_info) = transforms.transform_info_for_entity(ent_path.hash()) else {
-            return;
-        };
-        let Some(twod_in_threed_info) = &transform_info.twod_in_threed_info else {
+        let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(ent_path.hash())
+        else {
             // This implies that the transform context didn't see the pinhole transform.
             // Should be impossible!
             re_log::error_once!(
@@ -99,12 +94,7 @@ impl CamerasVisualizer {
             );
             return;
         };
-        if &twod_in_threed_info.parent_pinhole != ent_path {
-            // This implies that the camera is under another camera.
-            // This should be reported already as an error at this point.
-            return;
-        }
-        let world_from_camera = twod_in_threed_info.reference_from_pinhole_entity;
+        let world_from_camera = pinhole_tree_root_info.parent_root_from_pinhole_root;
 
         // If this transform is not representable as an `IsoTransform` we can't display it yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.

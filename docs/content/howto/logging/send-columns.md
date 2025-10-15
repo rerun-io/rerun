@@ -36,7 +36,7 @@ which can be translated to the column-oriented `send_columns` API as such:
 
 snippet: archetypes/scalars_column_updates
 
-<picture data-inline-viewer="snippets/scalars_column_updates">
+<picture data-inline-viewer="snippets/archetypes/scalars_column_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1024w.png">
@@ -55,7 +55,7 @@ which can be translated to the column-oriented `send_columns` API as such:
 
 snippet: archetypes/points3d_column_updates
 
-<picture data-inline-viewer="snippets/points3d_column_updates">
+<picture data-inline-viewer="snippets/archetypes/points3d_column_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1024w.png">
@@ -77,7 +77,7 @@ which can be translated to the column-oriented `send_columns` API as such:
 
 snippet: archetypes/arrows3d_column_updates
 
-<picture data-inline-viewer="snippets/arrows3d_column_updates">
+<picture data-inline-viewer="snippets/archetypes/arrows3d_column_updates">
   <img src="https://static.rerun.io/arrows3d_column_updates/3e14b35aac709e3f1352426bd905c635b1e13879/full.png" alt="">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/arrows3d_column_updates/3e14b35aac709e3f1352426bd905c635b1e13879/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/arrows3d_column_updates/3e14b35aac709e3f1352426bd905c635b1e13879/768w.png">
@@ -99,7 +99,7 @@ which can be translated to the column-oriented `send_columns` API as such:
 
 snippet: archetypes/transform3d_column_updates
 
-<picture data-inline-viewer="snippets/transform3d_column_updates">
+<picture data-inline-viewer="snippets/archetypes/transform3d_column_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1024w.png">
@@ -118,7 +118,7 @@ which can be translated to the column-oriented `send_columns` API as such:
 
 snippet: archetypes/image_column_updates
 
-<picture data-inline-viewer="snippets/image_column_updates">
+<picture data-inline-viewer="snippets/archetypes/image_column_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1024w.png">

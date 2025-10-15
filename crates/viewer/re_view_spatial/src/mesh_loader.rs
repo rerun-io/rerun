@@ -212,7 +212,7 @@ impl LoadedMesh {
         })
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub fn name(&self) -> &str {
         &self.name
     }

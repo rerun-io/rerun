@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)] // acceptable for code which is not user-facing
+#![expect(clippy::unwrap_used)] // acceptable for code which is not user-facing
 
 use std::hint::black_box;
 use std::sync::Arc;

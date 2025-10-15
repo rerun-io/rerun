@@ -48,7 +48,7 @@ Orienting and placing capsules forms a separate transform that is applied prior 
 
 snippet: archetypes/capsules3d_batch
 
-<picture data-inline-viewer="snippets/capsules3d_batch">
+<picture data-inline-viewer="snippets/archetypes/capsules3d_batch">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/1024w.png">

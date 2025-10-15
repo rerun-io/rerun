@@ -93,7 +93,7 @@ pub fn edit_or_view_plane3d(
                 .height(250.0)
                 .show_ui(ui, |ui| {
                     let mut variants = AxisDirection::VARIANTS.iter();
-                    #[allow(clippy::unwrap_used)] // We know there's more than zero variants.
+                    #[expect(clippy::unwrap_used)] // We know there's more than zero variants.
                     let variant = variants.next().unwrap();
 
                     let mut response =

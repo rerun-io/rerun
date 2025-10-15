@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)] // build tool, so okay here
+#![expect(clippy::unwrap_used)] // build tool, so okay here
 
 /// Docs read from `/docs`
 mod docs;
@@ -73,7 +73,7 @@ impl Context {
         self.progress.add(bar)
     }
 
-    #[allow(clippy::needless_pass_by_value)]
+    #[expect(clippy::needless_pass_by_value)]
     fn finish_progress_bar(&self, bar: ProgressBar) {
         bar.disable_steady_tick();
         bar.finish_and_clear();

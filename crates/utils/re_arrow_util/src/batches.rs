@@ -24,7 +24,7 @@ pub fn make_batch_nullable(batch: &RecordBatch) -> RecordBatch {
         batch.schema().metadata.clone(),
     );
 
-    #[allow(clippy::unwrap_used)] // cannot fail, we just made things more permissible
+    #[expect(clippy::unwrap_used)] // cannot fail, we just made things more permissible
     batch.clone().with_schema(Arc::new(schema)).unwrap()
 }
 

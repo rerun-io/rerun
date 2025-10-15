@@ -1,8 +1,4 @@
-#![allow(
-    clippy::needless_pass_by_value,
-    clippy::unnecessary_wraps,
-    clippy::unused_self
-)]
+#![expect(clippy::needless_pass_by_value, clippy::unnecessary_wraps)]
 
 use std::sync::Arc;
 use std::time::Duration;

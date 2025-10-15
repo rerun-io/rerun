@@ -1,4 +1,4 @@
-#![allow(clippy::redundant_clone)]
+#![expect(clippy::redundant_clone)]
 
 use re_types::{
     Archetype as _, AsComponents as _,

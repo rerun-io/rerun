@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::InstancePath;
-use re_log_types::{ApplicationId, EntityPath};
+use re_log_types::{ApplicationId, EntityPath, EntityPathHash};
 use re_ui::filter_widget::format_matching_text;
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{
@@ -473,7 +473,6 @@ impl BlueprintTree {
         );
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn data_result_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -1170,7 +1169,8 @@ impl BlueprintTree {
                 ctx.focused_item.clone()
             }
             Item::InstancePath(instance_path) => {
-                let view_ids = list_views_with_entity(ctx, viewport, &instance_path.entity_path);
+                let view_ids =
+                    list_views_with_entity(ctx, viewport, instance_path.entity_path.hash());
 
                 // focus on the first matching data result
                 let res = view_ids
@@ -1233,7 +1233,9 @@ impl BlueprintTree {
         entity_path: &EntityPath,
     ) {
         let result_tree = &ctx.lookup_query_result(*view_id).tree;
-        if result_tree.lookup_node_by_path(entity_path).is_some()
+        if result_tree
+            .lookup_node_by_path(entity_path.hash())
+            .is_some()
             && let Some(root_node) = result_tree.root_node()
         {
             EntityPath::incremental_walk(Some(&root_node.data_result.entity_path), entity_path)
@@ -1343,7 +1345,7 @@ fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui)
 fn list_views_with_entity(
     ctx: &ViewerContext<'_>,
     viewport: &ViewportBlueprint,
-    entity_path: &EntityPath,
+    entity_path: EntityPathHash,
 ) -> SmallVec<[ViewId; 4]> {
     let mut view_ids = SmallVec::new();
     let _ignored = viewport.visit_contents::<()>(&mut |contents, _| {

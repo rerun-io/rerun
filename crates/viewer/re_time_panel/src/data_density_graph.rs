@@ -145,6 +145,8 @@ impl DensityGraph {
     }
 
     pub fn add_range(&mut self, (min_x, max_x): (f32, f32), count: f32) {
+        #![expect(clippy::cast_possible_wrap)] // usize -> i64 is fine
+
         debug_assert!(min_x <= max_x);
 
         if max_x < self.min_x || self.max_x < min_x {
@@ -410,7 +412,7 @@ fn smooth(density: &[f32]) -> Vec<f32> {
 
 // ----------------------------------------------------------------------------
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub fn data_density_graph_ui(
     data_density_graph_painter: &mut DataDensityGraphPainter,
     ctx: &ViewerContext<'_>,

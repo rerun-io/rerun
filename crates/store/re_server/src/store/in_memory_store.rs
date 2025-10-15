@@ -10,6 +10,7 @@ use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
 use lance::datafusion::LanceTableProvider;
 
+use re_chunk_store::ChunkStoreConfig;
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::EntryKind;
 use re_protos::{
@@ -48,6 +49,12 @@ impl Default for InMemoryStore {
 }
 
 impl InMemoryStore {
+    pub fn chunk_store_config() -> re_chunk_store::ChunkStoreConfig {
+        ChunkStoreConfig::CHANGELOG_DISABLED
+            .apply_env()
+            .unwrap_or(ChunkStoreConfig::CHANGELOG_DISABLED)
+    }
+
     /// Load a directory of RRDs.
     pub fn load_directory_as_dataset(
         &mut self,
@@ -255,7 +262,7 @@ impl InMemoryStore {
 }
 
 fn generate_entries_table(entries: &[EntryDetails]) -> Result<RecordBatch, Error> {
-    #[allow(clippy::type_complexity)]
+    #[expect(clippy::type_complexity)]
     let (id, name, entry_kind, created_at, updated_at): (
         Vec<Tuid>,
         Vec<String>,

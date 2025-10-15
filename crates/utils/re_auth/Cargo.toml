@@ -23,29 +23,25 @@ cli = [
   "dep:tiny_http",
   "dep:url",
   "dep:webbrowser",
-
-  "workos",
+  "oauth",
 ]
 
-workos = [
-  "dep:base64",
-  "dep:const_format",
-  "dep:directories",
-  "dep:ehttp",
-  "dep:serde",
-  "dep:serde_json",
-]
+oauth = ["dep:base64", "dep:directories", "dep:ehttp", "dep:serde", "dep:serde_json"]
 
 [dependencies]
 re_log.workspace = true
 
+async-trait.workspace = true
+http.workspace = true
 jsonwebtoken.workspace = true
+saturating_cast.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
 tonic.workspace = true
+tower.workspace = true
 
+## Optional dependencies
 base64 = { workspace = true, optional = true }
-const_format = { workspace = true, optional = true }
-directories = { workspace = true, optional = true }
 indicatif = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
@@ -58,6 +54,7 @@ base64.workspace = true
 rand.workspace = true
 serde.workspace = true
 ehttp = { workspace = true, optional = true, features = ["json", "native-async"] }
+directories = { workspace = true, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 ehttp = { workspace = true, optional = true, features = ["json"] }

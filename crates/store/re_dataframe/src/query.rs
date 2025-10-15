@@ -257,7 +257,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                         let mut chunk = chunk.clone();
                         // Only way this could fail is if the number of rows did not match.
-                        #[allow(clippy::unwrap_used)]
+                        #[expect(clippy::unwrap_used)]
                         chunk
                             .add_component(
                                 re_types_core::ComponentDescriptor {
@@ -376,7 +376,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     fn compute_user_selection(
         &self,
         view_contents: &[ColumnDescriptor],
@@ -544,6 +544,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     .iter()
                     .enumerate()
                     .filter_map(|(index, is_recursive)| {
+                        // can't fail - we're iterating over a 32-bit container
+                        #[expect(clippy::cast_possible_wrap)]
                         (is_recursive == Some(true)).then_some(index as i32)
                     })
                     .collect_vec(),
@@ -1286,7 +1288,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         let row_count = row.first().map(|a| a.len()).unwrap_or(0);
 
         // If we managed to get a row, then the state must be initialized already.
-        #[allow(clippy::unwrap_used)]
+        #[expect(clippy::unwrap_used)]
         let schema = self.state.get().unwrap().arrow_schema.clone();
 
         ArrowRecordBatch::try_new_with_options(
@@ -1300,25 +1302,22 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
 impl<E: StorageEngineLike> QueryHandle<E> {
     /// Returns an iterator backed by [`Self::next_row`].
-    #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn iter(&self) -> impl Iterator<Item = Vec<ArrowArrayRef>> + '_ {
         std::iter::from_fn(move || self.next_row())
     }
 
     /// Returns an iterator backed by [`Self::next_row`].
-    #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
+    #[expect(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn into_iter(self) -> impl Iterator<Item = Vec<ArrowArrayRef>> {
         std::iter::from_fn(move || self.next_row())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
-    #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn batch_iter(&self) -> impl Iterator<Item = ArrowRecordBatch> + '_ {
         std::iter::from_fn(move || self.next_row_batch())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
-    #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn into_batch_iter(self) -> impl Iterator<Item = ArrowRecordBatch> {
         std::iter::from_fn(move || self.next_row_batch())
     }
@@ -1327,7 +1326,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 // ---
 
 #[cfg(test)]
-#[allow(clippy::iter_on_single_items)]
+#[expect(clippy::iter_on_single_items)]
 mod tests {
     use std::sync::Arc;
 
@@ -2480,7 +2479,7 @@ mod tests {
                     std::task::RawWaker::new(std::ptr::null(), &VTABLE)
                 };
 
-                #[allow(unsafe_code)]
+                #[expect(unsafe_code)]
                 let mut cx = std::task::Context::from_waker(
                     // Safety: a Waker is just a privacy-preserving wrapper around a RawWaker.
                     unsafe {

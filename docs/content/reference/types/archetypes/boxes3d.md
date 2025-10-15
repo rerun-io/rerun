@@ -42,7 +42,7 @@ Orienting and placing boxes forms a separate transform that is applied prior to 
 
 snippet: archetypes/boxes3d_simple
 
-<picture data-inline-viewer="snippets/boxes3d_simple">
+<picture data-inline-viewer="snippets/archetypes/boxes3d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1024w.png">
@@ -54,7 +54,7 @@ snippet: archetypes/boxes3d_simple
 
 snippet: archetypes/boxes3d_batch
 
-<picture data-inline-viewer="snippets/boxes3d_batch">
+<picture data-inline-viewer="snippets/archetypes/boxes3d_batch">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/1024w.png">

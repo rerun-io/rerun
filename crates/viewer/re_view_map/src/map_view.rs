@@ -322,13 +322,8 @@ impl ViewClass for MapView {
             map_rect,
         );
 
-        let mut view_builder = create_view_builder(
-            ctx.render_ctx(),
-            ui.ctx(),
-            map_rect,
-            &query.highlights,
-            picking_config,
-        )?;
+        let mut view_builder =
+            create_view_builder(ctx, ui.ctx(), map_rect, &query.highlights, picking_config)?;
 
         geo_line_strings_visualizers.queue_draw_data(
             ctx.render_ctx(),
@@ -364,7 +359,7 @@ impl ViewClass for MapView {
 /// The scene coordinates are 1:1 mapped to egui UI points.
 //TODO(ab): this utility potentially has more general usefulness.
 fn create_view_builder(
-    render_ctx: &RenderContext,
+    ctx: &ViewerContext<'_>,
     egui_ctx: &egui::Context,
     view_rect: Rect,
     highlights: &ViewHighlights,
@@ -375,9 +370,10 @@ fn create_view_builder(
         gpu_bridge::viewport_resolution_in_pixels(view_rect, pixels_per_point);
 
     re_renderer::ViewBuilder::new(
-        render_ctx,
+        ctx.render_ctx(),
         re_renderer::view_builder::TargetConfiguration {
             name: "MapView".into(),
+            render_mode: ctx.render_mode(),
             resolution_in_pixel,
 
             // Camera looking at a ui coordinate world.
@@ -408,7 +404,6 @@ fn create_view_builder(
 }
 
 /// Handle picking and related ui interactions.
-#[allow(clippy::too_many_arguments)]
 fn handle_picking_and_ui_interactions(
     ctx: &ViewerContext<'_>,
     render_ctx: &RenderContext,

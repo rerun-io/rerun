@@ -32,7 +32,7 @@ pub use view_class_placeholder::ViewClassPlaceholder;
 pub use view_class_registry::{ViewClassRegistry, ViewClassRegistryError, ViewSystemRegistrator};
 pub use view_context::ViewContext;
 pub use view_context_system::{
-    ViewContextCollection, ViewContextSystem, ViewContextSystemStaticExecResult,
+    ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
 };
 pub use view_query::{
     DataResult, OverridePath, PerSystemDataResults, PropertyOverrides, SmallVisualizerSet,

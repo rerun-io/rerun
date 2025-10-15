@@ -183,10 +183,26 @@ impl Projection {
     }
 }
 
+/// Aim for beauty or determinism?
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum RenderMode {
+    /// Default render mode
+    #[default]
+    Beautiful,
+
+    /// Try to produce consistent results across different GPUs and drivers.
+    ///
+    /// Used for more consistent snapshot tests.
+    Deterministic,
+}
+
 /// Basic configuration for a target view.
 #[derive(Debug)]
 pub struct TargetConfiguration {
     pub name: DebugLabel,
+
+    /// Aim for beauty or determinism?
+    pub render_mode: RenderMode,
 
     /// The viewport resolution in physical pixels.
     pub resolution_in_pixel: [u32; 2],
@@ -232,6 +248,7 @@ impl Default for TargetConfiguration {
     fn default() -> Self {
         Self {
             name: "default view".into(),
+            render_mode: RenderMode::Beautiful,
             resolution_in_pixel: [100, 100],
             view_from_world: Default::default(),
             projection_from_view: Projection::Perspective {
@@ -527,11 +544,15 @@ impl ViewBuilder {
             projection_from_world: projection_from_world.into(),
             camera_position,
             camera_forward,
-            tan_half_fov: tan_half_fov.into(),
             pixel_world_size_from_camera_distance,
             pixels_per_point: config.pixels_per_point,
-
-            device_tier: (ctx.device_caps().tier as u32).into(),
+            tan_half_fov,
+            device_tier: ctx.device_caps().tier as u32,
+            deterministic_rendering: match config.render_mode {
+                RenderMode::Beautiful => 0,
+                RenderMode::Deterministic => 1,
+            },
+            padding: Default::default(),
         };
         let frame_uniform_buffer = create_and_fill_uniform_buffer(
             ctx,

@@ -1,7 +1,7 @@
 //! Logs a bunch of big images to test Rerun memory usage.
 
 // Allow unwrap() in tests (allow-unwrap-in-tests doesn't apply)
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 use mimalloc::MiMalloc;
 

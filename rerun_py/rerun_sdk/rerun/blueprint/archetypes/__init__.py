@@ -12,11 +12,13 @@ from .force_collision_radius import ForceCollisionRadius
 from .force_link import ForceLink
 from .force_many_body import ForceManyBody
 from .force_position import ForcePosition
+from .graph_background import GraphBackground
 from .line_grid3d import LineGrid3D
 from .map_background import MapBackground
 from .map_zoom import MapZoom
 from .near_clip_plane import NearClipPlane
 from .panel_blueprint import PanelBlueprint
+from .plot_background import PlotBackground
 from .plot_legend import PlotLegend
 from .scalar_axis import ScalarAxis
 from .tensor_scalar_mapping import TensorScalarMapping
@@ -42,11 +44,13 @@ __all__ = [
     "ForceLink",
     "ForceManyBody",
     "ForcePosition",
+    "GraphBackground",
     "LineGrid3D",
     "MapBackground",
     "MapZoom",
     "NearClipPlane",
     "PanelBlueprint",
+    "PlotBackground",
     "PlotLegend",
     "ScalarAxis",
     "TensorScalarMapping",

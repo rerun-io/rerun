@@ -11,15 +11,15 @@ pub trait JsResultExt<T> {
     fn ok_or_log_js_error(self) -> Option<T>;
 
     /// Logs an error if the result is an error and returns the result, but only once.
-    #[allow(unused)]
+    #[expect(unused)]
     fn ok_or_log_js_error_once(self) -> Option<T>;
 
     /// Log a warning if there is an `Err`, but only log the exact same message once.
-    #[allow(unused)]
+    #[expect(unused)]
     fn warn_on_js_err_once(self, msg: impl std::fmt::Display) -> Option<T>;
 
     /// Unwraps in debug builds otherwise logs an error if the result is an error and returns the result.
-    #[allow(unused)]
+    #[expect(unused)]
     fn unwrap_debug_or_log_js_error(self) -> Option<T>;
 }
 
@@ -43,7 +43,7 @@ impl<T> JsResultExt<T> for Result<T, JsValue> {
 }
 
 /// Useful in error handlers
-#[allow(clippy::needless_pass_by_value)]
+#[expect(clippy::needless_pass_by_value)]
 pub fn string_from_js_value(s: wasm_bindgen::JsValue) -> String {
     // it's already a string
     if let Some(s) = s.as_string() {

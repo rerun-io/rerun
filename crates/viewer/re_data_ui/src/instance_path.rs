@@ -166,7 +166,7 @@ impl DataUi for InstancePath {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn component_list_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
