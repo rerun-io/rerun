@@ -8274,8 +8274,10 @@ dependencies = [
  "half",
  "insta",
  "itertools 0.14.0",
+ "re_format_arrow",
  "re_log",
  "re_tracing",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
