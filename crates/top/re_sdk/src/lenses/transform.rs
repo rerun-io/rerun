@@ -1,4 +1,4 @@
-//! Composable transformations for Arrow arrays.
+//! Type-safe, composable transformations for Arrow arrays.
 
 use std::sync::Arc;
 
@@ -109,6 +109,7 @@ where
 }
 
 /// Extension trait for composing transformations.
+#[cfg(test)]
 pub trait TransformExt: Transform {
     /// Chain this transformation with another transformation.
     fn then<T2>(self, next: T2) -> Compose<Self, T2>
@@ -123,6 +124,7 @@ pub trait TransformExt: Transform {
     }
 }
 
+#[cfg(test)]
 impl<T: Transform> TransformExt for T {}
 
 /// Extracts a field from a struct array.
@@ -222,6 +224,7 @@ pub struct MapFixedSizeList<T> {
     transform: T,
 }
 
+#[cfg(test)]
 impl<T> MapFixedSizeList<T> {
     /// Create a new fixed-size list mapper that applies the given transformation to list elements.
     pub fn new(transform: T) -> Self {
@@ -276,6 +279,7 @@ pub struct StructToFixedList {
     field_names: Vec<String>,
 }
 
+#[cfg(test)]
 impl StructToFixedList {
     /// Create a new struct-to-fixed-list transformer.
     ///
@@ -377,6 +381,7 @@ where
     _phantom: std::marker::PhantomData<T>,
 }
 
+#[cfg(test)]
 impl<T, F> MapPrimitive<T, F>
 where
     T: ArrowPrimitiveType,
@@ -418,6 +423,7 @@ where
     _phantom: std::marker::PhantomData<T>,
 }
 
+#[cfg(test)]
 impl<T> ReplaceNull<T>
 where
     T: ArrowPrimitiveType,
@@ -459,6 +465,7 @@ pub struct Cast<S, T> {
     _phantom: std::marker::PhantomData<(S, T)>,
 }
 
+#[cfg(test)]
 impl<S, T> Cast<PrimitiveArray<S>, PrimitiveArray<T>>
 where
     S: ArrowPrimitiveType,
