@@ -932,21 +932,26 @@ mod tests {
         let query = LatestAtQuery::latest(TimelineName::log_tick());
         let transform_forest = TransformForest::new(&entity_db, &transform_cache, &query);
 
-        let target = EntityPath::from("box");
-        let sources = [EntityPath::from("box")];
+        let target = TransformFrameIdHash::from_entity_path(&EntityPath::from("box"));
+        let sources = [TransformFrameIdHash::from_entity_path(&EntityPath::from(
+            "box",
+        ))];
 
         let result = transform_forest
-            .transform_from_to(target.hash(), sources.iter().map(|s| s.hash()), &|_| 1.0)
+            .transform_from_to(target, sources.iter().copied(), &|_| 1.0)
             .collect::<Vec<_>>();
 
         assert_eq!(result.len(), 1);
         let (source, result) = &result[0];
-        assert_eq!(source, &target.hash());
+        assert_eq!(source, &target);
         let info = result.as_ref().unwrap();
-        assert_eq!(info.root, EntityPath::root().hash());
+        assert_eq!(
+            info.root,
+            TransformFrameIdHash::entity_path_hierarchy_root()
+        );
 
         // It *is* the target, so identity for this!
-        assert_eq!(info.target_from_entity, glam::Affine3A::IDENTITY);
+        assert_eq!(info.target_from_source, glam::Affine3A::IDENTITY);
 
         // Instance transforms still apply.
         assert_eq!(
