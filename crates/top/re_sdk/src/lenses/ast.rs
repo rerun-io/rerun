@@ -11,7 +11,7 @@ use re_log_types::EntityPathFilter;
 use re_types::ComponentDescriptor;
 
 use super::{
-    transform::{Constant, Func, GetField, MapList, Transform},
+    transform::{Constant, GetField, MapList, Transform},
     Error,
 };
 
@@ -40,9 +40,6 @@ pub enum Op {
 
     /// A user-defined arbitrary function to convert a component column.
     Func(Box<dyn Fn(ListArray) -> Result<ListArray, Error> + Sync + Send>),
-
-    /// A boxed transform that operates on `ListArray`.
-    Transform(Box<dyn Transform<Source = ListArray, Target = ListArray> + Send + Sync>),
 }
 
 impl std::fmt::Debug for Op {
@@ -50,7 +47,6 @@ impl std::fmt::Debug for Op {
         match self {
             Self::Constant(_) => f.debug_tuple("Constant").finish(),
             Self::Func(_) => f.debug_tuple("Func").field(&"<function>").finish(),
-            Self::Transform(_) => f.debug_tuple("Transform").field(&"<transform>").finish(),
         }
     }
 }
@@ -58,17 +54,20 @@ impl std::fmt::Debug for Op {
 impl Op {
     /// Extracts a specific field from a `StructArray` within a list.
     pub fn access_field(field_name: impl Into<String>) -> Self {
-        Self::Transform(Box::new(MapList::new(GetField::new(field_name))))
+        let transform = MapList::new(GetField::new(field_name));
+        Self::Func(Box::new(move |list_array: ListArray| {
+            Transform::transform(&transform, &list_array).map_err(Error::from)
+        }))
     }
 
     /// Efficiently casts the inner values of a list to a new `DataType`.
     pub fn cast(data_type: DataType) -> Self {
-        Self::Transform(Box::new(Func::new(move |list_array: &ListArray| {
+        Self::Func(Box::new(move |list_array: ListArray| {
             use arrow::compute::cast;
             use std::sync::Arc;
             use arrow::datatypes::Field;
 
-            let (_field, offsets, values, nulls) = list_array.clone().into_parts();
+            let (_field, offsets, values, nulls) = list_array.into_parts();
             let casted = cast(values.as_ref(), &data_type)
                 .map_err(|e| super::transform::Error::Arrow(e))?;
             Ok(ListArray::new(
@@ -77,7 +76,7 @@ impl Op {
                 casted,
                 nulls,
             ))
-        })))
+        }))
     }
 
     /// Ignores any input and returns a constant `ListArray`.
@@ -96,22 +95,10 @@ impl Op {
         Self::Func(Box::new(func))
     }
 
-    /// Wraps a transform that operates on `ListArray`.
-    ///
-    /// This allows you to use any type implementing `Transform<Source = ListArray, Target = ListArray>`
-    /// directly as an operation.
-    pub fn transform<T>(transform: T) -> Self
-    where
-        T: Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
-    {
-        Self::Transform(Box::new(transform))
-    }
-
     fn call(&self, list_array: &ListArray) -> Result<ListArray, Error> {
         match self {
             Self::Constant(op) => op.transform(list_array).map_err(Error::from),
             Self::Func(func) => func(list_array.clone()),
-            Self::Transform(transform) => transform.transform(list_array).map_err(Error::from),
         }
     }
 }
@@ -637,22 +624,19 @@ mod test {
 
     #[test]
     fn test_transform_variant() {
-        use arrow::array::{Float32Array, Float64Array};
-        use crate::lenses::transform::{Cast, GetField, MapList, TransformExt as _};
-
         let original_chunk = nullability_chunk();
         println!("{original_chunk}");
 
-        // Demonstrate using Op::transform with a composed transform
-        let composed = MapList::new(GetField::new("a"))
-            .then(MapList::new(Cast::<Float32Array, Float64Array>::new()));
-
+        // Use Op methods instead of composed transforms
         let destructure =
             Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
                 .add_output_column_entity(
                     "nullability/a",
                     Scalars::descriptor_scalars(),
-                    vec![Op::transform(composed)],
+                    vec![
+                        Op::access_field("a"),
+                        Op::cast(DataType::Float64),
+                    ],
                 )
                 .build();
 

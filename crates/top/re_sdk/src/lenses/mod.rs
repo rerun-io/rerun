@@ -8,7 +8,7 @@
 pub(crate) mod ast;
 mod error;
 mod sink;
-pub mod transform;
+pub(crate) mod transform;
 
 pub use self::{
     // We should be careful not to expose to much implementation details here.
