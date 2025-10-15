@@ -8349,10 +8349,11 @@ dependencies = [
 name = "re_auth"
 version = "0.26.0-alpha.1+dev"
 dependencies = [
+ "async-trait",
  "base64 0.22.1",
- "const_format",
  "directories",
  "ehttp",
+ "http",
  "indicatif",
  "jsonwebtoken",
  "rand 0.8.5",
@@ -8362,7 +8363,9 @@ dependencies = [
  "serde_json",
  "thiserror 1.0.69",
  "tiny_http",
+ "tokio",
  "tonic",
+ "tower",
  "url",
  "webbrowser",
 ]
