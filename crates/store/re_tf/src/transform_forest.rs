@@ -77,7 +77,7 @@ impl TransformInfo {
 
     /// Returns the first instance transform and warns if there are multiple.
     #[inline]
-    pub fn single_entity_transform_required(
+    pub fn single_transform_required_for_entity(
         &self,
         entity_name: &EntityPath,
         archetype: ArchetypeName,
@@ -781,7 +781,7 @@ mod tests {
         let mut result = format!("{obj:#?}");
         for frame in frames {
             result = result.replace(
-                &format!("{:#?}", TransformFrameIdHash::new(&frame)),
+                &format!("{:#?}", TransformFrameIdHash::new(frame)),
                 &format!("{frame}"),
             );
         }
