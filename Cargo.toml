@@ -325,6 +325,7 @@ roxmltree = "0.19.0"
 rustdoc-json = "0.9.7"
 rustdoc-types = "0.56.0"
 rustls = { version = "0.23.32", default-features = false }
+saturating_cast = "0.1"
 semver = "1.0.27"
 seq-macro = "0.3.6"
 serde = { version = "1.0", features = ["derive"] }
@@ -577,9 +578,12 @@ debug = true # enable debug symbols for build scripts
 [workspace.lints.rust]
 unsafe_code = "deny"
 
+absolute_paths_not_starting_with_crate = "warn"
 elided_lifetimes_in_paths = "warn"
 future_incompatible = { level = "warn", priority = -1 }
+non_ascii_idents = "warn"
 nonstandard_style = { level = "warn", priority = -1 }
+noop_method_call = "warn"
 rust_2018_idioms = { level = "warn", priority = -1 }
 rust_2021_prelude_collisions = "warn"
 semicolon_in_expressions_from_macros = "warn"
@@ -605,6 +609,7 @@ allow_attributes = "warn"
 as_ptr_cast_mut = "warn"
 await_holding_lock = "warn"
 bool_to_int_with_if = "warn"
+cast_possible_wrap = "warn"
 char_lit_as_u8 = "warn"
 checked_conversions = "warn"
 clear_with_drain = "warn"
@@ -767,6 +772,7 @@ map_unwrap_or = "allow" # so is this one
 ref_patterns = "allow" # It's nice to avoid ref pattern, but there are some situations that are hard (impossible?) to express without.
 
 # TODO(emilk): enable more of these lints:
+cast_possible_truncation = "allow" # Moo much noise, sadly
 iter_over_hash_type = "allow"
 let_underscore_untyped = "allow"
 missing_assert_message = "allow"

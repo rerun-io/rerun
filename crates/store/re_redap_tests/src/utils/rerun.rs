@@ -564,6 +564,7 @@ pub fn create_recording_with_scalars(
     let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
     let mut next_row_id = next_row_id_generator(tuid_prefix);
 
+    #[expect(clippy::cast_possible_wrap)]
     for i in 1..=n as i64 {
         let floats: Vec<f32> = (0..10).map(|j| 0.1f32 * i as f32 * j as f32).collect();
         let float_array = Arc::new(Float32Array::from(floats)) as ArrayRef;
@@ -634,6 +635,7 @@ pub fn create_recording_with_text(
     let mut next_row_id = next_row_id_generator(tuid_prefix);
 
     for (i, sentence) in sentences.iter().enumerate() {
+        #[expect(clippy::cast_possible_wrap)]
         let frame = TimeInt::new_temporal((i * 10) as i64);
 
         let chunk = Chunk::builder_with_id(next_chunk_id(), "/my_text")

@@ -4,6 +4,8 @@ use mcap::{
     Summary,
     sans_io::{SummaryReadEvent, SummaryReader},
 };
+use saturating_cast::SaturatingCast as _;
+
 use re_log_types::TimeCell;
 
 /// Read out the summary of an MCAP file.
@@ -45,9 +47,9 @@ impl TimestampCell {
         timestamp_timeline: impl Into<String>,
         duration_timeline: impl Into<String>,
     ) -> Self {
-        let ns = timestamp_ns as i64; // safe for our bounds
+        let ns = timestamp_ns.saturating_cast::<i64>();
 
-        if ns >= Self::YEAR_1990_NS && ns <= Self::YEAR_2100_NS {
+        if Self::YEAR_1990_NS <= ns && ns <= Self::YEAR_2100_NS {
             Self::Unix {
                 timeline: timestamp_timeline.into(),
                 time: TimeCell::from_timestamp_nanos_since_epoch(ns),
@@ -89,6 +91,8 @@ impl TimestampCell {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::cast_possible_wrap)] // ok in tests
+
     use re_log_types::TimeType;
 
     use super::*;

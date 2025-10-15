@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use crate::{NonMinI64, TimeInt, TimeReal};
+use crate::{TimeInt, TimeReal};
 
 // ----------------------------------------------------------------------------
 
@@ -85,8 +85,7 @@ impl AbsoluteTimeRange {
 
     #[inline]
     pub fn center(&self) -> TimeInt {
-        let center = NonMinI64::new((self.abs_length() / 2) as i64).unwrap_or(NonMinI64::MIN);
-        self.min + TimeInt::from(center)
+        self.min.midpoint(self.max)
     }
 
     #[inline]

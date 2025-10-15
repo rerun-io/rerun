@@ -1,3 +1,5 @@
+#![expect(clippy::cast_possible_wrap)] // usize -> i64
+
 use std::{
     sync::{Arc, mpsc::Sender},
     thread,

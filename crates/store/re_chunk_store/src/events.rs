@@ -250,6 +250,8 @@ mod tests {
 
     impl GlobalCounts {
         fn on_events(&mut self, events: &[ChunkStoreEvent]) {
+            #![expect(clippy::cast_possible_wrap)] // as i64 won't overflow
+
             for event in events {
                 let delta_chunks = event.delta();
                 let delta_rows = delta_chunks * event.chunk.num_rows() as i64;
