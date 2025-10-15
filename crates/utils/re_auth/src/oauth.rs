@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::LazyLock};
+use std::collections::HashMap;
 
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header, jwk::JwkSet};
 use saturating_cast::SaturatingCast as _;
@@ -15,14 +15,14 @@ mod storage;
 const SOFT_EXPIRE_SECS: i64 = 60;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) static OAUTH_CLIENT_ID: LazyLock<String> = LazyLock::new(|| {
+pub(crate) static OAUTH_CLIENT_ID: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
     std::env::var("RERUN_OAUTH_CLIENT_ID")
         .ok()
         .unwrap_or_else(|| "client_01JZ3JVR1PEVQMS73V86MC4CE2".into())
 });
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) static OAUTH_ISSUER_URL: LazyLock<String> = LazyLock::new(|| {
+pub(crate) static OAUTH_ISSUER_URL: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
     std::env::var("RERUN_OAUTH_ISSUER_URL")
         .ok()
         .unwrap_or_else(|| {
