@@ -4,7 +4,7 @@
 
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::archetypes;
 use re_view_spatial::SpatialView3D;
@@ -136,10 +136,5 @@ fn run_view_ui_and_save_snapshot(
     });
     harness.run_steps(8);
 
-    let broken_pixels_fraction = 0.004;
-
-    let options = SnapshotOptions::new()
-        .failed_pixel_count_threshold((size.x * size.y * broken_pixels_fraction).round() as usize);
-
-    harness.snapshot_options(name, &options);
+    harness.snapshot(name);
 }

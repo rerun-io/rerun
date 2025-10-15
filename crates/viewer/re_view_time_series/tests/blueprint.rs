@@ -1,7 +1,6 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
 use re_test_context::TestContext;
-use re_test_context::external::egui_kittest::SnapshotOptions;
 use re_test_viewport::TestContextExt as _;
 use re_types::{
     archetypes::{self, Scalars},
@@ -38,7 +37,7 @@ pub fn test_blueprint_overrides_and_defaults_with_time_series() {
         view_id,
         "blueprint_overrides_and_defaults_with_time_series",
         egui::vec2(300.0, 300.0),
-        Some(SnapshotOptions::new().threshold(1.0)),
+        Default::default(),
     );
 }
 

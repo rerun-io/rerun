@@ -1,6 +1,6 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint, Timeline};
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
@@ -212,13 +212,7 @@ fn run_view_ui_and_save_snapshot(
 
             harness.run_steps(8);
 
-            let broken_pixels_fraction = 0.004;
-
-            let options = SnapshotOptions::new().failed_pixel_count_threshold(
-                (size.x * size.y * broken_pixels_fraction).round() as usize,
-            );
-
-            if let Err(err) = harness.try_snapshot_options(&name, &options) {
+            if let Err(err) = harness.try_snapshot(&name) {
                 errors.push(err);
             }
         }

@@ -91,8 +91,5 @@ fn colormap_selector_ui() {
 
     harness.fit_contents();
     harness.run();
-    harness.snapshot_options(
-        "colormap_selector_open",
-        &SnapshotOptions::new().threshold(2.0),
-    );
+    harness.snapshot("colormap_selector_open");
 }

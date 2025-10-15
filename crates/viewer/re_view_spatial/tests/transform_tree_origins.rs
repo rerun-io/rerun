@@ -147,7 +147,6 @@ pub fn test_transform_tree_origins() {
             view_id,
             &format!("transform_tree_origins_{}", origin.replace('/', "_")),
             egui::vec2(400.0, 250.0),
-            500,
         );
     }
 }
@@ -181,7 +180,6 @@ fn run_view_ui_and_save_snapshot(
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
-    num_pixels_allowed_to_deviate: usize,
 ) {
     let mut harness = test_context
         .setup_kittest_for_rendering()
@@ -212,6 +210,6 @@ fn run_view_ui_and_save_snapshot(
 
     harness.snapshot_options(
         name,
-        &SnapshotOptions::new().failed_pixel_count_threshold(num_pixels_allowed_to_deviate),
+        &SnapshotOptions::new().failed_pixel_count_threshold(10),
     );
 }

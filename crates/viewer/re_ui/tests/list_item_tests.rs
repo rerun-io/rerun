@@ -1,5 +1,5 @@
 use egui::Vec2;
-use egui_kittest::SnapshotOptions;
+
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, icons, list_item};
 
@@ -233,5 +233,5 @@ pub fn test_list_items_should_match_snapshot() {
         });
 
     harness.run();
-    harness.snapshot_options("list_items", &SnapshotOptions::new().threshold(1.3));
+    harness.snapshot("list_items");
 }

@@ -92,9 +92,7 @@ pub fn test_2d_in_3d() {
     harness.run();
     harness.snapshot_options(
         "2d_in_3d",
-        &SnapshotOptions::new()
-            .threshold(1.0)
-            .failed_pixel_count_threshold(30),
+        &SnapshotOptions::new().failed_pixel_count_threshold(4),
     );
 }
 
