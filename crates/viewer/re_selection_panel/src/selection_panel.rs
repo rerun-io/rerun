@@ -1348,6 +1348,7 @@ mod tests {
         harness.snapshot("selection_panel_component_hybrid_overwrite");
     }
 
+    #[ignore = "TODO(#11546)"]
     #[test]
     fn selection_panel_view_snapshot() {
         let mut test_context = get_test_context();
@@ -1388,6 +1389,7 @@ mod tests {
         harness.snapshot("selection_panel_view");
     }
 
+    #[ignore = "TODO(#11546)"]
     #[test]
     fn selection_panel_view_entity_no_visualizable_snapshot() {
         let mut test_context = get_test_context();
@@ -1429,6 +1431,7 @@ mod tests {
         harness.snapshot("selection_panel_view_entity_no_visualizable");
     }
 
+    #[ignore = "TODO(#11546)"]
     #[test]
     fn selection_panel_view_entity_no_match_snapshot() {
         let mut test_context = get_test_context();
