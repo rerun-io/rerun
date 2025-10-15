@@ -279,12 +279,7 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
 
     fn snapshot_app(&mut self, snapshot_name: &str) {
         self.run_ok();
-        // TODO(aedm): we allow some pixel differences because of a font rendering issue:
-        // https://github.com/rerun-io/rerun/issues/11448
-        self.snapshot_options(
-            snapshot_name,
-            &SnapshotOptions::new().failed_pixel_count_threshold(2),
-        );
+        self.snapshot(snapshot_name);
     }
 
     fn add_blueprint_container(

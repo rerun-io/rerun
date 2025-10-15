@@ -207,8 +207,5 @@ fn run_view_ui_and_save_snapshot(
             test_context.handle_system_commands(ui.ctx());
         });
 
-    harness.snapshot_options(
-        name,
-        &SnapshotOptions::new().failed_pixel_count_threshold(10),
-    );
+    harness.snapshot(name);
 }

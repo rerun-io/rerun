@@ -98,10 +98,7 @@ fn run_view_ui_and_save_snapshot(
 
         let name = format!("{name}_overview");
         harness.run();
-        harness.snapshot_options(
-            &name,
-            &SnapshotOptions::new().failed_pixel_count_threshold(1),
-        );
+        harness.snapshot(&name);
     }
 
     {
@@ -119,10 +116,7 @@ fn run_view_ui_and_save_snapshot(
                 .events
                 .push(egui::Event::PointerMoved((50.0, 200.0).into()));
             harness.try_run_realtime().ok();
-            harness.snapshot_options(
-                &name,
-                &SnapshotOptions::new().failed_pixel_count_threshold(2),
-            );
+            harness.snapshot(&name);
         }
 
         {
@@ -132,10 +126,7 @@ fn run_view_ui_and_save_snapshot(
                 .events
                 .push(egui::Event::PointerMoved((200.0, 250.0).into()));
             harness.run();
-            harness.snapshot_options(
-                &name,
-                &SnapshotOptions::new().failed_pixel_count_threshold(2),
-            );
+            harness.snapshot(&name);
         }
 
         {
@@ -145,10 +136,7 @@ fn run_view_ui_and_save_snapshot(
                 .events
                 .push(egui::Event::PointerMoved((300.0, 400.0).into()));
             harness.run();
-            harness.snapshot_options(
-                &name,
-                &SnapshotOptions::new().failed_pixel_count_threshold(2),
-            );
+            harness.snapshot(&name);
         }
 
         {
@@ -159,10 +147,7 @@ fn run_view_ui_and_save_snapshot(
                 .push(egui::Event::PointerMoved((175.0, 450.).into()));
             harness.run();
 
-            harness.snapshot_options(
-                &name,
-                &SnapshotOptions::new().failed_pixel_count_threshold(2),
-            );
+            harness.snapshot(&name);
         }
 
         {
@@ -172,10 +157,7 @@ fn run_view_ui_and_save_snapshot(
                 .events
                 .push(egui::Event::PointerMoved((425., 275.0).into()));
             harness.run();
-            harness.snapshot_options(
-                &name,
-                &SnapshotOptions::new().failed_pixel_count_threshold(2),
-            );
+            harness.snapshot(&name);
         }
     }
 }

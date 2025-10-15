@@ -432,8 +432,5 @@ fn run_time_panel_and_save_snapshot(
         });
 
     harness.run();
-    harness.snapshot_options(
-        snapshot_name,
-        &SnapshotOptions::default().failed_pixel_count_threshold(4),
-    );
+    harness.snapshot(snapshot_name);
 }

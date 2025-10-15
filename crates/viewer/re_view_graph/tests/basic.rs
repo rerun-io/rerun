@@ -148,8 +148,5 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, 
         });
 
     harness.run();
-    harness.snapshot_options(
-        name,
-        &SnapshotOptions::new().failed_pixel_count_threshold(4),
-    );
+    harness.snapshot(name);
 }
