@@ -174,33 +174,6 @@ impl ViewProperty {
     }
 
     /// Save change to a blueprint component.
-    pub fn save_static_blueprint_component(
-        &self,
-        ctx: &ViewerContext<'_>,
-        component_descr: &ComponentDescriptor,
-        component_batch: &dyn ComponentBatch,
-    ) {
-        if !self.component_descrs.contains(component_descr) {
-            if cfg!(debug_assertions) {
-                panic!(
-                    "trying to save a blueprint component `{component_descr}` that is not part of the view property for archetype `{}`",
-                    self.archetype_name
-                );
-            } else {
-                re_log::warn_once!(
-                    "trying to save a blueprint component `{component_descr}` that is not part of the view property for archetype `{}`",
-                    self.archetype_name
-                );
-            }
-        }
-        ctx.save_static_blueprint_component(
-            self.blueprint_store_path.clone(),
-            component_descr,
-            component_batch,
-        );
-    }
-
-    /// Save change to a blueprint component.
     pub fn save_blueprint_component(
         &self,
         ctx: &ViewerContext<'_>,
@@ -243,15 +216,6 @@ impl ViewProperty {
         component_descr: ComponentDescriptor,
     ) {
         ctx.reset_blueprint_component(self.blueprint_store_path.clone(), component_descr);
-    }
-
-    /// Resets a static blueprint component to the value it had in the default blueprint.
-    pub fn reset_static_blueprint_component(
-        &self,
-        ctx: &ViewerContext<'_>,
-        component_descr: ComponentDescriptor,
-    ) {
-        ctx.reset_static_blueprint_component(self.blueprint_store_path.clone(), component_descr);
     }
 
     /// Resets all components to the values they had in the default blueprint.

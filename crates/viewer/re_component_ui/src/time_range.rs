@@ -41,7 +41,7 @@ pub fn time_range_multiline_edit_or_view_ui(
             if let Some(value) = value.as_mut() {
                 let old_start = value.start;
 
-                visible_history_boundary_ui(
+                edit_visible_history_boundary_ui(
                     ctx,
                     ui,
                     &mut value.start,
@@ -54,7 +54,7 @@ pub fn time_range_multiline_edit_or_view_ui(
 
                 any_edit |= old_start != value.start;
             } else {
-                todo!()
+                view_visible_history_boundary_ui(ctx, ui, &value.start, time_type, true);
             }
         }),
     );
@@ -65,7 +65,7 @@ pub fn time_range_multiline_edit_or_view_ui(
             if let Some(value) = value.as_mut() {
                 let old_end = value.end;
 
-                visible_history_boundary_ui(
+                edit_visible_history_boundary_ui(
                     ctx,
                     ui,
                     &mut value.end,
@@ -78,7 +78,7 @@ pub fn time_range_multiline_edit_or_view_ui(
 
                 any_edit |= old_end != value.end;
             } else {
-                todo!()
+                view_visible_history_boundary_ui(ctx, ui, &value.start, time_type, false);
             }
         }),
     );
@@ -124,12 +124,25 @@ fn current_range_ui(
     time_type: TimeType,
     time_range: &TimeRange,
 ) -> egui::Response {
-    let absolute_range = AbsoluteTimeRange::from_relative_time_range(time_range, current_time);
-    let from_formatted = time_type.format(absolute_range.min(), ctx.app_options().timestamp_format);
-    let to_formatted = time_type.format(absolute_range.max(), ctx.app_options().timestamp_format);
+    if time_range.start == TimeRangeBoundary::Infinite
+        && time_range.end == TimeRangeBoundary::Infinite
+    {
+        ui.label("Entire timeline")
+    } else if time_range.start == TimeRangeBoundary::AT_CURSOR
+        && time_range.end == TimeRangeBoundary::AT_CURSOR
+    {
+        let current_time = time_type.format(current_time, ctx.app_options().timestamp_format);
+        ui.label(format!("At {} = {current_time}", ctx.time_ctrl.timeline().name())).on_hover_text("Does not perform a latest-at query, shows only data logged at exactly the current time cursor position.")
+    } else {
+        let absolute_range = AbsoluteTimeRange::from_relative_time_range(time_range, current_time);
+        let from_formatted =
+            time_type.format(absolute_range.min(), ctx.app_options().timestamp_format);
+        let to_formatted =
+            time_type.format(absolute_range.max(), ctx.app_options().timestamp_format);
 
-    ui.label(format!("{from_formatted} to {to_formatted}"))
-        .on_hover_text("Showing data in this range (inclusive).")
+        ui.label(format!("{from_formatted} to {to_formatted}"))
+            .on_hover_text("Showing data in this range (inclusive).")
+    }
 }
 
 fn visible_history_boundary_combo_label(
@@ -156,8 +169,38 @@ fn visible_history_boundary_combo_label(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-fn visible_history_boundary_ui(
+fn view_visible_history_boundary_ui(
+    ctx: &re_viewer_context::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    visible_history_boundary: &TimeRangeBoundary,
+    time_type: TimeType,
+    low_bound: bool,
+) {
+    ui.label(visible_history_boundary_combo_label(
+        *visible_history_boundary,
+        time_type,
+        low_bound,
+    ));
+
+    match visible_history_boundary {
+        TimeRangeBoundary::CursorRelative(time_int) => {
+            ui.label(
+                match time_type {
+                    TimeType::Sequence => TimeType::Sequence,
+                    TimeType::DurationNs | TimeType::TimestampNs => TimeType::DurationNs,
+                }
+                .format(*time_int, ctx.app_options().timestamp_format),
+            );
+        }
+        TimeRangeBoundary::Absolute(time_int) => {
+            ui.label(time_type.format(*time_int, ctx.app_options().timestamp_format));
+        }
+        TimeRangeBoundary::Infinite => {}
+    }
+}
+
+#[expect(clippy::too_many_arguments)]
+fn edit_visible_history_boundary_ui(
     ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
     visible_history_boundary: &mut TimeRangeBoundary,
@@ -229,7 +272,7 @@ fn visible_history_boundary_ui(
         TimeRangeBoundary::CursorRelative(value) => {
             // see note above
             let low_bound_override = if low_bound {
-                None
+                Some(re_log_types::TimeInt::MIN)
             } else {
                 Some((other_boundary_absolute - current_time).into())
             };
@@ -244,7 +287,6 @@ fn visible_history_boundary_ui(
                             low_bound_override,
                             ctx.app_options().timestamp_format,
                         )
-
                         .on_hover_text(match time_type {
                             TimeType::DurationNs | TimeType::TimestampNs => "Time duration before/after the current time to use as time range boundary",
                             TimeType::Sequence => "Number of frames before/after the current time to use a time range boundary",
@@ -255,7 +297,7 @@ fn visible_history_boundary_ui(
         TimeRangeBoundary::Absolute(value) => {
             // see note above
             let low_bound_override = if low_bound {
-                None
+                Some(re_log_types::TimeInt::MIN)
             } else {
                 Some(other_boundary_absolute.into())
             };

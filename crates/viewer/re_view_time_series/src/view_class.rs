@@ -42,12 +42,6 @@ use re_view::{
 
 #[derive(Clone)]
 pub struct TimeSeriesViewState {
-    /// Is the user dragging the cursor this frame?
-    is_dragging_time_cursor: bool,
-
-    /// Was the user dragging the cursor last frame?
-    was_dragging_time_cursor: bool,
-
     /// State of `egui_plot`'s auto bounds before the user started dragging the time cursor.
     saved_auto_bounds: egui::Vec2b,
 
@@ -69,16 +63,11 @@ pub struct TimeSeriesViewState {
     /// (e.g. to avoid `hello/x` and `world/x` both being named `x`), and this knowledge must be
     /// forwarded to the default providers.
     pub(crate) default_names_for_entities: HashMap<EntityPath, String>,
-
-    /// Whether to reset the plot bounds next frame.
-    reset_bounds_next_frame: bool,
 }
 
 impl Default for TimeSeriesViewState {
     fn default() -> Self {
         Self {
-            is_dragging_time_cursor: false,
-            was_dragging_time_cursor: false,
             saved_auto_bounds: egui::Vec2b {
                 // Default x bounds to automatically show all time values.
                 x: true,
@@ -89,7 +78,6 @@ impl Default for TimeSeriesViewState {
             max_time_view_range: AbsoluteTimeRange::EMPTY,
             time_offset: 0,
             default_names_for_entities: Default::default(),
-            reset_bounds_next_frame: false,
         }
     }
 }
@@ -655,10 +643,6 @@ impl ViewClass for TimeSeriesView {
                     }
                 });
 
-            if state.reset_bounds_next_frame {
-                plot = plot.reset();
-            }
-
             match link_x_axis {
                 LinkAxis::Independent => {}
                 LinkAxis::LinkToGlobal => {
@@ -689,7 +673,7 @@ impl ViewClass for TimeSeriesView {
             let mut plot_double_clicked = false;
             let egui_plot::PlotResponse {
                 inner: _,
-                response,
+                mut response,
                 mut transform,
                 hovered_plot_item,
             } = plot.show(ui, |plot_ui| {
@@ -718,27 +702,6 @@ impl ViewClass for TimeSeriesView {
                         .collect::<nohash_hasher::IntSet<_>>(),
                 );
 
-                // if state.is_dragging_time_cursor {
-                //     if !state.was_dragging_time_cursor {
-                //         state.saved_auto_bounds = plot_ui.auto_bounds();
-                //     }
-                //     // Freeze any change to the plot boundaries to avoid weird interaction with the time cursor.
-                //     plot_ui.set_auto_bounds([false, false]);
-                // } else if state.was_dragging_time_cursor {
-                //     plot_ui.set_auto_bounds(state.saved_auto_bounds);
-                // } else {
-                //     plot_ui.set_auto_bounds([
-                //         // X bounds are handled by egui plot - either to auto or manually controlled.
-                //         state.reset_bounds_next_frame
-                //             || (plot_ui.auto_bounds().x && link_x_axis == LinkAxis::Independent),
-                //         // Y bounds are always handled by the blueprint.
-                //         false,
-                //     ]);
-                // }
-
-                state.reset_bounds_next_frame = false;
-                state.was_dragging_time_cursor = state.is_dragging_time_cursor;
-
                 add_series_to_plot(
                     plot_ui,
                     &query.highlights,
@@ -764,24 +727,87 @@ impl ViewClass for TimeSeriesView {
                 ctx.handle_select_hover_drag_interactions(&response, hovered, false);
             }
 
+            let mut is_dragging_time_cursor = false;
+
+            // Decide if the time cursor should be displayed, and if so where:
+            let time_x = current_time
+                .map(|current_time| (current_time.saturating_sub(time_offset)) as f64)
+                .filter(|&x| {
+                    // only display the time cursor when it's actually above the plot area
+                    transform.bounds().min()[0] <= x && x <= transform.bounds().max()[0]
+                })
+                .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
+
+            if let Some(mut time_x) = time_x {
+                let interact_radius = ui.style().interaction.resize_grab_radius_side;
+                let line_rect =
+                    egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
+                        .expand(interact_radius);
+
+                let time_drag_id = ui.id().with("time_drag");
+                let time_cursor_response = ui
+                    .interact(line_rect, time_drag_id, egui::Sense::drag())
+                    .on_hover_and_drag_cursor(egui::CursorIcon::ResizeHorizontal);
+
+                if time_cursor_response.dragged()
+                    && let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos())
+                {
+                    let aim_radius = ui.input(|i| i.aim_radius());
+                    let new_offset_time = egui::emath::smart_aim::best_in_range_f64(
+                        transform
+                            .value_from_position(pointer_pos - aim_radius * Vec2::X)
+                            .x,
+                        transform
+                            .value_from_position(pointer_pos + aim_radius * Vec2::X)
+                            .x,
+                    );
+                    let new_time = time_offset + new_offset_time.round() as i64;
+
+                    // Avoid frame-delay:
+                    time_x = pointer_pos.x;
+
+                    ctx.send_time_commands([
+                        TimeControlCommand::SetTime(new_time.into()),
+                        TimeControlCommand::Pause,
+                    ]);
+
+                    is_dragging_time_cursor = true;
+                }
+
+                ui.paint_time_cursor(
+                    ui.painter(),
+                    &time_cursor_response,
+                    time_x,
+                    time_cursor_response.rect.y_range(),
+                );
+
+                // Union with time cursor response to be able to pan over it.
+                response |= time_cursor_response;
+            }
+
             // Can determine whether we're resetting only now since we need to know whether there's a plot item hovered.
             let is_resetting = plot_double_clicked && hovered_data_result.is_none();
 
             if is_resetting {
-                scalar_axis.reset_static_blueprint_component(ctx, ScalarAxis::descriptor_range());
-                time_axis.reset_static_blueprint_component(ctx, TimeAxis::descriptor_view_range());
+                scalar_axis.reset_blueprint_component(ctx, ScalarAxis::descriptor_range());
+                time_axis.reset_blueprint_component(ctx, TimeAxis::descriptor_view_range());
 
-                state.reset_bounds_next_frame = true;
                 ui.ctx().request_repaint(); // Make sure we get another frame with the reset actually applied.
             } else {
                 // We manually handle inputs for the plot to better interact with blueprints.
-                let drag_delta = if response.dragged_by(egui::PointerButton::Primary) {
+                let drag_delta = if !is_dragging_time_cursor
+                    && response.dragged_by(egui::PointerButton::Primary)
+                {
                     response.drag_delta()
                 } else {
                     egui::Vec2::ZERO
                 };
-                let (scroll_delta, zoom_delta) =
+                let (scroll_delta, mut zoom_delta) =
                     ui.input(|i| (i.smooth_scroll_delta, i.zoom_delta_2d()));
+
+                if lock_y_during_zoom {
+                    zoom_delta.y = 1.0;
+                }
 
                 let move_delta = drag_delta + scroll_delta;
 
@@ -810,7 +836,7 @@ impl ViewClass for TimeSeriesView {
                         });
 
                     if new_x_range != x_range && view_time_range != new_view_time_range {
-                        time_axis.save_static_blueprint_component(
+                        time_axis.save_blueprint_component(
                             ctx,
                             &TimeAxis::descriptor_view_range(),
                             &new_view_time_range,
@@ -823,7 +849,7 @@ impl ViewClass for TimeSeriesView {
 
                     // Write new y_range if it has changed.
                     if new_y_range != y_range {
-                        scalar_axis.save_static_blueprint_component(
+                        scalar_axis.save_blueprint_component(
                             ctx,
                             &ScalarAxis::descriptor_range(),
                             &new_y_range,
@@ -831,35 +857,7 @@ impl ViewClass for TimeSeriesView {
                         ui.ctx().request_repaint(); // Make sure we get another frame with this new range applied.
                     }
                 }
-                // let move_delta = drag_delta + scroll_delta;
-
-                // let new_range = |range: Range1D, move_delta, zoom_delta| {
-                //     let plot_move_delta = dpos_dvalue * move_delta;
-                //     let new_size = range.abs_len() * zoom_delta;
-                //     let new_center = (range.start() + range.end()) * 0.5 + plot_move_delta;
-                //     Range1D::new(new_center - new_size * 0.5, new_center + new_size * 0.5)
-                // };
-
-                // let new_x_range = new_range(
-                //     x_range,
-                //     move_delta.x as f64,
-                //     zoom_delta.x as f64,
-                // );
-                // let new_y_range = new_range(
-                //     y_range,
-                //     move_delta.y as f64,
-                //     zoom_delta.y as f64,
-                // );
             }
-
-            // Decide if the time cursor should be displayed, and if so where:
-            let time_x = current_time
-                .map(|current_time| (current_time.saturating_sub(time_offset)) as f64)
-                .filter(|&x| {
-                    // only display the time cursor when it's actually above the plot area
-                    transform.bounds().min()[0] <= x && x <= transform.bounds().max()[0]
-                })
-                .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
 
             // Sync visibility of hidden items with the blueprint (user can hide items via the legend).
             update_series_visibility_overrides_from_plot(
@@ -869,46 +867,6 @@ impl ViewClass for TimeSeriesView {
                 ui.ctx(),
                 plot_id,
             );
-
-            if let Some(mut time_x) = time_x {
-                let interact_radius = ui.style().interaction.resize_grab_radius_side;
-                let line_rect =
-                    egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
-                        .expand(interact_radius);
-
-                let time_drag_id = ui.id().with("time_drag");
-                let response = ui
-                    .interact(line_rect, time_drag_id, egui::Sense::drag())
-                    .on_hover_and_drag_cursor(egui::CursorIcon::ResizeHorizontal);
-
-                state.is_dragging_time_cursor = false;
-                if response.dragged()
-                    && let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos())
-                {
-                    let aim_radius = ui.input(|i| i.aim_radius());
-                    let new_offset_time = egui::emath::smart_aim::best_in_range_f64(
-                        transform
-                            .value_from_position(pointer_pos - aim_radius * Vec2::X)
-                            .x,
-                        transform
-                            .value_from_position(pointer_pos + aim_radius * Vec2::X)
-                            .x,
-                    );
-                    let new_time = time_offset + new_offset_time.round() as i64;
-
-                    // Avoid frame-delay:
-                    time_x = pointer_pos.x;
-
-                    ctx.send_time_commands([
-                        TimeControlCommand::SetTime(new_time.into()),
-                        TimeControlCommand::Pause,
-                    ]);
-
-                    state.is_dragging_time_cursor = true;
-                }
-
-                ui.paint_time_cursor(ui.painter(), &response, time_x, response.rect.y_range());
-            }
 
             Ok(())
         })
