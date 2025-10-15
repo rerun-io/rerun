@@ -821,6 +821,18 @@ mod test {
 
         // Row 1:
         let struct_val = column_builder.values();
+        struct_val
+            .field_builder::<ListBuilder<StructBuilder>>(0)
+            .unwrap()
+            .append(true);
+        struct_val.append(true);
+        column_builder.append(true);
+
+        // Row 2:
+        column_builder.append(false);
+
+        // Row 3:
+        let struct_val = column_builder.values();
         let list = struct_val
             .field_builder::<ListBuilder<StructBuilder>>(0)
             .unwrap();
@@ -847,7 +859,7 @@ mod test {
         struct_val.append(true);
         column_builder.append(true);
 
-        // Row 2:
+        // Row 4:
         let struct_val = column_builder.values();
         let list = struct_val
             .field_builder::<ListBuilder<StructBuilder>>(0)
@@ -865,18 +877,6 @@ mod test {
         list.append(true);
         struct_val.append(true);
         column_builder.append(true);
-
-        // Row 3:
-        let struct_val = column_builder.values();
-        struct_val
-            .field_builder::<ListBuilder<StructBuilder>>(0)
-            .unwrap()
-            .append(true);
-        struct_val.append(true);
-        column_builder.append(true);
-
-        // Row 3:
-        column_builder.append(false);
 
         column_builder.finish()
     }

@@ -1,6 +1,5 @@
 ---
 source: crates/top/re_sdk/src/lenses/transform.rs
-assertion_line: 1030
 expression: "format!(\"{}\", DisplayRB::from(result))"
 ---
 ┌───────────────────────────────────┐
