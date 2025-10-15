@@ -2,6 +2,7 @@
 
 // https://github.com/rust-lang/rust-clippy/issues/10011
 #![cfg(test)]
+#![expect(clippy::cast_possible_wrap)]
 
 use std::sync::{
     Arc,

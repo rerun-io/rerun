@@ -118,13 +118,13 @@ impl Server {
     fn server_ui(&self, viewer_ctx: &ViewerContext<'_>, ctx: &Context<'_>, ui: &mut egui::Ui) {
         if let Poll::Ready(Err(err)) = self.entries.state() {
             self.title_ui(self.origin.host.to_string(), ctx, ui, |ui| {
-                if err.is_missing_token() || err.is_wrong_token() {
-                    let message = if err.is_missing_token() {
+                if let Some(conn_err) = err.as_client_credentials_error() {
+                    let message = if conn_err.is_missing_token() {
                         "This server requires a token to access its data."
                     } else {
                         "The provided token is invalid for this server."
                     };
-                    let edit_message = if err.is_missing_token() {
+                    let edit_message = if conn_err.is_missing_token() {
                         "Add a token"
                     } else {
                         "Edit token"

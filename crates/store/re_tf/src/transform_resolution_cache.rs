@@ -23,13 +23,13 @@ use crate::component_type_info::TransformComponentTypeInfo;
 /// Resolves all transform components at a given entity to an affine transform.
 ///
 /// It only handles resulting transforms individually to each entity, not how these transforms propagate in the tree.
-/// For transform tree propagation see [`crate::TransformTree`].
+/// For transform tree propagation see [`crate::TransformForest`].
 ///
 /// There are different kinds of transforms handled here:
 /// * [`archetypes::Transform3D`]
-///   Tree transforms that should propagate in the tree (via [`crate::TransformTree`]).
+///   Tree transforms that should propagate in the tree (via [`crate::TransformForest`]).
 /// * [`archetypes::InstancePoses3D`]
-///   Instance poses that should be applied to the tree transforms (via [`crate::TransformTree`]) but not propagate.
+///   Instance poses that should be applied to the tree transforms (via [`crate::TransformForest`]) but not propagate.
 /// * [`components::PinholeProjection`] and [`components::ViewCoordinates`]
 ///   Pinhole projections & associated view coordinates used for visualizing cameras in 3D and embedding 2D in 3D
 ///
@@ -233,6 +233,8 @@ pub struct TransformsForEntity {
 pub struct ResolvedPinholeProjection {
     pub image_from_camera: components::PinholeProjection,
 
+    pub resolution: Option<components::Resolution>,
+
     /// View coordinates at this pinhole camera.
     ///
     /// This is needed to orient 2D in 3D and 3D in 2D the right way around
@@ -397,7 +399,7 @@ impl TransformResolutionCache {
     /// Makes sure the transform cache is up to date with the latest data.
     ///
     /// This needs to be called once per frame prior to any transform propagation.
-    /// (which is done by [`crate::TransformTree`])
+    /// (which is done by [`crate::TransformForest`])
     ///
     /// See also [`Self::add_chunks`].
     // TODO(andreas): easy optimization: apply only updates for a single timeline at a time.
@@ -1132,6 +1134,13 @@ fn query_and_resolve_pinhole_projection_at_entity(
         )
         .map(|(_index, image_from_camera)| ResolvedPinholeProjection {
             image_from_camera,
+            resolution: entity_db
+                .latest_at_component::<components::Resolution>(
+                    entity_path,
+                    query,
+                    &archetypes::Pinhole::descriptor_resolution(),
+                )
+                .map(|(_index, resolution)| resolution),
             view_coordinates: {
                 query_view_coordinates(entity_path, entity_db, query)
                     .unwrap_or(archetypes::Pinhole::DEFAULT_CAMERA_XYZ)
@@ -1195,8 +1204,8 @@ mod tests {
     use std::sync::{Arc, OnceLock};
 
     use re_chunk_store::{
-        Chunk, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriber, ChunkStoreSubscriberHandle,
-        GarbageCollectionOptions, RowId,
+        Chunk, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle, GarbageCollectionOptions,
+        PerStoreChunkSubscriber, RowId,
     };
     use re_log_types::{StoreId, TimePoint, Timeline};
     use re_types::{archetypes, datatypes};
@@ -1248,38 +1257,32 @@ mod tests {
         /// Lazily registers the subscriber if it hasn't been registered yet.
         pub fn subscription_handle() -> ChunkStoreSubscriberHandle {
             static SUBSCRIPTION: OnceLock<ChunkStoreSubscriberHandle> = OnceLock::new();
-            *SUBSCRIPTION.get_or_init(|| ChunkStore::register_subscriber(Box::new(Self::default())))
+            *SUBSCRIPTION.get_or_init(ChunkStore::register_per_store_subscriber::<Self>)
         }
 
         /// Retrieves all transform events that have not been processed yet since the last call to this function.
-        pub fn take_transform_events() -> Vec<re_chunk_store::ChunkStoreEvent> {
-            ChunkStore::with_subscriber_mut(Self::subscription_handle(), |subscriber: &mut Self| {
-                std::mem::take(&mut subscriber.unprocessed_events)
-            })
+        pub fn take_transform_events(store_id: &StoreId) -> Vec<re_chunk_store::ChunkStoreEvent> {
+            ChunkStore::with_per_store_subscriber_mut(
+                Self::subscription_handle(),
+                store_id,
+                |subscriber: &mut Self| std::mem::take(&mut subscriber.unprocessed_events),
+            )
             .unwrap_or_default()
         }
     }
 
-    impl ChunkStoreSubscriber for TestStoreSubscriber {
-        fn name(&self) -> String {
+    impl PerStoreChunkSubscriber for TestStoreSubscriber {
+        fn name() -> String {
             "TestStoreSubscriber".to_owned()
         }
 
-        fn on_events(&mut self, events: &[ChunkStoreEvent]) {
-            self.unprocessed_events.extend_from_slice(events);
-        }
-
-        fn as_any(&self) -> &dyn std::any::Any {
-            self
-        }
-
-        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-            self
+        fn on_events<'a>(&mut self, events: impl Iterator<Item = &'a ChunkStoreEvent>) {
+            self.unprocessed_events.extend(events.cloned());
         }
     }
 
     fn apply_store_subscriber_events(cache: &mut TransformResolutionCache, entity_db: &EntityDb) {
-        let events = TestStoreSubscriber::take_transform_events();
+        let events = TestStoreSubscriber::take_transform_events(entity_db.store_id());
         cache.apply_all_updates(entity_db, events.iter());
     }
 
@@ -1590,7 +1593,7 @@ mod tests {
                 .with_archetype(
                     RowId::new(),
                     TimePoint::default(),
-                    &archetypes::Pinhole::new(image_from_camera_prior),
+                    &archetypes::Pinhole::new(image_from_camera_prior).with_resolution([1.0, 1.0]),
                 )
                 .build()
                 .unwrap();
@@ -1598,7 +1601,7 @@ mod tests {
                 .with_archetype(
                     RowId::new(),
                     TimePoint::default(),
-                    &archetypes::Pinhole::new(image_from_camera_final),
+                    &archetypes::Pinhole::new(image_from_camera_final).with_resolution([2.0, 2.0]),
                 )
                 .build()
                 .unwrap();
@@ -1632,6 +1635,7 @@ mod tests {
                 transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), TimeInt::MIN)),
                 Some(&ResolvedPinholeProjection {
                     image_from_camera: image_from_camera_final,
+                    resolution: Some([2.0, 2.0].into()),
                     view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
                 })
             );
@@ -1643,6 +1647,7 @@ mod tests {
                 transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), 1)),
                 Some(&ResolvedPinholeProjection {
                     image_from_camera: image_from_camera_final,
+                    resolution: Some([2.0, 2.0].into()),
                     view_coordinates: components::ViewCoordinates::BLU,
                 })
             );
@@ -1656,6 +1661,7 @@ mod tests {
                 transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), 123)),
                 Some(&ResolvedPinholeProjection {
                     image_from_camera: image_from_camera_final,
+                    resolution: Some([2.0, 2.0].into()),
                     view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
                 })
             );
@@ -1728,6 +1734,7 @@ mod tests {
                 transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), 1)),
                 Some(&ResolvedPinholeProjection {
                     image_from_camera,
+                    resolution: None,
                     view_coordinates: components::ViewCoordinates::BLU,
                 })
             );
@@ -2099,6 +2106,7 @@ mod tests {
             transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 1)),
             Some(&ResolvedPinholeProjection {
                 image_from_camera,
+                resolution: None,
                 view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
             })
         );
@@ -2106,6 +2114,7 @@ mod tests {
             transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 2)),
             Some(&ResolvedPinholeProjection {
                 image_from_camera,
+                resolution: None,
                 view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
             })
         );
@@ -2113,6 +2122,7 @@ mod tests {
             transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 3)),
             Some(&ResolvedPinholeProjection {
                 image_from_camera,
+                resolution: None,
                 view_coordinates: components::ViewCoordinates::BLU,
             })
         );

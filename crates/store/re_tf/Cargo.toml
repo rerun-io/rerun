@@ -32,4 +32,8 @@ bitflags.workspace = true
 glam.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
+thiserror.workspace = true
 vec1 = { workspace = true, features = ["smallvec-v1"] }
+
+[dev-dependencies]
+insta.workspace = true

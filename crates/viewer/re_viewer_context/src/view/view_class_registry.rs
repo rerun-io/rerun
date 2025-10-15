@@ -9,7 +9,7 @@ use crate::{
     IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, ViewClass,
     ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, ViewerContext,
     VisualizerCollection, VisualizerSystem,
-    view::view_context_system::ViewContextSystemStaticExecResult,
+    view::view_context_system::ViewContextSystemOncePerFrameResult,
 };
 
 use super::{
@@ -63,7 +63,7 @@ impl ViewSystemRegistrator<'_> {
                 .entry(T::identifier())
                 .or_insert_with(|| ContextSystemTypeRegistryEntry {
                     factory_method: Box::new(|| Box::<T>::default()),
-                    static_execution_method: T::execute_static,
+                    once_per_frame_execution_method: T::execute_once_per_frame,
                     used_by: Default::default(),
                 })
                 .used_by
@@ -144,7 +144,7 @@ impl Default for ViewClassRegistryEntry {
 /// Context system type entry in [`ViewClassRegistry`].
 struct ContextSystemTypeRegistryEntry {
     factory_method: Box<dyn Fn() -> Box<dyn ViewContextSystem> + Send + Sync>,
-    static_execution_method: fn(&ViewerContext<'_>) -> ViewContextSystemStaticExecResult,
+    once_per_frame_execution_method: fn(&ViewerContext<'_>) -> ViewContextSystemOncePerFrameResult,
     used_by: HashSet<ViewClassIdentifier>,
 }
 
@@ -324,15 +324,15 @@ impl ViewClassRegistry {
         )
     }
 
-    /// Runs the static execution method for each context system once for each view that needs it.
+    /// Runs the once-per-frame execution method for each context system once for each view that needs it.
     ///
     /// Passing the same view class identifier multiple times is fine,
     /// as context systems are deduplicated based on their identifiers regardless.
-    pub fn run_static_context_systems_for_views(
+    pub fn run_once_per_frame_context_systems(
         &self,
         viewer_ctx: &ViewerContext<'_>,
         view_classes: impl Iterator<Item = ViewClassIdentifier>,
-    ) -> IntMap<ViewSystemIdentifier, ViewContextSystemStaticExecResult> {
+    ) -> IntMap<ViewSystemIdentifier, ViewContextSystemOncePerFrameResult> {
         re_tracing::profile_function!();
 
         use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
@@ -351,7 +351,7 @@ impl ViewClassRegistry {
                 self.context_systems.get(&context_system_id).map(|entry| {
                     (
                         context_system_id,
-                        (entry.static_execution_method)(viewer_ctx),
+                        (entry.once_per_frame_execution_method)(viewer_ctx),
                     )
                 })
             })

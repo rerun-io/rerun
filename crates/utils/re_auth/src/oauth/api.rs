@@ -1,8 +1,14 @@
 //! HTTP Client for Rerun's Auth API.
 
+use std::sync::LazyLock;
+
 use super::{RefreshToken, User};
 
-const API_BASE_URL: &str = "https://rerun.io/api";
+static API_BASE_URL: LazyLock<String> = LazyLock::new(|| {
+    std::env::var("RERUN_AUTH_API_BASE_URL")
+        .ok()
+        .unwrap_or_else(|| "https://rerun.io/api".into())
+});
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -26,16 +32,12 @@ pub struct HttpError {
     pub message: String,
 }
 
-async fn post<Body: serde::Serialize, Res: serde::de::DeserializeOwned>(
-    endpoint: impl std::fmt::Display,
-    body: Body,
-) -> Result<Res, Error> {
-    let res = ehttp::fetch_async(
-        ehttp::Request::json(format!("{API_BASE_URL}{endpoint}"), &body)
-            .map_err(Error::Deserialize)?,
-    )
-    .await
-    .map_err(Error::Request)?;
+async fn send<Res: serde::de::DeserializeOwned>(request: ehttp::Request) -> Result<Res, Error> {
+    // `fetch_async` holds a `JsValue` across an await point, which is not `Send`.
+    // But wasm is single-threaded, so we don't care.
+    let res = crate::wasm_compat::make_future_send_on_wasm(ehttp::fetch_async(request))
+        .await
+        .map_err(Error::Request)?;
 
     if !res.ok {
         if !res.bytes.is_empty() {
@@ -48,6 +50,30 @@ async fn post<Body: serde::Serialize, Res: serde::de::DeserializeOwned>(
     }
 
     serde_json::from_reader(std::io::Cursor::new(res.bytes)).map_err(Error::Deserialize)
+}
+
+async fn get<Res: serde::de::DeserializeOwned>(
+    endpoint: impl std::fmt::Display,
+) -> Result<Res, Error> {
+    send(ehttp::Request::get(format!(
+        "{base_url}{endpoint}",
+        base_url = *API_BASE_URL
+    )))
+    .await
+}
+
+async fn post<Body: serde::Serialize, Res: serde::de::DeserializeOwned>(
+    endpoint: impl std::fmt::Display,
+    body: Body,
+) -> Result<Res, Error> {
+    send(
+        ehttp::Request::json(
+            format!("{base_url}{endpoint}", base_url = *API_BASE_URL),
+            &body,
+        )
+        .map_err(Error::Deserialize)?,
+    )
+    .await
 }
 
 #[derive(serde::Serialize)]
@@ -73,4 +99,8 @@ pub(crate) async fn refresh(refresh_token: &RefreshToken) -> Result<Authenticati
         },
     )
     .await
+}
+
+pub async fn jwks() -> Result<jsonwebtoken::jwk::JwkSet, Error> {
+    get("/jwks").await
 }

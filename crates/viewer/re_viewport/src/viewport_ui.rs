@@ -398,11 +398,11 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 
             let class_registry = self.ctx.view_class_registry();
             let class = view_blueprint.class(class_registry);
-            let context_system_static_exec_results = class_registry.run_static_context_systems_for_views(
+            let context_system_once_per_frame_results = class_registry.run_once_per_frame_context_systems(
                 ctx,
                 std::iter::once(view.class_identifier())
             );
-            execute_systems_for_view(ctx, view, self.view_states.get_mut_or_create(*view_id, class), &context_system_static_exec_results)
+            execute_systems_for_view(ctx, view, self.view_states.get_mut_or_create(*view_id, class), &context_system_once_per_frame_results)
         });
 
         let class = view_blueprint.class(self.ctx.view_class_registry());

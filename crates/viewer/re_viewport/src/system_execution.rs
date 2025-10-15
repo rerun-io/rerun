@@ -6,7 +6,7 @@ use rayon::prelude::*;
 
 use re_viewer_context::{
     PerSystemDataResults, SystemExecutionOutput, ViewContextCollection,
-    ViewContextSystemStaticExecResult, ViewId, ViewQuery, ViewState, ViewStates,
+    ViewContextSystemOncePerFrameResult, ViewId, ViewQuery, ViewState, ViewStates,
     ViewSystemIdentifier, ViewerContext, VisualizerCollection,
 };
 
@@ -18,9 +18,9 @@ fn run_view_systems(
     view: &ViewBlueprint,
     query: &ViewQuery<'_>,
     view_state: &dyn ViewState,
-    context_system_static_exec_results: &IntMap<
+    context_system_once_per_frame_results: &IntMap<
         ViewSystemIdentifier,
-        ViewContextSystemStaticExecResult,
+        ViewContextSystemOncePerFrameResult,
     >,
     context_systems: &mut ViewContextCollection,
     view_systems: &mut VisualizerCollection,
@@ -36,10 +36,10 @@ fn run_view_systems(
             .par_iter_mut()
             .for_each(|(name, system)| {
                 re_tracing::profile_scope!("ViewContextSystem::execute", name.as_str());
-                let static_execution_result = context_system_static_exec_results
+                let once_per_frame_result = context_system_once_per_frame_results
                     .get(name)
                     .expect("Context system execution result didn't occur");
-                system.execute(&view_ctx, query, static_execution_result);
+                system.execute(&view_ctx, query, once_per_frame_result);
             });
     };
 
@@ -65,9 +65,9 @@ pub fn execute_systems_for_view<'a>(
     ctx: &'a ViewerContext<'_>,
     view: &'a ViewBlueprint,
     view_state: &dyn ViewState,
-    context_system_static_exec_results: &IntMap<
+    context_system_once_per_frame_results: &IntMap<
         ViewSystemIdentifier,
-        ViewContextSystemStaticExecResult,
+        ViewContextSystemOncePerFrameResult,
     >,
 ) -> (ViewQuery<'a>, SystemExecutionOutput) {
     re_tracing::profile_function!(view.class_identifier().as_str());
@@ -113,7 +113,7 @@ pub fn execute_systems_for_view<'a>(
         view,
         &query,
         view_state,
-        context_system_static_exec_results,
+        context_system_once_per_frame_results,
         &mut context_systems,
         &mut view_systems,
     );
@@ -141,12 +141,12 @@ pub fn execute_systems_for_all_views<'a>(
         view_states.ensure_state_exists(*view_id, view.class(ctx.view_class_registry()));
     }
 
-    // Static context system execution.
+    // Once-per-frame context system execution.
     // The same context system class may be used by several view classes, so we have to do this before
     // running anything per-view.
-    let context_system_static_exec_results = ctx
+    let context_system_once_per_frame_results = ctx
         .view_class_registry()
-        .run_static_context_systems_for_views(
+        .run_once_per_frame_context_systems(
             ctx,
             views.values().map(|view| view.class_identifier()),
         );
@@ -163,7 +163,7 @@ pub fn execute_systems_for_all_views<'a>(
                         return None;
                     };
 
-                    let result = execute_systems_for_view(ctx, view, view_state, &context_system_static_exec_results);
+                    let result = execute_systems_for_view(ctx, view, view_state, &context_system_once_per_frame_results);
                     Some((*view_id, result))
                 },
                 egui_tiles::Tile::Container(_) => None,
