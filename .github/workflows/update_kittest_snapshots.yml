@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: 'The run ID that produced the artifact'
+        description: "The run ID that produced the artifact"
         required: true
         type: string
 
@@ -27,7 +27,7 @@ jobs:
           # See https://github.com/stefanzweifel/git-auto-commit-action#commits-made-by-this-action-do-not-trigger-new-workflow-runs
           # This token should be a personal access token with at least Read and write permission to `Contents`.
           # The commit action below will use the token this the code was checked out with.
-          token: '${{ secrets.SNAPSHOT_COMMIT_GITHUB_TOKEN }}'
+          token: "${{ secrets.SNAPSHOT_COMMIT_GITHUB_TOKEN }}"
 
       - name: Accept snapshots
         env:
@@ -40,5 +40,4 @@ jobs:
 
       - uses: stefanzweifel/git-auto-commit-action@v6
         with:
-          commit_message: 'Update snapshot images'
-
+          commit_message: "Update snapshot images"
