@@ -75,7 +75,6 @@ pub trait HarnessExt {
 
     // Takes a snapshot of the current app state with good-enough snapshot options.
     fn snapshot_app(&mut self, snapshot_name: &str);
-    fn snapshot_app_high_threshold(&mut self, snapshot_name: &str);
 
     // Prints the current viewer state.
     fn debug_viewer_state(&mut self);
@@ -299,17 +298,6 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
             &SnapshotOptions::new()
                 .threshold(1.5) // Anti-aliasing implementations have considerable platform-specific differences
                 .failed_pixel_count_threshold(20),
-        );
-    }
-
-    // Some snapshots have significant differences, eg. 2D views when its entities are selected
-    fn snapshot_app_high_threshold(&mut self, snapshot_name: &str) {
-        self.run_ok();
-        self.snapshot_options(
-            snapshot_name,
-            &SnapshotOptions::new()
-                .threshold(2.0)
-                .failed_pixel_count_threshold(1000),
         );
     }
 
