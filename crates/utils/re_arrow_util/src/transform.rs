@@ -82,6 +82,18 @@ pub trait Transform {
 
     /// Apply the transformation to the source array.
     fn transform(&self, source: &Self::Source) -> Result<Self::Target, Error>;
+
+    /// Chain this transformation with another transformation.
+    fn then<T2>(self, next: T2) -> Compose<Self, T2>
+    where
+        Self: Sized,
+        T2: Transform<Source = Self::Target>,
+    {
+        Compose {
+            first: self,
+            second: next,
+        }
+    }
 }
 
 /// Composes two transformations into a single transformation.
@@ -107,23 +119,6 @@ where
         self.second.transform(&mid)
     }
 }
-
-/// Extension trait for composing transformations.
-pub trait TransformExt: Transform {
-    /// Chain this transformation with another transformation.
-    fn then<T2>(self, next: T2) -> Compose<Self, T2>
-    where
-        Self: Sized,
-        T2: Transform<Source = Self::Target>,
-    {
-        Compose {
-            first: self,
-            second: next,
-        }
-    }
-}
-
-impl<T: Transform> TransformExt for T {}
 
 /// Extracts a field from a struct array.
 ///
