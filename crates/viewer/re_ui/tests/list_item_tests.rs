@@ -1,4 +1,4 @@
-use egui::Vec2;
+#![cfg(feature = "testing")]
 
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, icons, list_item};
@@ -221,8 +221,7 @@ pub fn test_list_items_should_match_snapshot() {
         );
     };
 
-    let mut harness = egui_kittest::Harness::builder()
-        .with_size(Vec2::new(700.0, 700.0))
+    let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, [700.0, 700.0])
         .build(|ctx| {
             egui::SidePanel::right("right_panel").show(ctx, |ui| {
                 ui.set_width(650.0);

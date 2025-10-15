@@ -374,13 +374,7 @@ impl TestContext {
         &self,
         size: impl Into<egui::Vec2>,
     ) -> egui_kittest::HarnessBuilder<()> {
-        let mut harness = self.setup_kittest_for_rendering_generic().with_size(size);
-
-        // emilk did a mistake and made `with_options` a setter instead of a builder…
-        // …we will fix that in the future, but for now, we have to live with it:
-        let _unit: () = harness.with_options(re_ui::testing::default_snapshot_options_for_ui());
-
-        harness
+        self.setup_kittest_for_rendering(re_ui::testing::TestOptions::Gui, size.into())
     }
 
     /// Set up for rendering 3D/2D and maybe UI.
@@ -390,25 +384,17 @@ impl TestContext {
         &self,
         size: impl Into<egui::Vec2>,
     ) -> egui_kittest::HarnessBuilder<()> {
-        let size = size.into();
-        let mut harness = self.setup_kittest_for_rendering_generic().with_size(size);
-
-        // emilk did a mistake and made `with_options` a setter instead of a builder…
-        // …we will fix that in the future, but for now, we have to live with it:
-        let _unit: () = harness.with_options(re_ui::testing::default_snapshot_options_for_3d(size));
-
-        harness
+        self.setup_kittest_for_rendering(re_ui::testing::TestOptions::Rendering3D, size.into())
     }
 
-    #[deprecated = "Use setup_kittest_for_rendering_ui or setup_kittest_for_rendering_3d instead"]
-    pub fn setup_kittest_for_rendering(&self) -> egui_kittest::HarnessBuilder<()> {
-        self.setup_kittest_for_rendering_generic()
-    }
-
-    fn setup_kittest_for_rendering_generic(&self) -> egui_kittest::HarnessBuilder<()> {
+    fn setup_kittest_for_rendering(
+        &self,
+        option: re_ui::testing::TestOptions,
+        size: egui::Vec2,
+    ) -> egui_kittest::HarnessBuilder<()> {
         // Egui kittests insists on having a fresh render state for each test.
         let new_render_state = create_egui_renderstate();
-        let builder = egui_kittest::Harness::builder().renderer(
+        let builder = re_ui::testing::new_harness(option, size).renderer(
             // Note that render state clone is mostly cloning of inner `Arc`.
             // This does _not_ duplicate re_renderer's context contained within.
             egui_kittest::wgpu::WgpuTestRenderer::from_render_state(new_render_state.clone()),
