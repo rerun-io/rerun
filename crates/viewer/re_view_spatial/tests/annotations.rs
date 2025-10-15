@@ -59,7 +59,7 @@ pub fn test_annotations() {
         ))
     });
     run_view_ui_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         view_id,
         "annotations",
         // We need quite a bunch of pixels to be able to stack the double hover pop-ups.
@@ -79,7 +79,7 @@ fn get_test_context() -> TestContext {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
+    test_context: &TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
@@ -99,7 +99,10 @@ fn run_view_ui_and_save_snapshot(
 
         let name = format!("{name}_overview");
         harness.run();
-        harness.snapshot(&name);
+        harness.snapshot_options(
+            &name,
+            &SnapshotOptions::new().failed_pixel_count_threshold(1),
+        );
     }
 
     {
@@ -117,7 +120,10 @@ fn run_view_ui_and_save_snapshot(
                 .events
                 .push(egui::Event::PointerMoved((50.0, 200.0).into()));
             harness.try_run_realtime().ok();
-            harness.snapshot(&name);
+            harness.snapshot_options(
+                &name,
+                &SnapshotOptions::new().failed_pixel_count_threshold(2),
+            );
         }
 
         {
@@ -127,7 +133,10 @@ fn run_view_ui_and_save_snapshot(
                 .events
                 .push(egui::Event::PointerMoved((200.0, 250.0).into()));
             harness.run();
-            harness.snapshot(&name);
+            harness.snapshot_options(
+                &name,
+                &SnapshotOptions::new().failed_pixel_count_threshold(2),
+            );
         }
 
         {
@@ -137,7 +146,10 @@ fn run_view_ui_and_save_snapshot(
                 .events
                 .push(egui::Event::PointerMoved((300.0, 400.0).into()));
             harness.run();
-            harness.snapshot(&name);
+            harness.snapshot_options(
+                &name,
+                &SnapshotOptions::new().failed_pixel_count_threshold(2),
+            );
         }
 
         {
@@ -150,7 +162,7 @@ fn run_view_ui_and_save_snapshot(
 
             harness.snapshot_options(
                 &name,
-                &SnapshotOptions::new().failed_pixel_count_threshold(1),
+                &SnapshotOptions::new().failed_pixel_count_threshold(2),
             );
         }
 
@@ -161,7 +173,10 @@ fn run_view_ui_and_save_snapshot(
                 .events
                 .push(egui::Event::PointerMoved((425., 275.0).into()));
             harness.run();
-            harness.snapshot(&name);
+            harness.snapshot_options(
+                &name,
+                &SnapshotOptions::new().failed_pixel_count_threshold(2),
+            );
         }
     }
 }

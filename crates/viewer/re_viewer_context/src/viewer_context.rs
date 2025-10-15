@@ -1,23 +1,22 @@
 use ahash::HashMap;
 use arrow::array::ArrayRef;
-use parking_lot::RwLock;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
-use re_global_context::{DisplayMode, SystemCommand};
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
 use re_ui::ContextExt as _;
 
 use crate::drag_and_drop::DragAndDropPayload;
+use crate::time_control::TimeControlCommand;
 use crate::{
     AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry, DragAndDropManager,
     IndicatedEntities, ItemCollection, MaybeVisualizableEntities, PerVisualizer, StoreContext,
     SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId,
     query_context::DataQueryResult,
 };
-use crate::{GlobalContext, Item, StorageContext, StoreHub};
+use crate::{DisplayMode, GlobalContext, Item, StorageContext, StoreHub, SystemCommand};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -47,10 +46,10 @@ pub struct ViewerContext<'a> {
     pub query_results: &'a HashMap<ViewId, DataQueryResult>,
 
     /// UI config for the current recording (found in [`EntityDb`]).
-    pub rec_cfg: &'a RecordingConfig,
+    pub time_ctrl: &'a TimeControl,
 
     /// UI config for the current blueprint.
-    pub blueprint_cfg: &'a RecordingConfig,
+    pub blueprint_time_ctrl: &'a TimeControl,
 
     /// The blueprint query used for resolving blueprint in this frame
     pub blueprint_query: &'a LatestAtQuery,
@@ -68,7 +67,7 @@ pub struct ViewerContext<'a> {
     pub drag_and_drop_manager: &'a DragAndDropManager,
 
     /// Where we are getting our data from.
-    pub connected_receivers: &'a re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
+    pub connected_receivers: &'a re_smart_channel::ReceiveSet<re_log_types::DataSourceMessage>,
 
     pub store_context: &'a StoreContext<'a>,
 }
@@ -114,6 +113,16 @@ impl ViewerContext<'_> {
     /// The global `re_renderer` context, holds on to all GPU resources.
     pub fn render_ctx(&self) -> &re_renderer::RenderContext {
         self.global_context.render_ctx
+    }
+
+    /// How to configure the renderer
+    #[inline]
+    pub fn render_mode(&self) -> re_renderer::RenderMode {
+        if self.global_context.is_test {
+            re_renderer::RenderMode::Deterministic
+        } else {
+            re_renderer::RenderMode::Beautiful
+        }
     }
 
     /// Interface for sending commands back to the app
@@ -163,6 +172,22 @@ impl ViewerContext<'_> {
         self.selection_state.selected_items()
     }
 
+    /// Returns if this item should be displayed as selected or not.
+    ///
+    /// This does not always line up with [`Self::selection`], if we
+    /// are currently loading something that will be prioritized here.
+    pub fn is_selected_or_loading(&self, item: &Item) -> bool {
+        if let DisplayMode::Loading(source) = self.display_mode() {
+            if let Item::DataSource(other_source) = item {
+                source.is_same_ignoring_uri_fragments(other_source)
+            } else {
+                false
+            }
+        } else {
+            self.selection().contains_item(item)
+        }
+    }
+
     /// Returns the currently hovered objects.
     pub fn hovered(&self) -> &ItemCollection {
         self.selection_state.hovered_items()
@@ -189,7 +214,21 @@ impl ViewerContext<'_> {
     }
 
     pub fn current_query(&self) -> re_chunk_store::LatestAtQuery {
-        self.rec_cfg.time_ctrl.read().current_query()
+        self.time_ctrl.current_query()
+    }
+
+    /// Helper function to send a [`SystemCommand::TimeControlCommands`] command
+    /// with the current store id.
+    pub fn send_time_commands(&self, commands: impl IntoIterator<Item = TimeControlCommand>) {
+        let commands: Vec<_> = commands.into_iter().collect();
+
+        if !commands.is_empty() {
+            self.command_sender()
+                .send_system(SystemCommand::TimeControlCommands {
+                    store_id: self.store_id().clone(),
+                    time_commands: commands,
+                });
+        }
     }
 
     /// Consistently handle the selection, hover, drag start interactions for a given set of items.
@@ -373,7 +412,7 @@ impl ViewerContext<'_> {
 
     /// Are we running inside the Safari browser?
     pub fn is_safari_browser(&self) -> bool {
-        #![allow(clippy::unused_self)]
+        #![expect(clippy::unused_self)]
 
         #[cfg(target_arch = "wasm32")]
         fn is_safari_browser_inner() -> Option<bool> {
@@ -402,14 +441,4 @@ impl ViewerContext<'_> {
         self.command_sender()
             .send_system(SystemCommand::ResetDisplayMode);
     }
-}
-
-// ----------------------------------------------------------------------------
-
-/// UI config for the current recording (found in [`EntityDb`]).
-#[derive(Default, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
-pub struct RecordingConfig {
-    /// The current time of the time panel, how fast it is moving, etc.
-    pub time_ctrl: RwLock<TimeControl>,
 }

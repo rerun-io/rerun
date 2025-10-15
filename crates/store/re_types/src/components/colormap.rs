@@ -4,6 +4,7 @@
 #![allow(unused_braces)]
 #![allow(unused_imports)]
 #![allow(unused_parens)]
+#![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::map_flatten)]
@@ -12,6 +13,7 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
+#![allow(clippy::wildcard_imports)]
 #![allow(non_camel_case_types)]
 
 use ::re_types_core::SerializationResult;
@@ -72,6 +74,13 @@ pub enum Colormap {
     /// It is especially suited for visualizing signed values.
     /// It interpolates from cyan to blue to dark gray to brass to yellow.
     CyanToYellow = 7,
+
+    /// The Spectral colormap from Matplotlib.
+    ///
+    /// This is a diverging colormap, often used to visualize data with a meaningful center point,
+    /// where deviations from that center are important to highlight.
+    /// It interpolates from red to orange to yellow to green to blue to violet.
+    Spectral = 8,
 }
 
 impl ::re_types_core::Component for Colormap {
@@ -86,7 +95,6 @@ impl ::re_types_core::Component for Colormap {
 impl ::re_types_core::Loggable for Colormap {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
-        #![allow(clippy::wildcard_imports)]
         use arrow::datatypes::*;
         DataType::UInt8
     }
@@ -97,7 +105,6 @@ impl ::re_types_core::Loggable for Colormap {
     where
         Self: Clone + 'a,
     {
-        #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -132,7 +139,6 @@ impl ::re_types_core::Loggable for Colormap {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
@@ -153,6 +159,7 @@ impl ::re_types_core::Loggable for Colormap {
                 Some(5) => Ok(Some(Self::Turbo)),
                 Some(6) => Ok(Some(Self::Viridis)),
                 Some(7) => Ok(Some(Self::CyanToYellow)),
+                Some(8) => Ok(Some(Self::Spectral)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),
@@ -175,6 +182,7 @@ impl std::fmt::Display for Colormap {
             Self::Turbo => write!(f, "Turbo"),
             Self::Viridis => write!(f, "Viridis"),
             Self::CyanToYellow => write!(f, "CyanToYellow"),
+            Self::Spectral => write!(f, "Spectral"),
         }
     }
 }
@@ -190,6 +198,7 @@ impl ::re_types_core::reflection::Enum for Colormap {
             Self::Turbo,
             Self::Viridis,
             Self::CyanToYellow,
+            Self::Spectral,
         ]
     }
 
@@ -216,6 +225,9 @@ impl ::re_types_core::reflection::Enum for Colormap {
             }
             Self::CyanToYellow => {
                 "Rasmusgo's Cyan to Yellow colormap\n\nThis is a perceptually uniform colormap which is robust to color blindness.\nIt is especially suited for visualizing signed values.\nIt interpolates from cyan to blue to dark gray to brass to yellow."
+            }
+            Self::Spectral => {
+                "The Spectral colormap from Matplotlib.\n\nThis is a diverging colormap, often used to visualize data with a meaningful center point,\nwhere deviations from that center are important to highlight.\nIt interpolates from red to orange to yellow to green to blue to violet."
             }
         }
     }

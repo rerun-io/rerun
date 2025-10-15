@@ -14,7 +14,7 @@ use tower_http::cors::CorsLayer;
 
 use re_byte_size::SizeBytes;
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_log_types::TableMsg;
+use re_log_types::{DataSourceMessage, TableMsg};
 use re_protos::sdk_comms::v1alpha1::{
     ReadTablesRequest, ReadTablesResponse, WriteMessagesRequest, WriteTableRequest,
     WriteTableResponse,
@@ -241,7 +241,7 @@ pub async fn serve_from_channel(
 
             let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(
                 msg,
-                re_log_encoding::Compression::LZ4,
+                re_log_encoding::codec::Compression::LZ4,
             ) {
                 Ok(msg) => msg,
                 Err(err) => {
@@ -274,7 +274,7 @@ pub fn spawn_from_rx_set(
     addr: SocketAddr,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
-    rxs: re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
+    rxs: re_smart_channel::ReceiveSet<re_log_types::DataSourceMessage>,
 ) {
     let message_proxy = MessageProxy::new(options);
     let event_tx = message_proxy.event_tx.clone();
@@ -317,9 +317,19 @@ pub fn spawn_from_rx_set(
                 continue;
             };
 
+            let msg = match msg {
+                DataSourceMessage::LogMsg(log_msg) => log_msg,
+                DataSourceMessage::UiCommand(ui_command) => {
+                    re_log::warn!(
+                        "Received a UI command, grpc server can't forward these yet: {ui_command:?}"
+                    );
+                    continue;
+                }
+            };
+
             let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(
                 msg,
-                re_log_encoding::Compression::LZ4,
+                re_log_encoding::codec::Compression::LZ4,
             ) {
                 Ok(msg) => msg,
                 Err(err) => {
@@ -352,7 +362,7 @@ pub fn spawn_with_recv(
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
 ) -> (
-    re_smart_channel::Receiver<re_log_types::LogMsg>,
+    re_smart_channel::Receiver<re_log_types::DataSourceMessage>,
     crossbeam::channel::Receiver<re_log_types::TableMsg>,
 ) {
     let uri = re_uri::ProxyUri::new(re_uri::Origin::from_scheme_and_socket_addr(
@@ -402,7 +412,7 @@ pub fn spawn_with_recv(
                         re_sorbet::timestamp_metadata::now_timestamp(),
                     );
 
-                    if channel_log_tx.send(log_msg).is_err() {
+                    if channel_log_tx.send(log_msg.into()).is_err() {
                         re_log::debug!(
                             "message proxy smart channel receiver closed, closing sender"
                         );
@@ -1012,27 +1022,28 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::net::SocketAddr;
+    use std::sync::Arc;
+    use std::time::Duration;
 
     use itertools::{Itertools as _, chain};
-    use re_build_info::CrateVersion;
+    use similar_asserts::assert_eq;
+    use tokio::net::TcpListener;
+    use tokio_util::sync::CancellationToken;
+    use tonic::transport::Channel;
+    use tonic::transport::Endpoint;
+    use tonic::transport::server::TcpIncoming;
+
     use re_chunk::RowId;
-    use re_log_encoding::Compression;
+    use re_log_encoding::codec::Compression;
     use re_log_encoding::protobuf_conversions::{log_msg_from_proto, log_msg_to_proto};
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
     use re_protos::sdk_comms::v1alpha1::{
         message_proxy_service_client::MessageProxyServiceClient,
         message_proxy_service_server::MessageProxyServiceServer,
     };
-    use similar_asserts::assert_eq;
-    use std::net::SocketAddr;
-    use std::sync::Arc;
-    use std::time::Duration;
-    use tokio::net::TcpListener;
-    use tokio_util::sync::CancellationToken;
-    use tonic::transport::Channel;
-    use tonic::transport::Endpoint;
-    use tonic::transport::server::TcpIncoming;
+
+    use super::*;
 
     #[derive(Clone)]
     struct Completion(Arc<CancellationToken>);
@@ -1060,15 +1071,13 @@ mod tests {
     fn set_store_info_msg(store_id: &StoreId) -> LogMsg {
         LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *RowId::new(),
-            info: StoreInfo {
-                store_id: store_id.clone(),
-                cloned_from: None,
-                store_source: StoreSource::RustSdk {
+            info: StoreInfo::new(
+                store_id.clone(),
+                StoreSource::RustSdk {
                     rustc_version: String::new(),
                     llvm_version: String::new(),
                 },
-                store_version: Some(CrateVersion::LOCAL),
-            },
+            ),
         })
     }
 

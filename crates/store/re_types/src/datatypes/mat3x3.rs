@@ -4,6 +4,7 @@
 #![allow(unused_braces)]
 #![allow(unused_imports)]
 #![allow(unused_parens)]
+#![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::map_flatten)]
@@ -12,6 +13,7 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
+#![allow(clippy::wildcard_imports)]
 
 use ::re_types_core::SerializationResult;
 use ::re_types_core::try_serialize_field;
@@ -41,7 +43,6 @@ pub struct Mat3x3(
 impl ::re_types_core::Loggable for Mat3x3 {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
-        #![allow(clippy::wildcard_imports)]
         use arrow::datatypes::*;
         DataType::FixedSizeList(
             std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
@@ -55,7 +56,6 @@ impl ::re_types_core::Loggable for Mat3x3 {
     where
         Self: Clone + 'a,
     {
-        #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -111,7 +111,6 @@ impl ::re_types_core::Loggable for Mat3x3 {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -155,12 +154,12 @@ impl ::re_types_core::Loggable for Mat3x3 {
                                 ));
                             }
 
-                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             let data = unsafe { arrow_data_inner.get_unchecked(start..end) };
                             let data = data.iter().cloned().map(Option::unwrap_or_default);
 
                             // NOTE: Unwrapping cannot fail: the length must be correct.
-                            #[allow(clippy::unwrap_used)]
+                            #[expect(clippy::unwrap_used)]
                             Ok(array_init::from_iter(data).unwrap())
                         })
                         .transpose()
@@ -181,13 +180,12 @@ impl ::re_types_core::Loggable for Mat3x3 {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         use arrow::{array::*, buffer::*, datatypes::*};
-        if let Some(nulls) = arrow_data.nulls() {
-            if nulls.null_count() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
+        if let Some(nulls) = arrow_data.nulls()
+            && nulls.null_count() != 0
+        {
+            return Err(DeserializationError::missing_data());
         }
         Ok({
             let slice = {

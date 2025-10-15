@@ -86,7 +86,7 @@ impl Example {
 pub enum Language {
     Rust,
     Python,
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     C,
     Cpp,
 }
@@ -135,7 +135,7 @@ impl ExamplesManifest {
 #[derive(serde::Deserialize)]
 pub struct ExampleCategory {
     /// Used to sort categories in the `rerun.io/examples` navbar.
-    #[allow(unused)]
+    #[expect(unused)]
     pub order: u64,
 
     /// `snake_case` name.
@@ -333,15 +333,12 @@ impl Frontmatter {
         let start = start + START.len();
 
         let Some(end) = content[start..].find(END) else {
-            anyhow::bail!(
-                "{:?} has invalid frontmatter: missing {END:?} terminator",
-                path
-            );
+            anyhow::bail!("{path:?} has invalid frontmatter: missing {END:?} terminator");
         };
         let end = start + end;
 
         let frontmatter: Self = toml::from_str(content[start..end].trim()).map_err(|err| {
-            #[allow(clippy::unwrap_used)]
+            #[expect(clippy::unwrap_used)]
             let p = path.parent().unwrap().file_name().unwrap();
             anyhow::anyhow!("Failed to parse TOML metadata of {p:?}: {err}")
         })?;

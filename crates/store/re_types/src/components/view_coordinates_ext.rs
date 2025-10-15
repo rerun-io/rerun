@@ -1,4 +1,4 @@
-#![allow(clippy::wrong_self_convention)] // TODO(emilk): re-enable
+#![expect(clippy::wrong_self_convention)] // TODO(emilk): re-enable
 
 // ----------------------------------------------------------------------------
 

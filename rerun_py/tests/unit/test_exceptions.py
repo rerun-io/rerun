@@ -11,7 +11,7 @@ from rerun.error_utils import RerunWarning, catch_and_log_exceptions
 
 
 @catch_and_log_exceptions()
-def outer(strict: bool | None = None) -> int:
+def outer(strict: bool | None = None) -> int:  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
     """Calls an inner decorated function."""
     inner(3)
 
@@ -19,7 +19,7 @@ def outer(strict: bool | None = None) -> int:
 
 
 @catch_and_log_exceptions()
-def two_calls(strict: bool | None = None) -> None:
+def two_calls(strict: bool | None = None) -> None:  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
     """Calls an inner decorated function twice."""
     inner(3)
     inner(3)
@@ -34,7 +34,7 @@ def inner(count: int) -> None:
 
 
 @catch_and_log_exceptions()
-def uses_context(strict: bool | None = None) -> None:
+def uses_context(strict: bool | None = None) -> None:  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
     """Uses a context manager instead of a function."""
     with catch_and_log_exceptions("inner context"):
         raise ValueError("some value error")
@@ -48,9 +48,9 @@ def get_line_number() -> int:
 
 def expected_warnings(warnings: Any, mem: Any, starting_msgs: int, count: int, expected_line: int) -> None:
     for w in warnings:
-        assert w.lineno == expected_line
-        assert w.filename == __file__
-        assert "some value error" in str(w.message)
+        assert w.lineno == expected_line, f"mem: {mem}, starting_msgs: {starting_msgs}, count: {count}"
+        assert w.filename == __file__, f"mem: {mem}, starting_msgs: {starting_msgs}, count: {count}"
+        assert "some value error" in str(w.message), f"mem: {mem}, starting_msgs: {starting_msgs}, count: {count}"
 
 
 def test_stack_tracking() -> None:

@@ -20,7 +20,7 @@ use re_viewer_context::{
 
 use crate::{
     PickableRectSourceData, PickableTexturedRect, SpatialView3D,
-    contexts::{SpatialSceneEntityContext, TwoDInThreeDTransformInfo},
+    contexts::{SpatialSceneEntityContext, TransformTreeContext},
     view_kind::SpatialViewKind,
     visualizers::filter_visualizable_2d_entities,
 };
@@ -57,6 +57,7 @@ impl DepthImageVisualizer {
         ctx: &QueryContext<'_>,
         depth_clouds: &mut Vec<DepthCloud>,
         ent_context: &SpatialSceneEntityContext<'_>,
+        transforms: &TransformTreeContext,
         images: impl Iterator<Item = DepthImageComponentData>,
     ) {
         let is_3d_view = ent_context.view_class_identifier == SpatialView3D::identifier();
@@ -108,41 +109,35 @@ impl DepthImageVisualizer {
             };
 
             if is_3d_view
-                && let Some(twod_in_threed_info) = &ent_context.transform_info.twod_in_threed_info
+                && let Some(pinhole_tree_root_info) =
+                    transforms.pinhole_tree_root_info(ent_context.transform_info.tree_root())
             {
                 let fill_ratio = fill_ratio.unwrap_or_default();
 
                 // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                 // transform of the projection plane, which is of no use to us here.
                 // What we want are the extrinsics of the depth camera!
-                match Self::process_entity_view_as_depth_cloud(
-                    ctx,
+                let cloud = Self::process_entity_view_as_depth_cloud(
                     ent_context,
                     entity_path,
-                    twod_in_threed_info,
+                    pinhole_tree_root_info,
                     depth_meter,
                     fill_ratio,
                     &textured_rect.colormapped_texture,
-                ) {
-                    Ok(cloud) => {
-                        self.data.add_bounding_box(
-                            entity_path.hash(),
-                            cloud.world_space_bbox(),
-                            glam::Affine3A::IDENTITY,
-                        );
-                        self.depth_cloud_entities.insert(
-                            entity_path.hash(),
-                            (image, depth_meter, textured_rect.colormapped_texture),
-                        );
-                        depth_clouds.push(cloud);
+                );
+                self.data.add_bounding_box(
+                    entity_path.hash(),
+                    cloud.world_space_bbox(),
+                    glam::Affine3A::IDENTITY,
+                );
+                self.depth_cloud_entities.insert(
+                    entity_path.hash(),
+                    (image, depth_meter, textured_rect.colormapped_texture),
+                );
+                depth_clouds.push(cloud);
 
-                        // Skip creating a textured rect.
-                        return;
-                    }
-                    Err(err) => {
-                        re_log::warn_once!("{err}");
-                    }
-                }
+                // Skip creating a textured rect.
+                return;
             }
 
             self.data.add_pickable_rect(
@@ -160,34 +155,20 @@ impl DepthImageVisualizer {
     }
 
     fn process_entity_view_as_depth_cloud(
-        ctx: &QueryContext<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
         ent_path: &EntityPath,
-        twod_in_threed_info: &TwoDInThreeDTransformInfo,
+        pinhole_tree_root_info: &re_tf::PinholeTreeRoot,
         depth_meter: DepthMeter,
         radius_scale: FillRatio,
         depth_texture: &ColormappedTexture,
-    ) -> anyhow::Result<DepthCloud> {
+    ) -> DepthCloud {
         re_tracing::profile_function!();
 
-        // TODO(andreas): We actually _do_ have a data result here, we should instead do a regular query.
-        // Consequently we should also advertise the components on the archetype!
-        let Some((pinhole, camera_xyz)) =
-            crate::pinhole::query_pinhole_and_view_coordinates_from_store_without_blueprint(
-                ctx.viewer_ctx(),
-                ctx.query,
-                &twod_in_threed_info.parent_pinhole,
-            )
-        else {
-            anyhow::bail!(
-                "Couldn't fetch pinhole intrinsics at {:?}",
-                twod_in_threed_info.parent_pinhole
-            );
-        };
-
-        // Place the cloud at the pinhole's location. Note that this means we ignore any 2D transforms that might be there.
-        let world_from_view = twod_in_threed_info.reference_from_pinhole_entity;
-        let world_from_rdf = world_from_view * glam::Affine3A::from_mat3(camera_xyz.from_rdf());
+        // Place the cloud at the pinhole's location. Note that this means we ignore any 2D transforms that might on the way.
+        let pinhole = &pinhole_tree_root_info.pinhole_projection;
+        let world_from_view = pinhole_tree_root_info.parent_root_from_pinhole_root;
+        let world_from_rdf =
+            world_from_view * glam::Affine3A::from_mat3(pinhole.view_coordinates.from_rdf());
 
         let dimensions = glam::UVec2::from_array(depth_texture.texture.width_height());
 
@@ -195,7 +176,9 @@ impl DepthImageVisualizer {
 
         // We want point radius to be defined in a scale where the radius of a point
         // is a factor of the diameter of a pixel projected at that distance.
-        let fov_y = pinhole.fov_y();
+        let fov_y = pinhole
+            .image_from_camera
+            .fov_y(pinhole.resolution.unwrap_or([1.0, 1.0].into()));
         let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * dimensions.y as f32);
         let point_radius_from_world_depth = *radius_scale.0 * pixel_width_from_depth;
 
@@ -204,9 +187,9 @@ impl DepthImageVisualizer {
             world_depth_from_texture_depth * depth_texture.range[1],
         ];
 
-        Ok(DepthCloud {
+        DepthCloud {
             world_from_rdf,
-            depth_camera_intrinsics: pinhole.image_from_camera,
+            depth_camera_intrinsics: pinhole.image_from_camera.0.into(),
             world_depth_from_texture_depth,
             point_radius_from_world_depth,
             min_max_depth_in_world,
@@ -218,7 +201,7 @@ impl DepthImageVisualizer {
             },
             outline_mask_id: ent_context.highlight.overall,
             picking_object_id: re_renderer::PickingLayerObjectId(ent_path.hash64()),
-        })
+        }
     }
 }
 
@@ -249,6 +232,8 @@ impl VisualizerSystem for DepthImageVisualizer {
         context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let mut depth_clouds = Vec::new();
+
+        let transforms = context_systems.get::<TransformTreeContext>()?;
 
         use super::entity_iterator::{iter_component, iter_slices, process_archetype};
         process_archetype::<Self, DepthImage, _>(
@@ -316,7 +301,13 @@ impl VisualizerSystem for DepthImageVisualizer {
                     },
                 );
 
-                self.process_depth_image_data(ctx, &mut depth_clouds, spatial_ctx, &mut data);
+                self.process_depth_image_data(
+                    ctx,
+                    &mut depth_clouds,
+                    spatial_ctx,
+                    transforms,
+                    &mut data,
+                );
 
                 Ok(())
             },

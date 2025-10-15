@@ -7,8 +7,8 @@ use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
 use re_log_types::TableId;
 use re_redap_browser::{Command, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers};
 use re_smart_channel::SmartChannelSource;
-use re_ui::list_item::{ItemMenuButton, LabelContent, ListItemContentButtonsExt as _};
-use re_ui::{UiExt as _, UiLayout, icons, list_item};
+use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
+use re_ui::{OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
     DisplayMode, Item, RecordingOrTable, SystemCommand, SystemCommandSender as _, ViewerContext,
@@ -56,47 +56,48 @@ fn add_button_ui(
     ui: &mut egui::Ui,
     _recording_panel_data: &RecordingPanelData<'_>,
 ) {
-    use re_ui::list_item::ItemButton as _;
-    Box::new(ItemMenuButton::new(&re_ui::icons::ADD, "Add…", |ui| {
-        if re_ui::UICommand::Open
-            .menu_button_ui(ui, ctx.command_sender())
-            .clicked()
-        {
-            ui.close();
-        }
-        if re_ui::UICommand::AddRedapServer
-            .menu_button_ui(ui, ctx.command_sender())
-            .clicked()
-        {
-            ui.close();
-        }
+    ui.add(
+        ui.small_icon_button_widget(&re_ui::icons::ADD, "Add…")
+            .on_hover_text("Open a file or connect to a server")
+            .on_menu(|ui| {
+                if re_ui::UICommand::Open
+                    .menu_button_ui(ui, ctx.command_sender())
+                    .clicked()
+                {
+                    ui.close();
+                }
+                if re_ui::UICommand::AddRedapServer
+                    .menu_button_ui(ui, ctx.command_sender())
+                    .clicked()
+                {
+                    ui.close();
+                }
 
-        // Show some nice debugging tools in debug builds.
-        #[cfg(debug_assertions)]
-        {
-            ui.separator();
-            ui.add_enabled(
-                false,
-                egui::Button::new(egui::RichText::new("Debug-only tools").italics()),
-            );
+                // Show some nice debugging tools in debug builds.
+                #[cfg(debug_assertions)]
+                {
+                    ui.separator();
+                    ui.add_enabled(
+                        false,
+                        egui::Button::new(egui::RichText::new("Debug-only tools").italics()),
+                    );
 
-            if ui.button("Print recording entity DBs").clicked() {
-                let recording_entity_dbs = ctx
-                    .storage_context
-                    .bundle
-                    .entity_dbs()
-                    .filter(|entity_db| entity_db.store_id().is_recording())
-                    .collect::<Vec<_>>();
-                println!("Recording entity DBs:\n{recording_entity_dbs:#?}\n");
-            }
+                    if ui.button("Print recording entity DBs").clicked() {
+                        let recording_entity_dbs = ctx
+                            .storage_context
+                            .bundle
+                            .entity_dbs()
+                            .filter(|entity_db| entity_db.store_id().is_recording())
+                            .collect::<Vec<_>>();
+                        println!("Recording entity DBs:\n{recording_entity_dbs:#?}\n");
+                    }
 
-            if ui.button("Print recording panel data").clicked() {
-                println!("Recording panel data:\n{_recording_panel_data:#?}\n");
-            }
-        }
-    }))
-    .ui(ui)
-    .on_hover_text("Open a file or connect to a server");
+                    if ui.button("Print recording panel data").clicked() {
+                        println!("Recording panel data:\n{_recording_panel_data:#?}\n");
+                    }
+                }
+            }),
+    );
 }
 
 fn all_sections_ui(
@@ -167,7 +168,7 @@ fn all_sections_ui(
 
     if recording_panel_data.show_example_section {
         let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
-        let selected = ctx.selection().contains_item(&item);
+        let selected = ctx.is_selected_or_loading(&item);
         let active = matches!(
             ctx.display_mode(),
             DisplayMode::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
@@ -224,32 +225,32 @@ fn server_section_ui(
 
     let content = list_item::LabelContent::header(origin.host.to_string())
         .with_always_show_buttons(true)
-        .with_buttons(|ui| {
-            ItemMenuButton::new(&icons::MORE, "Actions", move |ui| {
-                if icons::RESET
-                    .as_button_with_label(ui.tokens(), "Refresh")
-                    .ui(ui)
-                    .clicked()
-                {
-                    servers.send_command(Command::RefreshCollection(origin.clone()));
-                }
-                if icons::SETTINGS
-                    .as_button_with_label(ui.tokens(), "Edit")
-                    .ui(ui)
-                    .clicked()
-                {
-                    servers.send_command(Command::OpenEditServerModal(origin.clone()));
-                }
-                if icons::TRASH
-                    .as_button_with_label(ui.tokens(), "Remove")
-                    .ui(ui)
-                    .clicked()
-                {
-                    servers.send_command(Command::RemoveServer(origin.clone()));
-                }
-            })
-            .ui(ui);
-        });
+        .with_button(
+            ui.small_icon_button_widget(&icons::MORE, "Actions")
+                .on_menu(move |ui| {
+                    if icons::RESET
+                        .as_button_with_label(ui.tokens(), "Refresh")
+                        .ui(ui)
+                        .clicked()
+                    {
+                        servers.send_command(Command::RefreshCollection(origin.clone()));
+                    }
+                    if icons::SETTINGS
+                        .as_button_with_label(ui.tokens(), "Edit")
+                        .ui(ui)
+                        .clicked()
+                    {
+                        servers.send_command(Command::OpenEditServerModal(origin.clone()));
+                    }
+                    if icons::TRASH
+                        .as_button_with_label(ui.tokens(), "Remove")
+                        .ui(ui)
+                        .clicked()
+                    {
+                        servers.send_command(Command::RemoveServer(origin.clone()));
+                    }
+                }),
+        );
 
     let item_response = ui
         .list_item()
@@ -404,6 +405,17 @@ fn dataset_entry_ui(
         {
             ctx.command_sender()
                 .send_system(SystemCommand::CopyViewerUrl(url));
+        }
+
+        if ui.button("Copy dataset name").clicked() {
+            re_log::info!("Copied {name:?} to clipboard");
+            ui.ctx().copy_text(name.clone());
+        }
+
+        if ui.button("Copy dataset id").clicked() {
+            let id = entry_id.id.to_string();
+            re_log::info!("Copied {id:?} to clipboard");
+            ui.ctx().copy_text(id);
         }
     });
 
@@ -569,23 +581,55 @@ fn receiver_ui(
     receiver: &SmartChannelSource,
     show_hierarchal: bool,
 ) {
-    let Some(string) = receiver.loading_string() else {
+    let Some(name) = receiver.loading_name() else {
         return;
     };
 
-    let label_content = re_ui::list_item::LabelContent::new(string).with_buttons(|ui| {
-        let resp = ui
-            .small_icon_button(&re_ui::icons::REMOVE, "Disconnect")
-            .on_hover_text("Disconnect from this source");
+    let selected = ctx.is_selected_or_loading(&Item::DataSource(receiver.clone()));
 
-        if resp.clicked() {
-            ctx.connected_receivers.remove(receiver);
+    let label_content = re_ui::list_item::LabelContent::new(&name)
+        .with_icon_fn(|ui, rect, _| {
+            ui.put(rect, egui::Spinner::new());
+        })
+        .with_buttons(|ui| {
+            let resp = ui
+                .small_icon_button(&re_ui::icons::REMOVE, "Disconnect")
+                .on_hover_text("Disconnect from this source");
+
+            if resp.clicked() {
+                ctx.connected_receivers.remove(receiver);
+            }
+        });
+
+    let response = if show_hierarchal {
+        ui.list_item()
+            .selected(selected)
+            .show_hierarchical(ui, label_content)
+    } else {
+        ui.list_item()
+            .selected(selected)
+            .show_flat(ui, label_content)
+    };
+
+    response.context_menu(|ui| {
+        let url = ViewerOpenUrl::from_data_source(receiver).and_then(|url| url.sharable_url(None));
+        if ui
+            .add_enabled(url.is_ok(), egui::Button::new("Copy link to partition"))
+            .on_disabled_hover_text(if let Err(err) = url.as_ref() {
+                format!("Can't copy a link to this partition: {err}")
+            } else {
+                "Can't copy a link to this partition".to_owned()
+            })
+            .clicked()
+            && let Ok(url) = url
+        {
+            ctx.command_sender()
+                .send_system(SystemCommand::CopyViewerUrl(url));
+        }
+
+        if ui.button("Copy partition name").clicked() {
+            re_log::info!("Copied {name:?} to clipboard");
+            ui.ctx().copy_text(name);
         }
     });
-
-    if show_hierarchal {
-        ui.list_item().show_hierarchical(ui, label_content);
-    } else {
-        ui.list_item().show_flat(ui, label_content);
-    }
 }

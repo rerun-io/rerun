@@ -98,7 +98,7 @@ fn paint_time_range_ticks(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn paint_ticks(
     egui_ctx: &egui::Context,
     dark_mode: bool,
@@ -211,7 +211,7 @@ fn paint_ticks(
                 let text = format_tick(current_time);
                 let text_x = line_x + 4.0;
 
-                egui_ctx.fonts(|fonts| {
+                egui_ctx.fonts_mut(|fonts| {
                     shapes.push(egui::Shape::text(
                         fonts,
                         pos2(text_x, lerp(canvas.y_range(), 0.5)),

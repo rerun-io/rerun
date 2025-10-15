@@ -12,10 +12,9 @@ This is written for anyone who wants to contribute to the Rerun repository.
 
 ## What to contribute
 * **Examples**: We welcome any examples you would like to add. Follow the pattern of the existing examples in the [`examples/`](examples) folder.
-
-* **Bug reports and issues**: Open them at <https://github.com/rerun-io/rerun/issues>.
-
-You can also look at our [`good first issue` tag](https://github.com/rerun-io/rerun/labels/good%20first%20issue).
+* Report bugs and features requests at <https://github.com/rerun-io/rerun/issues>.
+* You can also look at our [`good first issue` tag](https://github.com/rerun-io/rerun/labels/good%20first%20issue).
+* We track things we would like implemented in 3rd party crates [here](https://github.com/rerun-io/opensource/issues/1).
 
 ## Pull requests
 We use [Trunk Based Development](https://trunkbaseddevelopment.com/), which means we encourage small, short-lived branches.
@@ -254,7 +253,7 @@ See respective readme files for more details.
 
 ## Tools
 
-We use the [`pixi`](https://prefix.dev/) for managing dev-tool versioning, download and task running. To see available tasks, use `pixi task list`.
+We use the [`pixi`](https://pixi.sh/) for managing dev-tool versioning, download and task running. To see available tasks, use `pixi task list`.
 
 We use [cargo deny](https://github.com/EmbarkStudios/cargo-deny) to check our dependency tree for copy-left licenses, duplicate dependencies and [rustsec advisories](https://rustsec.org/advisories). You can configure it in `deny.toml`. Usage: `cargo deny check`
 Configure your editor to run `cargo fmt` on save. Also configure it to strip trailing whitespace, and to end each file with a newline. Settings for VSCode can be found in the `.vscode` folder and should be applied automatically. If you are using another editor, consider adding good setting to this repository!

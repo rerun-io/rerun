@@ -39,7 +39,7 @@ features = [
       "archetypes/scalars_column_updates",
       "archetypes/points3d_column_updates",
       "archetypes/transform3d_column_updates",
-      "archetypes/image_column_updates",       # bonus!
+      "archetypes/image_column_updates", # bonus!
     ],
   ],
   [
@@ -92,7 +92,7 @@ features = [
 [opt_out]
 backwards_check = [
   "archetypes/video_stream_synthetic", # Video encodes differently on CI :(
-  "concepts/explicit_recording",       # The file path differs locally and on CI
+  "concepts/explicit_recording", # The file path differs locally and on CI
 ]
 
 
@@ -121,8 +121,8 @@ backwards_check = [
   "rust",
 ]
 "concepts/send_recording" = [
-  "py",   # Requires context (an RRD file to be exported by the user)
-  "cpp",  # Not implemented for C++
+  "py", # Requires context (an RRD file to be exported by the user)
+  "cpp", # Not implemented for C++
   "rust", # Requires context (an RRD file to be exported by the user)
 ]
 "concepts/static/log_static" = [ # pseudo-code
@@ -146,15 +146,15 @@ backwards_check = [
   "rust",
 ]
 "concepts/viscomp-base" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "concepts/viscomp-component-default" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "concepts/viscomp-component-override" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "concepts/app-model" = [ # Uses a non-standard logging workflow
@@ -163,47 +163,47 @@ backwards_check = [
   "rust",
 ]
 "howto/check_connection_status" = [
-  "py",   # TODO(#2353): Doesn't exist
-  "cpp",  # TODO(#2353): Doesn't exist
+  "py", # TODO(#2353): Doesn't exist
+  "cpp", # TODO(#2353): Doesn't exist
   "rust", # Runs indefinitely.
 ]
 "howto/micro_batching" = [
   "cpp", # TODO(#10661): Doesn't exist
 ]
 "howto/send_table" = [
-  "py",   # Requires a server to connect to
-  "cpp",  # Doesn't exist
+  "py", # Requires a server to connect to
+  "cpp", # Doesn't exist
   "rust", # Doesn't exist
 ]
 "howto/serve_web_viewer" = [
-  "py",   # Runs indefinitely.
-  "cpp",  # TODO(#4638): Doesn't exist.
+  "py", # Runs indefinitely.
+  "cpp", # TODO(#4638): Doesn't exist.
   "rust", # Runs indefinitely.
 ]
 "howto/set_sinks" = [
-  "py",   # Requires a server to connect to
-  "cpp",  # Doesn't exist
+  "py", # Requires a server to connect to
+  "cpp", # Doesn't exist
   "rust", # Doesn't exist
 ]
 "views" = [
-  "cpp",  # TODO(#5520): C++ views are not yet implemented
+  "cpp", # TODO(#5520): C++ views are not yet implemented
   "rust", # TODO(#5521): Rust views are not yet implemented
 ]
 "archetypes/image_advanced" = [
-  "cpp",  # Missing examples
+  "cpp", # Missing examples
   "rust", # Missing examples
 ]
 "archetypes/entity_behavior" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "archetypes/video_stream_synthetic" = [
-  "cpp",  # Not implemented
+  "cpp", # Not implemented
   "rust", # Not implemented
 ]
 "archetypes/video_stream_query_and_mux" = [
-  "py",   # Doesn't produce an rrd file.
-  "cpp",  # Not implemented
+  "py", # Doesn't produce an rrd file.
+  "cpp", # Not implemented
   "rust", # Not implemented
 ]
 "migration/log_line" = [ # Not a complete example -- just a single log line
@@ -257,22 +257,22 @@ backwards_check = [
   "py",
 ]
 "tutorials/fixed_window_plot" = [
-  "cpp",  # Not implemented
+  "cpp", # Not implemented
   "rust", # Not implemented
-  "py",   # Doesn't terminate
+  "py", # Doesn't terminate
 ]
 "tutorials/visualizer-overrides" = [
-  "cpp",  # Not implemented
+  "cpp", # Not implemented
   "rust", # Not implemented
 ]
 "tutorials/data_out" = [
-  "py",   # Requires context (an RRD file to be exported by the user)
-  "cpp",  # Not implemented
+  "py", # Requires context (an RRD file to be exported by the user)
+  "cpp", # Not implemented
   "rust", # Not implemented
 ]
 "tutorials/visualization" = [
-  "py",   # Requires passing RRD as argument
-  "cpp",  # Not implemented
+  "py", # Requires passing RRD as argument
+  "cpp", # Not implemented
   "rust", # Not implemented
 ]
 
@@ -295,23 +295,23 @@ backwards_check = [
   "py",
 ]
 "concepts/viscomp-base" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "concepts/viscomp-component-default" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "concepts/viscomp-component-override" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "concepts/viscomp-visualizer-override-multiple" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "concepts/viscomp-visualizer-override" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 quick_start = [ # These examples don't have exactly the same implementation.
@@ -366,7 +366,5 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "archetypes/video_auto_frames" = [
   "$config_dir/../../tests/assets/video/Big_Buck_Bunny_1080_10s_av1.mp4",
 ]
-"archetypes/video_manual_frames" = [
-  "$config_dir/../../tests/assets/video/Sintel_1080_10s_av1.mp4",
-]
+"archetypes/video_manual_frames" = ["$config_dir/../../tests/assets/video/Sintel_1080_10s_av1.mp4"]
 "howto/load_mcap" = ["$config_dir/../../tests/assets/mcap/r2b_galileo.mcap"]

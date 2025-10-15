@@ -9,8 +9,14 @@ use re_sorbet::{IndexColumnDescriptor, TimeColumnSelector};
 /// Column descriptors are used to describe the columns in a
 /// [`Schema`][rerun.dataframe.Schema]. They are read-only. To select an index
 /// column, use [`IndexColumnSelector`][rerun.dataframe.IndexColumnSelector].
-#[pyclass(frozen, name = "IndexColumnDescriptor")]
-#[derive(Clone)]
+#[pyclass(
+    frozen,
+    eq,
+    hash,
+    name = "IndexColumnDescriptor",
+    module = "rerun_bindings.rerun_bindings"
+)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct PyIndexColumnDescriptor(pub IndexColumnDescriptor);
 
 #[pymethods]
@@ -50,8 +56,13 @@ impl From<IndexColumnDescriptor> for PyIndexColumnDescriptor {
 /// ----------
 /// index : str
 ///     The name of the index to select. Usually the name of a timeline.
-#[pyclass(frozen, name = "IndexColumnSelector")]
-#[derive(Clone)]
+#[pyclass(
+    frozen,
+    eq,
+    name = "IndexColumnSelector",
+    module = "rerun_bindings.rerun_bindings"
+)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PyIndexColumnSelector(pub TimeColumnSelector);
 
 #[pymethods]

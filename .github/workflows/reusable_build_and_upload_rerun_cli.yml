@@ -64,7 +64,7 @@ env:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "read"
@@ -85,7 +85,7 @@ jobs:
         run: |
           case "${{ inputs.PLATFORM }}" in
             linux-arm64)
-              runner="buildjet-16vcpu-ubuntu-2204-arm"
+              runner="ubuntu-arm-16-core"
               target="aarch64-unknown-linux-gnu"
               container="'rerunio/ci_docker:0.16.0'"
               bin_name="rerun"
@@ -159,9 +159,9 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
           targets: ${{ needs.set-config.outputs.TARGET }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Build web-viewer (release)
         run: pixi run rerun-build-web-release
@@ -181,7 +181,6 @@ jobs:
       # Now that we already have a CLI binary, we can use it to check whether our man page is up to date.
       - name: Compare man page to CLI docs
         if: runner.os == 'Linux'
-        shell: bash
         run: |
           pixi run ./scripts/ci/check_cli_docs.py --rerun-exe "./target_pixi/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
 

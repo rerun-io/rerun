@@ -18,7 +18,7 @@ use crate::{
 };
 
 // Used all over in docstrings.
-#[allow(unused_imports)]
+#[expect(unused_imports)]
 use crate::RowId;
 
 // ---
@@ -339,7 +339,6 @@ impl ChunkStore {
 
             let Self {
                 id: _,
-                store_info: _,
                 config: _,
                 time_type_registry: _,
                 type_registry: _,

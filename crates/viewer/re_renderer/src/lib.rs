@@ -27,7 +27,7 @@
 //! Unlike [`renderer::DrawData`]s, [`renderer::Renderer`]s are immutable and long-lived.
 
 // TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 mod allocator;
 pub mod device_caps;
@@ -75,7 +75,7 @@ pub use allocator::{
     CpuWriteGpuReadError, GpuReadbackIdentifier, create_and_fill_uniform_buffer,
     create_and_fill_uniform_buffer_batch,
 };
-pub use color::Rgba32Unmul;
+pub use color::{Rgba32Unmul, UnalignedColor32};
 pub use colormap::{
     Colormap, colormap_cyan_to_yellow_srgb, colormap_inferno_srgb, colormap_magma_srgb,
     colormap_plasma_srgb, colormap_srgb, colormap_turbo_srgb, colormap_viridis_srgb,
@@ -100,16 +100,16 @@ pub use rect::{RectF32, RectInt};
 pub use size::Size;
 pub use texture_info::Texture2DBufferInfo;
 pub use transform::RectTransform;
-pub use view_builder::{ViewBuilder, ViewPickingConfiguration};
+pub use view_builder::{RenderMode, ViewBuilder, ViewPickingConfiguration};
 pub use wgpu_resources::{
-    BindGroupDesc, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
     GpuPipelineLayoutPool, GpuRenderPipelineHandle, GpuRenderPipelinePool,
     GpuRenderPipelinePoolAccessor, GpuShaderModuleHandle, GpuShaderModulePool, PipelineLayoutDesc,
     RenderPipelineDesc, ShaderModuleDesc, VertexBufferLayout, WgpuResourcePoolStatistics,
 };
 
 pub use self::file_system::{FileSystem, get_filesystem};
-#[allow(unused_imports)] // they can be handy from time to time
+#[allow(clippy::allow_attributes, unused_imports)] // they can be handy from time to time
 use self::file_system::{MemFileSystem, OsFileSystem};
 
 pub use self::file_resolver::{

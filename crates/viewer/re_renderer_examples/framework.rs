@@ -1,7 +1,7 @@
 //! Example framework
 
 // TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 use std::sync::Arc;
 
 use anyhow::Context as _;
@@ -42,13 +42,13 @@ pub trait Example {
     fn on_cursor_moved(&mut self, _position_in_pixel: glam::UVec2) {}
 }
 
-#[allow(dead_code)]
+#[allow(clippy::allow_attributes, dead_code)] // false positive
 pub struct SplitView {
     pub target_location: glam::Vec2,
     pub resolution_in_pixel: [u32; 2],
 }
 
-#[allow(dead_code)]
+#[allow(clippy::allow_attributes, dead_code)] // false positive
 pub fn split_resolution(
     resolution: [u32; 2],
     num_rows: usize,
@@ -132,8 +132,7 @@ impl<E: Example + 'static> Application<E> {
                 label: None,
                 required_features: wgpu::Features::empty(),
                 required_limits: device_caps.limits(),
-                memory_hints: Default::default(),
-                trace: wgpu::Trace::Off,
+                ..Default::default()
             })
             .await
             .context("failed to create device")?;
@@ -252,6 +251,7 @@ impl<E: Example + 'static> Application<E> {
                             label: None,
                             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                                 view: &view,
+                                depth_slice: None,
                                 resolve_target: None,
                                 ops: wgpu::Operations {
                                     load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
@@ -318,7 +318,7 @@ impl<E: Example + 'static> Application<E> {
     }
 }
 
-#[allow(dead_code)]
+#[allow(clippy::allow_attributes, dead_code)] // false positive
 pub fn load_rerun_mesh(
     re_ctx: &RenderContext,
 ) -> anyhow::Result<Vec<re_renderer::renderer::GpuMeshInstance>> {
@@ -415,5 +415,5 @@ pub fn start<E: Example + 'static>() {
 
 // This allows treating the framework as a standalone example,
 // thus avoiding listing the example names in `Cargo.toml`.
-#[allow(dead_code)]
+#[expect(dead_code)]
 fn main() {}

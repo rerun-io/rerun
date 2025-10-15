@@ -1,0 +1,13 @@
+---
+source: crates/store/re_redap_tests/src/tests/register_partition.rs
+expression: filtered_batch.format_snapshot(false)
+---
+┌────────────────────┬───────────────────┬──────────────────┐
+│ rerun_partition_id ┆ rerun_layer_names ┆ rerun_num_chunks │
+╞════════════════════╪═══════════════════╪══════════════════╡
+│ my_partition_id1   ┆ [base]            ┆ 4                │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ my_partition_id2   ┆ [base]            ┆ 2                │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ my_partition_id3   ┆ [base]            ┆ 6                │
+└────────────────────┴───────────────────┴──────────────────┘

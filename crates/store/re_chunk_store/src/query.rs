@@ -5,10 +5,9 @@ use std::{
 
 use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
+use saturating_cast::SaturatingCast as _;
 
-use re_chunk::{
-    ArchetypeName, Chunk, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName,
-};
+use re_chunk::{Chunk, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::AbsoluteTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types_core::{
@@ -18,7 +17,7 @@ use re_types_core::{
 use crate::{ChunkStore, store::ChunkIdSetPerTime};
 
 // Used all over in docstrings.
-#[allow(unused_imports)]
+#[expect(unused_imports)]
 use crate::RowId;
 
 // ---
@@ -282,12 +281,9 @@ impl ChunkStore {
     pub fn entity_component_descriptor(
         &self,
         entity_path: &EntityPath,
-        archetype_name: Option<ArchetypeName>,
         identifier: ComponentIdentifier,
     ) -> Option<ComponentDescriptor> {
-        let matches = |descr: &&ComponentDescriptor| {
-            descr.component == identifier && descr.archetype == archetype_name
-        };
+        let matches = |descr: &&ComponentDescriptor| descr.component == identifier;
 
         let static_chunks = self.static_chunk_ids_per_entity.get(entity_path);
         let static_components_descr =
@@ -793,9 +789,11 @@ impl ChunkStore {
         // in `O(n)` performance, which gets amortized by the query cache.
         // If that turns out to be a problem in practice, we can experiment with more
         // complex solutions then.
-        let lower_bound = upper_bound
-            .as_i64()
-            .saturating_sub(temporal_chunk_ids_per_time.max_interval_length as _);
+        let lower_bound = upper_bound.as_i64().saturating_sub(
+            temporal_chunk_ids_per_time
+                .max_interval_length
+                .saturating_cast(),
+        );
 
         let temporal_chunk_ids = temporal_chunk_ids_per_time
             .per_start_time
@@ -1019,9 +1017,11 @@ impl ChunkStore {
                 // If that turns out to be a problem in practice, we can experiment with more
                 // complex solutions then.
                 let query_min = TimeInt::new_temporal(
-                    query_min
-                        .as_i64()
-                        .saturating_sub(temporal_chunk_ids_per_time.max_interval_length as _),
+                    query_min.as_i64().saturating_sub(
+                        temporal_chunk_ids_per_time
+                            .max_interval_length
+                            .saturating_cast(),
+                    ),
                 );
 
                 let start_time = temporal_chunk_ids_per_time

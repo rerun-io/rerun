@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use re_log::ResultExt as _;
-use re_log_types::LogMsg;
+use re_log_types::{DataSourceMessage, LogMsg};
 
 /// Stream an rrd file from a HTTP server.
 ///
@@ -15,7 +15,7 @@ pub fn stream_rrd_from_http_to_channel(
     url: String,
     follow: bool,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> re_smart_channel::Receiver<LogMsg> {
+) -> re_smart_channel::Receiver<DataSourceMessage> {
     let (tx, rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::RrdHttpStream { url: url.clone() },
         re_smart_channel::SmartChannelSource::RrdHttpStream {
@@ -31,7 +31,7 @@ pub fn stream_rrd_from_http_to_channel(
             }
             match msg {
                 HttpMessage::LogMsg(msg) => {
-                    if tx.send(msg).is_ok() {
+                    if tx.send(msg.into()).is_ok() {
                         ControlFlow::Continue(())
                     } else {
                         re_log::info_once!("Closing connection to {url}");
@@ -71,15 +71,18 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
     ehttp::streaming::fetch(ehttp::Request::get(&url), {
-        let decoder = RefCell::new(StreamDecoder::new());
+        let decoder = RefCell::new(crate::Decoder::new());
         move |part| match part {
             Ok(part) => match part {
                 ehttp::streaming::Part::Response(ehttp::PartialResponse {
+                    url,
                     ok,
                     status,
                     status_text,
-                    ..
+                    headers,
                 }) => {
+                    re_log::trace!("{url} status: {status} - {status_text}");
+                    re_log::trace!("{url} headers: {headers:#?}");
                     if ok {
                         re_log::debug!("Decoding .rrd file from {url:?}…");
                         ControlFlow::Continue(())
@@ -97,7 +100,7 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
                     }
 
                     re_tracing::profile_scope!("decoding_rrd_stream");
-                    decoder.borrow_mut().push_chunk(chunk);
+                    decoder.borrow_mut().push_byte_chunk(chunk);
                     loop {
                         match decoder.borrow_mut().try_read() {
                             Ok(message) => match message {
@@ -127,7 +130,7 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
 
 #[cfg(target_arch = "wasm32")]
 // TODO(#6330): remove unwrap()
-#[allow(clippy::unwrap_used)]
+#[expect(clippy::unwrap_used)]
 mod web_event_listener {
     use super::HttpMessageCallback;
     use js_sys::Uint8Array;
@@ -168,7 +171,7 @@ pub use web_event_listener::stream_rrd_from_event_listener;
 
 #[cfg(target_arch = "wasm32")]
 // TODO(#6330): remove unwrap()
-#[allow(clippy::unwrap_used)]
+#[expect(clippy::unwrap_used)]
 pub mod web_decode {
     use super::{HttpMessage, HttpMessageCallback};
     use std::sync::Arc;
@@ -183,7 +186,7 @@ pub mod web_decode {
     async fn decode_rrd_async(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
         let mut last_yield = web_time::Instant::now();
 
-        match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
+        match crate::Decoder::decode_eager(rrd_bytes.as_slice()) {
             Ok(decoder) => {
                 for msg in decoder {
                     match msg {
@@ -238,5 +241,3 @@ pub mod web_decode {
 
 #[cfg(target_arch = "wasm32")]
 use web_decode::decode_rrd;
-
-use crate::decoder::stream::StreamDecoder;

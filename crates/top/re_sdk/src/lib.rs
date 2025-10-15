@@ -116,6 +116,13 @@ pub use re_types::{
     SerializedComponentColumn,
 };
 
+/// Transformation and reinterpretation of components.
+///
+/// # Experimental
+///
+/// This is an experimental API and may change in future releases.
+pub mod lenses;
+
 pub use re_byte_size::SizeBytes;
 
 #[cfg(feature = "data_loaders")]
@@ -216,13 +223,11 @@ pub fn new_store_info(
 ) -> re_log_types::StoreInfo {
     let store_id = StoreId::random(StoreKind::Recording, application_id.into());
 
-    re_log_types::StoreInfo {
+    re_log_types::StoreInfo::new(
         store_id,
-        cloned_from: None,
-        store_source: re_log_types::StoreSource::RustSdk {
+        re_log_types::StoreSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
         },
-        store_version: Some(re_build_info::CrateVersion::LOCAL),
-    }
+    )
 }

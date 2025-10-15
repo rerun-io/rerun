@@ -92,6 +92,11 @@ from the previous release's tag.
 
 Note: you do not need to create a PR for this branch -- the release workflow will do that for you.
 
+For patch releases, immediately bump the crate versions to dev version, so that any testing done against this branch will not look like the old version:
+```sh
+pixi run python scripts/ci/crates.py version --exact 0.x.y --dev
+```
+
 ### 3. If this is a patch release, cherry-pick commits for inclusion in the release into the branch.
 
 When done, run [`cargo semver-checks`](https://github.com/obi1kenobi/cargo-semver-checks) to check that we haven't introduced any semver breaking changes.

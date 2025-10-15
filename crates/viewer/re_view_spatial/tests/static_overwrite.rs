@@ -8,7 +8,7 @@ use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
 use re_types::archetypes;
 use re_view_spatial::SpatialView3D;
-use re_viewer_context::{ViewClass as _, ViewId};
+use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
 const SNAPSHOT_SIZE: egui::Vec2 = egui::vec2(300.0, 300.0);
@@ -65,7 +65,7 @@ pub fn test_static_overwrite_original() {
     let view_id = setup_blueprint(&mut test_context, &entity_path, None, None);
 
     run_view_ui_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         view_id,
         "static_overwrite_original",
         SNAPSHOT_SIZE,
@@ -84,7 +84,7 @@ pub fn test_static_overwrite_radius_default() {
     let view_id = setup_blueprint(&mut test_context, &entity_path, Some(&radius_default), None);
 
     run_view_ui_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         view_id,
         "static_overwrite_radius_default",
         SNAPSHOT_SIZE,
@@ -105,7 +105,7 @@ pub fn test_static_overwrite_color_override() {
     let view_id = setup_blueprint(&mut test_context, &entity_path, None, Some(&color_override));
 
     run_view_ui_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         view_id,
         "static_overwrite_color_override",
         SNAPSHOT_SIZE,
@@ -113,7 +113,7 @@ pub fn test_static_overwrite_color_override() {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
+    test_context: &TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,

@@ -1,13 +1,15 @@
 use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
 
+use nohash_hasher::IntMap;
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle};
 use re_types::ViewClassIdentifier;
 
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, ViewClass,
-    ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, VisualizerCollection,
-    VisualizerSystem,
+    ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, ViewerContext,
+    VisualizerCollection, VisualizerSystem,
+    view::view_context_system::ViewContextSystemOncePerFrameResult,
 };
 
 use super::{
@@ -16,7 +18,6 @@ use super::{
 };
 
 #[derive(Debug, thiserror::Error)]
-#[allow(clippy::enum_variant_names)]
 pub enum ViewClassRegistryError {
     #[error("View with class identifier {0:?} was already registered.")]
     DuplicateClassIdentifier(ViewClassIdentifier),
@@ -62,6 +63,7 @@ impl ViewSystemRegistrator<'_> {
                 .entry(T::identifier())
                 .or_insert_with(|| ContextSystemTypeRegistryEntry {
                     factory_method: Box::new(|| Box::<T>::default()),
+                    once_per_frame_execution_method: T::execute_once_per_frame,
                     used_by: Default::default(),
                 })
                 .used_by
@@ -128,7 +130,6 @@ pub struct ViewClassRegistryEntry {
     pub visualizer_system_ids: HashSet<ViewSystemIdentifier>,
 }
 
-#[allow(clippy::derivable_impls)] // Clippy gets this one wrong.
 impl Default for ViewClassRegistryEntry {
     fn default() -> Self {
         Self {
@@ -143,6 +144,7 @@ impl Default for ViewClassRegistryEntry {
 /// Context system type entry in [`ViewClassRegistry`].
 struct ContextSystemTypeRegistryEntry {
     factory_method: Box<dyn Fn() -> Box<dyn ViewContextSystem> + Send + Sync>,
+    once_per_frame_execution_method: fn(&ViewerContext<'_>) -> ViewContextSystemOncePerFrameResult,
     used_by: HashSet<ViewClassIdentifier>,
 }
 
@@ -297,7 +299,7 @@ impl ViewClassRegistry {
         )
     }
 
-    /// For each visualizer, the set of entities that have at least one matching indicator component.
+    /// For each visualizer, the set of entities that have at least one component with a matching archetype name.
     pub fn indicated_entities_per_visualizer(
         &self,
         store_id: &re_log_types::StoreId,
@@ -320,6 +322,40 @@ impl ViewClassRegistry {
                 })
                 .collect(),
         )
+    }
+
+    /// Runs the once-per-frame execution method for each context system once for each view that needs it.
+    ///
+    /// Passing the same view class identifier multiple times is fine,
+    /// as context systems are deduplicated based on their identifiers regardless.
+    pub fn run_once_per_frame_context_systems(
+        &self,
+        viewer_ctx: &ViewerContext<'_>,
+        view_classes: impl Iterator<Item = ViewClassIdentifier>,
+    ) -> IntMap<ViewSystemIdentifier, ViewContextSystemOncePerFrameResult> {
+        re_tracing::profile_function!();
+
+        use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
+
+        let context_system_ids = view_classes
+            .filter_map(|view_class_identifier| self.view_classes.get(&view_class_identifier))
+            .flat_map(|view_class| view_class.context_system_ids.iter().copied())
+            .unique()
+            .collect_vec();
+
+        // TODO(andreas): Executing with rayon here is a bit of a deviation from our usual pattern.
+        // It would be nicer to return something with which the user can decide on how to execute.
+        context_system_ids
+            .into_par_iter()
+            .filter_map(|context_system_id| {
+                self.context_systems.get(&context_system_id).map(|entry| {
+                    (
+                        context_system_id,
+                        (entry.once_per_frame_execution_method)(viewer_ctx),
+                    )
+                })
+            })
+            .collect()
     }
 
     pub fn new_context_collection(

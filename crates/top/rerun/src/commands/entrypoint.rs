@@ -5,7 +5,7 @@ use itertools::Itertools as _;
 use tokio::runtime::Runtime;
 
 use re_data_source::LogDataSource;
-use re_log_types::LogMsg;
+use re_log_types::DataSourceMessage;
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
 use crate::{CallSource, commands::RrdCommands};
@@ -182,7 +182,7 @@ When persisted, the state will be stored at the following locations:
     ///
     /// The default is `rerun+http://127.0.0.1:9876/proxy`.
     #[clap(long)]
-    #[allow(clippy::option_option)] // Tri-state: none, --connect, --connect <url>.
+    #[expect(clippy::option_option)] // Tri-state: none, --connect, --connect <url>.
     connect: Option<Option<String>>,
 
     /// This is a hint that we expect a recording to stream in very soon.
@@ -591,6 +591,15 @@ where
         re_crash_handler::install_crash_handlers(build_info.clone());
     }
 
+    // There is always value in setting this, even if `re_perf_telemetry` is disabled. For example,
+    // the Rerun versioning headers will automatically pick it up.
+    //
+    // Safety: anything touching the env is unsafe, tis what it is.
+    #[expect(unsafe_code)]
+    unsafe {
+        std::env::set_var("OTEL_SERVICE_NAME", "rerun");
+    }
+
     use clap::Parser as _;
     let mut args = Args::parse_from(args);
 
@@ -618,11 +627,7 @@ where
     let res = if let Some(command) = args.command {
         match command {
             #[cfg(feature = "auth")]
-            Command::Auth(cmd) => {
-                let runtime =
-                    re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime.handle().clone());
-                cmd.run(&runtime).map_err(Into::into)
-            }
+            Command::Auth(cmd) => cmd.run(tokio_runtime.handle()).map_err(Into::into),
 
             #[cfg(feature = "analytics")]
             Command::Analytics(analytics) => analytics.run().map_err(Into::into),
@@ -655,12 +660,6 @@ where
     } else {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
         let mut _telemetry = {
-            // Safety: anything touching the env is unsafe, tis what it is.
-            #[expect(unsafe_code)]
-            unsafe {
-                std::env::set_var("OTEL_SERVICE_NAME", "rerun");
-            }
-
             // NOTE: We're just parsing the environment, hence the `vec![]` for CLI flags.
             use re_perf_telemetry::external::clap::Parser as _;
             let args = re_perf_telemetry::TelemetryArgs::parse_from::<_, String>(vec![]);
@@ -758,7 +757,7 @@ fn run_impl(
     };
 
     // All URLs that we want to process.
-    #[allow(unused_mut)]
+    #[allow(clippy::allow_attributes, unused_mut)]
     let mut url_or_paths = args.url_or_paths.clone();
 
     // Passing `--connect` accounts to adding a proxy URL to the list of URLs that we want to process.
@@ -856,7 +855,7 @@ fn run_impl(
 
 #[cfg(feature = "native_viewer")]
 #[expect(clippy::too_many_arguments)]
-#[allow(unused_variables)]
+#[allow(clippy::allow_attributes, unused_variables)]
 fn start_native_viewer(
     args: &Args,
     url_or_paths: Vec<String>,
@@ -874,7 +873,7 @@ fn start_native_viewer(
     let connect = args.connect.is_some();
     let renderer = args.renderer.as_deref();
 
-    #[allow(unused_mut)]
+    #[allow(clippy::allow_attributes, unused_mut)]
     let ReceiversFromUrlParams {
         mut log_receivers,
         urls_to_pass_on_to_viewer,
@@ -883,14 +882,14 @@ fn start_native_viewer(
         &UrlParamProcessingConfig::native_viewer(),
         &connection_registry,
     )?;
-    #[allow(unused_mut)]
+    #[allow(clippy::allow_attributes, unused_mut)]
     let mut table_receivers = Vec::new();
 
     // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
     #[cfg(feature = "server")]
     if !connect {
         let (log_server, table_server): (
-            Receiver<LogMsg>,
+            Receiver<DataSourceMessage>,
             crossbeam::channel::Receiver<re_log_types::TableMsg>,
         ) = re_grpc_server::spawn_with_recv(
             server_addr,
@@ -984,9 +983,7 @@ fn native_startup_options_from_args(args: &Args) -> anyhow::Result<re_viewer::St
         force_wgpu_backend: args.renderer.clone(),
         video_decoder_hw_acceleration,
 
-        on_event: None,
-
-        panel_state_overrides: Default::default(),
+        ..Default::default()
     })
 }
 
@@ -1015,7 +1012,16 @@ fn connect_to_existing_server(
         while rx.is_connected() {
             while let Ok(msg) = rx.recv() {
                 if let Some(log_msg) = msg.into_data() {
-                    sink.send(log_msg);
+                    match log_msg {
+                        DataSourceMessage::LogMsg(log_msg) => {
+                            sink.send(log_msg);
+                        }
+                        DataSourceMessage::UiCommand(ui_command) => {
+                            re_log::warn!(
+                                "Received a UI command, can't pass this on to the server: {ui_command:?}"
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -1150,13 +1156,13 @@ fn save_or_test_receive(
         "--save"
     })?;
 
-    #[allow(unused_mut)]
+    #[allow(clippy::allow_attributes, unused_mut)]
     let mut log_receivers = receivers.log_receivers;
 
     #[cfg(feature = "server")]
     {
         let (log_server, table_server): (
-            Receiver<LogMsg>,
+            Receiver<DataSourceMessage>,
             crossbeam::channel::Receiver<re_log_types::TableMsg>,
         ) = re_grpc_server::spawn_with_recv(
             server_addr,
@@ -1194,7 +1200,7 @@ fn is_another_server_already_running(server_addr: std::net::SocketAddr) -> bool 
 
 // NOTE: This is only used as part of end-to-end tests.
 fn assert_receive_into_entity_db(
-    rx: &ReceiveSet<LogMsg>,
+    rx: &ReceiveSet<DataSourceMessage>,
 ) -> anyhow::Result<re_entity_db::EntityDb> {
     re_log::info!("Receiving messages into a EntityDb…");
 
@@ -1216,16 +1222,30 @@ fn assert_receive_into_entity_db(
 
                 match msg.payload {
                     SmartMessagePayload::Msg(msg) => {
-                        let mut_db = match msg.store_id().kind() {
-                            re_log_types::StoreKind::Recording => rec.get_or_insert_with(|| {
-                                re_entity_db::EntityDb::new(msg.store_id().clone())
-                            }),
-                            re_log_types::StoreKind::Blueprint => bp.get_or_insert_with(|| {
-                                re_entity_db::EntityDb::new(msg.store_id().clone())
-                            }),
-                        };
+                        match msg {
+                            DataSourceMessage::LogMsg(msg) => {
+                                let mut_db =
+                                    match msg.store_id().kind() {
+                                        re_log_types::StoreKind::Recording => rec
+                                            .get_or_insert_with(|| {
+                                                re_entity_db::EntityDb::new(msg.store_id().clone())
+                                            }),
+                                        re_log_types::StoreKind::Blueprint => bp
+                                            .get_or_insert_with(|| {
+                                                re_entity_db::EntityDb::new(msg.store_id().clone())
+                                            }),
+                                    };
 
-                        mut_db.add(&msg)?;
+                                mut_db.add(&msg)?;
+                            }
+
+                            DataSourceMessage::UiCommand(ui_command) => {
+                                anyhow::bail!(
+                                    "Received a UI command which can't be stored in a entity_db: {ui_command:?}"
+                                );
+                            }
+                        }
+
                         num_messages += 1;
                     }
 
@@ -1305,7 +1325,7 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
     }
 
     parse_size_inner(size)
-        .ok_or_else(|| anyhow::anyhow!("Invalid size {:?}, expected e.g. 800x600", size))
+        .ok_or_else(|| anyhow::anyhow!("Invalid size {size:?}, expected e.g. 800x600"))
 }
 
 // --- io ---
@@ -1313,7 +1333,7 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
 // TODO(cmc): dedicated module for io utils, especially stdio streaming in and out.
 
 fn stream_to_rrd_on_disk(
-    rx: &re_smart_channel::ReceiveSet<LogMsg>,
+    rx: &re_smart_channel::ReceiveSet<DataSourceMessage>,
     path: &std::path::PathBuf,
 ) -> Result<(), re_log_encoding::FileSinkError> {
     use re_log_encoding::FileSinkError;
@@ -1327,16 +1347,22 @@ fn stream_to_rrd_on_disk(
     let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
     let file =
         std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-    let mut encoder = re_log_encoding::encoder::DroppableEncoder::new(
-        re_build_info::CrateVersion::LOCAL,
-        encoding_options,
-        file,
-    )?;
+    let mut encoder =
+        re_log_encoding::Encoder::new(re_build_info::CrateVersion::LOCAL, encoding_options, file)?;
 
     loop {
         if let Ok(msg) = rx.recv() {
             if let Some(payload) = msg.into_data() {
-                encoder.append(&payload)?;
+                match payload {
+                    DataSourceMessage::LogMsg(log_msg) => {
+                        encoder.append(&log_msg)?;
+                    }
+                    DataSourceMessage::UiCommand(ui_command) => {
+                        re_log::warn!(
+                            "Received a UI command which can't be stored in a file: {ui_command:?}"
+                        );
+                    }
+                }
             }
         } else {
             re_log::info!("Log stream disconnected, stopping.");
@@ -1369,7 +1395,7 @@ impl UrlParamProcessingConfig {
         }
     }
 
-    #[allow(dead_code)] // May be unused depending on feature flags.
+    #[allow(clippy::allow_attributes, dead_code)] // May be unused depending on feature flags.
     fn grpc_server_and_web_viewer() -> Self {
         // GRPC with web viewer can handle everything except files directly.
         Self {
@@ -1379,7 +1405,7 @@ impl UrlParamProcessingConfig {
         }
     }
 
-    #[allow(dead_code)] // May be unused depending on feature flags.
+    #[allow(clippy::allow_attributes, dead_code)] // May be unused depending on feature flags.
     fn native_viewer() -> Self {
         // Native viewer passes everything on to the viewer unchanged.
         Self {
@@ -1393,7 +1419,7 @@ impl UrlParamProcessingConfig {
 /// Log receivers created from URLs or path parameters that were passed in on the CLI.
 struct ReceiversFromUrlParams {
     /// Log receivers that we want to hook up to a connection or viewer.
-    log_receivers: Vec<Receiver<LogMsg>>,
+    log_receivers: Vec<Receiver<DataSourceMessage>>,
 
     /// URLs that should be passed on to the viewer if possible.
     ///
@@ -1452,11 +1478,8 @@ impl ReceiversFromUrlParams {
         let log_receivers = data_sources
             .into_iter()
             .map(|data_source| {
-                // No need to handle redap UI commands since if there's a viewer, we always
-                // pass on the URL to the viewer directly anyways.
                 let on_msg = None;
-                let on_ui_cmd = None;
-                data_source.stream(connection_registry, on_ui_cmd, on_msg)
+                data_source.stream(connection_registry, on_msg)
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
 

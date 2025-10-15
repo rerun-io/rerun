@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 use re_types::datatypes::{TensorBuffer, TensorData};
 use re_types::tensor_data::TensorCastError;

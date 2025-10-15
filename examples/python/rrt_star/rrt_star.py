@@ -223,7 +223,7 @@ def rrt(
             min_node = min(
                 filter(
                     lambda node: not mp.intersects_obstacle(node.pos, new_point),
-                    close_nodes + [closest_node],
+                    [*close_nodes, closest_node],
                 ),
                 key=lambda node: node.cost + distance(node.pos, new_point),
             )

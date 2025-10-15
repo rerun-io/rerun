@@ -102,7 +102,7 @@ pub trait DataUi {
 /// This is given the context of the entity it is part of so it can do queries.
 pub trait EntityDataUi {
     /// If you need to lookup something in the chunk store, use the given query to do so.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn entity_data_ui(
         &self,
         ctx: &ViewerContext<'_>,
@@ -148,7 +148,7 @@ pub fn annotations(
 ) -> std::sync::Arc<re_viewer_context::Annotations> {
     re_tracing::profile_function!();
     let mut annotation_map = re_viewer_context::AnnotationMap::default();
-    annotation_map.load(ctx, query, std::iter::once(entity_path));
+    annotation_map.load(ctx, query);
     annotation_map.find(entity_path)
 }
 

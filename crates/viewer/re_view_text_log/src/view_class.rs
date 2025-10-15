@@ -186,12 +186,7 @@ Filter message types and toggle column visibility in a selection panel.",
             // Update filters if necessary.
             state.filters.update(ctx, &entries);
 
-            let time = ctx
-                .rec_cfg
-                .time_ctrl
-                .read()
-                .time_i64()
-                .unwrap_or(state.latest_time);
+            let time = ctx.time_ctrl.time_i64().unwrap_or(state.latest_time);
 
             // Did the time cursor move since last time?
             // - If it did, autoscroll to the text log to reveal the current time.
@@ -294,10 +289,7 @@ fn table_ui(
 
     use egui_extras::Column;
 
-    let (global_timeline, global_time) = {
-        let time_ctrl = ctx.rec_cfg.time_ctrl.read();
-        (*time_ctrl.timeline(), time_ctrl.time_int())
-    };
+    let (global_timeline, global_time) = (*ctx.time_ctrl.timeline(), ctx.time_ctrl.time_int());
 
     let mut table_builder = egui_extras::TableBuilder::new(ui)
         .resizable(true)
@@ -378,7 +370,7 @@ fn table_ui(
                         if let Some(global_time) = global_time
                             && timeline == global_timeline.name()
                         {
-                            #[allow(clippy::comparison_chain)]
+                            #[expect(clippy::comparison_chain)]
                             if global_time < row_time {
                                 // We've past the global time - it is thus above this row.
                                 if current_time_y.is_none() {

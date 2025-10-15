@@ -13,9 +13,6 @@ pub enum Error {
     #[error("HTTP server error: {0}")]
     Http(std::io::Error),
 
-    #[error("failed to open browser: {0}")]
-    WebBrowser(std::io::Error),
-
     #[error("failed to load context: {0}")]
     Context(#[from] workos::ContextLoadError),
 
@@ -63,6 +60,7 @@ struct NoCredentialsError;
 #[error("Your credentials are expired, run `rerun auth login` first")]
 struct ExpiredCredentialsError;
 
+/// Prints the token to stdout
 pub async fn token(context: &AuthContext) -> Result<(), Error> {
     let mut credentials = match workos::Credentials::load() {
         Ok(Some(credentials)) => credentials,
@@ -88,9 +86,7 @@ pub async fn token(context: &AuthContext) -> Result<(), Error> {
         unreachable!("bug: no access token after refresh");
     };
 
-    use std::io::Write as _;
-    let mut stdout = std::io::stdout();
-    write!(stdout, "{}", token.as_str()).ok();
+    println!("{}", token.as_str());
 
     Ok(())
 }
@@ -168,7 +164,10 @@ pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(
     if options.open_browser {
         p.println("Opening login page in your browser.");
         p.println("Once you've logged in, the process will continue here.");
-        webbrowser::open(&login_url).map_err(Error::WebBrowser)?;
+        p.println(format!(
+            "Alternatively, manually open this url: {login_url}"
+        ));
+        webbrowser::open(&login_url).ok(); // Ok to ignore error here. The user can just open the above url themselves.
     } else {
         p.println("Open the following page in your browser:");
         p.println(&login_url);
@@ -314,7 +313,7 @@ fn handle_auth_request(
     Ok(Some(response))
 }
 
-#[allow(dead_code)] // fields may become used at some point in the near future
+#[expect(dead_code)] // fields may become used at some point in the near future
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AuthenticationResponse {
@@ -339,7 +338,7 @@ impl From<AuthenticationResponse> for workos::api::AuthenticationResponse {
     }
 }
 
-#[allow(dead_code)] // fields may become used at some point in the near future
+#[expect(dead_code)] // fields may become used at some point in the near future
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct User {
@@ -366,14 +365,14 @@ impl From<User> for workos::User {
     }
 }
 
-#[allow(dead_code)] // fields may become used at some point in the near future
+#[expect(dead_code)] // fields may become used at some point in the near future
 #[derive(Debug, Clone, serde::Deserialize)]
 struct Impersonator {
     email: String,
     reason: Option<String>,
 }
 
-#[allow(clippy::upper_case_acronyms)] // It's better than a serde(rename)
+#[expect(clippy::upper_case_acronyms)] // It's better than a serde(rename)
 #[derive(Debug, Clone, serde::Deserialize)]
 enum AuthenticationMethod {
     SSO,
@@ -387,7 +386,7 @@ enum AuthenticationMethod {
     Impersonation,
 }
 
-#[allow(dead_code)] // fields may become used at some point in the near future
+#[expect(dead_code)] // fields may become used at some point in the near future
 #[derive(Debug, Clone, serde::Deserialize)]
 struct OauthTokens {
     access_token: String,

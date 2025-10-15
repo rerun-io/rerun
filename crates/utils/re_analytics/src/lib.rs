@@ -41,7 +41,7 @@ use std::{
     io::Error as IoError,
     sync::{
         OnceLock,
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicI64, Ordering},
     },
     time::Duration,
 };
@@ -234,7 +234,7 @@ pub struct Analytics {
     pipeline: Option<Pipeline>,
 
     default_append_props: HashMap<Cow<'static, str>, Property>,
-    event_id: AtomicU64,
+    event_id: AtomicI64,
 }
 
 #[cfg(not(target_arch = "wasm32"))] // NOTE: can't block on web
@@ -333,7 +333,7 @@ impl Analytics {
             config,
             default_append_props: Default::default(),
             pipeline,
-            event_id: AtomicU64::new(1), // we skip 0 just to be explicit (zeroes can often be implicit)
+            event_id: AtomicI64::new(1), // we skip 0 just to be explicit (zeroes can often be implicit)
         })
     }
 
@@ -376,7 +376,7 @@ impl Analytics {
                 // Insert event ID
                 event.props.insert(
                     "event_id".into(),
-                    (self.event_id.fetch_add(1, Ordering::Relaxed) as i64).into(),
+                    self.event_id.fetch_add(1, Ordering::Relaxed).into(),
                 );
             }
 
@@ -428,6 +428,7 @@ impl Properties for re_build_info::BuildInfo {
             is_in_rerun_workspace,
             target_triple,
             datetime,
+            is_debug_build,
         } = self;
 
         event.insert("features", features.to_string());
@@ -437,7 +438,7 @@ impl Properties for re_build_info::BuildInfo {
         event.insert("llvm_version", llvm_version.to_string());
         event.insert("target", target_triple.to_string());
         event.insert("build_date", datetime.to_string());
-        event.insert("debug", cfg!(debug_assertions)); // debug-build?
+        event.insert("debug", is_debug_build);
         event.insert("rerun_workspace", is_in_rerun_workspace);
     }
 }

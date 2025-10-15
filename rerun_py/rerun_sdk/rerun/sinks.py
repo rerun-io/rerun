@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, Union
 
 import rerun_bindings as bindings
 from rerun_bindings import (
-    FileSink as FileSink,
-    GrpcSink as GrpcSink,
+    FileSink,
+    GrpcSink,
 )
 from typing_extensions import deprecated
 
@@ -374,6 +374,7 @@ def serve_grpc(
         server_memory_limit=server_memory_limit,
         default_blueprint=blueprint_storage,
         recording=recording.to_native() if recording is not None else None,
+        newest_first=newest_first,
     )
 
 

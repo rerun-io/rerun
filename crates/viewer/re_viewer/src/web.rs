@@ -1,6 +1,6 @@
 //! Main entry-point of the web app.
 
-#![allow(clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
+#![allow(clippy::allow_attributes, clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
 
 use std::rc::Rc;
 use std::str::FromStr as _;
@@ -13,9 +13,11 @@ use wasm_bindgen::prelude::*;
 use re_log::ResultExt as _;
 use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
-use re_viewer_context::{AsyncRuntimeHandle, open_url};
+use re_viewer_context::{
+    AsyncRuntimeHandle, PlayState, SystemCommand, SystemCommandSender as _, TimeControlCommand,
+    open_url,
+};
 
-use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
 use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
 
@@ -24,7 +26,7 @@ static GLOBAL: AccountingAllocator<std::alloc::System> =
     AccountingAllocator::new(std::alloc::System);
 
 struct Channel {
-    log_tx: re_smart_channel::Sender<re_log_types::LogMsg>,
+    log_tx: re_smart_channel::Sender<re_log_types::DataSourceMessage>,
     table_tx: crossbeam::channel::Sender<re_log_types::TableMsg>,
 }
 
@@ -46,7 +48,11 @@ pub struct WebHandle {
 
 #[wasm_bindgen]
 impl WebHandle {
-    #[allow(clippy::new_without_default, clippy::use_self)] // Can't use `Self` here because of `#[wasm_bindgen]`.
+    #[allow(
+        clippy::allow_attributes,
+        clippy::new_without_default,
+        clippy::use_self
+    )] // Can't use `Self` here because of `#[wasm_bindgen]`.
     #[wasm_bindgen(constructor)]
     pub fn new(app_options: JsValue) -> Result<WebHandle, JsValue> {
         re_log::setup_logging();
@@ -201,16 +207,16 @@ impl WebHandle {
             return;
         };
 
-        // TODO(andreas): should follow_if_http be part of the fragments?
-        let follow_if_http = follow_if_http.unwrap_or(false);
-        let select_redap_source_when_loaded = true;
-
         match url.parse::<open_url::ViewerOpenUrl>() {
             Ok(url) => {
                 url.open(
                     &app.egui_ctx,
-                    follow_if_http,
-                    select_redap_source_when_loaded,
+                    &open_url::OpenUrlOptions {
+                        // TODO(andreas): should follow_if_http be part of the fragments?
+                        follow_if_http: follow_if_http.unwrap_or(false),
+                        select_redap_source_when_loaded: true,
+                        show_loader: false,
+                    },
                     &app.command_sender,
                 );
             }
@@ -311,7 +317,7 @@ impl WebHandle {
                         use re_log_encoding::stream_rrd_from_http::HttpMessage;
                         match msg {
                             HttpMessage::LogMsg(msg) => {
-                                if tx.send(msg).is_ok() {
+                                if tx.send(msg.into()).is_ok() {
                                     ControlFlow::Continue(())
                                 } else {
                                     re_log::info_once!("Failed to dispatch log message to viewer.");
@@ -427,8 +433,7 @@ impl WebHandle {
         };
 
         let store_id = store_id_from_recording_id(hub, recording_id)?;
-        let rec_cfg = state.recording_config(&store_id)?;
-        let time_ctrl = rec_cfg.time_ctrl.read();
+        let time_ctrl = state.time_control(&store_id)?;
         Some(time_ctrl.timeline().name().as_str().to_owned())
     }
 
@@ -438,35 +443,25 @@ impl WebHandle {
     //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
     #[wasm_bindgen]
     pub fn set_active_timeline(&self, recording_id: &str, timeline_name: &str) {
-        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
-            return;
-        };
-        let crate::App {
-            store_hub: Some(hub),
-            state,
-            egui_ctx,
-            ..
-        } = &mut *app
-        else {
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
 
-        let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
-            return;
-        };
-        let Some(recording) = hub.store_bundle().get(&store_id) else {
-            return;
-        };
-        let rec_cfg = recording_config_entry(&mut state.recording_configs, recording);
-
-        let Some(timeline) = recording.timelines().get(&timeline_name.into()).copied() else {
-            re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id:?}");
+        let Some(hub) = &app.store_hub else {
             return;
         };
 
-        rec_cfg.time_ctrl.write().set_timeline(timeline);
+        let Some(recording_id) = store_id_from_recording_id(hub, recording_id) else {
+            return;
+        };
 
-        egui_ctx.request_repaint();
+        app.command_sender
+            .send_system(SystemCommand::TimeControlCommands {
+                store_id: recording_id,
+                time_commands: vec![TimeControlCommand::SetActiveTimeline(timeline_name.into())],
+            });
+
+        app.egui_ctx.request_repaint();
     }
 
     //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
@@ -475,9 +470,8 @@ impl WebHandle {
         let app = self.runner.app_mut::<crate::App>()?;
 
         let store_id = store_id_from_recording_id(app.store_hub.as_ref()?, recording_id)?;
-        let rec_cfg = app.state.recording_config(&store_id)?;
+        let time_ctrl = app.state.time_control(&store_id)?;
 
-        let time_ctrl = rec_cfg.time_ctrl.read();
         time_ctrl
             .time_for_timeline(timeline_name.into())
             .map(|v| v.as_f64())
@@ -486,36 +480,28 @@ impl WebHandle {
     //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
     #[wasm_bindgen]
     pub fn set_time_for_timeline(&self, recording_id: &str, timeline_name: &str, time: f64) {
-        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
-            return;
-        };
-        let crate::App {
-            store_hub: Some(hub),
-            state,
-            egui_ctx,
-            ..
-        } = &mut *app
-        else {
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
 
-        let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
-            return;
-        };
-        let Some(recording) = hub.store_bundle().get(&store_id) else {
-            return;
-        };
-        let rec_cfg = recording_config_entry(&mut state.recording_configs, recording);
-        let Some(timeline) = recording.timelines().get(&timeline_name.into()).copied() else {
-            re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id:?}");
+        let Some(hub) = &app.store_hub else {
             return;
         };
 
-        rec_cfg
-            .time_ctrl
-            .write()
-            .set_timeline_and_time(timeline, time);
-        egui_ctx.request_repaint();
+        let Some(recording_id) = store_id_from_recording_id(hub, recording_id) else {
+            return;
+        };
+
+        app.command_sender
+            .send_system(SystemCommand::TimeControlCommands {
+                store_id: recording_id,
+                time_commands: vec![
+                    TimeControlCommand::SetActiveTimeline(timeline_name.into()),
+                    TimeControlCommand::SetTime(time.into()),
+                ],
+            });
+
+        app.egui_ctx.request_repaint();
     }
 
     //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
@@ -570,10 +556,9 @@ impl WebHandle {
         if !hub.store_bundle().contains(&store_id) {
             return None;
         }
-        let rec_cfg = state.recording_config(&store_id)?;
+        let time_ctrl = state.time_control(&store_id)?;
 
-        let time_ctrl = rec_cfg.time_ctrl.read();
-        Some(time_ctrl.play_state() == re_viewer_context::PlayState::Playing)
+        Some(time_ctrl.play_state() == PlayState::Playing)
     }
 
     //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
@@ -584,8 +569,8 @@ impl WebHandle {
         };
         let crate::App {
             store_hub,
-            state,
             egui_ctx,
+            command_sender,
             ..
         } = &mut *app;
 
@@ -595,21 +580,17 @@ impl WebHandle {
         let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
             return;
         };
-        let Some(recording) = hub.store_bundle().get(&store_id) else {
-            return;
-        };
-        let rec_cfg = recording_config_entry(&mut state.recording_configs, recording);
 
         let play_state = if value {
-            re_viewer_context::PlayState::Playing
+            PlayState::Playing
         } else {
-            re_viewer_context::PlayState::Paused
+            PlayState::Paused
         };
 
-        rec_cfg
-            .time_ctrl
-            .write()
-            .set_play_state(recording.times_per_timeline(), play_state);
+        command_sender.send_system(SystemCommand::TimeControlCommands {
+            store_id: store_id.clone(),
+            time_commands: vec![TimeControlCommand::SetPlayState(play_state)],
+        });
         egui_ctx.request_repaint();
     }
 }
@@ -661,20 +642,24 @@ impl From<PanelState> for re_types::blueprint::components::PanelState {
 // Keep in sync with the `AppOptions` interface in `rerun_js/web-viewer/index.ts`.
 #[derive(Clone, Default, Deserialize)]
 pub struct AppOptions {
-    url: Option<StringOrStringArray>,
     manifest_url: Option<String>,
     render_backend: Option<String>,
     video_decoder: Option<String>,
     hide_welcome_screen: Option<bool>,
+    // allow_fullscreen: Option<bool>, // Not serialized from js as it governs how the `fullscreen` option is used.
+    enable_history: Option<bool>,
+    // width: Option<String>, // Width & height aren't serialized and only used to configure the canvas.
+    // height: Option<String>,
+    fallback_token: Option<String>,
+
+    // Hidden `WebViewerOptions`
+    // ------------
+    viewer_base_url: Option<String>,
+    notebook: Option<bool>,
+    url: Option<StringOrStringArray>,
     panel_state_overrides: Option<PanelStateOverrides>,
     on_viewer_event: Option<Callback>,
     fullscreen: Option<FullscreenOptions>,
-    enable_history: Option<bool>,
-
-    notebook: Option<bool>,
-    persist: Option<bool>,
-
-    fallback_token: Option<String>,
 }
 
 // Keep in sync with the `FullscreenOptions` interface in `rerun_js/web-viewer/index.ts`
@@ -713,11 +698,13 @@ fn create_app(
     app_options: AppOptions,
 ) -> Result<crate::App, re_renderer::RenderContextError> {
     let build_info = re_build_info::build_info!();
+
     let app_env = crate::AppEnvironment::Web {
         url: cc.integration_info.web_info.location.url.clone(),
     };
 
     let AppOptions {
+        viewer_base_url,
         url,
         manifest_url,
         render_backend,
@@ -729,7 +716,6 @@ fn create_app(
         enable_history,
 
         notebook,
-        persist,
 
         fallback_token,
     } = app_options;
@@ -759,7 +745,7 @@ fn create_app(
             max_bytes: Some(2_500_000_000),
         },
         location: Some(cc.integration_info.web_info.location.clone()),
-        persist_state: persist.unwrap_or(true),
+        persist_state: true,
         is_in_notebook: notebook.unwrap_or(false),
         expect_data_soon: None,
         force_wgpu_backend: render_backend.clone(),
@@ -781,6 +767,7 @@ fn create_app(
         panel_state_overrides: panel_state_overrides.unwrap_or_default().into(),
 
         enable_history,
+        viewer_base_url,
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
 
@@ -803,16 +790,16 @@ fn create_app(
     }
 
     if let Some(urls) = url {
-        let follow_if_http = false;
-        let select_redap_source_when_loaded = true;
-
         for url in urls.into_inner() {
             match url.parse::<open_url::ViewerOpenUrl>() {
                 Ok(url) => {
                     url.open(
                         &app.egui_ctx,
-                        follow_if_http,
-                        select_redap_source_when_loaded,
+                        &open_url::OpenUrlOptions {
+                            follow_if_http: false,
+                            select_redap_source_when_loaded: true,
+                            show_loader: true,
+                        },
                         &app.command_sender,
                     );
                 }
@@ -832,11 +819,12 @@ fn create_app(
 /// This one just panics when it fails, as it's only ever really run
 /// by rerun employees manually in `app.rerun.io`.
 #[cfg(feature = "analytics")]
+#[allow(clippy::allow_attributes, clippy::unwrap_used)] // This is only run by rerun employees, so it's fine to panic
 #[wasm_bindgen]
-#[allow(clippy::unwrap_used)] // This is only run by rerun employees, so it's fine to panic
 pub fn set_email(email: String) {
     let mut config = re_analytics::Config::load().unwrap().unwrap_or_default();
     config.opt_in_metadata.insert("email".into(), email.into());
+
     config.save().unwrap();
 }
 

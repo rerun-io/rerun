@@ -106,7 +106,7 @@ pub trait ContextExt {
         let traffic_button_sizes_fallback = egui::vec2(64.0, 24.0); // source: I measured /emilk
 
         #[cfg(target_os = "macos")]
-        let native_buttons_size_in_native_scale = {
+        let native_buttons_size_in_native_scale = if make_room_for_window_buttons {
             use crate::egui_ext::WindowChromeMetrics;
             use raw_window_handle::HasWindowHandle as _;
 
@@ -125,6 +125,8 @@ pub trait ContextExt {
                 }
                 traffic_button_sizes_fallback
             }
+        } else {
+            egui::Vec2::ZERO
         };
         #[cfg(not(target_os = "macos"))]
         let native_buttons_size_in_native_scale = traffic_button_sizes_fallback;
@@ -160,7 +162,7 @@ pub trait ContextExt {
             egui::SizeHint::Scale(1.0.ord()),
         ) {
             let rect = Align2::RIGHT_BOTTOM
-                .align_size_within_rect(texture.size, self.ctx().screen_rect())
+                .align_size_within_rect(texture.size, self.ctx().content_rect())
                 .translate(-Vec2::splat(16.0));
             let mut mesh = Mesh::with_texture(texture.id);
             let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));

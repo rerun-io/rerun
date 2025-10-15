@@ -79,11 +79,11 @@ def test_transform3d() -> None:
     ]
 
     all_arrays = itertools.zip_longest(
-        VEC_3D_INPUT + [None],
+        [*VEC_3D_INPUT, None],
         rotation_axis_angle_original,
         quaternion_arrays,
         scale_arrays,
-        MAT_3X3_INPUT + [None],
+        [*MAT_3X3_INPUT, None],
         relations,
         axis_lengths,
     )
@@ -106,13 +106,13 @@ def test_transform3d() -> None:
 
         print(
             f"rr.Transform3D(\n"
-            f"    translation={translation!r}\n"  #
-            f"    rotation_axis_angle={rotation_axis_angle!r}\n"  #
-            f"    quaternion={quaternion!r}\n"  #
-            f"    scale={scale!r}\n"  #
-            f"    mat3x3={mat3x3!r}\n"  #
-            f"    relation={relation!r}\n"  #
-            f"    axis_length={axis_length!r}\n"  #
+            f"    translation={translation!r}\n"
+            f"    rotation_axis_angle={rotation_axis_angle!r}\n"
+            f"    quaternion={quaternion!r}\n"
+            f"    scale={scale!r}\n"
+            f"    mat3x3={mat3x3!r}\n"
+            f"    relation={relation!r}\n"
+            f"    axis_length={axis_length!r}\n"
             f")",
         )
         arch = rr.Transform3D(

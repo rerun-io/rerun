@@ -48,7 +48,7 @@ impl Chunk {
             re_tracing::profile_scope!("row_ids");
 
             let row_ids = re_arrow_util::concat_arrays(&[&cl.row_ids, &cr.row_ids])?;
-            #[allow(clippy::unwrap_used)]
+            #[expect(clippy::unwrap_used)]
             // concatenating 2 RowId arrays must yield another RowId array
             row_ids
                 .downcast_array_ref::<FixedSizeBinaryArray>()

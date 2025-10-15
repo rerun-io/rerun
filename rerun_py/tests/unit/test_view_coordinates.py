@@ -41,7 +41,7 @@ def test_view_coordinates() -> None:
         # TODO(jleibs): Figure out why mypy is confused by this arg-type
         arch = ViewCoordinates(coordinates)  # type: ignore[arg-type]
 
-        print(f"rr.ViewCoordinates(\n    {str(coordinates)}\n)")
+        print(f"rr.ViewCoordinates(\n    {coordinates!s}\n)")
         print(f"{arch}\n")
 
         assert arch.xyz == view_coordinates_expected(coordinates)

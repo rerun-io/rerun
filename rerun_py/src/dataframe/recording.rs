@@ -25,7 +25,7 @@ use super::{PyRecordingView, PySchema};
 /// You can examine the [`.schema()`][rerun.dataframe.Recording.schema] of the recording to see
 /// what data is available, or create a [`RecordingView`][rerun.dataframe.RecordingView] to
 /// to retrieve the data.
-#[pyclass(name = "Recording")]
+#[pyclass(name = "Recording", module = "rerun_bindings.rerun_bindings")] // NOLINT: skip pyclass_eq, non-trivial implementation
 pub struct PyRecording {
     pub(crate) store: ChunkStoreHandle,
     pub(crate) cache: re_dataframe::QueryCacheHandle,
@@ -42,7 +42,7 @@ impl PyRecording {
     pub fn engine(&self) -> QueryEngine<StorageEngine> {
         // Safety: this is all happening in the context of a python client using the dataframe API,
         // there is no reason to worry about handle leakage whatsoever.
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         let engine = unsafe { StorageEngine::new(self.store.clone(), self.cache.clone()) };
 
         QueryEngine { engine }
@@ -135,7 +135,11 @@ impl PyRecording {
         }
     }
 
-    #[allow(rustdoc::private_doc_tests, rustdoc::invalid_rust_codeblocks)]
+    #[allow(
+        clippy::allow_attributes,
+        rustdoc::invalid_rust_codeblocks,
+        rustdoc::private_doc_tests
+    )]
     /// Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
     ///
     /// The only type of index currently supported is the name of a timeline, or `None` (see below
@@ -189,7 +193,6 @@ impl PyRecording {
     /// ```python
     /// recording.view(index="my_index", contents={"points": "Position3D"})
     /// ```
-    #[allow(clippy::fn_params_excessive_bools)]
     #[pyo3(signature = (
         *,
         index,

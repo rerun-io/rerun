@@ -348,7 +348,7 @@ impl framework::Example for RenderDepthClouds {
     }
 
     fn on_key_event(&mut self, input: winit::event::KeyEvent) {
-        #![allow(clippy::single_match)]
+        #![expect(clippy::single_match)]
         match (input.state, input.logical_key) {
             (ElementState::Released, keyboard::Key::Named(keyboard::NamedKey::Space)) => {
                 self.camera_control = match self.camera_control {
@@ -474,7 +474,7 @@ impl AlbedoTexture {
         }
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub fn get(&self, x: u32, y: u32) -> [u8; 4] {
         let p = &self.rgba8[(x + y * self.dimensions.x) as usize * 4..];
         [p[0], p[1], p[2], p[3]]

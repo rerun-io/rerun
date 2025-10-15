@@ -98,7 +98,7 @@ where
 ///
 /// The returned value is for human eyes only, and can not be parsed
 /// by the normal `usize::from_str` function.
-#[allow(clippy::needless_pass_by_value)]
+#[expect(clippy::needless_pass_by_value)]
 pub fn format_uint<Uint>(number: Uint) -> String
 where
     Uint: Display + num_traits::Unsigned,
@@ -162,7 +162,7 @@ pub struct FloatFormatOptions {
 
 impl FloatFormatOptions {
     /// Default options for formatting an [`half::f16`].
-    #[allow(non_upper_case_globals)]
+    #[expect(non_upper_case_globals)]
     pub const DEFAULT_f16: Self = Self {
         always_sign: false,
         precision: 5,
@@ -172,7 +172,7 @@ impl FloatFormatOptions {
     };
 
     /// Default options for formatting an [`f32`].
-    #[allow(non_upper_case_globals)]
+    #[expect(non_upper_case_globals)]
     pub const DEFAULT_f32: Self = Self {
         always_sign: false,
         precision: 7,
@@ -182,7 +182,7 @@ impl FloatFormatOptions {
     };
 
     /// Default options for formatting an [`f64`].
-    #[allow(non_upper_case_globals)]
+    #[expect(non_upper_case_globals)]
     pub const DEFAULT_f64: Self = Self {
         always_sign: false,
         precision: 15,

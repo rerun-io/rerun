@@ -102,7 +102,9 @@ use super::{DrawData, DrawError, RenderContext, Renderer};
 pub mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
 
-    use crate::{Color32, PickingLayerObjectId, size::SizeHalf, wgpu_buffer_types};
+    use crate::{
+        Color32, PickingLayerObjectId, UnalignedColor32, size::SizeHalf, wgpu_buffer_types,
+    };
 
     use super::LineStripFlags;
 
@@ -131,7 +133,8 @@ pub mod gpu_data {
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct LineStripInfo {
-        pub color: Color32, // alpha unused right now
+        /// [`ecolor::Color32`] is `repr(align(4))` so we can't use it in `repr(packed)`.
+        pub color: UnalignedColor32, // alpha unused right now
         pub stippling: u8,
         pub flags: LineStripFlags,
         pub radius: SizeHalf,
@@ -142,7 +145,7 @@ pub mod gpu_data {
         fn default() -> Self {
             Self {
                 radius: crate::Size::new_ui_points(1.5).into(),
-                color: Color32::WHITE,
+                color: Color32::WHITE.into(),
                 stippling: 0,
                 flags: LineStripFlags::empty(),
             }

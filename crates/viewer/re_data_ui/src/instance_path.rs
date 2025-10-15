@@ -166,7 +166,7 @@ impl DataUi for InstancePath {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn component_list_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -195,7 +195,7 @@ fn component_list_ui(
 
                 for (component_descr, unit) in components {
                     let component_path =
-                        ComponentPath::new(entity_path.clone(), component_descr.clone());
+                        ComponentPath::new(entity_path.clone(), component_descr.component);
 
                     let is_static = db
                         .storage_engine()
@@ -234,7 +234,7 @@ fn component_list_ui(
                             crate::ComponentPathLatestAtResults {
                                 component_path: ComponentPath::new(
                                     entity_path.clone(),
-                                    component_descr.clone(),
+                                    component_descr.component,
                                 ),
                                 unit,
                             }
@@ -276,11 +276,12 @@ fn component_list_ui(
                             component_type.data_ui_recording(ctx, ui, UiLayout::Tooltip);
                         }
 
-                        if let Some(data) = unit.component_batch_raw(component_descr) {
+                        if let Some(array) = unit.component_batch_raw(component_descr) {
                             re_ui::list_item::list_item_scope(ui, component_descr, |ui| {
                                 ui.list_item_flat_noninteractive(
                                     re_ui::list_item::PropertyContent::new("Data type").value_text(
-                                        re_arrow_util::format_data_type(data.data_type()),
+                                        // TODO(#11071): use re_arrow_ui to format the datatype here
+                                        re_arrow_util::format_data_type(array.data_type()),
                                     ),
                                 );
                             });

@@ -33,7 +33,8 @@ impl CError {
             for byte in &bytes[..c.len_utf8()] {
                 // `c_char` is something different depending on platforms, and this is needed for
                 // when it's the same as `u8`.
-                #[allow(trivial_numeric_casts)]
+                #[allow(trivial_numeric_casts, clippy::allow_attributes)]
+                #[expect(clippy::cast_possible_wrap)] // intentional!
                 {
                     message_c[bytes_next] = *byte as _;
                 }
@@ -73,7 +74,7 @@ impl CError {
         )
     }
 
-    #[allow(unsafe_code)]
+    #[expect(unsafe_code)]
     pub(crate) fn write_error(self, error: *mut Self) {
         if let Some(error) = unsafe { error.as_mut() } {
             *error = self;
@@ -89,8 +90,8 @@ mod tests {
 
     #[test]
     fn write_error_handles_message_overflow() {
-        #![allow(clippy::ref_as_ptr)]
-        #![allow(unsafe_code)]
+        #![expect(clippy::ref_as_ptr)]
+        #![expect(unsafe_code)]
 
         // With ASCII character.
         let description = "a".repeat(CError::MAX_MESSAGE_SIZE_BYTES * 2);

@@ -27,9 +27,8 @@ use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
 };
 use re_log_encoding::codec::wire::encoder::Encode as _;
-use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
-use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
-use re_protos::cloud::v1alpha1::FetchChunksRequest;
+use re_log_types::{StoreId, StoreKind};
+use re_protos::cloud::v1alpha1::{FetchChunksRequest, ScanPartitionTableResponse};
 use re_redap_client::ConnectionClient;
 
 use crate::dataframe_query_common::{
@@ -89,25 +88,17 @@ impl DataframePartitionStream {
             fetch_chunks_response_stream,
         );
 
-        let store_info = StoreInfo {
-            // Note: using partition id as the store id, shouldn't really
-            // matter since this is just a temporary store.
-            store_id: StoreId::random(StoreKind::Recording, partition_id),
-            cloned_from: None,
-            store_source: StoreSource::Unknown,
-            store_version: None,
-        };
-
-        let mut store = ChunkStore::new(store_info.store_id.clone(), Default::default());
-        store.set_store_info(store_info);
-        let store = ChunkStoreHandle::new(store);
+        // Note: using partition id as the store id, shouldn't really
+        // matter since this is just a temporary store.
+        let store_id = StoreId::random(StoreKind::Recording, partition_id);
+        let store = ChunkStore::new_handle(store_id, Default::default());
 
         while let Some(chunks_and_partition_ids) = chunk_stream.next().await {
             let chunks_and_partition_ids =
                 chunks_and_partition_ids.map_err(|err| exec_datafusion_err!("{err}"))?;
 
             let _span = tracing::trace_span!(
-                "get_chunks::batch_insert",
+                "fetch_chunks::batch_insert",
                 num_chunks = chunks_and_partition_ids.len()
             )
             .entered();
@@ -192,7 +183,6 @@ fn prepend_string_column_schema(schema: &Schema, column_name: &str) -> Schema {
 
 impl PartitionStreamExec {
     #[tracing::instrument(level = "info", skip_all)]
-    #[allow(clippy::too_many_arguments)]
     pub fn try_new(
         table_schema: &SchemaRef,
         sort_index: Option<Index>,
@@ -207,8 +197,10 @@ impl PartitionStreamExec {
             None => Arc::clone(table_schema),
         };
 
-        let partition_col =
-            Arc::new(Column::new(DATASET_MANIFEST_ID_FIELD_NAME, 0)) as Arc<dyn PhysicalExpr>;
+        let partition_col = Arc::new(Column::new(
+            ScanPartitionTableResponse::FIELD_PARTITION_ID,
+            0,
+        )) as Arc<dyn PhysicalExpr>;
         let order_col = sort_index
             .and_then(|index| {
                 let index_name = index.as_str();
@@ -232,16 +224,22 @@ impl PartitionStreamExec {
             ));
         }
 
-        let orderings = vec![LexOrdering::new(physical_ordering)];
+        let orderings = vec![
+            LexOrdering::new(physical_ordering)
+                .expect("LexOrdering should return Some when non-empty vec is passed"),
+        ];
 
         let eq_properties =
-            EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), &orderings);
+            EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), orderings);
 
         let partition_in_output_schema = projection.map(|p| p.contains(&0)).unwrap_or(false);
 
         let output_partitioning = if partition_in_output_schema {
             Partitioning::Hash(
-                vec![Arc::new(Column::new(DATASET_MANIFEST_ID_FIELD_NAME, 0))],
+                vec![Arc::new(Column::new(
+                    ScanPartitionTableResponse::FIELD_PARTITION_ID,
+                    0,
+                ))],
                 num_partitions,
             )
         } else {
@@ -300,7 +298,7 @@ fn create_next_row(
 
     let batch_schema = Arc::new(prepend_string_column_schema(
         &query_schema,
-        DATASET_MANIFEST_ID_FIELD_NAME,
+        ScanPartitionTableResponse::FIELD_PARTITION_ID,
     ));
 
     let batch = RecordBatch::try_new_with_options(

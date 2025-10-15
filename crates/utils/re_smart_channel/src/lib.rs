@@ -30,7 +30,6 @@ pub enum FlushError {
 /// Identifies in what context this smart channel was created, and who/what is holding its
 /// receiving end.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
-#[cfg_attr(not(target_arch = "wasm32"), expect(clippy::large_enum_variant))]
 pub enum SmartChannelSource {
     /// The channel was created in the context of loading a file from disk (could be
     /// `.rrd` files, or `.glb`, `.png`, …).
@@ -142,12 +141,12 @@ impl SmartChannelSource {
     ///
     /// Returns `None` for any source that receives data dynamically through SDK calls or similar.
     /// For a status string that applies to all sources, see [`Self::status_string`].
-    pub fn loading_string(&self) -> Option<String> {
+    pub fn loading_name(&self) -> Option<String> {
         match self {
             // We only show things we know are very-soon-to-be recordings:
-            Self::File(path) => Some(format!("Loading {}…", path.display())),
-            Self::RrdHttpStream { url, .. } => Some(format!("Loading {url}…")),
-            Self::RedapGrpcStream { uri, .. } => Some(format!("Loading {uri}…")),
+            Self::File(path) => Some(path.to_string_lossy().into_owned()),
+            Self::RrdHttpStream { url, .. } => Some(url.clone()),
+            Self::RedapGrpcStream { uri, .. } => Some(uri.partition_id.clone()),
 
             Self::RrdWebEventListener
             | Self::JsChannel { .. }
@@ -207,7 +206,6 @@ impl SmartChannelSource {
 /// Due to the multiplexed nature of the smart channel, every message coming in can originate
 /// from a different source.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(not(target_arch = "wasm32"), expect(clippy::large_enum_variant))]
 pub enum SmartMessageSource {
     /// The source is unknown.
     ///

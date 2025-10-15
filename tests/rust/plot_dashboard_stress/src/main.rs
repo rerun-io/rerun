@@ -12,6 +12,9 @@
 //! pixi run rs-plot-dashboard --num-plots 10 --num-series-per-plot 5 --num-points-per-series 5000 --freq 1000
 //! ```
 
+#![expect(clippy::cast_possible_wrap)]
+#![expect(clippy::disallowed_methods)]
+
 use rerun::external::re_log;
 
 #[derive(Debug, clap::ValueEnum, Clone)]
@@ -135,7 +138,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
 
     let mut tick_start_time = std::time::Instant::now();
 
-    #[allow(clippy::unchecked_duration_subtraction)]
+    #[expect(clippy::unchecked_duration_subtraction)]
     for offset in offsets {
         if args.temporal_batch_size.is_none() {
             rec.set_duration_secs("sim_time", sim_times[offset]);

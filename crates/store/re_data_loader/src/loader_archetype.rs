@@ -31,7 +31,18 @@ impl DataLoader for ArchetypeLoader {
     ) -> Result<(), crate::DataLoaderError> {
         use anyhow::Context as _;
 
-        if filepath.is_dir() {
+        // NOTE: We're not just checking whether this is or isn't any kind of file here: we
+        // are specifically checking whether this is a vanilla, run-of-the-mill, boring file.
+        // Not a socket, not a fifo, not some obscure named pipe, and certainly not a symlink to
+        // any of these things: just a basic file. Anything other than a vanilla file is assumed to
+        // be an RRD stream by default, and therefore will be handled by the RRD data loader.
+        //
+        // This is super important because, if that thing does turn out to be a fifo or something of
+        // that nature (e.g. `rerun <(curl …)`), and we end up reading from it, then the RRD data loader
+        // will end up executing on top of a racy, partial RRD stream (because these virtual streams
+        // have process-global state). The end result will be what looks like a bunch of corrupt data and
+        // the decoder which will start spewing random confusing errors.
+        if !filepath.is_file() {
             return Err(crate::DataLoaderError::Incompatible(filepath.clone()));
         }
 

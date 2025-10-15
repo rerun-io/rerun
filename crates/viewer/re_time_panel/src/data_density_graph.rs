@@ -14,7 +14,7 @@ use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
 use crate::{
     recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber,
-    time_panel::TimePanelItem,
+    time_panel::TimePanelItem, time_ranges_ui::Segment,
 };
 
 use super::time_ranges_ui::TimeRangesUi;
@@ -145,6 +145,8 @@ impl DensityGraph {
     }
 
     pub fn add_range(&mut self, (min_x, max_x): (f32, f32), count: f32) {
+        #![expect(clippy::cast_possible_wrap)] // usize -> i64 is fine
+
         debug_assert!(min_x <= max_x);
 
         if max_x < self.min_x || self.max_x < min_x {
@@ -211,6 +213,8 @@ impl DensityGraph {
         y_range: Rangef,
         painter: &egui::Painter,
         full_color: Color32,
+        segments: &[Segment],
+        outside_segment_color: Color32,
     ) {
         re_tracing::profile_function!();
 
@@ -253,10 +257,23 @@ impl DensityGraph {
         let mut mesh = egui::Mesh::default();
         mesh.vertices.reserve(4 * self.buckets.len());
 
+        let mut valid_data_x_ranges = segments
+            .iter()
+            .flat_map(|s| s.valid_subranges.iter().cloned());
+        let mut next_or_current_segment_range_x = valid_data_x_ranges.next();
+
         for (i, &density) in self.buckets.iter().enumerate() {
             // TODO(emilk): early-out if density is 0 for long stretches
 
             let x = self.x_from_bucket_index(i);
+
+            // Advance segments if we're ahead of the segment we looked at last.
+            while next_or_current_segment_range_x
+                .as_ref()
+                .is_some_and(|s| (*s.end() as f32) < x)
+            {
+                next_or_current_segment_range_x = valid_data_x_ranges.next();
+            }
 
             let normalized_density = data_density_graph_painter.normalize_density(density);
 
@@ -269,7 +286,17 @@ impl DensityGraph {
                 let inner_radius =
                     (max_radius * normalized_density).at_least(MIN_RADIUS) - feather_radius;
 
-                let inner_color = full_color.gamma_multiply(lerp(0.5..=1.0, normalized_density));
+                // Color different if we're outside of a segment.
+                let base_color = if next_or_current_segment_range_x
+                    .as_ref()
+                    .is_some_and(|s| (*s.start() as f32) <= x)
+                {
+                    full_color
+                } else {
+                    outside_segment_color
+                };
+
+                let inner_color = base_color.gamma_multiply(lerp(0.5..=1.0, normalized_density));
 
                 (inner_radius, inner_color)
             };
@@ -385,7 +412,7 @@ fn smooth(density: &[f32]) -> Vec<f32> {
 
 // ----------------------------------------------------------------------------
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub fn data_density_graph_ui(
     data_density_graph_painter: &mut DataDensityGraphPainter,
     ctx: &ViewerContext<'_>,
@@ -400,15 +427,13 @@ pub fn data_density_graph_ui(
 ) {
     re_tracing::profile_function!();
 
-    let timeline = *time_ctrl.timeline();
-
     let mut data = build_density_graph(
         ui,
         time_ranges_ui,
         row_rect,
         db,
         item,
-        timeline.name(),
+        time_ctrl.timeline().name(),
         DensityGraphBuilderConfig::default(),
     );
 
@@ -419,6 +444,8 @@ pub fn data_density_graph_ui(
         row_rect.y_range(),
         time_area_painter,
         graph_color(ctx, &item.to_item(), ui),
+        &time_ranges_ui.segments,
+        ui.tokens().density_graph_outside_valid_ranges,
     );
 
     if tooltips_enabled && let Some(hovered_time) = data.hovered_time {
@@ -639,7 +666,7 @@ fn show_row_ids_tooltip(
     } = item;
 
     if let Some(component_descr) = component_descr.as_ref() {
-        ComponentPath::new(entity_path.clone(), component_descr.clone())
+        ComponentPath::new(entity_path.clone(), component_descr.component)
             .data_ui(ctx, ui, ui_layout, &query, db);
     } else {
         re_entity_db::InstancePath::entity_all(entity_path.clone())

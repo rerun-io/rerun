@@ -1,0 +1,101 @@
+---
+source: crates/store/re_redap_tests/src/tests/dataset_schema.rs
+expression: schema.format_snapshot()
+---
+/another/one:example.MyPoints:colors: List[nullable u32] [
+    rerun:archetype:example.MyPoints
+    rerun:component:example.MyPoints:colors
+    rerun:component_type:example.MyColor
+    rerun:entity_path:/another/one
+    rerun:kind:data
+]
+/another/one:example.MyPoints:labels: List[nullable Utf8] [
+    rerun:archetype:example.MyPoints
+    rerun:component:example.MyPoints:labels
+    rerun:component_type:example.MyLabel
+    rerun:entity_path:/another/one
+    rerun:is_static:true
+    rerun:kind:data
+]
+/another/one:example.MyPoints:points: List[nullable Struct[2]] [
+    rerun:archetype:example.MyPoints
+    rerun:component:example.MyPoints:points
+    rerun:component_type:example.MyPoint
+    rerun:entity_path:/another/one
+    rerun:kind:data
+]
+/my/entity:example.MyPoints:colors: List[nullable u32] [
+    rerun:archetype:example.MyPoints
+    rerun:component:example.MyPoints:colors
+    rerun:component_type:example.MyColor
+    rerun:entity_path:/my/entity
+    rerun:kind:data
+]
+/my/entity:example.MyPoints:labels: List[nullable Utf8] [
+    rerun:archetype:example.MyPoints
+    rerun:component:example.MyPoints:labels
+    rerun:component_type:example.MyLabel
+    rerun:entity_path:/my/entity
+    rerun:is_static:true
+    rerun:kind:data
+]
+/my/entity:example.MyPoints:points: List[nullable Struct[2]] [
+    rerun:archetype:example.MyPoints
+    rerun:component:example.MyPoints:points
+    rerun:component_type:example.MyPoint
+    rerun:entity_path:/my/entity
+    rerun:kind:data
+]
+/my/other/entity:example.MyPoints:colors: List[nullable u32] [
+    rerun:archetype:example.MyPoints
+    rerun:component:example.MyPoints:colors
+    rerun:component_type:example.MyColor
+    rerun:entity_path:/my/other/entity
+    rerun:kind:data
+]
+/my/other/entity:example.MyPoints:labels: List[nullable Utf8] [
+    rerun:archetype:example.MyPoints
+    rerun:component:example.MyPoints:labels
+    rerun:component_type:example.MyLabel
+    rerun:entity_path:/my/other/entity
+    rerun:is_static:true
+    rerun:kind:data
+]
+/my/other/entity:example.MyPoints:points: List[nullable Struct[2]] [
+    rerun:archetype:example.MyPoints
+    rerun:component:example.MyPoints:points
+    rerun:component_type:example.MyPoint
+    rerun:entity_path:/my/other/entity
+    rerun:kind:data
+]
+/yet/another/one:example.MyPoints:colors: List[nullable u32] [
+    rerun:archetype:example.MyPoints
+    rerun:component:example.MyPoints:colors
+    rerun:component_type:example.MyColor
+    rerun:entity_path:/yet/another/one
+    rerun:kind:data
+]
+/yet/another/one:example.MyPoints:labels: List[nullable Utf8] [
+    rerun:archetype:example.MyPoints
+    rerun:component:example.MyPoints:labels
+    rerun:component_type:example.MyLabel
+    rerun:entity_path:/yet/another/one
+    rerun:is_static:true
+    rerun:kind:data
+]
+/yet/another/one:example.MyPoints:points: List[nullable Struct[2]] [
+    rerun:archetype:example.MyPoints
+    rerun:component:example.MyPoints:points
+    rerun:component_type:example.MyPoint
+    rerun:entity_path:/yet/another/one
+    rerun:kind:data
+]
+frame_nr: i64 [
+    rerun:index_name:frame_nr
+    rerun:kind:index
+]
+rerun.controls.RowId: FixedSizeBinary[16] [
+    ARROW:extension:metadata:{"namespace":"row"}
+    ARROW:extension:name:rerun.datatypes.TUID
+    rerun:kind:control
+]

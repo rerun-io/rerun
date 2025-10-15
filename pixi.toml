@@ -7,7 +7,7 @@
 #
 # Type `pixi shell` to enter the pixi environment.
 #
-# https://prefix.dev/docs/pixi/overview
+# https://pixi.sh/latest/
 
 # We currently assume pixi version 0.34.0
 # You can check that your environment is correct by running:
@@ -24,7 +24,8 @@ license = "MIT OR Apache-2.0"
 platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
-version = "0.1.0"                                                              # TODO(emilk): sync version with `Cargo.toml` with help from `crates.py`
+version = "0.1.0" # TODO(emilk): sync version with `Cargo.toml` with help from `crates.py`
+requires-pixi = ">=0.55.0" # Make sure to keep this in sync with the version on our CI jobs!
 
 [system-requirements]
 macos = "11.0" # needed for some reason otherwise fails to resolve mediapipe package
@@ -92,7 +93,7 @@ RERUN_DEV_ENVIRONMENT = "true"
 # - The python-dev feature is not included in the default environment because it can
 #   lead to unexpected (lengthy) Rerun build during environment creation.
 # - The cpp feature cannot be included in the default environment because
-#   it breaks compillation of the rerun client on linux. See: https://github.com/rerun-io/rerun/issues/6852
+#   it breaks compilation of the rerun client on linux. See: https://github.com/rerun-io/rerun/issues/6852
 default = ["base", "wheel-build"]
 
 # The py environment is for running any code with a dependency on the python `rerun-sdk`.
@@ -122,24 +123,10 @@ cpp = ["base", "cpp"]
 # ```
 
 # Just the deps for running snippet comparisons.
-wheel-test-min = [
-  "base",
-  "cpp",
-  "py-test-deps",
-  "python-pypi",
-  "wheel-build",
-  "wheel-test",
-]
+wheel-test-min = ["base", "cpp", "py-test-deps", "python-pypi", "wheel-build", "wheel-test"]
 
 # The full deps for running all examples
-wheel-test = [
-  "base",
-  "wheel-test",
-  "wheel-build",
-  "py-test-deps",
-  "examples-common",
-  "python-pypi",
-]
+wheel-test = ["base", "wheel-test", "wheel-build", "py-test-deps", "examples-common", "python-pypi"]
 
 # Example environments
 
@@ -263,14 +250,7 @@ check-backwards-compatibility = { cmd = "find tests/assets/rrd -name '*.rrd' -ty
 rs-fmt = "cargo fmt --all"
 
 # Code formatting for all languages.
-format = { depends-on = [
-  "cpp-fmt",
-  "misc-fmt",
-  "pb-fmt",
-  "py-fmt",
-  "rs-fmt",
-  "toml-fmt",
-] }
+format = { depends-on = ["cpp-fmt", "misc-fmt", "pb-fmt", "py-fmt", "rs-fmt", "toml-fmt"] }
 fmt = { depends-on = ["format"] }
 
 # Assorted linting tasks
@@ -326,14 +306,20 @@ pb-check = { depends-on = ["pb-fmt-check", "pb-lint", "pb-breaking"] }
 misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
 misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
 
+# Until we resolve nbqa config issue keep aligned with nbqa dirs above
+nb-strip = "python scripts/nbstripout.py mypy examples/python scripts/ tests/python/ docs/snippets/ --extra-keys='metadata.language_info metadata.vscode metadata.kernelspec cell.metadata.vscode' --drop-empty-cells"
+
 # Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
 py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --config rerun_py/pyproject.toml ."
 py-fmt-check = "ruff check --config rerun_py/pyproject.toml . && ruff format --check --config rerun_py/pyproject.toml"
 # Get non-internal things that are ok to not check rerun on
 py-lint-non-sdk = { cmd = "mypy --config-file rerun_py/.non_sdk_mypy.ini --install-types --non-interactive --no-warn-unused-ignore", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
+# I couldn't get the config to work correctly so placing relevant directories in command line
+# Until we resolve nbqa config issue keep aligned with nb-strip dirs below
+py-lint-nb-rerun = { cmd = "nbqa mypy examples/python scripts/ tests/python/ docs/snippets/ --config rerun_py/pyproject.toml  ", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
 # Need to run this in env with rerun installed
 py-lint-rerun = "mypy --config-file rerun_py/pyproject.toml --install-types --non-interactive --no-warn-unused-ignore"
-py-lint = { depends-on = ["py-lint-non-sdk", "py-lint-rerun"] }
+py-lint = { depends-on = ["py-lint-non-sdk", "py-lint-rerun", "py-lint-nb-rerun"] }
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
@@ -376,12 +362,8 @@ js-setup = "npm i -g yarn"
 js-install = { cmd = "yarn install --cwd rerun_js", depends-on = ["js-setup"] }
 
 # Build JS packages
-js-build-base = { cmd = "yarn --cwd rerun_js/web-viewer run build", depends-on = [
-  "js-install",
-] }
-js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends-on = [
-  "js-install",
-] }
+js-build-base = { cmd = "yarn --cwd rerun_js/web-viewer run build", depends-on = ["js-install"] }
+js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends-on = ["js-install"] }
 
 # Build web-viewer and web-viewer-react without rebuilding re_viewer Wasm
 js-build-no-wasm = { cmd = "yarn --cwd rerun_js workspaces run build:js", depends-on = [
@@ -394,13 +376,9 @@ js-build-package-docs = { cmd = "yarn --cwd rerun_js workspaces run docs", depen
 ] }
 
 # Combine the output of individual package docs into a single directory
-js-docs = { cmd = "yarn --cwd rerun_js run docs", depends-on = [
-  "js-build-package-docs",
-] }
+js-docs = { cmd = "yarn --cwd rerun_js run docs", depends-on = ["js-build-package-docs"] }
 
-js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = [
-  "js-docs",
-] }
+js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = ["js-docs"] }
 
 [feature.wheel-build.tasks]
 # Build and install a development version of the rerun-sdk Python package.
@@ -433,9 +411,7 @@ py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALL
 
 
 # Build the `rerun-notebook` package.
-py-build-notebook = { cmd = "pip install -e rerun_notebook", depends-on = [
-  "js-build-base",
-] }
+py-build-notebook = { cmd = "pip install -e rerun_notebook", depends-on = ["js-build-base"] }
 
 # Build the JS parts of `rerun-notebook` without rebuilding re_viewer Wasm in the process
 py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-on = [
@@ -480,9 +456,7 @@ py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py",
 
 
 # Run the Python tests.
-py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends-on = [
-  "py-build-release",
-] }
+py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends-on = ["py-build-release"] }
 
 snapshots = "python scripts/snapshots.py"
 
@@ -589,56 +563,58 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 #   `meilisearch`).
 # - Last resort, use a feature to conditionally include a dependency (e.g. `taplo`).
 
-aiohttp = ">=3.9.3,<3.10"         # For `zombie_todos.py`
+aiohttp = ">=3.9.3,<3.10" # For `zombie_todos.py`
 attrs = ">=23.1.0"
 clang = "16.0.6.*"
-clang-tools = "16.0.6.*"          # clang-format
+clang-tools = "16.0.6.*" # clang-format
 cmake = "3.27.6.*"
 colorama = ">=0.4.6,<0.5"
-doxygen = "1.9.7.*"               # Make sure to use a version that is compatible with the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
-fd-find = ">=10.1.0"              # Used by `cpp-fmt` to find C++ files
-ffmpeg = ">=7.1.0,<8"             # Needed for consistent results on tests that use ffmpeg to render video.
+doxygen = "1.9.7.*" # Make sure to use a version that is compatible with the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
+fd-find = ">=10.1.0" # Used by `cpp-fmt` to find C++ files
+ffmpeg = ">=7.1.0,<8" # Needed for consistent results on tests that use ffmpeg to render video.
 flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
-jinja2 = ">=3.1.3,<3.2"           # For `build_screenshot_compare.py` and other utilities that build websites.
+jinja2 = ">=3.1.3,<3.2" # For `build_screenshot_compare.py` and other utilities that build websites.
 mypy = "1.14.1.*"
-nasm = ">=2.16"                   # Required by https://github.com/memorysafety/rav1d for native video support
+nasm = ">=2.16" # Required by https://github.com/memorysafety/rav1d for native video support
+nbqa = "*"
+nbstripout = "*"
 ninja = "1.11.1.*"
-numpy = ">=2"                     # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
+numpy = ">=2" # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
 prettier = ">=3.6"
-pyarrow = "18.0.0.*"              # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
+pyarrow = "18.0.0.*" # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
 pytest = ">=8.4.1"
 pytest-benchmark = ">=4.0.0,<4.1"
-python = "=3.11"                  # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
+python = "=3.11" # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.12.10.*"
 semver = ">=3.0,<3.1"
 taplo = "=0.9.1"
 tomlkit = "0.12.3.*"
-tqdm = ">=4.66.2,<4.67"           # For displaying progress in various utility scripts.
+tqdm = ">=4.66.2,<4.67" # For displaying progress in various utility scripts.
 typing_extensions = ">4.5"
-typos = ">=1.16.20"
+typos = ">=1.37.2"
 gh = ">=2.79.0,<3"
 
 
 [feature.base.pypi-dependencies]
-cryptography = "==38.0.4"        # For `upload_image.py`
+cryptography = "==38.0.4" # For `upload_image.py`
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
-hatch = "==1.12.0"               # For `rerun_notebook`
-jupyter = ">=1.0"                # Needed for running the notebook (so we can actually do something after `pixi run py-build-notebook`)
+hatch = "==1.12.0" # For `rerun_notebook`
+jupyter = ">=1.0" # Needed for running the notebook (so we can actually do something after `pixi run py-build-notebook`)
 parso = ">=0.8.4, <0.9"
-Pillow = ">=10.0.0"              # For `thumbnails.py`
-pygithub = "==2.6.1"             # Among others for `sync_release_assets.py`.
-requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
-types-decorator = "*"            # Type hint stubs
-types-Deprecated = "==1.2.9.2"   # Type hint stubs
-types-pytz = "*"                 # Type hint stubs
-types-requests = ">=2.31,<3"     # Type hint stubs
+Pillow = ">=10.0.0" # For `thumbnails.py`
+pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.
+requests = ">=2.31,<3" # For `thumbnails.py` & `upload_image.py`
+types-decorator = "*" # Type hint stubs
+types-Deprecated = "==1.2.9.2" # Type hint stubs
+types-pytz = "*" # Type hint stubs
+types-requests = ">=2.31,<3" # Type hint stubs
 
 [feature.wheel-build.dependencies]
-binaryen = "117.*"       # for `wasm-opt`
+binaryen = "117.*" # for `wasm-opt`
 maturin = "==1.8.1"
-nodejs = ">=22.0"        # rerun_notebook needs nodejs to build the wheel
+nodejs = ">=22.0" # rerun_notebook needs nodejs to build the wheel
 packaging = ">=24.0,<25" # For `publish_wheels.py`
 pip = ">=23"
 pyarrow = "18.0.0.*"
@@ -647,11 +623,11 @@ wheel = ">=0.38,<0.39"
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
 meilisearch = "1.5.1.*" # not available for linux-aarch64
-buf = "1.*"             # not available for linux-aarch64
+buf = "1.*" # not available for linux-aarch64
 
 [target.osx-arm64.dependencies]
-buf = "1.*"             # not available for linux-aarch64
-libgfortran5 = ">=14"   # Fixes issues with OpenCV
+buf = "1.*" # not available for linux-aarch64
+libgfortran5 = ">=14" # Fixes issues with OpenCV
 meilisearch = "1.5.1.*" # not available for linux-aarch64
 llvm-tools = "16.0.6.*" # TODO(rust-lang/stacker#127)
 
@@ -696,7 +672,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 #
 # This is also redundantly defined in `python-pypi`
 opencv = ">4.6"
-numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
+numpy = ">=2" # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
 
 [feature.python-dev.pypi-dependencies]
 # Install the `rerun_py` as a package in editable mode.
@@ -740,7 +716,7 @@ av = "==14.2.0"
 # during the wheel-test task itself is otherwise painful.
 torch = "==2.8.0" # This must match the torch version in any package we install during `wheel-test`
 # DataFusion is needed to run integration tests, but it is an optional dependency for rerun sdk
-datafusion = "==48.0.0"
+datafusion = "==49.0.0"
 
 [feature.wheel-test.dependencies]
 pip = ">=23"
@@ -752,7 +728,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 [feature.python-pypi.dependencies]
 # Note these are the same as in `python-dev` but we need to repeat them here because the two are mutually exclusive.
 opencv = ">4.6"
-numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
+numpy = ">=2" # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
 
 
 [feature.python-pypi.pypi-dependencies]
@@ -780,7 +756,7 @@ umap-learn = "==0.5.7"
 [feature.examples-common.pypi-dependencies]
 # External deps
 av = "==14.2.0"
-datafusion = "==48.0.0"
+datafusion = "==49.0.0"
 jupyter = ">=1.0"
 polars = ">=0.12.0"
 

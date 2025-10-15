@@ -13,7 +13,7 @@ use super::{
 };
 use crate::catalog::to_py_err;
 
-#[pyclass]
+#[pyclass(module = "rerun_bindings.rerun_bindings")] // NOLINT: skip pyclass_eq, non-trivial implementation
 pub struct SchemaIterator {
     iter: std::vec::IntoIter<PyObject>,
 }
@@ -29,8 +29,8 @@ impl SchemaIterator {
     }
 }
 
-#[pyclass(frozen, name = "Schema")]
-#[derive(Clone)]
+#[pyclass(frozen, eq, name = "Schema", module = "rerun_bindings.rerun_bindings")]
+#[derive(Clone, PartialEq, Eq)]
 //TODO(#9457): improve this object and use it for `Dataset.schema()`.
 pub struct PySchema {
     pub schema: SorbetColumnDescriptors,
@@ -87,7 +87,7 @@ impl PySchema {
             .collect()
     }
 
-    #[allow(rustdoc::broken_intra_doc_links)]
+    #[allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)]
     /// Look up the column descriptor for a specific entity path and component.
     ///
     /// Parameters
@@ -122,8 +122,11 @@ impl PySchema {
         })
     }
 
-    #[expect(rustdoc::private_doc_tests)]
-    #[allow(rustdoc::invalid_rust_codeblocks)]
+    #[allow(
+        clippy::allow_attributes,
+        rustdoc::invalid_rust_codeblocks,
+        rustdoc::private_doc_tests
+    )]
     /// Look up the column descriptor for a specific selector.
     ///
     /// Parameters

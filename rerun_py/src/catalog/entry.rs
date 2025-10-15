@@ -8,8 +8,8 @@ use re_protos::cloud::v1alpha1::{EntryKind, ext::EntryDetails};
 use crate::catalog::PyCatalogClientInternal;
 
 /// A unique identifier for an entry in the catalog.
-#[pyclass(name = "EntryId")]
-#[derive(Clone)]
+#[pyclass(eq, name = "EntryId")]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PyEntryId {
     pub id: EntryId,
 }
@@ -104,7 +104,7 @@ impl From<PyEntryKind> for EntryKind {
 // ---
 
 /// An entry in the catalog.
-#[pyclass(name = "Entry", subclass)]
+#[pyclass(name = "Entry", subclass)] // NOLINT: skip pyclass_eq, non-trivial implementation
 pub struct PyEntry {
     pub client: Py<PyCatalogClientInternal>,
 
@@ -145,7 +145,7 @@ impl PyEntry {
     pub fn created_at(&self) -> chrono::DateTime<chrono::Utc> {
         let ts = self.details.created_at;
         // If the `prost::Timestamp` was legal, then this is also legal.
-        #[allow(clippy::unwrap_used)]
+        #[expect(clippy::unwrap_used)]
         chrono::DateTime::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32).unwrap()
     }
 
@@ -155,7 +155,7 @@ impl PyEntry {
     pub fn updated_at(&self) -> chrono::DateTime<chrono::Utc> {
         let ts = self.details.updated_at;
         // If the `prost::Timestamp` was legal, then this is also legal.
-        #[allow(clippy::unwrap_used)]
+        #[expect(clippy::unwrap_used)]
         chrono::DateTime::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32).unwrap()
     }
 

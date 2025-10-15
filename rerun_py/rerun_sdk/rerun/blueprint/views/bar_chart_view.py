@@ -36,12 +36,10 @@ class BarChartView(View):
     import rerun.blueprint as rrb
 
     rr.init("rerun_example_bar_chart", spawn=True)
-    # It's recommended to log bar charts with the `rr.BarChart` archetype,
-    # but single dimensional tensors can also be used if a `BarChartView` is created explicitly.
-    rr.log("tensor", rr.Tensor([8, 4, 0, 9, 1, 4, 1, 6, 9, 0]))
+    rr.log("bar_chart", rr.BarChart([8, 4, 0, 9, 1, 4, 1, 6, 9, 0]))
 
     # Create a bar chart view to display the chart.
-    blueprint = rrb.Blueprint(rrb.BarChartView(origin="tensor", name="Bar Chart"), collapse_panels=True)
+    blueprint = rrb.Blueprint(rrb.BarChartView(origin="bar_chart", name="Bar Chart"), collapse_panels=True)
 
     rr.send_blueprint(blueprint)
     ```
@@ -71,6 +69,7 @@ class BarChartView(View):
         ]
         | None = None,
         plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
+        background: blueprint_archetypes.PlotBackground | None = None,
     ) -> None:
         """
         Construct a blueprint for a new BarChartView view.
@@ -109,6 +108,8 @@ class BarChartView(View):
 
         plot_legend:
             Configures the legend of the plot.
+        background:
+            Configures the background of the plot.
 
         """
 
@@ -117,6 +118,11 @@ class BarChartView(View):
             if not isinstance(plot_legend, blueprint_archetypes.PlotLegend):
                 plot_legend = blueprint_archetypes.PlotLegend(plot_legend)
             properties["PlotLegend"] = plot_legend
+
+        if background is not None:
+            if not isinstance(background, blueprint_archetypes.PlotBackground):
+                background = blueprint_archetypes.PlotBackground(background)
+            properties["PlotBackground"] = background
 
         super().__init__(
             class_identifier="BarChart",

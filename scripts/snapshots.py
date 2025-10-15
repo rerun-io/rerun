@@ -15,9 +15,9 @@ from sys import stderr
 from typing import TYPE_CHECKING
 
 import numpy as np
-import PIL.Image as Image
 import rerun as rr
 import rerun.blueprint as rrb
+from PIL import Image
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

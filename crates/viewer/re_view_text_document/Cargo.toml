@@ -34,4 +34,7 @@ egui.workspace = true
 egui_commonmark.workspace = true
 
 [dev-dependencies]
+re_log_types.workspace = true
 re_test_context.workspace = true
+re_test_viewport.workspace = true
+re_viewport_blueprint.workspace = true

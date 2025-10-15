@@ -4,6 +4,7 @@ mod catalog_client;
 mod connection_handle;
 mod dataframe_query;
 mod dataframe_rendering;
+mod datafusion_catalog;
 mod datafusion_table;
 mod dataset_entry;
 mod entry;
@@ -18,6 +19,7 @@ use arrow::{
     array::{Float32Array, RecordBatch},
     datatypes::Field,
 };
+use errors::{AlreadyExistsError, NotFoundError};
 use pyo3::{Bound, PyResult, exceptions::PyRuntimeError, prelude::*};
 
 use crate::catalog::dataframe_query::PyDataframeQueryView;
@@ -51,6 +53,10 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
 
     m.add_class::<PyVectorDistanceMetric>()?;
     m.add_class::<PyRerunHtmlTable>()?;
+
+    // register exceptions generated with the [`pyo3::create_exception!`] macro
+    m.add("NotFoundError", _py.get_type::<NotFoundError>())?;
+    m.add("AlreadyExistsError", _py.get_type::<AlreadyExistsError>())?;
 
     Ok(())
 }

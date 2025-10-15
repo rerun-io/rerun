@@ -4,6 +4,7 @@
 #![allow(unused_braces)]
 #![allow(unused_imports)]
 #![allow(unused_parens)]
+#![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::map_flatten)]
@@ -12,6 +13,7 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
+#![allow(clippy::wildcard_imports)]
 
 use ::re_types_core::SerializationResult;
 use ::re_types_core::try_serialize_field;
@@ -24,6 +26,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug)]
 pub struct GraphView {
+    /// Configures the background of the graph.
+    pub background: crate::blueprint::archetypes::GraphBackground,
+
     /// Everything within these bounds is guaranteed to be visible.
     ///
     /// Somethings outside of these bounds may also be visible due to letterboxing.
@@ -55,7 +60,8 @@ impl ::re_types_core::View for GraphView {
 impl ::re_byte_size::SizeBytes for GraphView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.visual_bounds.heap_size_bytes()
+        self.background.heap_size_bytes()
+            + self.visual_bounds.heap_size_bytes()
             + self.force_link.heap_size_bytes()
             + self.force_many_body.heap_size_bytes()
             + self.force_position.heap_size_bytes()
@@ -65,7 +71,8 @@ impl ::re_byte_size::SizeBytes for GraphView {
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::blueprint::archetypes::VisualBounds2D>::is_pod()
+        <crate::blueprint::archetypes::GraphBackground>::is_pod()
+            && <crate::blueprint::archetypes::VisualBounds2D>::is_pod()
             && <crate::blueprint::archetypes::ForceLink>::is_pod()
             && <crate::blueprint::archetypes::ForceManyBody>::is_pod()
             && <crate::blueprint::archetypes::ForcePosition>::is_pod()

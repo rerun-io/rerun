@@ -168,9 +168,9 @@ def setup_lavapipe_for_windows() -> dict[str, str]:
             print(f"Error listing Vulkan runtime directory: {e}")
 
     # On CI we run with elevated privileges, therefore VK_DRIVER_FILES is ignored.
-    # See: https://github.com/KhronosGroup/Vulkan-Loader/blob/sdk-1.3.261/docs/LoaderInterfaceArchitecture.md#elevated-privilege-caveats
+    # See: https://github.com/KhronosGroup/Vulkan-Loader/blob/vulkan-sdk-1.4.304/docs/LoaderInterfaceArchitecture.md#elevated-privilege-caveats
     # Therefore, we have to set one of the registry keys that is checked to find the driver.
-    # See: https://vulkan.lunarg.com/doc/view/1.3.243.0/windows/LoaderDriverInterface.html#user-content-driver-discovery-on-windows
+    # See: https://vulkan.lunarg.com/doc/view/1.4.304.1/windows/LoaderDriverInterface.html#driver-discovery-on-windows
 
     # Write registry keys to configure Vulkan drivers
     import winreg

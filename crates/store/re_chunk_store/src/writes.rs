@@ -8,13 +8,9 @@ use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, EntityPath, RowId};
 
 use crate::{
-    ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreError,
+    ChunkId, ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreError,
     ChunkStoreEvent, ChunkStoreResult, ColumnMetadataState, store::ChunkIdSetPerTime,
 };
-
-// Used all over in docstrings.
-#[allow(unused_imports)]
-use crate::ChunkId;
 
 // ---
 
@@ -382,9 +378,12 @@ impl ChunkStore {
                 && old_typ != list_array.value_type()
             {
                 re_log::warn_once!(
-                    "Component column '{}' changed type from {old_typ:?} to {:?}",
+                    "Component '{}' with component type '{}' on entity '{}' changed type from {} to {}",
+                    component_descr.component,
                     component_type,
-                    list_array.value_type()
+                    chunk.entity_path(),
+                    re_arrow_util::format_data_type(&old_typ),
+                    re_arrow_util::format_data_type(&list_array.value_type())
                 );
             }
 
@@ -608,7 +607,6 @@ impl ChunkStore {
 
         let Self {
             id,
-            store_info: _,
             config: _,
             time_type_registry: _,
             type_registry: _,

@@ -39,10 +39,10 @@ class McapChannel(Archetype):
 
     def __init__(
         self: Any,
+        *,
         id: datatypes.UInt16Like,
         topic: datatypes.Utf8Like,
         message_encoding: datatypes.Utf8Like,
-        *,
         metadata: components.KeyValuePairsLike | None = None,
     ) -> None:
         """

@@ -1,21 +1,24 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
 use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::SnapshotOptions;
 use re_test_viewport::TestContextExt as _;
 use re_types::{
     archetypes::{self, Scalars},
     blueprint, components,
 };
 use re_view_time_series::TimeSeriesView;
-use re_viewer_context::{ViewClass as _, ViewId};
+use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
 #[test]
 pub fn test_blueprint_overrides_and_defaults_with_time_series() {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
+    let timeline = re_log_types::Timeline::log_tick();
+
     for i in 0..32 {
-        let timepoint = TimePoint::from([(test_context.active_timeline(), i)]);
+        let timepoint = TimePoint::from([(timeline, i)]);
         let t = i as f64 / 8.0;
         test_context.log_entity("plots/sin", |builder| {
             builder.with_archetype(RowId::new(), timepoint.clone(), &Scalars::single(t.sin()))
@@ -25,12 +28,17 @@ pub fn test_blueprint_overrides_and_defaults_with_time_series() {
         });
     }
 
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
+    );
+
     let view_id = setup_blueprint(&mut test_context);
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
+    test_context.run_view_ui_and_save_snapshot(
         view_id,
         "blueprint_overrides_and_defaults_with_time_series",
         egui::vec2(300.0, 300.0),
+        Some(SnapshotOptions::new().threshold(1.0)),
     );
 }
 
@@ -62,20 +70,4 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
 
         blueprint.add_view_at_root(view)
     })
-}
-
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    name: &str,
-    size: egui::Vec2,
-) {
-    let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
-        .build_ui(|ui| {
-            test_context.run_with_single_view(ui, view_id);
-        });
-    harness.run();
-    harness.snapshot(name);
 }

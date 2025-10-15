@@ -47,9 +47,11 @@ re_uri.workspace = true
 ahash.workspace = true
 document-features.workspace = true
 emath.workspace = true
+indexmap.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 parking_lot.workspace = true
+saturating_cast.workspace = true
 serde = { workspace = true, features = ["derive", "rc"], optional = true }
 thiserror.workspace = true
 web-time.workspace = true

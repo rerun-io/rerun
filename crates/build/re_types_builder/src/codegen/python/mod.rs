@@ -2,11 +2,14 @@
 
 mod views;
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::{
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    iter,
+};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
-use itertools::Itertools as _;
+use itertools::{Itertools as _, chain};
 use unindent::unindent;
 
 use crate::{
@@ -267,7 +270,7 @@ impl ExtensionClass {
                 .collect();
 
             let valid_converter_overrides = if obj.is_union() {
-                itertools::Either::Left(std::iter::once("inner"))
+                itertools::Either::Left(iter::once("inner"))
             } else {
                 itertools::Either::Right(obj.fields.iter().map(|field| field.name.as_str()))
             }
@@ -558,7 +561,7 @@ fn write_init_file(
     files_to_write.insert(path, code);
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 fn lib_source_code(archetype_names: &[String]) -> String {
     let manifest = quote_manifest(archetype_names);
     let archetype_names = archetype_names.join(", ");
@@ -2434,10 +2437,13 @@ fn compute_init_parameters(obj: &Object, objects: &Objects) -> Vec<String> {
     // If the type is fully transparent (single non-nullable field and not an archetype),
     // we have to use the "{obj.name}Like" type directly since the type of the field itself might be too narrow.
     // -> Whatever type aliases there are for this type, we need to pick them up.
-    if obj.kind != ObjectKind::Archetype && obj.fields.len() == 1 && !obj.fields[0].is_nullable {
+    if obj.kind != ObjectKind::Archetype
+        && let [single_field] = obj.fields.as_slice()
+        && !single_field.is_nullable
+    {
         vec![format!(
             "{}: {}",
-            obj.fields[0].name,
+            single_field.name,
             quote_parameter_type_alias(&obj.fqname, &obj.fqname, objects, false)
         )]
     } else if obj.is_union() {
@@ -2460,17 +2466,19 @@ fn compute_init_parameters(obj: &Object, objects: &Objects) -> Vec<String> {
             .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
             .collect_vec();
 
-        if optional.is_empty() {
+        if 2 < required.len() {
+            // There's a lot of required arguments.
+            // Using positional arguments would make usage hard to read.
+            // better for force kw-args for ALL arguments:
+            chain!(std::iter::once("*".to_owned()), required, optional).collect()
+        } else if optional.is_empty() {
             required
-        } else if obj.kind == ObjectKind::Archetype {
-            // Force kw-args for all optional arguments:
-            required
-                .into_iter()
-                .chain(std::iter::once("*".to_owned()))
-                .chain(optional)
-                .collect()
+        } else if obj.name == "AnnotationInfo" {
+            // TODO(#6836): rewrite AnnotationContext
+            chain!(required, optional).collect()
         } else {
-            required.into_iter().chain(optional).collect()
+            // Force kw-args for all optional arguments:
+            chain!(required, std::iter::once("*".to_owned()), optional).collect()
         }
     }
 }
@@ -2514,10 +2522,9 @@ fn quote_init_method(
     ext_class: &ExtensionClass,
     objects: &Objects,
 ) -> String {
-    let parameters = compute_init_parameters(obj, objects);
     let head = format!(
         "def __init__(self: Any, {}) -> None:",
-        parameters.join(", ")
+        compute_init_parameters(obj, objects).join(", ")
     );
 
     let parameter_docs = compute_init_parameter_docs(reporter, obj, objects);

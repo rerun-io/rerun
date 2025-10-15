@@ -54,7 +54,7 @@ pub(crate) fn read_arrow_from_bytes<R: std::io::Read>(
 
 #[cfg(feature = "encoder")]
 pub(crate) struct Payload {
-    pub uncompressed_size: usize,
+    pub uncompressed_size: u64,
     pub data: Vec<u8>,
 }
 
@@ -62,17 +62,20 @@ pub(crate) struct Payload {
 #[tracing::instrument(level = "debug", skip_all)]
 pub(crate) fn encode_arrow(
     batch: &ArrowRecordBatch,
-    compression: crate::Compression,
+    compression: crate::codec::Compression,
 ) -> Result<Payload, crate::encoder::EncodeError> {
     re_tracing::profile_function!();
 
     let mut uncompressed = Vec::new();
     write_arrow_to_bytes(&mut uncompressed, batch)?;
-    let uncompressed_size = uncompressed.len();
+
+    // This will never fail until we have 128bit-native CPUs, but `as` is too dangerous and very
+    // sensitive to refactorings.
+    let uncompressed_size = uncompressed.len().try_into()?;
 
     let data = match compression {
-        crate::Compression::Off => uncompressed,
-        crate::Compression::LZ4 => {
+        crate::codec::Compression::Off => uncompressed,
+        crate::codec::Compression::LZ4 => {
             re_tracing::profile_scope!("lz4::compress");
             let _span = tracing::trace_span!("lz4::compress").entered();
             lz4_flex::block::compress(&uncompressed)
@@ -93,13 +96,13 @@ pub(crate) fn encode_arrow(
 pub(crate) fn decode_arrow(
     data: &[u8],
     uncompressed_size: usize,
-    compression: crate::Compression,
+    compression: crate::codec::Compression,
 ) -> Result<ArrowRecordBatch, crate::decoder::DecodeError> {
     if true {
         let mut uncompressed = Vec::new();
         let data = match compression {
-            crate::Compression::Off => data,
-            crate::Compression::LZ4 => {
+            crate::codec::Compression::Off => data,
+            crate::codec::Compression::LZ4 => {
                 re_tracing::profile_scope!("LZ4-decompress");
                 let _span = tracing::trace_span!("lz4::decompress").entered();
                 uncompressed.resize(uncompressed_size, 0);
@@ -120,8 +123,8 @@ pub(crate) fn decode_arrow(
 
         BUFFER.with_borrow_mut(|uncompressed| {
             let data = match compression {
-                crate::Compression::Off => data,
-                crate::Compression::LZ4 => {
+                crate::codec::Compression::Off => data,
+                crate::codec::Compression::LZ4 => {
                     let _span = tracing::trace_span!("lz4::decompress").entered();
                     uncompressed.resize(uncompressed_size, 0);
                     lz4_flex::block::decompress_into(data, uncompressed)?;

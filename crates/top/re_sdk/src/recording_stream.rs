@@ -749,12 +749,7 @@ impl RecordingStreamBuilder {
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
         });
 
-        let store_info = StoreInfo {
-            store_id,
-            cloned_from: None,
-            store_source,
-            store_version: Some(re_build_info::CrateVersion::LOCAL),
-        };
+        let store_info = StoreInfo::new(store_id, store_source);
 
         (
             enabled,
@@ -1334,7 +1329,7 @@ impl RecordingStream {
 
     // NOTE: For bw and fw compatibility reasons, we need our logging APIs to be fallible, even
     // though they really aren't at the moment.
-    #[allow(clippy::unnecessary_wraps)]
+    #[expect(clippy::unnecessary_wraps)]
     fn log_serialized_batches_impl(
         &self,
         row_id: RowId,
@@ -1493,7 +1488,17 @@ impl RecordingStream {
                 let this = self.clone_weak();
                 move || {
                     while let Some(msg) = rx.recv().ok().and_then(|msg| msg.into_data()) {
-                        this.record_msg(msg);
+                        match msg {
+                            re_log_types::DataSourceMessage::LogMsg(log_msg) => {
+                                this.record_msg(log_msg);
+                            }
+                            re_log_types::DataSourceMessage::UiCommand(ui_cmd) => {
+                                re_log::debug!(
+                                    "Ignoring unexpected ui command from file {:?}",
+                                    ui_cmd
+                                );
+                            }
+                        }
                     }
                 }
             })
@@ -1508,7 +1513,7 @@ impl RecordingStream {
     }
 }
 
-#[allow(clippy::needless_pass_by_value)]
+#[expect(clippy::needless_pass_by_value)]
 fn forwarding_thread(
     store_info: StoreInfo,
     mut sink: Box<dyn LogSink>,
@@ -2538,7 +2543,12 @@ impl RecordingStream {
     /// - [`Self::reset_time`]
     #[inline]
     pub fn set_duration_secs(&self, timeline: impl Into<TimelineName>, secs: impl Into<f64>) {
-        self.set_time(timeline, std::time::Duration::from_secs_f64(secs.into()));
+        let secs = secs.into();
+        if let Ok(duration) = std::time::Duration::try_from_secs_f64(secs) {
+            self.set_time(timeline, duration);
+        } else {
+            re_log::error_once!("set_duration_secs: can't set time to {secs}");
+        }
     }
 
     /// Set a timestamp as seconds since Unix epoch (1970-01-01 00:00:00 UTC).
@@ -3144,7 +3154,7 @@ mod tests {
     }
 
     impl ScopedEnvVarSet {
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         fn new(key: &'static str, value: &'static str) -> Self {
             // SAFETY: only used in tests.
             unsafe { std::env::set_var(key, value) };
@@ -3153,7 +3163,7 @@ mod tests {
     }
 
     impl Drop for ScopedEnvVarSet {
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         fn drop(&mut self) {
             // SAFETY: only used in tests.
             unsafe {
@@ -3166,7 +3176,7 @@ mod tests {
 
     fn clear_environment() {
         // SAFETY: only used in tests.
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         unsafe {
             std::env::remove_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED");
             std::env::remove_var("RERUN_FLUSH_NUM_BYTES");

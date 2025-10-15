@@ -2,13 +2,7 @@
 name = "nuscenes_dataset"
 version = "0.1.0"
 readme = "README.md"
-dependencies = [
-  "matplotlib",
-  "numpy",
-  "nuscenes-devkit",
-  "requests",
-  "rerun-sdk",
-]
+dependencies = ["matplotlib", "numpy", "nuscenes-devkit", "requests", "rerun-sdk"]
 
 [project.scripts]
 nuscenes_dataset = "nuscenes_dataset.__main__:main"

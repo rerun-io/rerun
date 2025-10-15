@@ -310,9 +310,9 @@ struct Args {
     per_frame_sleep: Option<Duration>,
 }
 
-fn parse_duration(arg: &str) -> Result<std::time::Duration, std::num::ParseFloatError> {
+fn parse_duration(arg: &str) -> anyhow::Result<std::time::Duration> {
     let seconds = arg.parse()?;
-    Ok(std::time::Duration::from_secs_f64(seconds))
+    Ok(std::time::Duration::try_from_secs_f64(seconds)?)
 }
 
 fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {

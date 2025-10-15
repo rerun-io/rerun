@@ -31,7 +31,7 @@ use crate::utils::py_rerun_warn_cstr;
 /// included in the view, as determined by the `row_id` column. This will
 /// generally be the last value logged, as row_ids are guaranteed to be
 /// monotonically increasing when data is sent from a single process.
-#[pyclass(name = "RecordingView")]
+#[pyclass(name = "RecordingView", module = "rerun_bindings.rerun_bindings")] // NOLINT: skip pyclass_eq, non-trivial implementation
 #[derive(Clone)]
 pub struct PyRecordingView {
     pub(crate) recording: PyRecordingHandle,
@@ -267,7 +267,7 @@ impl PyRecordingView {
         }
     }
 
-    #[allow(rustdoc::private_doc_tests)]
+    #[expect(rustdoc::private_doc_tests)]
     /// Filter the view to only include data between the given index sequence numbers.
     ///
     /// This range is inclusive and will contain both the value at the start and the value at the end.
@@ -332,7 +332,7 @@ impl PyRecordingView {
         })
     }
 
-    #[allow(rustdoc::private_doc_tests)]
+    #[expect(rustdoc::private_doc_tests)]
     /// Filter the view to only include data between the given index values expressed as seconds.
     ///
     /// This range is inclusive and will contain both the value at the start and the value at the end.
@@ -384,7 +384,7 @@ impl PyRecordingView {
         self.filter_range_secs(start, end)
     }
 
-    #[allow(rustdoc::private_doc_tests)]
+    #[expect(rustdoc::private_doc_tests)]
     /// Filter the view to only include data between the given index values expressed as nanoseconds.
     ///
     /// This range is inclusive and will contain both the value at the start and the value at the end.
@@ -430,7 +430,7 @@ impl PyRecordingView {
         })
     }
 
-    #[allow(rustdoc::private_doc_tests)]
+    #[expect(rustdoc::private_doc_tests)]
     /// Filter the view to only include data at the provided index values.
     ///
     /// The index values returned will be the intersection between the provided values and the
@@ -463,7 +463,7 @@ impl PyRecordingView {
         })
     }
 
-    #[allow(rustdoc::private_doc_tests)]
+    #[expect(rustdoc::private_doc_tests)]
     /// Filter the view to only include rows where the given component column is not null.
     ///
     /// This corresponds to rows for index values where this component was provided to Rerun explicitly
@@ -492,7 +492,7 @@ impl PyRecordingView {
         })
     }
 
-    #[allow(rustdoc::private_doc_tests)]
+    #[expect(rustdoc::private_doc_tests)]
     /// Replace the index in the view with the provided values.
     ///
     /// The output view will always have the same number of rows as the provided values, even if
@@ -526,7 +526,7 @@ impl PyRecordingView {
         })
     }
 
-    #[allow(rustdoc::private_doc_tests)]
+    #[expect(rustdoc::private_doc_tests)]
     /// Populate any null values in a row with the latest valid data according to the index.
     ///
     /// Returns

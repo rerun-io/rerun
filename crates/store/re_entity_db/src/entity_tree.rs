@@ -38,7 +38,7 @@ impl ChunkStoreSubscriber for EntityTree {
         self
     }
 
-    #[allow(clippy::unimplemented)]
+    #[expect(clippy::unimplemented)]
     fn on_events(&mut self, _events: &[ChunkStoreEvent]) {
         unimplemented!(
             r"EntityTree view is maintained manually, see `EntityTree::on_store_{{additions|deletions}}`"

@@ -14,11 +14,11 @@ version.workspace = true
 [lints]
 workspace = true
 
-
 [dependencies]
 re_chunk.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
+re_ros_msg.workspace = true
 re_tracing.workspace = true
 re_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
 
@@ -29,6 +29,11 @@ byteorder.workspace = true
 cdr-encoding.workspace = true
 mcap.workspace = true
 prost-reflect.workspace = true
+saturating_cast.workspace = true
 serde.workspace = true
 serde_bytes.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+insta = { workspace = true, features = ["filters", "redactions"] }
+prost-reflect = { workspace = true, features = ["text-format"] }

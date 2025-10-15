@@ -1,9 +1,6 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_test_context::{
-    TestContext,
-    external::egui_kittest::{OsThreshold, SnapshotOptions},
-};
+use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
@@ -129,7 +126,7 @@ pub fn test_draw_order() {
             )
         });
 
-        // 2D arrow sandwitched across
+        // 2D arrow sandwiched across
         test_context.log_entity("2d_layering/arrow2d_between", |builder| {
             builder.with_archetype(
                 RowId::new(),
@@ -149,7 +146,7 @@ pub fn test_draw_order() {
         ))
     });
     run_view_ui_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         view_id,
         "draw_order",
         egui::vec2(300.0, 150.0) * 2.0,
@@ -157,7 +154,7 @@ pub fn test_draw_order() {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
+    test_context: &TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
@@ -172,6 +169,6 @@ fn run_view_ui_and_save_snapshot(
     harness.run();
     harness.snapshot_options(
         name,
-        &SnapshotOptions::new().failed_pixel_count_threshold(OsThreshold::new(0).macos(40)),
+        &SnapshotOptions::new().failed_pixel_count_threshold(5),
     );
 }

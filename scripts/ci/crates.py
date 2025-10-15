@@ -8,7 +8,7 @@ Use the script:
 
     # Update crate versions to the next prerelease version,
     # e.g. `0.8.0` -> `0.8.0-alpha.0`, `0.8.0-alpha.0` -> `0.8.0-alpha.1`
-    pixi run python scripts/ci/crates.py version --bump prerelase --dry-run
+    pixi run python scripts/ci/crates.py version --bump prerelease --dry-run
 
     # Update crate versions to an exact version
     pixi run python scripts/ci/crates.py version --exact 0.10.1 --dry-run
@@ -65,9 +65,9 @@ def cargo(
         env = {}
 
     if cargo_version is None:
-        cmd = [CARGO_PATH] + args.split()
+        cmd = [CARGO_PATH, *args.split()]
     else:
-        cmd = [CARGO_PATH, f"+{cargo_version}"] + args.split()
+        cmd = [CARGO_PATH, f"+{cargo_version}", *args.split()]
     # print(f"> {subprocess.list2cmdline(cmd)}")
     if not dry_run:
         stderr = subprocess.STDOUT if capture else None
@@ -132,13 +132,13 @@ def crate_deps(member: dict[str, dict[str, Any]]) -> Generator[Dependency, None,
     def get_deps_in(d: dict[str, dict[str, Any]], base_key: list[str]) -> Generator[Dependency, None, None]:
         if "dependencies" in d:
             for v in d["dependencies"].keys():
-                yield Dependency(v, base_key + ["dependencies", v], DependencyKind.DIRECT)
+                yield Dependency(v, [*base_key, "dependencies", v], DependencyKind.DIRECT)
         if "dev-dependencies" in d:
             for v in d["dev-dependencies"].keys():
-                yield Dependency(v, base_key + ["dev-dependencies", v], DependencyKind.DEV)
+                yield Dependency(v, [*base_key, "dev-dependencies", v], DependencyKind.DEV)
         if "build-dependencies" in d:
             for v in d["build-dependencies"].keys():
-                yield Dependency(v, base_key + ["build-dependencies", v], DependencyKind.BUILD)
+                yield Dependency(v, [*base_key, "build-dependencies", v], DependencyKind.BUILD)
 
     yield from get_deps_in(member, [])
     if "target" in member:
@@ -276,12 +276,12 @@ class Context:
     def error(self, *e: str) -> None:
         self.errors.append("\n".join(e))
 
-    def finish(self, dry_run: bool) -> None:
+    def finish(self) -> None:
         if len(self.errors) > 0:
             print("Encountered some errors:")
             for error in self.errors:
                 print(error)
-            exit(1)
+            sys.exit(1)
         else:
             print("The following operations will be performed:")
             for op in self.ops:
@@ -367,7 +367,7 @@ def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool)
         #    Here the version may also be pinned by prefixing it with `=`.
         bump_dependency_versions(ctx, name, new_version, crate.manifest, crates)
 
-    ctx.finish(dry_run)
+    ctx.finish()
 
     # Save after bumping all versions
     if not dry_run:
@@ -495,7 +495,7 @@ def publish_unpublished_crates_in_parallel(all_crates: dict[str, Crate], version
         else:
             unpublished_crates[name] = crate
 
-    # collect dependency graph (adjancency list of `crate -> dependencies`)
+    # collect dependency graph (adjacency list of `crate -> dependencies`)
     print("Building dependency graph…")
     dependency_graph: dict[str, list[str]] = {}
     for name, crate in unpublished_crates.items():
@@ -509,7 +509,7 @@ def publish_unpublished_crates_in_parallel(all_crates: dict[str, Crate], version
     print(f"Publishing {len(unpublished_crates)} crates…")
     env = {**os.environ.copy(), "RERUN_IS_PUBLISHING_CRATES": "yes"}
     DAG(dependency_graph).walk_parallel(
-        lambda name: publish_crate(unpublished_crates[name], token, version, env),  # noqa: E731
+        lambda name: publish_crate(unpublished_crates[name], token, version, env),
         # 30 tokens per minute (burst limit in crates.io)
         rate_limiter=RateLimiter(max_tokens=30, refill_interval_sec=60),
         # publishing already uses all cores, don't start too many publishes at once
@@ -527,7 +527,7 @@ def publish(dry_run: bool, token: str) -> None:
 
     for name in crates.keys():
         ctx.publish(name, version)
-    ctx.finish(dry_run)
+    ctx.finish()
 
     if not dry_run:
         publish_unpublished_crates_in_parallel(crates, version, token)
@@ -584,7 +584,7 @@ def get_version(target: Target | None, skip_prerelease: bool = False) -> Version
         except ValueError:
             print(f"the current branch `{branch_name}` does not specify a valid version.")
             print("this script expects the format `release-x.y.z-meta.N`")
-            exit(1)
+            sys.exit(1)
     elif target is Target.CratesIo:
         latest_published_version = get_latest_published_version("rerun", skip_prerelease)
         if not latest_published_version:

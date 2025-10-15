@@ -2,9 +2,11 @@ mod depth_offsets;
 mod transform_tree_context;
 
 pub use depth_offsets::EntityDepthOffsets;
+use re_tf::TransformInfo;
 use re_types::ViewClassIdentifier;
 use re_view::AnnotationSceneContext;
-pub use transform_tree_context::{TransformInfo, TransformTreeContext, TwoDInThreeDTransformInfo};
+
+pub use transform_tree_context::TransformTreeContext;
 
 // -----------------------------------------------------------------------------
 
@@ -26,6 +28,9 @@ pub fn register_spatial_contexts(
 ) -> Result<(), ViewClassRegistryError> {
     system_registry.register_context_system::<TransformTreeContext>()?;
     system_registry.register_context_system::<EntityDepthOffsets>()?;
+
     system_registry.register_context_system::<AnnotationSceneContext>()?;
+    re_viewer_context::AnnotationContextStoreSubscriber::subscription_handle(); // Needed by `AnnotationSceneContext`
+
     Ok(())
 }

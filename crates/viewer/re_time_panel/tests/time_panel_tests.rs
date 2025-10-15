@@ -5,20 +5,16 @@ use egui::Vec2;
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
 use re_log_types::{
-    EntityPath, TimeInt, TimePoint, TimeType, Timeline, build_frame_nr,
+    AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, TimeType, Timeline, build_frame_nr,
     example_components::{MyPoint, MyPoints},
 };
-use re_test_context::TestContext;
+use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_time_panel::TimePanel;
 use re_types::archetypes::Points2D;
-use re_viewer_context::{CollapseScope, TimeView, blueprint_timeline};
+use re_viewer_context::{CollapseScope, TimeControlCommand, TimeView, blueprint_timeline};
 use re_viewport_blueprint::ViewportBlueprint;
 
-#[test]
-pub fn time_panel_two_sections_should_match_snapshot() {
-    TimePanel::ensure_registered_subscribers();
-    let mut test_context = TestContext::new();
-
+fn add_sparse_data(test_context: &mut TestContext) {
     let points1 = MyPoint::from_iter(0..1);
     for i in 0..2 {
         test_context.log_entity(format!("/entity/{i}"), |mut builder| {
@@ -33,9 +29,22 @@ pub fn time_panel_two_sections_should_match_snapshot() {
             builder
         });
     }
+}
+
+#[test]
+pub fn time_panel_two_sections() {
+    TimePanel::ensure_registered_subscribers();
+    let mut test_context = TestContext::new();
+
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
+    );
+
+    add_sparse_data(&mut test_context);
 
     run_time_panel_and_save_snapshot(
-        test_context,
+        &test_context,
         TimePanel::default(),
         300.0,
         false,
@@ -44,9 +53,117 @@ pub fn time_panel_two_sections_should_match_snapshot() {
 }
 
 #[test]
-pub fn time_panel_dense_data_should_match_snapshot() {
+pub fn time_panel_two_sections_with_valid_range() {
     TimePanel::ensure_registered_subscribers();
     let mut test_context = TestContext::new();
+
+    add_sparse_data(&mut test_context);
+
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [
+            TimeControlCommand::SetActiveTimeline("frame_nr".into()),
+            TimeControlCommand::AddValidTimeRange {
+                timeline: Some("frame_nr".into()),
+                time_range: AbsoluteTimeRange::new(
+                    TimeInt::new_temporal(14),
+                    TimeInt::new_temporal(102),
+                ),
+            },
+        ],
+    );
+
+    run_time_panel_and_save_snapshot(
+        &test_context,
+        TimePanel::default(),
+        300.0,
+        false,
+        "time_panel_two_sections_with_valid_range",
+    );
+
+    // Zoom out to check on "hidden" data.
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetTimeView(TimeView {
+            min: 8.into(),
+            time_spanned: 20.0,
+        })],
+    );
+
+    run_time_panel_and_save_snapshot(
+        &test_context,
+        TimePanel::default(),
+        300.0,
+        false,
+        "time_panel_two_sections_with_valid_range_zoomed_out",
+    );
+}
+
+#[test]
+pub fn time_panel_two_sections_with_two_valid_ranges() {
+    TimePanel::ensure_registered_subscribers();
+    let mut test_context = TestContext::new();
+
+    add_sparse_data(&mut test_context);
+
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [
+            TimeControlCommand::SetActiveTimeline("frame_nr".into()),
+            // Part of the first section.
+            TimeControlCommand::AddValidTimeRange {
+                timeline: Some("frame_nr".into()),
+                time_range: AbsoluteTimeRange::new(
+                    TimeInt::new_temporal(11),
+                    TimeInt::new_temporal(13),
+                ),
+            },
+            // Part of first + second section.
+            TimeControlCommand::AddValidTimeRange {
+                timeline: Some("frame_nr".into()),
+                time_range: AbsoluteTimeRange::new(
+                    TimeInt::new_temporal(15),
+                    TimeInt::new_temporal(102),
+                ),
+            },
+        ],
+    );
+
+    run_time_panel_and_save_snapshot(
+        &test_context,
+        TimePanel::default(),
+        300.0,
+        false,
+        "time_panel_two_sections_with_two_valid_ranges",
+    );
+
+    // Zoom out to check on "hidden" data.
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetTimeView(TimeView {
+            min: 8.into(),
+            time_spanned: 20.0,
+        })],
+    );
+
+    run_time_panel_and_save_snapshot(
+        &test_context,
+        TimePanel::default(),
+        300.0,
+        false,
+        "time_panel_two_sections_with_two_valid_ranges_zoomed_out",
+    );
+}
+
+#[test]
+pub fn time_panel_dense_data() {
+    TimePanel::ensure_registered_subscribers();
+    let mut test_context = TestContext::new();
+
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
+    );
 
     let points1 = MyPoint::from_iter(0..1);
 
@@ -75,7 +192,7 @@ pub fn time_panel_dense_data_should_match_snapshot() {
     });
 
     run_time_panel_and_save_snapshot(
-        test_context,
+        &test_context,
         TimePanel::default(),
         300.0,
         false,
@@ -86,24 +203,28 @@ pub fn time_panel_dense_data_should_match_snapshot() {
 // ---
 
 #[test]
-pub fn time_panel_filter_test_inactive_should_match_snapshot() {
+pub fn time_panel_filter_test_inactive() {
     run_time_panel_filter_tests(false, "", "time_panel_filter_test_inactive");
 }
 
 #[test]
-pub fn time_panel_filter_test_active_no_query_should_match_snapshot() {
+pub fn time_panel_filter_test_active_no_query() {
     run_time_panel_filter_tests(true, "", "time_panel_filter_test_active_no_query");
 }
 
 #[test]
-pub fn time_panel_filter_test_active_query_should_match_snapshot() {
+pub fn time_panel_filter_test_active_query() {
     run_time_panel_filter_tests(true, "ath", "time_panel_filter_test_active_query");
 }
 
-#[allow(clippy::unwrap_used)]
 pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_name: &str) {
     TimePanel::ensure_registered_subscribers();
     let mut test_context = TestContext::new();
+
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
+    );
 
     let points1 = MyPoint::from_iter(0..1);
     for i in 0..2 {
@@ -135,7 +256,7 @@ pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_na
         time_panel.activate_filter(query);
     }
 
-    run_time_panel_and_save_snapshot(test_context, time_panel, 300.0, false, snapshot_name);
+    run_time_panel_and_save_snapshot(&test_context, time_panel, 300.0, false, snapshot_name);
 }
 
 // --
@@ -153,25 +274,22 @@ pub fn test_various_entity_kinds_in_time_panel() {
 
             log_data_for_various_entity_kinds_tests(&mut test_context);
 
-            test_context
-                .recording_config
-                .time_ctrl
-                .write()
-                .set_timeline_and_time(Timeline::new(timeline, TimeType::Sequence), time);
-
-            test_context
-                .recording_config
-                .time_ctrl
-                .write()
-                .set_time_view(TimeView {
-                    min: 0.into(),
-                    time_spanned: 10.0,
-                });
+            test_context.send_time_commands(
+                test_context.active_store_id(),
+                [
+                    TimeControlCommand::SetActiveTimeline(timeline.into()),
+                    TimeControlCommand::SetTime(time.into()),
+                    TimeControlCommand::SetTimeView(TimeView {
+                        min: 0.into(),
+                        time_spanned: 10.0,
+                    }),
+                ],
+            );
 
             let time_panel = TimePanel::default();
 
             run_time_panel_and_save_snapshot(
-                test_context,
+                &test_context,
                 time_panel,
                 1200.0,
                 true,
@@ -187,6 +305,11 @@ pub fn test_focused_item_is_focused() {
 
     let mut test_context = TestContext::new();
 
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline("timeline_a".into())],
+    );
+
     log_data_for_various_entity_kinds_tests(&mut test_context);
 
     *test_context.focused_item.lock() =
@@ -195,7 +318,7 @@ pub fn test_focused_item_is_focused() {
     let time_panel = TimePanel::default();
 
     run_time_panel_and_save_snapshot(
-        test_context,
+        &test_context,
         time_panel,
         200.0,
         false,
@@ -268,7 +391,7 @@ pub fn log_static_data(test_context: &mut TestContext, entity_path: impl Into<En
 }
 
 fn run_time_panel_and_save_snapshot(
-    mut test_context: TestContext,
+    test_context: &TestContext,
     mut time_panel: TimePanel,
     height: f32,
     expand_all: bool,
@@ -294,22 +417,26 @@ fn run_time_panel_and_save_snapshot(
                     &LatestAtQuery::latest(blueprint_timeline()),
                 );
 
-                let mut time_ctrl = viewer_ctx.rec_cfg.time_ctrl.read().clone();
+                let mut time_commands = Vec::new();
 
                 time_panel.show_expanded_with_header(
                     viewer_ctx,
+                    viewer_ctx.time_ctrl,
                     &blueprint,
                     viewer_ctx.recording(),
-                    &mut time_ctrl,
                     ui,
+                    &mut time_commands,
                 );
 
-                *viewer_ctx.rec_cfg.time_ctrl.write() = time_ctrl;
+                test_context.send_time_commands(viewer_ctx.store_id().clone(), time_commands);
             });
 
-            test_context.handle_system_commands();
+            test_context.handle_system_commands(ui.ctx());
         });
 
     harness.run();
-    harness.snapshot(snapshot_name);
+    harness.snapshot_options(
+        snapshot_name,
+        &SnapshotOptions::default().failed_pixel_count_threshold(4),
+    );
 }

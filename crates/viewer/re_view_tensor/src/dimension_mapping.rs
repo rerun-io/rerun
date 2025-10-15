@@ -190,7 +190,7 @@ fn make_slider_valid(
     }
 }
 
-#[allow(clippy::collapsible_else_if)]
+#[expect(clippy::collapsible_else_if)]
 fn find_width_height_dim_indices(shape: &[TensorDimension]) -> (usize, usize) {
     assert!(shape.len() >= 2);
 

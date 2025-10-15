@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any, cast
 import tomlkit
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../scripts/")
-from roundtrip_utils import roundtrip_env, run, run_comparison  # noqa
+from roundtrip_utils import roundtrip_env, run, run_comparison
 
 if TYPE_CHECKING:
     from tomlkit.container import Container
@@ -133,7 +133,7 @@ def main() -> None:
         build_cpp_snippets()
 
     # Always build rust since we use it as the baseline for comparison.
-    build_rust_snippets(build_env, args.release, args.target, args.target_dir)
+    build_rust_snippets(build_env=build_env, release=args.release, target=args.target, target_dir=args.target_dir)
 
     examples = []
     if len(args.example) > 0:
@@ -148,7 +148,11 @@ def main() -> None:
             if name == "__init__.py":
                 continue
             name, extension = os.path.splitext(name)
-            if extension == ".cpp" and not args.no_cpp or extension == ".py" and not args.no_py or extension == ".rs":
+            if (
+                (extension == ".cpp" and not args.no_cpp)
+                or (extension == ".py" and not args.no_py)
+                or extension == ".rs"
+            ):
                 subdir = os.path.relpath(os.path.dirname(file), dir)
                 examples += [Example(subdir.replace("\\", "/"), name)]
 
@@ -277,13 +281,17 @@ def run_example(example: Example, language: str, args: argparse.Namespace) -> No
         python_output_path = run_python(example)
         check_non_empty_rrd(python_output_path)
     elif language == "rust":
-        rust_output_path = run_prebuilt_rust(example, args.release, args.target, args.target_dir)
+        rust_output_path = run_prebuilt_rust(
+            example, release=args.release, target=args.target, target_dir=args.target_dir
+        )
         check_non_empty_rrd(rust_output_path)
     else:
         raise AssertionError(f"Unknown language: {language}")
 
 
-def build_rust_snippets(build_env: dict[str, str], release: bool, target: str | None, target_dir: str | None) -> None:
+def build_rust_snippets(
+    *, build_env: dict[str, str], release: bool, target: str | None, target_dir: str | None
+) -> None:
     print("----------------------------------------------------------")
     print("Building snippets for Rust…")
 
@@ -299,7 +307,7 @@ def build_rust_snippets(build_env: dict[str, str], release: bool, target: str | 
     run(cmd, env=build_env, timeout=12000)
     elapsed = time.time() - start_time
     print(f"Snippets built in {elapsed:.1f} seconds")
-    print("")
+    print()
 
 
 def build_python_sdk(build_env: dict[str, str]) -> None:
@@ -309,7 +317,7 @@ def build_python_sdk(build_env: dict[str, str]) -> None:
     run(["pixi", "run", "py-build", "--quiet"], env=build_env, timeout=12000)
     elapsed = time.time() - start_time
     print(f"rerun-sdk for Python built in {elapsed:.1f} seconds")
-    print("")
+    print()
 
 
 def build_cpp_snippets() -> None:
@@ -319,7 +327,7 @@ def build_cpp_snippets() -> None:
     run(["pixi", "run", "-e", "cpp", "cpp-build-snippets"], timeout=12000)
     elapsed = time.time() - start_time
     print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
-    print("")
+    print()
 
 
 def run_python(example: Example) -> str:
@@ -331,7 +339,7 @@ def run_python(example: Example) -> str:
     if python_executable is None:
         python_executable = "python3"
 
-    cmd = [python_executable, main_path] + example.extra_args()
+    cmd = [python_executable, main_path, *example.extra_args()]
 
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=30)
@@ -339,7 +347,7 @@ def run_python(example: Example) -> str:
     return output_path
 
 
-def run_prebuilt_rust(example: Example, release: bool, target: str | None, target_dir: str | None) -> str:
+def run_prebuilt_rust(example: Example, *, release: bool, target: str | None, target_dir: str | None) -> str:
     output_path = example.output_path("rust")
 
     extension = ".exe" if os.name == "nt" else ""
@@ -368,7 +376,7 @@ def run_prebuilt_cpp(example: Example) -> str:
     output_path = example.output_path("cpp")
 
     extension = ".exe" if os.name == "nt" else ""
-    cmd = [f"./build/debug/docs/snippets/{example.name}{extension}"] + example.extra_args()
+    cmd = [f"./build/debug/docs/snippets/{example.name}{extension}", *example.extra_args()]
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=30)
 

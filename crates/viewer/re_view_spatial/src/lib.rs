@@ -2,11 +2,11 @@
 //!
 //! Views that show entities in a 2D or 3D spatial relationship.
 
+mod caches;
 mod contexts;
 mod eye;
 mod heuristics;
 mod max_image_dimension_subscriber;
-mod mesh_cache;
 mod mesh_loader;
 mod pickable_textured_rect;
 mod picking;
@@ -25,8 +25,6 @@ mod view_2d_properties;
 mod view_3d;
 mod view_3d_properties;
 mod visualizers;
-
-mod transform_cache;
 
 pub use ui::SpatialViewState;
 pub use view_2d::SpatialView2D;
@@ -123,7 +121,7 @@ fn resolution_of_image_at(
     None
 }
 
-pub(crate) fn configure_background(
+pub fn configure_background(
     ctx: &ViewContext<'_>,
     background: &ViewProperty,
     view_system: &dyn re_viewer_context::ComponentFallbackProvider,

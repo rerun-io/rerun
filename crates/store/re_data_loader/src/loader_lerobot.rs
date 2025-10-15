@@ -1,3 +1,5 @@
+#![expect(clippy::cast_possible_wrap)] // usize -> i64
+
 use std::{
     sync::{Arc, mpsc::Sender},
     thread,
@@ -584,7 +586,7 @@ fn make_scalar_entity_chunk(
         .collect::<Vec<_>>();
 
     let data_field_inner = Field::new("item", DataType::Float64, true /* nullable */);
-    #[allow(clippy::unwrap_used)] // we know we've given the right field type
+    #[expect(clippy::unwrap_used)] // we know we've given the right field type
     let data_field_array: arrow::array::ListArray =
         re_arrow_util::arrays_to_list_array(data_field_inner.data_type().clone(), &data_arrays)
             .unwrap();

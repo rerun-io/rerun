@@ -20,7 +20,6 @@ all-features = true
 
 
 [dependencies]
-re_build_info.workspace = true
 re_byte_size.workspace = true
 re_chunk.workspace = true
 re_format.workspace = true
@@ -40,10 +39,7 @@ anyhow.workspace = true
 crossbeam.workspace = true
 itertools.workspace = true
 parking_lot.workspace = true
-tonic = { workspace = true, default-features = false, features = [
-  "transport",
-  "router",
-] }
+tonic = { workspace = true, default-features = false, features = ["transport", "router"] }
 tonic-web.workspace = true
 tower-http = { workspace = true, features = ["cors"] }
 

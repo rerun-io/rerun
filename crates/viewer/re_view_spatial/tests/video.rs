@@ -1,9 +1,7 @@
 #![expect(clippy::unwrap_used)] // It's a test!
 
-use std::cell::Cell;
-
 use re_chunk_store::RowId;
-use re_log_types::{NonMinI64, TimeInt, TimePoint};
+use re_log_types::TimePoint;
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
 use re_types::{
@@ -12,7 +10,7 @@ use re_types::{
     datatypes,
 };
 use re_video::{VideoCodec, VideoDataDescription};
-use re_viewer_context::ViewClass as _;
+use re_viewer_context::{TimeControlCommand, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;
 
 fn workspace_dir() -> std::path::PathBuf {
@@ -273,29 +271,28 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
     let step_dt_seconds = 1.0 / 4.0; // This is also the current egui_kittest default, but let's be explicit since we use `try_run_realtime`.
     let max_total_time_seconds = 60.0;
 
-    // Using a single harness for all frames - we want to make sure that we use the same decoder,
-    // not tearing down the video player!
-    let desired_seek_ns = Cell::new(0);
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_step_dt(step_dt_seconds)
         .with_max_steps((max_total_time_seconds / step_dt_seconds) as u64)
         .with_size(egui::vec2(300.0, 200.0))
         .build_ui(|ui| {
-            // Since we can't access `test_context` after creating `harness`, we have to do the seeking in here.
-            {
-                let mut time_ctrl = test_context.recording_config.time_ctrl.write();
-                time_ctrl.set_time(TimeInt::from_nanos(
-                    NonMinI64::new(desired_seek_ns.get()).unwrap(),
-                ));
-            }
             test_context.run_with_single_view(ui, view_id);
 
             std::thread::sleep(std::time::Duration::from_millis(20));
         });
 
     for seek_location in VideoTestSeekLocation::ALL {
-        desired_seek_ns.set(seek_location.get_time_ns(&frame_timestamps_nanos));
+        // Using a single harness for all frames - we want to make sure that we use the same decoder,
+        // not tearing down the video player!
+        let desired_seek_ns = seek_location.get_time_ns(&frame_timestamps_nanos);
+        test_context.send_time_commands(
+            test_context.active_store_id(),
+            [
+                TimeControlCommand::SetActiveTimeline(*timeline.name()),
+                TimeControlCommand::SetTime(desired_seek_ns.into()),
+            ],
+        );
 
         // Video decoding happens in a different thread, so it's important that we give it time
         // and don't busy loop.

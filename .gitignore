@@ -49,6 +49,9 @@ perf.data*
 
 **/dataset/
 
+# insta snapshot temp file:
+*.pending-snap
+
 # Screenshots from samples etc.
 screenshot*.png
 

@@ -31,7 +31,6 @@ impl ViewEntityPicker {
         self.modal_handler.open();
     }
 
-    #[allow(clippy::unused_self)]
     pub fn ui(
         &mut self,
         egui_ctx: &egui::Context,
@@ -42,7 +41,7 @@ impl ViewEntityPicker {
             egui_ctx,
             || {
                 re_ui::modal::ModalWrapper::new("Add/remove Entities")
-                    .min_height(f32::min(160.0, egui_ctx.screen_rect().height() * 0.8))
+                    .min_height(f32::min(160.0, egui_ctx.content_rect().height() * 0.8))
                     .full_span_content(true)
                     // we set the scroll area ourselves
                     .set_side_margin(false)
@@ -50,7 +49,7 @@ impl ViewEntityPicker {
             },
             |ui| {
                 // 80%, never more than 500px
-                ui.set_max_height(f32::min(ui.ctx().screen_rect().height() * 0.8, 500.0));
+                ui.set_max_height(f32::min(ui.ctx().content_rect().height() * 0.8, 500.0));
                 let Some(view_id) = &self.view_id else {
                     ui.close();
                     return;
@@ -120,7 +119,7 @@ fn add_entities_ui(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn add_entities_tree_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -178,7 +177,6 @@ fn add_entities_tree_ui(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn add_entities_line_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -194,8 +192,11 @@ fn add_entities_line_ui(
     let entity_path = &entity_data.entity_path;
     let name = &entity_data.label;
 
-    #[allow(clippy::unwrap_used)]
-    let add_info = entities_add_info.get(entity_path).unwrap();
+    let Some(add_info) = entities_add_info.get(entity_path) else {
+        // No add info implies that there can't be an add line ui, shouldn't get here.
+        debug_assert!(false, "No add info for entity path: {entity_path:?}");
+        return;
+    };
 
     let is_explicitly_excluded = entity_path_filter.is_explicitly_excluded(entity_path);
     let is_explicitly_included = entity_path_filter.is_explicitly_included(entity_path);

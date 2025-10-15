@@ -29,7 +29,7 @@ class RateLimiter:
 
     def get(self) -> bool:
         seconds_since_start = time.time() - self.start_time
-        num_refilled_tokens = int(floor(self.tokens_per_second * seconds_since_start))
+        num_refilled_tokens = floor(self.tokens_per_second * seconds_since_start)
         total_tokens = self.start_tokens + num_refilled_tokens
 
         if self.used_tokens < total_tokens:
@@ -96,7 +96,7 @@ class DAG(Generic[_T]):
             done_queue: Queue[_T] = Queue()
             shutdown: EventClass = Event()
 
-            def worker(n: int) -> None:
+            def worker(_index: int) -> None:
                 # Attempt to grab a task from the queue,
                 # execute it, then put it in the done queue.
                 while not shutdown.is_set():

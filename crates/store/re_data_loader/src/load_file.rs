@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use ahash::{HashMap, HashMapExt as _};
-use re_log_types::{FileSource, LogMsg};
+use re_log_types::{DataSourceMessage, FileSource, LogMsg};
 use re_smart_channel::Sender;
 
 use crate::{DataLoader as _, DataLoaderError, LoadedData, RrdLoader};
@@ -21,7 +21,7 @@ pub fn load_from_path(
     file_source: FileSource,
     path: &std::path::Path,
     // NOTE: This channel must be unbounded since we serialize all operations when running on wasm.
-    tx: &Sender<LogMsg>,
+    tx: &Sender<DataSourceMessage>,
 ) -> Result<(), DataLoaderError> {
     use re_log_types::ApplicationId;
 
@@ -71,7 +71,7 @@ pub fn load_from_file_contents(
     filepath: &std::path::Path,
     contents: std::borrow::Cow<'_, [u8]>,
     // NOTE: This channel must be unbounded since we serialize all operations when running on wasm.
-    tx: &Sender<LogMsg>,
+    tx: &Sender<DataSourceMessage>,
 ) -> Result<(), DataLoaderError> {
     re_tracing::profile_function!(filepath.to_string_lossy());
 
@@ -99,12 +99,7 @@ pub(crate) fn prepare_store_info(
 
     LogMsg::SetStoreInfo(SetStoreInfo {
         row_id: *re_chunk::RowId::new(),
-        info: re_log_types::StoreInfo {
-            store_id: store_id.clone(),
-            cloned_from: None,
-            store_source,
-            store_version: Some(re_build_info::CrateVersion::LOCAL),
-        },
+        info: re_log_types::StoreInfo::new(store_id.clone(), store_source),
     })
 }
 
@@ -224,7 +219,7 @@ pub(crate) fn load(
 /// (whether it is builtin, custom or external) was capable of loading the data, in which case
 /// [`DataLoaderError::Incompatible`] will be returned.
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::needless_pass_by_value)]
+#[expect(clippy::needless_pass_by_value)]
 pub(crate) fn load(
     settings: &crate::DataLoaderSettings,
     path: &std::path::Path,
@@ -276,7 +271,7 @@ pub(crate) fn send(
     settings: crate::DataLoaderSettings,
     file_source: FileSource,
     rx_loader: std::sync::mpsc::Receiver<LoadedData>,
-    tx: &Sender<LogMsg>,
+    tx: &Sender<DataSourceMessage>,
 ) {
     spawn({
         re_tracing::profile_function!();
@@ -324,7 +319,7 @@ pub(crate) fn send(
                         continue;
                     }
                 };
-                tx.send(msg).ok();
+                tx.send(msg.into()).ok();
             }
 
             for (store_id, tracked) in store_info_tracker {
@@ -340,7 +335,7 @@ pub(crate) fn send(
 
                 if should_send_new_store_info {
                     let store_info = prepare_store_info(&store_id, file_source.clone());
-                    tx.send(store_info).ok();
+                    tx.send(store_info.into()).ok();
                 }
             }
 

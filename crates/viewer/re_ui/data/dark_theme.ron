@@ -48,6 +48,10 @@
       "color": "{Blue.700}"
     },
 
+    "viewport_background": {
+      "color": "{Gray.0}"
+    },
+
     "highlight_color": {
       // Background color for widgets that should catch the user's attention
       "color": "{Blue.500}",
@@ -158,7 +162,7 @@
     },
 
     "floating_color": {
-      "color": "{Gray.250}"
+      "color": "{Gray.200}"
     },
     "faint_bg_color": {
       "color": "{Gray.150}"
@@ -224,6 +228,9 @@
     "density_graph_unselected": {
       "color": "{Gray.700}"
     },
+    "density_graph_outside_valid_ranges": {
+      "color": "{Gray.300}"
+    },
 
     "axis_color_x": {
       "color": "{Red.600}"
@@ -272,20 +279,25 @@
       "color": "{Gray.700}"
     },
 
+    //array indices
     "code_index_color": {
-      "color": "#D176BF"
+      "color": "#CC9CC6"
     },
+
+    //numbers, bool, null
     "code_primitive_color": {
-      "color": "#4ACB94"
+      "color": "#84BE99"
     },
+
     "code_string_color": {
-      "color": "#818EF8"
+      "color": "#A1AAE1"
     },
 
     // TODO(ab, katya): review these
     "code_keyword_color": {
-      "color": "#D176BF",
+      "color": "#C8A973",
     },
+
     "table_filter_frame_stroke": {
       "color": "{Gray.400}",
       "width": 1

@@ -247,6 +247,7 @@ impl SpatialView2D {
 
         let scene_bounds = *scene_from_ui.to();
         let Ok(target_config) = setup_target_config(
+            ctx.render_mode(),
             &painter,
             scene_bounds,
             near_clip_plane,
@@ -316,7 +317,9 @@ impl SpatialView2D {
     }
 }
 
+#[expect(clippy::too_many_arguments)]
 fn setup_target_config(
+    render_mode: re_renderer::RenderMode,
     egui_painter: &egui::Painter,
     scene_bounds: Rect,
     near_clip_plane: f32,
@@ -410,6 +413,7 @@ fn setup_target_config(
         let name = space_name.into();
         TargetConfiguration {
             name,
+            render_mode,
             resolution_in_pixel,
             view_from_world,
             projection_from_view,
@@ -461,7 +465,7 @@ fn show_projections_from_3d_space(
                 let text_color = ui.visuals().strong_text_color();
                 let text = format!("Depth: {:.3} m", pos_2d.z);
                 let font_id = egui::TextStyle::Body.resolve(ui.style());
-                let galley = ui.fonts(|fonts| fonts.layout_no_wrap(text, font_id, text_color));
+                let galley = ui.fonts_mut(|fonts| fonts.layout_no_wrap(text, font_id, text_color));
                 let rect = Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(
                     pos_in_ui + vec2(0.0, 5.0),
                     galley.size(),

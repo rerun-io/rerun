@@ -5,7 +5,7 @@
 use re_entity_db::entity_db::EntityDbClass;
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
-use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, Timeline, TimelineName};
+use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, TimelineName};
 use re_types::{
     archetypes::RecordingInfo,
     components::{Name, Timestamp},
@@ -14,7 +14,8 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
-    HoverHighlight, Item, SystemCommand, SystemCommandSender as _, UiLayout, ViewId, ViewerContext,
+    HoverHighlight, Item, SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout,
+    ViewId, ViewerContext,
 };
 
 use super::DataUi as _;
@@ -226,14 +227,11 @@ pub fn guess_query_and_db_for_selected_entity<'a>(
         && ctx.store_context.blueprint.is_logged_entity(entity_path)
     {
         (
-            ctx.blueprint_cfg.time_ctrl.read().current_query(),
+            ctx.blueprint_time_ctrl.current_query(),
             ctx.store_context.blueprint,
         )
     } else {
-        (
-            ctx.rec_cfg.time_ctrl.read().current_query(),
-            ctx.recording(),
-        )
+        (ctx.time_ctrl.current_query(), ctx.recording())
     }
 }
 
@@ -259,7 +257,7 @@ pub fn instance_path_button_to(
 }
 
 /// Show an instance id and make it selectable.
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn instance_path_button_to_ex(
     ctx: &ViewerContext<'_>,
     query: &re_chunk_store::LatestAtQuery,
@@ -280,11 +278,11 @@ fn instance_path_button_to_ex(
         ui.selectable_label_with_icon(
             instance_path_icon(&query.timeline(), db, instance_path),
             text,
-            ctx.selection().contains_item(&item),
+            ctx.is_selected_or_loading(&item),
             re_ui::LabelStyle::Normal,
         )
     } else {
-        ui.selectable_label(ctx.selection().contains_item(&item), text)
+        ui.selectable_label(ctx.is_selected_or_loading(&item), text)
     };
 
     let response = response.on_hover_ui(|ui| {
@@ -472,7 +470,7 @@ pub fn data_blueprint_button_to(
 ) -> egui::Response {
     let item = Item::DataResult(view_id, InstancePath::entity_all(entity_path.clone()));
     let response = ui
-        .selectable_label(ctx.selection().contains_item(&item), text)
+        .selectable_label(ctx.is_selected_or_loading(&item), text)
         .on_hover_ui(|ui| {
             let include_subtree = false;
             entity_hover_card_ui(ui, ctx, query, db, entity_path, include_subtree);
@@ -486,11 +484,7 @@ pub fn time_button(
     timeline_name: &TimelineName,
     value: TimeInt,
 ) -> egui::Response {
-    let is_selected = ctx
-        .rec_cfg
-        .time_ctrl
-        .read()
-        .is_time_selected(timeline_name, value);
+    let is_selected = ctx.time_ctrl.is_time_selected(timeline_name, value);
 
     let typ = ctx.recording().timeline_type(timeline_name);
 
@@ -499,12 +493,11 @@ pub fn time_button(
         typ.format(value, ctx.app_options().timestamp_format),
     );
     if response.clicked() {
-        let timeline = Timeline::new(*timeline_name, typ);
-        ctx.rec_cfg
-            .time_ctrl
-            .write()
-            .set_timeline_and_time(timeline, value);
-        ctx.rec_cfg.time_ctrl.write().pause();
+        ctx.send_time_commands([
+            TimeControlCommand::SetActiveTimeline(*timeline_name),
+            TimeControlCommand::SetTime(value.into()),
+            TimeControlCommand::Pause,
+        ]);
     }
     response
 }
@@ -523,16 +516,16 @@ pub fn timeline_button_to(
     text: impl Into<egui::WidgetText>,
     timeline_name: &TimelineName,
 ) -> egui::Response {
-    let is_selected = ctx.rec_cfg.time_ctrl.read().timeline().name() == timeline_name;
+    let is_selected = ctx.time_ctrl.timeline().name() == timeline_name;
 
     let response = ui
         .selectable_label(is_selected, text)
         .on_hover_text("Click to switch to this timeline");
     if response.clicked() {
-        let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
-        let timeline = Timeline::new(*timeline_name, ctx.recording().timeline_type(timeline_name));
-        time_ctrl.set_timeline(timeline);
-        time_ctrl.pause();
+        ctx.send_time_commands([
+            TimeControlCommand::SetActiveTimeline(*timeline_name),
+            TimeControlCommand::Pause,
+        ]);
     }
     response
 }
@@ -624,7 +617,7 @@ pub fn app_id_button_ui(
     let response = ui.selectable_label_with_icon(
         &icons::APPLICATION,
         app_id.to_string(),
-        ctx.selection().contains_item(&item),
+        ctx.is_selected_or_loading(&item),
         re_ui::LabelStyle::Normal,
     );
 
@@ -645,7 +638,7 @@ pub fn data_source_button_ui(
     let response = ui.selectable_label_with_icon(
         &icons::DATA_SOURCE,
         data_source.to_string(),
-        ctx.selection().contains_item(&item),
+        ctx.is_selected_or_loading(&item),
         re_ui::LabelStyle::Normal,
     );
 
@@ -718,8 +711,17 @@ pub fn entity_db_button_ui(
     }
     .unwrap_or("<unknown>".to_owned());
 
+    let partial_postfix = if entity_db
+        .store_info()
+        .is_some_and(|store_info| store_info.is_partial)
+    {
+        " (partial)"
+    } else {
+        ""
+    };
+
     let size = re_format::format_bytes(entity_db.total_size_bytes() as _);
-    let title = format!("{app_id_prefix}{recording_name} - {size}");
+    let title = format!("{app_id_prefix}{recording_name}{partial_postfix} - {size}");
 
     let store_id = entity_db.store_id().clone();
     let item = re_viewer_context::Item::StoreId(store_id.clone());
@@ -756,7 +758,7 @@ pub fn entity_db_button_ui(
     let mut list_item = ui
         .list_item()
         .active(ctx.store_context.is_active(&store_id))
-        .selected(ctx.selection().contains_item(&item));
+        .selected(ctx.is_selected_or_loading(&item));
 
     if ctx.hovered().contains_item(&item) {
         list_item = list_item.force_hovered(true);
@@ -788,12 +790,21 @@ pub fn entity_db_button_ui(
                 .and_then(|url| url.sharable_url(None));
         if ui
             .add_enabled(url.is_ok(), egui::Button::new("Copy link to partition"))
-            .on_disabled_hover_text("Can't copy a link to this partition")
+            .on_disabled_hover_text(if let Err(err) = url.as_ref() {
+                format!("Can't copy a link to this partition: {err}")
+            } else {
+                "Can't copy a link to this partition".to_owned()
+            })
             .clicked()
             && let Ok(url) = url
         {
             ctx.command_sender()
                 .send_system(SystemCommand::CopyViewerUrl(url));
+        }
+
+        if ui.button("Copy partition name").clicked() {
+            re_log::info!("Copied {recording_name:?} to clipboard");
+            ui.ctx().copy_text(recording_name);
         }
     });
 
@@ -841,7 +852,7 @@ pub fn table_id_button_ui(
 
     let mut list_item = ui
         .list_item()
-        .selected(ctx.selection().contains_item(&item))
+        .selected(ctx.is_selected_or_loading(&item))
         .active(ctx.active_table_id() == Some(table_id));
 
     if ctx.hovered().contains_item(&item) {

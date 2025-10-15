@@ -961,6 +961,10 @@ impl ObjectField {
             .unwrap();
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
+        if field.required() {
+            reporter.error(&virtpath, &fqname, "required fields should not be used");
+        }
+
         let docs = Docs::from_raw_docs(reporter, &virtpath, field.name(), field.documentation());
 
         let attrs = Attributes::from_raw_attrs(field.attributes());
@@ -1592,7 +1596,6 @@ impl ElementType {
             }
         }
 
-        #[allow(clippy::match_same_arms)]
         match inner_type {
             FbsBaseType::Bool => Self::Bool,
             FbsBaseType::Byte => Self::Int8,

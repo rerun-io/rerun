@@ -2,6 +2,7 @@ use ahash::HashMap;
 
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
+use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
 use re_types::{
     ComponentDescriptor,
@@ -33,7 +34,6 @@ pub struct ImageDecodeCache {
     generation: u64,
 }
 
-#[allow(clippy::map_err_ignore)]
 impl ImageDecodeCache {
     /// Decode some image data and cache the result.
     ///
@@ -185,7 +185,7 @@ impl Cache for ImageDecodeCache {
         );
     }
 
-    fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {
         re_tracing::profile_function!();
 
         let cache_key_removed = filter_blob_removed_events(events);

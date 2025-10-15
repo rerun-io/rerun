@@ -57,7 +57,7 @@ impl CanAddToView {
     }
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct EntityAddInfo {
     pub can_add: CanAddToView,
     pub can_add_self_or_descendant: CanAddToView,

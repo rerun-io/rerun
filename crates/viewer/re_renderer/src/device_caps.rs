@@ -101,7 +101,7 @@ impl DeviceCapabilityTier {
     }
 
     /// Required features for the given device tier.
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     pub fn features(&self) -> wgpu::Features {
         wgpu::Features::empty()
     }
@@ -326,8 +326,7 @@ impl DeviceCaps {
             label: Some("re_renderer device"),
             required_features: self.tier.features(),
             required_limits: self.limits(),
-            memory_hints: Default::default(),
-            trace: wgpu::Trace::Off,
+            ..Default::default()
         }
     }
 }
@@ -386,6 +385,7 @@ pub fn instance_descriptor(force_backend: Option<&str>) -> wgpu::InstanceDescrip
             // cause us to run with arbitrary development versions of drivers.
             // (then again, if a user has such a driver they likely *want* us to run with it anyways!)
             .union(wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER),
+        memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
         backend_options: wgpu::BackendOptions::default(),
     }
     // Allow manipulation of all options via environment variables.

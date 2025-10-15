@@ -11,7 +11,7 @@ use re_protos::common::v1alpha1::TaskId;
 use super::{PyCatalogClientInternal, PyDataFusionTable, to_py_err};
 
 /// A handle on a remote task.
-#[pyclass(name = "Task")]
+#[pyclass(name = "Task")] // NOLINT: skip pyclass_eq, non-trivial implementation
 pub struct PyTask {
     pub client: Py<PyCatalogClientInternal>,
 
@@ -46,9 +46,9 @@ impl PyTask {
     //TODO(ab): add method to poll about status
 }
 
+#[allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)]
 /// A collection of [`Task`].
-#[allow(rustdoc::broken_intra_doc_links)]
-#[pyclass(name = "Tasks")]
+#[pyclass(name = "Tasks")] // NOLINT: skip pyclass_eq, non-trivial implementation
 pub struct PyTasks {
     client: Py<PyCatalogClientInternal>,
 
@@ -88,7 +88,8 @@ impl PyTasks {
         let hash = Hash64::hash(&self.ids);
         let name = format!("__tasks_{:x}__", hash.hash64());
 
-        let task_status_table = connection.query_tasks(py, &self.ids)?;
+        let task_ids = self.ids.iter().cloned().collect_vec();
+        let task_status_table = connection.query_tasks(py, task_ids)?;
         let provider = MemTable::try_new(task_status_table.schema(), vec![vec![task_status_table]])
             .map_err(to_py_err)?;
 

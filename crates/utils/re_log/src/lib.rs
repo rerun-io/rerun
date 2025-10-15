@@ -11,6 +11,9 @@
 //!
 //! The `warn_once` etc macros are for when you want to suppress repeated
 //! logging of the exact same message.
+//!
+//! In the viewer these logs, if >= info, become notifications. See
+//! `re_ui::notifications` for more information.
 
 mod channel_logger;
 mod result_extensions;
@@ -57,8 +60,6 @@ const CRATES_AT_ERROR_LEVEL: &[&str] = &[
     // silence rustls in release mode: https://github.com/rerun-io/rerun/issues/3104
     #[cfg(not(debug_assertions))]
     "rustls",
-    // TODO(#10286): Remove once we have a wgpu version with https://github.com/gfx-rs/wgpu/pull/7850 landed.
-    "wgpu_hal::vulkan::conv",
 ];
 
 /// Never log anything less serious than a `WARN` from these crates.
@@ -81,6 +82,7 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
     "h2",
     "hyper",
     "prost_build",
+    "reqwest", // Spams "starting new connection: …"
     "sqlparser",
     "tonic_web",
     "tower",
@@ -213,7 +215,7 @@ fn is_log_enabled(filter: log::LevelFilter, metadata: &log::Metadata<'_>) -> boo
 /// * `tokio-1.24.1/src/runtime/runtime.rs`
 /// * `rerun/src/main.rs`
 /// * `core/src/ops/function.rs`
-#[allow(dead_code)] // only used on web and in tests
+#[allow(clippy::allow_attributes, dead_code)] // only used on web and in tests
 fn shorten_file_path(file_path: &str) -> &str {
     if let Some(i) = file_path.rfind("/src/") {
         if let Some(prev_slash) = file_path[..i].rfind('/') {

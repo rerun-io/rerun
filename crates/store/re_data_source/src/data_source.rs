@@ -1,5 +1,5 @@
-use re_log_types::{LogMsg, RecordingId};
-use re_redap_client::ConnectionRegistryHandle;
+use re_log_types::{DataSourceMessage, RecordingId};
+use re_redap_client::{ApiError, ConnectionRegistryHandle};
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 
 use crate::FileContents;
@@ -146,9 +146,8 @@ impl LogDataSource {
     pub fn stream(
         self,
         connection_registry: &ConnectionRegistryHandle,
-        on_ui_cmd: Option<Box<dyn Fn(re_redap_client::UiCommand) + Send + Sync>>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-    ) -> anyhow::Result<Receiver<LogMsg>> {
+    ) -> anyhow::Result<Receiver<DataSourceMessage>> {
         re_tracing::profile_function!();
 
         match self {
@@ -252,19 +251,19 @@ impl LogDataSource {
                 let connection_registry = connection_registry.clone();
                 let uri_clone = uri.clone();
                 let stream_partition = async move {
-                    let client = connection_registry.client(uri_clone.origin.clone()).await?;
+                    let client = connection_registry
+                        .client(uri_clone.origin.clone())
+                        .await
+                        .map_err(|err| ApiError::connection(err, "failed to connect to server"))?;
                     re_redap_client::stream_blueprint_and_partition_from_server(
-                        client, tx, uri_clone, on_ui_cmd, on_msg,
+                        client, tx, uri_clone, on_msg,
                     )
                     .await
                 };
 
                 spawn_future(async move {
                     if let Err(err) = stream_partition.await {
-                        re_log::warn!(
-                            "Error while streaming {uri}: {}",
-                            re_error::format_ref(&err)
-                        );
+                        re_log::warn!("Error while streaming: {}", re_error::format_ref(&err));
                     }
                 });
                 Ok(rx)

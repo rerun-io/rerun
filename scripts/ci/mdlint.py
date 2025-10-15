@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import sys
 import textwrap
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -349,9 +350,9 @@ def check_picture_elements(content: str, errors: list[Error]) -> None:
 
             data_reference_span = Span(data_reference_start, data_reference_end)
             data_reference_name = data_reference_span.slice(tag_content)
-            (kind, name) = data_reference_name.split("/")
+            (kind, name) = data_reference_name.split("/", 1)
 
-            valid_reference = (kind == "snippets" and glob(f"docs/snippets/all/**/{name}.py")) or (
+            valid_reference = (kind == "snippets" and glob(f"docs/snippets/all/{name}.py")) or (
                 kind == "examples" and glob(f"examples/python/{name}")
             )
 
@@ -432,7 +433,7 @@ def lint(glob_pattern: str) -> None:
             print("The following invalid markdown files were found:\n")
             for error in errors:
                 print(error)
-            exit(1)
+            sys.exit(1)
         print("No problems found")
 
 

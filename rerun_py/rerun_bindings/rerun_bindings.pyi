@@ -120,6 +120,14 @@ class ComponentColumnDescriptor:
         This property is read-only.
         """
 
+    @property
+    def name(self) -> str:
+        """
+        The name of this column.
+
+        This property is read-only.
+        """
+
 class ComponentColumnSelector:
     """
     A selector for a component column.
@@ -1083,7 +1091,7 @@ def disconnect(recording: PyRecordingStream | None = None) -> None:
     Subsequent log messages will be buffered and either sent on the next call to `connect_grpc` or `spawn`.
     """
 
-def flush(blocking: bool, recording: PyRecordingStream | None = None) -> None:
+def flush(*, timeout_sec: float = 1e38, recording: PyRecordingStream | None = None) -> None:
     """Block until outstanding data has been flushed to the sink."""
 
 #
@@ -1328,11 +1336,17 @@ class DatasetEntry(Entry):
         Pass `None` to clear the bluprint. This fails if the change cannot be made to the remote server.
         """
 
+    def schema(self) -> Schema:
+        """Return the schema of the data contained in the dataset."""
+
     def partition_ids(self) -> list[str]:
         """Returns a list of partitions IDs for the dataset."""
 
     def partition_table(self) -> DataFusionTable:
         """Return the partition table as a Datafusion table provider."""
+
+    def manifest(self) -> DataFusionTable:
+        """Return the dataset manifest as a Datafusion table provider."""
 
     def partition_url(
         self,
@@ -1819,3 +1833,9 @@ class ViewerClient:
 
         A table is represented as a dataframe defined by an Arrow record batch.
         """
+
+class NotFoundError(Exception):
+    """Raised when the requested resource is not found."""
+
+class AlreadyExistsError(Exception):
+    """Raised when trying to create a resource that already exists."""

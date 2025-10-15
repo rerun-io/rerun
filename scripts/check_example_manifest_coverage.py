@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -52,7 +53,7 @@ def main() -> None:
         print("Unlisted examples:")
         for example_path in unlisted_examples:
             print(f"- {example_path.parent.name}/{example_path.name}")
-        exit(1)
+        sys.exit(1)
     else:
         print("all ok")
 

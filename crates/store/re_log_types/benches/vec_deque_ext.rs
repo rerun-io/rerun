@@ -1,3 +1,5 @@
+#![expect(clippy::cast_possible_wrap)]
+
 //! Simple benchmark suite to keep track of how the different removal methods for [`VecDeque`]
 //! behave in practice.
 
@@ -38,7 +40,7 @@ mod constants {
     pub const NUM_MODIFIED_ELEMENTS: usize = 1_000;
 }
 
-#[allow(clippy::wildcard_imports)]
+#[expect(clippy::wildcard_imports)]
 use self::constants::*;
 
 // ---

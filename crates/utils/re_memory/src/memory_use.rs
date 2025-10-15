@@ -1,3 +1,5 @@
+#![expect(clippy::cast_possible_wrap)] // u64 -> i64
+
 /// How much RAM is the application using?
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct MemoryUse {

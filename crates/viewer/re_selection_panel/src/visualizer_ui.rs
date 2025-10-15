@@ -9,11 +9,11 @@ use re_types::blueprint::archetypes::VisualizerOverrides;
 use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
 use re_types_core::external::arrow::array::ArrayRef;
 use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
+use re_ui::{OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    DataResult, QueryContext, UiLayout, ViewContext, ViewSystemIdentifier, VisualizerCollection,
-    VisualizerSystem,
+    BlueprintContext as _, DataResult, QueryContext, UiLayout, ViewContext, ViewSystemIdentifier,
+    VisualizerCollection, VisualizerSystem,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -26,7 +26,7 @@ pub fn visualizer_ui(
     let query_result = ctx.lookup_query_result(view.id);
     let Some(data_result) = query_result
         .tree
-        .lookup_result_by_path(entity_path)
+        .lookup_result_by_path(entity_path.hash())
         .cloned()
     else {
         ui.error_label("Entity not found in view");
@@ -43,18 +43,20 @@ pub fn visualizer_ui(
         &all_visualizers,
     );
 
-    let button = list_item::ItemMenuButton::new(&re_ui::icons::ADD, "Add new visualizer…", |ui| {
-        menu_add_new_visualizer(
-            ctx,
-            ui,
-            &data_result,
-            &active_visualizers,
-            &available_inactive_visualizers,
-        );
-    })
-    .enabled(!available_inactive_visualizers.is_empty())
-    .hover_text("Add additional visualizers")
-    .disabled_hover_text("No additional visualizers available");
+    let button = ui
+        .small_icon_button_widget(&re_ui::icons::ADD, "Add new visualizer…")
+        .on_menu(|ui| {
+            menu_add_new_visualizer(
+                ctx,
+                ui,
+                &data_result,
+                &active_visualizers,
+                &available_inactive_visualizers,
+            );
+        })
+        .enabled(!available_inactive_visualizers.is_empty())
+        .on_hover_text("Add additional visualizers")
+        .on_disabled_hover_text("No additional visualizers available");
 
     let markdown = "# Visualizers
 
@@ -258,25 +260,24 @@ fn visualizer_components(
                 // TODO(andreas): Unfortunately, display ui needs db & query. (fix that!)
                 // In fact some display UIs will struggle since they try to query additional data from the store.
                 // so we have to figure out what store and path things come from.
-                #[allow(clippy::unwrap_used)] // We checked earlier that these values are valid!
                 let (query, db, entity_path, latest_at_unit) = match value_source {
                     ValueSource::Override => (
                         ctx.blueprint_query(),
                         ctx.blueprint_db(),
                         override_path.clone(),
-                        result_override.unwrap(),
+                        result_override.expect("This value was validated earlier."),
                     ),
                     ValueSource::Store => (
                         &store_query,
                         ctx.recording(),
                         data_result.entity_path.clone(),
-                        result_store.unwrap(),
+                        result_store.expect("This value was validated earlier."),
                     ),
                     ValueSource::Default => (
                         ctx.blueprint_query(),
                         ctx.blueprint_db(),
                         ViewBlueprint::defaults_path(ctx.view_id),
-                        result_default.unwrap(),
+                        result_default.expect("This value was validated earlier."),
                     ),
                     ValueSource::FallbackOrPlaceholder => {
                         // Fallback values are always single values, so we can directly go to the component ui.
@@ -297,7 +298,7 @@ fn visualizer_components(
                 };
 
                 re_data_ui::ComponentPathLatestAtResults {
-                    component_path: ComponentPath::new(entity_path, component_descr.clone()),
+                    component_path: ComponentPath::new(entity_path, component_descr.component),
                     unit: latest_at_unit,
                 }
                 .data_ui(ctx.viewer_ctx, ui, UiLayout::List, query, db);
@@ -333,7 +334,7 @@ fn visualizer_components(
                             re_data_ui::ComponentPathLatestAtResults {
                                 component_path: ComponentPath::new(
                                     data_result.entity_path.clone(),
-                                    component_descr.clone(),
+                                    component_descr.component,
                                 ),
                                 unit,
                             }
@@ -473,7 +474,7 @@ fn editable_blueprint_component_list_item(
 }
 
 /// "More" menu for a component line in the visualizer ui.
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn menu_more(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,

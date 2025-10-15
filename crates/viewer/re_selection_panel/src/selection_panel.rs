@@ -16,8 +16,8 @@ use re_ui::{
 };
 use re_viewer_context::{
     ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SystemCommand,
-    SystemCommandSender as _, UiLayout, ViewContext, ViewId, ViewStates, ViewerContext,
-    contents_name_style, icon_for_container_kind,
+    SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId, ViewStates,
+    ViewerContext, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
 
@@ -55,7 +55,7 @@ impl SelectionPanel {
         ui: &mut egui::Ui,
         expanded: bool,
     ) {
-        let screen_width = ui.ctx().screen_rect().width();
+        let screen_width = ui.ctx().content_rect().width();
 
         let panel = egui::SidePanel::right("selection_view")
             .min_width(120.0)
@@ -68,7 +68,7 @@ impl SelectionPanel {
             });
 
         // Always reset the VH highlight, and let the UI re-set it if needed.
-        ctx.rec_cfg.time_ctrl.write().highlighted_range = None;
+        ctx.send_time_commands([TimeControlCommand::ClearHighlightedRange]);
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
             ui.panel_content(|ui| {
@@ -95,7 +95,6 @@ impl SelectionPanel {
         self.view_entity_modal.ui(ui.ctx(), ctx, viewport);
     }
 
-    #[allow(clippy::unused_self)]
     fn contents(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -167,14 +166,19 @@ impl SelectionPanel {
             Item::ComponentPath(component_path) => {
                 let ComponentPath {
                     entity_path,
-                    component_descriptor,
+                    component,
                 } = component_path;
 
                 let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
-                let is_static = db
-                    .storage_engine()
+                let engine = db.storage_engine();
+                let component_descriptor = engine
                     .store()
-                    .entity_has_static_component(entity_path, component_descriptor);
+                    .entity_component_descriptor(entity_path, *component)
+                    .unwrap_or(ComponentDescriptor::partial(*component));
+
+                let is_static = engine
+                    .store()
+                    .entity_has_static_component(entity_path, &component_descriptor);
 
                 ui.list_item_flat_noninteractive(PropertyContent::new("Parent entity").value_fn(
                     |ui, _| {
@@ -228,7 +232,7 @@ impl SelectionPanel {
                                 if let Some(markdown) = ctx
                                     .reflection()
                                     .components
-                                    .get(component_type)
+                                    .get(&component_type)
                                     .map(|info| info.docstring_md)
                                 {
                                     ui.markdown_ui(markdown);
@@ -318,7 +322,7 @@ impl SelectionPanel {
                     let query_result = ctx.lookup_query_result(*view_id);
                     let data_result = query_result
                         .tree
-                        .lookup_result_by_path(entity_path)
+                        .lookup_result_by_path(entity_path.hash())
                         .cloned();
 
                     if let Some(data_result) = &data_result
@@ -429,15 +433,12 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
         if let Some(view) = viewport.view(view_id) {
             ui.section_collapsing_header("Entity path filter")
-                .with_button(
-                    list_item::ItemActionButton::new(
-                        &re_ui::icons::EDIT,
-                        "Add new entity…",
-                        || {
-                            self.view_entity_modal.open(*view_id);
-                        },
-                    )
-                    .hover_text("Modify the entity query using the editor"),
+                .with_action_button(
+                    &re_ui::icons::EDIT,
+                    "Modify the entity query using the editor",
+                    || {
+                        self.view_entity_modal.open(*view_id);
+                    },
                 )
                 .with_help_markdown(markdown)
                 .show(ui, |ui| {
@@ -550,7 +551,7 @@ fn entity_selection_ui(
     let query_result = ctx.lookup_query_result(*view_id);
     let data_result = query_result
         .tree
-        .lookup_result_by_path(entity_path)
+        .lookup_result_by_path(entity_path.hash())
         .cloned();
 
     if let Some(view) = viewport.view(view_id) {
@@ -631,7 +632,7 @@ fn entity_path_filter_ui(
         let mut layout_job =
             syntax_highlight_entity_path_filter(ui.tokens(), ui.style(), text.as_str());
         layout_job.wrap.max_width = wrap_width;
-        ui.fonts(|f| f.layout_job(layout_job))
+        ui.fonts_mut(|f| f.layout_job(layout_job))
     }
 
     // We store the string we are temporarily editing in the `Ui`'s temporary data storage.
@@ -711,11 +712,12 @@ fn container_children(
     };
 
     ui.section_collapsing_header("Contents")
-        .with_button(
-            list_item::ItemActionButton::new(&re_ui::icons::ADD, "Add to container", || {
+        .with_action_button(
+            &re_ui::icons::ADD,
+            "Add a new view or container to this container",
+            || {
                 show_add_view_or_container_modal(*container_id);
-            })
-            .hover_text("Add a new view or container to this container"),
+            },
         )
         .show(ui, show_content);
 }
@@ -766,7 +768,8 @@ fn list_existing_data_blueprints(
     ui: &mut egui::Ui,
     instance_path: &InstancePath,
 ) {
-    let views_with_path = viewport.views_containing_entity_path(ctx, &instance_path.entity_path);
+    let views_with_path =
+        viewport.views_containing_entity_path(ctx, instance_path.entity_path.hash());
 
     let (query, db) = guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
 
@@ -1095,7 +1098,10 @@ mod tests {
         TimeType,
         example_components::{MyPoint, MyPoints},
     };
-    use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+    use re_test_context::{
+        TestContext,
+        external::egui_kittest::{SnapshotOptions, kittest::Queryable as _},
+    };
     use re_test_viewport::{TestContextExt as _, TestView};
     use re_types::archetypes;
     use re_viewer_context::{RecommendedView, ViewClass as _, blueprint_timeline};
@@ -1139,11 +1145,54 @@ mod tests {
                         ui,
                     );
                 });
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
         harness.run();
         harness.snapshot("selection_panel_recording");
+    }
+
+    /// Snapshot test for the selection panel when a recording is selected
+    /// and hovering on app id.
+    #[test]
+    fn selection_panel_recording_hover_app_id_snapshot() {
+        let mut test_context = get_test_context();
+
+        // Select recording:
+        let recording_id = test_context.active_store_id();
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::StoreId(recording_id));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering()
+            .with_size([600.0, 400.0])
+            .build_ui(|ui| {
+                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                    SelectionPanel::default().contents(
+                        viewer_ctx,
+                        &viewport_blueprint,
+                        &mut ViewStates::default(),
+                        ui,
+                    );
+                });
+                test_context.handle_system_commands(ui.ctx());
+            });
+
+        harness.get_by_label("test_app").hover();
+
+        harness.run();
+
+        harness.snapshot_options(
+            "selection_panel_recording_hover_app_id",
+            &SnapshotOptions::new().failed_pixel_count_threshold(4),
+        );
     }
 
     /// Snapshot test for the selection panel when a static component is selected.
@@ -1162,7 +1211,7 @@ mod tests {
 
         let component_path = re_log_types::ComponentPath {
             entity_path,
-            component_descriptor: archetypes::Points2D::descriptor_positions(),
+            component: archetypes::Points2D::descriptor_positions().component,
         };
 
         test_context
@@ -1187,7 +1236,7 @@ mod tests {
                         ui,
                     );
                 });
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
         harness.run();
@@ -1225,7 +1274,7 @@ mod tests {
             .lock()
             .set_selection(Item::ComponentPath(re_log_types::ComponentPath {
                 entity_path,
-                component_descriptor: archetypes::Points2D::descriptor_positions(),
+                component: archetypes::Points2D::descriptor_positions().component,
             }));
 
         let viewport_blueprint = ViewportBlueprint::from_db(
@@ -1245,7 +1294,7 @@ mod tests {
                         ui,
                     );
                 });
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
         harness.run();
@@ -1297,7 +1346,7 @@ mod tests {
             .lock()
             .set_selection(Item::ComponentPath(re_log_types::ComponentPath {
                 entity_path,
-                component_descriptor: archetypes::Points2D::descriptor_positions(),
+                component: archetypes::Points2D::descriptor_positions().component,
             }));
 
         let viewport_blueprint = ViewportBlueprint::from_db(
@@ -1317,7 +1366,7 @@ mod tests {
                         ui,
                     );
                 });
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
         harness.run();
@@ -1366,7 +1415,7 @@ mod tests {
                         ui,
                     );
                 });
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
         harness.run();
@@ -1423,7 +1472,7 @@ mod tests {
                         ui,
                     );
                 });
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
         harness.run();
@@ -1473,7 +1522,7 @@ mod tests {
                         ui,
                     );
                 });
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
         harness.run();

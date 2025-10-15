@@ -71,11 +71,7 @@ tower-http = { workspace = true, features = ["propagate-header", "trace"] }
 tower.workspace = true
 tracing.workspace = true
 tracing-opentelemetry.workspace = true
-tracing-subscriber = { workspace = true, features = [
-  "fmt",
-  "env-filter",
-  "json",
-] }
+tracing-subscriber = { workspace = true, features = ["fmt", "env-filter", "json"] }
 prometheus-client.workspace = true
 tokio.workspace = true
 

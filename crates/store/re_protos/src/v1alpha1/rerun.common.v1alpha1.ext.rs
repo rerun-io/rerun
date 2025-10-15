@@ -1,10 +1,7 @@
-use std::hash::Hasher;
-
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
 
 use re_log_types::{RecordingId, StoreKind, TableId, external::re_types_core::ComponentDescriptor};
 
-use crate::v1alpha1::rerun_common_v1alpha1::TaskId;
 use crate::{TypeConversionError, invalid_field, missing_field};
 
 // --- Arrow ---
@@ -656,16 +653,6 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
 
 // ---
 
-impl Eq for TaskId {}
-
-impl std::hash::Hash for TaskId {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.as_str().hash(state)
-    }
-}
-
-// ---
-
 impl From<re_build_info::BuildInfo> for crate::common::v1alpha1::BuildInfo {
     fn from(build_info: re_build_info::BuildInfo) -> Self {
         Self {
@@ -678,6 +665,7 @@ impl From<re_build_info::BuildInfo> for crate::common::v1alpha1::BuildInfo {
             git_branch: Some(build_info.git_branch.to_string()),
             target_triple: Some(build_info.target_triple.to_string()),
             build_time: Some(build_info.datetime.to_string()),
+            is_debug_build: Some(build_info.is_debug_build),
         }
     }
 }
@@ -695,6 +683,7 @@ impl From<crate::common::v1alpha1::BuildInfo> for re_build_info::BuildInfo {
             is_in_rerun_workspace: false,
             target_triple: build_info.target_triple().to_owned().into(),
             datetime: build_info.build_time().to_owned().into(),
+            is_debug_build: build_info.is_debug_build(),
         }
     }
 }

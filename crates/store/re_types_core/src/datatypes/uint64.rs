@@ -4,6 +4,7 @@
 #![allow(unused_braces)]
 #![allow(unused_imports)]
 #![allow(unused_parens)]
+#![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::map_flatten)]
@@ -12,6 +13,7 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
+#![allow(clippy::wildcard_imports)]
 
 use crate::SerializationResult;
 use crate::try_serialize_field;
@@ -28,7 +30,6 @@ crate::macros::impl_into_cow!(UInt64);
 impl crate::Loggable for UInt64 {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
-        #![allow(clippy::wildcard_imports)]
         use arrow::datatypes::*;
         DataType::UInt64
     }
@@ -39,7 +40,6 @@ impl crate::Loggable for UInt64 {
     where
         Self: Clone + 'a,
     {
-        #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use crate::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -74,7 +74,6 @@ impl crate::Loggable for UInt64 {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
         use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
@@ -99,13 +98,12 @@ impl crate::Loggable for UInt64 {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
         use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         use arrow::{array::*, buffer::*, datatypes::*};
-        if let Some(nulls) = arrow_data.nulls() {
-            if nulls.null_count() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
+        if let Some(nulls) = arrow_data.nulls()
+            && nulls.null_count() != 0
+        {
+            return Err(DeserializationError::missing_data());
         }
         Ok({
             let slice = arrow_data

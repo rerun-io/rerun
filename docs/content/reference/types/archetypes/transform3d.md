@@ -43,7 +43,7 @@ For transforms that affect only a single entity and do not propagate along the e
 
 snippet: archetypes/transform3d_simple
 
-<picture data-inline-viewer="snippets/transform3d_simple">
+<picture data-inline-viewer="snippets/archetypes/transform3d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1024w.png">
@@ -55,7 +55,7 @@ snippet: archetypes/transform3d_simple
 
 snippet: archetypes/transform3d_hierarchy
 
-<picture data-inline-viewer="snippets/transform3d_hierarchy">
+<picture data-inline-viewer="snippets/archetypes/transform3d_hierarchy">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1024w.png">
@@ -67,7 +67,7 @@ snippet: archetypes/transform3d_hierarchy
 
 snippet: archetypes/transform3d_row_updates
 
-<picture data-inline-viewer="snippets/transform3d_row_updates">
+<picture data-inline-viewer="snippets/archetypes/transform3d_row_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1024w.png">
@@ -79,7 +79,7 @@ snippet: archetypes/transform3d_row_updates
 
 snippet: archetypes/transform3d_column_updates
 
-<picture data-inline-viewer="snippets/transform3d_column_updates">
+<picture data-inline-viewer="snippets/archetypes/transform3d_column_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1024w.png">
@@ -91,7 +91,7 @@ snippet: archetypes/transform3d_column_updates
 
 snippet: archetypes/transform3d_partial_updates
 
-<picture data-inline-viewer="snippets/transform3d_partial_updates">
+<picture data-inline-viewer="snippets/archetypes/transform3d_partial_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/1024w.png">

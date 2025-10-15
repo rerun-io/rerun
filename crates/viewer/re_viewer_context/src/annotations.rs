@@ -1,14 +1,21 @@
+use std::sync::OnceLock;
 use std::{collections::BTreeMap, sync::Arc};
 
 use ahash::HashMap;
 use nohash_hasher::IntSet;
 
 use re_chunk::RowId;
-use re_chunk_store::LatestAtQuery;
+use re_chunk_store::{
+    ChunkStore, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriberHandle, LatestAtQuery,
+    PerStoreChunkSubscriber,
+};
 use re_entity_db::EntityPath;
-use re_types::archetypes;
-use re_types::components::AnnotationContext;
-use re_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8};
+use re_log_types::StoreId;
+use re_types::{
+    archetypes,
+    components::AnnotationContext,
+    datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8},
+};
 
 use super::{ViewerContext, auto_color_egui};
 
@@ -133,7 +140,7 @@ pub struct ResolvedAnnotationInfo {
 
 impl ResolvedAnnotationInfo {
     pub fn color(&self) -> Option<egui::Color32> {
-        #![allow(clippy::manual_map)] // for readability
+        #![expect(clippy::manual_map)] // for readability
 
         if let Some(info) = &self.annotation_info {
             // Use annotation context based color.
@@ -221,61 +228,40 @@ impl AnnotationMap {
     /// For each passed [`EntityPath`], walk up the tree and find the nearest ancestor
     ///
     /// An entity is considered its own (nearest) ancestor.
-    pub fn load<'a>(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        time_query: &LatestAtQuery,
-        entities: impl Iterator<Item = &'a EntityPath>,
-    ) {
+    pub fn load(&mut self, ctx: &ViewerContext<'_>, time_query: &LatestAtQuery) {
         re_tracing::profile_function!();
 
-        let mut visited = IntSet::<EntityPath>::default();
+        let entities_with_annotation_context =
+            AnnotationContextStoreSubscriber::access(ctx.recording().store_id(), |entities| {
+                entities.clone()
+            })
+            .unwrap_or_default();
 
-        // This logic is borrowed from `iter_ancestor_meta_field`, but using the arrow-store instead
-        // not made generic as `AnnotationContext` was the only user of that function
-        for ent_path in entities {
-            let mut next_parent = Some(ent_path.clone());
-            while let Some(parent) = next_parent {
-                // If we've visited this parent before it's safe to break early.
-                // All of it's parents have also been visited.
-                if !visited.insert(parent.clone()) {
-                    break;
-                }
-
-                match self.0.entry(parent.clone()) {
-                    // If we've hit this path before and found a match, we can also break.
-                    // This should not actually get hit due to the above early-exit.
-                    std::collections::btree_map::Entry::Occupied(_) => break,
-                    // Otherwise check the obj_store for the field.
-                    // If we find one, insert it and then we can break.
-                    std::collections::btree_map::Entry::Vacant(entry) => {
-                        if let Some(((_time, row_id), ann_ctx)) =
-                            ctx.recording().latest_at_component::<AnnotationContext>(
-                                &parent,
-                                time_query,
-                                &archetypes::AnnotationContext::descriptor_context(),
+        // Load current annotations.
+        // (order doesn't matter, we're feeding into another hashmap)
+        #[expect(clippy::iter_over_hash_type)]
+        for entity in entities_with_annotation_context {
+            if let Some(((_time, row_id), ann_ctx)) =
+                ctx.recording().latest_at_component::<AnnotationContext>(
+                    &entity,
+                    time_query,
+                    &archetypes::AnnotationContext::descriptor_context(),
+                )
+            {
+                let annotations = Annotations {
+                    row_id,
+                    class_map: ann_ctx
+                        .0
+                        .into_iter()
+                        .map(|elem| {
+                            (
+                                elem.class_id,
+                                CachedClassDescription::from(elem.class_description),
                             )
-                        {
-                            let annotations = Annotations {
-                                row_id,
-                                class_map: ann_ctx
-                                    .0
-                                    .into_iter()
-                                    .map(|elem| {
-                                        (
-                                            elem.class_id,
-                                            CachedClassDescription::from(elem.class_description),
-                                        )
-                                    })
-                                    .collect(),
-                            };
-                            entry.insert(Arc::new(annotations));
-                        }
-                    }
-                }
-                // Finally recurse to the next parent up the path
-                // TODO(jleibs): this is somewhat expensive as it needs to re-hash the entity path.
-                next_parent = parent.parent();
+                        })
+                        .collect(),
+                };
+                self.0.insert(entity, Arc::new(annotations));
             }
         }
     }
@@ -294,5 +280,57 @@ impl AnnotationMap {
 
         // Otherwise return the missing legend
         Annotations::missing_arc()
+    }
+}
+
+/// Keeps track of all entities that have an annotation context.
+#[derive(Default)]
+pub struct AnnotationContextStoreSubscriber {
+    pub entities_with_annotation_context: IntSet<EntityPath>,
+}
+
+impl AnnotationContextStoreSubscriber {
+    /// Accesses the list of entities that have an annotation context at some point in time.
+    pub fn access<T>(store_id: &StoreId, f: impl FnOnce(&IntSet<EntityPath>) -> T) -> Option<T> {
+        ChunkStore::with_per_store_subscriber_once(
+            Self::subscription_handle(),
+            store_id,
+            move |subscriber: &Self| f(&subscriber.entities_with_annotation_context),
+        )
+    }
+
+    /// Accesses the global store subscriber.
+    ///
+    /// Lazily registers the subscriber if it hasn't been registered yet.
+    pub fn subscription_handle() -> ChunkStoreSubscriberHandle {
+        static SUBSCRIPTION: OnceLock<ChunkStoreSubscriberHandle> = OnceLock::new();
+        *SUBSCRIPTION.get_or_init(ChunkStore::register_per_store_subscriber::<Self>)
+    }
+}
+
+impl PerStoreChunkSubscriber for AnnotationContextStoreSubscriber {
+    #[inline]
+    fn name() -> String {
+        "AnnotationContextStoreSubscriber".to_owned()
+    }
+
+    fn on_events<'a>(&mut self, events: impl Iterator<Item = &'a ChunkStoreEvent>) {
+        for event in events {
+            if event
+                .chunk
+                .components()
+                .contains_key(&archetypes::AnnotationContext::descriptor_context())
+            {
+                let path = event.chunk.entity_path();
+                match event.diff.kind {
+                    ChunkStoreDiffKind::Addition => {
+                        self.entities_with_annotation_context.insert(path.clone());
+                    }
+                    ChunkStoreDiffKind::Deletion => {
+                        self.entities_with_annotation_context.remove(path);
+                    }
+                }
+            }
+        }
     }
 }

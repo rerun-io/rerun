@@ -21,8 +21,7 @@ a pleasant experience (i.e., in the worst case, the blueprint is ignored, with a
 
 * Install the latest official Rerun release in a virtual env: `pip install --force rerun-sdk`.
 * Clear all your blueprint data: `rerun reset`.
-* Start Rerun and check in Menu > About that you are indeed running the version you think
-  you're running.
+* Start the old `rerun` (check Menu > About that you are indeed running the old version)
 * Open all demos available in the welcome screen.
 * Play around long enough for the blueprints to be saved to disk (a few seconds).
     * You can check whether that's the case by listing the contents of:
@@ -34,8 +33,7 @@ a pleasant experience (i.e., in the worst case, the blueprint is ignored, with a
 #### Step 2: load blueprints from previous release into new one
 
 * Install the about-to-released Rerun version in a virtual env: `pip install --force rerun-sdk=whatever`.
-* Start Rerun and check in Menu > About that you are indeed running the version you think
-  you're running.
+* Start the new Rerun (check in Menu > About that you are indeed running the new version)
 * Open all demos available in the welcome screen.
 
 #### Step 3: does it look okay?

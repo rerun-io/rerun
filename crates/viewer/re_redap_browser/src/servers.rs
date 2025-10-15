@@ -9,8 +9,7 @@ use egui::{Frame, Margin, RichText};
 use re_auth::Jwt;
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_log_types::{EntityPathPart, EntryId};
-use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
-use re_protos::cloud::v1alpha1::EntryKind;
+use re_protos::cloud::v1alpha1::{EntryKind, ScanPartitionTableResponse};
 use re_redap_client::ConnectionRegistryHandle;
 use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_ui::alert::Alert;
@@ -119,13 +118,13 @@ impl Server {
     fn server_ui(&self, viewer_ctx: &ViewerContext<'_>, ctx: &Context<'_>, ui: &mut egui::Ui) {
         if let Poll::Ready(Err(err)) = self.entries.state() {
             self.title_ui(self.origin.host.to_string(), ctx, ui, |ui| {
-                if err.is_missing_token() || err.is_wrong_token() {
-                    let message = if err.is_missing_token() {
+                if let Some(conn_err) = err.as_client_credentials_error() {
+                    let message = if conn_err.is_missing_token() {
                         "This server requires a token to access its data."
                     } else {
                         "The provided token is invalid for this server."
                     };
-                    let edit_message = if err.is_missing_token() {
+                    let edit_message = if conn_err.is_missing_token() {
                         "Add a token"
                     } else {
                         "Edit token"
@@ -232,12 +231,12 @@ impl Server {
             } else {
                 matches!(
                     desc.display_name().as_str(),
-                    RECORDING_LINK_COLUMN_NAME | DATASET_MANIFEST_ID_FIELD_NAME
+                    RECORDING_LINK_COLUMN_NAME | ScanPartitionTableResponse::FIELD_PARTITION_ID
                 )
             };
 
             let column_sort_key = match desc.display_name().as_str() {
-                DATASET_MANIFEST_ID_FIELD_NAME => 0,
+                ScanPartitionTableResponse::FIELD_PARTITION_ID => 0,
                 RECORDING_LINK_COLUMN_NAME => 1,
                 _ => 2,
             };
@@ -255,7 +254,7 @@ impl Server {
         })
         .generate_partition_links(
             RECORDING_LINK_COLUMN_NAME,
-            DATASET_MANIFEST_ID_FIELD_NAME,
+            ScanPartitionTableResponse::FIELD_PARTITION_ID,
             self.origin.clone(),
             dataset.id(),
         )

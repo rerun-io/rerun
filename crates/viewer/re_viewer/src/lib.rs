@@ -7,6 +7,7 @@
 
 mod app;
 mod app_blueprint;
+mod app_blueprint_ctx;
 mod app_state;
 mod background_tasks;
 mod default_views;
@@ -170,7 +171,7 @@ impl AppEnvironment {
 
     pub fn url(&self) -> Option<&String> {
         match self {
-            Self::Web { url } => Some(url),
+            Self::Web { url, .. } => Some(url),
             _ => None,
         }
     }
@@ -304,7 +305,7 @@ pub fn wake_up_ui_thread_on_each_msg_crossbeam<T: Send + 'static>(
 
 /// Reset the viewer state as stored on disk and local storage,
 /// keeping only the analytics state.
-#[allow(clippy::unnecessary_wraps)] // wasm only
+#[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // wasm only
 pub fn reset_viewer_persistence() -> anyhow::Result<()> {
     #[cfg(not(target_arch = "wasm32"))]
     {

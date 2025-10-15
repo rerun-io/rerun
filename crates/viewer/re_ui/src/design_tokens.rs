@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 #![expect(clippy::unused_self)] // TODO(emilk): move hard-coded values into .ron files
 
 use anyhow::Context as _;
@@ -78,6 +78,9 @@ pub struct DesignTokens {
 
     pub success_text_color: Color32,
     pub info_text_color: Color32,
+
+    /// Background color for viewport views.
+    pub viewport_background: Color32,
 
     /// Background color for widgets that should catch the user's attention.
     pub highlight_color: Color32,
@@ -191,6 +194,7 @@ pub struct DesignTokens {
 
     pub density_graph_selected: Color32,
     pub density_graph_unselected: Color32,
+    pub density_graph_outside_valid_ranges: Color32,
 
     // Spatial view colors:
     pub axis_color_x: Color32,
@@ -267,6 +271,8 @@ impl DesignTokens {
             success_text_color: get_color("success_text_color"),
             info_text_color: get_color("info_text_color"),
 
+            viewport_background: get_color("viewport_background"),
+
             highlight_color: get_color("highlight_color"),
 
             label_button_icon_color: get_color("label_button_icon_color"),
@@ -340,6 +346,7 @@ impl DesignTokens {
 
             density_graph_selected: get_color("density_graph_selected"),
             density_graph_unselected: get_color("density_graph_unselected"),
+            density_graph_outside_valid_ranges: get_color("density_graph_outside_valid_ranges"),
 
             axis_color_x: get_color("axis_color_x"),
             axis_color_y: get_color("axis_color_y"),
@@ -941,7 +948,7 @@ fn follow_path<'json>(mut value: &'json ron::Value, path: &str) -> Option<&'json
 
 // ----------------------------------------------------------------------------
 
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[derive(Debug, serde::Deserialize)]
 struct Typography {
     fontSize: String,

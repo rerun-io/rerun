@@ -4,7 +4,6 @@ use crate::{UiExt as _, list_item};
 /// A collapsible section header, with support for optional help tooltip and button.
 ///
 /// It toggles on click.
-#[allow(clippy::type_complexity)]
 pub struct SectionCollapsingHeader<'a> {
     label: egui::WidgetText,
     default_open: bool,

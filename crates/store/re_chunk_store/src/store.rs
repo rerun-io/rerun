@@ -6,7 +6,7 @@ use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
-use re_log_types::{EntityPath, StoreId, StoreInfo, TimeInt, TimeType};
+use re_log_types::{EntityPath, StoreId, TimeInt, TimeType};
 use re_types_core::{ComponentDescriptor, ComponentType};
 
 use crate::{ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
@@ -397,7 +397,6 @@ impl ChunkStoreHandle {
 #[derive(Debug)]
 pub struct ChunkStore {
     pub(crate) id: StoreId,
-    pub(crate) store_info: Option<StoreInfo>,
 
     /// The configuration of the chunk store (e.g. compaction settings).
     pub(crate) config: ChunkStoreConfig,
@@ -491,7 +490,6 @@ impl Clone for ChunkStore {
         re_tracing::profile_function!();
         Self {
             id: self.id.clone(),
-            store_info: self.store_info.clone(),
             config: self.config.clone(),
             time_type_registry: self.time_type_registry.clone(),
             type_registry: self.type_registry.clone(),
@@ -516,7 +514,6 @@ impl std::fmt::Display for ChunkStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             id,
-            store_info: _,
             config,
             time_type_registry: _,
             type_registry: _,
@@ -578,7 +575,6 @@ impl ChunkStore {
     pub fn new(id: StoreId, config: ChunkStoreConfig) -> Self {
         Self {
             id,
-            store_info: None,
             config,
             time_type_registry: Default::default(),
             type_registry: Default::default(),
@@ -610,16 +606,6 @@ impl ChunkStore {
     #[inline]
     pub fn id(&self) -> StoreId {
         self.id.clone()
-    }
-
-    #[inline]
-    pub fn set_store_info(&mut self, store_info: StoreInfo) {
-        self.store_info = Some(store_info);
-    }
-
-    #[inline]
-    pub fn store_info(&self) -> Option<&StoreInfo> {
-        self.store_info.as_ref()
     }
 
     /// Return the current [`ChunkStoreGeneration`]. This can be used to determine whether the
@@ -725,19 +711,17 @@ impl ChunkStore {
         let rrd_file = std::fs::File::open(path_to_rrd)
             .with_context(|| format!("couldn't open {path_to_rrd:?}"))?;
 
-        let mut decoder = re_log_encoding::decoder::Decoder::new(rrd_file)
+        let decoder = re_log_encoding::Decoder::decode_eager(std::io::BufReader::new(rrd_file))
             .with_context(|| format!("couldn't decode {path_to_rrd:?}"))?;
 
         // TODO(cmc): offload the decoding to a background thread.
-        for res in &mut decoder {
+        for res in decoder {
             let msg = res.with_context(|| format!("couldn't decode message {path_to_rrd:?}"))?;
             match msg {
                 re_log_types::LogMsg::SetStoreInfo(info) => {
-                    let store = stores.entry(info.info.store_id.clone()).or_insert_with(|| {
+                    stores.entry(info.info.store_id.clone()).or_insert_with(|| {
                         Self::new(info.info.store_id.clone(), store_config.clone())
                     });
-
-                    store.set_store_info(info.info);
                 }
 
                 re_log_types::LogMsg::ArrowMsg(store_id, msg) => {
@@ -781,11 +765,9 @@ impl ChunkStore {
         for msg in log_msgs {
             match msg {
                 re_log_types::LogMsg::SetStoreInfo(info) => {
-                    let store = stores.entry(info.info.store_id.clone()).or_insert_with(|| {
+                    stores.entry(info.info.store_id.clone()).or_insert_with(|| {
                         Self::new(info.info.store_id.clone(), store_config.clone())
                     });
-
-                    store.set_store_info(info.info);
                 }
 
                 re_log_types::LogMsg::ArrowMsg(store_id, msg) => {

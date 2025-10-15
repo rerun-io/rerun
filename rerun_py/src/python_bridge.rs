@@ -1,7 +1,5 @@
-#![allow(clippy::borrow_deref_ref)] // False positive due to #[pyfunction] macro
-#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
-#![allow(clippy::too_many_arguments)] // We used named arguments, so this is fine
-#![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
+#![expect(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
+#![expect(clippy::too_many_arguments)] // We used named arguments, so this is fine
 
 use std::{
     borrow::Borrow as _,
@@ -27,7 +25,7 @@ use re_log_types::{BlueprintActivationCommand, EntityPathPart};
 use re_log_types::{LogMsg, RecordingId};
 use re_sdk::{
     ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, TimeCell,
-    external::re_log_encoding::encoder::encode_ref_as_bytes_local,
+    external::re_log_encoding::Encoder,
     sink::{BinaryStreamStorage, CallbackSink, MemorySinkStorage, SinkFlushError},
     time::TimePoint,
 };
@@ -117,12 +115,6 @@ fn init_perf_telemetry() -> parking_lot::MutexGuard<'static, re_perf_telemetry::
     static TELEMETRY: OnceLock<parking_lot::Mutex<re_perf_telemetry::Telemetry>> = OnceLock::new();
     TELEMETRY
         .get_or_init(|| {
-            // Safety: anything touching the env is unsafe, tis what it is.
-            #[expect(unsafe_code)]
-            unsafe {
-                std::env::set_var("OTEL_SERVICE_NAME", "rerun-py");
-            }
-
             // NOTE: We're just parsing the environment, hence the `vec![]` for CLI flags.
             use re_perf_telemetry::external::clap::Parser as _;
             let args = re_perf_telemetry::TelemetryArgs::parse_from::<_, String>(vec![]);
@@ -144,6 +136,7 @@ fn init_perf_telemetry() -> parking_lot::MutexGuard<'static, re_perf_telemetry::
 
 /// The python module is called "rerun_bindings".
 #[pymodule]
+#[pyo3(name = "rerun_bindings")]
 fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     if cfg!(feature = "perf_telemetry") && std::env::var("TELEMETRY_ENABLED").is_ok() {
         // TODO(tracing/issues#2499): allow installing multiple tracing sinks (https://github.com/tokio-rs/tracing/issues/2499)
@@ -152,6 +145,15 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         // called more than once.
         // The SDK should not be as noisy as the CLI, so we set log filter to warning if not specified otherwise.
         re_log::setup_logging_with_filter(&re_log::log_filter_from_env_or_default("warn"));
+    }
+
+    // There is always value in setting this, even if `re_perf_telemetry` is disabled. For example,
+    // the Rerun versioning headers will automatically pick it up.
+    //
+    // Safety: anything touching the env is unsafe, tis what it is.
+    #[expect(unsafe_code)]
+    unsafe {
+        std::env::set_var("OTEL_SERVICE_NAME", "rerun-py");
     }
 
     #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
@@ -297,15 +299,21 @@ impl DurationLike {
     fn into_duration(self) -> Duration {
         match self {
             Self::Int(i) => Duration::from_secs(i as u64),
-            Self::Float(f) => Duration::from_secs_f64(f),
+            Self::Float(f) => match duration_from_sec(f) {
+                Ok(duration) => duration,
+                Err(err) => {
+                    re_log::error_once!("{err}");
+                    Duration::ZERO
+                }
+            },
             Self::Duration(d) => d,
         }
     }
 }
 
 /// Defines the different batching thresholds used within the RecordingStream.
-#[pyclass(name = "ChunkBatcherConfig")]
-#[derive(Clone)]
+#[pyclass(eq, name = "ChunkBatcherConfig")]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PyChunkBatcherConfig(ChunkBatcherConfig);
 
 #[pymethods]
@@ -315,7 +323,7 @@ impl PyChunkBatcherConfig {
     #[pyo3(
         text_signature = "(self, flush_tick=None, flush_num_bytes=None, flush_num_rows=None, chunk_max_rows_if_unsorted=None)"
     )]
-    /// Initialize the chunk batcher onfiguration.
+    /// Initialize the chunk batcher configuration.
     ///
     /// Check out <https://rerun.io/docs/reference/sdk/micro-batching> for more information.
     ///
@@ -426,28 +434,28 @@ impl PyChunkBatcherConfig {
         self.0.chunk_max_rows_if_unsorted = chunk_max_rows_if_unsorted;
     }
 
-    #[allow(non_snake_case)]
+    #[expect(non_snake_case)]
     #[staticmethod]
     /// Default configuration, applicable to most use cases.
     fn DEFAULT() -> Self {
         Self(ChunkBatcherConfig::DEFAULT)
     }
 
-    #[allow(non_snake_case)]
+    #[expect(non_snake_case)]
     #[staticmethod]
     /// Low-latency configuration, preferred when streaming directly to a viewer.
     fn LOW_LATENCY() -> Self {
         Self(ChunkBatcherConfig::LOW_LATENCY)
     }
 
-    #[allow(non_snake_case)]
+    #[expect(non_snake_case)]
     #[staticmethod]
     /// Always flushes ASAP.
     fn ALWAYS() -> Self {
         Self(ChunkBatcherConfig::ALWAYS)
     }
 
-    #[allow(non_snake_case)]
+    #[expect(non_snake_case)]
     #[staticmethod]
     /// Never flushes unless manually told to (or hitting one the builtin invariants).
     fn NEVER() -> Self {
@@ -456,8 +464,8 @@ impl PyChunkBatcherConfig {
 }
 
 /// Create a new recording stream.
-#[allow(clippy::fn_params_excessive_bools)]
-#[allow(clippy::struct_excessive_bools)]
+#[expect(clippy::fn_params_excessive_bools)]
+#[allow(clippy::allow_attributes, clippy::struct_excessive_bools)]
 #[pyfunction]
 #[pyo3(signature = (
     application_id,
@@ -525,7 +533,7 @@ fn new_recording(
 }
 
 /// Create a new blueprint stream.
-#[allow(clippy::fn_params_excessive_bools)]
+#[expect(clippy::fn_params_excessive_bools)]
 #[pyfunction]
 #[pyo3(signature = (
     application_id,
@@ -606,7 +614,7 @@ fn shutdown(py: Python<'_>) {
 
 // --- Recordings ---
 
-#[pyclass(frozen)]
+#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
 #[derive(Clone)]
 struct PyRecordingStream(RecordingStream);
 
@@ -1197,7 +1205,7 @@ fn set_callback_sink(callback: PyObject, recording: Option<&PyRecordingStream>, 
 
     let callback = move |msgs: &[LogMsg]| {
         Python::with_gil(|py| {
-            let data = encode_ref_as_bytes_local(msgs.iter().map(Ok)).ok_or_log_error()?;
+            let data = Encoder::encode(msgs.iter().map(Ok)).ok_or_log_error()?;
             let bytes = PyBytes::new(py, &data);
             callback.bind(py).call1((bytes,)).ok_or_log_error()?;
             Some(())
@@ -1228,7 +1236,7 @@ fn set_callback_sink_blueprint(
 
     let callback = move |msgs: &[LogMsg]| {
         Python::with_gil(|py| {
-            let data = encode_ref_as_bytes_local(msgs.iter().map(Ok)).ok_or_log_error()?;
+            let data = Encoder::encode(msgs.iter().map(Ok)).ok_or_log_error()?;
             let bytes = PyBytes::new(py, &data);
             callback.bind(py).call1((bytes,)).ok_or_log_error()?;
             Some(())
@@ -1276,7 +1284,7 @@ fn binary_stream(
     Some(PyBinarySinkStorage { inner })
 }
 
-#[pyclass(frozen)]
+#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
 struct PyMemorySinkStorage {
     // So we can flush when needed!
     inner: MemorySinkStorage,
@@ -1342,7 +1350,7 @@ impl PyMemorySinkStorage {
     }
 }
 
-#[pyclass(frozen)]
+#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
 struct PyBinarySinkStorage {
     /// The underlying binary sink storage.
     inner: BinaryStreamStorage,
@@ -1373,7 +1381,7 @@ impl PyBinarySinkStorage {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| -> PyResult<_> {
             if flush {
-                let timeout = timeout_from_sec(flush_timeout_sec)?;
+                let timeout = duration_from_sec(flush_timeout_sec as _)?;
                 self.inner
                     .flush(timeout)
                     .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
@@ -1404,7 +1412,7 @@ impl PyBinarySinkStorage {
     fn flush(&self, py: Python<'_>, timeout_sec: f32) -> PyResult<()> {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| -> PyResult<_> {
-            let timeout = timeout_from_sec(timeout_sec)?;
+            let timeout = duration_from_sec(timeout_sec as _)?;
             self.inner
                 .flush(timeout)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
@@ -1414,13 +1422,13 @@ impl PyBinarySinkStorage {
     }
 }
 
-fn timeout_from_sec(seconds: f32) -> PyResult<Duration> {
+fn duration_from_sec(seconds: f64) -> PyResult<Duration> {
     if seconds.is_nan() {
-        Err(PyRuntimeError::new_err("timeout_sec must not be NaN"))
+        Err(PyRuntimeError::new_err("duration must not be NaN"))
     } else if seconds < 0.0 {
-        Err(PyRuntimeError::new_err("timeout_sec must be non-negative"))
+        Err(PyRuntimeError::new_err("duration must be non-negative"))
     } else {
-        Ok(Duration::try_from_secs_f32(seconds).unwrap_or(Duration::MAX))
+        Ok(Duration::try_from_secs_f64(seconds).unwrap_or(Duration::MAX))
     }
 }
 
@@ -1492,7 +1500,7 @@ fn serve_grpc(
 /// Serve a web-viewer over HTTP.
 ///
 /// This only serves HTML+JS+Wasm, but does NOT host a gRPC server.
-#[allow(clippy::unnecessary_wraps)] // False positive
+#[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 #[pyo3(signature = (web_port = None, open_browser = true, connect_to = None))]
 fn serve_web_viewer(
@@ -1528,7 +1536,7 @@ fn serve_web_viewer(
 
 /// Serve a web-viewer AND host a gRPC server.
 // NOTE: DEPRECATED
-#[allow(clippy::unnecessary_wraps)] // False positive
+#[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 #[pyo3(signature = (open_browser, web_port, grpc_port, server_memory_limit, default_blueprint = None, recording = None))]
 fn serve_web(
@@ -1607,23 +1615,26 @@ fn disconnect(py: Python<'_>, recording: Option<&PyRecordingStream>) {
 
 /// Block until outstanding data has been flushed to the sink.
 #[pyfunction]
-#[pyo3(signature = (blocking, recording=None))]
-fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) -> PyResult<()> {
+#[pyo3(signature = (*, timeout_sec = 1e38, recording = None))] // Can't use infinity here because of python_check_signatures.py
+fn flush(py: Python<'_>, timeout_sec: f32, recording: Option<&PyRecordingStream>) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
         return Ok(());
     };
 
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
-    py.allow_threads(|| -> Result<(), SinkFlushError> {
-        if blocking {
-            recording.flush_blocking()?;
+    py.allow_threads(|| -> PyResult<()> {
+        if timeout_sec == 0.0 {
+            recording
+                .flush_async()
+                .map_err(|err: SinkFlushError| PyRuntimeError::new_err(err.to_string()))?;
         } else {
-            recording.flush_async()?;
+            recording
+                .flush_with_timeout(duration_from_sec(timeout_sec as _)?)
+                .map_err(|err: SinkFlushError| PyRuntimeError::new_err(err.to_string()))?;
         }
         flush_garbage_queue();
         Ok(())
     })
-    .map_err(|err: SinkFlushError| PyRuntimeError::new_err(err.to_string()))
 }
 
 // --- Components ---
@@ -1633,8 +1644,12 @@ fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) 
 /// Every component at a given entity path is uniquely identified by the
 /// `component` field of the descriptor. The `archetype` and `component_type`
 /// fields provide additional information about the semantics of the data.
-#[pyclass(name = "ComponentDescriptor")]
-#[derive(Clone)]
+#[pyclass(
+    eq,
+    name = "ComponentDescriptor",
+    module = "rerun_bindings.rerun_bindings"
+)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 struct PyComponentDescriptor(pub ComponentDescriptor);
 
 #[pymethods]
@@ -1651,10 +1666,6 @@ impl PyComponentDescriptor {
         };
 
         Self(descr)
-    }
-
-    fn __eq__(&self, other: &Self) -> bool {
-        self.0 == other.0
     }
 
     fn __hash__(&self) -> u64 {
@@ -2028,9 +2039,9 @@ fn get_app_url() -> String {
 
 // TODO(jleibs) expose this as a python type
 /// Start a web server to host the run web-assets.
+#[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // false positive
 #[pyfunction]
 fn start_web_viewer_server(port: u16) -> PyResult<()> {
-    #[allow(clippy::unnecessary_wraps)]
     #[cfg(feature = "web_viewer")]
     {
         let mut web_handle = global_web_viewer_server();

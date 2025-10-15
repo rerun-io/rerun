@@ -18,6 +18,7 @@
 //! `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
 
 pub mod arrow_msg;
+mod data_source_message;
 mod entry_id;
 pub mod example_components;
 pub mod hash;
@@ -39,6 +40,7 @@ use re_byte_size::SizeBytes;
 
 pub use self::{
     arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
+    data_source_message::{DataSourceMessage, DataSourceUiCommand},
     entry_id::{EntryId, EntryIdOrName},
     index::{
         AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, NonMinI64, TimeCell, TimeInt, TimePoint,
@@ -474,7 +476,6 @@ impl BlueprintActivationCommand {
 /// `.rrd` files.
 #[must_use]
 #[derive(Clone, Debug, PartialEq)] // `PartialEq` used for tests in another crate
-#[allow(clippy::large_enum_variant)]
 // TODO(#8631): Remove `LogMsg`
 pub enum LogMsg {
     /// A new recording has begun.
@@ -583,6 +584,45 @@ pub struct StoreInfo {
     // NOTE: The version comes directly from the decoded RRD stream's header, duplicating it here
     // would probably only lead to more issues down the line.
     pub store_version: Option<CrateVersion>,
+
+    /// If true, the Viewer downloaded only a subset of an existing recording.
+    ///
+    /// This happens when opening URLs with a time range.
+    /// If we don't know for sure whether the recording is partial, we set this to `false`.
+    pub is_partial: bool,
+}
+
+impl StoreInfo {
+    /// Creates a new store info using the current crate version.
+    pub fn new(store_id: StoreId, store_source: StoreSource) -> Self {
+        Self {
+            store_id,
+            cloned_from: None,
+            store_source,
+            store_version: Some(CrateVersion::LOCAL),
+            is_partial: false,
+        }
+    }
+
+    /// Creates a new store info without any versioning information.
+    pub fn new_unversioned(store_id: StoreId, store_source: StoreSource) -> Self {
+        Self {
+            store_id,
+            cloned_from: None,
+            store_source,
+            store_version: None,
+            is_partial: false,
+        }
+    }
+
+    /// Creates a new store info for testing purposes.
+    pub fn testing() -> Self {
+        // Don't use a version for testing since it may show up in snapshots that then would change on every version.
+        Self::new_unversioned(
+            StoreId::new(StoreKind::Recording, "test_app", "test_recording"),
+            StoreSource::Other("test".to_owned()),
+        )
+    }
 }
 
 impl StoreInfo {
@@ -918,6 +958,7 @@ impl SizeBytes for StoreInfo {
             cloned_from: _,
             store_source,
             store_version,
+            is_partial: _,
         } = self;
 
         store_id.heap_size_bytes()

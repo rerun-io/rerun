@@ -13,7 +13,7 @@ pub struct PickedPixelInfo {
     pub pixel_coordinates: [u32; 2],
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub fn textured_rect_hover_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -94,14 +94,14 @@ pub fn textured_rect_hover_ui(
 }
 
 // Show the surrounding pixels:
-const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 10;
+const ZOOMED_IMAGE_TEXEL_RADIUS: i64 = 10;
 
 /// Draws a border for the area zoomed in by [`show_zoomed_image_region`].
 fn show_zoomed_image_region_area_outline(
     egui_ctx: &egui::Context,
     ui_clip_rect: egui::Rect,
     image_resolution: egui::Vec2,
-    [center_x, center_y]: [isize; 2],
+    [center_x, center_y]: [i64; 2],
     image_rect: egui::Rect,
 ) {
     use egui::{Rect, pos2, remap};
@@ -163,7 +163,7 @@ impl TextureInteractionId<'_> {
 }
 
 /// `meter`: iff this is a depth map, how long is one meter?
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub fn show_zoomed_image_region(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
@@ -172,7 +172,7 @@ pub fn show_zoomed_image_region(
     annotations: &Annotations,
     meter: Option<f32>,
     interaction_id: &TextureInteractionId<'_>,
-    center_texel: [isize; 2],
+    center_texel: [i64; 2],
 ) {
     if let Err(err) = try_show_zoomed_image_region(
         render_ctx,
@@ -189,7 +189,7 @@ pub fn show_zoomed_image_region(
 }
 
 /// `meter`: iff this is a depth map, how long is one meter?
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn try_show_zoomed_image_region(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
@@ -198,7 +198,7 @@ fn try_show_zoomed_image_region(
     annotations: &Annotations,
     meter: Option<f32>,
     interaction_id: &TextureInteractionId<'_>,
-    center_texel: [isize; 2],
+    center_texel: [i64; 2],
 ) -> anyhow::Result<()> {
     let [width, height] = colormapped_texture.width_height();
 
@@ -368,8 +368,7 @@ fn pixel_value_ui(
                 render_ctx,
                 texture,
                 interaction_id,
-                x,
-                y,
+                [x, y],
             ),
         };
 
@@ -560,8 +559,7 @@ fn pixel_value_string_from_gpu_texture(
     render_ctx: &re_renderer::RenderContext,
     texture: &GpuTexture2D,
     interaction_id: &TextureInteractionId<'_>,
-    x: u32,
-    y: u32,
+    [x, y]: [u32; 2],
 ) -> Option<(String, String)> {
     // TODO(andreas): Should parts of this be a utility in re_renderer?
     // Note that before this was implemented the readback belt was private to `re_renderer` because it is fairly advanced in its usage.
@@ -573,6 +571,8 @@ fn pixel_value_string_from_gpu_texture(
     }
 
     let readback_id = interaction_id.gpu_readback_id();
+
+    #[expect(clippy::cast_possible_wrap)]
     let pixel_pos = glam::IVec2::new(x as i32, y as i32);
 
     let mut readback_belt = render_ctx.gpu_readback_belt.lock();

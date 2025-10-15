@@ -15,7 +15,7 @@ on:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: write
@@ -128,15 +128,16 @@ jobs:
 
           if [ -n "$comparison" ]; then
             echo "is_comparison_set=true" >> "$GITHUB_OUTPUT"
+            echo "is_comparison_set=true"
           else
             echo "is_comparison_set=false" >> "$GITHUB_OUTPUT"
+            echo "is_comparison_set=false"
           fi
 
           echo "$entries"
           echo "previous: $(cat /tmp/prev.json)"
           echo "current: $(cat /tmp/data.json)"
           echo "$comparison"
-          echo "is comparison set: $is_comparison_set"
 
       - name: Upload data to GCS (commit)
         uses: google-github-actions/upload-cloud-storage@v2
@@ -169,9 +170,9 @@ jobs:
 
             ${{ steps.measure.outputs.comparison }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Render benchmark result
         if: github.ref == 'refs/heads/main'

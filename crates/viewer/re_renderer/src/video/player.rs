@@ -10,7 +10,10 @@ use super::{VideoFrameTexture, chunk_decoder::VideoSampleDecoder};
 use crate::{
     RenderContext,
     resource_managers::{GpuTexture2D, SourceImageDataFormat},
-    video::{DecoderDelayState, VideoPlayerError, chunk_decoder::update_video_texture_with_frame},
+    video::{
+        DecoderDelayState, InsufficientSampleDataError, VideoPlayerError,
+        chunk_decoder::update_video_texture_with_frame,
+    },
 };
 
 pub struct PlayerConfiguration {
@@ -142,7 +145,7 @@ impl VideoPlayer {
         if let Some(details) = description.encoding_details.as_ref()
             && let Some(bit_depth) = details.bit_depth
         {
-            #[allow(clippy::comparison_chain)]
+            #[expect(clippy::comparison_chain)]
             if bit_depth < 8 {
                 re_log::warn_once!("{debug_name} has unusual bit_depth of {bit_depth}");
             } else if 8 < bit_depth {
@@ -200,6 +203,12 @@ impl VideoPlayer {
         video_description: &re_video::VideoDataDescription,
         video_buffers: &StableIndexDeque<&[u8]>,
     ) -> Result<VideoFrameTexture, VideoPlayerError> {
+        if video_description.gops.is_empty() {
+            return Err(InsufficientSampleDataError::NoKeyFrames.into());
+        }
+        if video_description.samples.is_empty() {
+            return Err(InsufficientSampleDataError::NoSamples.into());
+        }
         if requested_pts.0 < 0 {
             return Err(VideoPlayerError::NegativeTimestamp);
         }
@@ -207,7 +216,7 @@ impl VideoPlayer {
         // Find which sample best represents the requested PTS.
         let requested_sample_idx = video_description
             .latest_sample_index_at_presentation_timestamp(requested_pts)
-            .ok_or(VideoPlayerError::EmptyVideo)?;
+            .ok_or(InsufficientSampleDataError::NoSamplesPriorToRequestedTimestamp)?;
         let requested_sample = video_description.samples.get(requested_sample_idx); // This is only `None` if we no longer have the sample around.
         let requested_sample_pts =
             requested_sample.map_or(requested_pts, |s| s.presentation_timestamp);
@@ -330,7 +339,7 @@ impl VideoPlayer {
             .gop_index_containing_decode_timestamp(
                 video_description.samples[requested_sample_idx].decode_timestamp,
             )
-            .ok_or(VideoPlayerError::EmptyVideo)?;
+            .ok_or(InsufficientSampleDataError::NoKeyFramesPriorToRequestedTimestamp)?;
 
         let requested = SampleAndGopIndex {
             sample_idx: requested_sample_idx,
@@ -508,7 +517,7 @@ impl VideoPlayer {
         video_buffers: &StableIndexDeque<&[u8]>,
     ) -> Result<(), VideoPlayerError> {
         let Some(gop) = video_description.gops.get(gop_idx) else {
-            return Err(VideoPlayerError::MissingSample);
+            return Err(InsufficientSampleDataError::ExpectedSampleNotAvailable.into());
         };
 
         self.enqueue_samples_of_gop(video_description, gop_idx, &gop.sample_range, video_buffers)
