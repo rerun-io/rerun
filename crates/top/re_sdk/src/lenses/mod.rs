@@ -7,6 +7,7 @@
 
 pub(crate) mod ast;
 mod error;
+mod op;
 mod sink;
 pub(crate) mod transform;
 
