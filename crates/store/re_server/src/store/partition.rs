@@ -1,5 +1,7 @@
 use std::collections::{HashMap, hash_map::Entry};
 
+use itertools::Itertools as _;
+
 use re_chunk_store::ChunkStoreHandle;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 
@@ -32,9 +34,16 @@ impl Partition {
         }
     }
 
+    /// Iterate over layers.
+    ///
+    /// Layers are iterated in (registration time, layer name) order, as per how they should appear
+    /// in the partition table.
     pub fn iter_layers(&self) -> impl Iterator<Item = (&str, &Layer)> {
         self.layers
             .iter()
+            .sorted_by(|(name_a, layer_a), (name_b, layer_b)| {
+                (layer_a.registration_time(), name_a).cmp(&(layer_b.registration_time(), name_b))
+            })
             .map(|(layer_name, layer)| (layer_name.as_str(), layer))
     }
 
