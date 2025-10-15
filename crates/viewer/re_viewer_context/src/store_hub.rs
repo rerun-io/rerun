@@ -33,7 +33,7 @@ use crate::{
 /// * The active blueprint
 /// * The default blueprint
 ///
-/// Either on of these can be `None`.
+/// Either one of these can be `None`.
 ///
 /// The active blueprint is what the user would see and edit, if they were to select that app id.
 /// If there is no active blueprint, the default will be cloned and made active.

@@ -84,7 +84,7 @@ pub struct AppState {
     /// This is stored here for simplicity. An exclusive reference for that is passed to the users,
     /// such as [`ViewportUi`] and [`re_selection_panel::SelectionPanel`].
     #[serde(skip)]
-    view_states: ViewStates,
+    pub(crate) view_states: ViewStates,
 
     /// Selection & hovering state.
     ///

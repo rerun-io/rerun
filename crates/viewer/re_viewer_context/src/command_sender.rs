@@ -4,7 +4,7 @@ use re_data_source::LogDataSource;
 use re_log_types::StoreId;
 use re_ui::{UICommand, UICommandSender};
 
-use crate::{RecordingOrTable, time_control::TimeControlCommand};
+use crate::{RecordingOrTable, ViewId, time_control::TimeControlCommand};
 
 // ----------------------------------------------------------------------------
 
@@ -132,6 +132,8 @@ pub enum SystemCommand {
     /// Add a task, run on a background thread, that saves something to disk.
     #[cfg(not(target_arch = "wasm32"))]
     FileSaver(Box<dyn FnOnce() -> anyhow::Result<std::path::PathBuf> + Send + 'static>),
+
+    SetTracked(ViewId, EntityPath),
 }
 
 impl SystemCommand {
