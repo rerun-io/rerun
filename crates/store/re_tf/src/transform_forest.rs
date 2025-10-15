@@ -23,7 +23,7 @@ pub struct TransformInfo {
     /// We could add target and maybe even source to this, but we want to keep this struct small'ish.
     /// On that note, it may be good to split this in the future, as most of the time we're only interested in the
     /// source->target affine transform.
-    root: EntityPathHash,
+    root: TransformFrameIdHash,
 
     /// The transform from this frame to the target's space.
     ///
@@ -134,7 +134,7 @@ impl TransformInfo {
 
         Self {
             root: *root,
-            target_from_entity: target_from_source,
+            target_from_source,
             target_from_instances: target_from_source_instances,
             target_from_archetype: target_from_source_archetypes,
         }
@@ -293,7 +293,7 @@ impl TransformForest {
                 root_from_parent * transforms_at_entity.parent_from_entity_tree_transform;
 
             // Did we encounter a pinhole and need to create a new subspace?
-            let (root, root_from_entity) =
+            let (root, target_from_source) =
                 if let Some(pinhole_projection) = transforms_at_entity.pinhole_projection {
                     let new_root_frame_id = TransformFrameIdHash::from_entity_path(child_path);
                     let new_root_info = TransformTreeRootInfo::Pinhole(PinholeTreeRoot {
@@ -312,17 +312,17 @@ impl TransformForest {
 
             // Collect & compute poses.
             let root_from_instances = compute_root_from_instances(
-                root_from_entity,
+                target_from_source,
                 transforms_at_entity.entity_from_instance_poses,
             );
             let root_from_archetype = compute_root_from_archetype(
-                root_from_entity,
+                target_from_source,
                 transforms_at_entity.entity_from_instance_poses,
             );
 
             let transform_root_from_child = TransformInfo {
                 root,
-                target_from_entity: root_from_entity,
+                target_from_source,
                 target_from_instances: root_from_instances,
                 target_from_archetype: root_from_archetype,
             };
@@ -567,7 +567,7 @@ fn left_multiply_smallvec1_of_transforms(
     target_from_source
 }
 
-fn compute_root_from_instances(
+fn compute_root_from_poses(
     root_from_entity: glam::Affine3A,
     instance_from_poses: &[glam::Affine3A],
 ) -> SmallVec1<[glam::Affine3A; 1]> {
@@ -589,7 +589,7 @@ fn compute_root_from_instances(
     reference_from_entity: glam::Affine3A,
     pose_transforms: Option<&PoseTransformArchetypeMap>,
 ) -> SmallVec1<[glam::Affine3A; 1]> {
-    compute_root_from_instances(
+    compute_root_from_poses(
         reference_from_entity,
         pose_transforms.map_or(&[], |poses| &poses.instance_from_poses),
     )
@@ -607,7 +607,7 @@ fn compute_root_from_archetype(
                 .map(|(archetype, poses)| {
                     (
                         *archetype,
-                        compute_root_from_instances(reference_from_entity, poses),
+                        compute_root_from_poses(reference_from_entity, poses),
                     )
                 })
                 .collect()
@@ -690,7 +690,7 @@ mod tests {
     use re_chunk_store::Chunk;
     use re_entity_db::EntityDb;
     use re_log_types::{StoreInfo, TimePoint, TimelineName};
-    use re_types::{Archetype as _, RowId, archetypes};
+    use re_types::{Archetype as _, RowId, archetypes, components::TransformFrameId};
 
     use super::*;
 
