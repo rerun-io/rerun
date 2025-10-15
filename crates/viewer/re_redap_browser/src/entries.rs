@@ -137,10 +137,7 @@ async fn fetch_entries_and_register_tables(
     origin: re_uri::Origin,
     session_ctx: Arc<SessionContext>,
 ) -> EntryResult<HashMap<EntryId, Entry>> {
-    let mut client = connection_registry
-        .client(origin.clone())
-        .await
-        .map_err(|err| ApiError::client_connection(err, "failed establishing client connection"))?;
+    let mut client = connection_registry.client(origin.clone()).await?;
 
     let entries = client
         .find_entries(EntryFilter {

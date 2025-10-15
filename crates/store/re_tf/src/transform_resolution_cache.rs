@@ -1204,8 +1204,8 @@ mod tests {
     use std::sync::{Arc, OnceLock};
 
     use re_chunk_store::{
-        Chunk, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriber, ChunkStoreSubscriberHandle,
-        GarbageCollectionOptions, RowId,
+        Chunk, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle, GarbageCollectionOptions,
+        PerStoreChunkSubscriber, RowId,
     };
     use re_log_types::{StoreId, TimePoint, Timeline};
     use re_types::{archetypes, datatypes};
@@ -1257,38 +1257,32 @@ mod tests {
         /// Lazily registers the subscriber if it hasn't been registered yet.
         pub fn subscription_handle() -> ChunkStoreSubscriberHandle {
             static SUBSCRIPTION: OnceLock<ChunkStoreSubscriberHandle> = OnceLock::new();
-            *SUBSCRIPTION.get_or_init(|| ChunkStore::register_subscriber(Box::new(Self::default())))
+            *SUBSCRIPTION.get_or_init(ChunkStore::register_per_store_subscriber::<Self>)
         }
 
         /// Retrieves all transform events that have not been processed yet since the last call to this function.
-        pub fn take_transform_events() -> Vec<re_chunk_store::ChunkStoreEvent> {
-            ChunkStore::with_subscriber_mut(Self::subscription_handle(), |subscriber: &mut Self| {
-                std::mem::take(&mut subscriber.unprocessed_events)
-            })
+        pub fn take_transform_events(store_id: &StoreId) -> Vec<re_chunk_store::ChunkStoreEvent> {
+            ChunkStore::with_per_store_subscriber_mut(
+                Self::subscription_handle(),
+                store_id,
+                |subscriber: &mut Self| std::mem::take(&mut subscriber.unprocessed_events),
+            )
             .unwrap_or_default()
         }
     }
 
-    impl ChunkStoreSubscriber for TestStoreSubscriber {
-        fn name(&self) -> String {
+    impl PerStoreChunkSubscriber for TestStoreSubscriber {
+        fn name() -> String {
             "TestStoreSubscriber".to_owned()
         }
 
-        fn on_events(&mut self, events: &[ChunkStoreEvent]) {
-            self.unprocessed_events.extend_from_slice(events);
-        }
-
-        fn as_any(&self) -> &dyn std::any::Any {
-            self
-        }
-
-        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-            self
+        fn on_events<'a>(&mut self, events: impl Iterator<Item = &'a ChunkStoreEvent>) {
+            self.unprocessed_events.extend(events.cloned());
         }
     }
 
     fn apply_store_subscriber_events(cache: &mut TransformResolutionCache, entity_db: &EntityDb) {
-        let events = TestStoreSubscriber::take_transform_events();
+        let events = TestStoreSubscriber::take_transform_events(entity_db.store_id());
         cache.apply_all_updates(entity_db, events.iter());
     }
 

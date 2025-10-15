@@ -1833,3 +1833,9 @@ class ViewerClient:
 
         A table is represented as a dataframe defined by an Arrow record batch.
         """
+
+class NotFoundError(Exception):
+    """Raised when the requested resource is not found."""
+
+class AlreadyExistsError(Exception):
+    """Raised when trying to create a resource that already exists."""

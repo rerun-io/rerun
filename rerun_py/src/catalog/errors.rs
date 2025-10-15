@@ -6,6 +6,9 @@
 //!   `Error` enum, and implement a mapping to a user-facing Python error in the `to_py_err`
 //!   function. Then, use `?`.
 //!
+//! - For errors at the API boundaries between client and server, prefer mapping to
+//!   [`re_redap_client::ApiError`] rather than wrapping the error in a new enum variant.
+//!
 //! - Don't hesitate to introduce new error classes if this could help the user catch specific
 //!   errors. Use the [`pyo3::create_exception`] macro for that and update [`super::register`] to
 //!   expose it.
@@ -17,11 +20,24 @@ use std::error::Error as _;
 
 use pyo3::PyErr;
 use pyo3::exceptions::{
-    PyConnectionError, PyFileExistsError, PyFileNotFoundError, PyPermissionError, PyRuntimeError,
-    PyTimeoutError, PyValueError,
+    PyConnectionError, PyException, PyPermissionError, PyRuntimeError, PyTimeoutError, PyValueError,
 };
 
-use re_redap_client::{ApiErrorKind, ClientConnectionError, ConnectionError};
+use re_redap_client::ApiErrorKind;
+
+pyo3::create_exception!(
+    rerun_bindings,
+    NotFoundError,
+    PyException,
+    "Raised when the requested resource is not found."
+);
+
+pyo3::create_exception!(
+    rerun_bindings,
+    AlreadyExistsError,
+    PyException,
+    "Raised when trying to create a resource that already exists."
+);
 
 // ---
 
@@ -30,12 +46,6 @@ use re_redap_client::{ApiErrorKind, ClientConnectionError, ConnectionError};
 #[derive(Debug, thiserror::Error)]
 #[expect(clippy::enum_variant_names)] // this is by design
 enum ExternalError {
-    #[error("{0}")]
-    ClientConnectionError(#[from] ClientConnectionError),
-
-    #[error("{0}")]
-    ConnectionError(#[from] ConnectionError),
-
     #[error("{0}")]
     TonicStatusError(Box<tonic::Status>),
 
@@ -108,12 +118,6 @@ impl_from_boxed!(re_protos::TypeConversionError, TypeConversionError);
 impl From<ExternalError> for PyErr {
     fn from(err: ExternalError) -> Self {
         match err {
-            ExternalError::ClientConnectionError(err) => {
-                PyConnectionError::new_err(err.to_string())
-            }
-
-            ExternalError::ConnectionError(err) => PyConnectionError::new_err(err.to_string()),
-
             ExternalError::TonicStatusError(status) => {
                 if status.code() == tonic::Code::DeadlineExceeded {
                     PyTimeoutError::new_err("Deadline expired before operation could complete")
@@ -151,8 +155,8 @@ impl From<ExternalError> for PyErr {
                 ApiErrorKind::Serialization | ApiErrorKind::InvalidArguments => {
                     PyValueError::new_err(err.to_string())
                 }
-                ApiErrorKind::NotFound => PyFileNotFoundError::new_err(err.to_string()),
-                ApiErrorKind::AlreadyExists => PyFileExistsError::new_err(err.to_string()),
+                ApiErrorKind::NotFound => NotFoundError::new_err(err.to_string()),
+                ApiErrorKind::AlreadyExists => AlreadyExistsError::new_err(err.to_string()),
                 ApiErrorKind::Timeout => PyTimeoutError::new_err(err.to_string()),
                 ApiErrorKind::Internal => PyRuntimeError::new_err(err.to_string()),
             },
