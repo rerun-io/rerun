@@ -54,10 +54,10 @@ if args.LINEAR_TOKEN is None:
 github_client = None
 
 # Cache for issue status checks: (repo_owner, repo_name, issue_number) -> (is_closed, author)
-issue_cache: dict[tuple[str, str, int], tuple[bool, str]] = {}
-cache_hit = 0  # Cache hit count
-cache_miss = 0  # Cache miss count
-cache_lock = Lock()  # Thread safety for the cache
+github_issue_cache: dict[tuple[str, str, int], tuple[bool, str]] = {}
+github_cache_hit = 0  # Cache hit count
+github_cache_miss = 0  # Cache miss count
+github_cache_lock = Lock()  # Thread safety for the cache
 
 # --- Linear API access ---
 
@@ -83,21 +83,21 @@ def check_issue_closed(repo_owner: str, repo_name: str, issue_number: int) -> tu
         (is_closed, author) tuple
 
     """
-    global issue_cache, cache_hit, cache_miss
+    global github_issue_cache, github_cache_hit, github_cache_miss
     cache_key = (repo_owner, repo_name, issue_number)
 
     # Check if we already have this result cached
-    with cache_lock:
-        if cache_key in issue_cache:
-            cache_hit += 1
-            return issue_cache[cache_key]
-        cache_miss += 1
+    with github_cache_lock:
+        if cache_key in github_issue_cache:
+            github_cache_hit += 1
+            return github_issue_cache[cache_key]
+        github_cache_miss += 1
     # Fetch the result and cache it
     result = check_issue_closed_api(repo_owner, repo_name, issue_number)
 
     # Store in cache
-    with cache_lock:
-        issue_cache[cache_key] = result
+    with github_cache_lock:
+        github_issue_cache[cache_key] = result
 
     return result
 
@@ -477,13 +477,13 @@ def main() -> None:
     print(display)
 
     # Print cache statistics
-    if issue_cache:
+    if github_issue_cache:
         print("\nGitHub cache statistics:")
-        print(f"  Total unique issues checked: {len(issue_cache)}")
-        closed_count = sum(1 for is_closed, _ in issue_cache.values() if is_closed)
+        print(f"  Total unique issues checked: {len(github_issue_cache)}")
+        closed_count = sum(1 for is_closed, _ in github_issue_cache.values() if is_closed)
         print(f"  Closed issues found: {closed_count}")
-        print(f"  Open/unknown issues: {len(issue_cache) - closed_count}")
-        print(f"  Cache hits: {cache_hit}, Cache misses: {cache_miss}")
+        print(f"  Open/unknown issues: {len(github_issue_cache) - closed_count}")
+        print(f"  Cache hits: {github_cache_hit}, Cache misses: {github_cache_miss}")
 
     if linear_issue_cache:
         print("\nLinear cache statistics:")
