@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashMap, hash_map::Entry};
+use std::collections::{BTreeSet, HashMap};
 use std::path::Path;
 
 use arrow::array::RecordBatch;
@@ -227,15 +227,17 @@ impl Dataset {
         partition_id: PartitionId,
         layer_name: String,
         store_handle: ChunkStoreHandle,
-    ) {
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<(), Error> {
         re_log::debug!(?partition_id, ?layer_name, "add_layer");
 
         self.partitions
             .entry(partition_id)
             .or_default()
-            .insert_layer(layer_name, Layer::new(store_handle));
+            .insert_layer(layer_name, Layer::new(store_handle), on_duplicate)?;
 
         self.updated_at = jiff::Timestamp::now();
+        Ok(())
     }
 
     /// Load a RRD using its recording id as partition id.
@@ -252,7 +254,7 @@ impl Dataset {
 
         let layer_name = layer_name.unwrap_or(DataSource::DEFAULT_LAYER);
 
-        let mut new_partition_ids = BTreeSet::default();
+        let new_partition_ids = BTreeSet::default();
 
         for (store_id, chunk_store) in contents {
             if !store_id.is_recording() {
@@ -261,27 +263,12 @@ impl Dataset {
 
             let partition_id = PartitionId::new(store_id.recording_id().to_string());
 
-            match self.partitions.entry(partition_id.clone()) {
-                Entry::Vacant(entry) => {
-                    new_partition_ids.insert(partition_id);
-
-                    entry.insert(Partition::from_layer_data(layer_name, chunk_store));
-                    self.updated_at = jiff::Timestamp::now();
-                }
-                Entry::Occupied(mut entry) => match on_duplicate {
-                    IfDuplicateBehavior::Overwrite => {
-                        re_log::info!("Overwriting {partition_id}");
-                        entry.insert(Partition::from_layer_data(layer_name, chunk_store));
-                        self.updated_at = jiff::Timestamp::now();
-                    }
-                    IfDuplicateBehavior::Skip => {
-                        re_log::info!("Ignoring {partition_id}: it already exists");
-                    }
-                    IfDuplicateBehavior::Error => {
-                        return Err(Error::DuplicateEntryNameError(partition_id.to_string()));
-                    }
-                },
-            }
+            self.add_layer(
+                partition_id.clone(),
+                layer_name.to_owned(),
+                chunk_store,
+                on_duplicate,
+            )?;
         }
 
         Ok(new_partition_ids)

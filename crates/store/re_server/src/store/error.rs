@@ -27,6 +27,9 @@ pub enum Error {
     #[error("Layer '{0}' not found in partition '{1}' of dataset '{2}'")]
     LayerNameNotFound(String, PartitionId, EntryId),
 
+    #[error("Layer '{0}' already exists")]
+    LayerAlreadyExists(String),
+
     #[error(transparent)]
     DataFusionError(#[from] datafusion::error::DataFusionError),
 
@@ -48,7 +51,6 @@ impl From<Error> for tonic::Status {
         match &err {
             Error::IoError(err) => Self::internal(format!("IO error: {err:#}")),
             Error::StoreLoadError(err) => Self::internal(format!("Store load error: {err:#}")),
-            Error::DuplicateEntryNameError(_) => Self::already_exists(format!("{err:#}")),
 
             Error::EntryIdNotFound(_)
             | Error::EntryNameNotFound(_)
@@ -61,6 +63,10 @@ impl From<Error> for tonic::Status {
 
             Error::FailedToDecodeChunkKey(_) => Self::invalid_argument(format!("{err:#}")),
             Error::FailedToEncodeChunkKey(_) => Self::internal(format!("{err:#}")),
+
+            Error::DuplicateEntryNameError(_) | Error::LayerAlreadyExists(_) => {
+                Self::already_exists(format!("{err:#}"))
+            }
         }
     }
 }

@@ -573,7 +573,8 @@ impl RerunCloudService for RerunCloudHandler {
                 entity_path,
                 DataSource::DEFAULT_LAYER.to_owned(),
                 ChunkStoreHandle::new(chunk_store),
-            );
+                IfDuplicateBehavior::Error,
+            )?;
         }
 
         Ok(tonic::Response::new(

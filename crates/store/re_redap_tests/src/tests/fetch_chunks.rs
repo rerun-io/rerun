@@ -81,7 +81,7 @@ pub async fn simple_dataset_fetch_chunk_snapshot(fe: impl RerunCloudService) {
         .unwrap()
         .filtered_columns(&[
             QueryDatasetResponse::FIELD_CHUNK_KEY,
-            //TODO(RR-2650): these should not be required (but currently are for Cloud)
+            //TODO(RR-2677): remove when these columns are no longer required
             QueryDatasetResponse::FIELD_CHUNK_ID,
             QueryDatasetResponse::FIELD_CHUNK_PARTITION_ID,
             QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME,
@@ -106,12 +106,10 @@ pub async fn simple_dataset_fetch_chunk_snapshot(fe: impl RerunCloudService) {
         .collect::<Result<Vec<_>, _>>()
         .unwrap();
 
-    //TODO(RR-2650): chunks should be returned in order (but currently aren't with Cloud)
+    // IMPORTANT: `FetchChunks` does not guarantee chunk ordering
     chunks.sort_by_key(|chunk| chunk.id());
 
     let printed = chunks.iter().map(|chunk| format!("{chunk:240}")).join("\n");
 
     insta::assert_snapshot!("simple_dataset_fetch_chunk", printed);
 }
-
-//TODO(RR-2650): add test that ensure chunk ordering is preserved (it's currently not with cloud)

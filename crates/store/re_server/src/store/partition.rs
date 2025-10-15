@@ -1,8 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, hash_map::Entry};
 
 use re_chunk_store::ChunkStoreHandle;
+use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 
-use crate::store::Layer;
+use crate::store::{Error, Layer};
 
 #[derive(Clone)]
 pub struct Partition {
@@ -45,9 +46,33 @@ impl Partition {
         self.last_updated_at
     }
 
-    pub fn insert_layer(&mut self, layer_name: String, layer: Layer) {
-        self.layers.insert(layer_name, layer);
-        self.last_updated_at = jiff::Timestamp::now();
+    pub fn insert_layer(
+        &mut self,
+        layer_name: String,
+        layer: Layer,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<(), Error> {
+        match self.layers.entry(layer_name.clone()) {
+            Entry::Vacant(entry) => {
+                entry.insert(layer);
+                self.last_updated_at = jiff::Timestamp::now();
+            }
+
+            Entry::Occupied(mut entry) => match on_duplicate {
+                IfDuplicateBehavior::Overwrite => {
+                    entry.insert(layer);
+                    self.last_updated_at = jiff::Timestamp::now();
+                }
+                IfDuplicateBehavior::Skip => {
+                    re_log::info!("Ignoring layer '{layer_name}': already exists in partition");
+                }
+                IfDuplicateBehavior::Error => {
+                    return Err(Error::LayerAlreadyExists(layer_name));
+                }
+            },
+        }
+
+        Ok(())
     }
 
     pub fn num_chunks(&self) -> u64 {
