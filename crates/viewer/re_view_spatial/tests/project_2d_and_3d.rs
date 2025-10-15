@@ -1,7 +1,7 @@
 //! Test that 2D content can be added to a 3D space and vice versa.
 
 use re_log_types::{EntityPathFilter, TimePoint};
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::{RowId, archetypes, components};
 use re_viewer_context::{RecommendedView, ViewClass as _};

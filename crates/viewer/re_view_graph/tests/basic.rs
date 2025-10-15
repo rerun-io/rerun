@@ -4,7 +4,7 @@ use egui::Vec2;
 
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::archetypes;
 use re_view_graph::GraphView;

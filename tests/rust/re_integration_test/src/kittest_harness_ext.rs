@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use egui::accesskit::Toggled;
 use egui_kittest::kittest::NodeT as _;
-use egui_kittest::{SnapshotOptions, kittest::Queryable as _};
+use egui_kittest::kittest::Queryable as _;
 use parking_lot::Mutex;
 use re_sdk::{
     Component as _, ComponentDescriptor, EntityPath, EntityPathPart, RecordingInfo, StoreId,

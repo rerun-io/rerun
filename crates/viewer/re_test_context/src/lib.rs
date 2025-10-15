@@ -375,7 +375,14 @@ impl TestContext {
         &self,
         size: impl Into<egui::Vec2>,
     ) -> egui_kittest::HarnessBuilder<()> {
-        self.setup_kittest_for_rendering_generic().with_size(size)
+        let mut harness = self.setup_kittest_for_rendering_generic().with_size(size);
+
+        // emilk did a mistake and made `with_options` a setter instead of a builder…
+        // …we will fix that in the future, but for now, we have to live with it:
+        let _unit: () =
+            harness.with_options(SnapshotOptions::default().failed_pixel_count_threshold(4));
+
+        harness
     }
 
     /// Set up for rendering 3D/2D and maybe UI.

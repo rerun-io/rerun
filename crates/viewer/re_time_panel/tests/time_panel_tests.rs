@@ -6,7 +6,7 @@ use re_log_types::{
     AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, TimeType, Timeline, build_frame_nr,
     example_components::{MyPoint, MyPoints},
 };
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_context::TestContext;
 use re_time_panel::TimePanel;
 use re_types::archetypes::Points2D;
 use re_viewer_context::{CollapseScope, TimeControlCommand, TimeView, blueprint_timeline};
