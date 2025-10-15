@@ -80,8 +80,8 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 continue;
             };
 
-            let world_from_entity =
-                transform_info.single_transform_required_for_entity(entity_path, VideoStream::name());
+            let world_from_entity = transform_info
+                .single_transform_required_for_entity(entity_path, VideoStream::name());
             let query_context = ctx.query_context(data_result, &latest_at);
             let highlight = view_query
                 .highlights
