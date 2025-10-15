@@ -388,67 +388,6 @@ impl Transform for StructToFixedList {
     }
 }
 
-/// Unwraps a struct array within a list and extracts a field from it.
-///
-/// This is useful for nested structures like `List<Struct<field: List<T>>>`,
-/// where you want to extract the inner field directly.
-#[derive(Clone)]
-pub struct UnwrapListStructField {
-    field_name: String,
-}
-
-impl UnwrapListStructField {
-    /// Create a new transformer that unwraps a struct within a list and extracts the given field.
-    pub fn new(field_name: impl Into<String>) -> Self {
-        Self {
-            field_name: field_name.into(),
-        }
-    }
-}
-
-impl Transform for UnwrapListStructField {
-    type Source = ListArray;
-    type Target = ListArray;
-
-    fn transform(&self, source: &ListArray) -> Result<ListArray, Error> {
-        // Get the struct array from the list values
-        let values = source.values();
-        let struct_array = values
-            .as_any()
-            .downcast_ref::<StructArray>()
-            .ok_or_else(|| Error::ExpectedStructInList {
-                actual: values.data_type().clone(),
-            })?;
-
-        // Extract the field
-        let field_array = struct_array
-            .column_by_name(&self.field_name)
-            .ok_or_else(|| {
-                let available_fields = struct_array
-                    .fields()
-                    .iter()
-                    .map(|f| f.name().clone())
-                    .collect();
-                Error::FieldNotFound {
-                    field_name: self.field_name.clone(),
-                    available_fields,
-                }
-            })?;
-
-        // TODO: This still looks fishy.
-        // Downcast to ListArray
-        field_array
-            .as_any()
-            .downcast_ref::<ListArray>()
-            .ok_or_else(|| Error::FieldTypeMismatch {
-                field_name: self.field_name.clone(),
-                expected_type: std::any::type_name::<Self::Source>().to_owned(),
-                actual_type: field_array.data_type().clone(),
-            })
-            .cloned()
-    }
-}
-
 /// Maps a function over each element in a primitive array.
 ///
 /// Applies the given function to each non-null element, preserving null values.
@@ -582,6 +521,128 @@ where
                 context: "cast result".to_owned(),
             })
             .cloned()
+    }
+}
+
+/// Flattens a nested list array by one level.
+///
+/// Takes `List<List<T>>` and flattens it to `List<T>` by concatenating all inner lists
+/// within each outer list row.
+///
+/// # Example
+///
+/// - `[[1, 2], [3, 4]]` → `[1, 2, 3, 4]` (concatenates inner lists)
+/// - `[[5], [6, 7, 8]]` → `[5, 6, 7, 8]`
+/// - `[[]]` → `[]` (empty inner list produces empty result)
+/// - `null` → `null` (null rows are preserved)
+#[derive(Clone, Debug, Default)]
+pub struct Flatten;
+
+impl Flatten {
+    /// Create a new flatten transformation.
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Transform for Flatten {
+    type Source = ListArray;
+    type Target = ListArray;
+
+    fn transform(&self, source: &ListArray) -> Result<ListArray, Error> {
+        let values = source.values();
+
+        // The values should be a ListArray that we want to flatten
+        let inner_list =
+            values
+                .as_any()
+                .downcast_ref::<ListArray>()
+                .ok_or_else(|| Error::TypeMismatch {
+                    expected: "List".to_owned(),
+                    actual: values.data_type().clone(),
+                    context: "Flatten expects List<List<T>>".to_owned(),
+                })?;
+
+        let outer_offsets = source.offsets();
+        let inner_offsets = inner_list.offsets();
+        let inner_values = inner_list.values();
+
+        // Build new offsets for the flattened list
+        let mut new_offsets = Vec::with_capacity(source.len() + 1);
+        new_offsets.push(0i32);
+
+        let mut current_offset = 0i32;
+
+        // For each row in the outer list
+        for outer_row_idx in 0..source.len() {
+            // Check if the outer row is null
+            if source.is_null(outer_row_idx) {
+                // For null rows, the offset doesn't advance
+                new_offsets.push(current_offset);
+                continue;
+            }
+
+            let outer_start = outer_offsets[outer_row_idx] as usize;
+            let outer_end = outer_offsets[outer_row_idx + 1] as usize;
+
+            // For each inner list in this outer row, add up their lengths
+            let mut total_length = 0;
+            for inner_idx in outer_start..outer_end {
+                if !inner_list.is_null(inner_idx) {
+                    let inner_start = inner_offsets[inner_idx] as usize;
+                    let inner_end = inner_offsets[inner_idx + 1] as usize;
+                    total_length += (inner_end - inner_start) as i32;
+                }
+            }
+
+            current_offset += total_length;
+            new_offsets.push(current_offset);
+        }
+
+        // Now build the flattened values array
+        let mut value_slices = Vec::new();
+
+        for outer_row_idx in 0..source.len() {
+            if source.is_null(outer_row_idx) {
+                continue;
+            }
+
+            let outer_start = outer_offsets[outer_row_idx] as usize;
+            let outer_end = outer_offsets[outer_row_idx + 1] as usize;
+
+            // Collect all values from inner lists
+            for inner_idx in outer_start..outer_end {
+                if !inner_list.is_null(inner_idx) {
+                    let inner_start = inner_offsets[inner_idx] as usize;
+                    let inner_end = inner_offsets[inner_idx + 1] as usize;
+                    let length = inner_end - inner_start;
+
+                    if length > 0 {
+                        value_slices.push(inner_values.slice(inner_start, length));
+                    }
+                }
+            }
+        }
+
+        // Concatenate all value slices
+        let flattened_values = if value_slices.is_empty() {
+            // If there are no values, create an empty array of the same type
+            inner_values.slice(0, 0)
+        } else {
+            let refs: Vec<&dyn Array> = value_slices.iter().map(|a| a.as_ref()).collect();
+            re_arrow_util::concat_arrays(&refs)?
+        };
+
+        // Build the result ListArray
+        let field = Arc::new(Field::new("item", inner_values.data_type().clone(), true));
+        let offsets = arrow::buffer::OffsetBuffer::new(new_offsets.into());
+
+        Ok(ListArray::new(
+            field,
+            offsets,
+            flattened_values,
+            source.nulls().cloned(),
+        ))
     }
 }
 
@@ -825,7 +886,8 @@ mod test {
         let array = create_nasty_component_column();
         println!("{}", DisplayRB::from(array.clone()));
 
-        let pipeline = UnwrapListStructField::new("poses")
+        let pipeline = MapList::new(GetField::new("poses"))
+            .then(Flatten::new())
             .then(MapList::new(StructToFixedList::new(["x", "y"])));
 
         let result: ListArray = pipeline.transform(&array).unwrap();
@@ -837,7 +899,8 @@ mod test {
     fn add_one_to_leaves() {
         let array = create_nasty_component_column();
 
-        let pipeline = UnwrapListStructField::new("poses")
+        let pipeline = MapList::new(GetField::new("poses"))
+            .then(Flatten::new())
             .then(MapList::new(StructToFixedList::new(["x", "y"])))
             .then(MapList::new(MapFixedSizeList::new(MapPrimitive::<
                 arrow::datatypes::Float64Type,
@@ -855,7 +918,8 @@ mod test {
     fn convert_to_f32() {
         let array = create_nasty_component_column();
 
-        let pipeline = UnwrapListStructField::new("poses")
+        let pipeline = MapList::new(GetField::new("poses"))
+            .then(Flatten::new())
             .then(MapList::new(StructToFixedList::new(["x", "y"])))
             .then(MapList::new(MapFixedSizeList::new(Cast::<
                 Float64Array,
@@ -871,7 +935,8 @@ mod test {
     fn replace_nulls() {
         let array = create_nasty_component_column();
 
-        let pipeline = UnwrapListStructField::new("poses")
+        let pipeline = MapList::new(GetField::new("poses"))
+            .then(Flatten::new())
             .then(MapList::new(StructToFixedList::new(["x", "y"])))
             .then(MapList::new(MapFixedSizeList::new(ReplaceNull::<
                 arrow::datatypes::Float64Type,
@@ -882,5 +947,84 @@ mod test {
         let result = pipeline.transform(&array).unwrap();
 
         insta::assert_snapshot!("replace_nulls", format!("{}", DisplayRB::from(result)));
+    }
+
+    #[test]
+    fn test_flatten_single_element() {
+        let array = create_nasty_component_column();
+
+        let pipeline = MapList::new(GetField::new("poses")).then(Flatten::new());
+
+        let result = pipeline.transform(&array).unwrap();
+
+        insta::assert_snapshot!(
+            "flatten_single_element",
+            format!("{}", DisplayRB::from(result))
+        );
+    }
+
+    #[test]
+    fn test_flatten_multiple_elements() {
+        let inner_builder = ListBuilder::new(arrow::array::Int32Builder::new());
+        let mut outer_builder = ListBuilder::new(inner_builder);
+
+        // Row 0: [[1, 2], [3, 4]] -> should flatten to [1, 2, 3, 4]
+        outer_builder.values().values().append_value(1);
+        outer_builder.values().values().append_value(2);
+        outer_builder.values().append(true);
+        outer_builder.values().values().append_value(3);
+        outer_builder.values().values().append_value(4);
+        outer_builder.values().append(true);
+        outer_builder.append(true);
+
+        // Row 1: [[5], [6, 7, 8]] -> should flatten to [5, 6, 7, 8]
+        outer_builder.values().values().append_value(5);
+        outer_builder.values().append(true);
+        outer_builder.values().values().append_value(6);
+        outer_builder.values().values().append_value(7);
+        outer_builder.values().values().append_value(8);
+        outer_builder.values().append(true);
+        outer_builder.append(true);
+
+        // Row 2: [[]] -> should flatten to []
+        outer_builder.values().append(true);
+        outer_builder.append(true);
+
+        // Row 3: [[], [9]] -> should flatten to [9]
+        outer_builder.values().append(true);
+        outer_builder.values().values().append_value(9);
+        outer_builder.values().append(true);
+        outer_builder.append(true);
+
+        // Row 4: null -> should remain null
+        outer_builder.append(false);
+
+        // Row 5: [[10, 11]] -> should flatten to [10, 11]
+        outer_builder.values().values().append_value(10);
+        outer_builder.values().values().append_value(11);
+        outer_builder.values().append(true);
+        outer_builder.append(true);
+
+        // Row 6: [[32], [33, 34], [], null] -> should flatten to [32, 33, 34]
+        outer_builder.values().values().append_value(32);
+        outer_builder.values().append(true);
+        outer_builder.values().values().append_value(33);
+        outer_builder.values().values().append_value(34);
+        outer_builder.values().append(true);
+        outer_builder.values().append(true);
+        outer_builder.values().append(false);
+        outer_builder.append(true);
+
+        let list_of_lists = outer_builder.finish();
+
+        println!("Input:");
+        println!("{}", DisplayRB::from(list_of_lists.clone()));
+
+        let result = Flatten::new().transform(&list_of_lists).unwrap();
+
+        insta::assert_snapshot!(
+            "flatten_multiple_elements",
+            format!("{}", DisplayRB::from(result))
+        );
     }
 }
