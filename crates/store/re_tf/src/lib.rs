@@ -35,14 +35,14 @@
 //!
 //! Example:
 //! Given an entity hierarchy:
-//! ```raw
+//! ```text
 //! world
 //! |-- robot
 //! |   |-- left_arm
 //! |   |-- right_arm
 //! ```
 //! Without setting any transform frames, the implicit transform frames would be:
-//! ```raw
+//! ```text
 //! world <=> rerun_tf#/world
 //! world/robot <=> rerun_tf#/world/robot
 //! world/robot/left_arm <=> rerun_tf#/world/robot/left_arm
@@ -50,14 +50,14 @@
 //! ```
 //! All of these transform frames are automatically connected via an identity transform.
 //! Now we change the transform frame `world/robot` & `world/robot/left_arm`:
-//! ```raw
+//! ```text
 //! world <=> rerun_tf#/world
 //! world/robot <=> robot_frame
 //! world/robot/left_arm <=> robot_left_arm
 //! world/robot/right_arm <=> rerun_tf#/world/robot/right_arm
 //! ```
 //! Then, there's automatically new identity relationships created between:
-//! ```
+//! ```text
 //! robot_frame -> rerun_tf#/world
 //! rerun_tf#/world/robot/right_arm -> robot_frame
 //! ```
