@@ -16,17 +16,14 @@ use arrow::error::ArrowError;
 // preserving structural properties like row counts and null handling.
 
 /// Errors that can occur during array transformations.
-#[expect(missing_docs)]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    /// A required field was not found in a struct array.
     #[error("Field '{field_name}' not found. Available fields: [{}]", available_fields.join(", "))]
     FieldNotFound {
         field_name: String,
         available_fields: Vec<String>,
     },
 
-    /// A field exists but has the wrong type.
     #[error("Field '{field_name}' has wrong type: expected {expected_type}, got {actual_type:?}")]
     FieldTypeMismatch {
         field_name: String,
@@ -34,7 +31,6 @@ pub enum Error {
         actual_type: DataType,
     },
 
-    /// Array type mismatch during transformation.
     #[error("Type mismatch in {context}: expected {expected}, got {actual:?}")]
     TypeMismatch {
         expected: String,
@@ -42,26 +38,21 @@ pub enum Error {
         context: String,
     },
 
-    /// A required field is missing from a struct.
     #[error("Struct is missing required field '{field_name}'. Available fields: [{}]", struct_fields.join(", "))]
     MissingStructField {
         field_name: String,
         struct_fields: Vec<String>,
     },
 
-    /// List values have unexpected type.
     #[error("List contains unexpected value type: expected {expected}, got {actual:?}")]
     UnexpectedListValueType { expected: String, actual: DataType },
 
-    /// Fixed-size list values have unexpected type.
     #[error("Fixed-size list contains unexpected value type: expected {expected}, got {actual:?}")]
     UnexpectedFixedSizeListValueType { expected: String, actual: DataType },
 
-    /// Struct values in list have wrong type.
     #[error("Expected list to contain struct values, but got {actual:?}")]
     ExpectedStructInList { actual: DataType },
 
-    /// Fields have inconsistent types.
     #[error(
         "Field '{field_name}' has type {actual_type:?}, but expected {expected_type:?} (inferred from field '{reference_field}')"
     )]
@@ -72,31 +63,11 @@ pub enum Error {
         expected_type: DataType,
     },
 
-    /// No field names provided to transformation.
     #[error("At least one field name is required")]
     NoFieldNames,
 
-    /// Custom user-defined error for transformations implemented outside this module.
-    ///
-    /// This allows users to implement their own transformations with custom error messages.
-    #[error("{0}")]
-    Custom(String),
-
-    /// Arrow library error.
-    ///
-    /// This is used to wrap errors from the underlying Arrow library operations.
     #[error(transparent)]
     Arrow(#[from] ArrowError),
-}
-
-impl Error {
-    /// Create a custom error with a user-defined message.
-    ///
-    /// This is useful when implementing custom transformations that need
-    /// application-specific error messages.
-    pub fn custom(msg: impl Into<String>) -> Self {
-        Self::Custom(msg.into())
-    }
 }
 
 /// A transformation that converts one Arrow array type to another.

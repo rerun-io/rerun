@@ -11,8 +11,8 @@ use re_log_types::EntityPathFilter;
 use re_types::ComponentDescriptor;
 
 use super::{
-    transform::{Constant, GetField, MapList, Transform},
     Error,
+    transform::{Constant, Flatten, GetField, MapList, Transform},
 };
 
 pub struct InputColumn {
@@ -64,18 +64,29 @@ impl Op {
     pub fn cast(data_type: DataType) -> Self {
         Self::Func(Box::new(move |list_array: ListArray| {
             use arrow::compute::cast;
-            use std::sync::Arc;
             use arrow::datatypes::Field;
+            use std::sync::Arc;
 
             let (_field, offsets, values, nulls) = list_array.into_parts();
-            let casted = cast(values.as_ref(), &data_type)
-                .map_err(|e| super::transform::Error::Arrow(e))?;
+            let casted =
+                cast(values.as_ref(), &data_type).map_err(super::transform::Error::Arrow)?;
             Ok(ListArray::new(
                 Arc::new(Field::new("item", casted.data_type().clone(), true)),
                 offsets,
                 casted,
                 nulls,
             ))
+        }))
+    }
+
+    /// Flattens a nested list array by one level.
+    ///
+    /// Takes `List<List<T>>` and flattens it to `List<T>` by concatenating all inner lists
+    /// within each outer list row.
+    pub fn flatten() -> Self {
+        let transform = Flatten::new();
+        Self::Func(Box::new(move |list_array: ListArray| {
+            Transform::transform(&transform, &list_array).map_err(Error::from)
         }))
     }
 
@@ -498,10 +509,7 @@ mod test {
                 .add_output_column_entity(
                     "nullability/a",
                     Scalars::descriptor_scalars(),
-                    vec![
-                        Op::access_field("a"),
-                        Op::cast(DataType::Float64),
-                    ],
+                    vec![Op::access_field("a"), Op::cast(DataType::Float64)],
                 )
                 .build();
 
@@ -633,10 +641,7 @@ mod test {
                 .add_output_column_entity(
                     "nullability/a",
                     Scalars::descriptor_scalars(),
-                    vec![
-                        Op::access_field("a"),
-                        Op::cast(DataType::Float64),
-                    ],
+                    vec![Op::access_field("a"), Op::cast(DataType::Float64)],
                 )
                 .build();
 
