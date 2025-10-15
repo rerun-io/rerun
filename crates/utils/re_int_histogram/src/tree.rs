@@ -820,6 +820,8 @@ impl Iterator for TreeIterator<'_> {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::cast_possible_wrap)] // ok in tests
+
     use super::*;
 
     #[test]

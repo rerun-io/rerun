@@ -462,7 +462,12 @@ impl Chunk {
                 .dedup_with_count()
                 .map(|(count, _time)| {
                     i += count;
-                    i.saturating_sub(1) as i32
+
+                    // input is a 32-bit array, so this can't overflow/wrap
+                    #[expect(clippy::cast_possible_wrap)]
+                    {
+                        i.saturating_sub(1) as i32
+                    }
                 })
                 .collect_vec();
             arrow::array::Int32Array::from(indices)
@@ -813,6 +818,8 @@ impl TimeColumn {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::cast_possible_wrap)]
+
     use itertools::Itertools as _;
     use re_log_types::{
         TimePoint,

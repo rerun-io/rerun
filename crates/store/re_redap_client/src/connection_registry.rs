@@ -124,6 +124,7 @@ impl ConnectionRegistryHandle {
     /// use the following token, in this order:
     /// - The fallback token, if set via [`Self::set_fallback_token`].
     /// - The `REDAP_TOKEN` environment variable is set.
+    /// - Local credentials for Rerun Cloud
     ///
     /// Failing that, no token will be used.
     pub async fn client(&self, origin: re_uri::Origin) -> Result<ConnectionClient, ApiError> {
@@ -244,7 +245,16 @@ impl ConnectionRegistryHandle {
         origin: re_uri::Origin,
         token: Option<Jwt>,
     ) -> Result<RedapClient, ApiError> {
-        let mut raw_client = crate::grpc::client(origin.clone(), token.clone()).await?;
+        let credentials: Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync> =
+            match &token {
+                Some(token) => Arc::new(re_auth::credentials::StaticCredentialsProvider::new(
+                    token.clone(),
+                )),
+                None => Arc::new(re_auth::credentials::CliCredentialsProvider::new()),
+            };
+
+        let mut raw_client = crate::grpc::client(origin.clone(), credentials).await?;
+
         // Call the version endpoint to check that authentication is successful. It's ok to do this
         // since we're caching the client, so we're not spamming such a request unnecessarily.
         // TODO(rerun-io/dataplatform#1069): use the `whoami` endpoint instead when it exists.

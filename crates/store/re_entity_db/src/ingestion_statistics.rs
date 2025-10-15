@@ -3,6 +3,7 @@ use parking_lot::Mutex;
 
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent};
 use re_sorbet::TimestampMetadata;
+use saturating_cast::SaturatingCast as _;
 
 /// Statistics about the latency of incoming data to a store.
 #[derive(Default)]
@@ -94,7 +95,7 @@ impl LatencyStats {
 
         let now = now_nanos as f64 / 1e9;
 
-        let chunk_creation_nanos = chunk.id().nanos_since_epoch() as i64;
+        let chunk_creation_nanos = chunk.id().nanos_since_epoch().saturating_cast::<i64>();
 
         let TimestampMetadata {
             grpc_encoded_at,
@@ -105,7 +106,7 @@ impl LatencyStats {
         let grpc_decoded_at_nanos = grpc_decoded_at.and_then(system_time_to_nanos);
 
         for row_id in chunk.row_ids() {
-            let row_creation_nanos = row_id.nanos_since_epoch() as i64;
+            let row_creation_nanos = row_id.nanos_since_epoch().saturating_cast::<i64>();
 
             // Total:
             if let Some(e2e_nanos) = now_nanos.checked_sub(row_creation_nanos) {

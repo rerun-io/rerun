@@ -314,6 +314,8 @@ impl LensRegistry {
 
 #[cfg(test)]
 mod test {
+    #![expect(clippy::cast_possible_wrap)]
+
     use std::sync::Arc;
 
     use re_chunk::{
