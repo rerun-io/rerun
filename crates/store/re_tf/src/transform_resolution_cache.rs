@@ -1,6 +1,9 @@
 #![expect(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
-use std::collections::BTreeMap;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    hash::Hash,
+};
 
 use ahash::{HashMap, HashSet};
 use glam::Affine3A;
@@ -9,7 +12,7 @@ use nohash_hasher::IntMap;
 
 use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
-use re_log_types::{EntityPath, EntityPathHash, TimeInt, TimelineName};
+use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types::{
     Archetype as _, ArchetypeName, Component as _, ComponentDescriptor, ComponentType,
     archetypes::{self, InstancePoses3D},
@@ -18,11 +21,11 @@ use re_types::{
 };
 use vec1::smallvec_v1::SmallVec1;
 
-use crate::component_type_info::TransformComponentTypeInfo;
+use crate::{TransformFrameIdHash, component_type_info::TransformComponentTypeInfo};
 
-/// Resolves all transform components at a given entity to an affine transform.
+/// Resolves all transform relationship defining components to affine transforms for fast lookup.
 ///
-/// It only handles resulting transforms individually to each entity, not how these transforms propagate in the tree.
+/// It only handles resulting transforms individually to each frame connection, not how these transforms propagate in the tree.
 /// For transform tree propagation see [`crate::TransformForest`].
 ///
 /// There are different kinds of transforms handled here:
@@ -32,10 +35,6 @@ use crate::component_type_info::TransformComponentTypeInfo;
 ///   Instance poses that should be applied to the tree transforms (via [`crate::TransformForest`]) but not propagate.
 /// * [`components::PinholeProjection`] and [`components::ViewCoordinates`]
 ///   Pinhole projections & associated view coordinates used for visualizing cameras in 3D and embedding 2D in 3D
-///
-/// Most of what this construct does internally is to keep track at which points in time these sets of components
-/// change such that a latest-at query for them may (!) yield any new results.
-/// It then (in [`TransformResolutionCache::apply_all_updates`]) performs those queries and derives transforms from them.
 pub struct TransformResolutionCache {
     per_timeline: HashMap<TimelineName, CachedTransformsForTimeline>,
     static_timeline: CachedTransformsForTimeline,
@@ -46,9 +45,11 @@ impl Default for TransformResolutionCache {
     fn default() -> Self {
         Self {
             per_timeline: Default::default(),
+            // `CachedTransformsForTimeline` intentionally doesn't implement Default to not accidentally create it without considering static transforms.
             static_timeline: CachedTransformsForTimeline {
                 invalidated_transforms: Default::default(),
-                per_entity: Default::default(),
+                per_entity_source_information: Default::default(),
+                per_source_frame_transforms: Default::default(),
                 recursive_clears: Default::default(), // Unused for static timeline.
             },
         }
@@ -59,8 +60,9 @@ bitflags::bitflags! {
     /// Flags for the different kinds of independent transforms that the transform cache handles.
     #[derive(Debug, Clone, Copy)]
     pub struct TransformAspect: u8 {
-        /// The entity has a tree transform, i.e. any non-style component of [`archetypes::Transform3D`].
-        const Tree = 1 << 0;
+        /// The entity defines one of more frame relationships, i.e. any non-style component of [`archetypes::Transform3D`].
+        // TODO(RR-2511): Add other components here.
+        const Frame = 1 << 0;
 
         /// The entity has instance poses, i.e. any non-style component of [`archetypes::InstancePoses3D`].
         const Pose = 1 << 1;
@@ -79,7 +81,7 @@ impl TransformAspect {
         let component_info = TransformComponentTypeInfo::get();
 
         if component_info.transform.contains(&component_type) {
-            Self::Tree
+            Self::Frame
         } else if component_info.pose.contains(&component_type) {
             Self::Pose
         } else if component_info.pinhole.contains(&component_type) {
@@ -109,9 +111,22 @@ impl TransformAspect {
 #[derive(Debug, Clone)]
 struct InvalidatedTransforms {
     entity_path: EntityPath,
-    times: Vec<TimeInt>,
+    times: BTreeSet<TimeInt>,
     aspects: TransformAspect,
 }
+
+/// A transform from a source frame to a target frame.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SourceToTargetTransform {
+    /// The frame we're transforming into.
+    pub target: TransformFrameIdHash,
+
+    /// The transform from the source frame to the target frame.
+    pub transform: Affine3A,
+}
+
+/// Updates to a source frame at a set of times.
+type SourceFrameUpdates = HashMap<TransformFrameIdHash, BTreeSet<TimeInt>>;
 
 /// Cached transforms for a single timeline.
 ///
@@ -122,11 +137,17 @@ pub struct CachedTransformsForTimeline {
     /// I.e. times & entities at which the cache is invalid right now.
     invalidated_transforms: Vec<InvalidatedTransforms>,
 
-    per_entity: IntMap<EntityPath, TransformsForEntity>,
+    /// Which entities logged transforms about which source frame when.
+    ///
+    /// For any source mentioned, there should be an entry in [`Self::per_source_frame_transforms`].
+    per_entity_source_information: IntMap<EntityPath, SourceFrameUpdates>,
+
+    /// Transforms information for each source frame to a target frame over time.
+    per_source_frame_transforms: HashMap<TransformFrameIdHash, TransformsForSourceFrame>,
 
     // We need to keep track of all recursive clears that ever happened and when.
     // Otherwise, new incoming entities may not correctly change their transform at the time of clear.
-    recursive_clears: IntMap<EntityPathHash, Vec<TimeInt>>,
+    recursive_clears: IntMap<EntityPath, BTreeSet<TimeInt>>,
 }
 
 impl CachedTransformsForTimeline {
@@ -135,13 +156,14 @@ impl CachedTransformsForTimeline {
             // It's crucial to take over any invalidated transform events from the static timeline,
             // otherwise we'd miss any pending static transforms that should ALSO be added to this timeline.
             invalidated_transforms: static_transforms.invalidated_transforms.clone(),
-            per_entity: static_transforms
-                .per_entity
+            per_entity_source_information: static_transforms.per_entity_source_information.clone(),
+            per_source_frame_transforms: static_transforms
+                .per_source_frame_transforms
                 .iter()
-                .map(|(entity_path, static_transforms)| {
+                .map(|(transform_frame, static_transforms)| {
                     (
-                        entity_path.clone(),
-                        TransformsForEntity::new_for_new_empty_timeline(
+                        *transform_frame,
+                        TransformsForSourceFrame::new_for_new_empty_timeline(
                             *timeline,
                             static_transforms,
                         ),
@@ -152,20 +174,33 @@ impl CachedTransformsForTimeline {
         }
     }
 
-    fn add_recursive_clears(&mut self, entity_path: &EntityPath, times: Vec<TimeInt>) {
-        // Insert clears for all entities down the known tree.
-        // (clears _at_ the entity stored & processed separately by invalidating the entity's transforms)
-        for (entity, transforms) in &mut self.per_entity {
-            if entity.is_descendant_of(entity_path) {
-                transforms.add_clears(&times);
+    fn add_recursive_clears(
+        &mut self,
+        recursively_cleared_entity_path: &EntityPath,
+        mut times: BTreeSet<TimeInt>,
+    ) {
+        re_tracing::profile_function!();
+
+        // For any transform changes ever registered on that entity, add clears at these times.
+        for (entity_path, transform_updates) in &self.per_entity_source_information {
+            if !entity_path.is_descendant_of(recursively_cleared_entity_path) {
+                continue;
+            }
+
+            for source in transform_updates.keys() {
+                if let Some(frame_transforms) = self.per_source_frame_transforms.get_mut(source) {
+                    frame_transforms.add_clears(&times);
+                } else {
+                    warn_about_missing_source_transforms_for_update_on_entity(entity_path, *source);
+                }
             }
         }
 
         // Store for future reference.
         self.recursive_clears
-            .entry(entity_path.hash())
+            .entry(recursively_cleared_entity_path.clone())
             .or_default()
-            .extend(times);
+            .append(&mut times);
     }
 }
 
@@ -213,16 +248,18 @@ type PoseTransformTimeMap = BTreeMap<TimeInt, PoseTransformArchetypeMap>;
 /// is properly marked as having no pinhole projection.
 type PinholeProjectionMap = BTreeMap<TimeInt, Option<ResolvedPinholeProjection>>;
 
-/// Cached transforms for a single entity.
+/// Cached transforms for a single source frame to a target frame.
 ///
 /// Incorporates any static transforms that may apply to this entity.
 #[derive(Clone, Debug, PartialEq)]
-pub struct TransformsForEntity {
+pub struct TransformsForSourceFrame {
     // Is None if this is about the "static timeline".
     #[cfg(debug_assertions)]
     timeline: Option<TimelineName>,
 
-    tree_transforms: BTreeMap<TimeInt, Affine3A>,
+    /// There can be only a single target at any point in time, but it may change over time.
+    /// Whenever it changes, the previous target frame is no longer reachable.
+    frame_transforms: BTreeMap<TimeInt, Option<SourceToTargetTransform>>,
 
     // Pose transforms and pinhole projections are typically more rare, which is why we store them as optional boxes.
     pose_transforms: Option<Box<PoseTransformTimeMap>>,
@@ -231,6 +268,9 @@ pub struct TransformsForEntity {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedPinholeProjection {
+    /// The target frame of the pinhole projection.
+    pub target: TransformFrameIdHash,
+
     pub image_from_camera: components::PinholeProjection,
 
     pub resolution: Option<components::Resolution>,
@@ -244,49 +284,42 @@ pub struct ResolvedPinholeProjection {
 }
 
 impl CachedTransformsForTimeline {
+    /// Returns all transforms for a given source frame.
     #[inline]
-    pub fn entity_transforms(&self, entity_path: &EntityPath) -> Option<&TransformsForEntity> {
-        self.per_entity.get(entity_path)
+    pub fn frame_transforms(
+        &self,
+        source_frame: TransformFrameIdHash,
+    ) -> Option<&TransformsForSourceFrame> {
+        self.per_source_frame_transforms.get(&source_frame)
     }
 }
 
-impl TransformsForEntity {
+impl TransformsForSourceFrame {
     fn new(
-        entity_path: &EntityPath,
+        source_frame: TransformFrameIdHash,
         _timeline: TimelineName,
-        recursive_clears: &IntMap<EntityPathHash, Vec<TimeInt>>,
         static_timeline: &CachedTransformsForTimeline,
     ) -> Self {
-        let mut tree_transforms = BTreeMap::new();
+        let mut frame_transforms = BTreeMap::new();
         let mut pose_transforms = None;
         let mut pinhole_projections = None;
 
-        if let Some(static_transforms) = static_timeline.per_entity.get(entity_path) {
-            tree_transforms = static_transforms.tree_transforms.clone();
+        if let Some(static_transforms) = static_timeline
+            .per_source_frame_transforms
+            .get(&source_frame)
+        {
+            frame_transforms = static_transforms.frame_transforms.clone();
             pose_transforms = static_transforms.pose_transforms.clone();
             pinhole_projections = static_transforms.pinhole_projections.clone();
         }
 
-        let mut result = Self {
+        Self {
             #[cfg(debug_assertions)]
             timeline: Some(_timeline),
             pose_transforms,
-            tree_transforms,
+            frame_transforms,
             pinhole_projections,
-        };
-
-        // Gather all times at which this entity is being cleared by one of its parent's recursive clears.
-        let mut all_clear_times: Vec<TimeInt> = Vec::new();
-        let mut current_entity = entity_path.clone();
-        while let Some(parent_entity_path) = current_entity.parent() {
-            if let Some(clear_times) = recursive_clears.get(&parent_entity_path.hash()) {
-                all_clear_times.extend(clear_times.iter());
-            }
-            current_entity = parent_entity_path;
         }
-        result.add_clears(&all_clear_times);
-
-        result
     }
 
     fn new_for_new_empty_timeline(_timeline: TimelineName, static_timeline_entry: &Self) -> Self {
@@ -294,7 +327,7 @@ impl TransformsForEntity {
             #[cfg(debug_assertions)]
             timeline: Some(_timeline),
             pose_transforms: static_timeline_entry.pose_transforms.clone(),
-            tree_transforms: static_timeline_entry.tree_transforms.clone(),
+            frame_transforms: static_timeline_entry.frame_transforms.clone(),
             pinhole_projections: static_timeline_entry.pinhole_projections.clone(),
         }
     }
@@ -303,19 +336,19 @@ impl TransformsForEntity {
         Self {
             #[cfg(debug_assertions)]
             timeline: None,
-            tree_transforms: BTreeMap::new(),
+            frame_transforms: BTreeMap::new(),
             pose_transforms: None,
             pinhole_projections: None,
         }
     }
 
-    pub fn add_clears(&mut self, times: &[TimeInt]) {
+    pub fn add_clears(&mut self, times: &BTreeSet<TimeInt>) {
         if times.is_empty() {
             return;
         }
 
-        self.tree_transforms
-            .extend(times.iter().map(|time| (*time, Affine3A::IDENTITY)));
+        self.frame_transforms
+            .extend(times.iter().map(|time| (*time, None)));
         self.pose_transforms
             .get_or_insert(Default::default())
             .extend(
@@ -329,15 +362,15 @@ impl TransformsForEntity {
     }
 
     #[inline]
-    pub fn latest_at_tree_transform(&self, query: &LatestAtQuery) -> Affine3A {
+    pub fn latest_at_transform(&self, query: &LatestAtQuery) -> Option<SourceToTargetTransform> {
         #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
 
-        self.tree_transforms
+        self.frame_transforms
             .range(..query.at().inc())
-            .next_back()
-            .map(|(_time, transform)| *transform)
-            .unwrap_or(Affine3A::IDENTITY)
+            .next_back()?
+            .1
+            .clone()
     }
 
     #[cfg(test)]
@@ -475,13 +508,27 @@ impl TransformResolutionCache {
                 ..
             } = invalidated_transform;
 
+            // TODO(RR-2511): Allow configuring source & target frames.
+            let source = TransformFrameIdHash::from_entity_path(&entity_path);
+            let target = TransformFrameIdHash::from_entity_path(
+                &entity_path.parent().unwrap_or(EntityPath::root()),
+            );
+
+            // Add static transforms for this source frame.
             let static_transforms = self
                 .static_timeline
-                .per_entity
-                .entry(entity_path.clone())
+                .per_source_frame_transforms
+                .entry(source)
                 // There have never been any static or non-static transforms for this entity, therefore there's nothing to pass
                 // into that entity for static transforms.
-                .or_insert_with(TransformsForEntity::new_static);
+                .or_insert_with(TransformsForSourceFrame::new_static);
+
+            // Note down that this entity logged transforms about this source at the static time.
+            self.static_timeline
+                .per_entity_source_information
+                .entry(entity_path.clone())
+                .or_default()
+                .insert(source, BTreeSet::from([TimeInt::STATIC]));
 
             // Technically this doesn't query static components but rather just what's at the beginning of this arbitrary timeline,
             // but it's the most convenient way to the data we want.
@@ -492,13 +539,14 @@ impl TransformResolutionCache {
                 TimeInt::MIN,
             );
 
-            if aspects.contains(TransformAspect::Tree)
+            if aspects.contains(TransformAspect::Frame)
                 && let Some(transform) =
                     query_and_resolve_tree_transform_at_entity(&entity_path, entity_db, &query)
             {
-                static_transforms
-                    .tree_transforms
-                    .insert(TimeInt::STATIC, transform);
+                static_transforms.frame_transforms.insert(
+                    TimeInt::STATIC,
+                    Some(SourceToTargetTransform { target, transform }),
+                );
             }
             if aspects.contains(TransformAspect::Pose) {
                 let poses =
@@ -529,29 +577,55 @@ impl TransformResolutionCache {
                     times,
                 } = invalidated_transform;
 
-                let entity_entry = per_timeline
-                    .per_entity
-                    .entry(entity_path.clone())
+                // TODO(RR-2511): Allow configuring source & target frames.
+                let source = TransformFrameIdHash::from_entity_path(&entity_path);
+                let target = TransformFrameIdHash::from_entity_path(
+                    &entity_path.parent().unwrap_or(EntityPath::root()),
+                );
+
+                // Add dynamic transforms for this source frame.
+                let source_entry = per_timeline
+                    .per_source_frame_transforms
+                    .entry(source)
                     .or_insert_with(|| {
-                        TransformsForEntity::new(
-                            &entity_path,
-                            *timeline,
-                            &per_timeline.recursive_clears,
-                            &self.static_timeline,
-                        )
+                        TransformsForSourceFrame::new(source, *timeline, &self.static_timeline)
                     });
+
+                // Note down that this entity logged transforms about this source at the static time.
+                per_timeline
+                    .per_entity_source_information
+                    .entry(entity_path.clone())
+                    .or_default()
+                    .entry(source)
+                    .or_insert_with(|| {
+                        // If this is the first time this source is populated by this entity,
+                        // we have to take known recursive clears into account that may affect this entity/source combination.
+                        for (recursive_cleared_entity_path, clear_times) in
+                            &per_timeline.recursive_clears
+                        {
+                            if entity_path.is_descendant_of(recursive_cleared_entity_path) {
+                                source_entry.add_clears(clear_times);
+                            }
+                        }
+
+                        BTreeSet::new()
+                    })
+                    .extend(times.iter().copied());
 
                 for time in times {
                     let query = LatestAtQuery::new(*timeline, time);
-                    if aspects.intersects(TransformAspect::Tree | TransformAspect::Clear) {
+                    if aspects.intersects(TransformAspect::Frame | TransformAspect::Clear) {
                         let transform = query_and_resolve_tree_transform_at_entity(
                             &entity_path,
                             entity_db,
                             &query,
-                        )
-                        .unwrap_or(Affine3A::IDENTITY);
-                        // If there's *no* transform, we have to put identity in, otherwise we'd miss clears!
-                        entity_entry.tree_transforms.insert(time, transform);
+                        );
+                        // Don't skip `None` values, otherwise we'd be missing clears!
+                        source_entry.frame_transforms.insert(
+                            time,
+                            transform
+                                .map(|transform| SourceToTargetTransform { target, transform }),
+                        );
                     }
                     if aspects.intersects(TransformAspect::Pose | TransformAspect::Clear) {
                         let poses = query_and_resolve_instance_poses_at_entity(
@@ -560,7 +634,7 @@ impl TransformResolutionCache {
                             &query,
                         );
                         // *do* also insert empty ones, otherwise it's not possible to clear previous state.
-                        entity_entry
+                        source_entry
                             .pose_transforms
                             .get_or_insert_with(Box::default)
                             .insert(time, poses);
@@ -575,7 +649,7 @@ impl TransformResolutionCache {
                         );
                         // `None` values need to be inserted as well to clear out previous state.
                         // See also doc string on `PinholeProjectionMap`.
-                        entity_entry
+                        source_entry
                             .pinhole_projections
                             .get_or_insert_with(Box::default)
                             .insert(time, pinhole_projection);
@@ -614,24 +688,42 @@ impl TransformResolutionCache {
             let Some(min_time) = time_column.times().min() else {
                 continue;
             };
-            if let Some(entity_entry) = per_timeline.per_entity.get_mut(entity_path) {
-                if aspects.intersects(TransformAspect::Tree | TransformAspect::Clear) {
-                    let invalidated_tree_transforms =
-                        entity_entry.tree_transforms.split_off(&min_time);
-                    invalidated_times.extend(invalidated_tree_transforms.into_keys());
-                }
-                if aspects.intersects(TransformAspect::Pose | TransformAspect::Clear)
-                    && let Some(pose_transforms) = &mut entity_entry.pose_transforms
-                {
-                    let invalidated_pose_transforms = pose_transforms.split_off(&min_time);
-                    invalidated_times.extend(invalidated_pose_transforms.into_keys());
-                }
-                if aspects
-                    .intersects(TransformAspect::PinholeOrViewCoordinates | TransformAspect::Clear)
-                    && let Some(pinhole_projections) = &mut entity_entry.pinhole_projections
-                {
-                    let invalidated_pinhole_projections = pinhole_projections.split_off(&min_time);
-                    invalidated_times.extend(invalidated_pinhole_projections.into_keys());
+            if let Some(source_frame_updates) = per_timeline
+                .per_entity_source_information
+                .get_mut(entity_path)
+            {
+                for source_frame in source_frame_updates.keys() {
+                    let Some(source_transforms) = per_timeline
+                        .per_source_frame_transforms
+                        .get_mut(source_frame)
+                    else {
+                        warn_about_missing_source_transforms_for_update_on_entity(
+                            entity_path,
+                            *source_frame,
+                        );
+                        continue;
+                    };
+
+                    if aspects.intersects(TransformAspect::Frame | TransformAspect::Clear) {
+                        let invalidated_tree_transforms =
+                            source_transforms.frame_transforms.split_off(&min_time);
+                        invalidated_times.extend(invalidated_tree_transforms.into_keys());
+                    }
+                    if aspects.intersects(TransformAspect::Pose | TransformAspect::Clear)
+                        && let Some(pose_transforms) = &mut source_transforms.pose_transforms
+                    {
+                        let invalidated_pose_transforms = pose_transforms.split_off(&min_time);
+                        invalidated_times.extend(invalidated_pose_transforms.into_keys());
+                    }
+                    if aspects.intersects(
+                        TransformAspect::PinholeOrViewCoordinates | TransformAspect::Clear,
+                    ) && let Some(pinhole_projections) =
+                        &mut source_transforms.pinhole_projections
+                    {
+                        let invalidated_pinhole_projections =
+                            pinhole_projections.split_off(&min_time);
+                        invalidated_times.extend(invalidated_pinhole_projections.into_keys());
+                    }
                 }
             }
 
@@ -649,7 +741,7 @@ impl TransformResolutionCache {
                             .first()
                             .and_then(|is_recursive| (*is_recursive != 0).then_some(time))
                     })
-                    .collect::<Vec<_>>();
+                    .collect::<BTreeSet<_>>();
 
                 if !recursively_cleared_times.is_empty() {
                     per_timeline.add_recursive_clears(entity_path, recursively_cleared_times);
@@ -682,66 +774,74 @@ impl TransformResolutionCache {
             .invalidated_transforms
             .push(InvalidatedTransforms {
                 entity_path: entity_path.clone(),
-                times: vec![TimeInt::STATIC],
+                times: BTreeSet::from([TimeInt::STATIC]),
                 aspects,
             });
 
-        // Adding a static transform invalidates ALL times for this entity on ALL timelines, since the resulting transforms at all times may be different now.
+        // Adding a static transform invalidates ALL times for ALL affected source frames on ALL timelines, since the resulting transforms at all times may be different now.
         // Furthermore, since we want to incorporate the static transforms into all timelines, we have to add this event to all timelines.
         for (timeline, per_timeline_transforms) in &mut self.per_timeline {
-            let entity_transforms = per_timeline_transforms
-                .per_entity
-                .entry(entity_path.clone())
-                .or_insert_with(|| {
-                    // Need to add an entry now if there wasn't one before.
-                    // Also note that the static transforms we use to construct this might touch on aspects that aren't invalidated, so it's still important to pass that in.
-                    TransformsForEntity::new(
-                        entity_path,
-                        *timeline,
-                        &per_timeline_transforms.recursive_clears,
-                        &self.static_timeline,
-                    )
-                });
-            if aspects.contains(TransformAspect::Tree) {
-                per_timeline_transforms
-                    .invalidated_transforms
-                    .push(InvalidatedTransforms {
-                        entity_path: entity_path.clone(),
-                        times: std::iter::once(TimeInt::STATIC)
-                            .chain(entity_transforms.tree_transforms.keys().copied())
-                            .collect(),
-                        aspects,
-                    });
-            }
-            if aspects.contains(TransformAspect::Pose) {
-                let mut times = vec![TimeInt::STATIC];
-                if let Some(pose_transforms) = &entity_transforms.pose_transforms {
-                    times.extend(pose_transforms.keys().copied());
-                }
+            let Some(source_frame_updates) = per_timeline_transforms
+                .per_entity_source_information
+                .get(entity_path)
+            else {
+                continue;
+            };
 
-                per_timeline_transforms
-                    .invalidated_transforms
-                    .push(InvalidatedTransforms {
-                        entity_path: entity_path.clone(),
-                        times,
-                        aspects,
+            for source_frame in source_frame_updates.keys() {
+                let entity_transforms = per_timeline_transforms
+                    .per_source_frame_transforms
+                    .entry(*source_frame)
+                    .or_insert_with(|| {
+                        // Need to add an entry now if there wasn't one before.
+                        // Also note that the static transforms we use to construct this might touch on aspects that aren't invalidated, so it's still important to pass that in.
+                        TransformsForSourceFrame::new(
+                            *source_frame,
+                            *timeline,
+                            &self.static_timeline,
+                        )
                     });
-            }
-            if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
-                let mut times = vec![TimeInt::STATIC];
-                if let Some(pinhole_projections) = &entity_transforms.pinhole_projections {
-                    times.extend(pinhole_projections.keys().copied());
+                if aspects.contains(TransformAspect::Frame) {
+                    per_timeline_transforms
+                        .invalidated_transforms
+                        .push(InvalidatedTransforms {
+                            entity_path: entity_path.clone(),
+                            times: std::iter::once(TimeInt::STATIC)
+                                .chain(entity_transforms.frame_transforms.keys().copied())
+                                .collect(),
+                            aspects,
+                        });
                 }
+                if aspects.contains(TransformAspect::Pose) {
+                    let mut times = BTreeSet::from([TimeInt::STATIC]);
+                    if let Some(pose_transforms) = &entity_transforms.pose_transforms {
+                        times.extend(pose_transforms.keys().copied());
+                    }
 
-                per_timeline_transforms
-                    .invalidated_transforms
-                    .push(InvalidatedTransforms {
-                        entity_path: entity_path.clone(),
-                        times,
-                        aspects,
-                    });
+                    per_timeline_transforms
+                        .invalidated_transforms
+                        .push(InvalidatedTransforms {
+                            entity_path: entity_path.clone(),
+                            times,
+                            aspects,
+                        });
+                }
+                if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
+                    let mut times = BTreeSet::from([TimeInt::STATIC]);
+                    if let Some(pinhole_projections) = &entity_transforms.pinhole_projections {
+                        times.extend(pinhole_projections.keys().copied());
+                    }
+
+                    per_timeline_transforms
+                        .invalidated_transforms
+                        .push(InvalidatedTransforms {
+                            entity_path: entity_path.clone(),
+                            times,
+                            aspects,
+                        });
+                }
+                // Don't care about clears here, they don't have any effect for keeping track of changes when logged static.
             }
-            // Don't care about clears here, they don't have any effect for keeping track of changes when logged static.
         }
     }
 
@@ -772,43 +872,83 @@ impl TransformResolutionCache {
                 .retain(|invalidated_transform| !invalidated_transform.times.is_empty());
 
             // Remove existing data.
-            if let Some(per_entity) = per_timeline.per_entity.get_mut(entity_path) {
-                for time in time_column.times() {
-                    if aspects.contains(TransformAspect::Tree) {
-                        per_entity.tree_transforms.remove(&time);
+            if let Some(per_source_frame_updates) = per_timeline
+                .per_entity_source_information
+                .get_mut(entity_path)
+            {
+                for (source, times) in per_source_frame_updates.iter_mut() {
+                    let Some(source_transforms) =
+                        per_timeline.per_source_frame_transforms.get_mut(source)
+                    else {
+                        warn_about_missing_source_transforms_for_update_on_entity(
+                            entity_path,
+                            *source,
+                        );
+                        times.clear();
+                        continue;
+                    };
+
+                    // Remove from our record of where this entity updates things.
+                    for time in time_column.times() {
+                        // Only if this entity actually had an update for a given source at a time, do we have to remove transforms from that source.
+                        if times.remove(&time) {
+                            if aspects.contains(TransformAspect::Frame) {
+                                source_transforms.frame_transforms.remove(&time);
+                            }
+                            if aspects.contains(TransformAspect::Pose)
+                                && let Some(pose_transforms) =
+                                    &mut source_transforms.pose_transforms
+                            {
+                                pose_transforms.remove(&time);
+                            }
+                            if aspects.contains(TransformAspect::PinholeOrViewCoordinates)
+                                && let Some(pinhole_projections) =
+                                    &mut source_transforms.pinhole_projections
+                            {
+                                pinhole_projections.remove(&time);
+                            }
+                        }
                     }
-                    if aspects.contains(TransformAspect::Pose)
-                        && let Some(pose_transforms) = &mut per_entity.pose_transforms
+
+                    // Remove source entry if it's empty.
+                    if source_transforms.frame_transforms.is_empty()
+                        && source_transforms
+                            .pose_transforms
+                            .as_ref()
+                            .is_none_or(|pose_transforms| pose_transforms.is_empty())
+                        && source_transforms
+                            .pinhole_projections
+                            .as_ref()
+                            .is_none_or(|pinhole_projections| pinhole_projections.is_empty())
                     {
-                        pose_transforms.remove(&time);
-                    }
-                    if aspects.contains(TransformAspect::PinholeOrViewCoordinates)
-                        && let Some(pinhole_projections) = &mut per_entity.pinhole_projections
-                    {
-                        pinhole_projections.remove(&time);
+                        per_timeline.per_source_frame_transforms.remove(source);
                     }
                 }
 
-                if per_entity.tree_transforms.is_empty()
-                    && per_entity
-                        .pose_transforms
-                        .as_ref()
-                        .is_none_or(|pose_transforms| pose_transforms.is_empty())
-                    && per_entity
-                        .pinhole_projections
-                        .as_ref()
-                        .is_none_or(|pinhole_projections| pinhole_projections.is_empty())
-                {
-                    per_timeline.per_entity.remove(entity_path);
-                }
+                // Remove empty source update mentions.
+                per_source_frame_updates.retain(|_, times| !times.is_empty());
             }
 
-            if per_timeline.per_entity.is_empty() && per_timeline.invalidated_transforms.is_empty()
+            // Remove timeline if it's empty.
+            if per_timeline.per_source_frame_transforms.is_empty()
+                && per_timeline.invalidated_transforms.is_empty()
             {
                 self.per_timeline.remove(timeline);
             }
         }
     }
+}
+
+fn warn_about_missing_source_transforms_for_update_on_entity(
+    entity_path: &EntityPath,
+    source: TransformFrameIdHash,
+) {
+    // There was no actual transform changes for this source frame after all.
+    re_log::error_once!(
+        "Internally inconsistent state: entity {:?} had updates for source frame {:?} but no transforms for that source frame were found. Please report this as a bug.",
+        entity_path,
+        source,
+    );
 }
 
 /// Queries all components that are part of pose transforms, returning the transform from child to parent.
@@ -1133,6 +1273,11 @@ fn query_and_resolve_pinhole_projection_at_entity(
             &archetypes::Pinhole::descriptor_image_from_camera(),
         )
         .map(|(_index, image_from_camera)| ResolvedPinholeProjection {
+            // Pinholes don't have an explicit target frame yet, so they always apply to the parent frame.
+            target: TransformFrameIdHash::from_entity_path(
+                &entity_path.parent().unwrap_or(EntityPath::root()),
+            ),
+
             image_from_camera,
             resolution: entity_db
                 .latest_at_component::<components::Resolution>(
@@ -1368,19 +1513,25 @@ mod tests {
         let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
         assert!(
             transforms_per_timeline
-                .entity_transforms(&EntityPath::from("without_transform"))
+                .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                    "without_transform"
+                )))
                 .is_none()
         );
         assert!(
             transforms_per_timeline
-                .entity_transforms(&EntityPath::from("rando"))
+                .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                    "rando"
+                )))
                 .is_none()
         );
         let transforms = transforms_per_timeline
-            .entity_transforms(&EntityPath::from("with_transform"))
+            .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                "with_transform",
+            )))
             .unwrap();
         assert_eq!(transforms.timeline, Some(*timeline.name()));
-        assert_eq!(transforms.tree_transforms.len(), 1);
+        assert_eq!(transforms.frame_transforms.len(), 1);
         assert_eq!(transforms.pose_transforms, None);
         assert_eq!(transforms.pinhole_projections, None);
     }
@@ -1432,37 +1583,48 @@ mod tests {
 
             let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
             let transforms = transforms_per_timeline
-                .entity_transforms(&EntityPath::from("my_entity"))
+                .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                    "my_entity",
+                )))
                 .unwrap();
 
             assert_eq!(
-                transforms
-                    .latest_at_tree_transform(&LatestAtQuery::new(*timeline.name(), TimeInt::MIN)),
-                glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0))
+                transforms.latest_at_transform(&LatestAtQuery::new(*timeline.name(), TimeInt::MIN)),
+                Some(SourceToTargetTransform {
+                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                })
             );
             assert_eq!(
-                transforms
-                    .latest_at_tree_transform(&LatestAtQuery::new(*timeline.name(), TimeInt::MIN)),
-                transforms.latest_at_tree_transform(&LatestAtQuery::new(*timeline.name(), 0)),
+                transforms.latest_at_transform(&LatestAtQuery::new(*timeline.name(), TimeInt::MIN)),
+                transforms.latest_at_transform(&LatestAtQuery::new(*timeline.name(), 0)),
             );
             assert_eq!(
-                transforms.latest_at_tree_transform(&LatestAtQuery::new(*timeline.name(), 1)),
-                glam::Affine3A::from_scale_rotation_translation(
-                    glam::Vec3::new(123.0, 234.0, 345.0),
-                    glam::Quat::IDENTITY,
-                    glam::Vec3::new(1.0, 2.0, 3.0),
-                )
+                transforms.latest_at_transform(&LatestAtQuery::new(*timeline.name(), 1)),
+                Some(SourceToTargetTransform {
+                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: glam::Affine3A::from_scale_rotation_translation(
+                        glam::Vec3::new(123.0, 234.0, 345.0),
+                        glam::Quat::IDENTITY,
+                        glam::Vec3::new(1.0, 2.0, 3.0),
+                    ),
+                })
             );
 
             // Timelines that the cache has never seen should still have the static transform.
             let transforms_per_timeline = cache.transforms_for_timeline(TimelineName::new("other"));
             let transforms = transforms_per_timeline
-                .entity_transforms(&EntityPath::from("my_entity"))
+                .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                    "my_entity",
+                )))
                 .unwrap();
             assert_eq!(
                 transforms
-                    .latest_at_tree_transform(&LatestAtQuery::new(TimelineName::new("other"), 123)),
-                glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0))
+                    .latest_at_transform(&LatestAtQuery::new(TimelineName::new("other"), 123)),
+                Some(SourceToTargetTransform {
+                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                })
             );
         }
     }
@@ -1513,7 +1675,9 @@ mod tests {
 
             let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
             let transforms = transforms_per_timeline
-                .entity_transforms(&EntityPath::from("my_entity"))
+                .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                    "my_entity",
+                )))
                 .unwrap();
 
             assert_eq!(
@@ -1558,7 +1722,9 @@ mod tests {
             // Timelines that the cache has never seen should still have the static poses.
             let transforms_per_timeline = cache.transforms_for_timeline(TimelineName::new("other"));
             let transforms = transforms_per_timeline
-                .entity_transforms(&EntityPath::from("my_entity"))
+                .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                    "my_entity",
+                )))
                 .unwrap();
             assert_eq!(
                 transforms.latest_at_instance_poses(
@@ -1628,12 +1794,15 @@ mod tests {
 
             let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
             let transforms = transforms_per_timeline
-                .entity_transforms(&EntityPath::from("my_entity"))
+                .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                    "my_entity",
+                )))
                 .unwrap();
 
             assert_eq!(
                 transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), TimeInt::MIN)),
                 Some(&ResolvedPinholeProjection {
+                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
                     image_from_camera: image_from_camera_final,
                     resolution: Some([2.0, 2.0].into()),
                     view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
@@ -1646,6 +1815,7 @@ mod tests {
             assert_eq!(
                 transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), 1)),
                 Some(&ResolvedPinholeProjection {
+                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
                     image_from_camera: image_from_camera_final,
                     resolution: Some([2.0, 2.0].into()),
                     view_coordinates: components::ViewCoordinates::BLU,
@@ -1655,11 +1825,14 @@ mod tests {
             // Timelines that the cache has never seen should still have the static pinhole.
             let transforms_per_timeline = cache.transforms_for_timeline(TimelineName::new("other"));
             let transforms = transforms_per_timeline
-                .entity_transforms(&EntityPath::from("my_entity"))
+                .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                    "my_entity",
+                )))
                 .unwrap();
             assert_eq!(
                 transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), 123)),
                 Some(&ResolvedPinholeProjection {
+                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
                     image_from_camera: image_from_camera_final,
                     resolution: Some([2.0, 2.0].into()),
                     view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
@@ -1717,7 +1890,9 @@ mod tests {
             apply_store_subscriber_events(&mut cache, &entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
             let transforms = transforms_per_timeline
-                .entity_transforms(&EntityPath::from("my_entity"))
+                .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                    "my_entity",
+                )))
                 .unwrap();
 
             // There's view coordinates, but that doesn't show up.
@@ -1733,6 +1908,7 @@ mod tests {
             assert_eq!(
                 transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), 1)),
                 Some(&ResolvedPinholeProjection {
+                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
                     image_from_camera,
                     resolution: None,
                     view_coordinates: components::ViewCoordinates::BLU,
@@ -1778,40 +1954,60 @@ mod tests {
         let timeline_name = *timeline.name();
         let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
         let transforms = transforms_per_timeline
-            .entity_transforms(&EntityPath::from("my_entity"))
+            .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                "my_entity",
+            )))
             .unwrap();
 
         assert_eq!(
-            transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline_name, 0)),
-            glam::Affine3A::IDENTITY
+            transforms.latest_at_transform(&LatestAtQuery::new(timeline_name, 0)),
+            None
         );
         assert_eq!(
-            transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline_name, 1)),
-            glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0))
+            transforms.latest_at_transform(&LatestAtQuery::new(timeline_name, 1)),
+            Some(SourceToTargetTransform {
+                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                transform: glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+            })
         );
         assert_eq!(
-            transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline_name, 2)),
-            glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0))
+            transforms.latest_at_transform(&LatestAtQuery::new(timeline_name, 2)),
+            Some(SourceToTargetTransform {
+                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                transform: glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+            })
         );
         assert_eq!(
-            transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline_name, 3)),
-            glam::Affine3A::from_scale_rotation_translation(
-                glam::Vec3::new(1.0, 2.0, 3.0),
-                glam::Quat::IDENTITY,
-                glam::Vec3::new(1.0, 2.0, 3.0),
-            )
+            transforms.latest_at_transform(&LatestAtQuery::new(timeline_name, 3)),
+            Some(SourceToTargetTransform {
+                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                transform: glam::Affine3A::from_scale_rotation_translation(
+                    glam::Vec3::new(1.0, 2.0, 3.0),
+                    glam::Quat::IDENTITY,
+                    glam::Vec3::new(1.0, 2.0, 3.0),
+                ),
+            })
         );
         assert_eq!(
-            transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline_name, 4)),
-            glam::Affine3A::from_quat(glam::Quat::from_rotation_x(1.0))
+            transforms.latest_at_transform(&LatestAtQuery::new(timeline_name, 4)),
+            Some(SourceToTargetTransform {
+                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                transform: glam::Affine3A::from_quat(glam::Quat::from_rotation_x(1.0)),
+            })
         );
         assert_eq!(
-            transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline_name, 5)),
-            glam::Affine3A::IDENTITY
+            transforms.latest_at_transform(&LatestAtQuery::new(timeline_name, 5)),
+            Some(SourceToTargetTransform {
+                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                transform: glam::Affine3A::IDENTITY, // Empty transform is treated as connected with identity.
+            })
         );
         assert_eq!(
-            transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline_name, 123)),
-            glam::Affine3A::IDENTITY
+            transforms.latest_at_transform(&LatestAtQuery::new(timeline_name, 123)),
+            Some(SourceToTargetTransform {
+                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                transform: glam::Affine3A::IDENTITY, // Empty transform is treated as connected with identity.
+            })
         );
     }
 
@@ -1854,7 +2050,9 @@ mod tests {
         let timeline = *timeline.name();
         let transforms_per_timeline = cache.transforms_for_timeline(timeline);
         let transforms = transforms_per_timeline
-            .entity_transforms(&EntityPath::from("my_entity"))
+            .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                "my_entity",
+            )))
             .unwrap();
 
         assert_eq!(
@@ -1964,7 +2162,9 @@ mod tests {
         let timeline = *timeline.name();
         let transforms_per_timeline = cache.transforms_for_timeline(timeline);
         let transforms = transforms_per_timeline
-            .entity_transforms(&EntityPath::from("my_entity"))
+            .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                "my_entity",
+            )))
             .unwrap();
 
         // Pose for instances poses and non-boxes are unchanged over time.
@@ -2095,7 +2295,9 @@ mod tests {
         let timeline = *timeline.name();
         let transforms_per_timeline = cache.transforms_for_timeline(timeline);
         let transforms = transforms_per_timeline
-            .entity_transforms(&EntityPath::from("my_entity"))
+            .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                "my_entity",
+            )))
             .unwrap();
 
         assert_eq!(
@@ -2105,6 +2307,7 @@ mod tests {
         assert_eq!(
             transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 1)),
             Some(&ResolvedPinholeProjection {
+                target: TransformFrameIdHash::entity_path_hierarchy_root(),
                 image_from_camera,
                 resolution: None,
                 view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
@@ -2113,6 +2316,7 @@ mod tests {
         assert_eq!(
             transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 2)),
             Some(&ResolvedPinholeProjection {
+                target: TransformFrameIdHash::entity_path_hierarchy_root(),
                 image_from_camera,
                 resolution: None,
                 view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
@@ -2121,6 +2325,7 @@ mod tests {
         assert_eq!(
             transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 3)),
             Some(&ResolvedPinholeProjection {
+                target: TransformFrameIdHash::entity_path_hierarchy_root(),
                 image_from_camera,
                 resolution: None,
                 view_coordinates: components::ViewCoordinates::BLU,
@@ -2164,17 +2369,25 @@ mod tests {
         let timeline = *timeline.name();
         let transforms_per_timeline = cache.transforms_for_timeline(timeline);
         let transforms = transforms_per_timeline
-            .entity_transforms(&EntityPath::from("my_entity"))
+            .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                "my_entity",
+            )))
             .unwrap();
 
         // Check that the transform cache has the expected transforms.
         assert_eq!(
-            transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 1)),
-            glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0))
+            transforms.latest_at_transform(&LatestAtQuery::new(timeline, 1)),
+            Some(SourceToTargetTransform {
+                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                transform: glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+            })
         );
         assert_eq!(
-            transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 3)),
-            glam::Affine3A::from_translation(glam::Vec3::new(2.0, 3.0, 4.0))
+            transforms.latest_at_transform(&LatestAtQuery::new(timeline, 3)),
+            Some(SourceToTargetTransform {
+                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                transform: glam::Affine3A::from_translation(glam::Vec3::new(2.0, 3.0, 4.0)),
+            })
         );
 
         // Add a transform between the two that invalidates the one at time stamp 3.
@@ -2194,29 +2407,40 @@ mod tests {
         let timeline = *timeline.name();
         let transforms_per_timeline = cache.transforms_for_timeline(timeline);
         let transforms = transforms_per_timeline
-            .entity_transforms(&EntityPath::from("my_entity"))
+            .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                "my_entity",
+            )))
             .unwrap();
 
         // Check that the transform cache has the expected transforms.
         assert_eq!(
-            transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 1)),
-            glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0))
+            transforms.latest_at_transform(&LatestAtQuery::new(timeline, 1)),
+            Some(SourceToTargetTransform {
+                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                transform: glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+            })
         );
         assert_eq!(
-            transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 2)),
-            glam::Affine3A::from_scale_rotation_translation(
-                glam::Vec3::new(-1.0, -2.0, -3.0),
-                glam::Quat::IDENTITY,
-                glam::Vec3::new(1.0, 2.0, 3.0),
-            )
+            transforms.latest_at_transform(&LatestAtQuery::new(timeline, 2)),
+            Some(SourceToTargetTransform {
+                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                transform: glam::Affine3A::from_scale_rotation_translation(
+                    glam::Vec3::new(-1.0, -2.0, -3.0),
+                    glam::Quat::IDENTITY,
+                    glam::Vec3::new(1.0, 2.0, 3.0),
+                ),
+            })
         );
         assert_eq!(
-            transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 3)),
-            glam::Affine3A::from_scale_rotation_translation(
-                glam::Vec3::new(-1.0, -2.0, -3.0),
-                glam::Quat::IDENTITY,
-                glam::Vec3::new(2.0, 3.0, 4.0),
-            )
+            transforms.latest_at_transform(&LatestAtQuery::new(timeline, 3)),
+            Some(SourceToTargetTransform {
+                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                transform: glam::Affine3A::from_scale_rotation_translation(
+                    glam::Vec3::new(-1.0, -2.0, -3.0),
+                    glam::Quat::IDENTITY,
+                    glam::Vec3::new(2.0, 3.0, 4.0),
+                ),
+            })
         );
     }
 
@@ -2267,19 +2491,27 @@ mod tests {
             apply_store_subscriber_events(&mut cache, &entity_db);
             let timeline = *timeline.name();
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
-            let transforms = transforms_per_timeline.entity_transforms(&path).unwrap();
+            let transforms = transforms_per_timeline
+                .frame_transforms(TransformFrameIdHash::from_entity_path(&path))
+                .unwrap();
 
             assert_eq!(
-                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 1)),
-                glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0))
+                transforms.latest_at_transform(&LatestAtQuery::new(timeline, 1)),
+                Some(SourceToTargetTransform {
+                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                })
             );
             assert_eq!(
-                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 2)),
-                glam::Affine3A::IDENTITY
+                transforms.latest_at_transform(&LatestAtQuery::new(timeline, 2)),
+                None
             );
             assert_eq!(
-                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 3)),
-                glam::Affine3A::from_translation(glam::Vec3::new(3.0, 4.0, 5.0))
+                transforms.latest_at_transform(&LatestAtQuery::new(timeline, 3)),
+                Some(SourceToTargetTransform {
+                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: glam::Affine3A::from_translation(glam::Vec3::new(3.0, 4.0, 5.0)),
+                })
             );
         }
     }
@@ -2345,17 +2577,22 @@ mod tests {
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
 
             for path in [EntityPath::from("parent"), EntityPath::from("parent/child")] {
-                let transform = transforms_per_timeline.entity_transforms(&path).unwrap();
+                let transform = transforms_per_timeline
+                    .frame_transforms(TransformFrameIdHash::from_entity_path(&path))
+                    .unwrap();
 
                 println!("checking for correct transforms for path: {path:?}");
 
                 assert_eq!(
-                    transform.latest_at_tree_transform(&LatestAtQuery::new(timeline, 1)),
-                    glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0))
+                    transform.latest_at_transform(&LatestAtQuery::new(timeline, 1)),
+                    Some(SourceToTargetTransform {
+                        target: TransformFrameIdHash::from_entity_path(&path.parent().unwrap()),
+                        transform: glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                    })
                 );
                 assert_eq!(
-                    transform.latest_at_tree_transform(&LatestAtQuery::new(timeline, 2)),
-                    glam::Affine3A::IDENTITY
+                    transform.latest_at_transform(&LatestAtQuery::new(timeline, 2)),
+                    None
                 );
             }
         }
@@ -2396,8 +2633,16 @@ mod tests {
         apply_store_subscriber_events(&mut cache, &entity_db);
 
         assert!(
-            cache.transforms_for_timeline(*timeline.name()).per_entity
-                == cache.static_timeline.per_entity
+            cache
+                .transforms_for_timeline(*timeline.name())
+                .per_entity_source_information
+                == cache.static_timeline.per_entity_source_information
+        );
+        assert!(
+            cache
+                .transforms_for_timeline(*timeline.name())
+                .per_source_frame_transforms
+                == cache.static_timeline.per_source_frame_transforms
         );
     }
 }
