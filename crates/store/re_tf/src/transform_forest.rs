@@ -776,11 +776,14 @@ mod tests {
 
     fn pretty_print_transform_frame_ids_in<T: std::fmt::Debug>(
         obj: T,
-        frames: &[TransformFrameIdHash],
+        frames: &[TransformFrameId],
     ) -> String {
         let mut result = format!("{obj:#?}");
         for frame in frames {
-            result = result.replace(&format!("{:#?}", frame.hash()), &format!("{frame:#?}"));
+            result = result.replace(
+                &format!("{:#?}", TransformFrameIdHash::new(&frame)),
+                &format!("{frame}"),
+            );
         }
         result
     }
@@ -805,7 +808,7 @@ mod tests {
             .collect::<Vec<_>>();
         let all_transform_frame_ids = all_entity_paths
             .iter()
-            .map(TransformFrameIdHash::from_entity_path)
+            .map(TransformFrameId::from_entity_path)
             .collect::<Vec<_>>();
 
         // Check that we get the expected roots.

@@ -35,6 +35,12 @@ impl TransformFrameId {
     }
 }
 
+impl std::fmt::Display for TransformFrameId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.0.as_str())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::components::TransformFrameId;
