@@ -254,7 +254,7 @@ impl Dataset {
 
         let layer_name = layer_name.unwrap_or(DataSource::DEFAULT_LAYER);
 
-        let new_partition_ids = BTreeSet::default();
+        let mut new_partition_ids = BTreeSet::default();
 
         for (store_id, chunk_store) in contents {
             if !store_id.is_recording() {
@@ -269,6 +269,8 @@ impl Dataset {
                 chunk_store,
                 on_duplicate,
             )?;
+
+            new_partition_ids.insert(partition_id);
         }
 
         Ok(new_partition_ids)
