@@ -42,10 +42,10 @@ blueprint = rrb.Blueprint(
                     end=rrb.TimeRangeBoundary.infinite(),
                 ),
             ],
-        ),           
+        ),
         rrb.TimeSeriesView(
             origin="/trig",
-            # Set a custom Y axis.
+        # Set a custom Y axis.
             axis_y=rrb.ScalarAxis(range=(0.0, 1.0), zoom_lock=True),
             # Configure the legend.
             plot_legend=rrb.PlotLegend(visible=True),
