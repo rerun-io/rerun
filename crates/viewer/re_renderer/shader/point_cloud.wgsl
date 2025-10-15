@@ -150,11 +150,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
     var coverage = coverage(in.world_position, in.radius, in.point_center);
 
     if frame.deterministic_rendering == 1 {
-        if coverage < 0.5 {
-            discard;
-        } else {
-            coverage = 1.0;
-        }
+        coverage = step(0.5, coverage);
     }
 
     if coverage < 0.001 {
