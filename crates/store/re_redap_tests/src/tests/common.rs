@@ -126,7 +126,7 @@ pub fn concat_record_batches(record_batches: &[RecordBatch]) -> RecordBatch {
     arrow::compute::concat_batches(
         record_batches
             .first()
-            .expect("at least one record batch must pass passed")
+            .expect("at least one record batch must be passed")
             .schema_ref(),
         record_batches,
     )
