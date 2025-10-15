@@ -15,11 +15,13 @@ mod provider;
 mod service;
 mod token;
 
+pub mod credentials;
+
 #[cfg(feature = "cli")]
 pub mod cli;
 
-#[cfg(feature = "workos")]
-pub mod workos;
+#[cfg(feature = "oauth")]
+pub mod oauth;
 
 pub use service::client;
 pub use token::{Jwt, TokenError};
@@ -45,3 +47,5 @@ pub const ERROR_MESSAGE_MISSING_CREDENTIALS: &str = "missing credentials";
 ///
 /// The associated status code will always be `Unauthenticated`.
 pub const ERROR_MESSAGE_INVALID_CREDENTIALS: &str = "invalid credentials";
+
+mod wasm_compat;
