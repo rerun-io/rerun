@@ -244,7 +244,7 @@ impl ConnectionRegistryHandle {
     async fn create_and_validate_raw_client_with_token(
         origin: re_uri::Origin,
         token: Option<Jwt>,
-    ) -> Result<RedapClient, ClientConnectionError> {
+    ) -> Result<RedapClient, ApiError> {
         let credentials: Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync> =
             match &token {
                 Some(token) => Arc::new(re_auth::credentials::StaticCredentialsProvider::new(
@@ -253,13 +253,7 @@ impl ConnectionRegistryHandle {
                 None => Arc::new(re_auth::credentials::CliCredentialsProvider::new()),
             };
 
-        let mut raw_client = match crate::grpc::client(origin.clone(), credentials).await {
-            Ok(raw_client) => raw_client,
-
-            Err(err) => {
-                return Err(err.into());
-            }
-        };
+        let mut raw_client = crate::grpc::client(origin.clone(), credentials).await?;
 
         // Call the version endpoint to check that authentication is successful. It's ok to do this
         // since we're caching the client, so we're not spamming such a request unnecessarily.

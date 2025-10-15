@@ -100,7 +100,7 @@ pub type RedapClientInner = re_auth::client::AuthService<
 pub(crate) async fn client(
     origin: Origin,
     credentials: Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>,
-) -> Result<RedapClient, ConnectionError> {
+) -> Result<RedapClient, ApiError> {
     let channel = channel(origin).await?;
 
     let middlewares = tower::ServiceBuilder::new()
@@ -152,7 +152,7 @@ pub type RedapClient = RerunCloudServiceClient<RedapClientInner>;
 pub(crate) async fn client(
     origin: Origin,
     credentials: Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>,
-) -> Result<RedapClient, ConnectionError> {
+) -> Result<RedapClient, ApiError> {
     let channel = channel(origin).await?;
 
     let middlewares = tower::ServiceBuilder::new()
