@@ -531,6 +531,7 @@ impl SpatialView3D {
 
         let target_config = TargetConfiguration {
             name: query.space_origin.to_string().into(),
+            render_mode: ctx.render_mode(),
 
             resolution_in_pixel,
 
