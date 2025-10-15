@@ -65,20 +65,26 @@ fn colormap_selector_ui() {
     test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
     re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
 
-    let mut harness = test_context.setup_kittest_for_rendering().build_ui(|ui| {
-        re_ui::apply_style_and_install_loaders(ui.ctx());
+    let mut harness = test_context
+        .setup_kittest_for_rendering_ui([200.0, 250.0])
+        .build_ui(|ui| {
+            re_ui::apply_style_and_install_loaders(ui.ctx());
 
-        test_context.run(&ui.ctx().clone(), |ctx: &ViewerContext<'_>| {
-            ui.horizontal(|ui| {
-                ui.label("Colormap:");
+            test_context.run(&ui.ctx().clone(), |ctx: &ViewerContext<'_>| {
+                ui.horizontal(|ui| {
+                    ui.label("Colormap:");
 
-                let mut test_colormap = Colormap::Spectral;
-                let mut colormap_ref = MaybeMutRef::MutRef(&mut test_colormap);
+                    let mut test_colormap = Colormap::Spectral;
+                    let mut colormap_ref = MaybeMutRef::MutRef(&mut test_colormap);
 
-                re_viewer_context::gpu_bridge::colormap_edit_or_view_ui(ctx, ui, &mut colormap_ref);
+                    re_viewer_context::gpu_bridge::colormap_edit_or_view_ui(
+                        ctx,
+                        ui,
+                        &mut colormap_ref,
+                    );
+                });
             });
         });
-    });
 
     harness.run();
     harness.fit_contents();

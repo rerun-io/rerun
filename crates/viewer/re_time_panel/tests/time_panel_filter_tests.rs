@@ -1,7 +1,5 @@
 #![cfg(feature = "testing")]
 
-use egui::Vec2;
-
 use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_log_types::TimePoint;
@@ -121,8 +119,7 @@ fn run_time_panel_and_save_snapshot(
     snapshot_name: &str,
 ) {
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(Vec2::new(700.0, 700.0))
+        .setup_kittest_for_rendering_ui([700.0, 700.0])
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                 let blueprint = ViewportBlueprint::from_db(

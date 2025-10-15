@@ -1098,10 +1098,7 @@ mod tests {
         TimeType,
         example_components::{MyPoint, MyPoints},
     };
-    use re_test_context::{
-        TestContext,
-        external::egui_kittest::{SnapshotOptions, kittest::Queryable as _},
-    };
+    use re_test_context::{TestContext, external::egui_kittest::kittest::Queryable as _};
     use re_test_viewport::{TestContextExt as _, TestView};
     use re_types::archetypes;
     use re_viewer_context::{RecommendedView, ViewClass as _, blueprint_timeline};
@@ -1160,8 +1157,7 @@ mod tests {
         );
 
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size([600.0, 400.0])
+            .setup_kittest_for_rendering_ui([600.0, 400.0])
             .build_ui(move |ui| {
                 selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
@@ -1189,8 +1185,7 @@ mod tests {
         );
 
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size([600.0, 400.0])
+            .setup_kittest_for_rendering_ui([600.0, 400.0])
             .build_ui(|ui| {
                 selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
@@ -1199,10 +1194,7 @@ mod tests {
 
         harness.run();
 
-        harness.snapshot_options(
-            "selection_panel_recording_hover_app_id",
-            &SnapshotOptions::new().failed_pixel_count_threshold(4),
-        );
+        harness.snapshot("selection_panel_recording_hover_app_id");
     }
 
     /// Snapshot test for the selection panel when a static component is selected.
@@ -1235,8 +1227,7 @@ mod tests {
         );
 
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size([400.0, 350.0])
+            .setup_kittest_for_rendering_ui([400.0, 350.0])
             .build_ui(|ui| {
                 selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
@@ -1285,8 +1276,7 @@ mod tests {
         );
 
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size([400.0, 350.0])
+            .setup_kittest_for_rendering_ui([400.0, 350.0])
             .build_ui(|ui| {
                 selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
@@ -1349,8 +1339,7 @@ mod tests {
         );
 
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size([400.0, 350.0])
+            .setup_kittest_for_rendering_ui([400.0, 350.0])
             .build_ui(|ui| {
                 selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
@@ -1388,23 +1377,15 @@ mod tests {
             &LatestAtQuery::latest(blueprint_timeline()),
         );
 
-        let size = egui::Vec2::from([400.0, 500.0]);
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size(size)
+            .setup_kittest_for_rendering_ui([400.0, 500.0])
             .build_ui(|ui| {
                 selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
 
-        let broken_pixels_fraction = 0.004;
-
-        let options = SnapshotOptions::new().failed_pixel_count_threshold(
-            (size.x * size.y * broken_pixels_fraction).round() as usize,
-        );
-
-        harness.snapshot_options("selection_panel_view", &options);
+        harness.snapshot("selection_panel_view");
     }
 
     #[test]
@@ -1437,23 +1418,15 @@ mod tests {
             &LatestAtQuery::latest(blueprint_timeline()),
         );
 
-        let size = egui::Vec2::from([400.0, 500.0]);
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size(size)
+            .setup_kittest_for_rendering_ui([400.0, 500.0])
             .build_ui(|ui| {
                 selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
 
-        let broken_pixels_fraction = 0.004;
-
-        let options = SnapshotOptions::new().failed_pixel_count_threshold(
-            (size.x * size.y * broken_pixels_fraction).round() as usize,
-        );
-
-        harness.snapshot_options("selection_panel_view_entity_no_visualizable", &options);
+        harness.snapshot("selection_panel_view_entity_no_visualizable");
     }
 
     #[test]
@@ -1479,22 +1452,14 @@ mod tests {
             &LatestAtQuery::latest(blueprint_timeline()),
         );
 
-        let size = egui::Vec2::from([400.0, 500.0]);
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size(size)
+            .setup_kittest_for_rendering_ui([400.0, 500.0])
             .build_ui(|ui| {
                 selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
 
-        let broken_pixels_fraction = 0.004;
-
-        let options = SnapshotOptions::new().failed_pixel_count_threshold(
-            (size.x * size.y * broken_pixels_fraction).round() as usize,
-        );
-
-        harness.snapshot_options("selection_panel_view_entity_no_match", &options);
+        harness.snapshot("selection_panel_view_entity_no_match");
     }
 }

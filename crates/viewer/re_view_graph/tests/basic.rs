@@ -141,8 +141,7 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, 
     });
 
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
+        .setup_kittest_for_rendering_ui(size)
         .with_max_steps(256) // Give it some time to settle the graph.
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);

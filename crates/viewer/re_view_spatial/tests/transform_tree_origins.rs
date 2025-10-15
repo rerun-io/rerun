@@ -182,8 +182,7 @@ fn run_view_ui_and_save_snapshot(
     size: egui::Vec2,
 ) {
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
+        .setup_kittest_for_rendering_3d(size)
         .build_ui(|ui| {
             test_context.run_ui(ui, |ctx, ui| {
                 // Show axis at the origin to help with orientation.

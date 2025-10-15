@@ -1,7 +1,5 @@
 #![cfg(feature = "testing")]
 
-use egui::Vec2;
-
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
 use re_log_types::{
@@ -398,8 +396,7 @@ fn run_time_panel_and_save_snapshot(
     snapshot_name: &str,
 ) {
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(Vec2::new(700.0, height))
+        .setup_kittest_for_rendering_ui([700.0, height])
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                 if expand_all {

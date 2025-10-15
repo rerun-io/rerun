@@ -37,7 +37,7 @@ pub fn test_blueprint_overrides_and_defaults_with_time_series() {
         view_id,
         "blueprint_overrides_and_defaults_with_time_series",
         egui::vec2(300.0, 300.0),
-        Default::default(),
+        None,
     );
 }
 

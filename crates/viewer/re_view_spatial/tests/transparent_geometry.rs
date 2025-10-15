@@ -50,8 +50,7 @@ fn test_transparent_geometry<A: AsComponents>(
     let mut harness = {
         let camera_orientation = camera_orientation.clone();
         test_context
-            .setup_kittest_for_rendering()
-            .with_size(size)
+            .setup_kittest_for_rendering_3d(size)
             .build_ui(move |ui| {
                 // TODO(#8265): Could simplify this a lot of we could set the camera in blueprint.
                 {

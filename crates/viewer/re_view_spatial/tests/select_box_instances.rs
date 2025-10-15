@@ -52,8 +52,7 @@ fn test_select_box_instances() {
         // This exaggerates the outlines, making it easier to see & get caught by the snapshot test.
         let ui_scale = 4.0;
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size(egui::vec2(300.0, 300.0) / ui_scale)
+            .setup_kittest_for_rendering_3d(egui::vec2(300.0, 300.0) / ui_scale)
             .with_pixels_per_point(ui_scale)
             .build_ui(|ui| {
                 test_context.edit_selection(|selection_state| {

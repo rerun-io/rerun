@@ -183,8 +183,7 @@ fn run_view_ui_and_save_snapshot(
 ) {
     for (target, view_id) in [("boxes", view_id_boxes), ("spheres", view_id_spheres)] {
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size(size)
+            .setup_kittest_for_rendering_3d(size)
             .build_ui(|ui| {
                 test_context.run_with_single_view(ui, view_id);
             });

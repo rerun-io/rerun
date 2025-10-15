@@ -7,6 +7,7 @@ use std::sync::atomic::AtomicBool;
 
 use ahash::HashMap;
 use egui::os::OperatingSystem;
+use egui_kittest::SnapshotOptions;
 use parking_lot::{Mutex, RwLock};
 
 use re_chunk::{Chunk, ChunkBuilder};
@@ -369,7 +370,51 @@ impl TestContext {
         }
     }
 
+    /// Set up for rendering UI, with not 3D/2D in it.
+    pub fn setup_kittest_for_rendering_ui(
+        &self,
+        size: impl Into<egui::Vec2>,
+    ) -> egui_kittest::HarnessBuilder<()> {
+        self.setup_kittest_for_rendering_generic().with_size(size)
+    }
+
+    /// Set up for rendering 3D/2D and maybe UI.
+    ///
+    /// This has slightly higher error tolerances than [`Self::setup_kittest_for_rendering_ui`].
+    pub fn setup_kittest_for_rendering_3d(
+        &self,
+        size: impl Into<egui::Vec2>,
+    ) -> egui_kittest::HarnessBuilder<()> {
+        let size = size.into();
+        let mut harness = self.setup_kittest_for_rendering_generic().with_size(size);
+
+        // We sometime have "binary" failures, e.g. a pixel being categorized
+        // as either inside or outside a primitive due to platform differences.
+        // How many depend on the size of the image.
+        let num_total_pixels = size.x * size.y;
+
+        let broken_pixels_fraction = 0.0001;
+        let max_broken_pixels = (num_total_pixels * broken_pixels_fraction).round() as usize;
+
+        let threshold = 0.9; // Slightly higher than the default
+
+        // emilk did a mistake and made `with_options` a setter instead of a builder…
+        // …we will fix that in the future, but for now, we have to live with it:
+        let _unit: () = harness.with_options(
+            SnapshotOptions::default()
+                .threshold(threshold)
+                .failed_pixel_count_threshold(max_broken_pixels),
+        );
+
+        harness
+    }
+
+    #[deprecated = "Use setup_kittest_for_rendering_ui or setup_kittest_for_rendering_3d instead"]
     pub fn setup_kittest_for_rendering(&self) -> egui_kittest::HarnessBuilder<()> {
+        self.setup_kittest_for_rendering_generic()
+    }
+
+    fn setup_kittest_for_rendering_generic(&self) -> egui_kittest::HarnessBuilder<()> {
         // Egui kittests insists on having a fresh render state for each test.
         let new_render_state = create_egui_renderstate();
         let builder = egui_kittest::Harness::builder().renderer(

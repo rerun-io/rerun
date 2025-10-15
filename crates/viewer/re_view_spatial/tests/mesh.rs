@@ -44,8 +44,7 @@ pub fn test_single_channel_mesh() {
     let size = egui::vec2(300.0, 300.0);
 
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
+        .setup_kittest_for_rendering_3d(size)
         .build_ui(|ui| test_context.run_with_single_view(ui, view_id));
 
     harness.snapshot("mesh3d_grayscale_texture");

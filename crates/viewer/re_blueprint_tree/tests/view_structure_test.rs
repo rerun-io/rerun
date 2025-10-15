@@ -3,7 +3,6 @@
 
 #![cfg(feature = "testing")]
 
-use egui::Vec2;
 use egui_kittest::{SnapshotError, SnapshotOptions};
 use itertools::Itertools as _;
 
@@ -188,8 +187,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
     );
 
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(Vec2::new(400.0, 800.0))
+        .setup_kittest_for_rendering_ui([400.0, 800.0])
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                 re_context_menu::collapse_expand::collapse_expand_view(

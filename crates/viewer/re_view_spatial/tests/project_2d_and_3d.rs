@@ -81,8 +81,7 @@ pub fn test_2d_in_3d() {
     });
 
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(egui::vec2(400.0, 300.0))
+        .setup_kittest_for_rendering_3d([400.0, 300.0])
         .build_ui(|ui| {
             test_context.run_ui(ui, |ctx, ui| {
                 test_context.ui_for_single_view(ui, ctx, view_id);
@@ -114,8 +113,7 @@ pub fn test_3d_in_2d() {
     });
 
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(egui::vec2(400.0, 300.0))
+        .setup_kittest_for_rendering_3d([400.0, 300.0])
         .build_ui(|ui| {
             test_context.run_ui(ui, |ctx, ui| {
                 test_context.ui_for_single_view(ui, ctx, view_id);
