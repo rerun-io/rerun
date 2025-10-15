@@ -5,10 +5,10 @@ import argparse
 import os
 import re
 import subprocess
-import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 
+import requests
 from github import Github
 from gitignore_parser import parse_gitignore
 from tqdm import tqdm
