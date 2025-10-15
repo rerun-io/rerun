@@ -538,6 +538,8 @@ debug-assertions = false
 [profile.release]
 # debug = true # good for profilers
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
+lto = "thin" # This leads to smaller binaries, but slower compile times.
+codegen-units = 1 # Smaller binaries (but slower compile time)
 
 [profile.web-release]
 panic = 'abort' # Removes panic handling code
