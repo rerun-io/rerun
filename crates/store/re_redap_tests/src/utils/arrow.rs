@@ -24,6 +24,10 @@ pub trait RecordBatchExt {
 
     fn horizontally_sorted(&self) -> Self;
 
+    fn sort_rows_by(&self, columns: &[&str]) -> Result<Self, DataFusionError>
+    where
+        Self: Sized;
+
     /// Sort the rows of the record batch in ascending order based on the column
     /// order in the schema. To make unit tests consistent when there are no
     /// guarantees on record batch ordering, this function is useful to ensure
@@ -102,6 +106,24 @@ impl RecordBatchExt for arrow::array::RecordBatch {
             columns.into_iter().cloned().collect_vec(),
         )
         .unwrap()
+    }
+
+    fn sort_rows_by(&self, columns: &[&str]) -> Result<Self, DataFusionError> {
+        let sort_exprs = columns
+            .iter()
+            .map(|column| {
+                Ok(PhysicalSortExpr::new(
+                    col(column, self.schema_ref())?,
+                    SortOptions::default(),
+                ))
+            })
+            .collect::<Result<Vec<_>, DataFusionError>>()?;
+
+        let Some(ordering) = LexOrdering::new(sort_exprs) else {
+            return Ok(self.clone());
+        };
+
+        datafusion::physical_plan::sorts::sort::sort_batch(self, &ordering, None)
     }
 
     fn auto_sort_rows(&self) -> Result<Self, DataFusionError> {

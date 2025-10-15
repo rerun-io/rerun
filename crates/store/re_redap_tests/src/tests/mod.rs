@@ -1,6 +1,7 @@
 mod common;
 mod dataset_schema;
 mod entries_table;
+mod fetch_chunks;
 mod query_dataset;
 mod register_partition;
 
@@ -46,6 +47,8 @@ define_redap_tests! {
     dataset_schema::empty_dataset_schema,
     dataset_schema::simple_dataset_schema,
     entries_table::list_entries_table,
+    fetch_chunks::simple_dataset_fetch_chunk_snapshot,
+    query_dataset::query_dataset_should_fail,
     query_dataset::query_empty_dataset,
     query_dataset::query_simple_dataset,
     register_partition::register_and_scan_empty_dataset,

@@ -76,13 +76,79 @@ pub async fn query_simple_dataset(fe: impl RerunCloudService) {
     // now register partitions with the dataset
     common::register_with_dataset_name(&fe, dataset_name, partitions).await;
 
-    query_dataset_snapshot(
-        &fe,
-        QueryDatasetRequest::default(),
-        dataset_name,
-        "simple_dataset1",
-    )
-    .await;
+    let requests = vec![
+        (QueryDatasetRequest::default(), "default"),
+        (
+            QueryDatasetRequest {
+                partition_ids: vec!["my_partition_id3".into()],
+                ..Default::default()
+            },
+            "single_partition",
+        ),
+        (
+            QueryDatasetRequest {
+                entity_paths: vec!["/my/entity".into()],
+                select_all_entity_paths: false,
+                ..Default::default()
+            },
+            "single_entity",
+        ),
+        //TODO(RR-2613): add more test cases here when they are supported by OSS server
+    ];
+
+    for (request, snapshot_name) in requests {
+        query_dataset_snapshot(
+            &fe,
+            request,
+            dataset_name,
+            &format!("simple_dataset_{snapshot_name}"),
+        )
+        .await;
+    }
+}
+
+/// Test that failure cases return the correct error code.
+pub async fn query_dataset_should_fail(fe: impl RerunCloudService) {
+    let dataset_name = "dataset";
+
+    fe.create_dataset_entry(tonic::Request::new(
+        re_protos::cloud::v1alpha1::CreateDatasetEntryRequest {
+            name: Some(dataset_name.to_owned()),
+            id: None,
+        },
+    ))
+    .await
+    .expect("Failed to create dataset");
+
+    let test_cases = vec![
+        (
+            "cannot specify entity paths if `select_all_entity_paths` is true",
+            QueryDatasetRequest {
+                entity_paths: vec!["/entity/path".into()],
+                select_all_entity_paths: true,
+                ..Default::default()
+            },
+            tonic::Code::InvalidArgument,
+        ),
+        //TODO(ab): add more failure cases
+    ];
+
+    for (descr, request, expected_code) in test_cases {
+        let response = fe.query_dataset(tonic::Request::new(request.into())).await;
+
+        match response {
+            Ok(_) => {
+                panic!("expected failure with code {expected_code}, but got success ({descr})",);
+            }
+            Err(err) => {
+                assert_eq!(
+                    err.code(),
+                    expected_code,
+                    "expected failure with code {expected_code}, but got {err} ({descr})"
+                );
+            }
+        }
+    }
 }
 
 // ---

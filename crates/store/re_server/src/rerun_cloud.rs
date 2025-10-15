@@ -767,10 +767,10 @@ impl RerunCloudService for RerunCloudHandler {
         let re_protos::cloud::v1alpha1::QueryDatasetRequest {
             partition_ids,
             entity_paths,
+            select_all_entity_paths,
 
             //TODO(RR-2613): we must do a much better job at handling these
             chunk_ids: _,
-            select_all_entity_paths: _,
             fuzzy_descriptors: _,
             exclude_static_data: _,
             exclude_temporal_data: _,
@@ -782,6 +782,11 @@ impl RerunCloudService for RerunCloudHandler {
             .into_iter()
             .map(EntityPath::try_from)
             .collect::<Result<IntSet<EntityPath>, _>>()?;
+        if select_all_entity_paths && !entity_paths.is_empty() {
+            return Err(tonic::Status::invalid_argument(
+                "cannot specify entity paths if `select_all_entity_paths` is true",
+            ));
+        }
 
         let partition_ids = partition_ids
             .into_iter()
@@ -812,7 +817,6 @@ impl RerunCloudService for RerunCloudHandler {
 
                 let mut chunk_ids = Vec::with_capacity(num_chunks);
                 let mut chunk_partition_ids = Vec::with_capacity(num_chunks);
-                let chunk_layer_names = vec![layer_name.clone(); num_chunks];
                 let mut chunk_keys = Vec::with_capacity(num_chunks);
                 let mut chunk_entity_path = Vec::with_capacity(num_chunks);
                 let mut chunk_is_static = Vec::with_capacity(num_chunks);
@@ -867,6 +871,7 @@ impl RerunCloudService for RerunCloudHandler {
                     );
                 }
 
+                let chunk_layer_names = vec![layer_name.clone(); chunk_ids.len()];
                 let chunk_key_refs = chunk_keys.iter().map(|v| v.as_slice()).collect();
                 let batch = QueryDatasetResponse::create_dataframe(
                     chunk_ids,
