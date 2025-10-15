@@ -28,10 +28,9 @@
 //! However, by default, it points to an implicit, entity-derived transform frame.
 //! The name of the implicit transform frames is the entity path, prefixed with `rerun_tf#`, e.g. `rerun_tf#/world/robot/arm`.
 //!
-//! Entity derived transform frames automatically have an identity transform relationship
-//! to their parent & child's transform frames (_not_ their derived transform frames, but whatever their frames are set to!).
-//! This means that whenever an entity changes its transform frame,
-//! we automatically create new identity relationships.
+//! Entity derived transform frames automatically have an identity transform relationship to
+//! either the entity's explicit transform frame if it exists **or** their parent entity's implicit transform frame.
+//! (It never has both in order to avoid graph cycles.)
 //!
 //! Example:
 //! Given an entity hierarchy:
@@ -48,19 +47,34 @@
 //! world/robot/left_arm <=> rerun_tf#/world/robot/left_arm
 //! world/robot/right_arm <=> rerun_tf#/world/robot/right_arm
 //! ```
-//! All of these transform frames are automatically connected via an identity transform.
-//! Now we change the transform frame `world/robot` & `world/robot/left_arm`:
+//! All of these transform frames are automatically connected via an identity transform:
+//! ```raw
+//! rerun_tf#/world/robot --> rerun_tf#/world
+//! rerun_tf#/world/robot/right_arm --> rerun_tf#/world/robot
+//! rerun_tf#/world/robot/left_arm --> rerun_tf#/world/robot
+//! ```
+//!
+//! Now we change the transform frame `world/robot` & `world/robot/left_arm` to explicitly connected frames `robot_frame` & `robot_left_arm`:
 //! ```raw
 //! world <=> rerun_tf#/world
 //! world/robot <=> robot_frame
 //! world/robot/left_arm <=> robot_left_arm
 //! world/robot/right_arm <=> rerun_tf#/world/robot/right_arm
 //! ```
-//! Then, there's automatically new identity relationships created between:
+//! Then, the previous identity relationships are partially replaced by new ones:
+//! ```raw
+//! rerun_tf#/world/robot --> robot_frame
+//! rerun_tf#/world/robot/right_arm --> robot_left_arm
+//! rerun_tf#/world/robot/left_arm --> rerun_tf#/world/robot
+//! robot_left_arm --> robot_frame
 //! ```
-//! robot_frame -> rerun_tf#/world
-//! rerun_tf#/world/robot/right_arm -> robot_frame
+//!
+//! This means that there's still a defined path from `rerun_tf#/world/robot/left_arm` to `rerun_tf#/world/robot`:
+//! ```raw
+//! rerun_tf#/world/robot/left_arm --> rerun_tf#/world/robot --> robot_left_arm --> robot_frame --> rerun_tf#/world/robot
 //! ```
+//! However, there's no longer a path to `rerun_tf#/world` in this scenario since the previous explicit
+//! relationship between `rerun_tf#/world/robot` & `rerun_tf#/world` is no longer present.
 //!
 //!
 //! ### Instance poses
