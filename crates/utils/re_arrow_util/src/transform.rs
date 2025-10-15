@@ -363,38 +363,43 @@ impl Transform for StructToFixedList {
 /// Applies the given function to each non-null element, preserving null values.
 /// Works with any Arrow primitive type.
 #[derive(Clone)]
-pub struct MapPrimitive<T, F>
+pub struct MapPrimitive<S, F, T = S>
 where
+    S: ArrowPrimitiveType,
     T: ArrowPrimitiveType,
-    F: Fn(T::Native) -> T::Native,
+    F: Fn(S::Native) -> T::Native,
 {
     f: F,
-    _phantom: std::marker::PhantomData<T>,
+    _phantom_source: std::marker::PhantomData<S>,
+    _phantom_target: std::marker::PhantomData<T>,
 }
 
-impl<T, F> MapPrimitive<T, F>
+impl<S, F, T> MapPrimitive<S, F, T>
 where
+    S: ArrowPrimitiveType,
     T: ArrowPrimitiveType,
-    F: Fn(T::Native) -> T::Native,
+    F: Fn(S::Native) -> T::Native,
 {
     /// Create a new mapper that applies the given function to each element.
     pub fn new(f: F) -> Self {
         Self {
             f,
-            _phantom: std::marker::PhantomData,
+            _phantom_source: std::marker::PhantomData,
+            _phantom_target: std::marker::PhantomData,
         }
     }
 }
 
-impl<T, F> Transform for MapPrimitive<T, F>
+impl<S, F, T> Transform for MapPrimitive<S, F, T>
 where
+    S: ArrowPrimitiveType,
     T: ArrowPrimitiveType,
-    F: Fn(T::Native) -> T::Native,
+    F: Fn(S::Native) -> T::Native,
 {
-    type Source = PrimitiveArray<T>;
+    type Source = PrimitiveArray<S>;
     type Target = PrimitiveArray<T>;
 
-    fn transform(&self, source: &PrimitiveArray<T>) -> Result<PrimitiveArray<T>, Error> {
+    fn transform(&self, source: &PrimitiveArray<S>) -> Result<PrimitiveArray<T>, Error> {
         let result: PrimitiveArray<T> = source.iter().map(|opt| opt.map(|v| (self.f)(v))).collect();
         Ok(result)
     }
