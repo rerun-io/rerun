@@ -200,7 +200,7 @@ where
         let new_field = Arc::new(Field::new(
             "item",
             transformed.data_type().clone(),
-            source.is_nullable(),
+            transformed.is_nullable(),
         ));
 
         let (_, offsets, _, nulls) = source.clone().into_parts();
@@ -542,17 +542,54 @@ impl Transform for Flatten {
         let inner_offsets = inner_list.offsets();
         let inner_values = inner_list.values();
 
-        // Build new offsets for the flattened list
+        // Fast path: check if each outer list contains at most one inner list
+        // In this case, we can just unwrap directly
+        let mut is_trivial = true;
+        for outer_row_idx in 0..source.len() {
+            if !source.is_null(outer_row_idx) {
+                let outer_start = outer_offsets[outer_row_idx] as usize;
+                let outer_end = outer_offsets[outer_row_idx + 1] as usize;
+                let count = outer_end - outer_start;
+                if count > 1 {
+                    is_trivial = false;
+                    break;
+                }
+            }
+        }
+
+        if is_trivial {
+            // Each outer list has 0 or 1 inner lists - just unwrap
+            // Map outer offsets through inner offsets
+            let mut new_offsets = Vec::with_capacity(source.len() + 1);
+
+            for outer_row_idx in 0..=source.len() {
+                let outer_idx = outer_offsets[outer_row_idx] as usize;
+                let inner_offset = inner_offsets[outer_idx];
+                new_offsets.push(inner_offset);
+            }
+
+            let field = Arc::new(Field::new("item", inner_values.data_type().clone(), true));
+            let offsets = arrow::buffer::OffsetBuffer::new(new_offsets.into());
+
+            return Ok(ListArray::new(
+                field,
+                offsets,
+                inner_values.clone(),
+                source.nulls().cloned(),
+            ));
+        }
+
+        // General case: build new offsets and collect value ranges
         let mut new_offsets = Vec::with_capacity(source.len() + 1);
         new_offsets.push(0i32);
 
         let mut current_offset = 0i32;
 
-        // For each row in the outer list
+        // Collect ranges of values to copy (as (start, length) pairs)
+        let mut value_ranges: Vec<(usize, usize)> = Vec::new();
+
         for outer_row_idx in 0..source.len() {
-            // Check if the outer row is null
             if source.is_null(outer_row_idx) {
-                // For null rows, the offset doesn't advance
                 new_offsets.push(current_offset);
                 continue;
             }
@@ -560,32 +597,6 @@ impl Transform for Flatten {
             let outer_start = outer_offsets[outer_row_idx] as usize;
             let outer_end = outer_offsets[outer_row_idx + 1] as usize;
 
-            // For each inner list in this outer row, add up their lengths
-            let mut total_length = 0;
-            for inner_idx in outer_start..outer_end {
-                if !inner_list.is_null(inner_idx) {
-                    let inner_start = inner_offsets[inner_idx] as usize;
-                    let inner_end = inner_offsets[inner_idx + 1] as usize;
-                    total_length += (inner_end - inner_start) as i32;
-                }
-            }
-
-            current_offset += total_length;
-            new_offsets.push(current_offset);
-        }
-
-        // Now build the flattened values array
-        let mut value_slices = Vec::new();
-
-        for outer_row_idx in 0..source.len() {
-            if source.is_null(outer_row_idx) {
-                continue;
-            }
-
-            let outer_start = outer_offsets[outer_row_idx] as usize;
-            let outer_end = outer_offsets[outer_row_idx + 1] as usize;
-
-            // Collect all values from inner lists
             for inner_idx in outer_start..outer_end {
                 if !inner_list.is_null(inner_idx) {
                     let inner_start = inner_offsets[inner_idx] as usize;
@@ -593,22 +604,41 @@ impl Transform for Flatten {
                     let length = inner_end - inner_start;
 
                     if length > 0 {
-                        value_slices.push(inner_values.slice(inner_start, length));
+                        // Try to merge with previous range if contiguous
+                        if let Some((last_start, last_len)) = value_ranges.last_mut() {
+                            if *last_start + *last_len == inner_start {
+                                *last_len += length;
+                            } else {
+                                value_ranges.push((inner_start, length));
+                            }
+                        } else {
+                            value_ranges.push((inner_start, length));
+                        }
+                        current_offset += length as i32;
                     }
                 }
             }
+
+            new_offsets.push(current_offset);
         }
 
-        // Concatenate all value slices
-        let flattened_values = if value_slices.is_empty() {
-            // If there are no values, create an empty array of the same type
+        // Build flattened values by slicing larger contiguous chunks
+        let flattened_values = if value_ranges.is_empty() {
             inner_values.slice(0, 0)
+        } else if value_ranges.len() == 1 {
+            // Single contiguous range - just slice once
+            let (start, length) = value_ranges[0];
+            inner_values.slice(start, length)
         } else {
-            let refs: Vec<&dyn Array> = value_slices.iter().map(|a| a.as_ref()).collect();
+            // Multiple ranges - slice and concatenate
+            let slices: Vec<_> = value_ranges
+                .iter()
+                .map(|&(start, length)| inner_values.slice(start, length))
+                .collect();
+            let refs: Vec<&dyn Array> = slices.iter().map(|a| a.as_ref()).collect();
             crate::concat_arrays(&refs)?
         };
 
-        // Build the result ListArray
         let field = Arc::new(Field::new("item", inner_values.data_type().clone(), true));
         let offsets = arrow::buffer::OffsetBuffer::new(new_offsets.into());
 
