@@ -5,6 +5,7 @@ use re_renderer::Color32;
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
 use re_types::{AsComponents, RowId, archetypes, components::FillMode};
+use re_ui::UiExt as _;
 use re_view_spatial::{SpatialView3D, SpatialViewState, ViewEye};
 use re_viewer_context::{RecommendedView, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;
@@ -81,7 +82,6 @@ fn test_transparent_geometry<A: AsComponents>(
                         ),
                         glam::Vec3::Z,
                     ));
-                    view_state.state_3d.last_eye_interaction = Some(std::time::Instant::now());
                 }
 
                 test_context.run_with_single_view(ui, view_id);
