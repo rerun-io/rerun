@@ -1,27 +1,3 @@
-// use super::{AUTHORIZATION_KEY, TOKEN_PREFIX};
-// use crate::{Jwt, credentials::CredentialsProvider};
-// use re_log::error;
-// use std::sync::Arc;
-// use tonic::{Request, Status, metadata::errors::InvalidMetadataValue, service::Interceptor};
-
-// #[derive(Default, Clone)]
-// pub struct AuthDecorator {
-//     provider: Arc<dyn CredentialsProvider + Send + Sync>,
-// }
-
-// impl AuthDecorator {
-//     pub fn new(provider: Arc<dyn CredentialsProvider + Send + Sync>) -> Self {
-//         Self { provider }
-//     }
-// }
-
-// // Replace this with an async tower layer:
-// impl Interceptor for AuthDecorator {
-//     fn call(&mut self, req: Request<()>) -> Result<Request<()>, Status> {
-//         unimplemented!()
-//     }
-// }
-
 use super::{AUTHORIZATION_KEY, TOKEN_PREFIX};
 use crate::Jwt;
 use crate::credentials::{CredentialsProvider, StaticCredentialsProvider};

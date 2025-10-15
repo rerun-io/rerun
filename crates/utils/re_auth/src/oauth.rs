@@ -64,8 +64,6 @@ pub enum CredentialsRefreshError {
 pub async fn refresh_credentials(
     credentials: Credentials,
 ) -> Result<Credentials, CredentialsRefreshError> {
-    eprintln!("{credentials:?}");
-
     // Don't refresh unless the access token has expired
     if !credentials.access_token().is_expired() {
         re_log::debug!(
