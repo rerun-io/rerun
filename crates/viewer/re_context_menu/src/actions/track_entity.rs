@@ -1,5 +1,5 @@
 use re_types::ViewClassIdentifier;
-use re_viewer_context::{Item, SystemCommand, SystemCommandSender, ViewId};
+use re_viewer_context::{Item, SystemCommand, SystemCommandSender as _, ViewId};
 
 use crate::{ContextMenuAction, ContextMenuContext};
 
@@ -19,7 +19,7 @@ impl ContextMenuAction for TrackEntity {
             | Item::ComponentPath(_)
             | Item::InstancePath(_) => false,
             Item::DataResult(view_id, instance_path) => {
-                let mut asdasd = false;
+                let mut show = false;
 
                 if is_3d_view(ctx, view_id)
                     && ctx
@@ -27,10 +27,9 @@ impl ContextMenuAction for TrackEntity {
                         .recording()
                         .is_logged_entity(&instance_path.entity_path)
                 {
-                    asdasd = true;
+                    show = true;
                 }
-
-                asdasd
+                show
             }
         }
     }
@@ -56,17 +55,17 @@ impl ContextMenuAction for TrackEntity {
 }
 
 fn is_3d_view(ctx: &ContextMenuContext<'_>, view_id: &ViewId) -> bool {
-    let mut hmm = false;
+    let mut is_3d = false;
 
-    for asd in ctx
+    for current_views in ctx
         .viewport_blueprint
         .views
         .iter()
         .filter(|x| x.0 == view_id)
     {
-        if asd.1.class_identifier() == ViewClassIdentifier::new("3D") {
-            hmm = true
+        if current_views.1.class_identifier() == ViewClassIdentifier::new("3D") {
+            is_3d = true;
         }
     }
-    hmm
+    is_3d
 }
