@@ -168,7 +168,8 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
 // --- QueryDatasetResponse ---
 
 impl QueryDatasetResponse {
-    //TODO(RR-2650): there is no consensus about these fields and schema
+    // These columns are guaranteed to be returned by `QueryDataset`. Additional columns may also be
+    // returned.
     pub const FIELD_CHUNK_ID: &str = "chunk_id";
     pub const FIELD_CHUNK_PARTITION_ID: &str = "chunk_partition_id";
     pub const FIELD_CHUNK_LAYER_NAME: &str = "rerun_partition_layer";
@@ -266,11 +267,23 @@ impl QueryDatasetResponse {
 }
 
 impl FetchChunksRequest {
-    //TODO(RR-2650): there is no consensus about these fields and schema
+    // This is the only required column in the request.
+    pub const FIELD_CHUNK_KEY: &str = QueryDatasetResponse::FIELD_CHUNK_KEY;
+
+    //TODO(RR-2677): actually, these are also required for now.
     pub const FIELD_CHUNK_ID: &str = QueryDatasetResponse::FIELD_CHUNK_ID;
     pub const FIELD_CHUNK_PARTITION_ID: &str = QueryDatasetResponse::FIELD_CHUNK_PARTITION_ID;
     pub const FIELD_CHUNK_LAYER_NAME: &str = QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME;
-    pub const FIELD_CHUNK_KEY: &str = QueryDatasetResponse::FIELD_CHUNK_KEY;
+
+    pub fn required_column_names() -> Vec<String> {
+        vec![
+            Self::FIELD_CHUNK_KEY.to_owned(),
+            //TODO(RR-2677): remove these
+            Self::FIELD_CHUNK_ID.to_owned(),
+            Self::FIELD_CHUNK_PARTITION_ID.to_owned(),
+            Self::FIELD_CHUNK_LAYER_NAME.to_owned(),
+        ]
+    }
 
     pub fn field_chunk_id() -> Field {
         QueryDatasetResponse::field_chunk_id()

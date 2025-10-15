@@ -76,16 +76,12 @@ pub async fn simple_dataset_fetch_chunk_snapshot(fe: impl RerunCloudService) {
         .collect::<Vec<_>>()
         .await;
 
+    let required_columns = FetchChunksRequest::required_column_names();
+    let required_columns_ref = required_columns.iter().map(|s| s.as_str()).collect_vec();
     let chunk_keys = common::concat_record_batches(&chunk_info)
         .sort_rows_by(&[QueryDatasetResponse::FIELD_CHUNK_ID])
         .unwrap()
-        .filtered_columns(&[
-            QueryDatasetResponse::FIELD_CHUNK_KEY,
-            //TODO(RR-2677): remove when these columns are no longer required
-            QueryDatasetResponse::FIELD_CHUNK_ID,
-            QueryDatasetResponse::FIELD_CHUNK_PARTITION_ID,
-            QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME,
-        ]);
+        .filtered_columns(&required_columns_ref);
 
     let mut chunks = fe
         .fetch_chunks(tonic::Request::new(FetchChunksRequest {

@@ -383,16 +383,6 @@ where
         exclude_temporal_data: bool,
         query: Option<re_protos::cloud::v1alpha1::Query>,
     ) -> Result<FetchChunksResponseStream, ApiError> {
-        let fields_of_interest = [
-            QueryDatasetResponse::FIELD_CHUNK_PARTITION_ID,
-            QueryDatasetResponse::FIELD_CHUNK_ID,
-            QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME,
-            QueryDatasetResponse::FIELD_CHUNK_KEY,
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect::<Vec<_>>();
-
         let query_request = QueryDatasetRequest {
             partition_ids: vec![partition_id.into()],
             chunk_ids: vec![],
@@ -403,7 +393,7 @@ where
             exclude_temporal_data,
             query,
             scan_parameters: Some(ScanParameters {
-                columns: fields_of_interest,
+                columns: FetchChunksRequest::required_column_names(),
                 ..Default::default()
             }),
         };

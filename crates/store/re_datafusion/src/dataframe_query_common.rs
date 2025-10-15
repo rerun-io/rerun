@@ -23,10 +23,10 @@ use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
+use re_protos::cloud::v1alpha1::FetchChunksRequest;
 use re_protos::{
     cloud::v1alpha1::{
-        GetDatasetSchemaRequest, QueryDatasetRequest, QueryDatasetResponse,
-        ScanPartitionTableResponse,
+        GetDatasetSchemaRequest, QueryDatasetRequest, ScanPartitionTableResponse,
         ext::{Query, QueryLatestAt, QueryRange},
     },
     common::v1alpha1::ext::ScanParameters,
@@ -109,16 +109,6 @@ impl DataframeQueryTableProvider {
 
         let query = query_from_query_expression(query_expression);
 
-        let fields_of_interest = [
-            QueryDatasetResponse::FIELD_CHUNK_PARTITION_ID,
-            QueryDatasetResponse::FIELD_CHUNK_ID,
-            QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME,
-            QueryDatasetResponse::FIELD_CHUNK_KEY,
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect::<Vec<_>>();
-
         let dataset_query = QueryDatasetRequest {
             partition_ids: partition_ids
                 .iter()
@@ -136,7 +126,7 @@ impl DataframeQueryTableProvider {
             query: Some(query.into()),
             scan_parameters: Some(
                 ScanParameters {
-                    columns: fields_of_interest,
+                    columns: FetchChunksRequest::required_column_names(),
                     ..Default::default()
                 }
                 .into(),
