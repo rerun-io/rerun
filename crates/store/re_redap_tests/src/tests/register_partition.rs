@@ -1,46 +1,41 @@
 #![expect(clippy::unwrap_used)]
 
 use futures::TryStreamExt as _;
-use itertools::{Itertools as _, multizip};
-
-use url::Url;
+use itertools::Itertools as _;
 
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::{
     cloud::v1alpha1::{
-        CreateDatasetEntryRequest, DataSource, DataSourceKind, ScanDatasetManifestRequest,
-        ScanDatasetManifestResponse, ScanPartitionTableRequest, ScanPartitionTableResponse,
+        CreateDatasetEntryRequest, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
+        ScanPartitionTableRequest, ScanPartitionTableResponse,
         rerun_cloud_service_server::RerunCloudService,
     },
     headers::RerunHeadersInjectorExt as _,
 };
 
-use crate::tests::common::register_with_dataset_name;
-use crate::{RecordBatchExt as _, create_simple_recording};
+use super::common::{DataSourcesDefinition, LayerDefinition, register_with_dataset_name};
+use crate::RecordBatchExt as _;
 
 pub async fn register_and_scan_simple_dataset(fe: impl RerunCloudService) {
-    let tuid_prefix1 = 1;
-    let partition1_path = create_simple_recording(
-        tuid_prefix1,
-        "my_partition_id1",
-        &["my/entity", "my/other/entity"],
-    )
-    .unwrap();
-    let partition1_url = Url::from_file_path(partition1_path.as_path()).unwrap();
+    let mut data_sources_def = DataSourcesDefinition::new([
+        LayerDefinition {
+            partition_id: "my_partition_id1",
+            layer_name: None,
+            entity_paths: &["my/entity", "my/other/entity"],
+        },
+        LayerDefinition {
+            partition_id: "my_partition_id2",
+            layer_name: None,
+            entity_paths: &["my/entity"],
+        },
+        LayerDefinition {
+            partition_id: "my_partition_id3",
+            layer_name: None,
+            entity_paths: &["my/entity", "another/one", "yet/another/one"],
+        },
+    ]);
 
-    let tuid_prefix2 = 2;
-    let partition2_path =
-        create_simple_recording(tuid_prefix2, "my_partition_id2", &["my/entity"]).unwrap();
-    let partition2_url = Url::from_file_path(partition2_path.as_path()).unwrap();
-
-    let tuid_prefix3 = 3;
-    let partition3_path = create_simple_recording(
-        tuid_prefix3,
-        "my_partition_id3",
-        &["my/entity", "another/one", "yet/another/one"],
-    )
-    .unwrap();
-    let partition3_url = Url::from_file_path(partition3_path.as_path()).unwrap();
+    data_sources_def.generate_simple();
 
     let dataset_name = "my_dataset1";
     fe.create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
@@ -50,41 +45,14 @@ pub async fn register_and_scan_simple_dataset(fe: impl RerunCloudService) {
     .await
     .unwrap();
 
-    register_with_dataset_name(
-        &fe,
-        dataset_name,
-        vec![
-            DataSource {
-                storage_url: Some(partition1_url.to_string()),
-                layer: None,
-                typ: DataSourceKind::Rrd as i32,
-            }, //
-            DataSource {
-                storage_url: Some(partition2_url.to_string()),
-                layer: None,
-                typ: DataSourceKind::Rrd as i32,
-            },
-            DataSource {
-                storage_url: Some(partition3_url.to_string()),
-                layer: None,
-                typ: DataSourceKind::Rrd as i32,
-            },
-        ],
-    )
-    .await;
+    register_with_dataset_name(&fe, dataset_name, data_sources_def.to_data_sources()).await;
 
     scan_partition_table_and_snapshot(&fe, dataset_name, "simple").await;
     scan_dataset_manifest_and_snapshot(&fe, dataset_name, "simple").await;
 }
 
 pub async fn register_and_scan_simple_dataset_with_layers(fe: impl RerunCloudService) {
-    struct LayerDefinition {
-        partition_id: &'static str,
-        layer_name: Option<&'static str>,
-        entity_paths: &'static [&'static str],
-    }
-
-    let layers_to_register = vec![
+    let mut data_sources_def = DataSourcesDefinition::new([
         LayerDefinition {
             partition_id: "partition1",
             layer_name: None,
@@ -110,23 +78,9 @@ pub async fn register_and_scan_simple_dataset_with_layers(fe: impl RerunCloudSer
             layer_name: None,
             entity_paths: &["i/am/alone"],
         },
-    ];
+    ]);
 
-    let paths = layers_to_register
-        .iter()
-        .enumerate()
-        .map(|(tuid_prefix, l)| {
-            create_simple_recording(tuid_prefix as _, l.partition_id, l.entity_paths).unwrap()
-        })
-        .collect_vec();
-
-    let data_sources = multizip((&layers_to_register, &paths))
-        .map(|(l, p)| DataSource {
-            storage_url: Some(Url::from_file_path(p.as_path()).unwrap().to_string()),
-            layer: l.layer_name.map(|l| l.to_owned()),
-            typ: DataSourceKind::Rrd as i32,
-        })
-        .collect_vec();
+    data_sources_def.generate_simple();
 
     let dataset_name = "dataset_with_layers";
     fe.create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
@@ -136,7 +90,7 @@ pub async fn register_and_scan_simple_dataset_with_layers(fe: impl RerunCloudSer
     .await
     .unwrap();
 
-    register_with_dataset_name(&fe, dataset_name, data_sources).await;
+    register_with_dataset_name(&fe, dataset_name, data_sources_def.to_data_sources()).await;
 
     scan_partition_table_and_snapshot(&fe, dataset_name, "simple_with_layers").await;
     scan_dataset_manifest_and_snapshot(&fe, dataset_name, "simple_with_layers").await;

@@ -1,9 +1,10 @@
+use crate::{RecordBatchExt as _, TempPath, create_simple_recording};
 use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
-
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
+use re_protos::cloud::v1alpha1::DataSourceKind;
 use re_protos::{
     cloud::v1alpha1::{
         DataSource, QueryTasksOnCompletionRequest, RegisterWithDatasetRequest,
@@ -12,9 +13,9 @@ use re_protos::{
     common::v1alpha1::{IfDuplicateBehavior, TaskId},
     headers::RerunHeadersInjectorExt as _,
 };
+use url::Url;
 
-use crate::RecordBatchExt as _;
-
+#[expect(dead_code)]
 pub async fn register_with_dataset_id(
     fe: &impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
     dataset_id: EntryId,
@@ -117,6 +118,64 @@ async fn register_with_dataset(
     }
 }
 
+// ---
+
+pub struct LayerDefinition {
+    pub partition_id: &'static str,
+    pub layer_name: Option<&'static str>,
+    pub entity_paths: &'static [&'static str],
+}
+
+/// Utility to simplify the creation of data sources to register with a dataset.
+pub struct DataSourcesDefinition {
+    layers: Vec<LayerDefinition>,
+    paths: Option<Vec<TempPath>>,
+}
+
+impl DataSourcesDefinition {
+    pub fn new(layers: impl IntoIterator<Item = LayerDefinition>) -> Self {
+        Self {
+            layers: layers.into_iter().collect(),
+            paths: None,
+        }
+    }
+
+    pub fn generate_simple(&mut self) {
+        let paths = self
+            .layers
+            .iter()
+            .enumerate()
+            .map(|(tuid_prefix, l)| {
+                create_simple_recording(
+                    tuid_prefix.saturating_add(1) as _,
+                    l.partition_id,
+                    l.entity_paths,
+                )
+                .unwrap()
+            })
+            .collect_vec();
+        self.paths = Some(paths);
+    }
+
+    pub fn to_data_sources(&self) -> Vec<DataSource> {
+        let Some(paths) = &self.paths else {
+            panic!("generate_XXX() must be called before to_data_sources()");
+        };
+
+        self.layers
+            .iter()
+            .zip(paths.iter())
+            .map(|(l, p)| DataSource {
+                storage_url: Some(Url::from_file_path(p.as_path()).unwrap().to_string()),
+                layer: l.layer_name.map(|l| l.to_owned()),
+                typ: DataSourceKind::Rrd as i32,
+            })
+            .collect()
+    }
+}
+
+// ---
+
 /// Concatenate record batches.
 ///
 /// This function implicitly tests the following properties:
@@ -133,10 +192,4 @@ pub fn concat_record_batches(record_batches: &[RecordBatch]) -> RecordBatch {
     .expect("record batches should be concatenable")
     .auto_sort_rows()
     .expect("record batches should be sortable")
-}
-
-pub fn rrd_datasource(storage_url: impl AsRef<str>) -> DataSource {
-    re_protos::cloud::v1alpha1::ext::DataSource::new_rrd(storage_url)
-        .unwrap()
-        .into()
 }

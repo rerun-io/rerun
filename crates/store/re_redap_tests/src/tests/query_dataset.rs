@@ -1,5 +1,4 @@
 use futures::StreamExt as _;
-use url::Url;
 
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::{
@@ -10,8 +9,10 @@ use re_protos::{
     headers::RerunHeadersInjectorExt as _,
 };
 
-use crate::tests::common;
-use crate::{RecordBatchExt as _, create_simple_recording};
+use crate::RecordBatchExt as _;
+use crate::tests::common::{
+    DataSourcesDefinition, LayerDefinition, concat_record_batches, register_with_dataset_name,
+};
 
 pub async fn query_empty_dataset(fe: impl RerunCloudService) {
     let dataset_name = "dataset";
@@ -35,34 +36,25 @@ pub async fn query_empty_dataset(fe: impl RerunCloudService) {
 }
 
 pub async fn query_simple_dataset(fe: impl RerunCloudService) {
-    let tuid_prefix1 = 1;
-    let partition1_path = create_simple_recording(
-        tuid_prefix1,
-        "my_partition_id1",
-        &["my/entity", "my/other/entity"],
-    )
-    .unwrap();
-    let partition1_url = Url::from_file_path(partition1_path.as_path()).unwrap();
+    let mut data_sources_def = DataSourcesDefinition::new([
+        LayerDefinition {
+            partition_id: "my_partition_id1",
+            layer_name: None,
+            entity_paths: &["my/entity", "my/other/entity"],
+        },
+        LayerDefinition {
+            partition_id: "my_partition_id2",
+            layer_name: None,
+            entity_paths: &["my/entity"],
+        },
+        LayerDefinition {
+            partition_id: "my_partition_id3",
+            layer_name: None,
+            entity_paths: &["my/entity", "another/one", "yet/another/one"],
+        },
+    ]);
 
-    let tuid_prefix2 = 2;
-    let partition2_path =
-        create_simple_recording(tuid_prefix2, "my_partition_id2", &["my/entity"]).unwrap();
-    let partition2_url = Url::from_file_path(partition2_path.as_path()).unwrap();
-
-    let tuid_prefix3 = 3;
-    let partition3_path = create_simple_recording(
-        tuid_prefix3,
-        "my_partition_id3",
-        &["my/entity", "another/one", "yet/another/one"],
-    )
-    .unwrap();
-    let partition3_url = Url::from_file_path(partition3_path.as_path()).unwrap();
-
-    let partitions = vec![
-        common::rrd_datasource(partition1_url),
-        common::rrd_datasource(partition2_url),
-        common::rrd_datasource(partition3_url),
-    ];
+    data_sources_def.generate_simple();
 
     let dataset_name = "dataset";
 
@@ -74,7 +66,7 @@ pub async fn query_simple_dataset(fe: impl RerunCloudService) {
     .expect("Failed to create dataset");
 
     // now register partitions with the dataset
-    common::register_with_dataset_name(&fe, dataset_name, partitions).await;
+    register_with_dataset_name(&fe, dataset_name, data_sources_def.to_data_sources()).await;
 
     let requests = vec![
         (QueryDatasetRequest::default(), "default"),
@@ -173,7 +165,7 @@ async fn query_dataset_snapshot(
         .collect::<Vec<_>>()
         .await;
 
-    let merged_chunk_info = common::concat_record_batches(&chunk_info);
+    let merged_chunk_info = concat_record_batches(&chunk_info);
 
     // these are the only required columns
     let required_field = QueryDatasetResponse::fields();
