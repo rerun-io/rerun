@@ -1,3 +1,5 @@
+#![expect(clippy::cast_possible_wrap)]
+
 //! Simple benchmark suite to keep track of how the different removal methods for [`VecDeque`]
 //! behave in practice.
 

@@ -39,6 +39,7 @@ workos = [
 re_log.workspace = true
 
 jsonwebtoken.workspace = true
+saturating_cast.workspace = true
 thiserror.workspace = true
 tonic.workspace = true
 

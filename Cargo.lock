@@ -8357,6 +8357,7 @@ dependencies = [
  "jsonwebtoken",
  "rand 0.8.5",
  "re_log",
+ "saturating_cast",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
@@ -8497,6 +8498,7 @@ dependencies = [
  "re_tracing",
  "re_types",
  "re_types_core",
+ "saturating_cast",
  "similar-asserts",
  "tap",
  "thiserror 1.0.69",
@@ -8825,6 +8827,7 @@ dependencies = [
  "re_tracing",
  "re_types_core",
  "re_uri",
+ "saturating_cast",
  "serde",
  "similar-asserts",
  "thiserror 1.0.69",
@@ -9045,6 +9048,7 @@ dependencies = [
  "re_ros_msg",
  "re_tracing",
  "re_types",
+ "saturating_cast",
  "serde",
  "serde_bytes",
  "thiserror 1.0.69",
@@ -9063,6 +9067,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_tracing",
+ "saturating_cast",
  "smallvec",
  "sysinfo",
  "wasm-bindgen",
@@ -9842,6 +9847,7 @@ dependencies = [
  "re_rav1d",
  "re_span",
  "re_tracing",
+ "saturating_cast",
  "serde",
  "smallvec",
  "thiserror 1.0.69",
@@ -10020,6 +10026,7 @@ dependencies = [
  "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "saturating_cast",
  "serde",
  "smallvec",
  "thiserror 1.0.69",
@@ -10957,6 +10964,12 @@ checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
 ]
+
+[[package]]
+name = "saturating_cast"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3fc4972f129a0ea378b69fa7c186d63255606e362ad00795f00b869dea5265eb"
 
 [[package]]
 name = "schannel"

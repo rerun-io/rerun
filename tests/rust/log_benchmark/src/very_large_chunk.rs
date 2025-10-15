@@ -1,3 +1,5 @@
+#![expect(clippy::cast_possible_wrap)]
+
 use rerun::{Points3D, TimeColumn};
 
 const NUM_TIMESTAMPS: usize = 4_000;

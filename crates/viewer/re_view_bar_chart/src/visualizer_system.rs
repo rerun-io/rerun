@@ -107,6 +107,7 @@ impl TypedComponentFallbackProvider<components::TensorData> for BarChartVisualiz
             let shape = tensor.shape();
             if let Some(&length) = shape.first() {
                 // Create a sequence from 0 to length-1
+                #[expect(clippy::cast_possible_wrap)]
                 let indices: Vec<i64> = (0..length as i64).collect();
                 let tensor_data = datatypes::TensorData::new(
                     vec![length],
