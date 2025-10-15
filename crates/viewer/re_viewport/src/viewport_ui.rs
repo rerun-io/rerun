@@ -117,6 +117,10 @@ impl ViewportUi {
                 }
             });
 
+            let mut hover_rects = Vec::new();
+            let mut selection_rects = Vec::new();
+            let mut drop_target_rects = Vec::new();
+
             // Outline hovered & selected tiles:
             for contents in blueprint.contents_iter() {
                 let tile_id = contents.as_tile_id();
@@ -155,16 +159,6 @@ impl ViewportUi {
                         Self::handle_drop_entities_to_view(ctx, view_blueprint, dragged_payload)
                     };
 
-                    let stroke = if should_display_drop_destination_frame {
-                        tokens.drop_target_container_stroke
-                    } else if hovered {
-                        ui.ctx().hover_stroke()
-                    } else if selected {
-                        ui.ctx().selection_stroke()
-                    } else {
-                        continue;
-                    };
-
                     if matches!(contents, Contents::View(_))
                         && !should_display_drop_destination_frame
                     {
@@ -172,25 +166,52 @@ impl ViewportUi {
                         continue;
                     }
 
-                    // We want the rectangle to be on top of everything in the viewport,
-                    // including stuff in "zoom-pan areas", like we use in the graph view.
-                    let top_layer_id =
-                        egui::LayerId::new(ui.layer_id().order, ui.id().with("child_id"));
-                    ui.ctx().set_sublayer(ui.layer_id(), top_layer_id); // Make sure it is directly on top of the ui layer
-
-                    // We paint the stroke on the inside so the panel-resize lines don't cover the highlight rectangle.
-                    let painter = ui.painter().clone().with_layer_id(top_layer_id);
-                    painter.rect_stroke(rect, 0.0, stroke, egui::StrokeKind::Inside);
-
                     if should_display_drop_destination_frame {
-                        painter.rect_filled(
-                            rect.shrink(stroke.width),
-                            0.0,
-                            stroke.color.gamma_multiply(0.1),
-                        );
+                        drop_target_rects.push(rect);
+                    } else if hovered {
+                        hover_rects.push(rect);
+                    } else if selected {
+                        selection_rects.push(rect);
                     }
                 }
             }
+
+            // We want the rectangle to be on top of everything in the viewport,
+            // including stuff in "zoom-pan areas", like we use in the graph view.
+            let top_layer_id = egui::LayerId::new(ui.layer_id().order, ui.id().with("child_id"));
+            ui.ctx().set_sublayer(ui.layer_id(), top_layer_id); // Make sure it is directly on top of the ui layer
+            let painter = ui.painter().clone().with_layer_id(top_layer_id);
+
+            let selection_stroke = ui.ctx().selection_stroke();
+            for rect in selection_rects {
+                painter.rect_stroke(rect, 0.0, selection_stroke, egui::StrokeKind::Inside);
+            }
+
+            let hover_stroke = ui.ctx().hover_stroke();
+            for rect in hover_rects {
+                painter.rect_stroke(rect, 0.0, hover_stroke, egui::StrokeKind::Inside);
+            }
+
+            let drop_target_stroke = tokens.drop_target_container_stroke;
+            for rect in drop_target_rects {
+                painter.rect_stroke(rect, 0.0, drop_target_stroke, egui::StrokeKind::Inside);
+                painter.rect_filled(
+                    rect.shrink(drop_target_stroke.width),
+                    0.0,
+                    drop_target_stroke.color.gamma_multiply(0.1),
+                );
+            }
+
+            // // We paint the stroke on the inside so the panel-resize lines don't cover the highlight rectangle.
+            // painter.rect_stroke(rect, 0.0, stroke, egui::StrokeKind::Inside);
+
+            // if should_display_drop_destination_frame {
+            //     painter.rect_filled(
+            //         rect.shrink(stroke.width),
+            //         0.0,
+            //         stroke.color.gamma_multiply(0.1),
+            //     );
+            // }
 
             if blueprint.maximized.is_none() {
                 // Detect if the user has moved a tab or similar.
