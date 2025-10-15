@@ -226,7 +226,11 @@ where
                 })?;
 
         let transformed = self.transform.transform(downcast)?;
-        let new_field = Arc::new(Field::new("item", transformed.data_type().clone(), true));
+        let new_field = Arc::new(Field::new(
+            "item",
+            transformed.data_type().clone(),
+            source.is_nullable(),
+        ));
 
         let (_, offsets, _, nulls) = source.clone().into_parts();
         Ok(ListArray::new(
