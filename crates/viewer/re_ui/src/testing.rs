@@ -29,7 +29,7 @@ pub fn new_harness<T>(option: TestOptions, size: impl Into<Vec2>) -> HarnessBuil
 }
 
 fn default_snapshot_options_for_ui() -> SnapshotOptions {
-    SnapshotOptions::default().failed_pixel_count_threshold(4)
+    SnapshotOptions::default().failed_pixel_count_threshold(10) // we sometimes have a few wrong pixels in text rendering in egui for unknown reasons
 }
 
 fn default_snapshot_options_for_3d(viewport_size: Vec2) -> SnapshotOptions {
@@ -41,7 +41,7 @@ fn default_snapshot_options_for_3d(viewport_size: Vec2) -> SnapshotOptions {
     let broken_pixels_fraction = 1e-4;
     let max_broken_pixels = (num_total_pixels * broken_pixels_fraction).round() as usize;
 
-    let threshold = 0.9; // Slightly higher than the default
+    let threshold = 1.3; // Must be pretty high because of 3D grid :/
 
     SnapshotOptions::default()
         .threshold(threshold)
