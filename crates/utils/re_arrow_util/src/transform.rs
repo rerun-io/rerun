@@ -354,7 +354,7 @@ impl Transform for StructToFixedList {
 
         // Concatenate all slices into a single array
         let refs: Vec<&dyn Array> = concatenated_arrays.iter().map(|a| a.as_ref()).collect();
-        let values = re_arrow_util::concat_arrays(&refs)?;
+        let values = crate::concat_arrays(&refs)?;
 
         let field = Arc::new(Field::new("item", element_type, true));
 
@@ -612,7 +612,7 @@ impl Transform for Flatten {
             inner_values.slice(0, 0)
         } else {
             let refs: Vec<&dyn Array> = value_slices.iter().map(|a| a.as_ref()).collect();
-            re_arrow_util::concat_arrays(&refs)?
+            crate::concat_arrays(&refs)?
         };
 
         // Build the result ListArray

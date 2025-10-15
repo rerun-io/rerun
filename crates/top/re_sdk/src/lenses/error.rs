@@ -5,7 +5,7 @@ use arrow::error::ArrowError;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    Transform(#[from] super::transform::Error),
+    Transform(#[from] re_arrow_util::transform::Error),
 
     #[error(transparent)]
     Arrow(#[from] ArrowError),

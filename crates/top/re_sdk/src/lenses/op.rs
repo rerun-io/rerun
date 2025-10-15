@@ -15,10 +15,8 @@ use re_chunk::{
     },
 };
 
-use super::{
-    Error,
-    transform::{GetField, MapList, Transform as _},
-};
+use super::Error;
+use re_arrow_util::transform::{GetField, MapList, Transform as _};
 
 /// Extracts a specific field from a struct component within a `ListArray`.
 #[derive(Debug)]

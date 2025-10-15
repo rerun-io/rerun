@@ -10,10 +10,8 @@ use re_chunk::{Chunk, ChunkComponents, ChunkId, ComponentIdentifier, EntityPath}
 use re_log_types::EntityPathFilter;
 use re_types::ComponentDescriptor;
 
-use super::{
-    Error, op,
-    transform::{Flatten, Transform as _},
-};
+use super::{Error, op};
+use re_arrow_util::transform::{Flatten, Transform as _};
 
 pub struct InputColumn {
     pub entity_path_filter: EntityPathFilter,
