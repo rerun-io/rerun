@@ -2,7 +2,6 @@
 
 use egui::Vec2;
 
-use egui_kittest::{OsThreshold, SnapshotOptions};
 use re_blueprint_tree::BlueprintTree;
 use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
@@ -92,12 +91,7 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
             });
 
         harness.run();
-        harness.snapshot_options(
-            snapshot_name,
-            // @wumpf's Windows machine needs a bit of a higher threshold to pass this test due to discrepancies in text rendering.
-            // (Software Rasterizer on CI seems fine with the default).
-            &SnapshotOptions::new().failed_pixel_count_threshold(OsThreshold::new(0).windows(15)),
-        );
+        harness.snapshot(snapshot_name);
     }
 }
 
@@ -214,12 +208,5 @@ fn run_blueprint_panel_and_save_snapshot(
         });
 
     harness.run();
-    harness.snapshot_options(
-        snapshot_name,
-        // @wumpf's Windows machine needs a bit of a higher threshold to pass this test due to discrepancies in text rendering.
-        // (Software Rasterizer on CI seems fine with the default).
-        &SnapshotOptions::new()
-            .threshold(OsThreshold::new(SnapshotOptions::default().threshold).windows(0.8))
-            .failed_pixel_count_threshold(OsThreshold::new(0).windows(15)),
-    );
+    harness.snapshot(snapshot_name);
 }

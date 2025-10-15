@@ -1,7 +1,7 @@
 #![cfg(feature = "testing")]
 
 use egui::{Modifiers, Vec2};
-use egui_kittest::{OsThreshold, SnapshotOptions, kittest::Queryable as _};
+use egui_kittest::kittest::Queryable as _;
 use re_blueprint_tree::BlueprintTree;
 use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
@@ -91,14 +91,7 @@ fn test_range_selection_in_blueprint_tree() {
 
     harness.run();
 
-    harness.snapshot_options(
-        "range_selection_in_blueprint_tree",
-        // @wumpf's Windows machine needs a bit of a higher threshold to pass this test due to discrepancies in text rendering.
-        // (Software Rasterizer on CI seems fine with the default).
-        &SnapshotOptions::new()
-            .threshold(OsThreshold::new(SnapshotOptions::default().threshold).windows(0.8))
-            .failed_pixel_count_threshold(OsThreshold::new(0).windows(10)),
-    );
+    harness.snapshot("range_selection_in_blueprint_tree");
 }
 
 fn add_point_to_chunk_builder(builder: ChunkBuilder) -> ChunkBuilder {
