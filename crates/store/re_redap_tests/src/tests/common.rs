@@ -1,4 +1,4 @@
-use crate::{RecordBatchExt as _, TempPath, create_simple_recording};
+use crate::{RecordBatchExt as _, TempPath, create_nasty_recording, create_simple_recording};
 use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
@@ -147,6 +147,23 @@ impl DataSourcesDefinition {
             .enumerate()
             .map(|(tuid_prefix, l)| {
                 create_simple_recording(
+                    tuid_prefix.saturating_add(1) as _,
+                    l.partition_id,
+                    l.entity_paths,
+                )
+                .unwrap()
+            })
+            .collect_vec();
+        self.paths = Some(paths);
+    }
+
+    pub fn generate_nasty(&mut self) {
+        let paths = self
+            .layers
+            .iter()
+            .enumerate()
+            .map(|(tuid_prefix, l)| {
+                create_nasty_recording(
                     tuid_prefix.saturating_add(1) as _,
                     l.partition_id,
                     l.entity_paths,

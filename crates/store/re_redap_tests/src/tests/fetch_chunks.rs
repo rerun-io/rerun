@@ -1,5 +1,6 @@
 use futures::StreamExt as _;
 use itertools::Itertools as _;
+use std::collections::HashSet;
 
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_protos::{
@@ -7,8 +8,11 @@ use re_protos::{
         CreateDatasetEntryRequest, FetchChunksRequest, QueryDatasetResponse,
         ext::QueryDatasetRequest, rerun_cloud_service_server::RerunCloudService,
     },
+    common::v1alpha1::ext::ScanParameters,
     headers::RerunHeadersInjectorExt as _,
 };
+use re_tuid::Tuid;
+use re_types_core::Loggable as _;
 
 use crate::RecordBatchExt as _;
 use crate::tests::common::{
@@ -100,4 +104,177 @@ pub async fn simple_dataset_fetch_chunk_snapshot(fe: impl RerunCloudService) {
     let printed = chunks.iter().map(|chunk| format!("{chunk:240}")).join("\n");
 
     insta::assert_snapshot!("simple_dataset_fetch_chunk", printed);
+}
+
+/// This test runs a `FetchChunks` spanning multiple datasets and ensures all requested chunks
+/// are successfully returned.
+pub async fn multi_dataset_fetch_chunk_completeness(fe: impl RerunCloudService) {
+    //
+    // Create first dataset
+    //
+
+    let mut data_sources_def_1 = DataSourcesDefinition::new([
+        LayerDefinition {
+            partition_id: "my_partition_id1",
+            layer_name: None,
+            entity_paths: &["my/entity", "my/other/entity"],
+        },
+        LayerDefinition {
+            partition_id: "my_partition_id2",
+            layer_name: None,
+            entity_paths: &["my/entity"],
+        },
+        LayerDefinition {
+            partition_id: "my_partition_id3",
+            layer_name: None,
+            entity_paths: &["my/entity", "another/one", "yet/another/one"],
+        },
+    ]);
+    data_sources_def_1.generate_simple();
+
+    let dataset_name_1 = "dataset_1";
+    fe.create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
+        name: Some(dataset_name_1.to_owned()),
+        id: None,
+    }))
+    .await
+    .expect("Failed to create dataset");
+
+    // now register partitions with the dataset
+    register_with_dataset_name(&fe, dataset_name_1, data_sources_def_1.to_data_sources()).await;
+
+    //
+    // Create a second dataset
+    //
+
+    let mut data_sources_def_2 = DataSourcesDefinition::new([
+        LayerDefinition {
+            partition_id: "my_partition_id1",
+            layer_name: None,
+            entity_paths: &["my/entity", "my/other/entity"],
+        },
+        LayerDefinition {
+            partition_id: "my_partition_id2",
+            layer_name: None,
+            entity_paths: &["my/other/entity"],
+        },
+    ]);
+    data_sources_def_2.generate_nasty();
+
+    let dataset_name_2 = "dataset_2";
+    fe.create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
+        name: Some(dataset_name_2.to_owned()),
+        id: None,
+    }))
+    .await
+    .expect("Failed to create dataset");
+
+    // now register partitions with the dataset
+    register_with_dataset_name(&fe, dataset_name_2, data_sources_def_2.to_data_sources()).await;
+
+    //
+    // Query some chunks from dataset 1
+    //
+
+    let mut chunk_info_1 = fe
+        .query_dataset(
+            tonic::Request::new(
+                QueryDatasetRequest {
+                    scan_parameters: Some(ScanParameters {
+                        // TODO(RR-2677): when `required_column_names` contains only the chunk key,
+                        // the chunk id will have to be added here
+                        columns: FetchChunksRequest::required_column_names(),
+                        ..Default::default()
+                    }),
+                    entity_paths: vec!["my/entity".into()],
+                    select_all_entity_paths: false,
+                    ..Default::default()
+                }
+                .into(),
+            )
+            .with_entry_name(dataset_name_1)
+            .unwrap(),
+        )
+        .await
+        .unwrap()
+        .into_inner()
+        .flat_map(|resp| futures::stream::iter(resp.unwrap().data))
+        .map(|dfp| dfp.decode().unwrap())
+        .collect::<Vec<_>>()
+        .await;
+
+    //
+    // Query some chunks from dataset 2
+    //
+
+    let chunk_info_2 = fe
+        .query_dataset(
+            tonic::Request::new(
+                QueryDatasetRequest {
+                    scan_parameters: Some(ScanParameters {
+                        columns: FetchChunksRequest::required_column_names(),
+                        ..Default::default()
+                    }),
+                    entity_paths: vec!["my/other/entity".into()],
+                    select_all_entity_paths: false,
+                    ..Default::default()
+                }
+                .into(),
+            )
+            .with_entry_name(dataset_name_1)
+            .unwrap(),
+        )
+        .await
+        .unwrap()
+        .into_inner()
+        .flat_map(|resp| futures::stream::iter(resp.unwrap().data))
+        .map(|dfp| dfp.decode().unwrap())
+        .collect::<Vec<_>>()
+        .await;
+
+    //
+    // Request all chunks.
+    //
+
+    chunk_info_1.extend(chunk_info_2);
+    let chunk_info = concat_record_batches(&chunk_info_1);
+
+    let chunks = fe
+        .fetch_chunks(tonic::Request::new(FetchChunksRequest {
+            chunk_infos: vec![chunk_info.encode().unwrap()],
+        }))
+        .await
+        .unwrap()
+        .into_inner()
+        .flat_map(|resp| futures::stream::iter(resp.unwrap().chunks))
+        .map(|msg| {
+            re_chunk::Chunk::from_arrow_msg(
+                &re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&msg).unwrap(),
+            )
+        })
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+
+    //
+    // Check we have everything.
+    //
+
+    let requested_ids = Tuid::from_arrow(
+        chunk_info
+            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
+            .unwrap(),
+    )
+    .unwrap()
+    .into_iter()
+    .collect::<HashSet<_>>();
+
+    let received_ids = chunks
+        .into_iter()
+        .map(|chunk| chunk.id().as_tuid())
+        .collect::<HashSet<_>>();
+
+    assert_eq!(requested_ids, received_ids);
 }

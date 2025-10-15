@@ -47,6 +47,7 @@ define_redap_tests! {
     dataset_schema::empty_dataset_schema,
     dataset_schema::simple_dataset_schema,
     entries_table::list_entries_table,
+    fetch_chunks::multi_dataset_fetch_chunk_completeness,
     fetch_chunks::simple_dataset_fetch_chunk_snapshot,
     query_dataset::query_dataset_should_fail,
     query_dataset::query_empty_dataset,
