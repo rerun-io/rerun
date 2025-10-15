@@ -4,7 +4,7 @@
 //!
 //! ### Transform frames
 //!
-//! A transform frame is a geometric reference frame that may be connected via a affine transform to another reference frame.
+//! A transform frame is a geometric reference frame that may be connected via an affine transform to another reference frame.
 //! For instance, the transform frame of a robot body may be connected to the transform frame of the robot's arm
 //! via a translation & rotation.
 //!
@@ -19,7 +19,7 @@
 //!
 //! #### Entity relationship & built-in transform frames
 //!
-//! TODO(RR-2487): Most things in this paragraph are planned but yet implemented.
+//! TODO(RR-2487): Most things in this paragraph are planned but not yet implemented.
 //!
 //! Every entity is associated with a transform frame.
 //! The transform frame can be set with the `CoordinateFrame` archetype.
@@ -35,14 +35,14 @@
 //!
 //! Example:
 //! Given an entity hierarchy:
-//! ```
+//! ```raw
 //! world
 //! |-- robot
 //! |   |-- left_arm
 //! |   |-- right_arm
 //! ```
 //! Without setting any transform frames, the implicit transform frames would be:
-//! ```
+//! ```raw
 //! world <=> rerun_tf#/world
 //! world/robot <=> rerun_tf#/world/robot
 //! world/robot/left_arm <=> rerun_tf#/world/robot/left_arm
@@ -50,7 +50,7 @@
 //! ```
 //! All of these transform frames are automatically connected via an identity transform.
 //! Now we change the transform frame `world/robot` & `world/robot/left_arm`:
-//! ```
+//! ```raw
 //! world <=> rerun_tf#/world
 //! world/robot <=> robot_frame
 //! world/robot/left_arm <=> robot_left_arm
@@ -63,7 +63,7 @@
 //! ```
 //!
 //!
-//! ### Instances poses
+//! ### Instance poses
 //!
 //! Instance poses (or just poses) define a transform on top of a frame which are independent of the
 //! frame graph structure and are not propagated through the transform tree.
