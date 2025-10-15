@@ -20,9 +20,9 @@ use vec1::smallvec_v1::SmallVec1;
 
 use crate::component_type_info::TransformComponentTypeInfo;
 
-/// Resolves all transform components at a given entity to an affine transform.
+/// Resolves all transform relationship defining components to affine transforms for fast lookup.
 ///
-/// It only handles resulting transforms individually to each entity, not how these transforms propagate in the tree.
+/// It only handles resulting transforms individually to each frame connection, not how these transforms propagate in the tree.
 /// For transform tree propagation see [`crate::TransformForest`].
 ///
 /// There are different kinds of transforms handled here:
@@ -59,8 +59,9 @@ bitflags::bitflags! {
     /// Flags for the different kinds of independent transforms that the transform cache handles.
     #[derive(Debug, Clone, Copy)]
     pub struct TransformAspect: u8 {
-        /// The entity has a tree transform, i.e. any non-style component of [`archetypes::Transform3D`].
-        const Tree = 1 << 0;
+        /// The entity defines one of more frame relationships, i.e. any non-style component of [`archetypes::Transform3D`].
+        // TODO(RR-2511): Add other components here.
+        const Frame = 1 << 0;
 
         /// The entity has instance poses, i.e. any non-style component of [`archetypes::InstancePoses3D`].
         const Pose = 1 << 1;
@@ -79,7 +80,7 @@ impl TransformAspect {
         let component_info = TransformComponentTypeInfo::get();
 
         if component_info.transform.contains(&component_type) {
-            Self::Tree
+            Self::Frame
         } else if component_info.pose.contains(&component_type) {
             Self::Pose
         } else if component_info.pinhole.contains(&component_type) {
@@ -492,7 +493,7 @@ impl TransformResolutionCache {
                 TimeInt::MIN,
             );
 
-            if aspects.contains(TransformAspect::Tree)
+            if aspects.contains(TransformAspect::Frame)
                 && let Some(transform) =
                     query_and_resolve_tree_transform_at_entity(&entity_path, entity_db, &query)
             {
@@ -543,7 +544,7 @@ impl TransformResolutionCache {
 
                 for time in times {
                     let query = LatestAtQuery::new(*timeline, time);
-                    if aspects.intersects(TransformAspect::Tree | TransformAspect::Clear) {
+                    if aspects.intersects(TransformAspect::Frame | TransformAspect::Clear) {
                         let transform = query_and_resolve_tree_transform_at_entity(
                             &entity_path,
                             entity_db,
@@ -615,7 +616,7 @@ impl TransformResolutionCache {
                 continue;
             };
             if let Some(entity_entry) = per_timeline.per_entity.get_mut(entity_path) {
-                if aspects.intersects(TransformAspect::Tree | TransformAspect::Clear) {
+                if aspects.intersects(TransformAspect::Frame | TransformAspect::Clear) {
                     let invalidated_tree_transforms =
                         entity_entry.tree_transforms.split_off(&min_time);
                     invalidated_times.extend(invalidated_tree_transforms.into_keys());
@@ -702,7 +703,7 @@ impl TransformResolutionCache {
                         &self.static_timeline,
                     )
                 });
-            if aspects.contains(TransformAspect::Tree) {
+            if aspects.contains(TransformAspect::Frame) {
                 per_timeline_transforms
                     .invalidated_transforms
                     .push(InvalidatedTransforms {
@@ -774,7 +775,7 @@ impl TransformResolutionCache {
             // Remove existing data.
             if let Some(per_entity) = per_timeline.per_entity.get_mut(entity_path) {
                 for time in time_column.times() {
-                    if aspects.contains(TransformAspect::Tree) {
+                    if aspects.contains(TransformAspect::Frame) {
                         per_entity.tree_transforms.remove(&time);
                     }
                     if aspects.contains(TransformAspect::Pose)
