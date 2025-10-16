@@ -50,8 +50,7 @@ fn test_transparent_geometry<A: AsComponents>(
     let mut harness = {
         let camera_orientation = camera_orientation.clone();
         test_context
-            .setup_kittest_for_rendering()
-            .with_size(size)
+            .setup_kittest_for_rendering_3d(size)
             .build_ui(move |ui| {
                 // TODO(#8265): Could simplify this a lot of we could set the camera in blueprint.
                 {
@@ -81,7 +80,10 @@ fn test_transparent_geometry<A: AsComponents>(
                         ),
                         glam::Vec3::Z,
                     ));
-                    view_state.state_3d.last_eye_interaction = Some(std::time::Instant::now());
+
+                    // Hack: without this the view will svivel to the default eye/view.
+                    // TODO(#8265): we shouldn't need this hack.
+                    view_state.state_3d.last_eye_interaction = Some(-f64::INFINITY);
                 }
 
                 test_context.run_with_single_view(ui, view_id);
@@ -95,8 +97,8 @@ fn test_transparent_geometry<A: AsComponents>(
         harness.snapshot_options(
             format!("transparent_{name}_{i}"),
             &SnapshotOptions::default()
-                .threshold(1.4) // Transparent overlaps has some numerical inaccuracies which causes differences for a lot of pixels.
-                .failed_pixel_count_threshold(650),
+                .threshold(3.0) // Transparent overlaps has some numerical inaccuracies which causes differences for a lot of pixels.
+                .failed_pixel_count_threshold(10),
         );
     }
 }

@@ -369,10 +369,32 @@ impl TestContext {
         }
     }
 
-    pub fn setup_kittest_for_rendering(&self) -> egui_kittest::HarnessBuilder<()> {
+    /// Set up for rendering UI, with not 3D/2D in it.
+    pub fn setup_kittest_for_rendering_ui(
+        &self,
+        size: impl Into<egui::Vec2>,
+    ) -> egui_kittest::HarnessBuilder<()> {
+        self.setup_kittest_for_rendering(re_ui::testing::TestOptions::Gui, size.into())
+    }
+
+    /// Set up for rendering 3D/2D and maybe UI.
+    ///
+    /// This has slightly higher error tolerances than [`Self::setup_kittest_for_rendering_ui`].
+    pub fn setup_kittest_for_rendering_3d(
+        &self,
+        size: impl Into<egui::Vec2>,
+    ) -> egui_kittest::HarnessBuilder<()> {
+        self.setup_kittest_for_rendering(re_ui::testing::TestOptions::Rendering3D, size.into())
+    }
+
+    fn setup_kittest_for_rendering(
+        &self,
+        option: re_ui::testing::TestOptions,
+        size: egui::Vec2,
+    ) -> egui_kittest::HarnessBuilder<()> {
         // Egui kittests insists on having a fresh render state for each test.
         let new_render_state = create_egui_renderstate();
-        let builder = egui_kittest::Harness::builder().renderer(
+        let builder = re_ui::testing::new_harness(option, size).renderer(
             // Note that render state clone is mostly cloning of inner `Arc`.
             // This does _not_ duplicate re_renderer's context contained within.
             egui_kittest::wgpu::WgpuTestRenderer::from_render_state(new_render_state.clone()),

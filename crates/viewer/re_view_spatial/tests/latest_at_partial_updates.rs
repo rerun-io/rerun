@@ -116,19 +116,13 @@ fn run_view_ui_and_save_snapshot(
     size: egui::Vec2,
 ) {
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
+        .setup_kittest_for_rendering_3d(size)
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
 
     {
-        let broken_pixels_fraction = 0.004;
-        let options = SnapshotOptions::new()
-            .output_path(format!("tests/snapshots/{name}"))
-            .failed_pixel_count_threshold(
-                (size.x * size.y * broken_pixels_fraction).round() as usize
-            );
+        let options = SnapshotOptions::new().output_path(format!("tests/snapshots/{name}"));
 
         let mut success = true;
         for frame_nr in 42..=46 {

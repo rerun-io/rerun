@@ -1098,10 +1098,7 @@ mod tests {
         TimeType,
         example_components::{MyPoint, MyPoints},
     };
-    use re_test_context::{
-        TestContext,
-        external::egui_kittest::{SnapshotOptions, kittest::Queryable as _},
-    };
+    use re_test_context::{TestContext, external::egui_kittest::kittest::Queryable as _};
     use re_test_viewport::{TestContextExt as _, TestView};
     use re_types::archetypes;
     use re_viewer_context::{RecommendedView, ViewClass as _, blueprint_timeline};
@@ -1114,6 +1111,32 @@ mod tests {
         test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
         test_context
+    }
+
+    fn selection_panel_ui(
+        test_context: &TestContext,
+        viewport_blueprint: &ViewportBlueprint,
+        ui: &mut egui::Ui,
+    ) {
+        test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+            ui.scope_builder(
+                // We need this to for `re_ui::is_in_resizable_panel` to return the correct thing…
+                egui::UiBuilder::new()
+                    .ui_stack_info(egui::UiStackInfo::new(egui::UiKind::RightPanel)),
+                |ui| {
+                    egui::Frame::new().inner_margin(8.0).show(ui, |ui| {
+                        SelectionPanel::default().contents(
+                            viewer_ctx,
+                            viewport_blueprint,
+                            &mut ViewStates::default(),
+                            ui,
+                        );
+                    });
+                },
+            );
+        });
+
+        test_context.handle_system_commands(ui.ctx());
     }
 
     /// Snapshot test for the selection panel when a recording is selected.
@@ -1134,18 +1157,9 @@ mod tests {
         );
 
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size([600.0, 400.0])
-            .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands(ui.ctx());
+            .setup_kittest_for_rendering_ui([600.0, 400.0])
+            .build_ui(move |ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
@@ -1171,28 +1185,16 @@ mod tests {
         );
 
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size([600.0, 400.0])
+            .setup_kittest_for_rendering_ui([600.0, 400.0])
             .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands(ui.ctx());
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.get_by_label("test_app").hover();
 
         harness.run();
 
-        harness.snapshot_options(
-            "selection_panel_recording_hover_app_id",
-            &SnapshotOptions::new().failed_pixel_count_threshold(4),
-        );
+        harness.snapshot("selection_panel_recording_hover_app_id");
     }
 
     /// Snapshot test for the selection panel when a static component is selected.
@@ -1225,18 +1227,9 @@ mod tests {
         );
 
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size([400.0, 350.0])
+            .setup_kittest_for_rendering_ui([400.0, 350.0])
             .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands(ui.ctx());
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
@@ -1283,18 +1276,9 @@ mod tests {
         );
 
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size([400.0, 350.0])
+            .setup_kittest_for_rendering_ui([400.0, 350.0])
             .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands(ui.ctx());
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
@@ -1355,18 +1339,9 @@ mod tests {
         );
 
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size([400.0, 350.0])
+            .setup_kittest_for_rendering_ui([400.0, 350.0])
             .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands(ui.ctx());
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
@@ -1402,31 +1377,15 @@ mod tests {
             &LatestAtQuery::latest(blueprint_timeline()),
         );
 
-        let size = egui::Vec2::from([400.0, 500.0]);
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size(size)
+            .setup_kittest_for_rendering_ui([400.0, 500.0])
             .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands(ui.ctx());
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
 
-        let broken_pixels_fraction = 0.004;
-
-        let options = SnapshotOptions::new().failed_pixel_count_threshold(
-            (size.x * size.y * broken_pixels_fraction).round() as usize,
-        );
-
-        harness.snapshot_options("selection_panel_view", &options);
+        harness.snapshot("selection_panel_view");
     }
 
     #[test]
@@ -1459,31 +1418,15 @@ mod tests {
             &LatestAtQuery::latest(blueprint_timeline()),
         );
 
-        let size = egui::Vec2::from([400.0, 500.0]);
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size(size)
+            .setup_kittest_for_rendering_ui([400.0, 500.0])
             .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands(ui.ctx());
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
 
-        let broken_pixels_fraction = 0.004;
-
-        let options = SnapshotOptions::new().failed_pixel_count_threshold(
-            (size.x * size.y * broken_pixels_fraction).round() as usize,
-        );
-
-        harness.snapshot_options("selection_panel_view_entity_no_visualizable", &options);
+        harness.snapshot("selection_panel_view_entity_no_visualizable");
     }
 
     #[test]
@@ -1509,30 +1452,14 @@ mod tests {
             &LatestAtQuery::latest(blueprint_timeline()),
         );
 
-        let size = egui::Vec2::from([400.0, 500.0]);
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size(size)
+            .setup_kittest_for_rendering_ui([400.0, 500.0])
             .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands(ui.ctx());
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
 
-        let broken_pixels_fraction = 0.004;
-
-        let options = SnapshotOptions::new().failed_pixel_count_threshold(
-            (size.x * size.y * broken_pixels_fraction).round() as usize,
-        );
-
-        harness.snapshot_options("selection_panel_view_entity_no_match", &options);
+        harness.snapshot("selection_panel_view_entity_no_match");
     }
 }

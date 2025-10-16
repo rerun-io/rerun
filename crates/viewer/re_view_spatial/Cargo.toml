@@ -65,7 +65,6 @@ saturating_cast.workspace = true
 serde.workspace = true
 smallvec = { workspace = true, features = ["serde"] }
 thiserror.workspace = true
-web-time.workspace = true
 
 
 [dev-dependencies]
