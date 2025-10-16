@@ -47,4 +47,5 @@ define_redap_tests! {
     entries_table::list_entries_table,
     register_partition::register_and_scan_empty_dataset,
     register_partition::register_and_scan_simple_dataset,
+    register_partition::register_with_prefix
 }
