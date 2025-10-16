@@ -1,3 +1,4 @@
+use arrow::datatypes::Schema;
 use futures::StreamExt as _;
 
 use re_log_encoding::codec::wire::decoder::Decode as _;
@@ -167,8 +168,21 @@ async fn query_dataset_snapshot(
 
     let merged_chunk_info = concat_record_batches(&chunk_info);
 
-    // these are the only required columns
+    // these are the only columns guaranteed to be returned by `query_dataset`
     let required_field = QueryDatasetResponse::fields();
+
+    assert!(
+        merged_chunk_info
+            .schema()
+            .contains(&Schema::new_with_metadata(
+                required_field.clone(),
+                Default::default()
+            )),
+        "query dataset must return all guaranteed fields\nExpected: {:#?}\nGot: {:#?}",
+        &required_field,
+        merged_chunk_info.schema()
+    );
+
     let required_column_names = required_field
         .iter()
         .map(|f| f.name().as_str())
