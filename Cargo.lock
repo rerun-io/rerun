@@ -8309,7 +8309,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "url",
  "uuid",
  "web-sys",
@@ -8344,7 +8344,7 @@ dependencies = [
  "re_format_arrow",
  "re_log",
  "re_tracing",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -8363,7 +8363,7 @@ dependencies = [
  "saturating_cast",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tiny_http",
  "tokio",
  "tonic",
@@ -8474,7 +8474,7 @@ dependencies = [
  "re_tuid",
  "re_types_core",
  "similar-asserts",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tracing",
 ]
 
@@ -8506,7 +8506,7 @@ dependencies = [
  "saturating_cast",
  "similar-asserts",
  "tap",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "web-time",
 ]
 
@@ -8621,7 +8621,7 @@ dependencies = [
  "re_types",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "urdf-rs",
  "walkdir",
 ]
@@ -8744,7 +8744,7 @@ dependencies = [
  "serde",
  "static_assertions",
  "strum",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tokio",
 ]
 
@@ -8836,7 +8836,7 @@ dependencies = [
  "saturating_cast",
  "serde",
  "similar-asserts",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "web-time",
 ]
 
@@ -8883,7 +8883,7 @@ dependencies = [
  "re_sorbet",
  "re_tracing",
  "re_uri",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tokio",
  "tokio-stream",
  "tonic",
@@ -8989,7 +8989,7 @@ dependencies = [
  "re_tracing",
  "re_types",
  "similar-asserts",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tokio",
  "tokio-stream",
  "tracing",
@@ -9030,7 +9030,7 @@ dependencies = [
  "serde",
  "similar-asserts",
  "static_assertions",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "typenum",
  "uuid",
  "web-time",
@@ -9057,7 +9057,7 @@ dependencies = [
  "saturating_cast",
  "serde",
  "serde_bytes",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -9143,7 +9143,7 @@ dependencies = [
  "re_sorbet",
  "re_tuid",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tonic",
  "tonic-prost",
  "tower",
@@ -9188,7 +9188,7 @@ dependencies = [
  "re_types_core",
  "seq-macro",
  "similar-asserts",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -9280,7 +9280,7 @@ dependencies = [
  "re_smart_channel",
  "re_uri",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tokio",
  "tokio-stream",
  "tonic",
@@ -9355,7 +9355,7 @@ dependencies = [
  "smallvec",
  "static_assertions",
  "stl_io",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tobj",
  "type-map",
  "unindent",
@@ -9396,7 +9396,7 @@ version = "0.26.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -9431,7 +9431,7 @@ dependencies = [
  "re_uri",
  "re_web_viewer_server",
  "similar-asserts",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tokio",
  "webbrowser",
 ]
@@ -9497,7 +9497,7 @@ dependencies = [
  "re_redap_tests",
  "re_tuid",
  "re_types_core",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tokio",
  "tokio-stream",
  "tonic",
@@ -9517,7 +9517,7 @@ dependencies = [
  "re_tracing",
  "re_uri",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "web-time",
 ]
 
@@ -9536,7 +9536,7 @@ dependencies = [
  "re_tuid",
  "re_types_core",
  "semver",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tracing",
  "web-time",
 ]
@@ -9621,7 +9621,7 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_types",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "vec1",
 ]
 
@@ -9721,7 +9721,7 @@ dependencies = [
  "serde",
  "similar-asserts",
  "smallvec",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tiff",
  "uuid",
 ]
@@ -9776,7 +9776,7 @@ dependencies = [
  "re_tuid",
  "serde",
  "similar-asserts",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -9823,7 +9823,7 @@ dependencies = [
  "re_log_types",
  "re_tuid",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "url",
 ]
 
@@ -9856,7 +9856,7 @@ dependencies = [
  "saturating_cast",
  "serde",
  "smallvec",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -10035,7 +10035,7 @@ dependencies = [
  "saturating_cast",
  "serde",
  "smallvec",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -10060,7 +10060,7 @@ dependencies = [
  "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "wgpu",
 ]
 
@@ -10214,7 +10214,7 @@ dependencies = [
  "strum_macros",
  "tap",
  "tempfile",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tokio",
  "url",
  "wasm-bindgen",
@@ -10282,7 +10282,7 @@ dependencies = [
  "smallvec",
  "static_assertions",
  "strum_macros",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tokio",
  "uuid",
  "vec1",
@@ -10338,7 +10338,7 @@ dependencies = [
  "re_viewer_context",
  "slotmap",
  "smallvec",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -10349,7 +10349,7 @@ dependencies = [
  "re_analytics",
  "re_build_tools",
  "re_log",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tiny_http",
 ]
 
@@ -10665,7 +10665,7 @@ dependencies = [
  "rustls",
  "strum",
  "strum_macros",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tokio",
  "tokio-stream",
  "tonic",

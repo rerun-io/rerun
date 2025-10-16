@@ -346,7 +346,7 @@ syn = "2.0"
 sysinfo = { version = "0.30.13", default-features = false }
 tap = "1.0.1"
 tempfile = "3.23"
-thiserror = "1.0"
+thiserror = "2.0.17"
 tiff = "0.9.1"
 tiny_http = { version = "0.12.0", default-features = false }
 tobj = "4.0"
