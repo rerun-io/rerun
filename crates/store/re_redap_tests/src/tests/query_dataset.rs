@@ -12,7 +12,8 @@ use re_protos::{
 
 use crate::RecordBatchExt as _;
 use crate::tests::common::{
-    DataSourcesDefinition, LayerDefinition, concat_record_batches, register_with_dataset_name,
+    DataSourcesDefinition, LayerDefinition, LayerType, concat_record_batches,
+    register_with_dataset_name,
 };
 
 pub async fn query_empty_dataset(service: impl RerunCloudService) {
@@ -38,25 +39,23 @@ pub async fn query_empty_dataset(service: impl RerunCloudService) {
 }
 
 pub async fn query_simple_dataset(service: impl RerunCloudService) {
-    let mut data_sources_def = DataSourcesDefinition::new([
+    let data_sources_def = DataSourcesDefinition::new([
         LayerDefinition {
             partition_id: "my_partition_id1",
             layer_name: None,
-            entity_paths: &["my/entity", "my/other/entity"],
+            layer_type: LayerType::simple(&["my/entity", "my/other/entity"]),
         },
         LayerDefinition {
             partition_id: "my_partition_id2",
             layer_name: None,
-            entity_paths: &["my/entity"],
+            layer_type: LayerType::simple(&["my/entity"]),
         },
         LayerDefinition {
             partition_id: "my_partition_id3",
             layer_name: None,
-            entity_paths: &["my/entity", "another/one", "yet/another/one"],
+            layer_type: LayerType::simple(&["my/entity", "another/one", "yet/another/one"]),
         },
     ]);
-
-    data_sources_def.generate_simple();
 
     let dataset_name = "dataset";
 

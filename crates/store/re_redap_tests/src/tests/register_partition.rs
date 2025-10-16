@@ -13,29 +13,29 @@ use re_protos::{
     headers::RerunHeadersInjectorExt as _,
 };
 
-use super::common::{DataSourcesDefinition, LayerDefinition, register_with_dataset_name};
+use super::common::{
+    DataSourcesDefinition, LayerDefinition, LayerType, register_with_dataset_name,
+};
 use crate::RecordBatchExt as _;
 
 pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
-    let mut data_sources_def = DataSourcesDefinition::new([
+    let data_sources_def = DataSourcesDefinition::new([
         LayerDefinition {
             partition_id: "my_partition_id1",
             layer_name: None,
-            entity_paths: &["my/entity", "my/other/entity"],
+            layer_type: LayerType::simple(&["my/entity", "my/other/entity"]),
         },
         LayerDefinition {
             partition_id: "my_partition_id2",
             layer_name: None,
-            entity_paths: &["my/entity"],
+            layer_type: LayerType::simple(&["my/entity"]),
         },
         LayerDefinition {
             partition_id: "my_partition_id3",
             layer_name: None,
-            entity_paths: &["my/entity", "another/one", "yet/another/one"],
+            layer_type: LayerType::simple(&["my/entity", "another/one", "yet/another/one"]),
         },
     ]);
-
-    data_sources_def.generate_simple();
 
     let dataset_name = "my_dataset1";
     service
@@ -53,35 +53,33 @@ pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
 }
 
 pub async fn register_and_scan_simple_dataset_with_layers(service: impl RerunCloudService) {
-    let mut data_sources_def = DataSourcesDefinition::new([
+    let data_sources_def = DataSourcesDefinition::new([
         LayerDefinition {
             partition_id: "partition1",
             layer_name: None,
-            entity_paths: &["my/entity", "another/one", "yet/another/one"],
+            layer_type: LayerType::simple(&["my/entity", "another/one", "yet/another/one"]),
         },
         LayerDefinition {
             partition_id: "partition1",
             layer_name: Some("extra"),
-            entity_paths: &["extra/entity"],
+            layer_type: LayerType::simple(&["extra/entity"]),
         },
         LayerDefinition {
             partition_id: "partition2",
             layer_name: Some("base"),
-            entity_paths: &["another/one", "yet/another/one"],
+            layer_type: LayerType::simple(&["another/one", "yet/another/one"]),
         },
         LayerDefinition {
             partition_id: "partition2",
             layer_name: Some("extra"),
-            entity_paths: &["extra/entity"],
+            layer_type: LayerType::simple(&["extra/entity"]),
         },
         LayerDefinition {
             partition_id: "partition3",
             layer_name: None,
-            entity_paths: &["i/am/alone"],
+            layer_type: LayerType::simple(&["i/am/alone"]),
         },
     ]);
-
-    data_sources_def.generate_simple();
 
     let dataset_name = "dataset_with_layers";
     service

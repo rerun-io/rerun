@@ -657,7 +657,7 @@ pub fn create_recording_with_text(
 pub fn create_recording_with_properties(
     tuid_prefix: TuidPrefix,
     partition_id: &str,
-    user_defined_properties: BTreeMap<String, Vec<&dyn AsComponents>>,
+    user_defined_properties: BTreeMap<String, Vec<Box<dyn AsComponents>>>,
 ) -> anyhow::Result<TempPath> {
     use re_chunk::Chunk;
 
@@ -686,7 +686,7 @@ pub fn create_recording_with_properties(
 
         for property in properties {
             chunk_builder =
-                chunk_builder.with_archetype(next_row_id(), TimePoint::default(), property);
+                chunk_builder.with_archetype(next_row_id(), TimePoint::default(), &*property);
         }
 
         let chunk = chunk_builder.build()?;

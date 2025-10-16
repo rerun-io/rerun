@@ -1,4 +1,7 @@
-use crate::{RecordBatchExt as _, TempPath, create_nasty_recording, create_simple_recording};
+use crate::{
+    RecordBatchExt as _, TempPath, TuidPrefix, create_nasty_recording,
+    create_recording_with_properties, create_simple_recording,
+};
 use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
@@ -13,6 +16,8 @@ use re_protos::{
     common::v1alpha1::{IfDuplicateBehavior, TaskId},
     headers::RerunHeadersInjectorExt as _,
 };
+use re_types_core::AsComponents;
+use std::collections::BTreeMap;
 use url::Url;
 
 #[expect(dead_code)]
@@ -120,71 +125,87 @@ async fn register_with_dataset(
 
 // ---
 
+pub enum LayerType {
+    /// See [`crate::utils::rerun::create_simple_recording`]
+    Simple { entities: &'static [&'static str] },
+
+    /// See [`crate::create_nasty_recording`]
+    Nasty { entities: &'static [&'static str] },
+
+    /// See [`crate::create_recording_with_properties`]
+    #[expect(dead_code)] //TODO(ab): I'll need that in the next PR
+    Properties {
+        properties: BTreeMap<String, Vec<Box<dyn AsComponents>>>,
+    },
+}
+
+impl LayerType {
+    pub fn simple(entities: &'static [&'static str]) -> Self {
+        Self::Simple { entities }
+    }
+
+    pub fn nasty(entities: &'static [&'static str]) -> Self {
+        Self::Nasty { entities }
+    }
+
+    fn into_recording(
+        self,
+        tuid_prefix: TuidPrefix,
+        partition_id: &str,
+    ) -> anyhow::Result<TempPath> {
+        match self {
+            Self::Simple { entities } => {
+                create_simple_recording(tuid_prefix, partition_id, entities)
+            }
+
+            Self::Nasty { entities } => create_nasty_recording(tuid_prefix, partition_id, entities),
+
+            Self::Properties { properties } => {
+                create_recording_with_properties(tuid_prefix, partition_id, properties)
+            }
+        }
+    }
+}
+
 pub struct LayerDefinition {
     pub partition_id: &'static str,
     pub layer_name: Option<&'static str>,
-    pub entity_paths: &'static [&'static str],
+    pub layer_type: LayerType,
 }
 
 /// Utility to simplify the creation of data sources to register with a dataset.
+///
+/// This utility holds the [`TempPath`] instances, so it should not be dropped until the end of
+/// the test, lest the recording files are prematurely cleaned up.
 pub struct DataSourcesDefinition {
-    layers: Vec<LayerDefinition>,
-    paths: Option<Vec<TempPath>>,
+    layers: Vec<(Option<String>, TempPath)>,
 }
 
 impl DataSourcesDefinition {
     pub fn new(layers: impl IntoIterator<Item = LayerDefinition>) -> Self {
         Self {
-            layers: layers.into_iter().collect(),
-            paths: None,
+            layers: layers
+                .into_iter()
+                .enumerate()
+                .map(|(tuid_prefix, layer)| {
+                    (
+                        layer.layer_name.map(|s| s.to_owned()),
+                        layer
+                            .layer_type
+                            .into_recording(tuid_prefix.saturating_add(1) as _, layer.partition_id)
+                            .unwrap(),
+                    )
+                })
+                .collect(),
         }
     }
 
-    pub fn generate_simple(&mut self) {
-        let paths = self
-            .layers
-            .iter()
-            .enumerate()
-            .map(|(tuid_prefix, l)| {
-                create_simple_recording(
-                    tuid_prefix.saturating_add(1) as _,
-                    l.partition_id,
-                    l.entity_paths,
-                )
-                .unwrap()
-            })
-            .collect_vec();
-        self.paths = Some(paths);
-    }
-
-    pub fn generate_nasty(&mut self) {
-        let paths = self
-            .layers
-            .iter()
-            .enumerate()
-            .map(|(tuid_prefix, l)| {
-                create_nasty_recording(
-                    tuid_prefix.saturating_add(1) as _,
-                    l.partition_id,
-                    l.entity_paths,
-                )
-                .unwrap()
-            })
-            .collect_vec();
-        self.paths = Some(paths);
-    }
-
     pub fn to_data_sources(&self) -> Vec<DataSource> {
-        let Some(paths) = &self.paths else {
-            panic!("generate_XXX() must be called before to_data_sources()");
-        };
-
         self.layers
             .iter()
-            .zip(paths.iter())
-            .map(|(l, p)| DataSource {
-                storage_url: Some(Url::from_file_path(p.as_path()).unwrap().to_string()),
-                layer: l.layer_name.map(|l| l.to_owned()),
+            .map(|(layer_name, path)| DataSource {
+                storage_url: Some(Url::from_file_path(path.as_path()).unwrap().to_string()),
+                layer: layer_name.clone(),
                 typ: DataSourceKind::Rrd as i32,
             })
             .collect()

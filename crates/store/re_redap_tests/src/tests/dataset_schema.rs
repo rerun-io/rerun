@@ -6,29 +6,29 @@ use re_protos::{
     headers::RerunHeadersInjectorExt as _,
 };
 
-use super::common::{DataSourcesDefinition, LayerDefinition, register_with_dataset_name};
+use super::common::{
+    DataSourcesDefinition, LayerDefinition, LayerType, register_with_dataset_name,
+};
 use crate::SchemaExt as _;
 
 pub async fn simple_dataset_schema(service: impl RerunCloudService) {
-    let mut data_sources_def = DataSourcesDefinition::new([
+    let data_sources_def = DataSourcesDefinition::new([
         LayerDefinition {
             partition_id: "my_partition_id1",
             layer_name: None,
-            entity_paths: &["my/entity", "my/other/entity"],
+            layer_type: LayerType::simple(&["my/entity", "my/other/entity"]),
         },
         LayerDefinition {
             partition_id: "my_partition_id2",
             layer_name: None,
-            entity_paths: &["my/entity"],
+            layer_type: LayerType::simple(&["my/entity"]),
         },
         LayerDefinition {
             partition_id: "my_partition_id3",
             layer_name: None,
-            entity_paths: &["my/entity", "another/one", "yet/another/one"],
+            layer_type: LayerType::simple(&["my/entity", "another/one", "yet/another/one"]),
         },
     ]);
-
-    data_sources_def.generate_simple();
 
     let dataset_name = "my_dataset1";
     service
