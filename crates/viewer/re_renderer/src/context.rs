@@ -85,7 +85,8 @@ impl RenderConfig {
     /// to keep image comparison thresholds low.
     pub fn testing() -> Self {
         Self {
-            msaa_mode: MsaaMode::Off,
+            // we use "testing" also for generating nice looking screenshots
+            msaa_mode: MsaaMode::Msaa4x,
         }
     }
 }
