@@ -132,24 +132,26 @@ In the UI:
 
 -   Set `Use workflow from` to the release branch you created in step (2).
 -   Then choose one of the following values in the dropdown:
-  - `alpha` if the branch name is `release-x.y.z-alpha.N`.
+  - `alpha` if the branch name is `prepare-release-x.y.z-alpha.N`.
     This will create a one-off alpha release.
 
-  - `rc` if the branch name is `release-x.y.z`.
+  - `rc` if the branch name is `prepare-release-x.y.z`.
     This will create a pull request for the release, and publish a release candidate.
 
   - `final` for the final public release
 
 ![Image showing the Run workflow UI. It can be found at https://github.com/rerun-io/rerun/actions/workflows/release.yml](https://github.com/rerun-io/rerun/assets/1665677/6cdc8e7e-c0fc-4cf1-99cb-0749957b8328)
 
-### 7. Wait for the workflow to finish
+### 7. Wait for both workflows to finish
 
 Once the release workflow is started, it will create a pull request for the release.
 The pull request description will tell you what to do next.
 
-Note: there are two separate workflows running -- the one building the release artifacts, and the one running the PR checks.
-You can mostly ignore the PR checks. You will have to wait for the [former](https://github.com/rerun-io/rerun/actions/workflows/release.yml)
-in order to get a link to the artifacts.
+[The `Release` workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml) will build artifacts and run PR checks.
+Additionally, it will spawn a second workflow (WHEN?) that called [`GitHub Release`](https://github.com/rerun-io/rerun/actions/workflows/on_gh_release.yml).
+This workflow is responsible for creating [the GitHub release draft](https://github.com/rerun-io/rerun/releases) and to publish the artifacts to it.
+**Make sure this workflow also finishes!**.
+Only after it finishes successfully should you un-draft [the GitHub release](https://github.com/rerun-io/rerun/releases).
 
 ### 8. Merge changes to `main`
 
