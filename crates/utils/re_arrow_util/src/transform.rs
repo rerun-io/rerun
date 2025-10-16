@@ -1,5 +1,6 @@
 //! Type-safe, composable transformations for Arrow arrays.
 
+use std::num::TryFromIntError;
 use std::sync::Arc;
 
 use arrow::array::{
@@ -62,6 +63,9 @@ pub enum Error {
         reference_field: String,
         expected_type: DataType,
     },
+
+    #[error("Cannot create fixed-size list with {actual} fields: {err}")]
+    InvalidNumberOfFields { actual: usize, err: TryFromIntError },
 
     #[error("At least one field name is required")]
     NoFieldNames,
@@ -333,12 +337,9 @@ impl Transform for StructToFixedList {
             field_arrays.push(array);
         }
 
-        let len = source.len();
-        let list_size = self.field_names.len();
-
         // Build the flattened values array by concatenating field arrays
         let mut concatenated_arrays = Vec::new();
-        for row_idx in 0..len {
+        for row_idx in 0..source.len() {
             for field_array in &field_arrays {
                 concatenated_arrays.push(field_array.slice(row_idx, 1));
             }
@@ -350,11 +351,13 @@ impl Transform for StructToFixedList {
 
         let field = Arc::new(Field::new("item", element_type, true));
 
+        let list_size = self.field_names.len();
+        let list_size = i32::try_from(list_size).map_err(|err| Error::InvalidNumberOfFields {
+            actual: list_size,
+            err,
+        })?;
         Ok(FixedSizeListArray::new(
-            field,
-            list_size as i32,
-            values,
-            None, // No outer nulls
+            field, list_size, values, None, // No outer nulls
         ))
     }
 }
@@ -587,7 +590,7 @@ impl Transform for Flatten {
         let mut current_offset = 0i32;
 
         // Collect ranges of values to copy (as (start, length) pairs)
-        let mut value_ranges: Vec<(usize, usize)> = Vec::new();
+        let mut value_ranges: Vec<(i32, i32)> = Vec::new();
 
         for outer_row_idx in 0..source.len() {
             if source.is_null(outer_row_idx) {
@@ -595,13 +598,14 @@ impl Transform for Flatten {
                 continue;
             }
 
-            let outer_start = outer_offsets[outer_row_idx] as usize;
-            let outer_end = outer_offsets[outer_row_idx + 1] as usize;
+            let outer_start = outer_offsets[outer_row_idx];
+            let outer_end = outer_offsets[outer_row_idx + 1];
 
             for inner_idx in outer_start..outer_end {
+                let inner_idx = inner_idx as usize;
                 if !inner_list.is_null(inner_idx) {
-                    let inner_start = inner_offsets[inner_idx] as usize;
-                    let inner_end = inner_offsets[inner_idx + 1] as usize;
+                    let inner_start = inner_offsets[inner_idx];
+                    let inner_end = inner_offsets[inner_idx + 1];
                     let length = inner_end - inner_start;
 
                     if length > 0 {
@@ -615,7 +619,7 @@ impl Transform for Flatten {
                         } else {
                             value_ranges.push((inner_start, length));
                         }
-                        current_offset += length as i32;
+                        current_offset += length;
                     }
                 }
             }
@@ -629,12 +633,12 @@ impl Transform for Flatten {
         } else if value_ranges.len() == 1 {
             // Single contiguous range - just slice once
             let (start, length) = value_ranges[0];
-            inner_values.slice(start, length)
+            inner_values.slice(start as usize, length as usize)
         } else {
             // Multiple ranges - slice and concatenate
             let slices: Vec<_> = value_ranges
                 .iter()
-                .map(|&(start, length)| inner_values.slice(start, length))
+                .map(|&(start, length)| inner_values.slice(start as usize, length as usize))
                 .collect();
             let refs: Vec<&dyn Array> = slices.iter().map(|a| a.as_ref()).collect();
             crate::concat_arrays(&refs)?
