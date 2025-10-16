@@ -21,8 +21,7 @@ async fn test_no_sort() {
 
     let table_status = Arc::new(Mutex::new(None::<TableStatus>));
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size([600.0, 400.0])
+        .setup_kittest_for_rendering_ui([600.0, 400.0])
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                 let status = DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
@@ -45,8 +44,7 @@ async fn test_ascending() {
 
     let table_status = Arc::new(Mutex::new(None::<TableStatus>));
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size([600.0, 400.0])
+        .setup_kittest_for_rendering_ui([600.0, 400.0])
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                 let status = DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
@@ -73,8 +71,7 @@ async fn test_descending() {
 
     let table_status = Arc::new(Mutex::new(None::<TableStatus>));
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size([600.0, 400.0])
+        .setup_kittest_for_rendering_ui([600.0, 400.0])
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                 let status = DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
@@ -101,8 +98,7 @@ async fn test_column_menu_button() {
 
     let table_status = Arc::new(Mutex::new(None::<TableStatus>));
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size([600.0, 400.0])
+        .setup_kittest_for_rendering_ui([600.0, 400.0])
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                 let status = DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
