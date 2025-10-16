@@ -671,19 +671,14 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<tonic::Streaming<re_protos::cloud::v1alpha1::WriteTableRequest>>,
     ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::WriteTableResponse>, tonic::Status>
     {
-        let mut request = request.into_inner();
         let mut store = self.store.write().await;
+        let entry_id = get_entry_id_from_headers(&store, &request)?;
+
+        let mut request = request.into_inner();
 
         while let Some(write_msg) = request.next().await {
             let write_msg = write_msg?;
-
-            let Some(entry_id) = write_msg.table_id else {
-                return Err(tonic::Status::invalid_argument(
-                    "no table id in WriteTableRequest",
-                ));
-            };
-            let entry_id = entry_id.try_into()?;
-
+            
             let rb = write_msg
                 .dataframe_part
                 .ok_or_else(|| {

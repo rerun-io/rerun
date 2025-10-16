@@ -19,6 +19,7 @@ use datafusion::{
 };
 use futures::Stream;
 use tokio::runtime::Handle;
+use tonic::IntoStreamingRequest;
 use tracing::instrument;
 
 use re_log_types::{EntryId, EntryIdOrName};
@@ -27,6 +28,7 @@ use re_protos::cloud::v1alpha1::{
     EntryFilter, EntryKind, FindEntriesRequest, TableInsertMode, WriteTableRequest,
 };
 use re_protos::cloud::v1alpha1::{GetTableSchemaRequest, ScanTableRequest, ScanTableResponse};
+use re_protos::headers::RerunHeadersInjectorExt;
 use re_redap_client::ConnectionClient;
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
@@ -332,13 +334,17 @@ where
 
         // Start the gRPC streaming call immediately
         runtime.spawn(async move {
-            let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
-            let mut client = client;
+            if let Err(err) = async {
+                let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
+                    .into_streaming_request()
+                    .with_entry_id(table_id)?;
+                let mut client = client;
 
-            if let Err(e) = client.inner().write_table(stream).await {
+                client.inner().write_table(stream).await
+            }.await {
                 // Send the error back to the stream
                 // Ignore send error if receiver is dropped
-                let _ = error_tx.send(e);
+                let _ = error_tx.send(err);
             }
         });
 
@@ -386,7 +392,6 @@ where
                         Ok(dataframe_part) => {
                             let request = WriteTableRequest {
                                 dataframe_part: Some(dataframe_part),
-                                table_id: Some(self.table_id.into()),
                                 insert_mode: self.insert_op.into(),
                             };
                             // Check if channel is still open
