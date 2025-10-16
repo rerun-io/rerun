@@ -40,7 +40,8 @@ impl TryFrom<&MetadataValue<Ascii>> for Jwt {
         let token = value.to_str().map_err(|_err| Error::MalformedToken)?;
         let token = token
             .strip_prefix(TOKEN_PREFIX)
-            .ok_or(Error::MalformedToken)?;
+            .ok_or(Error::MalformedToken)?
+            .trim();
         Ok(Self(token.to_owned()))
     }
 }
