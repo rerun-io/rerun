@@ -374,7 +374,7 @@
     "Typography": {
       "Default": {
         "value": {
-          "fontSize": "12px",
+          "fontSize": "13px",
           "fontWeight": "Medium",
           "fontFamily": "Inter",
           "lineHeight": "16px",
