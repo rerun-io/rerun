@@ -176,14 +176,7 @@ jobs:
 
       - name: Run unit tests
         if: ${{ inputs.PLATFORM != 'linux-arm64' }}
-        # TODO(#11173): fix the test instead of retrying
-        uses: nick-fields/retry@v3
-        with:
-          max_attempts: 2
-          retry_wait_seconds: 30
-          timeout_minutes: 60
-          shell: bash
-          command: cd rerun_py/tests && pixi run -e wheel-test-min pytest -c ../pyproject.toml
+        run: cd rerun_py/tests && pixi run -e wheel-test-min pytest -c ../pyproject.toml
 
       - name: Run e2e test
         run: RUST_LOG=debug pixi run -e wheel-test-min python scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed

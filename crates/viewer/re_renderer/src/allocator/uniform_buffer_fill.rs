@@ -32,8 +32,6 @@ impl<T> UniformBufferSizeCheck<T> {
 /// Utility for fast & efficient creation of uniform buffers from a series of structs.
 ///
 /// For subsequent frames, this will automatically not allocate any resources (thanks to our buffer pooling mechanism).
-///
-/// TODO(#1383): We could do this on a more complex stack allocator.
 pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod + Send + Sync>(
     ctx: &RenderContext,
     label: DebugLabel,
