@@ -23,6 +23,7 @@ use crate::{
     create_recording_with_properties, create_simple_recording,
 };
 
+/// Extension trait for the most common test setup tasks.
 #[async_trait]
 pub trait RerunCloudServiceExt: RerunCloudService {
     async fn create_dataset_entry_with_name(&self, dataset_name: &str);
@@ -60,6 +61,8 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
         register_with_dataset(self, request).await;
     }
 }
+
+// ---
 
 async fn register_with_dataset(
     service: &impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
