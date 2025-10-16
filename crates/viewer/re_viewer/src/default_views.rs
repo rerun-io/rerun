@@ -59,8 +59,7 @@ mod tests {
                 let mut did_run = false;
 
                 let mut harness = test_context
-                    .setup_kittest_for_rendering()
-                    .with_size([400.0, 640.0])
+                    .setup_kittest_for_rendering_ui([400.0, 640.0])
                     .build_ui(|ui| {
                         ui.ctx().set_theme(egui_theme);
 

@@ -3397,9 +3397,9 @@ dependencies = [
 
 [[package]]
 name = "egui_kittest"
-version = "0.33.0"
+version = "0.33.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bed49d5375ff6b73c5ba1f70e93272a387d1ea1570d11ebfbe909d1426a7109"
+checksum = "a0ca7eb7521658cb9714724de1de199be864a1eafe29218ecd5b22db2f4f8400"
 dependencies = [
  "dify",
  "eframe",
@@ -8341,8 +8341,10 @@ dependencies = [
  "half",
  "insta",
  "itertools 0.14.0",
+ "re_format_arrow",
  "re_log",
  "re_tracing",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -8732,6 +8734,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_sorbet",
+ "re_test_context",
  "re_tracing",
  "re_types",
  "re_types_core",
@@ -10037,7 +10040,6 @@ dependencies = [
  "serde",
  "smallvec",
  "thiserror 1.0.69",
- "web-time",
 ]
 
 [[package]]

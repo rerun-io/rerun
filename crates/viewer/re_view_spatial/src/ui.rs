@@ -151,7 +151,7 @@ impl SpatialViewState {
                 .on_hover_text("Spin camera around the orbit center")
                 .changed()
             {
-                self.state_3d.set_spin(spin);
+                self.state_3d.set_spin(ui.ctx(), spin);
             }
         }
     }

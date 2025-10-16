@@ -101,8 +101,7 @@ fn run_view_selection_panel_ui_and_save_snapshot(
     size: egui::Vec2,
 ) {
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
+        .setup_kittest_for_rendering_ui(size)
         .build_ui(|ui| {
             test_context.run_ui(ui, |ctx, ui| {
                 let view_class = ctx

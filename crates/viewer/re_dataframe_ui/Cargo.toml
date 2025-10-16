@@ -51,6 +51,8 @@ thiserror.workspace = true
 
 
 [dev-dependencies]
+re_test_context.workspace = true
+
 egui_kittest.workspace = true
 insta.workspace = true
 itertools.workspace = true
