@@ -148,16 +148,16 @@ where
     }
 
     fn execute(&self, _ctx: Arc<TaskContext>) -> SendableRecordBatchStream {
-        Box::pin(GrpcReadStream::execute(&self.schema, self.client.clone()))
+        Box::pin(GrpcStream::execute(&self.schema, self.client.clone()))
     }
 }
 
-pub struct GrpcReadStream {
+pub struct GrpcStream {
     schema: SchemaRef,
     adapted_stream: Pin<Box<dyn Stream<Item = datafusion::common::Result<RecordBatch>> + Send>>,
 }
 
-impl GrpcReadStream {
+impl GrpcStream {
     fn execute<T>(schema: &SchemaRef, mut client: T) -> Self
     where
         T::GrpcStreamData: Send + 'static,
@@ -186,13 +186,13 @@ impl GrpcReadStream {
     }
 }
 
-impl RecordBatchStream for GrpcReadStream {
+impl RecordBatchStream for GrpcStream {
     fn schema(&self) -> SchemaRef {
         Arc::clone(&self.schema)
     }
 }
 
-impl Stream for GrpcReadStream {
+impl Stream for GrpcStream {
     type Item = DataFusionResult<RecordBatch>;
 
     fn poll_next(
