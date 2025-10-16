@@ -132,6 +132,69 @@ impl RerunCloudHandler {
             })
             .collect::<Result<Vec<_>, _>>()
     }
+
+    fn resolve_data_sources(data_sources: &[DataSource]) -> Result<Vec<DataSource>, tonic::Status> {
+        let mut resolved = Vec::<DataSource>::with_capacity(data_sources.len());
+        for source in data_sources {
+            let path = source.storage_url.path();
+            if path.ends_with('/') {
+                let path = std::path::Path::new(path);
+                let meta = std::fs::metadata(path).map_err(|err| match err.kind() {
+                    std::io::ErrorKind::NotFound => {
+                        tonic::Status::invalid_argument(format!("Directory not found: {path:?}"))
+                    }
+                    _ => tonic::Status::invalid_argument(format!(
+                        "Failed to read directory metadata {path:?}: {err:#}"
+                    )),
+                })?;
+                if !meta.is_dir() {
+                    return Err(tonic::Status::invalid_argument(format!(
+                        "Expected directory, got file: {path:?}"
+                    )));
+                }
+
+                // Recursively walk the directory and grab all files
+                let mut dirs_to_visit = vec![path.to_path_buf()];
+                let mut files = Vec::new();
+
+                while let Some(current_dir) = dirs_to_visit.pop() {
+                    let entries = std::fs::read_dir(&current_dir).map_err(|err| {
+                        tonic::Status::internal(format!(
+                            "Failed to read directory {current_dir:?}: {err:#}"
+                        ))
+                    })?;
+
+                    for entry in entries {
+                        let entry = entry.map_err(|err| {
+                            tonic::Status::internal(format!(
+                                "Failed to read directory entry: {err:#}"
+                            ))
+                        })?;
+                        let entry_path = entry.path();
+
+                        if entry_path.is_dir() {
+                            dirs_to_visit.push(entry_path);
+                        } else {
+                            files.push(entry_path);
+                        }
+                    }
+                }
+
+                for file_path in files {
+                    let mut file_url = source.storage_url.clone();
+                    file_url.set_path(&file_path.to_string_lossy());
+                    resolved.push(DataSource {
+                        storage_url: file_url,
+                        ..source.clone()
+                    });
+                }
+            } else {
+                resolved.push(source.clone());
+            }
+        }
+
+        Ok(resolved)
+    }
 }
 
 impl std::fmt::Debug for RerunCloudHandler {
@@ -467,8 +530,6 @@ impl RerunCloudService for RerunCloudHandler {
 
     // --- Manifest Registry ---
 
-    /* Write data */
-
     async fn register_with_dataset(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::RegisterWithDatasetRequest>,
@@ -492,6 +553,8 @@ impl RerunCloudService for RerunCloudHandler {
         let mut partition_types: Vec<String> = vec![];
         let mut storage_urls: Vec<String> = vec![];
         let mut task_ids: Vec<String> = vec![];
+
+        let data_sources = Self::resolve_data_sources(&data_sources)?;
 
         for source in data_sources {
             let ext::DataSource {

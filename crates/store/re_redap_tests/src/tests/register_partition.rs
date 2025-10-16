@@ -17,7 +17,7 @@ use re_protos::{
 };
 
 use crate::tests::common::register_with_dataset;
-use crate::{RecordBatchExt as _, create_simple_recording};
+use crate::{RecordBatchExt as _, create_simple_recording, create_simple_recording_in};
 
 pub async fn register_and_scan_simple_dataset(fe: impl RerunCloudService) {
     let tuid_prefix1 = 1;
@@ -85,6 +85,73 @@ pub async fn register_and_scan_simple_dataset(fe: impl RerunCloudService) {
 
     scan_partition_table_and_snapshot(&fe, dataset_id, "list_all").await;
     scan_dataset_manifest_and_snapshot(&fe, dataset_id, "manifest_list_all").await;
+}
+
+pub async fn register_with_prefix(fe: impl RerunCloudService) {
+    let root_dir = tempfile::tempdir().expect("creating temp dir");
+
+    let tuid_prefix1 = 1;
+    create_simple_recording_in(
+        tuid_prefix1,
+        "my_partition_id1",
+        &["my/entity", "my/other/entity"],
+        root_dir.path(),
+    )
+    .expect("creating recording");
+
+    let tuid_prefix2 = 2;
+    create_simple_recording_in(
+        tuid_prefix2,
+        "my_partition_id2",
+        &["my/entity"],
+        root_dir.path(),
+    )
+    .expect("creating recording");
+
+    let tuid_prefix3 = 3;
+    create_simple_recording_in(
+        tuid_prefix3,
+        "my_partition_id3",
+        &["my/entity", "another/one", "yet/another/one"],
+        root_dir.path(),
+    )
+    .expect("creating recording");
+
+    let dataset_id: EntryId = {
+        let resp = fe
+            .create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
+                name: Some("my_dataset1".to_owned()),
+                id: None,
+            }))
+            .await
+            .unwrap();
+
+        resp.into_inner()
+            .dataset
+            .and_then(|d| d.details?.id)
+            .unwrap()
+            .try_into()
+            .unwrap()
+    };
+
+    let root_url =
+        Url::parse(&format!("file://{}/", root_dir.path().display())).expect("creating root url");
+
+    register_with_dataset(
+        &fe,
+        dataset_id,
+        vec![
+            DataSource {
+                storage_url: Some(root_url.to_string()),
+                layer: None,
+                typ: DataSourceKind::Rrd as i32,
+            }, //
+        ],
+    )
+    .await;
+
+    scan_partition_table_and_snapshot(&fe, dataset_id, "register_prefix_partitions").await;
+    scan_dataset_manifest_and_snapshot(&fe, dataset_id, "register_prefix_manifest").await;
 }
 
 // Scanning an empty dataset should return an empty dataframe with the expected schema -- not a
