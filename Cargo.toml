@@ -201,20 +201,20 @@ camino = "1.2"
 cargo_metadata = "0.21.0"
 cargo-run-wasm = "0.4.0"
 cdr-encoding = "0.10.2"
-cfg_aliases = "0.2"
+cfg_aliases = "0.2.0"
 cfg-if = "1.0"
 chrono = { version = "0.4.42", default-features = false } # Needed for datafusion, see `re_datafusion`'s Cargo.toml
 clang-format = "0.3"
 clap = "4.5"
-clean-path = "0.2"
-colored = "2.2"
+clean-path = "0.2.0"
+colored = "2.2" # Old b/c of dify
 comfy-table = { version = "7.2", default-features = false }
 console_error_panic_hook = "0.1.7"
-const_format = "0.2"
-convert_case = "0.6"
-criterion = "0.5"
+const_format = "0.2.35"
+convert_case = "0.6.0"
+criterion = "0.5.0"
 cros-codecs = "0.0.6"
-crossbeam = "0.8"
+crossbeam = "0.8.0"
 datafusion = { version = "49.0.2", default-features = false, features = [
   # NOTE: we enable the same features everywhere
   # because otherwise we will recompile datafusion all the time based on our current compile target.
@@ -246,7 +246,7 @@ getrandom = "0.3.3"
 glam = { version = "0.30.8", features = ["debug-glam-assert"] }
 glob = "0.3.3"
 gltf = "1.4"
-h264-reader = "0.8"
+h264-reader = "0.8.0"
 half = { version = "2.6.0", features = ["bytemuck"] }
 hexasphere = "16.0.0"
 home = "0.5.11"
@@ -339,8 +339,8 @@ slotmap = { version = "1.0.7", features = ["serde"] }
 smallvec = { version = "1.15", features = ["const_generics", "union"] }
 static_assertions = "1.1"
 stl_io = "0.8.5"
-strum = { version = "0.26.3", features = ["derive"] }
-strum_macros = "0.26.4"
+strum = { version = "0.26.3", features = ["derive"] } # need to update re_rav1d first
+strum_macros = "0.26.4" # need to update re_rav1d first
 sublime_fuzzy = "0.7.0"
 syn = "2.0"
 sysinfo = { version = "0.30.13", default-features = false }
