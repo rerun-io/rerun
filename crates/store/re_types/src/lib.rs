@@ -291,7 +291,7 @@ pub mod external {
     pub use image;
 }
 
-// Has to live here because otherwise we can't use it to implement `Hash` for [`crate::components::TransformFrameId`].
+// Has to live here because otherwise we can't use it to implement `Hash` for `crate::components::TransformFrameId`.
 mod transform_frame_id_hash;
 pub use transform_frame_id_hash::TransformFrameIdHash;
 
