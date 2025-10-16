@@ -29,9 +29,7 @@
 //! The name of the implicit transform frames is the entity path, prefixed with `rerun_tf#`, e.g. `rerun_tf#/world/robot/arm`.
 //!
 //! Entity derived transform frames automatically have an identity transform relationship
-//! to their parent & child's transform frames (_not_ their derived transform frames, but whatever their frames are set to!).
-//! This means that whenever an entity changes its transform frame,
-//! we automatically create new identity relationships.
+//! to their respective parent (unless overwritten by e.g. [`re_types::archetypes::Transform3D`]).
 //!
 //! Example:
 //! Given an entity hierarchy:
@@ -41,27 +39,64 @@
 //! |   |-- left_arm
 //! |   |-- right_arm
 //! ```
-//! Without setting any transform frames, the implicit transform frames would be:
+//! Without setting any transform frames, this means we have a identity connected tree
+//! shown to the left that is associated with individual entities on the right:
 //! ```text
-//! world <=> rerun_tf#/world
-//! world/robot <=> rerun_tf#/world/robot
-//! world/robot/left_arm <=> rerun_tf#/world/robot/left_arm
-//! world/robot/right_arm <=> rerun_tf#/world/robot/right_arm
-//! ```
-//! All of these transform frames are automatically connected via an identity transform.
-//! Now we change the transform frame `world/robot` & `world/robot/left_arm`:
-//! ```text
-//! world <=> rerun_tf#/world
-//! world/robot <=> robot_frame
-//! world/robot/left_arm <=> robot_left_arm
-//! world/robot/right_arm <=> rerun_tf#/world/robot/right_arm
-//! ```
-//! Then, there's automatically new identity relationships created between:
-//! ```text
-//! robot_frame -> rerun_tf#/world
-//! rerun_tf#/world/robot/right_arm -> robot_frame
+//!                ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐                                    ┌──────────────────┐
+//!                       rerun_tf#world       ◀ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│      world       │
+//!                └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘                                    └──────────────────┘
+//!                              │                                                            │
+//!                              │                                                            │
+//!                              │                                                            │
+//!                              │                                                            │
+//!                ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐                                    ┌──────────────────┐
+//!                    rerun_tf#world/robot     ◀ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │   world/robot    │
+//!                └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘                                    └──────────────────┘
+//!                              Λ                                                            Λ
+//!                             ╱ ╲                                                          ╱ ╲
+//!                            ╱   ╲                                                        ╱   ╲
+//!                  ╱────────╱     ╲────────╲                                      ╱──────╱     ╲──────╲
+//!                 ╱                         ╲  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ╳ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ╳ ┐
+//!                ╱                           ╲│                                 ╱                       ╲
+//!               ╱                             ▼                                ╱                         ╲
+//! ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐ ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐        ┌──────────────────┐      ┌──────────────────┐
+//!   rerun_tf#world/robot/left    rerun_tf#world/robot/right          │ world/robot/left │      │world/robot/right │
+//! └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘ └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘        └──────────────────┘      └──────────────────┘
+//!               ▲                                                              │
+//!               │
+//!                ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
 //! ```
 //!
+//! You can interact with these impliciately generated frames like with any other transform frame!
+//! For example, let's say we log a manual transform relationship between two new frames called `robot_frame`
+//! and `left_frame`, associate them with `world/robot` and `world/robot/left` respectively.
+//! That would create two unconnected trees, but this can be handled by specifying another
+//! relationship from `robot` to `rerun_tf#world/robot`, leading to this setup:
+//! ```text
+//!                                     ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐                                   ┌──────────────────┐
+//!                                            rerun_tf#world      ◀ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│      world       │
+//!                                     └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘                                   └──────────────────┘
+//!                                                   │                                                           │
+//!         ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐                                 │
+//!                                                   │                                                           │
+//!         │                                         │                         │                                 │
+//! ┌ ─ ─ ─ ─ ─ ─ ─ ┐                   ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐                                   ┌──────────────────┐
+//!    robot_frame   ───────────────────    rerun_tf#world/robot                └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │   world/robot    │
+//! └ ─ ─ ─ ─ ─ ─ ─ ┘                   └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘                                   └──────────────────┘
+//!         │                                         Λ                                                           Λ
+//!         │                                        ╱ ╲                                                         ╱ ╲
+//!         │                                       ╱   ╲                                                       ╱   ╲
+//!         │                             ╱────────╱     ╲────────╲                                     ╱──────╱     ╲──────╲
+//!         │                            ╱                         ╲ ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ╳ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ╳ ┐
+//!         │                           ╱                           ╲                                 ╱                       ╲
+//!         │                          ╱                             ▼                               ╱                         ╲
+//! ┌ ─ ─ ─ ─ ─ ─ ─ ┐    ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐ ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐       ┌──────────────────┐      ┌──────────────────┐
+//!    left_frame          rerun_tf#world/robot/left    rerun_tf#world/robot/right         │ world/robot/left │      │world/robot/right │
+//! └ ─ ─ ─ ─ ─ ─ ─ ┘    └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘ └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘       └──────────────────┘      └──────────────────┘
+//!         ▲                                                                                        │
+//!         │
+//!          ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
+//! ```
 //!
 //! ### Instance poses
 //!
