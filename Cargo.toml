@@ -353,7 +353,7 @@ tobj = "4.0"
 tokio = { version = "1.47.1", default-features = false }
 tokio-stream = "0.1.17"
 tokio-util = { version = "0.7.16", default-features = false }
-toml = { version = "0.8.23", default-features = false }
+toml = { version = "0.9.8", default-features = false }
 tonic = { version = "0.14.2", default-features = false }
 tonic-prost = { version = "0.14.2", default-features = false }
 tonic-prost-build = { version = "0.14.2", default-features = false }
