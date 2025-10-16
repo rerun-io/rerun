@@ -173,6 +173,29 @@ pub struct LayerDefinition {
     pub layer_type: LayerType,
 }
 
+impl LayerDefinition {
+    pub fn simple(partition_id: &'static str, entities: &'static [&'static str]) -> Self {
+        Self {
+            partition_id,
+            layer_name: None,
+            layer_type: LayerType::simple(entities),
+        }
+    }
+
+    pub fn nasty(partition_id: &'static str, entities: &'static [&'static str]) -> Self {
+        Self {
+            partition_id,
+            layer_name: None,
+            layer_type: LayerType::nasty(entities),
+        }
+    }
+
+    pub fn layer_name(mut self, layer_name: &'static str) -> Self {
+        self.layer_name = Some(layer_name);
+        self
+    }
+}
+
 /// Utility to simplify the creation of data sources to register with a dataset.
 ///
 /// This utility holds the [`TempPath`] instances, so it should not be dropped until the end of

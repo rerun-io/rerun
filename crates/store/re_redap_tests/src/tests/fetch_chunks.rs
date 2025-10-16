@@ -16,8 +16,7 @@ use re_types_core::Loggable as _;
 
 use crate::RecordBatchExt as _;
 use crate::tests::common::{
-    DataSourcesDefinition, LayerDefinition, LayerType, concat_record_batches,
-    register_with_dataset_name,
+    DataSourcesDefinition, LayerDefinition, concat_record_batches, register_with_dataset_name,
 };
 
 /// This test makes a snapshot of all the chunks returned for a simple dataset.
@@ -28,21 +27,12 @@ use crate::tests::common::{
 /// predictable.
 pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService) {
     let data_sources_def = DataSourcesDefinition::new([
-        LayerDefinition {
-            partition_id: "my_partition_id1",
-            layer_name: None,
-            layer_type: LayerType::simple(&["my/entity", "my/other/entity"]),
-        },
-        LayerDefinition {
-            partition_id: "my_partition_id2",
-            layer_name: None,
-            layer_type: LayerType::simple(&["my/entity"]),
-        },
-        LayerDefinition {
-            partition_id: "my_partition_id3",
-            layer_name: None,
-            layer_type: LayerType::simple(&["my/entity", "another/one", "yet/another/one"]),
-        },
+        LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
+        LayerDefinition::simple("my_partition_id2", &["my/entity"]),
+        LayerDefinition::simple(
+            "my_partition_id3",
+            &["my/entity", "another/one", "yet/another/one"],
+        ),
     ]);
 
     let dataset_name = "dataset";
@@ -114,21 +104,12 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
     //
 
     let data_sources_def_1 = DataSourcesDefinition::new([
-        LayerDefinition {
-            partition_id: "my_partition_id1",
-            layer_name: None,
-            layer_type: LayerType::simple(&["my/entity", "my/other/entity"]),
-        },
-        LayerDefinition {
-            partition_id: "my_partition_id2",
-            layer_name: None,
-            layer_type: LayerType::simple(&["my/entity"]),
-        },
-        LayerDefinition {
-            partition_id: "my_partition_id3",
-            layer_name: None,
-            layer_type: LayerType::simple(&["my/entity", "another/one", "yet/another/one"]),
-        },
+        LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
+        LayerDefinition::simple("my_partition_id2", &["my/entity"]),
+        LayerDefinition::simple(
+            "my_partition_id3",
+            &["my/entity", "another/one", "yet/another/one"],
+        ),
     ]);
 
     let dataset_name_1 = "dataset_1";
@@ -153,16 +134,8 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
     //
 
     let data_sources_def_2 = DataSourcesDefinition::new([
-        LayerDefinition {
-            partition_id: "my_partition_id1",
-            layer_name: None,
-            layer_type: LayerType::nasty(&["my/entity", "my/other/entity"]),
-        },
-        LayerDefinition {
-            partition_id: "my_partition_id2",
-            layer_name: None,
-            layer_type: LayerType::nasty(&["my/other/entity"]),
-        },
+        LayerDefinition::nasty("my_partition_id1", &["my/entity", "my/other/entity"]),
+        LayerDefinition::nasty("my_partition_id2", &["my/other/entity"]),
     ]);
 
     let dataset_name_2 = "dataset_2";
