@@ -3,7 +3,6 @@
 use std::{collections::HashSet, fmt::Formatter, fs, sync::Arc};
 
 use arrow::{array::ArrayRef, datatypes::DataType};
-use egui::Vec2;
 use egui_kittest::{SnapshotError, SnapshotOptions};
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
@@ -294,8 +293,7 @@ fn test_single_component_ui_as_list_item(
     };
 
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(Vec2::new(ui_width, 40.0))
+        .setup_kittest_for_rendering_ui([ui_width, 40.0])
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |ctx| {
                 ui.full_span_scope(ui.max_rect().x_range(), |ui| {

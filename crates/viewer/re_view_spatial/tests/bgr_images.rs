@@ -2,12 +2,10 @@
 
 use image::GenericImageView as _;
 use itertools::Itertools as _;
+
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_test_context::{
-    TestContext,
-    external::egui_kittest::{OsThreshold, SnapshotOptions},
-};
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::{
     Archetype as _, blueprint::components::BackgroundKind, datatypes::ColorModel,
@@ -59,7 +57,7 @@ fn run_bgr_test<T: ImageChannelType>(image: &[T], size: [u32; 2], color_model: C
         view_id,
         &snapshot_name,
         egui::vec2(160.0, 120.0),
-        Some(SnapshotOptions::new().failed_pixel_count_threshold(OsThreshold::new(2))),
+        None,
     );
 }
 

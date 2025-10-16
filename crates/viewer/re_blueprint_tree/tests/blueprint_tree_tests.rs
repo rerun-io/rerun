@@ -1,7 +1,5 @@
 #![cfg(feature = "testing")]
 
-use egui::Vec2;
-
 use re_blueprint_tree::BlueprintTree;
 use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
@@ -68,8 +66,7 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
         );
 
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size(Vec2::new(400.0, 800.0))
+            .setup_kittest_for_rendering_ui([400.0, 800.0])
             .build_ui(|ui| {
                 test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                     re_context_menu::collapse_expand::collapse_expand_view(
@@ -192,8 +189,7 @@ fn run_blueprint_panel_and_save_snapshot(
     );
 
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(Vec2::new(400.0, 800.0))
+        .setup_kittest_for_rendering_ui([400.0, 800.0])
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                 let blueprint = ViewportBlueprint::from_db(

@@ -168,7 +168,7 @@ eframe = { version = "0.33.0", default-features = false, features = [
 ] }
 egui = { version = "0.33.0", features = ["callstack", "color-hex", "rayon"] }
 egui_extras = { version = "0.33.0", features = ["http", "image", "serde", "svg"] }
-egui_kittest = { version = "0.33.0", features = ["wgpu", "snapshot", "eframe"] }
+egui_kittest = { version = "0.33.1", features = ["wgpu", "snapshot", "eframe"] }
 egui-wgpu = "0.33.0"
 emath = "0.33.0"
 
