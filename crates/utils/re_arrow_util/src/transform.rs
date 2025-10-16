@@ -4,7 +4,8 @@ use std::num::TryFromIntError;
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayRef, ArrowPrimitiveType, FixedSizeListArray, ListArray, PrimitiveArray, StructArray,
+    Array, ArrayRef, ArrowPrimitiveType, BinaryArray, FixedSizeListArray, ListArray,
+    PrimitiveArray, StructArray,
 };
 use arrow::compute::cast;
 use arrow::datatypes::{DataType, Field};
@@ -69,6 +70,9 @@ pub enum Error {
 
     #[error("At least one field name is required")]
     NoFieldNames,
+
+    #[error("Offset overflow: total byte count {byte_count} exceeds i32::MAX")]
+    OffsetOverflow { byte_count: usize },
 
     #[error(transparent)]
     Arrow(#[from] ArrowError),
@@ -656,8 +660,66 @@ impl Transform for Flatten {
     }
 }
 
+/// Converts a [`BinaryArray`] to a [`ListArray`] where each binary element becomes a list of `u8`.
+///
+/// Each byte slice in the [`BinaryArray`] is converted to a list of `u8` values.
+/// Null entries in the source array are preserved as null lists.
+#[derive(Clone, Debug, Default)]
+pub struct BinaryToListUInt8;
+
+impl BinaryToListUInt8 {
+    /// Create a new binary-to-list-uint8 transformation.
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Transform for BinaryToListUInt8 {
+    type Source = BinaryArray;
+    type Target = ListArray;
+
+    fn transform(&self, source: &arrow::array::BinaryArray) -> Result<ListArray, Error> {
+        use arrow::array::UInt8Array;
+        use arrow::buffer::OffsetBuffer;
+
+        let mut offsets = Vec::with_capacity(source.len() + 1);
+        let mut byte_values = Vec::new();
+
+        let mut current_offset = 0i32;
+        offsets.push(current_offset);
+
+        for i in 0..source.len() {
+            if source.is_null(i) {
+                offsets.push(current_offset);
+                continue;
+            }
+
+            let bytes = source.value(i);
+            byte_values.extend_from_slice(bytes);
+
+            current_offset =
+                i32::try_from(byte_values.len()).map_err(|_| Error::OffsetOverflow {
+                    byte_count: byte_values.len(),
+                })?;
+            offsets.push(current_offset);
+        }
+
+        let uint8_array = UInt8Array::from(byte_values);
+        let list = ListArray::new(
+            Arc::new(Field::new("item", DataType::UInt8, false)),
+            OffsetBuffer::new(offsets.into()),
+            Arc::new(uint8_array),
+            source.nulls().cloned(),
+        );
+
+        Ok(list)
+    }
+}
+
 #[cfg(test)]
 mod test {
+    use std::sync::Arc;
+
     use super::*;
 
     use arrow::{
@@ -678,17 +740,12 @@ mod test {
             .unwrap()
     }
 
-    struct DisplayRB(RecordBatch);
+    struct DisplayRB<T: Array + Clone + 'static>(T);
 
-    impl From<ListArray> for DisplayRB {
-        fn from(array: ListArray) -> Self {
-            Self(wrap_in_record_batch(Arc::new(array)))
-        }
-    }
-
-    impl std::fmt::Display for DisplayRB {
+    impl<T: Array + Clone + 'static> std::fmt::Display for DisplayRB<T> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "{}", re_format_arrow::format_record_batch(&self.0))
+            let rb = wrap_in_record_batch(Arc::new(self.0.clone()));
+            write!(f, "{}", re_format_arrow::format_record_batch(&rb))
         }
     }
 
@@ -821,7 +878,7 @@ mod test {
     #[test]
     fn simple() {
         let array = create_nasty_component_column();
-        println!("{}", DisplayRB::from(array.clone()));
+        println!("{}", DisplayRB(array.clone()));
 
         let pipeline = MapList::new(GetField::new("poses"))
             .then(Flatten::new())
@@ -829,13 +886,13 @@ mod test {
 
         let result: ListArray = pipeline.transform(&array).unwrap();
 
-        insta::assert_snapshot!("simple", format!("{}", DisplayRB::from(result.clone())));
+        insta::assert_snapshot!("simple", format!("{}", DisplayRB(result.clone())));
     }
 
     #[test]
     fn add_one_to_leaves() {
         let array = create_nasty_component_column();
-        println!("{}", DisplayRB::from(array.clone()));
+        println!("{}", DisplayRB(array.clone()));
 
         let pipeline = MapList::new(GetField::new("poses"))
             .then(Flatten::new())
@@ -849,13 +906,16 @@ mod test {
 
         let result = pipeline.transform(&array).unwrap();
 
-        insta::assert_snapshot!("add_one_to_leaves", format!("{}", DisplayRB::from(result)));
+        insta::assert_snapshot!(
+            "add_one_to_leaves",
+            format!("{}", DisplayRB(result.clone()))
+        );
     }
 
     #[test]
     fn convert_to_f32() {
         let array = create_nasty_component_column();
-        println!("{}", DisplayRB::from(array.clone()));
+        println!("{}", DisplayRB(array.clone()));
 
         let pipeline = MapList::new(GetField::new("poses"))
             .then(Flatten::new())
@@ -867,13 +927,13 @@ mod test {
 
         let result = pipeline.transform(&array).unwrap();
 
-        insta::assert_snapshot!("convert_to_f32", format!("{}", DisplayRB::from(result)));
+        insta::assert_snapshot!("convert_to_f32", format!("{}", DisplayRB(result.clone())));
     }
 
     #[test]
     fn replace_nulls() {
         let array = create_nasty_component_column();
-        println!("{}", DisplayRB::from(array.clone()));
+        println!("{}", DisplayRB(array.clone()));
 
         let pipeline = MapList::new(GetField::new("poses"))
             .then(Flatten::new())
@@ -886,13 +946,13 @@ mod test {
 
         let result = pipeline.transform(&array).unwrap();
 
-        insta::assert_snapshot!("replace_nulls", format!("{}", DisplayRB::from(result)));
+        insta::assert_snapshot!("replace_nulls", format!("{}", DisplayRB(result.clone())));
     }
 
     #[test]
     fn test_flatten_single_element() {
         let array = create_nasty_component_column();
-        println!("{}", DisplayRB::from(array.clone()));
+        println!("{}", DisplayRB(array.clone()));
 
         let pipeline = MapList::new(GetField::new("poses")).then(Flatten::new());
 
@@ -900,7 +960,7 @@ mod test {
 
         insta::assert_snapshot!(
             "flatten_single_element",
-            format!("{}", DisplayRB::from(result))
+            format!("{}", DisplayRB(result.clone()))
         );
     }
 
@@ -958,13 +1018,93 @@ mod test {
 
         let list_of_lists = outer_builder.finish();
 
-        println!("{}", DisplayRB::from(list_of_lists.clone()));
+        println!("{}", DisplayRB(list_of_lists.clone()));
 
         let result = Flatten::new().transform(&list_of_lists).unwrap();
 
         insta::assert_snapshot!(
             "flatten_multiple_elements",
-            format!("{}", DisplayRB::from(result))
+            format!("{}", DisplayRB(result.clone()))
         );
+    }
+
+    #[test]
+    fn test_binary_to_list_uint8() {
+        use arrow::array::BinaryBuilder;
+
+        let mut builder = BinaryBuilder::new();
+        builder.append_value(b"hello");
+        builder.append_value(b"world");
+        builder.append_null();
+        builder.append_value(b"");
+        builder.append_value([0x00, 0xFF, 0x42]);
+        let binary_array = builder.finish();
+
+        println!("Input:");
+        println!("{}", DisplayRB(binary_array.clone()));
+
+        let result = BinaryToListUInt8::new().transform(&binary_array).unwrap();
+
+        println!("Output:");
+        println!("{}", DisplayRB(result.clone()));
+
+        // Verify structure
+        assert_eq!(result.len(), 5);
+        assert!(!result.is_null(0));
+        assert!(!result.is_null(1));
+        assert!(result.is_null(2));
+        assert!(!result.is_null(3));
+        assert!(!result.is_null(4));
+
+        {
+            let list = result.value(0);
+            let uint8 = list
+                .as_any()
+                .downcast_ref::<arrow::array::UInt8Array>()
+                .unwrap();
+            assert_eq!(uint8.len(), 5);
+            assert_eq!(uint8.value(0) as char, 'h');
+            assert_eq!(uint8.value(1) as char, 'e');
+            assert_eq!(uint8.value(2) as char, 'l');
+            assert_eq!(uint8.value(3) as char, 'l');
+            assert_eq!(uint8.value(4) as char, 'o');
+        }
+
+        {
+            let list = result.value(1);
+            let uint8 = list
+                .as_any()
+                .downcast_ref::<arrow::array::UInt8Array>()
+                .unwrap();
+            assert_eq!(list.len(), 5);
+            assert_eq!(uint8.value(0) as char, 'w');
+            assert_eq!(uint8.value(1) as char, 'o');
+            assert_eq!(uint8.value(2) as char, 'r');
+            assert_eq!(uint8.value(3) as char, 'l');
+            assert_eq!(uint8.value(4) as char, 'd');
+        }
+
+        assert!(result.is_null(2));
+
+        {
+            let list = result.value(3);
+            let uint8 = list
+                .as_any()
+                .downcast_ref::<arrow::array::UInt8Array>()
+                .unwrap();
+            assert_eq!(uint8.len(), 0);
+        }
+
+        {
+            let list = result.value(4);
+            let uint8 = list
+                .as_any()
+                .downcast_ref::<arrow::array::UInt8Array>()
+                .unwrap();
+            assert_eq!(uint8.len(), 3);
+            assert_eq!(uint8.value(0), 0x00);
+            assert_eq!(uint8.value(1), 0xFF);
+            assert_eq!(uint8.value(2), 0x42);
+        }
     }
 }
