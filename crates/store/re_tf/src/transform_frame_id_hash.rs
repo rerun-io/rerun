@@ -40,8 +40,9 @@ impl std::cmp::PartialEq for TransformFrameIdHash {
 }
 
 impl From<&TransformFrameId> for TransformFrameIdHash {
+    #[inline]
     fn from(value: &TransformFrameId) -> Self {
-        Self(Hash64::hash(&value.0))
+        Self::new(value)
     }
 }
 
@@ -131,6 +132,10 @@ mod tests {
             TransformFrameIdHash::new(&derived_frame_id),
             TransformFrameIdHash::from_entity_path_hash(path.hash())
         );
+        assert_eq!(
+            TransformFrameIdHash::from(&derived_frame_id),
+            TransformFrameIdHash::from_entity_path_hash(path.hash())
+        );
     }
 
     #[test]
@@ -145,6 +150,10 @@ mod tests {
         assert_ne!(
             TransformFrameIdHash::new(&frame_id),
             TransformFrameIdHash::from_entity_path_hash(path.hash())
+        );
+        assert_ne!(
+            TransformFrameIdHash::from(&frame_id),
+            TransformFrameIdHash::from_entity_path(&path)
         );
     }
 }
