@@ -1582,20 +1582,6 @@ dependencies = [
 
 [[package]]
 name = "cargo_metadata"
-version = "0.18.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d886547e41f740c616ae73108f6eb70afe6d940c7bc697cb30f13daec073037"
-dependencies = [
- "camino",
- "cargo-platform 0.1.9",
- "semver",
- "serde",
- "serde_json",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "cargo_metadata"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5cfca2aaa699835ba88faf58a06342a314a950d2b9686165e038286c30316868"
@@ -8412,7 +8398,7 @@ name = "re_build_tools"
 version = "0.26.0-alpha.1+dev"
 dependencies = [
  "anyhow",
- "cargo_metadata 0.18.1",
+ "cargo_metadata 0.21.0",
  "glob",
  "jiff",
  "regex-lite",
@@ -8785,7 +8771,7 @@ dependencies = [
  "anyhow",
  "argh",
  "camino",
- "cargo_metadata 0.18.1",
+ "cargo_metadata 0.21.0",
  "glob",
  "indicatif",
  "itertools 0.14.0",
