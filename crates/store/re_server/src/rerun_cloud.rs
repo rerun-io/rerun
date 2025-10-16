@@ -138,10 +138,15 @@ impl RerunCloudHandler {
         for source in data_sources {
             let path = source.storage_url.path();
             if path.ends_with('/') {
-                let path = std::path::Path::new(path);
-                let meta = std::fs::metadata(path).map_err(|err| match err.kind() {
+                let path = source.storage_url.to_file_path().map_err(|_err| {
+                    tonic::Status::invalid_argument(format!(
+                        "getting file path from {:?}",
+                        source.storage_url
+                    ))
+                })?;
+                let meta = std::fs::metadata(&path).map_err(|err| match err.kind() {
                     std::io::ErrorKind::NotFound => {
-                        tonic::Status::invalid_argument(format!("Directory not found: {path:?}"))
+                        tonic::Status::invalid_argument(format!("Directory not found: {:?}", &path))
                     }
                     _ => tonic::Status::invalid_argument(format!(
                         "Failed to read directory metadata {path:?}: {err:#}"
@@ -154,7 +159,7 @@ impl RerunCloudHandler {
                 }
 
                 // Recursively walk the directory and grab all files
-                let mut dirs_to_visit = vec![path.to_path_buf()];
+                let mut dirs_to_visit = vec![path];
                 let mut files = Vec::new();
 
                 while let Some(current_dir) = dirs_to_visit.pop() {
