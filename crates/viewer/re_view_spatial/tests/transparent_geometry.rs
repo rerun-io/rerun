@@ -81,6 +81,10 @@ fn test_transparent_geometry<A: AsComponents>(
                         ),
                         glam::Vec3::Z,
                     ));
+
+                    // Hack: without this the view will svivel to the default eye/view.
+                    // TODO(#8265): we shouldn't need this hack.
+                    view_state.state_3d.last_eye_interaction = Some(-f64::INFINITY);
                 }
 
                 test_context.run_with_single_view(ui, view_id);
