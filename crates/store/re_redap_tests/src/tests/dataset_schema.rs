@@ -1,12 +1,9 @@
 use re_protos::{
-    cloud::v1alpha1::{
-        CreateDatasetEntryRequest, GetDatasetSchemaRequest,
-        rerun_cloud_service_server::RerunCloudService,
-    },
+    cloud::v1alpha1::{GetDatasetSchemaRequest, rerun_cloud_service_server::RerunCloudService},
     headers::RerunHeadersInjectorExt as _,
 };
 
-use super::common::{DataSourcesDefinition, LayerDefinition, register_with_dataset_name};
+use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _};
 use crate::SchemaExt as _;
 
 pub async fn simple_dataset_schema(service: impl RerunCloudService) {
@@ -20,28 +17,17 @@ pub async fn simple_dataset_schema(service: impl RerunCloudService) {
     ]);
 
     let dataset_name = "my_dataset1";
+    service.create_dataset_entry_with_name(dataset_name).await;
     service
-        .create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
-            name: Some(dataset_name.to_owned()),
-            id: None,
-        }))
-        .await
-        .unwrap();
-
-    register_with_dataset_name(&service, dataset_name, data_sources_def.to_data_sources()).await;
+        .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
+        .await;
 
     dataset_schema_snapshot(&service, dataset_name, "simple_dataset").await;
 }
 
 pub async fn empty_dataset_schema(service: impl RerunCloudService) {
     let dataset_name = "empty_dataset";
-    service
-        .create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
-            name: Some(dataset_name.to_owned()),
-            id: None,
-        }))
-        .await
-        .unwrap();
+    service.create_dataset_entry_with_name(dataset_name).await;
 
     dataset_schema_snapshot(&service, dataset_name, "empty_dataset").await;
 }

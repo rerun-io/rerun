@@ -5,8 +5,8 @@ use std::collections::HashSet;
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_protos::{
     cloud::v1alpha1::{
-        CreateDatasetEntryRequest, FetchChunksRequest, QueryDatasetResponse,
-        ext::QueryDatasetRequest, rerun_cloud_service_server::RerunCloudService,
+        FetchChunksRequest, QueryDatasetResponse, ext::QueryDatasetRequest,
+        rerun_cloud_service_server::RerunCloudService,
     },
     common::v1alpha1::ext::ScanParameters,
     headers::RerunHeadersInjectorExt as _,
@@ -16,7 +16,7 @@ use re_types_core::Loggable as _;
 
 use crate::RecordBatchExt as _;
 use crate::tests::common::{
-    DataSourcesDefinition, LayerDefinition, concat_record_batches, register_with_dataset_name,
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
 };
 
 /// This test makes a snapshot of all the chunks returned for a simple dataset.
@@ -36,17 +36,10 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
     ]);
 
     let dataset_name = "dataset";
-
+    service.create_dataset_entry_with_name(dataset_name).await;
     service
-        .create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
-            name: Some(dataset_name.to_owned()),
-            id: None,
-        }))
-        .await
-        .expect("Failed to create dataset");
-
-    // now register partitions with the dataset
-    register_with_dataset_name(&service, dataset_name, data_sources_def.to_data_sources()).await;
+        .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
+        .await;
 
     let chunk_info = service
         .query_dataset(
@@ -113,21 +106,10 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
     ]);
 
     let dataset_name_1 = "dataset_1";
+    service.create_dataset_entry_with_name(dataset_name_1).await;
     service
-        .create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
-            name: Some(dataset_name_1.to_owned()),
-            id: None,
-        }))
-        .await
-        .expect("Failed to create dataset");
-
-    // now register partitions with the dataset
-    register_with_dataset_name(
-        &service,
-        dataset_name_1,
-        data_sources_def_1.to_data_sources(),
-    )
-    .await;
+        .register_with_dataset_name(dataset_name_1, data_sources_def_1.to_data_sources())
+        .await;
 
     //
     // Create a second dataset
@@ -139,21 +121,10 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
     ]);
 
     let dataset_name_2 = "dataset_2";
+    service.create_dataset_entry_with_name(dataset_name_2).await;
     service
-        .create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
-            name: Some(dataset_name_2.to_owned()),
-            id: None,
-        }))
-        .await
-        .expect("Failed to create dataset");
-
-    // now register partitions with the dataset
-    register_with_dataset_name(
-        &service,
-        dataset_name_2,
-        data_sources_def_2.to_data_sources(),
-    )
-    .await;
+        .register_with_dataset_name(dataset_name_2, data_sources_def_2.to_data_sources())
+        .await;
 
     //
     // Query some chunks from dataset 1

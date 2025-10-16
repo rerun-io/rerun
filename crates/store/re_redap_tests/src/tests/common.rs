@@ -1,54 +1,64 @@
-use crate::{
-    RecordBatchExt as _, TempPath, TuidPrefix, create_nasty_recording,
-    create_recording_with_properties, create_simple_recording,
-};
+use std::collections::BTreeMap;
+
 use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
+use tonic::async_trait;
+use url::Url;
+
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::DataSourceKind;
 use re_protos::{
     cloud::v1alpha1::{
-        DataSource, QueryTasksOnCompletionRequest, RegisterWithDatasetRequest,
-        RegisterWithDatasetResponse,
+        CreateDatasetEntryRequest, DataSource, DataSourceKind, QueryTasksOnCompletionRequest,
+        RegisterWithDatasetRequest, RegisterWithDatasetResponse,
+        rerun_cloud_service_server::RerunCloudService,
     },
     common::v1alpha1::{IfDuplicateBehavior, TaskId},
     headers::RerunHeadersInjectorExt as _,
 };
 use re_types_core::AsComponents;
-use std::collections::BTreeMap;
-use url::Url;
 
-#[expect(dead_code)]
-pub async fn register_with_dataset_id(
-    service: &impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
-    dataset_id: EntryId,
-    data_sources: Vec<re_protos::cloud::v1alpha1::DataSource>,
-) {
-    let request = tonic::Request::new(RegisterWithDatasetRequest {
-        data_sources,
-        on_duplicate: IfDuplicateBehavior::Error as i32,
-    })
-    .with_entry_id(dataset_id)
-    .expect("Failed to create a request");
+use crate::{
+    RecordBatchExt as _, TempPath, TuidPrefix, create_nasty_recording,
+    create_recording_with_properties, create_simple_recording,
+};
 
-    register_with_dataset(service, request).await;
+#[async_trait]
+pub trait RerunCloudServiceExt: RerunCloudService {
+    async fn create_dataset_entry_with_name(&self, dataset_name: &str);
+
+    async fn register_with_dataset_name(
+        &self,
+        dataset_name: &str,
+        data_sources: Vec<re_protos::cloud::v1alpha1::DataSource>,
+    );
 }
 
-pub async fn register_with_dataset_name(
-    service: &impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
-    dataset_name: &str,
-    data_sources: Vec<re_protos::cloud::v1alpha1::DataSource>,
-) {
-    let request = tonic::Request::new(RegisterWithDatasetRequest {
-        data_sources,
-        on_duplicate: IfDuplicateBehavior::Error as i32,
-    })
-    .with_entry_name(dataset_name)
-    .expect("Failed to create a request");
+#[async_trait]
+impl<T: RerunCloudService> RerunCloudServiceExt for T {
+    async fn create_dataset_entry_with_name(&self, dataset_name: &str) {
+        self.create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
+            name: Some(dataset_name.to_owned()),
+            id: None,
+        }))
+        .await
+        .expect("create_dataset_entry should succeed");
+    }
 
-    register_with_dataset(service, request).await;
+    async fn register_with_dataset_name(
+        &self,
+        dataset_name: &str,
+        data_sources: Vec<re_protos::cloud::v1alpha1::DataSource>,
+    ) {
+        let request = tonic::Request::new(RegisterWithDatasetRequest {
+            data_sources,
+            on_duplicate: IfDuplicateBehavior::Error as i32,
+        })
+        .with_entry_name(dataset_name)
+        .expect("Failed to create a request");
+
+        register_with_dataset(self, request).await;
+    }
 }
 
 async fn register_with_dataset(
