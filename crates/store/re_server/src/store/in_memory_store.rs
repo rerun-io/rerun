@@ -9,8 +9,6 @@ use datafusion::catalog::MemTable;
 use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
 
-use lance::Dataset as LanceDataset;
-
 use re_chunk_store::{Chunk, ChunkStoreConfig};
 use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::{
@@ -196,10 +194,10 @@ impl InMemoryStore {
 
 
         let table = TableType::LanceDataset(
-            lance::Dataset::open(path)
+            Box::new(lance::Dataset::open(path)
                 .await
                 .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?,
-        );
+        ));
 
         let entry_id = EntryId::new();
 

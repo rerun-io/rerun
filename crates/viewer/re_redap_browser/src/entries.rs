@@ -153,9 +153,10 @@ async fn fetch_entries_and_register_tables(
         .await?;
 
     let origin_ref = &origin;
+    let runtime_ref = &runtime;
     let futures_iter = entries
         .into_iter()
-        .filter_map(move |e| fetch_entry_details(client.clone(), origin_ref, e, runtime.clone()));
+        .filter_map(move |e| fetch_entry_details(client.clone(), origin_ref, e, runtime_ref));
 
     let mut entries = HashMap::default();
 
@@ -197,7 +198,7 @@ fn fetch_entry_details(
     client: ConnectionClient,
     origin: &re_uri::Origin,
     entry: EntryDetails,
-    runtime: AsyncRuntimeHandle,
+    runtime: &AsyncRuntimeHandle,
 ) -> Option<impl Future<Output = FetchEntryDetailsOutput>> {
     // We could also box the future but then we'd need to use `.boxed()` natively and
     // `.boxed_local()` on wasm. Either passes the `Send` type info transparently.
