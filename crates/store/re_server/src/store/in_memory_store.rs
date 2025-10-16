@@ -192,7 +192,7 @@ impl InMemoryStore {
             format!("Expected a valid path, got: {}", directory.display()),
         ))?;
 
-        let table = TableType::LanceDataset(Box::new(
+        let table = TableType::LanceDataset(Arc::new(
             lance::Dataset::open(path)
                 .await
                 .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?,

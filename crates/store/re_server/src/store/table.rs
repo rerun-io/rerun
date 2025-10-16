@@ -20,7 +20,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub enum TableType {
     DataFusionTable(Arc<dyn TableProvider>),
-    LanceDataset(Box<LanceDataset>),
+    LanceDataset(Arc<LanceDataset>),
 }
 
 #[derive(Clone)]
@@ -148,6 +148,8 @@ impl Table {
                 params.mode = WriteMode::Append;
 
                 dataset
+                    .as_ref()
+                    .clone()
                     .append(reader, Some(params))
                     .await
                     .map_err(|err| DataFusionError::External(err.into()))
