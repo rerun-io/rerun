@@ -3,8 +3,10 @@ from __future__ import annotations
 import os
 import pathlib
 import platform
+import shutil
 import socket
 import subprocess
+import tempfile
 import time
 from typing import TYPE_CHECKING
 
@@ -27,6 +29,22 @@ TABLE_FILEPATH = (
     pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "table" / "lance" / "simple_datatypes"
 )
 
+@pytest.fixture(scope="module")
+def table_filepath():
+    """Copies test data to a temp directory.
+
+    This is necessary because we have some unit tests that will modify the
+    lance dataset. We do not wish this to pollute our repository.
+    """
+    # Create a temporary directory
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = pathlib.Path(temp_dir)
+
+        # Copy all test data to the temp directory
+        shutil.copytree(TABLE_FILEPATH, temp_path / "simple_datatypes")
+
+        # Yield the path to the copied data
+        yield temp_path / "simple_datatypes"
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_windows_tzdata() -> None:
@@ -110,9 +128,9 @@ class ServerInstance:
 
 
 @pytest.fixture(scope="module")
-def server_instance() -> Generator[ServerInstance, None, None]:
+def server_instance(table_filepath) -> Generator[ServerInstance, None, None]:
     assert DATASET_FILEPATH.is_dir()
-    assert TABLE_FILEPATH.is_dir()
+    assert table_filepath.is_dir()
 
     env = os.environ.copy()
     if "RUST_LOG" not in env:
@@ -135,11 +153,11 @@ def server_instance() -> Generator[ServerInstance, None, None]:
         "--dataset",
         str(DATASET_FILEPATH),
         "--table",
-        str(TABLE_FILEPATH),
+        str(table_filepath),
         "--table",
-        f"second_schema.second_table={TABLE_FILEPATH}",
+        f"second_schema.second_table={table_filepath}",
         "--table",
-        f"alternate_catalog.third_schema.third_table={TABLE_FILEPATH}",
+        f"alternate_catalog.third_schema.third_table={table_filepath}",
         f"--port={port}",
     ]
     server_process = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
