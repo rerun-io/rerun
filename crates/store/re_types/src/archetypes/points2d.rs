@@ -33,7 +33,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_points2d_random").spawn()?;
 ///
 ///     let mut rng = rand::rngs::SmallRng::seed_from_u64(42);
-///     let dist = rand::distr::Uniform::new(-3., 3.);
+///     let dist = rand::distr::Uniform::new(-3., 3.)?;
 ///
 ///     rec.log(
 ///         "random",
