@@ -19,7 +19,7 @@ use datafusion::{
 };
 use futures::Stream;
 use tokio::runtime::Handle;
-use tonic::IntoStreamingRequest;
+use tonic::IntoStreamingRequest as _;
 use tracing::instrument;
 
 use re_log_encoding::codec::wire::decoder::Decode as _;
@@ -30,7 +30,7 @@ use re_protos::cloud::v1alpha1::{
     EntryFilter, EntryKind, FindEntriesRequest, TableInsertMode, WriteTableRequest,
 };
 use re_protos::cloud::v1alpha1::{GetTableSchemaRequest, ScanTableRequest, ScanTableResponse};
-use re_protos::headers::RerunHeadersInjectorExt;
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::ConnectionClient;
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
@@ -243,7 +243,7 @@ impl TableEntryWriterExec {
 }
 
 impl ExecutionPlan for TableEntryWriterExec {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "TableEntryWriterExec"
     }
 
@@ -286,7 +286,7 @@ impl ExecutionPlan for TableEntryWriterExec {
         let stream = RecordBatchGrpcOutputStream::new(
             inner,
             self.client.clone(),
-            self.runtime.clone(),
+            &self.runtime,
             self.table_id,
             self.insert_op,
         );
@@ -300,7 +300,6 @@ pub struct RecordBatchGrpcOutputStream<S> {
     grpc_sender: Option<GrpcStreamSender>,
     error_receiver: tokio::sync::oneshot::Receiver<tonic::Status>,
     grpc_error: Option<tonic::Status>,
-    table_id: EntryId,
     insert_op: TableInsertMode,
 }
 
@@ -324,7 +323,7 @@ where
     pub fn new(
         inner: S,
         client: ConnectionClient,
-        runtime: Handle,
+        runtime: &Handle,
         table_id: EntryId,
         insert_op: TableInsertMode,
     ) -> Self {
@@ -346,6 +345,7 @@ where
             }.await {
                 // Send the error back to the stream
                 // Ignore send error if receiver is dropped
+                #[expect(clippy::let_underscore_must_use)]
                 let _ = error_tx.send(err);
             }
         });
@@ -355,7 +355,6 @@ where
             grpc_sender: Some(GrpcStreamSender { sender: tx }),
             error_receiver: error_rx,
             grpc_error: None,
-            table_id,
             insert_op,
         }
     }
@@ -377,11 +376,8 @@ where
                     // Return the error immediately
                     return Poll::Ready(Some(Err(DataFusionError::External(Box::new(status)))));
                 }
-                Poll::Ready(Err(_)) => {
+                Poll::Ready(Err(_)) | Poll::Pending => {
                     // Oneshot receiver error means sender was dropped (normal completion)
-                }
-                Poll::Pending => {
-                    // No error yet, continue normally
                 }
             }
         }
@@ -415,12 +411,12 @@ where
                                 }
                             }
                         }
-                        Err(e) => {
+                        Err(err) => {
                             // Conversion error
                             return Poll::Ready(Some(Err(DataFusionError::External(Box::new(
                                 std::io::Error::new(
                                     std::io::ErrorKind::InvalidData,
-                                    format!("Failed to convert batch: {}", e),
+                                    format!("Failed to convert batch: {err}"),
                                 ),
                             )))));
                         }

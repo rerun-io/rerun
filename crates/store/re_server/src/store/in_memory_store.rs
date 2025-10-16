@@ -5,10 +5,9 @@ use arrow::array::{
     ArrayRef, Int32Array, RecordBatch, RecordBatchOptions, StringArray, TimestampNanosecondArray,
 };
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
-use datafusion::catalog::{MemTable, TableProvider};
+use datafusion::catalog::MemTable;
 use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
-use lance::Dataset as LanceDataset;
 
 use re_chunk_store::ChunkStoreConfig;
 use re_log_types::EntryId;
@@ -24,8 +23,8 @@ use re_tuid::Tuid;
 use re_types_core::{ComponentBatch as _, Loggable as _};
 
 use crate::entrypoint::NamedPath;
-use crate::store::{Dataset, Error, Table};
 use crate::store::table::TableType;
+use crate::store::{Dataset, Error, Table};
 
 const ENTRIES_TABLE_NAME: &str = "__entries";
 
@@ -129,9 +128,11 @@ impl InMemoryStore {
             format!("Expected a valid path, got: {}", directory.display()),
         ))?;
 
-        let table = TableType::LanceDataset(lance::Dataset::open(path)
-            .await
-            .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?);
+        let table = TableType::LanceDataset(
+            Box::new(lance::Dataset::open(path)
+                .await
+                .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?,
+        ));
 
         let entry_id = EntryId::new();
 

@@ -5,9 +5,7 @@ use datafusion::common::exec_err;
 use datafusion::datasource::memory::MemorySourceConfig;
 use datafusion::error::DataFusionError;
 use datafusion::execution::SessionStateBuilder;
-use datafusion::logical_expr::UserDefinedLogicalNode;
 use datafusion::logical_expr::dml::InsertOp;
-use datafusion::physical_plan::ExecutionPlan;
 use futures::StreamExt as _;
 use lance::Dataset as LanceDataset;
 use lance::datafusion::LanceTableProvider;
@@ -22,7 +20,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub enum TableType {
     DataFusionTable(Arc<dyn TableProvider>),
-    LanceDataset(LanceDataset),
+    LanceDataset(Box<LanceDataset>),
 }
 
 #[derive(Clone)]
@@ -103,7 +101,7 @@ impl Table {
         match &self.table {
             TableType::DataFusionTable(t) => Arc::clone(t),
             TableType::LanceDataset(dataset) => Arc::new(LanceTableProvider::new(
-                Arc::new(dataset.clone()),
+                Arc::new(dataset.as_ref().clone()),
                 false,
                 false,
             )),
@@ -111,7 +109,7 @@ impl Table {
     }
 
     async fn write_table_provider(
-        &mut self,
+        &self,
         rb: RecordBatch,
         insert_op: InsertOp,
     ) -> Result<(), DataFusionError> {
@@ -160,9 +158,9 @@ impl Table {
             InsertOp::Overwrite => {
                 params.mode = WriteMode::Overwrite;
 
-                let _ = LanceDataset::write(reader, Arc::new(dataset.clone()), Some(params))
+                let _ = LanceDataset::write(reader, Arc::new(dataset.as_ref().clone()), Some(params))
                     .await
-                    .map_err(|err| DataFusionError::External(err.into()));
+                    .map_err(|err| DataFusionError::External(err.into()))?;
 
                 Ok(())
             }
@@ -175,10 +173,10 @@ impl Table {
         insert_op: InsertOp,
     ) -> Result<(), DataFusionError> {
         match &self.table {
-            TableType::LanceDataset(lance_dataset) => {
+            TableType::LanceDataset(_) => {
                 self.write_table_lance_dataset(rb, insert_op).await
             }
-            TableType::DataFusionTable(table) => self.write_table_provider(rb, insert_op).await,
+            TableType::DataFusionTable(_) => self.write_table_provider(rb, insert_op).await,
         }
     }
 }
