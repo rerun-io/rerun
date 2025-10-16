@@ -198,23 +198,23 @@ bytemuck = { version = "1.24", features = ["extern_crate_alloc"] }
 byteorder = "1.5.0"
 bytes = "1.10"
 camino = "1.2"
-cargo_metadata = "0.18"
-cargo-run-wasm = "0.3.2"
+cargo_metadata = "0.21.0"
+cargo-run-wasm = "0.4.0"
 cdr-encoding = "0.10.2"
-cfg_aliases = "0.2"
+cfg_aliases = "0.2.0"
 cfg-if = "1.0"
 chrono = { version = "0.4.42", default-features = false } # Needed for datafusion, see `re_datafusion`'s Cargo.toml
 clang-format = "0.3"
 clap = "4.5"
-clean-path = "0.2"
-colored = "2.2"
+clean-path = "0.2.0"
+colored = "2.2" # Old b/c of dify
 comfy-table = { version = "7.2", default-features = false }
 console_error_panic_hook = "0.1.7"
-const_format = "0.2"
-convert_case = "0.6"
-criterion = "0.5"
+const_format = "0.2.35"
+convert_case = "0.6.0"
+criterion = "0.5.0"
 cros-codecs = "0.0.6"
-crossbeam = "0.8"
+crossbeam = "0.8.0"
 datafusion = { version = "49.0.2", default-features = false, features = [
   # NOTE: we enable the same features everywhere
   # because otherwise we will recompile datafusion all the time based on our current compile target.
@@ -246,7 +246,7 @@ getrandom = "0.3.3"
 glam = { version = "0.30.8", features = ["debug-glam-assert"] }
 glob = "0.3.3"
 gltf = "1.4"
-h264-reader = "0.8"
+h264-reader = "0.8.0"
 half = { version = "2.6.0", features = ["bytemuck"] }
 hexasphere = "16.0.0"
 home = "0.5.11"
@@ -254,7 +254,7 @@ http = "1.3.1"
 image = { version = "0.25.6", default-features = false }
 indent = "0.1.1"
 indexmap = "2.11" # Version chosen to align with other dependencies
-indicatif = "0.17.11" # Progress bar
+indicatif = "0.18.0" # Progress bar
 infer = "0.16.0" # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
 insta = "1.43"
 itertools = "0.14.0"
@@ -288,7 +288,7 @@ opentelemetry = { version = "0.31.0", features = ["metrics"] }
 opentelemetry-appender-tracing = "0.31.0"
 opentelemetry-otlp = "0.31.0"
 opentelemetry_sdk = { version = "0.31.0", features = ["rt-tokio"] }
-ordered-float = "4.6.0"
+ordered-float = "5.1.0"
 parking_lot = "0.12.5"
 parquet = { version = "55.2", default-features = false }
 paste = "1.0"
@@ -296,7 +296,7 @@ pathdiff = "0.2.3"
 percent-encoding = "2.3"
 pico-args = "0.5.0"
 pin-project-lite = "0.2.16"
-ply-rs = { version = "0.1.3", default-features = false }
+ply-rs-bw = { version = "2.0.0", default-features = false }
 poll-promise = "0.3.0"
 pollster = "0.4.0"
 prettyplease = "0.2.37"
@@ -313,15 +313,15 @@ puffin_http = "0.16.1"
 pyo3 = "0.24.2"
 pyo3-build-config = "0.24.2"
 quote = "1.0"
-rand = { version = "0.8.5", default-features = false, features = ["small_rng"] }
-rand_distr = { version = "0.4.3", default-features = false }
+rand = { version = "0.9.2", default-features = false, features = ["small_rng"] }
+rand_distr = { version = "0.5.1", default-features = false }
 raw-window-handle = "0.6.2"
 rayon = "1.11"
 regex-lite = "0.1.7"
 rexif = "0.7.5"
 rfd = { version = "0.15.4", default-features = false, features = ["async-std", "xdg-portal"] }
-ron = { version = "0.10.1", features = ["integer128"] }
-roxmltree = "0.19.0"
+ron = { version = "0.11.0", features = ["integer128"] }
+roxmltree = "0.20.0"
 rustdoc-json = "0.9.7"
 rustdoc-types = "0.56.0"
 rustls = { version = "0.23.32", default-features = false }
@@ -339,21 +339,21 @@ slotmap = { version = "1.0.7", features = ["serde"] }
 smallvec = { version = "1.15", features = ["const_generics", "union"] }
 static_assertions = "1.1"
 stl_io = "0.8.5"
-strum = { version = "0.26.3", features = ["derive"] }
-strum_macros = "0.26.4"
+strum = { version = "0.26.3", features = ["derive"] } # need to update re_rav1d first
+strum_macros = "0.26.4" # need to update re_rav1d first
 sublime_fuzzy = "0.7.0"
 syn = "2.0"
 sysinfo = { version = "0.30.13", default-features = false }
 tap = "1.0.1"
 tempfile = "3.23"
-thiserror = "1.0"
+thiserror = "2.0.17"
 tiff = "0.9.1"
 tiny_http = { version = "0.12.0", default-features = false }
 tobj = "4.0"
 tokio = { version = "1.47.1", default-features = false }
 tokio-stream = "0.1.17"
 tokio-util = { version = "0.7.16", default-features = false }
-toml = { version = "0.8.23", default-features = false }
+toml = { version = "0.9.8", default-features = false }
 tonic = { version = "0.14.2", default-features = false }
 tonic-prost = { version = "0.14.2", default-features = false }
 tonic-prost-build = { version = "0.14.2", default-features = false }
