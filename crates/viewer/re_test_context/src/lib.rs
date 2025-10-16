@@ -731,6 +731,8 @@ impl TestContext {
 
                 #[cfg(not(target_arch = "wasm32"))]
                 SystemCommand::FileSaver(_) => handled = false,
+
+                SystemCommand::SetTracked(_, _) => handled = false,
             }
 
             if !handled {

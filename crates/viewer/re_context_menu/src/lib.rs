@@ -20,7 +20,7 @@ pub mod collapse_expand;
 mod sub_menu;
 
 use actions::{
-    CopyEntityPathToClipboard,
+    CopyEntityPathToClipboard, TrackEntity,
     add_container::AddContainerAction,
     add_entities_to_new_view::AddEntitiesToNewViewAction,
     add_view::AddViewAction,
@@ -169,6 +169,7 @@ fn action_list(
                 Box::new(HideAction),
                 Box::new(RemoveAction),
                 Box::new(CopyEntityPathToClipboard),
+                Box::new(TrackEntity),
             ],
             vec![
                 Box::new(actions::ScreenshotAction::CopyScreenshot),

@@ -13,12 +13,15 @@ use re_log_types::{
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
+use re_types::ViewClassIdentifier;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
+use re_view_spatial::SpatialViewState;
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, Item, NeedsRepaint, PlayState, RecordingOrTable,
     StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore,
-    TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError, command_channel,
+    TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError, ViewStateExt,
+    command_channel,
     open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url},
     sanitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
@@ -1102,6 +1105,21 @@ impl App {
                 if let Err(err) = self.background_tasks.spawn_file_saver(file_saver) {
                     re_log::error!("Failed to save file: {err}");
                 }
+            }
+            SystemCommand::SetTracked(view_id, entity_path) => {
+                let anyad = self
+                    .view_class_registry
+                    .get_class_or_log_error(ViewClassIdentifier::new("3D"));
+
+                let state = self.state.view_states.get_mut_or_create(view_id, anyad);
+
+                let asdasd = state.downcast_mut::<SpatialViewState>().unwrap();
+
+                asdasd.state_3d.tracked_entity = Some(entity_path);
+
+                // asdasd
+                //     .state_3d
+                //     .track_entity(&entity_path, &asdasd.bounding_boxes);
             }
         }
     }
