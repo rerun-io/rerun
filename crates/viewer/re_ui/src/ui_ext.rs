@@ -31,6 +31,11 @@ pub trait UiExt {
         crate::design_tokens_of(self.theme())
     }
 
+    /// Current time in seconds
+    fn time(&self) -> f64 {
+        self.ui().input(|i| i.time)
+    }
+
     #[inline]
     #[track_caller]
     fn sanity_check(&self) {

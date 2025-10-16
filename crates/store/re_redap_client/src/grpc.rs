@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use re_auth::client::AuthDecorator;
 use re_chunk::Chunk;
 use re_log_types::{
@@ -13,26 +15,8 @@ use tokio_stream::{Stream, StreamExt as _};
 
 use crate::{ApiError, ConnectionClient, MAX_DECODING_MESSAGE_SIZE};
 
-// TODO(ab): do not publish this out of this crate (for now it is still being used by rerun_py
-// the viewer grpc connection). Ideally we'd only publish `ClientConnectionError`.
-#[derive(Debug, thiserror::Error)]
-pub enum ConnectionError {
-    /// Native connection error
-    #[cfg(not(target_arch = "wasm32"))]
-    #[error("Connection error: {0}")]
-    Tonic(#[from] tonic::transport::Error),
-
-    #[error("server is expecting an unencrypted connection (try `rerun+http://` if you are sure)")]
-    UnencryptedServer,
-}
-
-const _: () = assert!(
-    std::mem::size_of::<ConnectionError>() <= 64,
-    "Error type is too large. Try to reduce its size by boxing some of its variants.",
-);
-
 #[cfg(target_arch = "wasm32")]
-pub async fn channel(origin: Origin) -> Result<tonic_web_wasm_client::Client, ConnectionError> {
+pub async fn channel(origin: Origin) -> Result<tonic_web_wasm_client::Client, ApiError> {
     let channel = tonic_web_wasm_client::Client::new_with_options(
         origin.as_url(),
         tonic_web_wasm_client::options::FetchOptions::new(),
@@ -42,7 +26,7 @@ pub async fn channel(origin: Origin) -> Result<tonic_web_wasm_client::Client, Co
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, ConnectionError> {
+pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, ApiError> {
     use std::net::Ipv4Addr;
 
     use tonic::transport::Endpoint;
@@ -50,11 +34,15 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, Connec
     let http_url = origin.as_url();
 
     let endpoint = {
-        let mut endpoint = Endpoint::new(http_url)?.tls_config(
-            tonic::transport::ClientTlsConfig::new()
-                .with_enabled_roots()
-                .assume_http2(true),
-        )?;
+        let mut endpoint = Endpoint::new(http_url)
+            .and_then(|ep| {
+                ep.tls_config(
+                    tonic::transport::ClientTlsConfig::new()
+                        .with_enabled_roots()
+                        .assume_http2(true),
+                )
+            })
+            .map_err(|err| ApiError::connection(err, "connecting to server"))?;
 
         if false {
             // NOTE: Tried it, had no noticeable effects in any of my benchmarks.
@@ -62,7 +50,10 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, Connec
             endpoint = endpoint.initial_connection_window_size(Some(16 * 1024 * 1024));
         }
 
-        endpoint.connect().await
+        endpoint
+            .connect()
+            .await
+            .map_err(|err| ApiError::connection(err, "connecting to server"))
     };
 
     match endpoint {
@@ -74,45 +65,46 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, Connec
             ]
             .contains(&origin.host)
             {
-                return Err(ConnectionError::Tonic(original_error));
+                return Err(original_error);
             }
 
             // If we can't establish a connection, we probe if the server is
             // expecting unencrypted traffic. If that is the case, we return
             // a more meaningful error message.
             let Ok(endpoint) = Endpoint::new(origin.coerce_http_url()) else {
-                return Err(ConnectionError::Tonic(original_error));
+                return Err(original_error);
             };
 
             if endpoint.connect().await.is_ok() {
-                Err(ConnectionError::UnencryptedServer)
+                Err(ApiError {
+                    message: "server is expecting an unencrypted connection (try `rerun+http://` if you are sure)".to_owned(),
+                    kind: crate::ApiErrorKind::Connection,
+                    source: None,
+                })
             } else {
-                Err(ConnectionError::Tonic(original_error))
+                Err(original_error)
             }
         }
     }
 }
 
 #[cfg(target_arch = "wasm32")]
-pub type RedapClientInner = tonic::service::interceptor::InterceptedService<
+pub type RedapClientInner = re_auth::client::AuthService<
     tonic::service::interceptor::InterceptedService<
         re_protos::headers::PropagateHeaders<tonic_web_wasm_client::Client>,
         re_protos::headers::RerunVersionInterceptor,
     >,
-    re_auth::client::AuthDecorator,
 >;
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) async fn client(
     origin: Origin,
-    token: Option<re_auth::Jwt>,
-) -> Result<RedapClient, ConnectionError> {
+    credentials: Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>,
+) -> Result<RedapClient, ApiError> {
     let channel = channel(origin).await?;
 
-    let auth = AuthDecorator::new(token);
-
     let middlewares = tower::ServiceBuilder::new()
-        .layer(tonic::service::interceptor::InterceptorLayer::new(auth))
+        .layer(AuthDecorator::new(credentials))
         .layer({
             let name = Some("rerun-web".to_owned());
             let version = None;
@@ -128,7 +120,7 @@ pub(crate) async fn client(
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
-pub type RedapClientInner = tonic::service::interceptor::InterceptedService<
+pub type RedapClientInner = re_auth::client::AuthService<
     tonic::service::interceptor::InterceptedService<
         re_protos::headers::PropagateHeaders<
             re_perf_telemetry::external::tower_http::trace::Trace<
@@ -144,16 +136,14 @@ pub type RedapClientInner = tonic::service::interceptor::InterceptedService<
         >,
         re_protos::headers::RerunVersionInterceptor,
     >,
-    re_auth::client::AuthDecorator,
 >;
 
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "perf_telemetry")))]
-pub type RedapClientInner = tonic::service::interceptor::InterceptedService<
+pub type RedapClientInner = re_auth::client::AuthService<
     tonic::service::interceptor::InterceptedService<
         re_protos::headers::PropagateHeaders<tonic::transport::Channel>,
         re_protos::headers::RerunVersionInterceptor,
     >,
-    re_auth::client::AuthDecorator,
 >;
 
 pub type RedapClient = RerunCloudServiceClient<RedapClientInner>;
@@ -161,14 +151,12 @@ pub type RedapClient = RerunCloudServiceClient<RedapClientInner>;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) async fn client(
     origin: Origin,
-    token: Option<re_auth::Jwt>,
-) -> Result<RedapClient, ConnectionError> {
+    credentials: Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>,
+) -> Result<RedapClient, ApiError> {
     let channel = channel(origin).await?;
 
     let middlewares = tower::ServiceBuilder::new()
-        .layer(tonic::service::interceptor::InterceptorLayer::new(
-            AuthDecorator::new(token),
-        ))
+        .layer(AuthDecorator::new(credentials))
         .layer({
             let name = None;
             let version = None;
@@ -179,7 +167,7 @@ pub(crate) async fn client(
     #[cfg(feature = "perf_telemetry")]
     let middlewares = middlewares.layer(re_perf_telemetry::new_client_telemetry_layer());
 
-    let svc = tower::ServiceBuilder::new()
+    let svc: RedapClientInner = tower::ServiceBuilder::new()
         .layer(middlewares.into_inner())
         .service(channel);
 

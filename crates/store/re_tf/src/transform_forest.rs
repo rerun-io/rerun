@@ -680,7 +680,7 @@ mod tests {
     use re_chunk_store::Chunk;
     use re_entity_db::EntityDb;
     use re_log_types::{StoreInfo, TimePoint, TimelineName};
-    use re_types::{RowId, archetypes};
+    use re_types::{Archetype as _, RowId, archetypes};
 
     use super::*;
 
@@ -874,5 +874,84 @@ mod tests {
                 )
             );
         }
+    }
+
+    /// Regression test for <https://github.com/rerun-io/rerun/issues/11496>
+    ///
+    /// This is redundant with `test_simple_entity_hierarchy` but it's good to call this out separately since
+    /// it might easily be missed in the snapshot update.
+    #[test]
+    fn test_instance_transforms_at_target_frame() {
+        let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
+        entity_db
+            .add_chunk(&Arc::new(
+                Chunk::builder(EntityPath::from("box"))
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::STATIC,
+                        &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0]),
+                    )
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::STATIC,
+                        &archetypes::InstancePoses3D::new()
+                            .with_translations([[0.0, 10.0, 0.0], [0.0, 20.0, 0.0]]),
+                    )
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::STATIC,
+                        &archetypes::Boxes3D::update_fields()
+                            .with_centers([[0.0, 0.0, 100.0], [0.0, 0.0, 200.0]]),
+                    )
+                    .build()
+                    .unwrap(),
+            ))
+            .unwrap();
+
+        let mut transform_cache = TransformResolutionCache::default();
+        transform_cache.add_chunks(&entity_db, entity_db.storage_engine().store().iter_chunks());
+
+        let query = LatestAtQuery::latest(TimelineName::log_tick());
+        let transform_forest = TransformForest::new(&entity_db, &transform_cache, &query);
+
+        let target = EntityPath::from("box");
+        let sources = [EntityPath::from("box")];
+
+        let result = transform_forest
+            .transform_from_to(target.hash(), sources.iter().map(|s| s.hash()), &|_| 1.0)
+            .collect::<Vec<_>>();
+
+        assert_eq!(result.len(), 1);
+        let (source, result) = &result[0];
+        assert_eq!(source, &target.hash());
+        let info = result.as_ref().unwrap();
+        assert_eq!(info.root, EntityPath::root().hash());
+
+        // It *is* the target, so identity for this!
+        assert_eq!(info.target_from_entity, glam::Affine3A::IDENTITY);
+
+        // Instance transforms still apply.
+        assert_eq!(
+            info.target_from_instances,
+            SmallVec1::<[glam::Affine3A; 1]>::try_from_slice(&[
+                glam::Affine3A::from_translation(glam::vec3(0.0, 10.0, 0.0)),
+                glam::Affine3A::from_translation(glam::vec3(0.0, 20.0, 0.0))
+            ])
+            .unwrap()
+        );
+
+        // Archetype specific transforms still apply _on top_ of the instance transforms.
+        assert_eq!(
+            info.target_from_archetype,
+            std::iter::once((
+                archetypes::Boxes3D::name(),
+                SmallVec1::<[glam::Affine3A; 1]>::try_from_slice(&[
+                    glam::Affine3A::from_translation(glam::vec3(0.0, 10.0, 100.0)),
+                    glam::Affine3A::from_translation(glam::vec3(0.0, 20.0, 200.0))
+                ])
+                .unwrap(),
+            ))
+            .collect()
+        );
     }
 }

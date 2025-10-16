@@ -115,6 +115,16 @@ impl ViewerContext<'_> {
         self.global_context.render_ctx
     }
 
+    /// How to configure the renderer
+    #[inline]
+    pub fn render_mode(&self) -> re_renderer::RenderMode {
+        if self.global_context.is_test {
+            re_renderer::RenderMode::Deterministic
+        } else {
+            re_renderer::RenderMode::Beautiful
+        }
+    }
+
     /// Interface for sending commands back to the app
     pub fn command_sender(&self) -> &CommandSender {
         self.global_context.command_sender

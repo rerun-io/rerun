@@ -3,7 +3,7 @@
 use re_entity_db::InstancePath;
 use re_log_types::TimePoint;
 use re_renderer::Color32;
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::{RowId, archetypes, components::FillMode};
 use re_view_spatial::SpatialView3D;
@@ -52,8 +52,7 @@ fn test_select_box_instances() {
         // This exaggerates the outlines, making it easier to see & get caught by the snapshot test.
         let ui_scale = 4.0;
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size(egui::vec2(300.0, 300.0) / ui_scale)
+            .setup_kittest_for_rendering_3d(egui::vec2(300.0, 300.0) / ui_scale)
             .with_pixels_per_point(ui_scale)
             .build_ui(|ui| {
                 test_context.edit_selection(|selection_state| {
@@ -71,9 +70,6 @@ fn test_select_box_instances() {
         } else {
             "select_box_instances_all".to_owned()
         };
-        harness.snapshot_options(
-            name,
-            &SnapshotOptions::default().failed_pixel_count_threshold(80),
-        );
+        harness.snapshot(name);
     }
 }

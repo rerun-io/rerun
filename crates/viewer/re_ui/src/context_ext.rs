@@ -13,6 +13,11 @@ pub trait ContextExt {
         crate::design_tokens_of(self.ctx().theme())
     }
 
+    /// Current time in seconds
+    fn time(&self) -> f64 {
+        self.ctx().input(|i| i.time)
+    }
+
     // -----------------------------------------------------
     // Style-related stuff.
     // We could have this on a `StyleExt` trait, but we prefer to have it here on `Context`

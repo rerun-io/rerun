@@ -272,10 +272,9 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
     let max_total_time_seconds = 60.0;
 
     let mut harness = test_context
-        .setup_kittest_for_rendering()
+        .setup_kittest_for_rendering_3d([300.0, 200.0])
         .with_step_dt(step_dt_seconds)
         .with_max_steps((max_total_time_seconds / step_dt_seconds) as u64)
-        .with_size(egui::vec2(300.0, 200.0))
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
 

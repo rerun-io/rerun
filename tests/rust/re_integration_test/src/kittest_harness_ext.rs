@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use egui::accesskit::Toggled;
 use egui_kittest::kittest::NodeT as _;
-use egui_kittest::{SnapshotOptions, kittest::Queryable as _};
+use egui_kittest::kittest::Queryable as _;
 use parking_lot::Mutex;
 use re_sdk::{
     Component as _, ComponentDescriptor, EntityPath, EntityPathPart, RecordingInfo, StoreId,
@@ -279,14 +279,7 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
 
     fn snapshot_app(&mut self, snapshot_name: &str) {
         self.run_ok();
-        // TODO(aedm): we allow some pixel differences because of a font rendering issue:
-        // https://github.com/rerun-io/rerun/issues/11448
-        self.snapshot_options(
-            snapshot_name,
-            &SnapshotOptions::new()
-                .threshold(1.5) // Anti-aliasing implementations have considerable platform-specific differences
-                .failed_pixel_count_threshold(20),
-        );
+        self.snapshot(snapshot_name);
     }
 
     fn add_blueprint_container(
