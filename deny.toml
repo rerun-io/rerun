@@ -57,6 +57,7 @@ skip = [
   { name = "base64" }, # Too popular
   { name = "block2" }, # Old version via rfd
   { name = "bzip2" }, # Remove after https://github.com/apache/datafusion/pull/17509 closes
+  { name = "console" }, # smallish
   { name = "core-foundation" }, # Currently, e.g. `webbrowser` and `winit` use different versions.
   { name = "core-graphics-types" }, # wgpu requires 0.2 while winit is still on 0.1
   { name = "downcast-rs" }, # eco-system is transitioning from 1 to 2
