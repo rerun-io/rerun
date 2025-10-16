@@ -135,24 +135,14 @@ impl ViewportUi {
                     }
 
                     // Handle drag-and-drop if this is a view.
-                    //TODO(#8428): simplify with let-chains
-                    let should_display_drop_destination_frame = 'scope: {
-                        if !ui.rect_contains_pointer(rect) {
-                            break 'scope false;
-                        }
-
-                        let Some(view_blueprint) = contents
-                            .as_view_id()
-                            .and_then(|view_id| self.blueprint.view(&view_id))
-                        else {
-                            break 'scope false;
-                        };
-
-                        let Some(dragged_payload) = dragged_payload else {
-                            break 'scope false;
-                        };
-
+                    let should_display_drop_destination_frame = if ui.rect_contains_pointer(rect)
+                        && let Some(view_id) = contents.as_view_id()
+                        && let Some(view_blueprint) = self.blueprint.view(&view_id)
+                        && let Some(dragged_payload) = dragged_payload
+                    {
                         Self::handle_drop_entities_to_view(ctx, view_blueprint, dragged_payload)
+                    } else {
+                        false
                     };
 
                     let stroke = if should_display_drop_destination_frame {
