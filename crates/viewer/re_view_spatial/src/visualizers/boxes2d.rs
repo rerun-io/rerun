@@ -3,13 +3,13 @@ use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     Archetype as _, ArrowString,
     archetypes::Boxes2D,
-    components::{ClassId, Color, DrawOrder, HalfSize2D, Position2D, Radius, ShowLabels},
+    components::{ClassId, Color, HalfSize2D, Position2D, Radius, ShowLabels},
 };
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
+    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use crate::{
@@ -67,8 +67,13 @@ impl Boxes2DVisualizer {
             // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
             let radii =
                 process_radius_slice(entity_path, num_instances, data.radii, Radius::default());
-            let colors =
-                process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
+            let colors = process_color_slice(
+                ctx,
+                &Boxes2D::descriptor_colors(),
+                num_instances,
+                &annotation_infos,
+                data.colors,
+            );
 
             let world_from_obj = ent_context
                 .transform_info
@@ -136,7 +141,9 @@ impl Boxes2DVisualizer {
                         }),
                     labels: &data.labels,
                     colors: &colors,
-                    show_labels: data.show_labels.unwrap_or_else(|| self.fallback_for(ctx)),
+                    show_labels: data.show_labels.unwrap_or_else(|| {
+                        typed_fallback_for(ctx, &Boxes2D::descriptor_show_labels())
+                    }),
                     annotation_infos: &annotation_infos,
                 },
                 std::convert::identity,
@@ -281,32 +288,4 @@ impl VisualizerSystem for Boxes2DVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-impl TypedComponentFallbackProvider<Color> for Boxes2DVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
-        auto_color_for_entity_path(ctx.target_entity_path)
-    }
-}
-
-impl TypedComponentFallbackProvider<DrawOrder> for Boxes2DVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
-        DrawOrder::DEFAULT_BOX2D
-    }
-}
-
-impl TypedComponentFallbackProvider<ShowLabels> for Boxes2DVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback(
-            ctx,
-            &Boxes2D::descriptor_half_sizes(),
-            &Boxes2D::descriptor_labels(),
-        )
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(Boxes2DVisualizer => [Color, DrawOrder, ShowLabels]);

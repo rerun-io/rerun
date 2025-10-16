@@ -3,15 +3,15 @@ use itertools::Itertools as _;
 use re_chunk_store::LatestAtQuery;
 use re_types::{
     Archetype as _, archetypes,
-    components::{Color, MarkerShape, MarkerSize, Name, SeriesVisible},
+    components::{Color, MarkerShape, MarkerSize},
 };
 use re_view::{
     clamped_or_nothing, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext, ViewQuery,
-    ViewStateExt as _, ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
-    auto_color_for_entity_path, external::re_entity_db::InstancePath,
+    IdentifiedViewSystem, ViewContext, ViewQuery, ViewStateExt as _, ViewSystemExecutionError,
+    VisualizerQueryInfo, VisualizerSystem, external::re_entity_db::InstancePath,
+    typed_fallback_for,
 };
 
 use crate::{
@@ -35,10 +35,6 @@ impl IdentifiedViewSystem for SeriesPointsSystem {
         "SeriesPoints".into()
     }
 }
-
-// We use a larger default stroke width for scatter plots so the marker is
-// visible.
-const DEFAULT_MARKER_SIZE: f32 = 3.0;
 
 impl VisualizerSystem for SeriesPointsSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
@@ -68,52 +64,7 @@ impl VisualizerSystem for SeriesPointsSystem {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-impl TypedComponentFallbackProvider<Color> for SeriesPointsSystem {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
-        auto_color_for_entity_path(ctx.target_entity_path)
-    }
-}
-
-impl TypedComponentFallbackProvider<MarkerSize> for SeriesPointsSystem {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> MarkerSize {
-        MarkerSize::from(DEFAULT_MARKER_SIZE)
-    }
-}
-
-impl TypedComponentFallbackProvider<Name> for SeriesPointsSystem {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Name {
-        let state = ctx.view_state().downcast_ref::<TimeSeriesViewState>();
-
-        state
-            .ok()
-            .and_then(|state| {
-                state
-                    .default_names_for_entities
-                    .get(ctx.target_entity_path)
-                    .map(|name| name.clone().into())
-            })
-            .or_else(|| {
-                ctx.target_entity_path
-                    .last()
-                    .map(|part| part.ui_string().into())
-            })
-            .unwrap_or_default()
-    }
-}
-
-impl TypedComponentFallbackProvider<SeriesVisible> for SeriesPointsSystem {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> SeriesVisible {
-        true.into()
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(SeriesPointsSystem => [Color, MarkerSize, Name, SeriesVisible]);
 
 impl SeriesPointsSystem {
     fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
@@ -134,7 +85,7 @@ impl SeriesPointsSystem {
                 .par_iter()
                 .map(|data_result| -> Vec<PlotSeries> {
                     let mut series = vec![];
-                    self.load_series(
+                    Self::load_series(
                         ctx,
                         query,
                         plot_mem.as_ref(),
@@ -151,7 +102,7 @@ impl SeriesPointsSystem {
         } else {
             let mut series = vec![];
             for data_result in data_results {
-                self.load_series(
+                Self::load_series(
                     ctx,
                     query,
                     plot_mem.as_ref(),
@@ -165,7 +116,6 @@ impl SeriesPointsSystem {
     }
 
     fn load_series(
-        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         plot_mem: Option<&egui_plot::PlotMemory>,
@@ -212,8 +162,12 @@ impl SeriesPointsSystem {
             };
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default values.
-            let fallback_color: Color = self.fallback_for(&query_ctx);
-            let fallback_size: MarkerSize = self.fallback_for(&query_ctx);
+            let fallback_color: Color =
+                typed_fallback_for(&query_ctx, &archetypes::SeriesPoints::descriptor_colors());
+            let fallback_size: MarkerSize = typed_fallback_for(
+                &query_ctx,
+                &archetypes::SeriesPoints::descriptor_marker_sizes(),
+            );
             let default_point = PlotPoint {
                 time: 0,
                 value: 0.0,
@@ -381,7 +335,6 @@ impl SeriesPointsSystem {
                 archetypes::SeriesPoints::descriptor_visible_series(),
             );
             let series_names = collect_series_name(
-                self,
                 &query_ctx,
                 &bootstrapped_results,
                 &results,

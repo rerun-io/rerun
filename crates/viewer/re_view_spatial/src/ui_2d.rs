@@ -31,12 +31,11 @@ use crate::{
 fn ui_from_scene(
     ctx: &ViewContext<'_>,
     response: &egui::Response,
-    view_class: &SpatialView2D,
     view_state: &mut SpatialViewState,
     bounds_property: &ViewProperty,
 ) -> RectTransform {
     let bounds: blueprint_components::VisualBounds2D = bounds_property
-        .component_or_fallback(ctx, view_class, &VisualBounds2D::descriptor_range())
+        .component_or_fallback(ctx, &VisualBounds2D::descriptor_range())
         .ok_or_log_error()
         .unwrap_or_default();
     view_state.visual_bounds_2d = Some(bounds);
@@ -185,7 +184,7 @@ impl SpatialView2D {
             let view_ctx = self.view_context(ctx, query.view_id, state);
             let mut new_state = state.clone();
             let ui_from_scene =
-                ui_from_scene(&view_ctx, &response, self, &mut new_state, &bounds_property);
+                ui_from_scene(&view_ctx, &response, &mut new_state, &bounds_property);
             *state = new_state;
 
             ui_from_scene
@@ -194,11 +193,7 @@ impl SpatialView2D {
 
         let view_ctx = self.view_context(ctx, query.view_id, state);
         let near_clip_plane: blueprint_components::NearClipPlane = clip_property
-            .component_or_fallback(
-                &view_ctx,
-                self,
-                &NearClipPlane::descriptor_near_clip_plane(),
-            )
+            .component_or_fallback(&view_ctx, &NearClipPlane::descriptor_near_clip_plane())
             .ok_or_log_error()
             .unwrap_or_default();
 
@@ -272,7 +267,7 @@ impl SpatialView2D {
             query.view_id,
         );
         let (background_drawable, clear_color) =
-            crate::configure_background(&view_ctx, &background, self)?;
+            crate::configure_background(&view_ctx, &background)?;
         if let Some(background_drawable) = background_drawable {
             view_builder.queue_draw(ctx.render_ctx(), background_drawable);
         }

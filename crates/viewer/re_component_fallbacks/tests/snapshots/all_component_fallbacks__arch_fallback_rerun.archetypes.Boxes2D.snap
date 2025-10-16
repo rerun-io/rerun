@@ -1,0 +1,54 @@
+---
+source: crates/viewer/re_component_fallbacks/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+[
+    (
+        "half_sizes",
+        [
+            "[0.5, 0.5]",
+        ],
+    ),
+    (
+        "centers",
+        [
+            "[0.0, 0.0]",
+        ],
+    ),
+    (
+        "colors",
+        [
+            "2428259839",
+        ],
+    ),
+    (
+        "radii",
+        [
+            "0.5",
+        ],
+    ),
+    (
+        "labels",
+        [
+            "",
+        ],
+    ),
+    (
+        "show_labels",
+        [
+            "true",
+        ],
+    ),
+    (
+        "draw_order",
+        [
+            "10.0",
+        ],
+    ),
+    (
+        "class_ids",
+        [
+            "0",
+        ],
+    ),
+]

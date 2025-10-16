@@ -1,7 +1,5 @@
 use re_types::{archetypes, components};
 
-use crate::resolution_of_image_at;
-
 /// A pinhole camera model.
 ///
 /// Corresponds roughly to the [`re_types::archetypes::Pinhole`] archetype, but uses render-friendly types.
@@ -118,9 +116,7 @@ pub fn query_pinhole_and_view_coordinates_from_store_without_blueprint(
         .component_mono_quiet::<components::Resolution>(
             archetypes::Pinhole::descriptor_resolution().component,
         )
-        .unwrap_or_else(|| {
-            resolution_of_image_at(ctx, query, entity_path).unwrap_or([100.0, 100.0].into())
-        });
+        .unwrap_or_default();
     let camera_xyz: components::ViewCoordinates = query_results
         .component_mono_quiet(archetypes::Pinhole::descriptor_camera_xyz().component)
         // This is the "secondary" descriptor (mentioned above) that we are interested in.
@@ -128,7 +124,7 @@ pub fn query_pinhole_and_view_coordinates_from_store_without_blueprint(
             query_results
                 .component_mono_quiet(archetypes::ViewCoordinates::descriptor_xyz().component)
         })
-        .unwrap_or(archetypes::Pinhole::DEFAULT_CAMERA_XYZ);
+        .unwrap_or_default();
 
     Some((
         Pinhole {

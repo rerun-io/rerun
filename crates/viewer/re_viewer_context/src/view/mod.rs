@@ -29,7 +29,9 @@ pub use view_class::{
     VisualizableFilterContext,
 };
 pub use view_class_placeholder::ViewClassPlaceholder;
-pub use view_class_registry::{ViewClassRegistry, ViewClassRegistryError, ViewSystemRegistrator};
+pub use view_class_registry::{
+    ViewClassRegistry, ViewClassRegistryError, ViewSystemRegistrator, VisualizerFallbackRegistry,
+};
 pub use view_context::ViewContext;
 pub use view_context_system::{
     ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,

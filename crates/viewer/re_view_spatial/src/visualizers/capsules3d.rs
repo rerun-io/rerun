@@ -8,9 +8,9 @@ use re_types::{
 };
 use re_view::clamped_or_nothing;
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
+    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialViewKind};
@@ -21,7 +21,6 @@ use super::{
 };
 
 // ---
-
 pub struct Capsules3DVisualizer(SpatialViewVisualizerData);
 
 impl Default for Capsules3DVisualizer {
@@ -36,7 +35,7 @@ impl Default for Capsules3DVisualizer {
 // timestamps within a time range -- it's _a lot_.
 impl Capsules3DVisualizer {
     fn process_data<'a>(
-        builder: &mut ProcMeshDrawableBuilder<'_, Fallback>,
+        builder: &mut ProcMeshDrawableBuilder<'_>,
         query_context: &QueryContext<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
         batches: impl Iterator<Item = Capsules3DComponentData<'a>>,
@@ -87,6 +86,8 @@ impl Capsules3DVisualizer {
                 query_context,
                 ent_context,
                 Capsules3D::name(),
+                &Capsules3D::descriptor_colors(),
+                &Capsules3D::descriptor_show_labels(),
                 glam::Affine3A::IDENTITY,
                 ProcMeshBatch {
                     half_sizes: &half_sizes,
@@ -154,7 +155,6 @@ impl VisualizerSystem for Capsules3DVisualizer {
             ctx.viewer_ctx.render_ctx(),
             view_query,
             "capsules3d",
-            &Fallback,
         );
 
         use super::entity_iterator::{iter_slices, process_archetype};
@@ -262,31 +262,7 @@ impl VisualizerSystem for Capsules3DVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        &Fallback
-    }
 }
-
-struct Fallback;
-
-impl TypedComponentFallbackProvider<Color> for Fallback {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
-        auto_color_for_entity_path(ctx.target_entity_path)
-    }
-}
-
-impl TypedComponentFallbackProvider<ShowLabels> for Fallback {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback(
-            ctx,
-            &Capsules3D::descriptor_radii(),
-            &Capsules3D::descriptor_labels(),
-        )
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(Fallback => [Color, ShowLabels]);
 
 fn clean_length(suspicious_length: f32) -> f32 {
     if suspicious_length.is_finite() && suspicious_length > 0.0 {

@@ -1,0 +1,30 @@
+---
+source: crates/viewer/re_component_fallbacks/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+[
+    (
+        "codec",
+        [
+            "0",
+        ],
+    ),
+    (
+        "sample",
+        [
+            "[0]",
+        ],
+    ),
+    (
+        "opacity",
+        [
+            "1.0",
+        ],
+    ),
+    (
+        "draw_order",
+        [
+            "-15.0",
+        ],
+    ),
+]

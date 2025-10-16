@@ -63,10 +63,7 @@ pub use self::{
     command_sender::{
         CommandReceiver, CommandSender, SystemCommand, SystemCommandSender, command_channel,
     },
-    component_fallbacks::{
-        ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
-        TypedComponentFallbackProvider,
-    },
+    component_fallbacks::{ComponentFallbackError, FallbackProviderRegistry, typed_fallback_for},
     component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, EditTarget, VariantName},
     contents::{Contents, ContentsName, blueprint_id_to_tile_id},
     display_mode::DisplayMode,
@@ -113,7 +110,8 @@ pub use self::{
         ViewContextSystemOncePerFrameResult, ViewEntityHighlight, ViewHighlights, ViewOutlineMasks,
         ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates,
         ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
-        VisualizableFilterContext, VisualizerCollection, VisualizerQueryInfo, VisualizerSystem,
+        VisualizableFilterContext, VisualizerCollection, VisualizerFallbackRegistry,
+        VisualizerQueryInfo, VisualizerSystem,
     },
     viewer_context::ViewerContext,
     visitor_flow_control::VisitorControlFlow,

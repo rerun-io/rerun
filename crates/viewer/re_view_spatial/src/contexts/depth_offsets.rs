@@ -101,7 +101,7 @@ fn collect_draw_order_per_visualizer(
         .unwrap_or_else(|| {
             *default_draw_order.get_or_insert_with(|| {
                 let ctx = ctx.query_context(data_result, &latest_at_query);
-                determine_default_draworder(&ctx, visualizer_identifier, draw_order_descriptor)
+                determine_default_draworder(&ctx, draw_order_descriptor)
             })
         });
 
@@ -114,20 +114,12 @@ fn collect_draw_order_per_visualizer(
 
 fn determine_default_draworder(
     ctx: &QueryContext<'_>,
-    visualizer_identifier: ViewSystemIdentifier,
     draw_order_descriptor: &re_types::ComponentDescriptor,
 ) -> DrawOrder {
-    let Some(visualizer) = ctx
+    let draw_order_array = ctx
         .viewer_ctx()
-        .view_class_registry()
-        .instantiate_visualizer(visualizer_identifier)
-    else {
-        return DrawOrder::default();
-    };
-
-    let draw_order_array = visualizer
-        .fallback_provider()
-        .fallback_for(ctx, draw_order_descriptor);
+        .component_fallback_registry
+        .fallback_for(draw_order_descriptor, ctx);
     let draw_order_array = DrawOrder::from_arrow(&draw_order_array)
         .ok()
         .unwrap_or_default();

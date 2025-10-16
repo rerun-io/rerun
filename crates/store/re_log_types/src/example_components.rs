@@ -137,6 +137,11 @@ impl MyPoint {
             .map(|i| Self::new(i as f32, i as f32))
             .collect()
     }
+
+    #[inline]
+    pub fn partial_descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::partial("my_point").with_component_type(Self::name())
+    }
 }
 
 impl MyPoint {

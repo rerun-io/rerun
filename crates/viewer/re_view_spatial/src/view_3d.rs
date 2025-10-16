@@ -8,6 +8,7 @@ use re_tf::query_view_coordinates;
 use re_types::{
     Component as _, View as _, ViewClassIdentifier, archetypes,
     blueprint::archetypes::{Background, EyeControls3D, LineGrid3D},
+    components::Plane3D,
 };
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
@@ -73,6 +74,36 @@ impl ViewClass for SpatialView3D {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
+        system_registry.register_fallback_provider(
+            &re_types::blueprint::archetypes::EyeControls3D::descriptor_speed(),
+            |ctx| {
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    re_log::error_once!(
+                        "Fallback for `LinearSpeed` queried on 3D view outside the context of a spatial view."
+                    );
+                    return 1.0.into();
+                };
+                let Some(view_eye) = &view_state.state_3d.view_eye else {
+                    // There's no view eye yet. This may happen on startup
+                    return 1.0.into();
+                };
+
+                view_eye.fallback_speed(ctx)
+            },
+        );
+        system_registry.register_fallback_provider(&LineGrid3D::descriptor_plane(), |ctx| {
+            const DEFAULT_PLANE: Plane3D = Plane3D::XY;
+
+            let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                return DEFAULT_PLANE;
+            };
+
+            view_state
+                .state_3d
+                .scene_view_coordinates
+                .and_then(|view_coordinates| view_coordinates.up())
+                .map_or(DEFAULT_PLANE, |up| Plane3D::new(up.as_vec3(), 0.0))
+        });
         // Ensure spatial topology is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
 
@@ -425,9 +456,9 @@ impl ViewClass for SpatialView3D {
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
             let view_ctx = self.view_context(ctx, view_id, state);
-            view_property_ui::<EyeControls3D>(&view_ctx, ui, self);
-            view_property_ui::<Background>(&view_ctx, ui, self);
-            view_property_ui_grid3d(&view_ctx, ui, self);
+            view_property_ui::<EyeControls3D>(&view_ctx, ui);
+            view_property_ui::<Background>(&view_ctx, ui);
+            view_property_ui_grid3d(&view_ctx, ui);
         });
 
         Ok(())
@@ -454,11 +485,7 @@ impl ViewClass for SpatialView3D {
 // The generic ui (via `view_property_ui::<Background>(ctx, ui, view_id, self, state);`)
 // is suitable for the most part. However, as of writing the alpha color picker doesn't handle alpha
 // which we need here.
-fn view_property_ui_grid3d(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    fallback_provider: &dyn re_viewer_context::ComponentFallbackProvider,
-) {
+fn view_property_ui_grid3d(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
     let property = ViewProperty::from_archetype::<LineGrid3D>(
         ctx.blueprint_db(),
         ctx.blueprint_query(),
@@ -489,7 +516,6 @@ fn view_property_ui_grid3d(
                         let Ok(color) = property
                             .component_or_fallback::<re_types::components::Color>(
                                 ctx,
-                                fallback_provider,
                                 &LineGrid3D::descriptor_color(),
                             )
                         else {
@@ -521,7 +547,6 @@ fn view_property_ui_grid3d(
                     &property,
                     field.display_name,
                     field,
-                    fallback_provider,
                 );
             }
         }

@@ -1,0 +1,24 @@
+---
+source: crates/viewer/re_component_fallbacks/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+[
+    (
+        "enabled",
+        [
+            "true",
+        ],
+    ),
+    (
+        "distance",
+        [
+            "60.0",
+        ],
+    ),
+    (
+        "iterations",
+        [
+            "3",
+        ],
+    ),
+]

@@ -5,10 +5,9 @@ use re_chunk::ArchetypeName;
 use re_types::{Archetype, ComponentDescriptor, ComponentIdentifier, ComponentSet};
 
 use crate::{
-    ComponentFallbackProvider, DataBasedVisualizabilityFilter, IdentifiedViewSystem,
-    MaybeVisualizableEntities, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, ViewSystemIdentifier, VisualizableEntities,
-    VisualizableFilterContext,
+    DataBasedVisualizabilityFilter, IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
+    VisualizableEntities, VisualizableFilterContext, VisualizerFallbackRegistry,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -88,7 +87,7 @@ impl VisualizerQueryInfo {
 /// Is populated after scene contexts and has access to them.
 ///
 /// All visualizers are expected to be able to provide a fallback value for any component they're using
-/// via the [`ComponentFallbackProvider`] trait.
+/// by registering fallbacks to the [`crate::FallbackProviderRegistry`] in the `on_register` method.
 pub trait VisualizerSystem: Send + Sync + 'static {
     // TODO(andreas): This should be able to list out the ContextSystems it needs.
 
@@ -117,6 +116,10 @@ pub trait VisualizerSystem: Send + Sync + 'static {
         None
     }
 
+    /// Called just as this visualizer is registered.
+    #[expect(unused)]
+    fn on_register(&self, fallbacks: VisualizerFallbackRegistry<'_>) {}
+
     /// Queries the chunk store and performs data conversions to make it ready for display.
     ///
     /// Mustn't query any data outside of the archetype.
@@ -137,13 +140,6 @@ pub trait VisualizerSystem: Send + Sync + 'static {
     }
 
     fn as_any(&self) -> &dyn std::any::Any;
-
-    /// Returns the fallback provider for this visualizer.
-    ///
-    /// Visualizers should use this to report the fallback values they use when there is no data.
-    /// The Rerun viewer will display these fallback values to the user to convey what the
-    /// visualizer is doing.
-    fn fallback_provider(&self) -> &dyn ComponentFallbackProvider;
 }
 
 pub struct VisualizerCollection {

@@ -16,9 +16,10 @@ use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, Item, NeedsRepaint, PlayState, RecordingOrTable,
-    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore,
-    TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError, command_channel,
+    ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint, PlayState,
+    RecordingOrTable, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _,
+    TableStore, TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError,
+    command_channel,
     open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url},
     sanitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
@@ -81,6 +82,7 @@ pub struct App {
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
 
     component_ui_registry: ComponentUiRegistry,
+    component_fallback_registry: FallbackProviderRegistry,
 
     rx_log: ReceiveSet<DataSourceMessage>,
     rx_table: ReceiveSetTable,
@@ -245,11 +247,15 @@ impl App {
             state.app_options.show_metrics = false;
         }
 
-        let view_class_registry = crate::default_views::create_view_class_registry()
-            .unwrap_or_else(|err| {
-                re_log::error!("Failed to create view class registry: {err}");
-                Default::default()
-            });
+        let mut component_fallback_registry =
+            re_component_fallbacks::create_component_fallback_registry();
+
+        let view_class_registry =
+            crate::default_views::create_view_class_registry(&mut component_fallback_registry)
+                .unwrap_or_else(|err| {
+                    re_log::error!("Failed to create view class registry: {err}");
+                    Default::default()
+                });
 
         #[allow(clippy::allow_attributes, unused_mut, clippy::needless_update)]
         // false positive on web
@@ -384,6 +390,7 @@ impl App {
 
             text_log_rx,
             component_ui_registry,
+            component_fallback_registry,
             rx_log: Default::default(),
             rx_table: Default::default(),
             #[cfg(target_arch = "wasm32")]
@@ -597,14 +604,11 @@ impl App {
     }
 
     /// Adds a new view class to the viewer.
-    #[deprecated(
-        since = "0.24.0",
-        note = "Use `view_class_registry().add_class(..)` instead."
-    )]
     pub fn add_view_class<T: ViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), ViewClassRegistryError> {
-        self.view_class_registry.add_class::<T>()
+        self.view_class_registry
+            .add_class::<T>(&mut self.component_fallback_registry)
     }
 
     /// Accesses the view class registry which can be used to extend the Viewer.
@@ -613,6 +617,10 @@ impl App {
     /// Doing so later in the application life cycle may cause unexpected behavior.
     pub fn view_class_registry(&mut self) -> &mut ViewClassRegistry {
         &mut self.view_class_registry
+    }
+
+    pub fn component_fallback_registry(&mut self) -> &mut FallbackProviderRegistry {
+        &mut self.component_fallback_registry
     }
 
     fn check_keyboard_shortcuts(&self, egui_ctx: &egui::Context) {
@@ -2036,6 +2044,7 @@ impl App {
                             storage_context,
                             &self.reflection,
                             &self.component_ui_registry,
+                            &self.component_fallback_registry,
                             &self.view_class_registry,
                             &self.rx_log,
                             &self.command_sender,

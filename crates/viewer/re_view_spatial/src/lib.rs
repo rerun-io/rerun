@@ -21,9 +21,7 @@ mod ui;
 mod ui_2d;
 mod ui_3d;
 mod view_2d;
-mod view_2d_properties;
 mod view_3d;
-mod view_3d_properties;
 mod visualizers;
 
 pub use ui::SpatialViewState;
@@ -39,12 +37,11 @@ pub use eye::{Eye, ViewEye};
 
 // ---
 
-use re_viewer_context::{ImageDecodeCache, ViewContext, ViewerContext};
+use re_viewer_context::ViewContext;
 
 use re_types::{
-    archetypes,
     blueprint::{archetypes::Background, components::BackgroundKind},
-    components::{Color, ImageFormat, MediaType, Resolution},
+    components::Color,
 };
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
@@ -56,82 +53,14 @@ mod view_kind {
     }
 }
 
-fn resolution_of_image_at(
-    ctx: &ViewerContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
-    entity_path: &re_log_types::EntityPath,
-) -> Option<Resolution> {
-    let entity_db = ctx.recording();
-    let storage_engine = entity_db.storage_engine();
-
-    // Check what kind of non-encoded images were logged here, if any.
-    // TODO(andreas): can we do this more efficiently?
-    // TODO(andreas): doesn't take blueprint into account!
-    let all_components = storage_engine
-        .store()
-        .all_components_for_entity(entity_path)?;
-    let image_format_descr = all_components
-        .get(&archetypes::Image::descriptor_format().component)
-        .or_else(|| all_components.get(&archetypes::DepthImage::descriptor_format().component))
-        .or_else(|| {
-            all_components.get(&archetypes::SegmentationImage::descriptor_format().component)
-        });
-
-    if let Some((_, image_format)) = image_format_descr.and_then(|component| {
-        entity_db.latest_at_component::<ImageFormat>(entity_path, query, *component)
-    }) {
-        // Normal `Image` archetype
-        return Some(Resolution::from([
-            image_format.width as f32,
-            image_format.height as f32,
-        ]));
-    }
-
-    // Check for an encoded image.
-    if let Some(((_time, row_id), blob)) = entity_db
-        .latest_at_component::<re_types::components::Blob>(
-            entity_path,
-            query,
-            archetypes::EncodedImage::descriptor_blob().component,
-        )
-    {
-        let media_type = entity_db
-            .latest_at_component::<MediaType>(
-                entity_path,
-                query,
-                archetypes::EncodedImage::descriptor_media_type().component,
-            )
-            .map(|(_, c)| c);
-
-        let image = ctx.store_context.caches.entry(|c: &mut ImageDecodeCache| {
-            c.entry(
-                row_id,
-                archetypes::EncodedImage::descriptor_blob().component,
-                &blob,
-                media_type.as_ref(),
-            )
-        });
-
-        if let Ok(image) = image {
-            return Some(Resolution::from([
-                image.format.width as f32,
-                image.format.height as f32,
-            ]));
-        }
-    }
-
-    None
-}
-
 pub fn configure_background(
     ctx: &ViewContext<'_>,
     background: &ViewProperty,
-    view_system: &dyn re_viewer_context::ComponentFallbackProvider,
 ) -> Result<(Option<re_renderer::QueueableDrawData>, re_renderer::Rgba), ViewPropertyQueryError> {
     use re_renderer::renderer;
 
     let kind: BackgroundKind =
-        background.component_or_fallback(ctx, view_system, &Background::descriptor_kind())?;
+        background.component_or_fallback(ctx, &Background::descriptor_kind())?;
 
     match kind {
         BackgroundKind::GradientDark => Ok((
@@ -157,11 +86,8 @@ pub fn configure_background(
         )),
 
         BackgroundKind::SolidColor => {
-            let color: Color = background.component_or_fallback(
-                ctx,
-                view_system,
-                &Background::descriptor_color(),
-            )?;
+            let color: Color =
+                background.component_or_fallback(ctx, &Background::descriptor_color())?;
             Ok((None, color.into()))
         }
     }

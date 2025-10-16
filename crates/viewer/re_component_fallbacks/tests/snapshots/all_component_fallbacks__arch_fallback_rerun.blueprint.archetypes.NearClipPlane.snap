@@ -1,0 +1,12 @@
+---
+source: crates/viewer/re_component_fallbacks/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+[
+    (
+        "near_clip_plane",
+        [
+            "0.1",
+        ],
+    ),
+]
