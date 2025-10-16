@@ -6,6 +6,7 @@
 
 use arrow::{array::ListArray, datatypes::DataType};
 
+use re_arrow_util::transform::{self, Transform as _};
 use re_chunk::{Chunk, ChunkComponents, ChunkId, ComponentIdentifier, EntityPath};
 use re_log_types::EntityPathFilter;
 use re_types::ComponentDescriptor;
@@ -28,6 +29,8 @@ pub struct OutputColumn {
     pub is_static: bool,
 }
 
+type CustomFn = Box<dyn Fn(&ListArray) -> Result<ListArray, Error> + Sync + Send>;
+
 /// Provides commonly used transformations of component columns.
 ///
 /// Individual operations are wrapped to hide their implementation details.
@@ -38,11 +41,11 @@ pub enum Op {
     /// Efficiently casts a component to a new `DataType`.
     Cast(op::Cast),
 
-    /// Flattens a `ListArray` of `ListArray`.
-    Flatten(op::Flatten),
+    /// Flattens a list array inside a component.
+    Flatten,
 
     /// A user-defined arbitrary function to convert a component column.
-    Func(Box<dyn Fn(ListArray) -> Result<ListArray, Error> + Sync + Send>),
+    Func(CustomFn),
 }
 
 impl std::fmt::Debug for Op {
@@ -50,7 +53,7 @@ impl std::fmt::Debug for Op {
         match self {
             Self::AccessField(inner) => f.debug_tuple("AccessField").field(inner).finish(),
             Self::Cast(inner) => f.debug_tuple("Cast").field(inner).finish(),
-            Self::Flatten(inner) => f.debug_tuple("Flatten").field(inner).finish(),
+            Self::Flatten => f.debug_tuple("Flatten").finish(),
             Self::Func(_) => f.debug_tuple("Func").field(&"<function>").finish(),
         }
     }
@@ -71,11 +74,6 @@ impl Op {
         })
     }
 
-    /// Flattens a `ListArray` of `ListArray`.
-    pub fn flatten() -> Self {
-        Self::Flatten(op::Flatten)
-    }
-
     /// Ignores any input and returns a constant `ListArray`.
     ///
     /// Commonly used with [`LensBuilder::add_static_output_column_entity`].
@@ -84,21 +82,31 @@ impl Op {
         Self::func(move |_| Ok(value.clone()))
     }
 
+    /// Flattens a list array inside a component.
+    ///
+    /// Takes `List<List<T>>` and flattens it to `List<T>` by concatenating all inner lists
+    /// within each outer list row.
+    pub fn flatten() -> Self {
+        Self::Flatten
+    }
+
     /// A user-defined arbitrary function to convert a component column.
     pub fn func<F>(func: F) -> Self
     where
-        F: Fn(ListArray) -> Result<ListArray, Error> + Send + Sync + 'static,
+        F: for<'a> Fn(&'a ListArray) -> Result<ListArray, Error> + Send + Sync + 'static,
     {
         Self::Func(Box::new(func))
     }
 }
 
 impl Op {
-    fn call(&self, list_array: ListArray) -> Result<ListArray, Error> {
+    fn call(&self, list_array: &ListArray) -> Result<ListArray, Error> {
         match self {
             Self::Cast(op) => op.call(list_array),
             Self::AccessField(op) => op.call(list_array),
-            Self::Flatten(op) => op.call(list_array),
+            Self::Flatten => transform::Flatten::new()
+                .transform(list_array)
+                .map_err(Into::into),
             Self::Func(func) => func(list_array),
         }
     }
@@ -160,7 +168,7 @@ impl Lens {
 
             let mut list_array_result = list_array.clone();
             for op in &output.ops {
-                match op.call(list_array_result) {
+                match op.call(&list_array_result) {
                     Ok(result) => {
                         list_array_result = result;
                     }
@@ -542,7 +550,7 @@ mod test {
         let original_chunk = nullability_chunk();
         println!("{original_chunk}");
 
-        let count_fn = |list_array: ListArray| {
+        let count_fn = |list_array: &ListArray| {
             let mut builder = ListBuilder::new(Int32Builder::new());
 
             for maybe_array in list_array.iter() {

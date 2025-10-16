@@ -45,6 +45,7 @@ server = ["dep:re_smart_channel", "dep:tokio"]
 
 
 [dependencies]
+re_arrow_util.workspace = true
 re_build_info.workspace = true
 re_byte_size.workspace = true
 re_chunk.workspace = true
@@ -83,8 +84,6 @@ webbrowser = { workspace = true, optional = true }
 libc.workspace = true
 
 [dev-dependencies]
-re_format_arrow.workspace = true
-
 insta.workspace = true
 similar-asserts.workspace = true
 
