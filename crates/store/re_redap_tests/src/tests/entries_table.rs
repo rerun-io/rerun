@@ -10,7 +10,7 @@ use re_sdk::external::re_log_encoding::codec::wire::decoder::Decode as _;
 use crate::{RecordBatchExt as _, SchemaExt as _};
 
 /// We want to make sure that the "__entries" table is present and has the expected schema and data.
-pub async fn list_entries_table(fe: impl RerunCloudService) {
+pub async fn list_entries_table(service: impl RerunCloudService) {
     let find_entries_table = FindEntriesRequest {
         filter: Some(re_protos::cloud::v1alpha1::EntryFilter {
             name: Some("__entries".to_owned()),
@@ -18,7 +18,7 @@ pub async fn list_entries_table(fe: impl RerunCloudService) {
         }),
     };
 
-    let entries_resp = fe
+    let entries_resp = service
         .find_entries(tonic::Request::new(find_entries_table))
         .await
         .expect("Failed to find entries")
@@ -38,7 +38,7 @@ pub async fn list_entries_table(fe: impl RerunCloudService) {
         table_id: Some(entries.id.into()),
     };
 
-    let schema: arrow::datatypes::Schema = (&fe
+    let schema: arrow::datatypes::Schema = (&service
         .get_table_schema(tonic::Request::new(schema_request))
         .await
         .expect("Failed to get table schema")
@@ -54,7 +54,7 @@ pub async fn list_entries_table(fe: impl RerunCloudService) {
         table_id: Some(entries.id.into()),
     };
 
-    let table_resp: Vec<_> = fe
+    let table_resp: Vec<_> = service
         .scan_table(tonic::Request::new(scan_request))
         .await
         .expect("Failed to scan table")

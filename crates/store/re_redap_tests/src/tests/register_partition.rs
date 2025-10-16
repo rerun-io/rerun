@@ -16,7 +16,7 @@ use re_protos::{
 use super::common::{DataSourcesDefinition, LayerDefinition, register_with_dataset_name};
 use crate::RecordBatchExt as _;
 
-pub async fn register_and_scan_simple_dataset(fe: impl RerunCloudService) {
+pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
     let mut data_sources_def = DataSourcesDefinition::new([
         LayerDefinition {
             partition_id: "my_partition_id1",
@@ -38,20 +38,21 @@ pub async fn register_and_scan_simple_dataset(fe: impl RerunCloudService) {
     data_sources_def.generate_simple();
 
     let dataset_name = "my_dataset1";
-    fe.create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
-        name: Some(dataset_name.to_owned()),
-        id: None,
-    }))
-    .await
-    .unwrap();
+    service
+        .create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
+            name: Some(dataset_name.to_owned()),
+            id: None,
+        }))
+        .await
+        .unwrap();
 
-    register_with_dataset_name(&fe, dataset_name, data_sources_def.to_data_sources()).await;
+    register_with_dataset_name(&service, dataset_name, data_sources_def.to_data_sources()).await;
 
-    scan_partition_table_and_snapshot(&fe, dataset_name, "simple").await;
-    scan_dataset_manifest_and_snapshot(&fe, dataset_name, "simple").await;
+    scan_partition_table_and_snapshot(&service, dataset_name, "simple").await;
+    scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple").await;
 }
 
-pub async fn register_and_scan_simple_dataset_with_layers(fe: impl RerunCloudService) {
+pub async fn register_and_scan_simple_dataset_with_layers(service: impl RerunCloudService) {
     let mut data_sources_def = DataSourcesDefinition::new([
         LayerDefinition {
             partition_id: "partition1",
@@ -83,42 +84,44 @@ pub async fn register_and_scan_simple_dataset_with_layers(fe: impl RerunCloudSer
     data_sources_def.generate_simple();
 
     let dataset_name = "dataset_with_layers";
-    fe.create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
-        name: Some(dataset_name.to_owned()),
-        id: None,
-    }))
-    .await
-    .unwrap();
+    service
+        .create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
+            name: Some(dataset_name.to_owned()),
+            id: None,
+        }))
+        .await
+        .unwrap();
 
-    register_with_dataset_name(&fe, dataset_name, data_sources_def.to_data_sources()).await;
+    register_with_dataset_name(&service, dataset_name, data_sources_def.to_data_sources()).await;
 
-    scan_partition_table_and_snapshot(&fe, dataset_name, "simple_with_layers").await;
-    scan_dataset_manifest_and_snapshot(&fe, dataset_name, "simple_with_layers").await;
+    scan_partition_table_and_snapshot(&service, dataset_name, "simple_with_layers").await;
+    scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple_with_layers").await;
 }
 
 // Scanning an empty dataset should return an empty dataframe with the expected schema -- not a
 // NOT_FOUND error.
-pub async fn register_and_scan_empty_dataset(fe: impl RerunCloudService) {
+pub async fn register_and_scan_empty_dataset(service: impl RerunCloudService) {
     let dataset_name = "empty_dataset";
-    fe.create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
-        name: Some(dataset_name.to_owned()),
-        id: None,
-    }))
-    .await
-    .unwrap();
+    service
+        .create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
+            name: Some(dataset_name.to_owned()),
+            id: None,
+        }))
+        .await
+        .unwrap();
 
-    scan_partition_table_and_snapshot(&fe, dataset_name, "empty").await;
-    scan_dataset_manifest_and_snapshot(&fe, dataset_name, "empty").await;
+    scan_partition_table_and_snapshot(&service, dataset_name, "empty").await;
+    scan_dataset_manifest_and_snapshot(&service, dataset_name, "empty").await;
 }
 
 // ---
 
 async fn scan_partition_table_and_snapshot(
-    fe: &impl RerunCloudService,
+    service: &impl RerunCloudService,
     dataset_name: &str,
     snapshot_name: &str,
 ) {
-    let resps: Vec<_> = fe
+    let resps: Vec<_> = service
         .scan_partition_table(
             tonic::Request::new(ScanPartitionTableRequest {
                 columns: vec![], // all of them
@@ -174,11 +177,11 @@ async fn scan_partition_table_and_snapshot(
 }
 
 async fn scan_dataset_manifest_and_snapshot(
-    fe: &impl RerunCloudService,
+    service: &impl RerunCloudService,
     dataset_name: &str,
     snapshot_name: &str,
 ) {
-    let resps: Vec<_> = fe
+    let resps: Vec<_> = service
         .scan_dataset_manifest(
             tonic::Request::new(ScanDatasetManifestRequest {
                 columns: vec![], // all of them

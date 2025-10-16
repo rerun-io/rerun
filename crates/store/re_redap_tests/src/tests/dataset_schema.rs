@@ -9,7 +9,7 @@ use re_protos::{
 use super::common::{DataSourcesDefinition, LayerDefinition, register_with_dataset_name};
 use crate::SchemaExt as _;
 
-pub async fn simple_dataset_schema(fe: impl RerunCloudService) {
+pub async fn simple_dataset_schema(service: impl RerunCloudService) {
     let mut data_sources_def = DataSourcesDefinition::new([
         LayerDefinition {
             partition_id: "my_partition_id1",
@@ -31,38 +31,40 @@ pub async fn simple_dataset_schema(fe: impl RerunCloudService) {
     data_sources_def.generate_simple();
 
     let dataset_name = "my_dataset1";
-    fe.create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
-        name: Some(dataset_name.to_owned()),
-        id: None,
-    }))
-    .await
-    .unwrap();
+    service
+        .create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
+            name: Some(dataset_name.to_owned()),
+            id: None,
+        }))
+        .await
+        .unwrap();
 
-    register_with_dataset_name(&fe, dataset_name, data_sources_def.to_data_sources()).await;
+    register_with_dataset_name(&service, dataset_name, data_sources_def.to_data_sources()).await;
 
-    dataset_schema_snapshot(&fe, dataset_name, "simple_dataset").await;
+    dataset_schema_snapshot(&service, dataset_name, "simple_dataset").await;
 }
 
-pub async fn empty_dataset_schema(fe: impl RerunCloudService) {
+pub async fn empty_dataset_schema(service: impl RerunCloudService) {
     let dataset_name = "empty_dataset";
-    fe.create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
-        name: Some(dataset_name.to_owned()),
-        id: None,
-    }))
-    .await
-    .unwrap();
+    service
+        .create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
+            name: Some(dataset_name.to_owned()),
+            id: None,
+        }))
+        .await
+        .unwrap();
 
-    dataset_schema_snapshot(&fe, dataset_name, "empty_dataset").await;
+    dataset_schema_snapshot(&service, dataset_name, "empty_dataset").await;
 }
 
 // ---
 
 async fn dataset_schema_snapshot(
-    fe: &impl RerunCloudService,
+    service: &impl RerunCloudService,
     dataset_name: &str,
     snapshot_name: &str,
 ) {
-    let schema = fe
+    let schema = service
         .get_dataset_schema(
             tonic::Request::new(GetDatasetSchemaRequest {})
                 .with_entry_name(dataset_name)

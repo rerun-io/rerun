@@ -17,7 +17,7 @@ use url::Url;
 
 #[expect(dead_code)]
 pub async fn register_with_dataset_id(
-    fe: &impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
+    service: &impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
     dataset_id: EntryId,
     data_sources: Vec<re_protos::cloud::v1alpha1::DataSource>,
 ) {
@@ -28,11 +28,11 @@ pub async fn register_with_dataset_id(
     .with_entry_id(dataset_id)
     .expect("Failed to create a request");
 
-    register_with_dataset(fe, request).await;
+    register_with_dataset(service, request).await;
 }
 
 pub async fn register_with_dataset_name(
-    fe: &impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
+    service: &impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
     dataset_name: &str,
     data_sources: Vec<re_protos::cloud::v1alpha1::DataSource>,
 ) {
@@ -43,14 +43,14 @@ pub async fn register_with_dataset_name(
     .with_entry_name(dataset_name)
     .expect("Failed to create a request");
 
-    register_with_dataset(fe, request).await;
+    register_with_dataset(service, request).await;
 }
 
 async fn register_with_dataset(
-    fe: &impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
+    service: &impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
     request: tonic::Request<RegisterWithDatasetRequest>,
 ) {
-    let resp = fe
+    let resp = service
         .register_with_dataset(request)
         .await
         .expect("register_with_dataset should succeed")
@@ -74,7 +74,7 @@ async fn register_with_dataset(
             .collect::<Vec<_>>()
     };
 
-    let result = fe
+    let result = service
         .query_tasks_on_completion(tonic::Request::new(QueryTasksOnCompletionRequest {
             ids: task_ids.clone(),
             timeout: Some(prost_types::Duration {

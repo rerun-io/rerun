@@ -15,20 +15,21 @@ use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, concat_record_batches, register_with_dataset_name,
 };
 
-pub async fn query_empty_dataset(fe: impl RerunCloudService) {
+pub async fn query_empty_dataset(service: impl RerunCloudService) {
     let dataset_name = "dataset";
 
-    fe.create_dataset_entry(tonic::Request::new(
-        re_protos::cloud::v1alpha1::CreateDatasetEntryRequest {
-            name: Some(dataset_name.to_owned()),
-            id: None,
-        },
-    ))
-    .await
-    .expect("Failed to create dataset");
+    service
+        .create_dataset_entry(tonic::Request::new(
+            re_protos::cloud::v1alpha1::CreateDatasetEntryRequest {
+                name: Some(dataset_name.to_owned()),
+                id: None,
+            },
+        ))
+        .await
+        .expect("Failed to create dataset");
 
     query_dataset_snapshot(
-        &fe,
+        &service,
         QueryDatasetRequest::default(),
         dataset_name,
         "empty_dataset",
@@ -36,7 +37,7 @@ pub async fn query_empty_dataset(fe: impl RerunCloudService) {
     .await;
 }
 
-pub async fn query_simple_dataset(fe: impl RerunCloudService) {
+pub async fn query_simple_dataset(service: impl RerunCloudService) {
     let mut data_sources_def = DataSourcesDefinition::new([
         LayerDefinition {
             partition_id: "my_partition_id1",
@@ -59,15 +60,16 @@ pub async fn query_simple_dataset(fe: impl RerunCloudService) {
 
     let dataset_name = "dataset";
 
-    fe.create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
-        name: Some(dataset_name.to_owned()),
-        id: None,
-    }))
-    .await
-    .expect("Failed to create dataset");
+    service
+        .create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
+            name: Some(dataset_name.to_owned()),
+            id: None,
+        }))
+        .await
+        .expect("Failed to create dataset");
 
     // now register partitions with the dataset
-    register_with_dataset_name(&fe, dataset_name, data_sources_def.to_data_sources()).await;
+    register_with_dataset_name(&service, dataset_name, data_sources_def.to_data_sources()).await;
 
     let requests = vec![
         (QueryDatasetRequest::default(), "default"),
@@ -91,7 +93,7 @@ pub async fn query_simple_dataset(fe: impl RerunCloudService) {
 
     for (request, snapshot_name) in requests {
         query_dataset_snapshot(
-            &fe,
+            &service,
             request,
             dataset_name,
             &format!("simple_dataset_{snapshot_name}"),
@@ -101,17 +103,18 @@ pub async fn query_simple_dataset(fe: impl RerunCloudService) {
 }
 
 /// Test that failure cases return the correct error code.
-pub async fn query_dataset_should_fail(fe: impl RerunCloudService) {
+pub async fn query_dataset_should_fail(service: impl RerunCloudService) {
     let dataset_name = "dataset";
 
-    fe.create_dataset_entry(tonic::Request::new(
-        re_protos::cloud::v1alpha1::CreateDatasetEntryRequest {
-            name: Some(dataset_name.to_owned()),
-            id: None,
-        },
-    ))
-    .await
-    .expect("Failed to create dataset");
+    service
+        .create_dataset_entry(tonic::Request::new(
+            re_protos::cloud::v1alpha1::CreateDatasetEntryRequest {
+                name: Some(dataset_name.to_owned()),
+                id: None,
+            },
+        ))
+        .await
+        .expect("Failed to create dataset");
 
     let test_cases = vec![
         (
@@ -127,7 +130,9 @@ pub async fn query_dataset_should_fail(fe: impl RerunCloudService) {
     ];
 
     for (descr, request, expected_code) in test_cases {
-        let response = fe.query_dataset(tonic::Request::new(request.into())).await;
+        let response = service
+            .query_dataset(tonic::Request::new(request.into()))
+            .await;
 
         match response {
             Ok(_) => {
@@ -147,12 +152,12 @@ pub async fn query_dataset_should_fail(fe: impl RerunCloudService) {
 // ---
 
 async fn query_dataset_snapshot(
-    fe: &impl RerunCloudService,
+    service: &impl RerunCloudService,
     query_dataset_request: QueryDatasetRequest,
     dataset_name: &str,
     snapshot_name: &str,
 ) {
-    let chunk_info = fe
+    let chunk_info = service
         .query_dataset(
             tonic::Request::new(query_dataset_request.into())
                 .with_entry_name(dataset_name)
