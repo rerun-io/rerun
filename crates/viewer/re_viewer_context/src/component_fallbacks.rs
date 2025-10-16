@@ -1,6 +1,11 @@
+use std::borrow::Cow;
+
+use ahash::HashMap;
 use arrow::array::{ArrayRef, NullArray};
 
-use re_types::{ComponentDescriptor, ComponentType};
+use nohash_hasher::IntMap;
+use re_chunk::ComponentIdentifier;
+use re_types::{ComponentDescriptor, ComponentType, SerializationError};
 
 use crate::QueryContext;
 
@@ -120,4 +125,102 @@ macro_rules! impl_component_fallback_provider {
             }
         }
     };
+}
+
+type ComponentFallbackProviderFn =
+    Box<dyn Fn(&QueryContext<'_>) -> Result<ArrayRef, SerializationError> + Send + Sync + 'static>;
+
+/// A registry to handle component fallbacks.
+///
+/// This has two layers of fallbacks. The first one being for specific [`ComponentDescriptor`]s,
+/// i.e certain fields in archetypes. And the second being for [`ComponentTypes`]s.
+#[derive(Default)]
+pub struct FallbackProviderRegistry {
+    /// Maps component identifier to fallback providers.
+    exact_fallback_providers: IntMap<ComponentIdentifier, ComponentFallbackProviderFn>,
+
+    /// Maps component types to fallback descriptors, used if there's no matching
+    /// fallback in `exact_fallback_providers`.
+    type_fallback_providers: IntMap<ComponentType, ComponentFallbackProviderFn>,
+}
+
+impl FallbackProviderRegistry {
+    /// Registers a fallback provider function for a given component type.
+    ///
+    /// The function is expected to return the correct type for the given
+    /// component type.
+    pub fn register_dyn_type_fallback_provider(
+        &mut self,
+        component: ComponentType,
+        provider: ComponentFallbackProviderFn,
+    ) {
+        if self
+            .type_fallback_providers
+            .insert(component, provider)
+            .is_some()
+        {
+            re_log::warn!(
+                "There was already a component fallback provider registered for {component}"
+            );
+        }
+    }
+
+    /// Registers a fallback provider function for a given component type.
+    pub fn register_type_fallback_provider<C: re_types::Component>(
+        &mut self,
+        f: impl Fn(&QueryContext<'_>) -> C + Send + Sync + 'static,
+    ) {
+        self.register_dyn_type_fallback_provider(
+            C::name(),
+            Box::new(move |query_context| {
+                let value = f(query_context);
+
+                C::to_arrow([Cow::Owned(value)])
+            }),
+        );
+    }
+
+    /// Registers a fallback provider for a given component type based on
+    /// [`Default::default`].
+    pub fn register_default_type_fallback_provider<C>(&mut self)
+    where
+        C: re_types::Component + Default,
+    {
+        self.register_type_fallback_provider(|_| C::default());
+    }
+
+    /// Registers a fallback provider function for a given component identifier.
+    pub fn register_dyn_fallback_provider(
+        &mut self,
+        identifier: ComponentIdentifier,
+        provider: ComponentFallbackProviderFn,
+    ) {
+        if self
+            .exact_fallback_providers
+            .insert(identifier, provider)
+            .is_some()
+        {
+            re_log::warn!(
+                "There was already a component fallback provider registered for {identifier}"
+            );
+        }
+    }
+
+    /// Registers a fallback provider function for a given component identifier.
+    pub fn register_fallback_provider<C: re_types::Component>(
+        &mut self,
+        descriptor: &ComponentDescriptor,
+        provider: impl Fn(&QueryContext<'_>) -> C + Send + Sync + 'static,
+    ) {
+        debug_assert_eq!(descriptor.component_type, Some(C::name()));
+
+        self.register_dyn_fallback_provider(
+            descriptor.component,
+            Box::new(move |query_context| {
+                let value = provider(query_context);
+
+                C::to_arrow([Cow::Owned(value)])
+            }),
+        );
+    }
 }

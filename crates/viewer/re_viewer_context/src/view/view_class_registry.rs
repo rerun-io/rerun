@@ -8,7 +8,7 @@ use re_types::ViewClassIdentifier;
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, ViewClass,
     ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, ViewerContext,
-    VisualizerCollection, VisualizerSystem,
+    VisualizerCollection, VisualizerSystem, component_fallbacks::FallbackProviderRegistry,
     view::view_context_system::ViewContextSystemOncePerFrameResult,
 };
 
@@ -173,6 +173,7 @@ pub struct ViewClassRegistry {
     context_systems: HashMap<ViewSystemIdentifier, ContextSystemTypeRegistryEntry>,
     visualizers: HashMap<ViewSystemIdentifier, VisualizerTypeRegistryEntry>,
     placeholder: ViewClassRegistryEntry,
+    fallback_registry: FallbackProviderRegistry,
 }
 
 impl ViewClassRegistry {
