@@ -3,12 +3,13 @@ use itertools::Itertools as _;
 
 use nohash_hasher::IntMap;
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle};
-use re_types::ViewClassIdentifier;
+use re_types::{ComponentDescriptor, ViewClassIdentifier};
 
 use crate::{
-    IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, ViewClass,
-    ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, ViewerContext,
-    VisualizerCollection, VisualizerSystem, component_fallbacks::FallbackProviderRegistry,
+    IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
+    QueryContext, ViewClass, ViewContextCollection, ViewContextSystem, ViewSystemIdentifier,
+    ViewerContext, VisualizerCollection, VisualizerSystem,
+    component_fallbacks::FallbackProviderRegistry,
     view::view_context_system::ViewContextSystemOncePerFrameResult,
 };
 
@@ -119,6 +120,16 @@ impl ViewSystemRegistrator<'_> {
                 T::identifier().as_str(),
             ))
         }
+    }
+
+    pub fn register_fallback_provider<V: re_types::View + 'static, C: re_types::Component>(
+        &mut self,
+        descriptor: &ComponentDescriptor,
+        provider: impl Fn(&V, &QueryContext<'_>) -> C + Send + Sync + 'static,
+    ) {
+        self.registry
+            .fallback_registry
+            .register_view_fallback_provider(descriptor, provider);
     }
 }
 

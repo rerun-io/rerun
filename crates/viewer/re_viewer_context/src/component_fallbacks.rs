@@ -5,7 +5,7 @@ use arrow::array::{ArrayRef, NullArray};
 
 use nohash_hasher::IntMap;
 use re_chunk::ComponentIdentifier;
-use re_types::{ComponentDescriptor, ComponentType, SerializationError};
+use re_types::{ComponentDescriptor, ComponentType, SerializationError, View, ViewClassIdentifier};
 
 use crate::QueryContext;
 
@@ -130,14 +130,24 @@ macro_rules! impl_component_fallback_provider {
 type ComponentFallbackProviderFn =
     Box<dyn Fn(&QueryContext<'_>) -> Result<ArrayRef, SerializationError> + Send + Sync + 'static>;
 
+type ComponentViewFallbackProviderFn = Box<
+    dyn Fn(&dyn std::any::Any, &QueryContext<'_>) -> Result<ArrayRef, SerializationError>
+        + Send
+        + Sync
+        + 'static,
+>;
+
 /// A registry to handle component fallbacks.
 ///
 /// This has two layers of fallbacks. The first one being for specific [`ComponentDescriptor`]s,
 /// i.e certain fields in archetypes. And the second being for [`ComponentTypes`]s.
 #[derive(Default)]
 pub struct FallbackProviderRegistry {
+    view_component_fallback_providers:
+        HashMap<(ViewClassIdentifier, ComponentIdentifier), ComponentViewFallbackProviderFn>,
+
     /// Maps component identifier to fallback providers.
-    exact_fallback_providers: IntMap<ComponentIdentifier, ComponentFallbackProviderFn>,
+    component_fallback_providers: IntMap<ComponentIdentifier, ComponentFallbackProviderFn>,
 
     /// Maps component types to fallback descriptors, used if there's no matching
     /// fallback in `exact_fallback_providers`.
@@ -196,7 +206,7 @@ impl FallbackProviderRegistry {
         provider: ComponentFallbackProviderFn,
     ) {
         if self
-            .exact_fallback_providers
+            .component_fallback_providers
             .insert(identifier, provider)
             .is_some()
         {
@@ -218,6 +228,51 @@ impl FallbackProviderRegistry {
             descriptor.component,
             Box::new(move |query_context| {
                 let value = provider(query_context);
+
+                C::to_arrow([Cow::Owned(value)])
+            }),
+        );
+    }
+
+    /// Registers a fallback provider function for a given component identifier
+    /// in a specific view.
+    pub fn register_dyn_view_fallback_provider(
+        &mut self,
+        view: ViewClassIdentifier,
+        component: ComponentIdentifier,
+        provider: ComponentViewFallbackProviderFn,
+    ) {
+        if self
+            .view_component_fallback_providers
+            .insert((view, component), provider)
+            .is_some()
+        {
+            re_log::warn!(
+                "There was already a view component fallback provider registered for {component} in {view}"
+            );
+        }
+    }
+
+    /// Registers a fallback provider function for a given component identifier
+    /// in a specific view.
+    pub fn register_view_fallback_provider<V: View + 'static, C: re_types::Component>(
+        &mut self,
+        descriptor: &ComponentDescriptor,
+        provider: impl Fn(&V, &QueryContext<'_>) -> C + Send + Sync + 'static,
+    ) {
+        debug_assert_eq!(descriptor.component_type, Some(C::name()));
+
+        self.register_dyn_view_fallback_provider(
+            V::identifier(),
+            descriptor.component,
+            Box::new(move |view, query_context| {
+                let Some(view) = view.downcast_ref() else {
+                    re_log::error_once!("Failed to get fallback provider because passed view is not the expected type");
+
+                    return Ok(C::arrow_empty());
+                };
+
+                let value = provider(view, query_context);
 
                 C::to_arrow([Cow::Owned(value)])
             }),
