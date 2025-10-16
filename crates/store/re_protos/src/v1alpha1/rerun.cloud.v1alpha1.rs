@@ -827,10 +827,8 @@ impl ::prost::Name for ScanTableResponse {
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct WriteTableRequest {
     #[prost(message, optional, tag = "1")]
-    pub table_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-    #[prost(message, optional, tag = "2")]
     pub dataframe_part: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
-    #[prost(enumeration = "TableInsertMode", tag = "3")]
+    #[prost(enumeration = "TableInsertMode", tag = "2")]
     pub insert_mode: i32,
 }
 impl ::prost::Name for WriteTableRequest {

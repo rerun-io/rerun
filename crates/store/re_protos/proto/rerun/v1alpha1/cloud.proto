@@ -604,9 +604,8 @@ enum TableInsertMode {
 }
 
 message WriteTableRequest {
-  rerun.common.v1alpha1.EntryId table_id = 1;
-  rerun.common.v1alpha1.DataframePart dataframe_part = 2;
-  TableInsertMode insert_mode = 3;
+  rerun.common.v1alpha1.DataframePart dataframe_part = 1;
+  TableInsertMode insert_mode = 2;
 }
 
 message WriteTableResponse {}
