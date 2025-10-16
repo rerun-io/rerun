@@ -2,8 +2,8 @@
 
 Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 
-[![Latest version](https://img.shields.io/crates/v/re_tf.svg#speculative-link)](https://crates.io/crates/store/re_tf#speculative-link)
-[![Documentation](https://docs.rs/re_tf/badge.svg#speculative-link)](https://docs.rs/re_tf#speculative-link)
+[![Latest version](https://img.shields.io/crates/v/re_tf.svg)](https://crates.io/crates/store/re_tf)
+[![Documentation](https://docs.rs/re_tf/badge.svg)](https://docs.rs/re_tf)
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
