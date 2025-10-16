@@ -30,6 +30,9 @@ anyhow.workspace = true
 arrow.workspace = true
 half.workspace = true
 itertools.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
+re_format_arrow.workspace = true
+
 insta.workspace = true

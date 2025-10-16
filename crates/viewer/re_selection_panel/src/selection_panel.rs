@@ -1116,6 +1116,32 @@ mod tests {
         test_context
     }
 
+    fn selection_panel_ui(
+        test_context: &TestContext,
+        viewport_blueprint: &ViewportBlueprint,
+        ui: &mut egui::Ui,
+    ) {
+        test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+            ui.scope_builder(
+                // We need this to for `re_ui::is_in_resizable_panel` to return the correct thing…
+                egui::UiBuilder::new()
+                    .ui_stack_info(egui::UiStackInfo::new(egui::UiKind::RightPanel)),
+                |ui| {
+                    egui::Frame::new().inner_margin(8.0).show(ui, |ui| {
+                        SelectionPanel::default().contents(
+                            viewer_ctx,
+                            viewport_blueprint,
+                            &mut ViewStates::default(),
+                            ui,
+                        );
+                    });
+                },
+            );
+        });
+
+        test_context.handle_system_commands(ui.ctx());
+    }
+
     /// Snapshot test for the selection panel when a recording is selected.
     #[test]
     fn selection_panel_recording_snapshot() {
@@ -1136,16 +1162,8 @@ mod tests {
         let mut harness = test_context
             .setup_kittest_for_rendering()
             .with_size([600.0, 400.0])
-            .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands(ui.ctx());
+            .build_ui(move |ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
@@ -1174,15 +1192,7 @@ mod tests {
             .setup_kittest_for_rendering()
             .with_size([600.0, 400.0])
             .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands(ui.ctx());
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.get_by_label("test_app").hover();
@@ -1228,15 +1238,7 @@ mod tests {
             .setup_kittest_for_rendering()
             .with_size([400.0, 350.0])
             .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands(ui.ctx());
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
@@ -1286,15 +1288,7 @@ mod tests {
             .setup_kittest_for_rendering()
             .with_size([400.0, 350.0])
             .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands(ui.ctx());
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
@@ -1358,15 +1352,7 @@ mod tests {
             .setup_kittest_for_rendering()
             .with_size([400.0, 350.0])
             .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands(ui.ctx());
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
@@ -1407,15 +1393,7 @@ mod tests {
             .setup_kittest_for_rendering()
             .with_size(size)
             .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands(ui.ctx());
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
@@ -1464,15 +1442,7 @@ mod tests {
             .setup_kittest_for_rendering()
             .with_size(size)
             .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands(ui.ctx());
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
@@ -1514,15 +1484,7 @@ mod tests {
             .setup_kittest_for_rendering()
             .with_size(size)
             .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands(ui.ctx());
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
