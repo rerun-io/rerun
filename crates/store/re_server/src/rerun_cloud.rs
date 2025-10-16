@@ -628,7 +628,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         while let Some(write_msg) = request.next().await {
             let write_msg = write_msg?;
-            
+
             let rb = write_msg
                 .dataframe_part
                 .ok_or_else(|| {
@@ -1116,7 +1116,7 @@ impl RerunCloudService for RerunCloudHandler {
         let table = store
             .table(entry_id)
             .ok_or_else(|| Status::not_found(format!("Entry with ID {entry_id} not found")))?;
-        
+
         let schema = table.schema();
 
         Ok(tonic::Response::new(
