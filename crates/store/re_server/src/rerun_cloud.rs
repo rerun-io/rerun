@@ -678,7 +678,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         while let Some(write_msg) = request.next().await {
             let write_msg = write_msg?;
-            
+
             let rb = write_msg
                 .dataframe_part
                 .ok_or_else(|| {

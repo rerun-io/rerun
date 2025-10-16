@@ -340,7 +340,9 @@ where
                 let mut client = client;
 
                 client.inner().write_table(stream).await
-            }.await {
+            }
+            .await
+            {
                 // Send the error back to the stream
                 // Ignore send error if receiver is dropped
                 #[expect(clippy::let_underscore_must_use)]

@@ -158,9 +158,10 @@ impl Table {
             InsertOp::Overwrite => {
                 params.mode = WriteMode::Overwrite;
 
-                let _ = LanceDataset::write(reader, Arc::new(dataset.as_ref().clone()), Some(params))
-                    .await
-                    .map_err(|err| DataFusionError::External(err.into()))?;
+                let _ =
+                    LanceDataset::write(reader, Arc::new(dataset.as_ref().clone()), Some(params))
+                        .await
+                        .map_err(|err| DataFusionError::External(err.into()))?;
 
                 Ok(())
             }
@@ -173,9 +174,7 @@ impl Table {
         insert_op: InsertOp,
     ) -> Result<(), DataFusionError> {
         match &self.table {
-            TableType::LanceDataset(_) => {
-                self.write_table_lance_dataset(rb, insert_op).await
-            }
+            TableType::LanceDataset(_) => self.write_table_lance_dataset(rb, insert_op).await,
             TableType::DataFusionTable(_) => self.write_table_provider(rb, insert_op).await,
         }
     }
