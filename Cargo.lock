@@ -7352,9 +7352,9 @@ checksum = "df94ce210e5bc13cb6651479fa48d14f601d9858cfe0467f43ae157023b938d3"
 
 [[package]]
 name = "peg"
-version = "0.6.3"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f76678828272f177ac33b7e2ac2e3e73cc6c1cd1e3e387928aa69562fa51367"
+checksum = "9928cfca101b36ec5163e70049ee5368a8a1c3c6efc9ca9c5f9cc2f816152477"
 dependencies = [
  "peg-macros",
  "peg-runtime",
@@ -7362,9 +7362,9 @@ dependencies = [
 
 [[package]]
 name = "peg-macros"
-version = "0.6.3"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "636d60acf97633e48d266d7415a9355d4389cea327a193f87df395d88cd2b14d"
+checksum = "6298ab04c202fa5b5d52ba03269fb7b74550b150323038878fe6c372d8280f71"
 dependencies = [
  "peg-runtime",
  "proc-macro2",
@@ -7373,9 +7373,9 @@ dependencies = [
 
 [[package]]
 name = "peg-runtime"
-version = "0.6.3"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9555b1514d2d99d78150d3c799d4c357a3e2c2a8062cd108e93a06d9057629c5"
+checksum = "132dca9b868d927b35b5dd728167b2dee150eb1ad686008fc71ccb298b776fca"
 
 [[package]]
 name = "percent-encoding"
@@ -7622,10 +7622,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "ply-rs"
-version = "0.1.3"
+name = "ply-rs-bw"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbadf9cb4a79d516de4c64806fe64ffbd8161d1ac685d000be789fb628b88963"
+checksum = "2468331832f131d33d570e31f29d48954f75322be17f0303f90299649a69a324"
 dependencies = [
  "byteorder",
  "linked-hash-map",
@@ -9704,7 +9704,7 @@ dependencies = [
  "mint",
  "ndarray",
  "nohash-hasher",
- "ply-rs",
+ "ply-rs-bw",
  "rand 0.8.5",
  "rayon",
  "re_build_tools",

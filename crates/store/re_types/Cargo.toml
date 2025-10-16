@@ -76,7 +76,7 @@ linked-hash-map.workspace = true
 mime_guess2.workspace = true
 ndarray.workspace = true
 nohash-hasher.workspace = true
-ply-rs.workspace = true
+ply-rs-bw.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
 tiff = { workspace = true, optional = true }

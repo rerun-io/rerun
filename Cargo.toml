@@ -296,7 +296,7 @@ pathdiff = "0.2.3"
 percent-encoding = "2.3"
 pico-args = "0.5.0"
 pin-project-lite = "0.2.16"
-ply-rs = { version = "0.1.3", default-features = false }
+ply-rs-bw = { version = "2.0.0", default-features = false }
 poll-promise = "0.3.0"
 pollster = "0.4.0"
 prettyplease = "0.2.37"
