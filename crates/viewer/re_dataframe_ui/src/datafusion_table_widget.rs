@@ -101,6 +101,27 @@ impl Columns<'_> {
     }
 }
 
+/// In which state the table currently is?
+///
+/// This is primarily useful for testing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TableStatus {
+    /// The table is loading its content for the first time and has no cached content. A spinner
+    /// is displayed.
+    InitialLoading,
+
+    /// The table is fully loaded and no update is in progress.
+    Loaded,
+
+    /// The table is currently updating its content and a spinner is displayed. The previously loaded
+    /// content is displayed in the meantime.
+    Updating,
+
+    /// An error occurred while loading the table. It is displayed in the UI with no additional
+    /// content.
+    Error(String),
+}
+
 type ColumnBlueprintFn<'a> = Box<dyn Fn(&ColumnDescriptorRef<'_>) -> ColumnBlueprint + 'a>;
 
 pub struct DataFusionTableWidget<'a> {
@@ -166,6 +187,11 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
+    pub fn initial_blueprint(mut self, initial_blueprint: TableBlueprint) -> Self {
+        self.initial_blueprint = initial_blueprint;
+        self
+    }
+
     pub fn generate_partition_links(
         mut self,
         column_name: impl Into<String>,
@@ -209,7 +235,7 @@ impl<'a> DataFusionTableWidget<'a> {
         viewer_ctx: &ViewerContext<'_>,
         runtime: &AsyncRuntimeHandle,
         ui: &mut egui::Ui,
-    ) {
+    ) -> TableStatus {
         let Self {
             session_ctx,
             table_ref,
@@ -226,14 +252,14 @@ impl<'a> DataFusionTableWidget<'a> {
                     "Loading table:",
                     url.as_deref().or(title.as_deref()).unwrap_or(""),
                 );
-                return;
+                return TableStatus::InitialLoading;
             }
             Err(err) => {
                 ui.loading_screen(
                     "Error while loading table:",
                     RichText::from(err.to_string()).color(ui.style().visuals.error_fg_color),
                 );
-                return;
+                return TableStatus::Error(err.to_string());
             }
         }
 
@@ -250,7 +276,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let requested_query_result = table_state.requested_query_result.lock();
 
-        let mut should_show_spinner = false;
+        let mut is_table_update_in_progress = false;
         let query_result = match (
             requested_query_result.try_as_ref(),
             &table_state.last_query_results,
@@ -262,7 +288,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 drop(requested_query_result);
 
                 ui.horizontal(|ui| {
-                    ui.error_label(error);
+                    ui.error_label(&error);
 
                     if ui
                         .small_icon_button(&re_ui::icons::RESET, "Refresh")
@@ -272,12 +298,12 @@ impl<'a> DataFusionTableWidget<'a> {
                         Self::refresh(ui.ctx(), &session_ctx, table_ref);
                     }
                 });
-                return;
+                return TableStatus::Error(error);
             }
 
             (None, Some(last_query_result)) => {
                 // The new dataframe is still processing, but we have the previous one to display for now.
-                should_show_spinner = true;
+                is_table_update_in_progress = true;
                 last_query_result
             }
 
@@ -289,7 +315,7 @@ impl<'a> DataFusionTableWidget<'a> {
                     "Loading table:",
                     url.as_deref().or(title.as_deref()).unwrap_or(""),
                 );
-                return;
+                return TableStatus::InitialLoading;
             }
         };
 
@@ -303,7 +329,7 @@ impl<'a> DataFusionTableWidget<'a> {
             title.as_deref(),
             url.as_deref(),
             table_state.queried_at,
-            should_show_spinner,
+            is_table_update_in_progress,
             query_result,
             &column_blueprint_fn,
         );
@@ -311,6 +337,12 @@ impl<'a> DataFusionTableWidget<'a> {
         drop(requested_query_result);
         if table_state.blueprint() != &new_blueprint {
             table_state.update_query(runtime, ui, new_blueprint);
+        }
+
+        if is_table_update_in_progress {
+            TableStatus::Updating
+        } else {
+            TableStatus::Loaded
         }
     }
 
