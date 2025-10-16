@@ -3238,7 +3238,7 @@ dependencies = [
  "pollster",
  "profiling",
  "raw-window-handle",
- "ron 0.11.0",
+ "ron",
  "serde",
  "static_assertions",
  "wasm-bindgen",
@@ -3265,7 +3265,7 @@ dependencies = [
  "log",
  "nohash-hasher",
  "profiling",
- "ron 0.11.0",
+ "ron",
  "serde",
  "smallvec",
  "unicode-segmentation",
@@ -8792,7 +8792,7 @@ dependencies = [
  "rayon",
  "re_build_tools",
  "re_format",
- "roxmltree 0.19.0",
+ "roxmltree",
  "rustdoc-json",
  "rustdoc-types",
  "serde",
@@ -9807,7 +9807,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_tracing",
- "ron 0.10.1",
+ "ron",
  "serde",
  "smallvec",
  "strum",
@@ -10206,7 +10206,7 @@ dependencies = [
  "re_viewport",
  "re_viewport_blueprint",
  "rfd",
- "ron 0.10.1",
+ "ron",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
@@ -10763,19 +10763,6 @@ dependencies = [
 
 [[package]]
 name = "ron"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "beceb6f7bf81c73e73aeef6dd1356d9a1b2b4909e1f0fc3e59b034f9572d7b7f"
-dependencies = [
- "base64 0.22.1",
- "bitflags 2.9.4",
- "serde",
- "serde_derive",
- "unicode-ident",
-]
-
-[[package]]
-name = "ron"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db09040cc89e461f1a265139777a2bde7f8d8c67c4936f700c63ce3e2904d468"
@@ -10786,12 +10773,6 @@ dependencies = [
  "serde_derive",
  "unicode-ident",
 ]
-
-[[package]]
-name = "roxmltree"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cd14fd5e3b777a7422cca79358c57a8f6e3a703d9ac187448d0daf220c2407f"
 
 [[package]]
 name = "roxmltree"
@@ -12773,7 +12754,7 @@ dependencies = [
  "kurbo",
  "log",
  "pico-args",
- "roxmltree 0.20.0",
+ "roxmltree",
  "simplecss",
  "siphasher",
  "strict-num",
