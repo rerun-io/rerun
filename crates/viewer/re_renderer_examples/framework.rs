@@ -1,6 +1,6 @@
 //! Example framework
 
-// TODO(#6330): remove unwrap()
+// TODO(#3408): remove unwrap()
 #![expect(clippy::unwrap_used)]
 use std::sync::Arc;
 
