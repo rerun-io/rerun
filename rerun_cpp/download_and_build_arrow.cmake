@@ -88,7 +88,7 @@ function(download_and_build_arrow)
         PREFIX ${ARROW_DOWNLOAD_PATH}
         URL https://github.com/apache/arrow/releases/download/apache-arrow-18.0.0/apache-arrow-18.0.0.tar.gz
         URL_MD5 96a4e40287137867c9fe7a2b6c3e5083
-        DOWNLOAD_NO_PROGRESS ON
+        DOWNLOAD_NO_PROGRESS ON # Progress sounds like a nice idea but is in practice very spammy.
         UPDATE_COMMAND "" # Prevent unnecessary rebuilds on every cmake --build
 
         # Apply patch after checkout but before configure
