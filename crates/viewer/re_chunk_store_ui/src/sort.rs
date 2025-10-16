@@ -53,8 +53,8 @@ pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
             |ui| {
                 if is_sorted {
                     let (icon, text) = match direction {
-                        SortDirection::Ascending => (&re_ui::icons::ARROW_UP, "ascending sort"),
-                        SortDirection::Descending => (&re_ui::icons::ARROW_DOWN, "descending sort"),
+                        SortDirection::Ascending => (&re_ui::icons::ARROW_DOWN, "ascending sort"),
+                        SortDirection::Descending => (&re_ui::icons::ARROW_UP, "descending sort"),
                     };
 
                     ui.small_icon_button(icon, text).clicked()
