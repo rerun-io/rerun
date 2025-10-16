@@ -97,7 +97,7 @@ jobs:
           pixi run python scripts/ci/crates.py check-git-branch-name
 
           echo Parse the release version from the branch name…
-          #   `release-0.8.1-meta.N` -> `0.8.1`
+          #   `prepare-release-0.8.1-meta.N` -> `0.8.1`
           release_version=$(pixi run python scripts/ci/crates.py get-version --from git --finalize)
 
           echo "release_version: $release_version"
