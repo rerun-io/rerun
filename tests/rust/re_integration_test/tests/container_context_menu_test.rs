@@ -1,4 +1,5 @@
 use egui::Modifiers;
+use egui_kittest::SnapshotOptions;
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
@@ -94,6 +95,11 @@ pub async fn test_context_menu_invalid_sub_container() {
 pub async fn test_context_menu_multi_selection() {
     let mut harness = make_multi_view_test_harness();
 
+    // Selecting 2D boxes renders with vastly different antialiasing on different platforms
+    let snapshot_options_for_2d = SnapshotOptions::new()
+        .threshold(1.5)
+        .failed_pixel_count_threshold(1000);
+
     harness.snapshot_app("context_menu_multi_selection_01");
 
     // Expand both views and the boxes2d entity
@@ -103,7 +109,7 @@ pub async fn test_context_menu_multi_selection() {
     harness.click_label("Expand all");
     harness.right_click_nth_label("boxes2d", 0);
     harness.click_label("Expand all");
-    harness.snapshot_app("context_menu_multi_selection_02");
+    harness.snapshot_options("context_menu_multi_selection_02", &snapshot_options_for_2d);
 
     // Select 3D View and 2D View, check context menu
     harness.click_nth_label("3D view", 0);
@@ -128,16 +134,16 @@ pub async fn test_context_menu_multi_selection() {
     harness.click_nth_label("2D view", 0);
     harness.click_nth_label_modifiers("boxes2d", 1, Modifiers::COMMAND);
     harness.right_click_nth_label("boxes2d", 1);
-    harness.snapshot_app("context_menu_multi_selection_06");
+    harness.snapshot_options("context_menu_multi_selection_06", &snapshot_options_for_2d);
     harness.key_press(egui::Key::Escape);
 
     harness.click_nth_label("boxes2d", 0);
     harness.click_nth_label_modifiers("boxes3d", 0, Modifiers::COMMAND);
     harness.right_click_nth_label("boxes3d", 0);
-    harness.snapshot_app("context_menu_multi_selection_07");
+    harness.snapshot_options("context_menu_multi_selection_07", &snapshot_options_for_2d);
     harness.key_press(egui::Key::Escape);
 
     harness.click_nth_label_modifiers("half_sizes", 0, Modifiers::COMMAND);
     harness.right_click_nth_label("half_sizes", 0);
-    harness.snapshot_app("context_menu_multi_selection_08");
+    harness.snapshot_options("context_menu_multi_selection_08", &snapshot_options_for_2d);
 }
