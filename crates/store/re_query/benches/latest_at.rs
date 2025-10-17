@@ -272,14 +272,16 @@ fn query_and_visit_points(caches: &QueryCache, paths: &[EntityPath]) -> Vec<Save
         let results: LatestAtResults = caches.latest_at(
             &query,
             entity_path,
-            Points2D::all_components().iter(), // no generics!
+            Points2D::all_components()
+                .iter()
+                .map(|descriptor| descriptor.component), // no generics!
         );
 
         let points = results
-            .component_batch_quiet::<Position2D>(&Points2D::descriptor_positions())
+            .component_batch_quiet::<Position2D>(Points2D::descriptor_positions().component)
             .unwrap();
         let colors = results
-            .component_batch_quiet::<Color>(&Points2D::descriptor_colors())
+            .component_batch_quiet::<Color>(Points2D::descriptor_colors().component)
             .unwrap_or_default();
         let color_default_fn = || Color::from(0xFF00FFFF);
 
@@ -304,18 +306,18 @@ fn query_and_visit_strings(caches: &QueryCache, paths: &[EntityPath]) -> Vec<Sav
 
     let mut strings = Vec::with_capacity(NUM_STRINGS as _);
 
+    let component_points = Points2D::descriptor_positions().component;
+    let component_labels = Points2D::descriptor_labels().component;
+
     for entity_path in paths {
-        let results: LatestAtResults = caches.latest_at(
-            &query,
-            entity_path,
-            Points2D::all_components().iter(), // no generics!
-        );
+        let results: LatestAtResults =
+            caches.latest_at(&query, entity_path, [component_points, component_labels]);
 
         let points = results
-            .component_batch_quiet::<Position2D>(&Points2D::descriptor_positions())
+            .component_batch_quiet::<Position2D>(component_points)
             .unwrap();
         let labels = results
-            .component_batch_quiet::<Text>(&Points2D::descriptor_labels())
+            .component_batch_quiet::<Text>(component_labels)
             .unwrap_or_default();
         let label_default_fn = || Text(String::new().into());
 
