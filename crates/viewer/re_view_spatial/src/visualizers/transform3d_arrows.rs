@@ -107,18 +107,23 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             let world_from_obj = if let Some(pinhole_tree_root_info) =
                 transforms.pinhole_tree_root_info(transform_info.tree_root())
             {
-                if transform_info.tree_root() != data_result.entity_path.hash() {
+                if transform_info.tree_root()
+                    == re_tf::TransformFrameIdHash::from_entity_path(&data_result.entity_path)
+                {
+                    // We're _at_ that pinhole.
+                    // Don't apply the from-2D transform, stick with the last known 3D.
+                    pinhole_tree_root_info.parent_root_from_pinhole_root
+                } else {
                     // We're inside a 2D space. But this is a 3D transform.
                     // Something is wrong here and this is not the right place to report it.
                     // Better just don't draw the axis!
                     continue;
-                } else {
-                    // Don't apply the from-2D transform, stick with the last known 3D.
-                    pinhole_tree_root_info.parent_root_from_pinhole_root
                 }
             } else {
-                transform_info
-                    .single_entity_transform_required(&data_result.entity_path, Transform3D::name())
+                transform_info.single_transform_required_for_entity(
+                    &data_result.entity_path,
+                    Transform3D::name(),
+                )
             };
 
             // Note, we use this interface instead of `data_result.latest_at_with_blueprint_resolved_data` to avoid querying

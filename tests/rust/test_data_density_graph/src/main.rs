@@ -107,7 +107,7 @@ fn log(
         log_times.push(time);
 
         if !sorted {
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
             use rand::seq::SliceRandom as _;
             log_times.shuffle(&mut rng);
         }

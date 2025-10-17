@@ -30,7 +30,7 @@ fn prepare() -> Input {
         // Random walk:
         for (_, scalars) in &mut current {
             for scalar in scalars {
-                *scalar += rng.gen_range(-0.1..=0.1);
+                *scalar += rng.random_range(-0.1..=0.1);
             }
         }
         time_steps.push(current.clone());
