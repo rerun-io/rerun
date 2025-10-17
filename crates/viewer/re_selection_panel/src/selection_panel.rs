@@ -15,9 +15,9 @@ use re_ui::{
     list_item::{self, PropertyContent},
 };
 use re_viewer_context::{
-    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SystemCommand,
-    SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId, ViewStates,
-    ViewerContext, contents_name_style, icon_for_container_kind,
+    BlueprintContext as _, ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight,
+    Item, SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext,
+    ViewId, ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
 
@@ -330,12 +330,21 @@ impl SelectionPanel {
                     if let Some(data_result) = &data_result
                         && let Some(view) = viewport.view(view_id)
                     {
-                        visible_interactive_toggle_ui(
-                            &view.bundle_context_with_states(ctx, view_states),
-                            ui,
-                            ctx.lookup_query_result(*view_id),
-                            data_result,
-                        );
+                        let view_ctx = view.bundle_context_with_states(ctx, view_states);
+                        visible_interactive_toggle_ui(&view_ctx, ui, query_result, data_result);
+
+                        // TODO(RR-2700): Come up with something non-experimental.
+                        // TODO: limit to 2d & 3d views
+                        let is_spatial_view =
+                            view.class_identifier() == "3D" || view.class_identifier() == "2D";
+                        if ctx
+                            .global_context
+                            .app_options
+                            .experimental_coordinate_frame_display_and_override
+                            && is_spatial_view
+                        {
+                            coordinate_frame_ui(ui, &view_ctx, data_result);
+                        }
                     }
                 }
             }
@@ -497,6 +506,86 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
             visible_time_range_ui_for_view(ctx, ui, view, view_class, view_state);
         }
+    }
+}
+
+fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &DataResult) {
+    use re_types::archetypes;
+    use re_types::components::TransformFrameId;
+    use re_view::latest_at_with_blueprint_resolved_data;
+
+    // TODO: Sync up with code in transform_tree_context?
+    // TODO: want to explicitely ignore
+    let component_descr = archetypes::CoordinateFrame::descriptor_frame_id();
+    let query_shadowed_components = true;
+    let query_result = latest_at_with_blueprint_resolved_data(
+        ctx,
+        None,
+        &ctx.current_query(),
+        data_result,
+        [&component_descr],
+        query_shadowed_components,
+    );
+
+    let override_path = data_result.override_path();
+
+    let frame_id_before = query_result
+        .get_mono::<TransformFrameId>(&component_descr)
+        .map_or_else(
+            || TransformFrameId::from_entity_path(&data_result.entity_path),
+            |frame_id| TransformFrameId::new(&frame_id),
+        )
+        .to_string();
+    let mut frame_id = frame_id_before.clone();
+
+    ui.list_item_flat_noninteractive(
+        list_item::PropertyContent::new("Coordinate frame")
+            .value_text_mut(&mut frame_id)
+            .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
+                // TODO: some copy pasta going on here which we might want to avoid.
+                let result_override = query_result.overrides.get(&component_descr);
+                let raw_override = result_override
+                    .and_then(|c| c.non_empty_component_batch_raw(&component_descr))
+                    .map(|(_, array)| array);
+
+                if ui
+                    .add_enabled(raw_override.is_some(), egui::Button::new("Remove override"))
+                    .on_disabled_hover_text("There's no override active")
+                    .clicked()
+                {
+                    ctx.clear_blueprint_component(override_path.clone(), component_descr.clone());
+                    ui.close();
+                    return;
+                }
+
+                let override_differs_from_default = raw_override
+                != ctx
+                    .viewer_ctx
+                    .raw_latest_at_in_default_blueprint(override_path, &component_descr);
+                if ui
+                    .add_enabled(
+                        override_differs_from_default,
+                        egui::Button::new("Reset override to default blueprint"),
+                    )
+                    .on_hover_text("Resets the override to what is specified in the default blueprint")
+                    .on_disabled_hover_text("Current override is the same as the override specified in the default blueprint (if any)")
+                    .clicked()
+                {
+                    ctx.reset_blueprint_component(override_path.clone(), component_descr.clone());
+                    ui.close();
+                }
+            }),
+    )
+    .on_hover_text("The coordinate frame this entity is associated with.");
+    // TODO: link to docs?
+
+    if frame_id_before != frame_id {
+        // Save as blueprint override.
+        ctx.save_blueprint_component(
+            override_path.clone(),
+            &component_descr,
+            &TransformFrameId::new(&frame_id),
+        );
     }
 }
 

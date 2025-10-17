@@ -1,7 +1,7 @@
 use egui::RichText;
 use itertools::Itertools as _;
 
-use re_chunk::{ComponentIdentifier, RowId, UnitChunkShared};
+use re_chunk::{ComponentIdentifier, RowId};
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath};
@@ -173,19 +173,6 @@ fn visualizer_components(
     data_result: &DataResult,
     visualizer: &dyn VisualizerSystem,
 ) {
-    fn non_empty_component_batch_raw(
-        unit: Option<&UnitChunkShared>,
-        component: ComponentIdentifier,
-    ) -> Option<(Option<RowId>, ArrayRef)> {
-        let unit = unit?;
-        let batch = unit.component_batch_raw(component)?;
-        if batch.is_empty() {
-            None
-        } else {
-            Some((unit.row_id(), batch))
-        }
-    }
-
     let query_info = visualizer.visualizer_query_info();
 
     let store_query = ctx.current_query();
@@ -217,13 +204,13 @@ fn visualizer_components(
         // Query all the sources for our value.
         // (technically we only need to query those that are shown, but rolling this out makes things easier).
         let result_override = query_result.overrides.get(component);
-        let raw_override = non_empty_component_batch_raw(result_override, component);
+        let raw_override = result_override.and_then(|c| c.non_empty_component_batch_raw(component));
 
         let result_store = query_result.results.get(component);
-        let raw_store = non_empty_component_batch_raw(result_store, component);
+        let raw_store = result_store.and_then(|c| c.non_empty_component_batch_raw(component));
 
         let result_default = query_result.defaults.get(component);
-        let raw_default = non_empty_component_batch_raw(result_default, component);
+        let raw_default = result_default.and_then(|c| c.non_empty_component_batch_raw(component));
 
         // If we don't have a component type, we don't have a way to retrieve a fallback. Therefore, we return a `NullArray` as a dummy.
         let raw_fallback = query_ctx

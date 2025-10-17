@@ -219,6 +219,7 @@ fn collect_entity_to_transform_frame_id_mapping(
 
     for data_result in query.iter_all_data_results() {
         let query_shadowed_components = false;
+        // TODO: Don't apply defaults here?
         let results = latest_at_with_blueprint_resolved_data(
             ctx,
             None,
