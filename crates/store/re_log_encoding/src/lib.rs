@@ -11,6 +11,7 @@
 // TODO: RRD: files, stdio, HTTP, data loaders, etc
 // TODO: RRD is the expectation, the rest is the exception
 // TODO: the job of encoders/decoders is to provide the IO, state machines
+// TODO: clearly one has to explain transport vs app level types to begin with, this is so fundamental
 
 // TODO:
 // * RRD streams: files, stdio (data-loaders), HTTP, etc
@@ -29,24 +30,9 @@ pub mod external {
     pub use lz4_flex;
 }
 
+pub use self::rrd::*;
+
 pub use self::app_id_injector::{
     ApplicationIdInjector, CachingApplicationIdInjector, DummyApplicationIdInjector,
 };
 pub use self::transport_to_app::{ToApplication, ToTransport};
-
-// ---
-
-// Reexposed for legacy/convenience reasons.
-
-#[cfg(feature = "decoder")]
-pub use self::rrd::{
-    DecodeError, Decoder, DecoderApp, DecoderEntrypoint, DecoderIterator, DecoderTransport,
-    StreamingDecoder, StreamingDecoderOptions, StreamingLogMsg,
-};
-
-#[cfg(feature = "encoder")]
-pub use self::rrd::{EncodeError, Encoder};
-
-#[cfg(feature = "encoder")]
-#[cfg(not(target_arch = "wasm32"))]
-pub use self::rrd::{FileFlushError, FileSink, FileSinkError};

@@ -24,13 +24,14 @@ pub mod stream_from_http;
 
 pub use self::errors::{CodecError, NotAnRrdError, OptionsError};
 pub use self::headers::{
-    Compression, EncodingOptions, MessageHeader, MessageKind, Serializer, StreamHeader,
+    Compression, CrateVersion, EncodingOptions, MessageHeader, MessageKind, Serializer,
+    StreamHeader,
 };
 
 #[cfg(feature = "decoder")]
 pub use self::decoder::{
-    DecodeError, Decoder, DecoderApp, DecoderEntrypoint, DecoderIterator, DecoderTransport,
-    StreamingDecoder, StreamingDecoderOptions, StreamingLogMsg,
+    DecodeError, Decoder, DecoderApp, DecoderEntrypoint, DecoderIterator, DecoderStream,
+    DecoderTransport, StreamingDecoder, StreamingDecoderOptions, StreamingLogMsg,
 };
 
 #[cfg(feature = "encoder")]
@@ -105,8 +106,5 @@ pub trait Encodable {
 //
 // TODO(cmc): technically this should be a sealed trait, but things are complicated enough as is.
 pub trait Decodable: Sized {
-    /// Can be used to pass any extra context required to decode the data.
-    type Context<'a>;
-
-    fn from_rrd_bytes(data: &[u8], context: Self::Context<'_>) -> Result<Self, CodecError>;
+    fn from_rrd_bytes(data: &[u8]) -> Result<Self, CodecError>;
 }

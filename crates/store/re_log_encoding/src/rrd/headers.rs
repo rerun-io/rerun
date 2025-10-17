@@ -1,9 +1,8 @@
-use re_build_info::CrateVersion;
-
 use crate::rrd::{Decodable, Encodable, OptionsError};
 
 // --- FileHeader ---
 
+pub use re_build_info::CrateVersion; // convenience
 pub use re_protos::log_msg::v1alpha1::ext::Compression; // convenience
 
 /// How we serialize the data.
@@ -58,12 +57,7 @@ impl Encodable for EncodingOptions {
 }
 
 impl Decodable for EncodingOptions {
-    type Context<'a> = ();
-
-    fn from_rrd_bytes(
-        data: &[u8],
-        _context: Self::Context<'_>,
-    ) -> Result<Self, crate::rrd::CodecError> {
+    fn from_rrd_bytes(data: &[u8]) -> Result<Self, crate::rrd::CodecError> {
         match data {
             &[compression, serializer, 0, 0] => {
                 let compression = match compression {
@@ -159,15 +153,10 @@ impl Encodable for StreamHeader {
 }
 
 impl Decodable for StreamHeader {
-    type Context<'a> = ();
-
-    fn from_rrd_bytes(
-        data: &[u8],
-        _context: Self::Context<'_>,
-    ) -> Result<Self, crate::rrd::CodecError> {
+    fn from_rrd_bytes(data: &[u8]) -> Result<Self, crate::rrd::CodecError> {
         if data.len() != Self::ENCODED_SIZE_BYTES {
             return Err(crate::rrd::CodecError::HeaderDecoding(format!(
-                "invalid FileHeader length (expected {} but got {})",
+                "invalid StreamHeader length (expected {} but got {})",
                 Self::ENCODED_SIZE_BYTES,
                 data.len()
             )));
@@ -190,7 +179,7 @@ impl Decodable for StreamHeader {
         }
 
         let version = to_array_4b(&data[4..8]);
-        let options = EncodingOptions::from_rrd_bytes(&data[8..], ())?;
+        let options = EncodingOptions::from_rrd_bytes(&data[8..])?;
         Ok(Self {
             fourcc,
             version,
@@ -245,12 +234,7 @@ impl Encodable for MessageHeader {
 }
 
 impl Decodable for MessageHeader {
-    type Context<'a> = ();
-
-    fn from_rrd_bytes(
-        data: &[u8],
-        _context: Self::Context<'_>,
-    ) -> Result<Self, crate::rrd::CodecError> {
+    fn from_rrd_bytes(data: &[u8]) -> Result<Self, crate::rrd::CodecError> {
         if data.len() != Self::ENCODED_SIZE_BYTES {
             return Err(crate::rrd::CodecError::HeaderDecoding(format!(
                 "invalid MessageHeader length (expected {} but got {})",
