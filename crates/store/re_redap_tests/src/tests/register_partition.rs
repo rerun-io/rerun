@@ -1,11 +1,11 @@
 #![expect(clippy::unwrap_used)]
 
+use arrow::array::RecordBatch;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
 
 use url::Url;
 
-use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_protos::{
     cloud::v1alpha1::{
@@ -133,9 +133,9 @@ async fn scan_partition_table_and_snapshot(
         .await
         .unwrap();
 
-    let batches = resps
+    let batches: Vec<RecordBatch> = resps
         .into_iter()
-        .map(|resp| resp.data.unwrap().decode().unwrap())
+        .map(|resp| resp.data.unwrap().try_into().unwrap())
         .collect_vec();
 
     let batch = arrow::compute::concat_batches(
@@ -198,9 +198,9 @@ async fn scan_dataset_manifest_and_snapshot(
 
     let resps: Vec<_> = response.unwrap().into_inner().try_collect().await.unwrap();
 
-    let batches = resps
+    let batches: Vec<RecordBatch> = resps
         .into_iter()
-        .map(|resp| resp.data.unwrap().decode().unwrap())
+        .map(|resp| resp.data.unwrap().try_into().unwrap())
         .collect_vec();
 
     let batch = arrow::compute::concat_batches(

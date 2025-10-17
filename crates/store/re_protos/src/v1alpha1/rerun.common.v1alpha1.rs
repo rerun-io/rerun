@@ -8,9 +8,8 @@ pub struct RerunChunk {
     #[prost(enumeration = "EncoderVersion", tag = "1")]
     pub encoder_version: i32,
     /// Data payload is Arrow IPC encoded RecordBatch
-    /// TODO(zehiko) make this optional (#9285)
-    #[prost(bytes = "bytes", tag = "2")]
-    pub payload: ::prost::bytes::Bytes,
+    #[prost(bytes = "bytes", optional, tag = "2")]
+    pub payload: ::core::option::Option<::prost::bytes::Bytes>,
 }
 impl ::prost::Name for RerunChunk {
     const NAME: &'static str = "RerunChunk";

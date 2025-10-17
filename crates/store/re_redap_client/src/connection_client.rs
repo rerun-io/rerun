@@ -1,9 +1,8 @@
-use arrow::datatypes::Schema as ArrowSchema;
+use arrow::{array::RecordBatch, datatypes::Schema as ArrowSchema};
 use tokio_stream::{Stream, StreamExt as _};
 use tonic::codegen::{Body, StdError};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_protos::{
     TypeConversionError,
@@ -300,7 +299,7 @@ where
         let mut partition_ids = Vec::new();
 
         while let Some(resp) = stream.next().await {
-            let record_batch = resp
+            let record_batch: RecordBatch = resp
                 .map_err(|err| {
                     ApiError::tonic(err, "failed receiving item from /ScanPartitionTable stream")
                 })?
@@ -311,7 +310,7 @@ where
                         "failed parsing item from /ScanPartitionTable stream",
                     )
                 })?
-                .decode()
+                .try_into()
                 .map_err(|err| {
                     ApiError::serialization(
                         err,
@@ -479,7 +478,7 @@ where
         .with_entry_id(dataset_id)
         .map_err(|err| ApiError::tonic(err, "failed building /RegisterWithDataset request"))?;
 
-        let response = self
+        let response: RecordBatch = self
             .inner()
             .register_with_dataset(req.map(Into::into))
             .await
@@ -490,7 +489,7 @@ where
                 let err = missing_field!(RegisterWithDatasetResponse, "data");
                 ApiError::serialization(err, "missing field in /RegisterWithDataset response")
             })?
-            .decode()
+            .try_into()
             .map_err(|err| {
                 ApiError::serialization(err, "failed decoding /RegisterWithDataset response")
             })?;
