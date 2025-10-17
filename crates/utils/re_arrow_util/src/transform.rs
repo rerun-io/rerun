@@ -918,8 +918,9 @@ mod test {
         outer_builder.values().append(true);
         outer_builder.append(true);
 
-        // Row 1: [[5], [6, 7, 8]] -> should flatten to [5, 6, 7, 8]
+        // Row 1: [[5, null], [6, 7, 8]] -> should flatten to [5, null, 6, 7, 8]
         outer_builder.values().values().append_value(5);
+        outer_builder.values().values().append_null();
         outer_builder.values().append(true);
         outer_builder.values().values().append_value(6);
         outer_builder.values().values().append_value(7);
