@@ -264,6 +264,157 @@ impl ChunkBuilder {
         )
     }
 
+    /// Add a static row's worth of data using the given component data.
+    ///
+    /// This is a convenience method that adds data with an empty [`TimePoint`], meaning
+    /// the data will be considered static/timeless.
+    ///
+    /// Equivalent to calling `with_row(row_id, TimePoint::default(), components)`.
+    #[inline]
+    pub fn with_static_row(
+        self,
+        row_id: RowId,
+        components: impl IntoIterator<Item = (ComponentDescriptor, ArrayRef)>,
+    ) -> Self {
+        self.with_row(row_id, TimePoint::default(), components)
+    }
+
+    /// Add a static row's worth of data using the given sparse component data.
+    ///
+    /// This is a convenience method that adds data with an empty [`TimePoint`], meaning
+    /// the data will be considered static/timeless.
+    ///
+    /// Equivalent to calling `with_sparse_row(row_id, TimePoint::default(), components)`.
+    #[inline]
+    pub fn with_static_sparse_row(
+        self,
+        row_id: RowId,
+        components: impl IntoIterator<Item = (ComponentDescriptor, Option<ArrayRef>)>,
+    ) -> Self {
+        self.with_sparse_row(row_id, TimePoint::default(), components)
+    }
+
+    /// Add a static row's worth of data by destructuring an archetype into component columns.
+    ///
+    /// This is a convenience method that adds data with an empty [`TimePoint`], meaning
+    /// the data will be considered static/timeless.
+    ///
+    /// Equivalent to calling `with_archetype(row_id, TimePoint::default(), as_components)`.
+    #[inline]
+    pub fn with_static_archetype(self, row_id: RowId, as_components: &dyn AsComponents) -> Self {
+        self.with_archetype(row_id, TimePoint::default(), as_components)
+    }
+
+    /// Add a static row's worth of data by serializing a single [`ComponentBatch`].
+    ///
+    /// This is a convenience method that adds data with an empty [`TimePoint`], meaning
+    /// the data will be considered static/timeless.
+    ///
+    /// Equivalent to calling `with_component_batch(row_id, TimePoint::default(), component_batch)`.
+    #[inline]
+    pub fn with_static_component_batch(
+        self,
+        row_id: RowId,
+        component_batch: (ComponentDescriptor, &dyn ComponentBatch),
+    ) -> Self {
+        self.with_component_batch(row_id, TimePoint::default(), component_batch)
+    }
+
+    /// Add a static row's worth of data by serializing many [`ComponentBatch`]es.
+    ///
+    /// This is a convenience method that adds data with an empty [`TimePoint`], meaning
+    /// the data will be considered static/timeless.
+    ///
+    /// Equivalent to calling `with_component_batches(row_id, TimePoint::default(), component_batches)`.
+    #[inline]
+    pub fn with_static_component_batches<'a>(
+        self,
+        row_id: RowId,
+        component_batches: impl IntoIterator<Item = (ComponentDescriptor, &'a dyn ComponentBatch)>,
+    ) -> Self {
+        self.with_component_batches(row_id, TimePoint::default(), component_batches)
+    }
+
+    /// Add a static row's worth of data by serializing many sparse [`ComponentBatch`]es.
+    ///
+    /// This is a convenience method that adds data with an empty [`TimePoint`], meaning
+    /// the data will be considered static/timeless.
+    ///
+    /// Equivalent to calling `with_sparse_component_batches(row_id, TimePoint::default(), component_batches)`.
+    #[inline]
+    pub fn with_static_sparse_component_batches<'a>(
+        self,
+        row_id: RowId,
+        component_batches: impl IntoIterator<
+            Item = (ComponentDescriptor, Option<&'a dyn ComponentBatch>),
+        >,
+    ) -> Self {
+        self.with_sparse_component_batches(row_id, TimePoint::default(), component_batches)
+    }
+
+    /// Add a static row's worth of data by serializing a single [`SerializedComponentBatch`].
+    ///
+    /// This is a convenience method that adds data with an empty [`TimePoint`], meaning
+    /// the data will be considered static/timeless.
+    ///
+    /// Equivalent to calling `with_serialized_batch(row_id, TimePoint::default(), component_batch)`.
+    #[inline]
+    pub fn with_static_serialized_batch(
+        self,
+        row_id: RowId,
+        component_batch: SerializedComponentBatch,
+    ) -> Self {
+        self.with_serialized_batch(row_id, TimePoint::default(), component_batch)
+    }
+
+    /// Add a static row's worth of data by serializing many [`SerializedComponentBatch`]es.
+    ///
+    /// This is a convenience method that adds data with an empty [`TimePoint`], meaning
+    /// the data will be considered static/timeless.
+    ///
+    /// Equivalent to calling `with_serialized_batches(row_id, TimePoint::default(), component_batches)`.
+    #[inline]
+    pub fn with_static_serialized_batches(
+        self,
+        row_id: RowId,
+        component_batches: impl IntoIterator<Item = SerializedComponentBatch>,
+    ) -> Self {
+        self.with_serialized_batches(row_id, TimePoint::default(), component_batches)
+    }
+
+    /// Add a static row's worth of data by serializing many sparse [`SerializedComponentBatch`]es.
+    ///
+    /// This is a convenience method that adds data with an empty [`TimePoint`], meaning
+    /// the data will be considered static/timeless.
+    ///
+    /// Equivalent to calling `with_sparse_serialized_batches(row_id, TimePoint::default(), component_batches)`.
+    #[inline]
+    pub fn with_static_sparse_serialized_batches(
+        self,
+        row_id: RowId,
+        component_batches: impl IntoIterator<
+            Item = (ComponentDescriptor, Option<SerializedComponentBatch>),
+        >,
+    ) -> Self {
+        self.with_sparse_serialized_batches(row_id, TimePoint::default(), component_batches)
+    }
+
+    /// Add the static serialized value of a single component to the chunk.
+    ///
+    /// This is a convenience method that adds data with an empty [`TimePoint`], meaning
+    /// the data will be considered static/timeless.
+    ///
+    /// Equivalent to calling `with_component(row_id, TimePoint::default(), component_descr, value)`.
+    #[inline]
+    pub fn with_static_component<Component: re_types_core::Component>(
+        self,
+        row_id: RowId,
+        component_descr: re_types_core::ComponentDescriptor,
+        value: &Component,
+    ) -> re_types_core::SerializationResult<Self> {
+        self.with_component(row_id, TimePoint::default(), component_descr, value)
+    }
+
     /// Builds and returns the final [`Chunk`].
     ///
     /// The arrow datatype of each individual column will be guessed by inspecting the data.
@@ -415,5 +566,187 @@ impl TimeColumnBuilder {
     pub fn build(self) -> TimeColumn {
         let Self { timeline, times } = self;
         TimeColumn::new(None, timeline, times.into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use re_log_types::{TimePoint, example_components::MyPoint};
+    use re_types_core::{AsComponents, Component, Loggable};
+
+    use super::*;
+
+    /// Simple test archetype for testing
+    #[derive(Debug, Clone)]
+    struct TestPoints {
+        points: Vec<MyPoint>,
+    }
+
+    impl AsComponents for TestPoints {
+        fn as_serialized_batches(&self) -> Vec<re_types_core::SerializedComponentBatch> {
+            vec![re_types_core::SerializedComponentBatch {
+                descriptor: ComponentDescriptor {
+                    archetype: Some("test.TestPoints".into()),
+                    component: "test.TestPoints:points".into(),
+                    component_type: Some(<MyPoint as Component>::name()),
+                },
+                array: <MyPoint as Loggable>::to_arrow(self.points.iter()).unwrap(),
+            }]
+        }
+    }
+
+    #[test]
+    fn test_static_chunk_utilities() {
+        let entity_path: EntityPath = "test/entity".into();
+
+        // Test with_static_row
+        let row_id1 = RowId::new();
+        let points_array =
+            <MyPoint as Loggable>::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])
+                .unwrap();
+        let component_desc = ComponentDescriptor {
+            archetype: Some("test.TestPoints".into()),
+            component: "test.TestPoints:points".into(),
+            component_type: Some(<MyPoint as Component>::name()),
+        };
+
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_static_row(row_id1, [(component_desc.clone(), points_array)])
+            .build()
+            .unwrap();
+
+        assert!(chunk.is_static());
+        assert_eq!(chunk.num_rows(), 1);
+        assert_eq!(chunk.entity_path(), &entity_path);
+        assert_eq!(chunk.timelines().len(), 0);
+
+        // Test with_static_archetype
+        let row_id2 = RowId::new();
+        let test_points = TestPoints {
+            points: vec![MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)],
+        };
+
+        let chunk2 = Chunk::builder(entity_path.clone())
+            .with_static_archetype(row_id2, &test_points)
+            .build()
+            .unwrap();
+
+        assert!(chunk2.is_static());
+        assert_eq!(chunk2.num_rows(), 1);
+
+        // Test with_static_component
+        let row_id3 = RowId::new();
+        let point = MyPoint::new(100.0, 200.0);
+
+        let chunk3 = Chunk::builder(entity_path.clone())
+            .with_static_component(row_id3, component_desc.clone(), &point)
+            .unwrap()
+            .build()
+            .unwrap();
+
+        assert!(chunk3.is_static());
+        assert_eq!(chunk3.num_rows(), 1);
+
+        // Test multiple static rows
+        let row_id4 = RowId::new();
+        let row_id5 = RowId::new();
+        let points1 = <MyPoint as Loggable>::to_arrow([MyPoint::new(1.0, 1.0)]).unwrap();
+        let points2 = <MyPoint as Loggable>::to_arrow([MyPoint::new(2.0, 2.0)]).unwrap();
+
+        let chunk4 = Chunk::builder(entity_path.clone())
+            .with_static_row(row_id4, [(component_desc.clone(), points1)])
+            .with_static_row(row_id5, [(component_desc.clone(), points2)])
+            .build()
+            .unwrap();
+
+        assert!(chunk4.is_static());
+        assert_eq!(chunk4.num_rows(), 2);
+    }
+
+    #[test]
+    fn test_mixed_static_and_timed_behavior() {
+        // Adding both static and timed data creates a timed chunk (static rows get implicit timeline data)
+        let entity_path: EntityPath = "test/entity".into();
+        let row_id1 = RowId::new();
+        let row_id2 = RowId::new();
+        let points_array1 = <MyPoint as Loggable>::to_arrow([MyPoint::new(1.0, 2.0)]).unwrap();
+        let points_array2 = <MyPoint as Loggable>::to_arrow([MyPoint::new(3.0, 4.0)]).unwrap();
+        let component_desc = ComponentDescriptor {
+            archetype: Some("test.TestPoints".into()),
+            component: "test.TestPoints:points".into(),
+            component_type: Some(<MyPoint as Component>::name()),
+        };
+
+        let timepoint = TimePoint::from([(
+            re_log_types::Timeline::log_time(),
+            re_log_types::TimeInt::new_temporal(1000),
+        )]);
+
+        // First create a purely timed chunk to test non-static behavior
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_row(
+                row_id1,
+                timepoint.clone(),
+                [(component_desc.clone(), points_array1)],
+            )
+            .with_row(row_id2, timepoint, [(component_desc, points_array2)])
+            .build()
+            .unwrap();
+
+        // Should not be static because it has timeline data
+        assert!(!chunk.is_static());
+        assert_eq!(chunk.num_rows(), 2);
+        assert_eq!(chunk.timelines().len(), 1);
+
+        // Compare with purely static chunk
+        let points_array3 = <MyPoint as Loggable>::to_arrow([MyPoint::new(5.0, 6.0)]).unwrap();
+        let component_desc2 = ComponentDescriptor {
+            archetype: Some("test.TestPoints".into()),
+            component: "test.TestPoints:points".into(),
+            component_type: Some(<MyPoint as Component>::name()),
+        };
+        let static_chunk = Chunk::builder(entity_path)
+            .with_static_row(RowId::new(), [(component_desc2, points_array3)])
+            .build()
+            .unwrap();
+
+        assert!(static_chunk.is_static());
+        assert_eq!(static_chunk.num_rows(), 1);
+        assert_eq!(static_chunk.timelines().len(), 0);
+    }
+
+    #[test]
+    fn test_static_sparse_utilities() {
+        let entity_path: EntityPath = "test/entity".into();
+        let row_id = RowId::new();
+        let points_array = <MyPoint as Loggable>::to_arrow([MyPoint::new(1.0, 2.0)]).unwrap();
+        let component_desc = ComponentDescriptor {
+            archetype: Some("test.TestPoints".into()),
+            component: "test.TestPoints:points".into(),
+            component_type: Some(<MyPoint as Component>::name()),
+        };
+
+        // Test with_static_sparse_row with Some data
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_static_sparse_row(
+                row_id,
+                [(component_desc.clone(), Some(points_array.clone()))],
+            )
+            .build()
+            .unwrap();
+
+        assert!(chunk.is_static());
+        assert_eq!(chunk.num_rows(), 1);
+
+        // Test with_static_sparse_row with None data (should be empty chunk)
+        let chunk2 = Chunk::builder(entity_path.clone())
+            .with_static_sparse_row(row_id, [(component_desc, None)])
+            .build()
+            .unwrap();
+
+        assert!(chunk2.is_static());
+        assert_eq!(chunk2.num_rows(), 1);
+        // Component should be filtered out due to being fully sparse
+        assert_eq!(chunk2.components().len(), 0);
     }
 }
