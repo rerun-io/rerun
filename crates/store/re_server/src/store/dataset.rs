@@ -1,14 +1,17 @@
-use std::collections::{BTreeSet, HashMap, hash_map::Entry};
+use std::collections::{BTreeSet, HashMap};
 use std::path::Path;
 
 use arrow::array::RecordBatch;
 use arrow::datatypes::Schema;
+use arrow::error::ArrowError;
+
+use itertools::Either;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_log_types::{EntryId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
-        EntryKind, ScanPartitionTableResponse,
+        EntryKind, ScanDatasetManifestResponse, ScanPartitionTableResponse,
         ext::{DataSource, DatasetEntry, EntryDetails},
     },
     common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
@@ -44,6 +47,32 @@ impl Dataset {
         &self.name
     }
 
+    pub fn partition(&self, partition_id: &PartitionId) -> Result<&Partition, Error> {
+        self.partitions
+            .get(partition_id)
+            .ok_or_else(|| Error::PartitionIdNotFound(partition_id.clone(), self.id))
+    }
+
+    pub fn partitions_from_ids<'a>(
+        &'a self,
+        partition_ids: &'a [PartitionId],
+    ) -> Result<impl Iterator<Item = (&'a PartitionId, &'a Partition)>, Error> {
+        if partition_ids.is_empty() {
+            Ok(Either::Left(self.partitions.iter()))
+        } else {
+            // Validate that all partition IDs exist
+            for id in partition_ids {
+                if !self.partitions.contains_key(id) {
+                    return Err(Error::PartitionIdNotFound(id.clone(), self.id));
+                }
+            }
+
+            Ok(Either::Right(partition_ids.iter().filter_map(|id| {
+                self.partitions.get(id).map(|partition| (id, partition))
+            })))
+        }
+    }
+
     pub fn as_entry_details(&self) -> EntryDetails {
         EntryDetails {
             id: self.id,
@@ -74,56 +103,113 @@ impl Dataset {
         }
     }
 
-    pub fn iter_store_handles(&self) -> impl Iterator<Item = &ChunkStoreHandle> {
+    pub fn iter_layers(&self) -> impl Iterator<Item = &Layer> {
         self.partitions
             .values()
-            .flat_map(|partition| partition.iter_store_handles())
+            .flat_map(|partition| partition.iter_layers().map(|(_, layer)| layer))
     }
 
     pub fn schema(&self) -> arrow::error::Result<Schema> {
-        let schemas = self.iter_store_handles().map(|store_handle| {
-            let fields = store_handle.read().schema().arrow_fields();
-
-            //TODO(ab): why is that needed again?
-            Schema::new_with_metadata(fields, HashMap::default())
-        });
-
-        Schema::try_merge(schemas)
+        Schema::try_merge(self.iter_layers().map(|layer| layer.schema()))
     }
 
     pub fn partition_ids(&self) -> impl Iterator<Item = PartitionId> {
         self.partitions.keys().cloned()
     }
 
+    //TODO(RR-2604): add support for property columns
     pub fn partition_table(&self) -> arrow::error::Result<RecordBatch> {
-        let (partition_ids, last_updated_at, num_chunks, size_bytes): (
+        let (partition_ids, last_updated_at, num_chunks, size_bytes, layer_names, storage_urls): (
+            Vec<_>,
+            Vec<_>,
             Vec<_>,
             Vec<_>,
             Vec<_>,
             Vec<_>,
         ) = itertools::multiunzip(self.partitions.iter().map(|(partition_id, partition)| {
+            let (layer_names, storage_urls): (Vec<_>, Vec<_>) =
+                itertools::multiunzip(partition.iter_layers().map(|(layer_name, _)| {
+                    (
+                        layer_name.to_owned(),
+                        format!("memory:///{}/{partition_id}/{layer_name}", self.id),
+                    )
+                }));
+
             (
                 partition_id.to_string(),
                 partition.last_updated_at().as_nanosecond() as i64,
                 partition.num_chunks(),
                 partition.size_bytes(),
+                layer_names,
+                storage_urls,
             )
         }));
 
-        let layers = vec![vec![DataSource::DEFAULT_LAYER.to_owned()]; partition_ids.len()];
-
-        let storage_urls = partition_ids
-            .iter()
-            .map(|partition_id| vec![format!("memory:///{}/{partition_id}", self.id)])
-            .collect();
-
         ScanPartitionTableResponse::create_dataframe(
             partition_ids,
-            layers,
+            layer_names,
             storage_urls,
             last_updated_at,
             num_chunks,
             size_bytes,
+        )
+    }
+
+    pub fn dataset_manifest(&self) -> arrow::error::Result<RecordBatch> {
+        let (
+            layer_names,
+            partition_ids,
+            storage_urls,
+            layer_types,
+            registration_times,
+            last_updated_at,
+            num_chunks,
+            size_bytes,
+            schema_sha256s,
+        ): (
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+            Vec<_>,
+        ) = itertools::process_results(
+            self.partitions
+                .iter()
+                .flat_map(|(partition_id, partition)| {
+                    let partition_id = partition_id.to_string();
+                    partition.iter_layers().map(
+                        move |(layer_name, layer)| -> Result<_, ArrowError> {
+                            Ok((
+                                layer_name.to_owned(),
+                                partition_id.clone(),
+                                format!("memory:///{}/{partition_id}/{layer_name}", self.id),
+                                layer.layer_type().to_owned(),
+                                layer.registration_time().as_nanosecond() as i64,
+                                layer.last_updated_at().as_nanosecond() as i64,
+                                layer.num_chunks(),
+                                layer.size_bytes(),
+                                layer.schema_sha256()?,
+                            ))
+                        },
+                    )
+                }),
+            |iter| itertools::multiunzip(iter),
+        )?;
+
+        ScanDatasetManifestResponse::create_dataframe(
+            layer_names,
+            partition_ids,
+            storage_urls,
+            layer_types,
+            registration_times,
+            last_updated_at,
+            num_chunks,
+            size_bytes,
+            schema_sha256s,
         )
     }
 
@@ -143,15 +229,17 @@ impl Dataset {
         partition_id: PartitionId,
         layer_name: String,
         store_handle: ChunkStoreHandle,
-    ) {
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<(), Error> {
         re_log::debug!(?partition_id, ?layer_name, "add_layer");
 
         self.partitions
             .entry(partition_id)
             .or_default()
-            .insert_layer(layer_name, Layer::new(store_handle));
+            .insert_layer(layer_name, Layer::new(store_handle), on_duplicate)?;
 
         self.updated_at = jiff::Timestamp::now();
+        Ok(())
     }
 
     /// Load a RRD using its recording id as partition id.
@@ -177,25 +265,14 @@ impl Dataset {
 
             let partition_id = PartitionId::new(store_id.recording_id().to_string());
 
-            match self.partitions.entry(partition_id.clone()) {
-                Entry::Vacant(entry) => {
-                    new_partition_ids.insert(partition_id);
+            self.add_layer(
+                partition_id.clone(),
+                layer_name.to_owned(),
+                chunk_store,
+                on_duplicate,
+            )?;
 
-                    entry.insert(Partition::from_layer_data(layer_name, chunk_store));
-                }
-                Entry::Occupied(mut entry) => match on_duplicate {
-                    IfDuplicateBehavior::Overwrite => {
-                        re_log::info!("Overwriting {partition_id}");
-                        entry.insert(Partition::from_layer_data(layer_name, chunk_store));
-                    }
-                    IfDuplicateBehavior::Skip => {
-                        re_log::info!("Ignoring {partition_id}: it already exists");
-                    }
-                    IfDuplicateBehavior::Error => {
-                        return Err(Error::DuplicateEntryNameError(partition_id.to_string()));
-                    }
-                },
-            }
+            new_partition_ids.insert(partition_id);
         }
 
         Ok(new_partition_ids)
