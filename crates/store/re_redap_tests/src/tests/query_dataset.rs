@@ -1,5 +1,7 @@
-use arrow::datatypes::Schema;
+use std::sync::Arc;
+
 use futures::StreamExt as _;
+use itertools::Itertools as _;
 
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::{
@@ -140,16 +142,28 @@ async fn query_dataset_snapshot(
     // these are the only columns guaranteed to be returned by `query_dataset`
     let required_field = QueryDatasetResponse::fields();
 
-    assert!(
-        merged_chunk_info
-            .schema()
-            .contains(&Schema::new_with_metadata(
-                required_field.clone(),
-                Default::default()
-            )),
+    // Arrow's `Fields::contains` relies on ordering so we can't use it here. So we go the manual
+    // way.
+    let sorted_filtered_fields = merged_chunk_info
+        .schema()
+        .fields()
+        .into_iter()
+        .filter(|field| required_field.contains(field))
+        .map(Arc::clone)
+        .sorted_by_key(|field| field.name().clone())
+        .collect_vec();
+
+    let sorted_required_fields = required_field
+        .clone()
+        .into_iter()
+        .sorted_by_key(|field| field.name().clone())
+        .map(Arc::new)
+        .collect_vec();
+
+    assert_eq!(
+        sorted_filtered_fields, sorted_required_fields,
         "query dataset must return all guaranteed fields\nExpected: {:#?}\nGot: {:#?}",
-        &required_field,
-        merged_chunk_info.schema()
+        &sorted_required_fields, sorted_filtered_fields
     );
 
     let required_column_names = required_field
