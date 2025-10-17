@@ -186,16 +186,14 @@ impl GrpcStreamToTable for TableEntryTableProvider {
             InsertOp::Replace => TableInsertMode::TableInsertReplace,
             InsertOp::Overwrite => TableInsertMode::TableInsertOverwrite,
         };
-        Ok(Arc::new(
-            TableEntryWriterExec::new(
-                self.client.clone(),
-                input,
-                num_partitions,
-                self.runtime.clone(),
-                entry_id,
-                insert_op,
-            ),
-        ))
+        Ok(Arc::new(TableEntryWriterExec::new(
+            self.client.clone(),
+            input,
+            num_partitions,
+            self.runtime.clone(),
+            entry_id,
+            insert_op,
+        )))
     }
 }
 
