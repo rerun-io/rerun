@@ -61,6 +61,7 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
     harness
 }
 
+// Adds `count` views to the given container, names them sequentially from an index base.
 fn add_views_to_container(
     harness: &mut egui_kittest::Harness<'_, re_viewer::App>,
     cid: Option<ContainerId>,
@@ -94,7 +95,7 @@ fn add_views_to_container(
     });
 }
 
-// Return the number of views added
+// Returns the number of total views added
 fn add_containers_recursive(
     harness: &mut egui_kittest::Harness<'_, re_viewer::App>,
     cid: Option<ContainerId>,
@@ -108,12 +109,11 @@ fn add_containers_recursive(
     }
 
     let mut view_index = view_index_base;
+    let kind = match level % 2 {
+        0 => egui_tiles::ContainerKind::Horizontal,
+        _ => egui_tiles::ContainerKind::Vertical,
+    };
     for _ in 0..2 {
-        let kind = if level % 2 == 0 {
-            egui_tiles::ContainerKind::Horizontal
-        } else {
-            egui_tiles::ContainerKind::Vertical
-        };
         let child_cid = harness.add_blueprint_container(kind, cid);
         view_index += add_containers_recursive(
             harness,
@@ -126,6 +126,7 @@ fn add_containers_recursive(
     view_index
 }
 
+// Tests 3-level deep nested containers
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_multi_container_deep_nested() {
     let mut harness = make_multi_view_test_harness();
@@ -133,6 +134,7 @@ pub async fn test_multi_container_deep_nested() {
     harness.snapshot_app("multi_container_deep_nested");
 }
 
+// Tests a lot of views in a single container
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_multi_container_many_views() {
     let mut harness = make_multi_view_test_harness();
@@ -140,21 +142,7 @@ pub async fn test_multi_container_many_views() {
     harness.snapshot_app("multi_container_many_views");
 }
 
-#[tokio::test(flavor = "multi_thread")]
-pub async fn test_multi_container_drag_n_drop_single_view() {
-    let mut harness = make_multi_view_test_harness();
-    add_containers_recursive(&mut harness, None, 2, 4, 0);
-
-    harness.drag_nth_label("3D view 0", 0);
-    harness.snapshot_app("multi_container_drag_n_drop_single_view_1");
-
-    harness.hover_nth_label("Vertical container", 1);
-    harness.snapshot_app("multi_container_drag_n_drop_single_view_2");
-
-    harness.drop_nth_label("2D view 9", 0);
-    harness.snapshot_app("multi_container_drag_n_drop_single_view_3");
-}
-
+// Tests drag-and-drop of a single view in the blueprint panel
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_multi_container_drag_single_view() {
     let mut harness = make_multi_view_test_harness();
@@ -170,6 +158,7 @@ pub async fn test_multi_container_drag_single_view() {
     harness.snapshot_app("multi_container_drag_single_view_3");
 }
 
+// Tests drag-and-drop of a container in the blueprint panel
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_multi_container_drag_container() {
     let mut harness = make_multi_view_test_harness();
@@ -178,21 +167,23 @@ pub async fn test_multi_container_drag_container() {
     harness.drag_nth_label("Vertical container", 0);
     harness.snapshot_app("multi_container_drag_container_1");
 
+    // Hovering the same kind of container should be disallowed
     harness.hover_nth_label("Vertical container", 1);
     harness.snapshot_app("multi_container_drag_container_2");
 
+    // Hovering a different kind of container should be allowed
     harness.hover_nth_label("Horizontal container", 1);
     harness.snapshot_app("multi_container_drag_container_3");
 
-    // Hover a little over root container
-    let point = harness
-        .get_nth_label("Viewport (Grid container)", 0)
-        .rect()
-        .center_top();
-    harness.event(egui::Event::PointerMoved(point));
+    // Hover a bit over root container to drop before it.
+    // It should be disallowed to drop an item before the root container.
+    let root_container = harness.get_nth_label("Viewport (Grid container)", 0);
+    let upper_edge = root_container.rect().center_top();
+    harness.event(egui::Event::PointerMoved(upper_edge));
     harness.run_ok();
     harness.snapshot_app("multi_container_drag_container_4");
 
+    // Hovering the root container otherwise should be allowed
     harness.hover_nth_label("Viewport (Grid container)", 0);
     harness.snapshot_app("multi_container_drag_container_5");
 
