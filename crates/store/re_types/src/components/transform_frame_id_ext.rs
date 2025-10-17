@@ -37,7 +37,7 @@ impl TransformFrameId {
 
 impl std::hash::Hash for TransformFrameId {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        std::hash::Hash::hash(&crate::TransformFrameIdHash::new(&self), state)
+        std::hash::Hash::hash(&crate::TransformFrameIdHash::new(self), state);
     }
 }
 
