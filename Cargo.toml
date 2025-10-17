@@ -850,3 +850,5 @@ unnecessary_debug_formatting = "allow"
 # walkers = { git = "https://github.com/rerun-io/walkers", branch = "emilk/rust-1.88" } # https://github.com/podusowski/walkers/pull/394
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
+
+lz4_flex = { git = "https://github.com/rerun-io/lz4_flex.git", branch = "cmc/decoding_bug" }
