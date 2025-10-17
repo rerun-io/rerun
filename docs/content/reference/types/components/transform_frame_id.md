@@ -29,3 +29,6 @@ utf8
  * 🦀 [Rust API docs for `TransformFrameId`](https://docs.rs/rerun/latest/rerun/components/struct.TransformFrameId.html?speculative-link)
 
 
+## Used by
+
+* [`CoordinateFrame`](../archetypes/coordinate_frame.md)

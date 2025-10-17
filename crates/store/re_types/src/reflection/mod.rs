@@ -1773,6 +1773,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.archetypes.CoordinateFrame"),
+            ArchetypeReflection {
+                display_name: "Coordinate frame",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &["Spatial3DView"],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "frame_id",
+                    display_name: "Frame id",
+                    component_type: "rerun.components.TransformFrameId".into(),
+                    docstring_md: "The coordinate frame to use for the current entity.",
+                    is_required: true,
+                }],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.archetypes.Cylinders3D"),
             ArchetypeReflection {
                 display_name: "Cylinders 3D",
