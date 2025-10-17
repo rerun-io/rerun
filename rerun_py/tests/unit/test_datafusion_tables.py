@@ -29,6 +29,7 @@ TABLE_FILEPATH = (
     pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "table" / "lance" / "simple_datatypes"
 )
 
+
 @pytest.fixture(scope="module")
 def table_filepath() -> Generator[pathlib.Path, None, None]:
     """
@@ -46,6 +47,7 @@ def table_filepath() -> Generator[pathlib.Path, None, None]:
 
         # Yield the path to the copied data
         yield temp_path / "simple_datatypes"
+
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_windows_tzdata() -> None:
