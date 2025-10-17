@@ -187,7 +187,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
             InsertOp::Overwrite => TableInsertMode::TableInsertOverwrite,
         };
         Ok(Arc::new(
-            crate::table_entry_provider::TableEntryWriterExec::new(
+            TableEntryWriterExec::new(
                 self.client.clone(),
                 input,
                 num_partitions,
@@ -293,10 +293,11 @@ impl ExecutionPlan for TableEntryWriterExec {
     }
 }
 
-pub struct RecordBatchGrpcOutputStream<S> {
-    inner: S,
+pub struct RecordBatchGrpcOutputStream {
+    input_stream: SendableRecordBatchStream,
     grpc_sender: Option<GrpcStreamSender>,
-    error_receiver: tokio::sync::oneshot::Receiver<tonic::Status>,
+    thread_status: tokio::sync::oneshot::Receiver<Result<(), tonic::Status>>,
+    complete: bool,
     grpc_error: Option<tonic::Status>,
     insert_op: TableInsertMode,
 }
@@ -305,35 +306,27 @@ struct GrpcStreamSender {
     sender: tokio::sync::mpsc::UnboundedSender<WriteTableRequest>,
 }
 
-impl<S> RecordBatchStream for RecordBatchGrpcOutputStream<S>
-where
-    S: Stream<Item = Result<RecordBatch, DataFusionError>> + Send + Unpin + 'static,
-{
+impl RecordBatchStream for RecordBatchGrpcOutputStream {
     fn schema(&self) -> SchemaRef {
         Arc::new(Schema::empty())
     }
 }
 
-impl<S> RecordBatchGrpcOutputStream<S>
-where
-    S: Stream<Item = Result<RecordBatch, DataFusionError>> + Send + Unpin + 'static,
-{
+impl RecordBatchGrpcOutputStream {
     pub fn new(
-        inner: S,
+        input_stream: SendableRecordBatchStream,
         client: ConnectionClient,
         runtime: &Handle,
         table_id: EntryId,
         insert_op: TableInsertMode,
     ) -> Self {
-        // Create a channel that both we and the gRPC client will use
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
-        // Create an oneshot channel for error reporting
-        let (error_tx, error_rx) = tokio::sync::oneshot::channel();
+        // Create an oneshot channel for reporting when the thread is complete
+        let (thread_status_tx, thread_status_rx) = tokio::sync::oneshot::channel();
 
-        // Start the gRPC streaming call immediately
         runtime.spawn(async move {
-            if let Err(err) = async {
+            let shutdown_response = async {
                 let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
                     .into_streaming_request()
                     .with_entry_id(table_id)?;
@@ -342,47 +335,44 @@ where
                 client.inner().write_table(stream).await
             }
             .await
-            {
-                // Send the error back to the stream
-                // Ignore send error if receiver is dropped
-                #[expect(clippy::let_underscore_must_use)]
-                let _ = error_tx.send(err);
-            }
+            .map(|_| ());
+
+            #[expect(clippy::let_underscore_must_use)]
+            let _ = thread_status_tx.send(shutdown_response);
         });
 
         Self {
-            inner,
+            input_stream,
             grpc_sender: Some(GrpcStreamSender { sender: tx }),
-            error_receiver: error_rx,
+            thread_status: thread_status_rx,
+            complete: false,
             grpc_error: None,
             insert_op,
         }
     }
 }
 
-impl<S> Stream for RecordBatchGrpcOutputStream<S>
-where
-    S: Stream<Item = Result<RecordBatch, DataFusionError>> + Send + Unpin,
-{
+impl Stream for RecordBatchGrpcOutputStream {
     type Item = Result<RecordBatch, DataFusionError>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         // Check for gRPC errors first (only if we haven't already stored one)
         if self.grpc_error.is_none() {
-            match Pin::new(&mut self.error_receiver).poll(cx) {
-                Poll::Ready(Ok(status)) => {
+            match Pin::new(&mut self.thread_status).poll(cx) {
+                Poll::Ready(Ok(Err(status))) => {
                     // Store the error for potential future use
                     self.grpc_error = Some(status.clone());
                     // Return the error immediately
                     return Poll::Ready(Some(Err(DataFusionError::External(Box::new(status)))));
                 }
-                Poll::Ready(Err(_)) | Poll::Pending => {
-                    // Oneshot receiver error means sender was dropped (normal completion)
+                Poll::Ready(Ok(Ok(())) | Err(_)) => {
+                    self.complete = true;
                 }
+                Poll::Pending => {}
             }
         }
 
-        match Pin::new(&mut self.inner).poll_next(cx) {
+        match Pin::new(&mut self.input_stream).poll_next(cx) {
             Poll::Ready(Some(Ok(batch))) => {
                 // Send to gRPC if we have a sender
                 if let Some(ref grpc_sender) = self.grpc_sender {
@@ -425,12 +415,17 @@ where
 
                 Poll::Ready(Some(Ok(batch)))
             }
+            Poll::Ready(Some(Err(err))) => Poll::Ready(Some(Err(err))),
             Poll::Ready(None) => {
                 // Drop the sender to signal end of stream
                 self.grpc_sender = None;
-                Poll::Ready(None)
+                if self.complete {
+                    Poll::Ready(None)
+                } else {
+                    Poll::Pending
+                }
             }
-            other => other,
+            Poll::Pending => Poll::Pending,
         }
     }
 }
