@@ -14,8 +14,8 @@ use re_protos::{
     headers::RerunHeadersInjectorExt as _,
 };
 
-use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _};
-use crate::{RecordBatchExt as _, create_simple_recording_in};
+use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, prop};
+use crate::{FieldsExt as _, RecordBatchExt as _, create_simple_recording_in};
 
 pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
     let data_sources_def = DataSourcesDefinition::new([
@@ -35,6 +35,45 @@ pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
 
     scan_partition_table_and_snapshot(&service, dataset_name, "simple").await;
     scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple").await;
+}
+
+pub async fn register_and_scan_simple_dataset_with_properties(service: impl RerunCloudService) {
+    let data_sources_def = DataSourcesDefinition::new([
+        LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
+        LayerDefinition::simple("my_partition_id2", &["my/entity"]),
+        LayerDefinition::simple(
+            "my_partition_id3",
+            &["my/entity", "another/one", "yet/another/one"],
+        ),
+        LayerDefinition::properties(
+            "my_partition_id1",
+            [prop(
+                "text_log",
+                re_types::archetypes::TextLog::new("i'm partition 1"),
+            )],
+        )
+        .layer_name("props"),
+        LayerDefinition::properties(
+            "my_partition_id2",
+            [
+                prop(
+                    "text_log",
+                    re_types::archetypes::TextLog::new("i'm partition 2"),
+                ),
+                prop("points", re_types::archetypes::Points2D::new([(0.0, 1.0)])),
+            ],
+        )
+        .layer_name("props"),
+    ]);
+
+    let dataset_name = "my_dataset1";
+    service.create_dataset_entry_with_name(dataset_name).await;
+    service
+        .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
+        .await;
+
+    scan_partition_table_and_snapshot(&service, dataset_name, "simple_with_properties").await;
+    scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple_with_properties").await;
 }
 
 pub async fn register_and_scan_simple_dataset_with_layers(service: impl RerunCloudService) {
@@ -164,23 +203,23 @@ async fn scan_partition_table_and_snapshot(
             .schema_ref(),
         &batches,
     )
-    .unwrap()
-    .auto_sort_rows()
     .unwrap();
 
-    let columns = ScanPartitionTableResponse::fields();
-    let columns_names = columns
-        .iter()
-        .map(|field| field.name().as_str())
-        .filter(|name| {
-            // these are implementation-dependent
-            name != &ScanPartitionTableResponse::FIELD_STORAGE_URLS
-                && name != &ScanPartitionTableResponse::FIELD_SIZE_BYTES
-                // these are unstable
-                && name != &ScanPartitionTableResponse::FIELD_LAST_UPDATED_AT
-        })
-        .collect_vec();
-    let filtered_batch = batch.filtered_columns(&columns_names);
+    let required_fields = ScanPartitionTableResponse::fields();
+    assert!(
+        batch.schema().fields().contains_unordered(&required_fields),
+        "the schema should contain all the required fields, but it doesn't",
+    );
+
+    let unstable_column_names = vec![
+        ScanPartitionTableResponse::FIELD_STORAGE_URLS,
+        ScanPartitionTableResponse::FIELD_SIZE_BYTES,
+        ScanPartitionTableResponse::FIELD_LAST_UPDATED_AT,
+    ];
+    let filtered_batch = batch
+        .unfiltered_columns(&unstable_column_names)
+        .auto_sort_rows()
+        .unwrap();
 
     insta::assert_snapshot!(
         format!("{snapshot_name}_partitions_schema"),
@@ -226,21 +265,22 @@ async fn scan_dataset_manifest_and_snapshot(
     )
     .unwrap();
 
-    let columns = ScanDatasetManifestResponse::fields();
-    let columns_names = columns
-        .iter()
-        .map(|field| field.name().as_str())
-        .filter(|name| {
-            // these are implementation-dependent
-            name != &ScanDatasetManifestResponse::FIELD_STORAGE_URL
-                && name != &ScanDatasetManifestResponse::FIELD_SIZE_BYTES
-                // these are unstable
-                && name != &ScanDatasetManifestResponse::FIELD_LAST_UPDATED_AT
-                && name != &ScanDatasetManifestResponse::FIELD_REGISTRATION_TIME
-        })
-        .collect_vec();
+    let required_fields = ScanDatasetManifestResponse::fields();
+    assert!(
+        batch.schema().fields().contains_unordered(&required_fields),
+        "the schema should contain all the required fields, but it doesn't",
+    );
+
+    let unstable_column_names = vec![
+        // implementation-dependent
+        ScanDatasetManifestResponse::FIELD_STORAGE_URL,
+        ScanDatasetManifestResponse::FIELD_SIZE_BYTES,
+        // unstable
+        ScanDatasetManifestResponse::FIELD_LAST_UPDATED_AT,
+        ScanDatasetManifestResponse::FIELD_REGISTRATION_TIME,
+    ];
     let filtered_batch = batch
-        .filtered_columns(&columns_names)
+        .unfiltered_columns(&unstable_column_names)
         .auto_sort_rows()
         .unwrap();
 
