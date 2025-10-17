@@ -23,8 +23,8 @@ use nohash_hasher::{IntMap, IntSet};
 
 use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
 use re_chunk::{
-    Chunk, EntityPath, RangeQuery, RowId, TimeInt, TimelineName, UnitChunkShared,
-    external::arrow::array::ArrayRef,
+    Chunk, ComponentIdentifier, EntityPath, RangeQuery, RowId, TimeInt, TimelineName,
+    UnitChunkShared, external::arrow::array::ArrayRef,
 };
 use re_chunk_store::{
     ChunkStore, ColumnDescriptor, ComponentColumnDescriptor, Index, IndexColumnDescriptor,
@@ -35,7 +35,7 @@ use re_query::{QueryCache, StorageEngineLike};
 use re_sorbet::{
     ChunkColumnDescriptors, ColumnSelector, RowIdColumnDescriptor, TimeColumnSelector,
 };
-use re_types_core::{ComponentDescriptor, Loggable as _, archetypes, arrow_helpers::as_array_ref};
+use re_types_core::{Loggable as _, archetypes, arrow_helpers::as_array_ref};
 
 // ---
 
@@ -345,13 +345,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         let query =
                             re_chunk::LatestAtQuery::new(TimelineName::new(""), TimeInt::STATIC);
 
-                        let component_descriptor = store
-                            .entity_component_descriptor(&descr.entity_path, descr.component)
-                            .into_iter()
-                            .next()?;
-
                         let results =
-                            cache.latest_at(&query, &descr.entity_path, [&component_descriptor]);
+                            cache.latest_at(&query, &descr.entity_path, [descr.component]);
 
                         results.components.into_values().next()
                     }
@@ -481,7 +476,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                 ColumnDescriptor::Component(column) => {
                     let chunks = self
-                        .fetch_chunks(store, cache, query, &column.entity_path, [&column.into()])
+                        .fetch_chunks(store, cache, query, &column.entity_path, [column.component])
                         .unwrap_or_default();
 
                     if let Some(pov) = self.query.filtered_is_not_null.as_ref()
@@ -533,7 +528,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         fn chunk_filter_recursive_only(chunk: &Chunk) -> Option<Chunk> {
             let list_array = chunk
                 .components()
-                .get(&archetypes::Clear::descriptor_is_recursive())?;
+                .get_array(archetypes::Clear::descriptor_is_recursive().component)?;
 
             let values = list_array
                 .values()
@@ -556,7 +551,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             (!chunk.is_empty()).then_some(chunk)
         }
 
-        let component_descrs = [&archetypes::Clear::descriptor_is_recursive()];
+        let components = [archetypes::Clear::descriptor_is_recursive().component];
 
         // All unique entity paths present in the view contents.
         let entity_paths: IntSet<EntityPath> = view_contents
@@ -570,7 +565,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 // For the entity itself, any chunk that contains clear data is relevant, recursive or not.
                 // Just fetch everything we find.
                 let flat_chunks = self
-                    .fetch_chunks(store, cache, query, entity_path, component_descrs)
+                    .fetch_chunks(store, cache, query, entity_path, components)
                     .map(|chunks| {
                         chunks
                             .into_iter()
@@ -581,7 +576,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                 let recursive_chunks =
                     entity_path_ancestors(entity_path).flat_map(|ancestor_path| {
-                        self.fetch_chunks(store, cache, query, &ancestor_path, component_descrs)
+                        self.fetch_chunks(store, cache, query, &ancestor_path, components)
                             .into_iter() // option
                             .flat_map(|chunks| chunks.into_iter().map(|(_cursor, chunk)| chunk))
                             // NOTE: Ancestors' chunks are only relevant for the rows where `ClearIsRecursive=true`.
@@ -601,13 +596,13 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .collect()
     }
 
-    fn fetch_chunks<'a>(
+    fn fetch_chunks(
         &self,
         _store: &ChunkStore,
         cache: &QueryCache,
         query: &RangeQuery,
         entity_path: &EntityPath,
-        component_descrs: impl IntoIterator<Item = &'a ComponentDescriptor>,
+        components: impl IntoIterator<Item = ComponentIdentifier>,
     ) -> Option<Vec<(AtomicU64, Chunk)>> {
         // NOTE: Keep in mind that the range APIs natively make sure that we will
         // either get a bunch of relevant _static_ chunks, or a bunch of relevant
@@ -615,7 +610,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         //
         // TODO(cmc): Going through the cache is very useful in a Viewer context, but
         // not so much in an SDK context. Make it configurable.
-        let results = cache.range(query, entity_path, component_descrs);
+        let results = cache.range(query, entity_path, components);
 
         debug_assert!(
             results.components.len() <= 1,
@@ -1064,16 +1059,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     let query =
                         re_chunk::LatestAtQuery::new(state.filtered_index, *cur_index_value);
 
-                    let component_descriptor = store
-                        .entity_component_descriptor(&descr.entity_path, descr.component)
-                        .into_iter()
-                        .next()?;
-
-                    let results = cache.latest_at(
-                        &query,
-                        &descr.entity_path.clone(),
-                        [&component_descriptor],
-                    );
+                    let results =
+                        cache.latest_at(&query, &descr.entity_path.clone(), [descr.component]);
 
                     *streaming_state = results
                         .components
@@ -1178,7 +1165,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             .components()
                             .iter()
                             .next()
-                            .map(|(_, list_array)| list_array.slice(s.cursor as usize, 1))
+                            .map(|(_component, (_desc, list_array))| list_array.slice(s.cursor as usize, 1))
 
                     }
 
@@ -1193,7 +1180,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         } else {
                             None
                         })?;
-                        unit.components().get(&component_desc).cloned()
+                        unit.components().get_array(component_desc.component).cloned()
                     }
                 };
 
