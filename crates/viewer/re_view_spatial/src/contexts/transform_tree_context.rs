@@ -24,6 +24,7 @@ pub struct TransformTreeContext {
     transform_infos:
         IntMap<EntityPathHash, Result<re_tf::TransformInfo, re_tf::TransformFromToError>>,
     target_frame: TransformFrameIdHash,
+    pub transform_frame_id_hash_to_entity_path_hashes: EntityToTransformFrameIdMapping,
 }
 
 impl Default for TransformTreeContext {
@@ -32,6 +33,8 @@ impl Default for TransformTreeContext {
             transform_forest: Arc::new(re_tf::TransformForest::default()),
             transform_infos: IntMap::default(),
             target_frame: TransformFrameIdHash::entity_path_hierarchy_root(),
+            transform_frame_id_hash_to_entity_path_hashes: EntityToTransformFrameIdMapping::default(
+            ),
         }
     }
 }
@@ -80,7 +83,7 @@ impl ViewContextSystem for TransformTreeContext {
 
         // Build a lookup table from entity paths to their transform frame id hashes.
         // Currently we don't keep it around during the frame, but we may do so in the future.
-        let transform_frame_id_hash_to_entity_path_hashes =
+        self.transform_frame_id_hash_to_entity_path_hashes =
             collect_entity_to_transform_frame_id_mapping(ctx, query);
 
         let latest_at_query = query.latest_at_query();
@@ -89,11 +92,11 @@ impl ViewContextSystem for TransformTreeContext {
             .transform_forest
             .transform_from_to(
                 self.target_frame,
-                transform_frame_id_hash_to_entity_path_hashes
+                self.transform_frame_id_hash_to_entity_path_hashes
                     .keys()
                     .copied(),
                 &|transform_frame_id_hash| {
-                    transform_frame_id_hash_to_entity_path_hashes
+                    self.transform_frame_id_hash_to_entity_path_hashes
                         .get(&transform_frame_id_hash)
                         .map_or_else(
                             || 1.0,
@@ -118,7 +121,7 @@ impl ViewContextSystem for TransformTreeContext {
             transform_infos_per_frame
                 .into_iter()
                 .filter_map(|(transform_frame_id_hash, transform_info)| {
-                    transform_frame_id_hash_to_entity_path_hashes
+                    self.transform_frame_id_hash_to_entity_path_hashes
                         .get(&transform_frame_id_hash)
                         .map(|entity_path_hashes| {
                             entity_path_hashes.iter().map(move |entity_path_hash| {
@@ -155,21 +158,25 @@ impl TransformTreeContext {
         self.transform_forest.pinhole_tree_root_info(frame)
     }
 
-    /// Returns the properties of the pinhole tree root at given frame if the entity's root is a pinhole tree root.
-    #[inline]
-    pub fn pinhole_tree_root_info_for_entity(
-        &self,
-        entity_path: EntityPathHash,
-    ) -> Option<&re_tf::PinholeTreeRoot> {
-        // TODO(RR-2497): Perform EntityPath <-> TransformFrameIdHash lookups here.
-        let frame = TransformFrameIdHash::from_entity_path_hash(entity_path);
-        self.transform_forest.pinhole_tree_root_info(frame)
-    }
-
     /// Returns the target frame, also known as the space origin.
     #[inline]
     pub fn target_frame(&self) -> TransformFrameIdHash {
         self.target_frame
+    }
+
+    // TODO(andreas): make this not suck, bit slow
+    #[inline]
+    pub fn transform_frame_id_for(&self, entity_path: EntityPathHash) -> TransformFrameIdHash {
+        self.transform_frame_id_hash_to_entity_path_hashes
+            .iter()
+            .find_map(|(frame_id_hash, entity_path_hashes)| {
+                if entity_path_hashes.contains(&entity_path) {
+                    Some(*frame_id_hash)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| TransformFrameIdHash::from_entity_path_hash(entity_path))
     }
 }
 

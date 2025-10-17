@@ -259,6 +259,7 @@ impl<'s> ViewQuery<'s> {
     /// Iterates over all currently visible (i.e. at least one visualizer is active) [`DataResult`]s of the [`ViewQuery`].
     #[inline]
     pub fn iter_all_data_results(&self) -> impl Iterator<Item = &DataResult> + '_ {
+        // TODO: this is bad, duplicating data results if multiple visualizers are active on the same entity
         self.per_visualizer_data_results
             .values()
             .flat_map(|data_results| data_results.iter().copied())
