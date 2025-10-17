@@ -197,17 +197,24 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                     body.rows(row_height, num_displayed_rows, |mut row| {
                         let instance = Instance::from(row.index() as u64);
                         row.col(|ui| {
-                            let instance_path =
-                                InstancePath::instance(entity_path.clone(), instance);
-                            item_ui::instance_path_button_to(
-                                ctx,
-                                query,
-                                db,
-                                ui,
-                                None,
-                                &instance_path,
-                                instance.syntax_highlighted(ui.style()),
-                            );
+                            let instance_text = instance.syntax_highlighted(ui.style());
+                            if ui.is_tooltip() {
+                                // Avoids interactive tooltips,
+                                // because that means they stick around when you move your mouse
+                                ui.label(instance_text);
+                            } else {
+                                let instance_path =
+                                    InstancePath::instance(entity_path.clone(), instance);
+                                item_ui::instance_path_button_to(
+                                    ctx,
+                                    query,
+                                    db,
+                                    ui,
+                                    None,
+                                    &instance_path,
+                                    instance_text,
+                                );
+                            }
                         });
                         row.col(|ui| {
                             ctx.component_ui_registry().component_ui(

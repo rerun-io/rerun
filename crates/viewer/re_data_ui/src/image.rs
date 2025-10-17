@@ -43,8 +43,46 @@ pub fn image_preview_ui(
         colormap_with_range,
     )
     .ok()?;
-    texture_preview_ui(ctx.render_ctx(), ui, ui_layout, &debug_name, texture);
+
+    let [w, h] = texture.width_height();
+    let preview_size = texture_preview_size(ui, ui_layout, [w, h]);
+
+    texture_preview_ui(
+        ctx.render_ctx(),
+        ui,
+        ui_layout,
+        &debug_name,
+        texture,
+        preview_size,
+    );
+
     Some(())
+}
+
+pub fn texture_preview_size(ui: &egui::Ui, ui_layout: UiLayout, texture_size: [u32; 2]) -> Vec2 {
+    let [texture_width, texture_height] = texture_size;
+    let max_size = if ui_layout.is_single_line() {
+        let height = ui.available_height();
+        let width =
+            (height * texture_width as f32 / texture_height as f32).at_most(ui.available_width());
+        Vec2::new(width, height)
+    } else {
+        // TODO(emilk): we should limit the HEIGHT primarily,
+        // since if the image uses up too much vertical space,
+        // it is really annoying in the selection panel.
+        let size_range = if ui_layout == UiLayout::Tooltip {
+            egui::Rangef::new(64.0, 128.0)
+        } else {
+            egui::Rangef::new(240.0, 320.0)
+        };
+        Vec2::splat(
+            size_range
+                .clamp(ui.available_width())
+                .at_most(16.0 * texture_width.max(texture_height) as f32),
+        )
+    };
+
+    largest_size_that_fits_in(texture_width as f32 / texture_height as f32, max_size)
 }
 
 /// Show the given texture with an appropriate size.
@@ -54,13 +92,9 @@ pub fn texture_preview_ui(
     ui_layout: UiLayout,
     debug_name: &str,
     texture: ColormappedTexture,
+    preview_size: Vec2,
 ) -> egui::Response {
     if ui_layout.is_single_line() {
-        let height = ui.available_height();
-        let [texture_width, texture_height] = texture.width_height();
-        let width =
-            (height * texture_width as f32 / texture_height as f32).at_most(ui.available_width());
-        let preview_size = Vec2::new(width, height);
         ui.allocate_ui_with_layout(
             preview_size,
             egui::Layout::centered_and_justified(egui::Direction::TopDown),
@@ -80,19 +114,6 @@ pub fn texture_preview_ui(
         )
         .inner
     } else {
-        // TODO(emilk): we should limit the HEIGHT primarily,
-        // since if the image uses up too much vertical space,
-        // it is really annoying in the selection panel.
-        let size_range = if ui_layout == UiLayout::Tooltip {
-            egui::Rangef::new(64.0, 128.0)
-        } else {
-            egui::Rangef::new(240.0, 320.0)
-        };
-        let preview_size = Vec2::splat(
-            size_range
-                .clamp(ui.available_width())
-                .at_most(16.0 * texture.texture.width().max(texture.texture.height()) as f32),
-        );
         show_image_preview(render_ctx, ui, texture, debug_name, preview_size).unwrap_or_else(
             |(response, err)| {
                 re_log::warn_once!("Failed to show texture {debug_name}: {err}");

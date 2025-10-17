@@ -30,9 +30,9 @@ pub fn format_timestamp_secs(timestamp_secs: f64) -> String {
     let secs = (n % 60) as f64 + timestamp_secs.fract();
 
     if hours > 0 {
-        format!("{hours:02}:{mins:02}:{secs:02.02}")
+        format!("{hours:02}:{mins:02}:{secs:05.2}")
     } else {
-        format!("{mins:02}:{secs:02.02}")
+        format!("{mins:02}:{secs:05.2}")
     }
     // Not showing the minutes at all makes it too unclear what format this timestamp is in.
     // So let's not further strip this down.
@@ -61,4 +61,11 @@ pub fn parse_timestamp_secs(s: &str) -> Option<f64> {
         }
         _ => None,
     }
+}
+
+#[test]
+fn test_format_timestamp_secs() {
+    assert_eq!(format_timestamp_secs(3.4), "00:03.40");
+    assert_eq!(format_timestamp_secs(3.53), "00:03.53");
+    assert_eq!(format_timestamp_secs(63.53), "01:03.53");
 }
