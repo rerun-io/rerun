@@ -46,7 +46,7 @@ fn query_latest_array(
 fn simple() -> anyhow::Result<()> {
     re_log::setup_logging();
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
@@ -58,10 +58,10 @@ fn simple() -> anyhow::Result<()> {
         for i in 0..num_ents {
             let entity_path = EntityPath::from(format!("this/that/{i}"));
 
-            let num_frames = rng.gen_range(0..=100);
-            let frames = (0..num_frames).filter(|_| rand::thread_rng().r#gen());
+            let num_frames = rng.random_range(0..=100);
+            let frames = (0..num_frames).filter(|_| rand::rng().random());
             for frame_nr in frames {
-                let num_instances = rng.gen_range(0..=1_000);
+                let num_instances = rng.random_range(0..=1_000);
                 let chunk = Chunk::builder(entity_path.clone())
                     .with_component_batch(
                         RowId::new(),

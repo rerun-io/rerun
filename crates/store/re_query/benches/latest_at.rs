@@ -166,10 +166,10 @@ fn batch_strings(c: &mut Criterion) {
 
 pub fn build_some_point2d(len: usize) -> Vec<Position2D> {
     use rand::Rng as _;
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     (0..len)
-        .map(|_| Position2D::new(rng.gen_range(0.0..10.0), rng.gen_range(0.0..10.0)))
+        .map(|_| Position2D::new(rng.random_range(0.0..10.0), rng.random_range(0.0..10.0)))
         .collect()
 }
 
@@ -185,13 +185,13 @@ pub fn build_frame_nr(frame_nr: TimeInt) -> (Timeline, TimeInt) {
 
 pub fn build_some_strings(len: usize) -> Vec<Text> {
     use rand::Rng as _;
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     (0..len)
         .map(|_| {
-            let ilen: usize = rng.gen_range(0..100);
-            let s: String = rand::thread_rng()
-                .sample_iter(&rand::distributions::Alphanumeric)
+            let ilen: usize = rng.random_range(0..100);
+            let s: String = rand::rng()
+                .sample_iter(&rand::distr::Alphanumeric)
                 .take(ilen)
                 .map(char::from)
                 .collect();

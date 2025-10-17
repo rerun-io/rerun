@@ -1,6 +1,6 @@
 [package]
 name = "incremental_logging"
-version = "0.26.0-alpha.1+dev"
+version = "0.27.0-alpha.1+dev"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT OR Apache-2.0"
@@ -11,4 +11,4 @@ rerun = { path = "../../../crates/top/rerun", features = ["web_viewer", "clap"] 
 
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
-rand = { workspace = true, features = ["std"] }
+rand = { workspace = true, features = ["std", "thread_rng"] }

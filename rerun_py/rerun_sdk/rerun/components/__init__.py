@@ -91,6 +91,7 @@ from .texcoord2d import Texcoord2D, Texcoord2DBatch
 from .text import Text, TextBatch
 from .text_log_level import TextLogLevel, TextLogLevelBatch
 from .timestamp import Timestamp, TimestampBatch
+from .transform_frame_id import TransformFrameId, TransformFrameIdBatch
 from .transform_mat3x3 import TransformMat3x3, TransformMat3x3Batch
 from .transform_relation import (
     TransformRelation,
@@ -272,6 +273,8 @@ __all__ = [
     "TextLogLevelBatch",
     "Timestamp",
     "TimestampBatch",
+    "TransformFrameId",
+    "TransformFrameIdBatch",
     "TransformMat3x3",
     "TransformMat3x3Batch",
     "TransformRelation",

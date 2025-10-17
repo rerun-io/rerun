@@ -1,11 +1,11 @@
 ---
 source: crates/store/re_tf/src/transform_forest.rs
-expression: "pretty_print_entity_path_hashes_in(transform_forest.root_info(EntityPath::from(\"top/pinhole\").hash()),\n&all_entity_paths)"
+expression: "pretty_print_transform_frame_ids_in(transform_forest.root_info(TransformFrameIdHash::from_entity_path(&EntityPath::from(\"top/pinhole\"))),\n&all_transform_frame_ids)"
 ---
 Some(
     Pinhole(
         PinholeTreeRoot {
-            parent_tree_root: /,
+            parent_tree_root: rerun_tf#/,
             pinhole_projection: ResolvedPinholeProjection {
                 image_from_camera: PinholeProjection(
                     Mat3x3(

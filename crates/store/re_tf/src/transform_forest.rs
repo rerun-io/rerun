@@ -4,18 +4,17 @@ use vec1::smallvec_v1::SmallVec1;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityTree};
-use re_log_types::EntityPathHash;
 use re_types::ArchetypeName;
 
 use crate::{
     CachedTransformsForTimeline, PoseTransformArchetypeMap, ResolvedPinholeProjection,
-    TransformResolutionCache, image_view_coordinates,
+    TransformFrameIdHash, TransformResolutionCache, image_view_coordinates,
 };
 
 /// Details on how to transform from a source to a target frame.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TransformInfo {
-    /// Root this transform belongs to.
+    /// Root frame this transform belongs to.
     ///
     /// ⚠️ This is the root of the tree this transform belongs to,
     /// not necessarily what the transform transforms into.
@@ -24,17 +23,17 @@ pub struct TransformInfo {
     /// We could add target and maybe even source to this, but we want to keep this struct small'ish.
     /// On that note, it may be good to split this in the future, as most of the time we're only interested in the
     /// source->target affine transform.
-    root: EntityPathHash,
+    root: TransformFrameIdHash,
 
-    /// The transform from the entity to the target's space.
+    /// The transform from this frame to the target's space.
     ///
     /// ⚠️ Does not include per instance poses! ⚠️
     /// Include 3D-from-2D / 2D-from-3D pinhole transform if present.
-    target_from_entity: glam::Affine3A,
+    target_from_source: glam::Affine3A,
 
     /// List of transforms per instance including poses.
     ///
-    /// If no poses are present, this is always the same as `root_from_entity`.
+    /// If no poses are present, this is always the same as [`Self::target_from_source`].
     /// (also implying that in this case there is only a single element).
     /// If there are poses there may be more than one element.
     ///
@@ -49,36 +48,36 @@ pub struct TransformInfo {
 }
 
 impl TransformInfo {
-    fn new_root(root: EntityPathHash) -> Self {
+    fn new_root(root: TransformFrameIdHash) -> Self {
         Self {
             root,
-            target_from_entity: glam::Affine3A::IDENTITY,
+            target_from_source: glam::Affine3A::IDENTITY,
             target_from_instances: SmallVec1::new(glam::Affine3A::IDENTITY),
             target_from_archetype: Default::default(),
         }
     }
 
-    /// Returns the root of the tree this transform belongs to.
+    /// Returns the root frame of the tree this transform belongs to.
     ///
-    /// This is **not** necessarily the transform's target space.
+    /// This is **not** necessarily the transform's target frame.
     #[inline]
-    pub fn tree_root(&self) -> EntityPathHash {
+    pub fn tree_root(&self) -> TransformFrameIdHash {
         self.root
     }
 
-    /// Warns that multiple transforms within the entity are not supported.
+    /// Warns that multiple transforms on an entity are not supported.
     #[inline]
     fn warn_on_per_instance_transform(&self, entity_name: &EntityPath, archetype: ArchetypeName) {
         if self.target_from_instances.len() > 1 {
             re_log::warn_once!(
-                "There are multiple poses for entity {entity_name:?}. {archetype:?} supports only one transform per entity. Using the first one."
+                "There are multiple poses for entity {entity_name:?}'s transform frame. {archetype:?} supports only one transform per entity. Using the first one."
             );
         }
     }
 
     /// Returns the first instance transform and warns if there are multiple.
     #[inline]
-    pub fn single_entity_transform_required(
+    pub fn single_transform_required_for_entity(
         &self,
         entity_name: &EntityPath,
         archetype: ArchetypeName,
@@ -92,9 +91,9 @@ impl TransformInfo {
         }
     }
 
-    /// Returns reference from instance transforms.
+    /// Returns the target from instance transforms.
     #[inline]
-    pub fn reference_from_instances(
+    pub fn target_from_instances(
         &self,
         archetype: ArchetypeName,
     ) -> &SmallVec1<[glam::Affine3A; 1]> {
@@ -110,18 +109,18 @@ impl TransformInfo {
     /// Or in other words:
     /// `reference_from_source = self`
     /// `target_from_source = target_from_reference * reference_from_source`
-    pub fn left_multiply(&self, target_from_reference: glam::Affine3A) -> Self {
+    fn left_multiply(&self, target_from_reference: glam::Affine3A) -> Self {
         let Self {
             root,
-            target_from_entity: reference_from_source,
-            target_from_instances: reference_from_source_instances_overall,
+            target_from_source: reference_from_source,
+            target_from_instances: reference_from_source_instances,
             target_from_archetype: reference_from_source_archetypes,
         } = self;
 
         let target_from_source = target_from_reference * reference_from_source;
-        let target_from_source_instances_overall = left_multiply_smallvec1_of_transforms(
+        let target_from_source_instances = left_multiply_smallvec1_of_transforms(
             target_from_reference,
-            reference_from_source_instances_overall,
+            reference_from_source_instances,
         );
         let target_from_source_archetypes = reference_from_source_archetypes
             .iter()
@@ -135,8 +134,8 @@ impl TransformInfo {
 
         Self {
             root: *root,
-            target_from_entity: target_from_source,
-            target_from_instances: target_from_source_instances_overall,
+            target_from_source,
+            target_from_instances: target_from_source_instances,
             target_from_archetype: target_from_source_archetypes,
         }
     }
@@ -145,19 +144,19 @@ impl TransformInfo {
 #[derive(Clone, Debug, thiserror::Error, PartialEq, Eq)]
 pub enum TransformFromToError {
     #[error("No transform relationships about the target frame {0:?} are known")]
-    UnknownTargetFrame(EntityPathHash),
+    UnknownTargetFrame(TransformFrameIdHash),
 
     #[error("No transform relationships about the source frame {0:?} are known")]
-    UnknownSourceFrame(EntityPathHash),
+    UnknownSourceFrame(TransformFrameIdHash),
 
     #[error(
         "There's no path between {target:?} and {src:?}. The target's root is {target_root:?}, the source's root is {source_root:?}"
     )]
     NoPathBetweenFrames {
-        target: EntityPathHash,
-        src: EntityPathHash, // Can't name this `source` for some strange procmacro reasons
-        target_root: EntityPathHash,
-        source_root: EntityPathHash,
+        target: TransformFrameIdHash,
+        src: TransformFrameIdHash, // Can't name this `source` for some strange procmacro reasons
+        target_root: TransformFrameIdHash,
+        source_root: TransformFrameIdHash,
     },
 }
 
@@ -174,15 +173,15 @@ impl TransformFromToError {
 
 /// Private utility struct for working with a target frame.
 struct TargetInfo {
-    id: EntityPathHash,
-    root: EntityPathHash,
+    id: TransformFrameIdHash,
+    root: TransformFrameIdHash,
     target_from_root: glam::Affine3A,
 }
 
 /// Private utility struct for working with a source frame.
 struct SourceInfo<'a> {
-    id: EntityPathHash,
-    root: EntityPathHash,
+    id: TransformFrameIdHash,
+    root: TransformFrameIdHash,
     root_from_source: &'a TransformInfo,
 }
 
@@ -194,7 +193,7 @@ struct SourceInfo<'a> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct PinholeTreeRoot {
     /// The tree root of the parent of this pinhole.
-    pub parent_tree_root: EntityPathHash,
+    pub parent_tree_root: TransformFrameIdHash,
 
     /// Pinhole projection that defines how 2D objects are transformed in this space.
     pub pinhole_projection: ResolvedPinholeProjection,
@@ -226,14 +225,14 @@ pub enum TransformTreeRootInfo {
 #[derive(Default, Clone)]
 pub struct TransformForest {
     /// All known tree roots.
-    roots: IntMap<EntityPathHash, TransformTreeRootInfo>,
+    roots: IntMap<TransformFrameIdHash, TransformTreeRootInfo>,
 
-    /// All entities reachable from one of the tree roots.
-    root_from_entity: IntMap<EntityPathHash, TransformInfo>,
+    /// All frames reachable from one of the tree roots.
+    root_from_frame: IntMap<TransformFrameIdHash, TransformInfo>,
 }
 
 impl TransformForest {
-    /// Determines transforms for all entities relative to a space path which serves as the "reference".
+    /// Determines transforms for all frames relative.
     /// I.e. the resulting transforms are "reference from scene"
     ///
     /// This means that the entities in `reference_space` get the identity transform and all other
@@ -248,17 +247,19 @@ impl TransformForest {
         let entity_tree = recording.tree();
         let transforms = transform_cache.transforms_for_timeline(time_query.timeline());
 
+        let entity_hierarchy_root = TransformFrameIdHash::entity_path_hierarchy_root();
+
         let mut tree = Self {
-            roots: std::iter::once((EntityPath::root().hash(), TransformTreeRootInfo::EntityRoot))
+            roots: std::iter::once((entity_hierarchy_root, TransformTreeRootInfo::EntityRoot))
                 .collect(),
-            root_from_entity: Default::default(),
+            root_from_frame: Default::default(),
         };
-        tree.gather_descendants_transforms(
+        tree.entity_tree_gather_transforms_recursive(
             entity_tree,
             time_query,
             // Ignore potential pinhole camera at the root of the view, since it is regarded as being "above" this root.
             // TODO(andreas): Should we warn about that?
-            TransformInfo::new_root(EntityPath::root().hash()),
+            TransformInfo::new_root(entity_hierarchy_root),
             transforms,
         );
 
@@ -267,7 +268,7 @@ impl TransformForest {
 }
 
 impl TransformForest {
-    fn gather_descendants_transforms(
+    fn entity_tree_gather_transforms_recursive(
         &mut self,
         subtree: &EntityTree,
         query: &LatestAtQuery,
@@ -275,11 +276,12 @@ impl TransformForest {
         transforms_for_timeline: &CachedTransformsForTimeline,
     ) {
         let root = transform_root_from_parent.root;
-        let root_from_parent = transform_root_from_parent.target_from_entity;
+        let root_from_parent = transform_root_from_parent.target_from_source;
 
+        let transform_frame_id = TransformFrameIdHash::from_entity_path(&subtree.path);
         let previous_transform = self
-            .root_from_entity
-            .insert(subtree.path.hash(), transform_root_from_parent);
+            .root_from_frame
+            .insert(transform_frame_id, transform_root_from_parent);
         debug_assert!(previous_transform.is_none(), "Root was added already"); // TODO(RR-2667): Build out into cycle detection (cycles can't _yet_ happen)
 
         for child_tree in subtree.children.values() {
@@ -291,41 +293,41 @@ impl TransformForest {
                 root_from_parent * transforms_at_entity.parent_from_entity_tree_transform;
 
             // Did we encounter a pinhole and need to create a new subspace?
-            let (root, root_from_entity) =
+            let (root, target_from_source) =
                 if let Some(pinhole_projection) = transforms_at_entity.pinhole_projection {
-                    let new_root = child_path.hash();
+                    let new_root_frame_id = TransformFrameIdHash::from_entity_path(child_path);
                     let new_root_info = TransformTreeRootInfo::Pinhole(PinholeTreeRoot {
                         parent_tree_root: root,
                         pinhole_projection: pinhole_projection.clone(),
                         parent_root_from_pinhole_root: root_from_child,
                     });
 
-                    let previous_root = self.roots.insert(new_root, new_root_info);
+                    let previous_root = self.roots.insert(new_root_frame_id, new_root_info);
                     debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(andreas): Build out into cycle detection (cycles can't _yet_ happen)
 
-                    (new_root, Affine3A::IDENTITY)
+                    (new_root_frame_id, Affine3A::IDENTITY)
                 } else {
                     (root, root_from_child)
                 };
 
             // Collect & compute poses.
-            let root_from_instances_overall = compute_root_from_instances_overall(
-                root_from_entity,
+            let root_from_instances = compute_root_from_instances(
+                target_from_source,
                 transforms_at_entity.entity_from_instance_poses,
             );
             let root_from_archetype = compute_root_from_archetype(
-                root_from_entity,
+                target_from_source,
                 transforms_at_entity.entity_from_instance_poses,
             );
 
             let transform_root_from_child = TransformInfo {
                 root,
-                target_from_entity: root_from_entity,
-                target_from_instances: root_from_instances_overall,
+                target_from_source,
+                target_from_instances: root_from_instances,
                 target_from_archetype: root_from_archetype,
             };
 
-            self.gather_descendants_transforms(
+            self.entity_tree_gather_transforms_recursive(
                 child_tree,
                 query,
                 transform_root_from_child,
@@ -334,25 +336,28 @@ impl TransformForest {
         }
     }
 
-    /// Returns the properties of the transform tree root at the given entity path.
+    /// Returns the properties of the transform tree root at the given frame.
     ///
-    /// If the identifier is not known as a transform tree root, returns [`None`].
+    /// If frame is not known as a transform tree root, returns [`None`].
     #[inline]
-    pub fn root_info(&self, root: EntityPathHash) -> Option<&TransformTreeRootInfo> {
-        self.roots.get(&root)
+    pub fn root_info(&self, root_frame: TransformFrameIdHash) -> Option<&TransformTreeRootInfo> {
+        self.roots.get(&root_frame)
     }
 
-    /// Returns the properties of the pinhole tree root at the given entity path if the entity's root is a pinhole tree root.
+    /// Returns the properties of the pinhole tree root at the given frame if the frame's root is a pinhole tree root.
     #[inline]
-    pub fn pinhole_tree_root_info(&self, root: EntityPathHash) -> Option<&PinholeTreeRoot> {
-        if let TransformTreeRootInfo::Pinhole(pinhole_tree_root) = self.roots.get(&root)? {
+    pub fn pinhole_tree_root_info(
+        &self,
+        root_frame: TransformFrameIdHash,
+    ) -> Option<&PinholeTreeRoot> {
+        if let TransformTreeRootInfo::Pinhole(pinhole_tree_root) = self.roots.get(&root_frame)? {
             Some(pinhole_tree_root)
         } else {
             None
         }
     }
 
-    /// Computes the transform from one entity to another if there is a path between them.
+    /// Computes the transform from one frame to another if there is a path between them.
     ///
     /// `target`: The frame into which to transform.
     /// `sources`: The frames from which to transform.
@@ -364,14 +369,19 @@ impl TransformForest {
     /// If the target frame is not known at all, returns [`TransformFromToError::UnknownTargetFrame`] for every source.
     pub fn transform_from_to(
         &self,
-        target: EntityPathHash,
-        sources: impl Iterator<Item = EntityPathHash>,
-        lookup_image_plane_distance: &dyn Fn(EntityPathHash) -> f32,
-    ) -> impl Iterator<Item = (EntityPathHash, Result<TransformInfo, TransformFromToError>)> {
+        target: TransformFrameIdHash,
+        sources: impl Iterator<Item = TransformFrameIdHash>,
+        lookup_image_plane_distance: &dyn Fn(TransformFrameIdHash) -> f32,
+    ) -> impl Iterator<
+        Item = (
+            TransformFrameIdHash,
+            Result<TransformInfo, TransformFromToError>,
+        ),
+    > {
         // We're looking for a common root between source and target.
         // We start by looking up the target's tree root.
 
-        let Some(root_from_target) = self.root_from_entity.get(&target) else {
+        let Some(root_from_target) = self.root_from_frame.get(&target) else {
             return itertools::Either::Left(sources.map(move |source| {
                 (
                     source,
@@ -384,7 +394,7 @@ impl TransformForest {
         let target = {
             let TransformInfo {
                 root: target_root,
-                target_from_entity: root_from_entity,
+                target_from_source: root_from_entity,
                 // Don't care about instance transforms on the target frame, as they don't tree-propagate.
                 target_from_instances: _,
                 // Don't care about archetype specific transforms on the target frame, as they don't tree-propagate.
@@ -405,7 +415,7 @@ impl TransformForest {
         let mut pinhole_tree_connector_cache = IntMap::default();
 
         itertools::Either::Right(sources.map(move |source| {
-            let Some(root_from_source) = self.root_from_entity.get(&source) else {
+            let Some(root_from_source) = self.root_from_frame.get(&source) else {
                 return (
                     source,
                     Err(TransformFromToError::UnknownSourceFrame(source)),
@@ -466,8 +476,8 @@ fn from_2d_source_to_3d_target(
     target: &TargetInfo,
     source: &SourceInfo<'_>,
     source_pinhole_tree_root: &PinholeTreeRoot,
-    lookup_image_plane_distance: &dyn Fn(EntityPathHash) -> f32,
-    target_from_image_plane_cache: &mut IntMap<EntityPathHash, glam::Affine3A>,
+    lookup_image_plane_distance: &dyn Fn(TransformFrameIdHash) -> f32,
+    target_from_image_plane_cache: &mut IntMap<TransformFrameIdHash, glam::Affine3A>,
 ) -> Result<TransformInfo, TransformFromToError> {
     let PinholeTreeRoot {
         parent_tree_root,
@@ -503,7 +513,7 @@ fn from_3d_source_to_2d_target(
     target: &TargetInfo,
     source: &SourceInfo<'_>,
     target_pinhole_tree_root: &PinholeTreeRoot,
-    target_from_source_root_cache: &mut IntMap<EntityPathHash, glam::Affine3A>,
+    target_from_source_root_cache: &mut IntMap<TransformFrameIdHash, glam::Affine3A>,
 ) -> Result<TransformInfo, TransformFromToError> {
     let PinholeTreeRoot {
         parent_tree_root,
@@ -557,7 +567,7 @@ fn left_multiply_smallvec1_of_transforms(
     target_from_source
 }
 
-fn compute_root_from_instances(
+fn compute_root_from_poses(
     root_from_entity: glam::Affine3A,
     instance_from_poses: &[glam::Affine3A],
 ) -> SmallVec1<[glam::Affine3A; 1]> {
@@ -575,13 +585,13 @@ fn compute_root_from_instances(
     reference_from_poses
 }
 
-fn compute_root_from_instances_overall(
+fn compute_root_from_instances(
     reference_from_entity: glam::Affine3A,
     pose_transforms: Option<&PoseTransformArchetypeMap>,
 ) -> SmallVec1<[glam::Affine3A; 1]> {
-    compute_root_from_instances(
+    compute_root_from_poses(
         reference_from_entity,
-        pose_transforms.map_or(&[], |poses| &poses.instance_from_overall_poses),
+        pose_transforms.map_or(&[], |poses| &poses.instance_from_poses),
     )
 }
 
@@ -597,7 +607,7 @@ fn compute_root_from_archetype(
                 .map(|(archetype, poses)| {
                     (
                         *archetype,
-                        compute_root_from_instances(reference_from_entity, poses),
+                        compute_root_from_poses(reference_from_entity, poses),
                     )
                 })
                 .collect()
@@ -680,7 +690,7 @@ mod tests {
     use re_chunk_store::Chunk;
     use re_entity_db::EntityDb;
     use re_log_types::{StoreInfo, TimePoint, TimelineName};
-    use re_types::{Archetype as _, RowId, archetypes};
+    use re_types::{Archetype as _, RowId, archetypes, components::TransformFrameId};
 
     use super::*;
 
@@ -764,13 +774,16 @@ mod tests {
         entity_db
     }
 
-    fn pretty_print_entity_path_hashes_in<T: std::fmt::Debug>(
+    fn pretty_print_transform_frame_ids_in<T: std::fmt::Debug>(
         obj: T,
-        paths: &[EntityPath],
+        frames: &[TransformFrameId],
     ) -> String {
         let mut result = format!("{obj:#?}");
-        for path in paths {
-            result = result.replace(&format!("{:#?}", path.hash()), &format!("{path:#?}"));
+        for frame in frames {
+            result = result.replace(
+                &format!("{:#?}", TransformFrameIdHash::new(frame)),
+                &format!("{frame}"),
+            );
         }
         result
     }
@@ -793,41 +806,49 @@ mod tests {
             .cloned()
             .chain([EntityPath::root(), EntityPath::from("top/nonexistent")])
             .collect::<Vec<_>>();
+        let all_transform_frame_ids = all_entity_paths
+            .iter()
+            .map(TransformFrameId::from_entity_path)
+            .collect::<Vec<_>>();
 
         // Check that we get the expected roots.
         {
             assert_eq!(
-                transform_forest.root_info(EntityPath::root().hash()),
+                transform_forest.root_info(TransformFrameIdHash::entity_path_hierarchy_root()),
                 Some(&TransformTreeRootInfo::EntityRoot)
             );
             // Pinhole roots are a bit more complex. Let's use `insta` to verify.
             insta::assert_snapshot!(
                 "simple_entity_hierarchy__root_info_pinhole",
-                pretty_print_entity_path_hashes_in(
-                    transform_forest.root_info(EntityPath::from("top/pinhole").hash()),
-                    &all_entity_paths
+                pretty_print_transform_frame_ids_in(
+                    transform_forest.root_info(TransformFrameIdHash::from_entity_path(
+                        &EntityPath::from("top/pinhole")
+                    )),
+                    &all_transform_frame_ids
                 )
             );
             // .. but it's hard to reason about the parent root id, so let's verify that just to be sure.
             assert_eq!(
                 transform_forest
-                    .pinhole_tree_root_info(EntityPath::from("top/pinhole").hash())
+                    .pinhole_tree_root_info(TransformFrameIdHash::from_entity_path(
+                        &EntityPath::from("top/pinhole")
+                    ))
                     .unwrap()
                     .parent_tree_root,
-                EntityPath::root().hash()
+                TransformFrameIdHash::entity_path_hierarchy_root()
             );
             assert_eq!(transform_forest.roots.len(), 2);
         }
 
         // Perform some tree queries.
-        let targets = [
+        let target_paths = [
             EntityPath::root(),
             EntityPath::from("top"),
             EntityPath::from("top/pinhole"),
             EntityPath::from("top/nonexistent"),
             EntityPath::from("top/pinhole/child2d"),
         ];
-        let sources = [
+        let source_paths = [
             EntityPath::root(),
             EntityPath::from("top"),
             EntityPath::from("top/pinhole"),
@@ -836,42 +857,39 @@ mod tests {
             EntityPath::from("top/pinhole/child2d"),
         ];
 
-        for target in &targets {
+        for target in &target_paths {
             let name = if target == &EntityPath::root() {
                 "_root".to_owned()
             } else {
                 target.to_string().replace('/', "_")
             };
 
+            let target_frame = TransformFrameIdHash::from_entity_path(target);
             let result = transform_forest
-                .transform_from_to(target.hash(), sources.iter().map(|s| s.hash()), &|_| 1.0)
+                .transform_from_to(
+                    target_frame,
+                    source_paths
+                        .iter()
+                        .map(TransformFrameIdHash::from_entity_path),
+                    &|_| 1.0,
+                )
                 .collect::<Vec<_>>();
 
             // If the target exists, it should have an identity transform.
             // (this is covered by the snapshot below as well, but its a basic sanity check I wanted to call out)
-            let target_result = result
-                .iter()
-                .find(|(key, _)| *key == target.hash())
-                .unwrap();
+            let target_result = result.iter().find(|(key, _)| *key == target_frame).unwrap();
             if let Ok(target_result) = &target_result.1 {
-                assert!(target_result.target_from_entity == glam::Affine3A::IDENTITY);
+                assert!(target_result.target_from_source == glam::Affine3A::IDENTITY);
             } else {
                 assert_eq!(
                     target_result.1,
-                    Err(TransformFromToError::UnknownTargetFrame(target.hash()))
+                    Err(TransformFromToError::UnknownTargetFrame(target_frame))
                 );
             }
 
             insta::assert_snapshot!(
                 format!("simple_entity_hierarchy__transform_from_to_{}", name),
-                pretty_print_entity_path_hashes_in(
-                    transform_forest
-                        .transform_from_to(target.hash(), sources.iter().map(|s| s.hash()), &|_| {
-                            1.0
-                        })
-                        .collect::<Vec<_>>(),
-                    &all_entity_paths
-                )
+                pretty_print_transform_frame_ids_in(&result, &all_transform_frame_ids)
             );
         }
     }
@@ -914,21 +932,26 @@ mod tests {
         let query = LatestAtQuery::latest(TimelineName::log_tick());
         let transform_forest = TransformForest::new(&entity_db, &transform_cache, &query);
 
-        let target = EntityPath::from("box");
-        let sources = [EntityPath::from("box")];
+        let target = TransformFrameIdHash::from_entity_path(&EntityPath::from("box"));
+        let sources = [TransformFrameIdHash::from_entity_path(&EntityPath::from(
+            "box",
+        ))];
 
         let result = transform_forest
-            .transform_from_to(target.hash(), sources.iter().map(|s| s.hash()), &|_| 1.0)
+            .transform_from_to(target, sources.iter().copied(), &|_| 1.0)
             .collect::<Vec<_>>();
 
         assert_eq!(result.len(), 1);
         let (source, result) = &result[0];
-        assert_eq!(source, &target.hash());
+        assert_eq!(source, &target);
         let info = result.as_ref().unwrap();
-        assert_eq!(info.root, EntityPath::root().hash());
+        assert_eq!(
+            info.root,
+            TransformFrameIdHash::entity_path_hierarchy_root()
+        );
 
         // It *is* the target, so identity for this!
-        assert_eq!(info.target_from_entity, glam::Affine3A::IDENTITY);
+        assert_eq!(info.target_from_source, glam::Affine3A::IDENTITY);
 
         // Instance transforms still apply.
         assert_eq!(

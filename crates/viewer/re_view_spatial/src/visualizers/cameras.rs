@@ -1,6 +1,7 @@
 use glam::vec3;
 use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
+use re_tf::TransformFrameIdHash;
 use re_types::{
     Archetype as _,
     archetypes::Pinhole,
@@ -73,8 +74,8 @@ impl CamerasVisualizer {
         let instance = Instance::from(0);
         let ent_path = &data_result.entity_path;
 
-        // If the camera is our reference, there is nothing for us to display.
-        if transforms.target_path() == ent_path.hash() {
+        // If the camera is the target frame, there is nothing for us to display.
+        if transforms.target_frame() == TransformFrameIdHash::from_entity_path(ent_path) {
             self.space_cameras.push(SpaceCamera3D {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
@@ -85,7 +86,8 @@ impl CamerasVisualizer {
             return;
         }
 
-        let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(ent_path.hash())
+        let Some(pinhole_tree_root_info) =
+            transforms.pinhole_tree_root_info_for_entity(ent_path.hash())
         else {
             // This implies that the transform context didn't see the pinhole transform.
             // Should be impossible!

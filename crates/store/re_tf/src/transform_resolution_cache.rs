@@ -104,7 +104,7 @@ impl TransformAspect {
     }
 }
 
-/// Points in time that have changed for a given entity,
+/// Points in time at which a given entity has changed,
 /// i.e. the cache is invalid for these times.
 #[derive(Debug, Clone)]
 struct InvalidatedTransforms {
@@ -183,7 +183,7 @@ pub struct PoseTransformArchetypeMap {
         IntMap<ArchetypeName, SmallVec1<[Affine3A; 1]>>,
 
     /// Resolved transforms for the instance poses archetype if any.
-    pub instance_from_overall_poses: Vec<Affine3A>,
+    pub instance_from_poses: Vec<Affine3A>,
 }
 
 impl PoseTransformArchetypeMap {
@@ -192,14 +192,14 @@ impl PoseTransformArchetypeMap {
     fn get(&self, archetype: ArchetypeName) -> &[Affine3A] {
         self.instance_from_archetype_poses_per_archetype
             .get(&archetype)
-            .map_or(&self.instance_from_overall_poses, |v| v.as_slice())
+            .map_or(&self.instance_from_poses, |v| v.as_slice())
     }
 
     /// Returns `true` if there are no transforms for any archetype.
     #[inline]
     fn is_empty(&self) -> bool {
         self.instance_from_archetype_poses_per_archetype.is_empty()
-            && self.instance_from_overall_poses.is_empty()
+            && self.instance_from_poses.is_empty()
     }
 }
 
@@ -989,7 +989,7 @@ fn query_and_resolve_instance_poses_at_entity(
 
     PoseTransformArchetypeMap {
         instance_from_archetype_poses_per_archetype,
-        instance_from_overall_poses,
+        instance_from_poses: instance_from_overall_poses,
     }
 }
 
