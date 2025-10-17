@@ -1,0 +1,28 @@
+[package]
+name = "re_lint"
+authors.workspace = true
+description = "Custom linter for the Rerun codebase."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = false
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "re_lint"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap = { workspace = true, features = ["derive"] }
+ignore.workspace = true
+regex.workspace = true
+regex-macro.workspace = true
+walkdir.workspace = true
