@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use nohash_hasher::IntMap;
+use vec1::smallvec_v1::SmallVec1;
 
 use re_chunk_store::LatestAtQuery;
 use re_log_types::EntityPathHash;
-use re_tf::TransformFrameIdHash;
+use re_tf::{TransformFrameId, TransformFrameIdHash};
 use re_types::{archetypes, components::ImagePlaneDistance};
-use re_view::DataResultQuery as _;
+use re_view::{DataResultQuery as _, latest_at_with_blueprint_resolved_data};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextSystem, ViewContextSystemOncePerFrameResult,
 };
@@ -77,28 +78,57 @@ impl ViewContextSystem for TransformTreeContext {
             .transform_forest
             .clone();
 
+        // Build a lookup table from entity paths to their transform frame id hashes.
+        // Currently we don't keep it around during the frame, but we may do so in the future.
+        let transform_frame_id_hash_to_entity_path_hashes =
+            collect_entity_to_transform_frame_id_mapping(ctx, query);
+
         let latest_at_query = query.latest_at_query();
 
-        self.transform_infos = self
+        let transform_infos_per_frame = self
             .transform_forest
             .transform_from_to(
                 self.target_frame,
-                query
-                    .iter_all_entities()
-                    // TODO(RR-2497): Perform EntityPath <-> TransformFrameIdHash lookups here.
-                    .map(TransformFrameIdHash::from_entity_path),
+                transform_frame_id_hash_to_entity_path_hashes
+                    .keys()
+                    .copied(),
                 &|transform_frame_id_hash| {
-                    lookup_image_plane_distance(ctx, transform_frame_id_hash, &latest_at_query)
+                    transform_frame_id_hash_to_entity_path_hashes
+                        .get(&transform_frame_id_hash)
+                        .map_or_else(
+                            || 1.0,
+                            |entity_path_hashes| {
+                                let entity_path_hash = entity_path_hashes.first();
+                                // TODO: what if there's several?
+                                lookup_image_plane_distance(
+                                    ctx,
+                                    *entity_path_hash,
+                                    &latest_at_query,
+                                )
+                            },
+                        )
                 },
+                // Collect into Vec for simplicity, also bulk operating the transform loop seems like a good idea (perf citation needed!)
             )
-            .map(|(transform_frame_id_hash, transform_info)| {
-                (
-                    // TODO(RR-2497): Perform EntityPath <-> TransformFrameIdHash lookups here?
-                    transform_frame_id_hash.as_entity_path_hash(),
-                    transform_info,
-                )
-            })
-            .collect();
+            .collect::<Vec<_>>();
+
+        self.transform_infos = {
+            re_tracing::profile_scope!("transform info lookup");
+
+            transform_infos_per_frame
+                .into_iter()
+                .filter_map(|(transform_frame_id_hash, transform_info)| {
+                    transform_frame_id_hash_to_entity_path_hashes
+                        .get(&transform_frame_id_hash)
+                        .map(|entity_path_hashes| {
+                            entity_path_hashes.iter().map(move |entity_path_hash| {
+                                (*entity_path_hash, transform_info.clone())
+                            })
+                        })
+                })
+                .flatten()
+                .collect()
+        };
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -145,15 +175,11 @@ impl TransformTreeContext {
 
 fn lookup_image_plane_distance(
     ctx: &ViewContext<'_>,
-    transform_frame_id_hash: TransformFrameIdHash,
+    entity_path_hash: EntityPathHash,
     latest_at_query: &LatestAtQuery,
 ) -> f32 {
-    let data_result_tree = &ctx.query_result.tree;
-
-    // If this IS entity path derived, we may find a data result. Otherwise we won't which is just fine.
-    let entity_path_hash = transform_frame_id_hash.as_entity_path_hash();
-
-    data_result_tree
+    ctx.query_result
+        .tree
         .lookup_result_by_path(entity_path_hash)
         .cloned()
         .map(|data_result| {
@@ -169,4 +195,55 @@ fn lookup_image_plane_distance(
         })
         .unwrap_or_default()
         .into()
+}
+
+/// Transform frame _usually_ map 1:1 to entity paths,
+/// but if requested by the user, several entity paths can share the same transform id.
+type EntityToTransformFrameIdMapping = IntMap<TransformFrameIdHash, SmallVec1<[EntityPathHash; 1]>>;
+
+/// Build a lookup table from entity paths to their transform frame id hashes.
+fn collect_entity_to_transform_frame_id_mapping(
+    ctx: &ViewContext<'_>,
+    query: &re_viewer_context::ViewQuery<'_>,
+) -> EntityToTransformFrameIdMapping {
+    // This is blueprint dependent data and may also change over recording time,
+    // making it non-trivial to cache.
+    // That said, it changes rarely, so there's definitely an opportunity here for lazy updates!
+    re_tracing::profile_function!();
+
+    let latest_at_query = ctx.current_query();
+    let transform_frame_id_descriptor = archetypes::CoordinateFrame::descriptor_frame_id();
+
+    let mut transform_frame_id_hash_to_entity_path_hashes =
+        EntityToTransformFrameIdMapping::default();
+
+    for data_result in query.iter_all_data_results() {
+        let query_shadowed_components = false;
+        let results = latest_at_with_blueprint_resolved_data(
+            ctx,
+            None,
+            &latest_at_query,
+            data_result,
+            [&transform_frame_id_descriptor],
+            query_shadowed_components,
+        );
+
+        let frame_id = results
+            .get_mono::<TransformFrameId>(&transform_frame_id_descriptor)
+            .map_or_else(
+                || TransformFrameIdHash::from_entity_path(&data_result.entity_path),
+                |frame_id| TransformFrameIdHash::new(&frame_id),
+            );
+
+        match transform_frame_id_hash_to_entity_path_hashes.entry(frame_id) {
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                entry.insert(SmallVec1::new(data_result.entity_path.hash()));
+            }
+            std::collections::hash_map::Entry::Occupied(entry) => {
+                entry.into_mut().push(data_result.entity_path.hash());
+            }
+        }
+    }
+
+    transform_frame_id_hash_to_entity_path_hashes
 }
