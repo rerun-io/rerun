@@ -173,9 +173,17 @@ impl LayerType {
 
             Self::Nasty { entities } => create_nasty_recording(tuid_prefix, partition_id, entities),
 
-            Self::Properties { properties } => {
-                create_recording_with_properties(tuid_prefix, partition_id, properties)
-            }
+            Self::Properties { properties } => create_recording_with_properties(
+                tuid_prefix,
+                partition_id,
+                // TODO(ab): avoid this annoying conversion (this requires a change to
+                // `create_recording_with_properties` which needs to be propagated to
+                // `dataplatform`.
+                properties
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.iter().map(|v| v.as_ref()).collect()))
+                    .collect(),
+            ),
         }
     }
 }
