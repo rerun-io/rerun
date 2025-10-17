@@ -139,6 +139,7 @@
 //!
 
 mod component_type_info;
+mod transform_aspect;
 mod transform_forest;
 mod transform_resolution_cache;
 
