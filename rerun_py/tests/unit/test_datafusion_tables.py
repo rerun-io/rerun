@@ -30,8 +30,9 @@ TABLE_FILEPATH = (
 )
 
 @pytest.fixture(scope="module")
-def table_filepath():
-    """Copies test data to a temp directory.
+def table_filepath() -> Generator[pathlib.Path, None, None]:
+    """
+    Copies test data to a temp directory.
 
     This is necessary because we have some unit tests that will modify the
     lance dataset. We do not wish this to pollute our repository.
