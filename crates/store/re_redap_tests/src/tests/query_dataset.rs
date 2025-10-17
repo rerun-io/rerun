@@ -138,23 +138,6 @@ async fn query_dataset_snapshot(
 
     // these are the only columns guaranteed to be returned by `query_dataset`
     let required_field = QueryDatasetResponse::fields();
-    // Arrow's `Fields::contains` relies on ordering so we can't use it here. So we go the manual
-    // way.
-    // let sorted_filtered_fields = merged_chunk_info
-    //     .schema()
-    //     .fields()
-    //     .into_iter()
-    //     .filter(|field| required_field.contains(field))
-    //     .map(Arc::clone)
-    //     .sorted_by_key(|field| field.name().clone())
-    //     .collect_vec();
-    //
-    // let sorted_required_fields = required_field
-    //     .clone()
-    //     .into_iter()
-    //     .sorted_by_key(|field| field.name().clone())
-    //     .map(Arc::new)
-    //     .collect_vec();
 
     assert!(
         merged_chunk_info
