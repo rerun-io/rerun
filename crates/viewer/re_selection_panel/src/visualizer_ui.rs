@@ -220,9 +220,10 @@ fn visualizer_components(
         let raw_default = non_empty_component_batch_raw(result_default, component_descr);
 
         // If we don't have a component type, we don't have a way to retrieve a fallback. Therefore, we return a `NullArray` as a dummy.
-        let raw_fallback = visualizer
-            .fallback_ctx()
-            .fallback_for(&query_ctx, component_descr);
+        let raw_fallback = query_ctx
+            .viewer_ctx()
+            .component_fallback_registry
+            .fallback_for(visualizer.fallback_ctx(), component_descr, &query_ctx);
 
         // Determine where the final value comes from.
         // Putting this into an enum makes it easier to reason about the next steps.

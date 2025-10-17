@@ -356,9 +356,10 @@ fn add_new_default(
         return;
     };
 
-    let initial_data = visualizer
-        .fallback_ctx()
-        .fallback_for(query_context, &component_descr);
+    let initial_data = query_context
+        .viewer_ctx()
+        .component_fallback_registry
+        .fallback_for(visualizer.fallback_ctx(), &component_descr, query_context);
 
     match Chunk::builder(defaults_path.clone())
         .with_row(

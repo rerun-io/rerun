@@ -9,25 +9,7 @@ use re_types::{Component, ComponentDescriptor, ComponentType, SerializationError
 
 use crate::{QueryContext, ViewerContext};
 
-mod default_component_fallbacks;
-
-pub fn create_component_fallback_registry() -> FallbackProviderRegistry {
-    let mut registry = FallbackProviderRegistry::default();
-
-    default_component_fallbacks::register_component_type_defaults(&mut registry);
-
-    default_component_fallbacks::register_component_identifier_defaults(&mut registry);
-
-    registry
-}
-
-pub trait FallbackContext: 'static + Send + Sync + std::any::Any {
-    fn fallback_for(
-        &self,
-        query_context: &QueryContext<'_>,
-        component_descr: &ComponentDescriptor,
-    ) -> ArrayRef;
-}
+pub trait FallbackContext: 'static + Send + Sync + std::any::Any {}
 
 /// Tries to get a fallback for the type `C`.
 pub fn typed_fallback_for<C: Component>(
@@ -41,7 +23,10 @@ pub fn typed_fallback_for<C: Component>(
         "Passed component descriptor doesn't match generic arg `C`"
     );
 
-    let array = fallback_ctx.fallback_for(query_context, component_descr);
+    let array = query_context
+        .viewer_ctx()
+        .component_fallback_registry
+        .fallback_for(fallback_ctx, component_descr, query_context);
 
     let Some(v) = C::from_arrow(&array)
         .ok()
@@ -56,18 +41,7 @@ pub fn typed_fallback_for<C: Component>(
     v
 }
 
-impl<T: 'static + Send + Sync + std::any::Any> FallbackContext for T {
-    fn fallback_for(
-        &self,
-        query_context: &QueryContext<'_>,
-        component_descr: &ComponentDescriptor,
-    ) -> ArrayRef {
-        query_context
-            .viewer_ctx()
-            .component_fallback_registry
-            .fallback_for(self, component_descr, query_context)
-    }
-}
+impl<T: 'static + Send + Sync + std::any::Any> FallbackContext for T {}
 
 /// Result for a fallback request to a provider.
 pub enum ComponentFallbackProviderResult {

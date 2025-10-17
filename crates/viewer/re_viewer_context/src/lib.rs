@@ -65,7 +65,7 @@ pub use self::{
     },
     component_fallbacks::{
         ComponentFallbackError, ComponentFallbackProviderResult, FallbackContext,
-        FallbackProviderRegistry, create_component_fallback_registry, typed_fallback_for,
+        FallbackProviderRegistry, typed_fallback_for,
     },
     component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, EditTarget, VariantName},
     contents::{Contents, ContentsName, blueprint_id_to_tile_id},

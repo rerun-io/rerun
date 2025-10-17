@@ -59,6 +59,7 @@ re_capabilities.workspace = true
 re_redap_browser.workspace = true
 re_chunk.workspace = true
 re_chunk_store.workspace = true
+re_component_fallbacks.workspace = true
 re_component_ui.workspace = true
 re_dataframe_ui.workspace = true
 re_data_loader.workspace = true

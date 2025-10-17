@@ -1,7 +1,6 @@
 use egui::{NumExt as _, emath::RectTransform};
 use glam::{Affine3A, Quat, Vec3};
 use re_log::ResultExt as _;
-use web_time::Instant;
 
 use macaw::BoundingBox;
 use re_log_types::EntityPath;

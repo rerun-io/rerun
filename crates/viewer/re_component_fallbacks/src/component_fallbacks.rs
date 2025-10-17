@@ -1,84 +1,11 @@
-use re_types::{Component as _, archetypes, blueprint, components, datatypes};
+use re_types::{Component as _, archetypes, components, datatypes};
+use re_viewer_context::{
+    ColormapWithRange, FallbackProviderRegistry, ImageDecodeCache, ImageInfo, ImageStatsCache,
+    QueryContext, TensorStats, TensorStatsCache, ViewerContext, auto_color_for_entity_path,
+};
 
-use crate::{ColormapWithRange, auto_color_for_entity_path};
-
-use super::FallbackProviderRegistry;
-
-fn resolution_of_image_at(
-    ctx: &crate::ViewerContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
-    entity_path: &re_log_types::EntityPath,
-) -> Option<components::Resolution> {
-    let entity_db = ctx.recording();
-    let storage_engine = entity_db.storage_engine();
-
-    // Check what kind of non-encoded images were logged here, if any.
-    // TODO(andreas): can we do this more efficiently?
-    // TODO(andreas): doesn't take blueprint into account!
-    let all_components = storage_engine
-        .store()
-        .all_components_for_entity(entity_path)?;
-    let image_format_descr = all_components
-        .get(&archetypes::Image::descriptor_format())
-        .or_else(|| all_components.get(&archetypes::DepthImage::descriptor_format()))
-        .or_else(|| all_components.get(&archetypes::SegmentationImage::descriptor_format()));
-
-    if let Some((_, image_format)) = image_format_descr.and_then(|desc| {
-        entity_db.latest_at_component::<components::ImageFormat>(entity_path, query, desc)
-    }) {
-        // Normal `Image` archetype
-        return Some(components::Resolution::from([
-            image_format.width as f32,
-            image_format.height as f32,
-        ]));
-    }
-
-    // Check for an encoded image.
-    if let Some(((_time, row_id), blob)) = entity_db
-        .latest_at_component::<re_types::components::Blob>(
-            entity_path,
-            query,
-            &archetypes::EncodedImage::descriptor_blob(),
-        )
-    {
-        let media_type = entity_db
-            .latest_at_component::<components::MediaType>(
-                entity_path,
-                query,
-                &archetypes::EncodedImage::descriptor_media_type(),
-            )
-            .map(|(_, c)| c);
-
-        let image = ctx
-            .store_context
-            .caches
-            .entry(|c: &mut crate::ImageDecodeCache| {
-                c.entry(
-                    row_id,
-                    &archetypes::EncodedImage::descriptor_blob(),
-                    &blob,
-                    media_type.as_ref(),
-                )
-            });
-
-        if let Ok(image) = image {
-            return Some(components::Resolution::from([
-                image.format.width as f32,
-                image.format.height as f32,
-            ]));
-        }
-    }
-
-    None
-}
-
-pub fn register_component_type_defaults(registry: &mut FallbackProviderRegistry) {
-    registry.register_default_type_fallback_provider::<blueprint::components::Enabled>();
-    registry.register_default_type_fallback_provider::<blueprint::components::Corner2D>();
-    registry.register_default_type_fallback_provider::<blueprint::components::BackgroundKind>();
-
+pub fn type_fallbacks(registry: &mut FallbackProviderRegistry) {
     registry.register_default_type_fallback_provider::<components::Position2D>();
-
     registry.register_default_type_fallback_provider::<components::Opacity>();
 
     registry.register_type_fallback_provider::<components::Color>(|ctx| {
@@ -97,84 +24,9 @@ pub fn register_component_type_defaults(registry: &mut FallbackProviderRegistry)
             // Since it's not a required component, logging a warning about this might be too noisy.
             .unwrap_or(components::Resolution::from([0.0, 0.0]))
     });
-
-    registry
-        .register_type_fallback_provider::<blueprint::components::ForceDistance>(|_| (60.).into());
-    registry
-        .register_type_fallback_provider::<blueprint::components::ForceStrength>(|_| (1.).into());
-    registry.register_default_type_fallback_provider::<blueprint::components::ForceIterations>();
 }
 
-pub fn register_component_identifier_defaults(registry: &mut FallbackProviderRegistry) {
-    register_visualizer_archetypes(registry);
-    register_blueprint_archetypes(registry);
-}
-
-/// Maximum number of labels after which we stop displaying labels for that entity all together,
-/// unless overridden by a [`ShowLabels`] component.
-const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
-
-/// Given a visualizer’s query context, compute its [`ShowLabels`] fallback value
-/// (used when neither the logged data nor the blueprint provides a value).
-///
-/// Assumes that the visualizer reads the [`Text`] component for components.
-/// The `instance_count_component` parameter must be the component descriptor that defines the number of instances
-/// in the batch.
-///
-// TODO(kpreid): This component type (or the length directly) should be gotten from some kind of
-// general mechanism of "how big is this batch?" rather than requiring the caller to specify it,
-// possibly incorrectly.
-///
-/// This function is normally used to implement the [`ComponentFallbackProvider`]
-/// that will be used in a [`LabeledBatch`].
-fn show_labels_fallback(
-    ctx: &crate::QueryContext<'_>,
-    instance_count_component: &re_types::ComponentDescriptor,
-    text_component: &re_types::ComponentDescriptor,
-) -> components::ShowLabels {
-    debug_assert!(text_component.component_type == Some(components::Text::name()));
-
-    let results = ctx.recording().latest_at(
-        ctx.query,
-        ctx.target_entity_path,
-        [instance_count_component, text_component],
-    );
-    let num_instances = results
-        .component_batch_raw(instance_count_component)
-        .map_or(0, |array| array.len());
-    let num_labels = results
-        .component_batch_raw(text_component)
-        .map_or(0, |array| array.len());
-
-    components::ShowLabels::from(num_labels == 1 || num_instances < MAX_NUM_LABELS_PER_ENTITY)
-}
-
-/// Get a valid, finite range for the gpu to use.
-fn tensor_data_range_heuristic(
-    tensor_stats: &crate::TensorStats,
-    data_type: re_types::tensor_data::TensorDataType,
-) -> components::ValueRange {
-    let (min, max) = tensor_stats.finite_range;
-
-    // Apply heuristic for ranges that are typically expected depending on the data type and the finite (!) range.
-    // (we ignore NaN/Inf values heres, since they are usually there by accident!)
-    #[expect(clippy::tuple_array_conversions)]
-    components::ValueRange::from(if data_type.is_float() && 0.0 <= min && max <= 1.0 {
-        // Float values that are all between 0 and 1, assume that this is the range.
-        [0.0, 1.0]
-    } else if 0.0 <= min && max <= 255.0 {
-        // If all values are between 0 and 255, assume this is the range.
-        // (This is very common, independent of the data type)
-        [0.0, 255.0]
-    } else if min == max {
-        // uniform range. This can explode the colormapping, so let's map all colors to the middle:
-        [min - 1.0, max + 1.0]
-    } else {
-        // Use range as is if nothing matches.
-        [min, max]
-    })
-}
-fn register_visualizer_archetypes(registry: &mut FallbackProviderRegistry) {
+pub fn archetype_fallbacks(registry: &mut FallbackProviderRegistry) {
     // BarChart
     registry.register_fallback_provider(&archetypes::BarChart::descriptor_abscissa(), |ctx| {
         // This fallback is for abscissa - generate a sequence from 0 to n-1
@@ -387,7 +239,7 @@ fn register_visualizer_archetypes(registry: &mut FallbackProviderRegistry) {
                     &archetypes::DepthImage::descriptor_format(),
                 )
             {
-                let image = crate::ImageInfo::from_stored_blob(
+                let image = ImageInfo::from_stored_blob(
                     buffer_row_id,
                     &archetypes::DepthImage::descriptor_buffer(),
                     image_buffer.0,
@@ -395,9 +247,8 @@ fn register_visualizer_archetypes(registry: &mut FallbackProviderRegistry) {
                     re_types::image::ImageKind::Depth,
                 );
                 let cache = ctx.store_ctx().caches;
-                let image_stats = cache.entry(|c: &mut crate::ImageStatsCache| c.entry(&image));
-                let default_range =
-                    crate::ColormapWithRange::default_range_for_depth_images(&image_stats);
+                let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
+                let default_range = ColormapWithRange::default_range_for_depth_images(&image_stats);
                 return [default_range[0] as f64, default_range[1] as f64].into();
             }
         }
@@ -442,12 +293,9 @@ fn register_visualizer_archetypes(registry: &mut FallbackProviderRegistry) {
                 &archetypes::Tensor::descriptor_data(),
             )
         {
-            let tensor_stats = ctx
-                .store_ctx()
-                .caches
-                .entry(|c: &mut crate::TensorStatsCache| {
-                    c.entry(re_log_types::hash::Hash64::hash(row_id), &tensor)
-                });
+            let tensor_stats = ctx.store_ctx().caches.entry(|c: &mut TensorStatsCache| {
+                c.entry(re_log_types::hash::Hash64::hash(row_id), &tensor)
+            });
             tensor_data_range_heuristic(&tensor_stats, tensor.dtype())
         } else {
             components::ValueRange::new(0.0, 1.0)
@@ -475,90 +323,132 @@ fn register_visualizer_archetypes(registry: &mut FallbackProviderRegistry) {
     );
 }
 
-fn register_blueprint_archetypes(registry: &mut FallbackProviderRegistry) {
-    // LineGrid3D
-    registry.register_fallback_provider(
-        &blueprint::archetypes::LineGrid3D::descriptor_color(),
-        |_| components::Color::from_unmultiplied_rgba(128, 128, 128, 60),
-    );
-    registry.register_fallback_provider(
-        &blueprint::archetypes::LineGrid3D::descriptor_stroke_width(),
-        |_| components::StrokeWidth::from(1.0),
-    );
-    registry.register_fallback_provider(
-        &blueprint::archetypes::LineGrid3D::descriptor_plane(),
-        |_| components::Plane3D::XY,
-    );
+fn resolution_of_image_at(
+    ctx: &ViewerContext<'_>,
+    query: &re_chunk_store::LatestAtQuery,
+    entity_path: &re_log_types::EntityPath,
+) -> Option<components::Resolution> {
+    let entity_db = ctx.recording();
+    let storage_engine = entity_db.storage_engine();
 
-    // Background
-    registry.register_fallback_provider(
-        &blueprint::archetypes::Background::descriptor_color(),
-        |ctx| components::Color::from(ctx.viewer_ctx().tokens().viewport_background),
-    );
-    registry.register_fallback_provider(
-        &blueprint::archetypes::Background::descriptor_kind(),
-        |ctx| match ctx.egui_ctx().theme() {
-            egui::Theme::Dark => blueprint::components::BackgroundKind::GradientDark,
-            egui::Theme::Light => blueprint::components::BackgroundKind::GradientBright,
-        },
-    );
+    // Check what kind of non-encoded images were logged here, if any.
+    // TODO(andreas): can we do this more efficiently?
+    // TODO(andreas): doesn't take blueprint into account!
+    let all_components = storage_engine
+        .store()
+        .all_components_for_entity(entity_path)?;
+    let image_format_descr = all_components
+        .get(&archetypes::Image::descriptor_format())
+        .or_else(|| all_components.get(&archetypes::DepthImage::descriptor_format()))
+        .or_else(|| all_components.get(&archetypes::SegmentationImage::descriptor_format()));
 
-    // PlotBackground
-    registry.register_fallback_provider(
-        &blueprint::archetypes::PlotBackground::descriptor_color(),
-        |ctx| components::Color::from(ctx.viewer_ctx().tokens().viewport_background),
-    );
+    if let Some((_, image_format)) = image_format_descr.and_then(|desc| {
+        entity_db.latest_at_component::<components::ImageFormat>(entity_path, query, desc)
+    }) {
+        // Normal `Image` archetype
+        return Some(components::Resolution::from([
+            image_format.width as f32,
+            image_format.height as f32,
+        ]));
+    }
 
-    registry.register_fallback_provider(
-        &blueprint::archetypes::PlotBackground::descriptor_show_grid(),
-        |_| blueprint::components::Enabled::from(true),
-    );
+    // Check for an encoded image.
+    if let Some(((_time, row_id), blob)) = entity_db
+        .latest_at_component::<re_types::components::Blob>(
+            entity_path,
+            query,
+            &archetypes::EncodedImage::descriptor_blob(),
+        )
+    {
+        let media_type = entity_db
+            .latest_at_component::<components::MediaType>(
+                entity_path,
+                query,
+                &archetypes::EncodedImage::descriptor_media_type(),
+            )
+            .map(|(_, c)| c);
 
-    // GraphBackground
-    registry.register_fallback_provider(
-        &blueprint::archetypes::GraphBackground::descriptor_color(),
-        |ctx| components::Color::from(ctx.viewer_ctx().tokens().viewport_background),
-    );
+        let image = ctx.store_context.caches.entry(|c: &mut ImageDecodeCache| {
+            c.entry(
+                row_id,
+                &archetypes::EncodedImage::descriptor_blob(),
+                &blob,
+                media_type.as_ref(),
+            )
+        });
 
-    // ForceManyBody
-    registry.register_fallback_provider(
-        &blueprint::archetypes::ForceManyBody::descriptor_strength(),
-        |_| blueprint::components::ForceStrength::from(-60.),
-    );
-    registry.register_fallback_provider(
-        &blueprint::archetypes::ForceManyBody::descriptor_enabled(),
-        |_| blueprint::components::Enabled::from(true),
-    );
+        if let Ok(image) = image {
+            return Some(components::Resolution::from([
+                image.format.width as f32,
+                image.format.height as f32,
+            ]));
+        }
+    }
 
-    // ForcePosition
-    registry.register_fallback_provider(
-        &blueprint::archetypes::ForcePosition::descriptor_strength(),
-        |_| blueprint::components::ForceStrength::from(0.01),
-    );
-    registry.register_fallback_provider(
-        &blueprint::archetypes::ForcePosition::descriptor_enabled(),
-        |_| blueprint::components::Enabled::from(true),
-    );
+    None
+}
 
-    // ForceLink
-    registry.register_fallback_provider(
-        &blueprint::archetypes::ForceLink::descriptor_enabled(),
-        |_| blueprint::components::Enabled::from(true),
-    );
-    registry.register_fallback_provider(
-        &blueprint::archetypes::ForceLink::descriptor_iterations(),
-        |_| blueprint::components::ForceIterations::from(3),
-    );
+/// Maximum number of labels after which we stop displaying labels for that entity all together,
+/// unless overridden by a [`ShowLabels`] component.
+const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
 
-    // ForceCollisionRadius
-    registry.register_fallback_provider(
-        &blueprint::archetypes::ForceCollisionRadius::descriptor_iterations(),
-        |_| blueprint::components::ForceIterations::from(1),
-    );
+/// Given a visualizer’s query context, compute its [`ShowLabels`] fallback value
+/// (used when neither the logged data nor the blueprint provides a value).
+///
+/// Assumes that the visualizer reads the [`Text`] component for components.
+/// The `instance_count_component` parameter must be the component descriptor that defines the number of instances
+/// in the batch.
+///
+// TODO(kpreid): This component type (or the length directly) should be gotten from some kind of
+// general mechanism of "how big is this batch?" rather than requiring the caller to specify it,
+// possibly incorrectly.
+///
+/// This function is normally used to implement the [`ComponentFallbackProvider`]
+/// that will be used in a [`LabeledBatch`].
+fn show_labels_fallback(
+    ctx: &QueryContext<'_>,
+    instance_count_component: &re_types::ComponentDescriptor,
+    text_component: &re_types::ComponentDescriptor,
+) -> components::ShowLabels {
+    debug_assert!(text_component.component_type == Some(components::Text::name()));
 
-    // ForceCollisionRadius
-    registry.register_fallback_provider(
-        &blueprint::archetypes::TensorScalarMapping::descriptor_colormap(),
-        |_| components::Colormap::Viridis,
+    let results = ctx.recording().latest_at(
+        ctx.query,
+        ctx.target_entity_path,
+        [instance_count_component, text_component],
     );
+    let num_instances = results
+        .component_batch_raw(instance_count_component)
+        .map_or(0, |array| array.len());
+    let num_labels = results
+        .component_batch_raw(text_component)
+        .map_or(0, |array| array.len());
+
+    components::ShowLabels::from(num_labels == 1 || num_instances < MAX_NUM_LABELS_PER_ENTITY)
+}
+
+/// Get a valid, finite range for the gpu to use.
+fn tensor_data_range_heuristic(
+    tensor_stats: &TensorStats,
+    data_type: re_types::tensor_data::TensorDataType,
+) -> components::ValueRange {
+    let (min, max) = tensor_stats.finite_range;
+
+    // Apply heuristic for ranges that are typically expected depending on the data type and the finite (!) range.
+    // (we ignore NaN/Inf values heres, since they are usually there by accident!)
+    #[expect(clippy::tuple_array_conversions)]
+    components::ValueRange::from(if data_type.is_float() && 0.0 <= min && max <= 1.0 {
+        // Float values that are all between 0 and 1, assume that this is the range.
+        [0.0, 1.0]
+    } else if 0.0 <= min && max <= 255.0 {
+        // If all values are between 0 and 255, assume this is the range.
+        // (This is very common, independent of the data type)
+        [0.0, 255.0]
+    } else if min == max {
+        // uniform range. This can explode the colormapping, so let's map all colors to the middle:
+        [min - 1.0, max + 1.0]
+    } else {
+        // Use range as is if nothing matches.
+        [min, max]
+    })
 }

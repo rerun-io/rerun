@@ -25,7 +25,7 @@ use re_viewer_context::{
     ComponentUiRegistry, DataQueryResult, DisplayMode, FallbackProviderRegistry, GlobalContext,
     Item, ItemCollection, NeedsRepaint, StoreHub, SystemCommand, SystemCommandSender as _,
     TimeControl, TimeControlCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates,
-    ViewerContext, blueprint_timeline, command_channel, create_component_fallback_registry,
+    ViewerContext, blueprint_timeline, command_channel,
 };
 
 pub mod external {
@@ -206,7 +206,8 @@ impl TestContext {
 
         let component_ui_registry = ComponentUiRegistry::new();
 
-        let component_fallback_registry = create_component_fallback_registry();
+        let component_fallback_registry =
+            re_component_fallbacks::create_component_fallback_registry();
 
         let reflection =
             re_types::reflection::generate_reflection().expect("Failed to generate reflection");
