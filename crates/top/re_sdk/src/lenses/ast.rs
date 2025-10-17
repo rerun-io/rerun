@@ -123,10 +123,7 @@ impl Lens {
 impl Lens {
     /// Applies this lens and crates one or more chunks.
     fn apply(&self, chunk: &Chunk) -> Vec<Chunk> {
-        let found = chunk
-            .components()
-            .iter()
-            .find(|(descr, _array)| descr.component == self.input.component);
+        let found = chunk.components().get(self.input.component);
 
         // This means we drop chunks that belong to the same entity but don't have the component.
         let Some((_component_descr, list_array)) = found else {
@@ -144,7 +141,7 @@ impl Lens {
                 .entry((entity_path.clone(), output.is_static))
                 .or_insert_with(ChunkComponents::default);
 
-            if components.contains_component(&output.component_descr) {
+            if components.contains_key(&output.component_descr.component) {
                 re_log::warn_once!("Replacing duplicated component {}", output.component_descr);
             }
 
@@ -166,7 +163,10 @@ impl Lens {
                 }
             }
 
-            components.insert(output.component_descr.clone(), list_array_result);
+            components.insert(
+                output.component_descr.component,
+                (output.component_descr.clone(), list_array_result),
+            );
         }
 
         builders

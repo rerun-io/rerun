@@ -1343,11 +1343,15 @@ impl RecordingStream {
 
         let entity_path = entity_path.into();
 
-        let comp_batches: Vec<_> = comp_batches
+        let components: IntMap<_, _> = comp_batches
             .into_iter()
-            .map(|comp_batch| (comp_batch.descriptor, comp_batch.array))
+            .map(|comp_batch| {
+                (
+                    comp_batch.descriptor.component,
+                    (comp_batch.descriptor, comp_batch.array),
+                )
+            })
             .collect();
-        let components: IntMap<_, _> = comp_batches.into_iter().collect();
 
         // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
         // internal clock.
@@ -3031,20 +3035,29 @@ mod tests {
                 timepoint: timepoint(1),
                 components: [
                     (
-                        MyPoints::descriptor_points(),
-                        <MyPoint as Loggable>::to_arrow([
-                            MyPoint::new(10.0, 10.0),
-                            MyPoint::new(20.0, 20.0),
-                        ])
-                        .unwrap(),
+                        MyPoints::descriptor_points().component,
+                        (
+                            MyPoints::descriptor_points(),
+                            <MyPoint as Loggable>::to_arrow([
+                                MyPoint::new(10.0, 10.0),
+                                MyPoint::new(20.0, 20.0),
+                            ])
+                            .unwrap(),
+                        ),
                     ), //
                     (
-                        MyPoints::descriptor_colors(),
-                        <MyColor as Loggable>::to_arrow([MyColor(0x8080_80FF)]).unwrap(),
+                        MyPoints::descriptor_colors().component,
+                        (
+                            MyPoints::descriptor_colors(),
+                            <MyColor as Loggable>::to_arrow([MyColor(0x8080_80FF)]).unwrap(),
+                        ),
                     ), //
                     (
-                        MyPoints::descriptor_labels(),
-                        <MyLabel as Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
+                        MyPoints::descriptor_labels().component,
+                        (
+                            MyPoints::descriptor_labels(),
+                            <MyLabel as Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
+                        ),
                     ), //
                 ]
                 .into_iter()
@@ -3058,16 +3071,25 @@ mod tests {
                 timepoint: timepoint(1),
                 components: [
                     (
-                        MyPoints::descriptor_points(),
-                        <MyPoint as Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
+                        MyPoints::descriptor_points().component,
+                        (
+                            MyPoints::descriptor_points(),
+                            <MyPoint as Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
+                        ),
                     ), //
                     (
-                        MyPoints::descriptor_colors(),
-                        <MyColor as Loggable>::to_arrow([] as [MyColor; 0]).unwrap(),
+                        MyPoints::descriptor_colors().component,
+                        (
+                            MyPoints::descriptor_colors(),
+                            <MyColor as Loggable>::to_arrow([] as [MyColor; 0]).unwrap(),
+                        ),
                     ), //
                     (
-                        MyPoints::descriptor_labels(),
-                        <MyLabel as Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
+                        MyPoints::descriptor_labels().component,
+                        (
+                            MyPoints::descriptor_labels(),
+                            <MyLabel as Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
+                        ),
                     ), //
                 ]
                 .into_iter()
@@ -3081,16 +3103,25 @@ mod tests {
                 timepoint: timepoint(1),
                 components: [
                     (
-                        MyPoints::descriptor_points(),
-                        <MyPoint as Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
+                        MyPoints::descriptor_points().component,
+                        (
+                            MyPoints::descriptor_points(),
+                            <MyPoint as Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
+                        ),
                     ), //
                     (
-                        MyPoints::descriptor_colors(),
-                        <MyColor as Loggable>::to_arrow([MyColor(0xFFFF_FFFF)]).unwrap(),
+                        MyPoints::descriptor_colors().component,
+                        (
+                            MyPoints::descriptor_colors(),
+                            <MyColor as Loggable>::to_arrow([MyColor(0xFFFF_FFFF)]).unwrap(),
+                        ),
                     ), //
                     (
-                        MyPoints::descriptor_labels(),
-                        <MyLabel as Loggable>::to_arrow([MyLabel("hey".into())]).unwrap(),
+                        MyPoints::descriptor_labels().component,
+                        (
+                            MyPoints::descriptor_labels(),
+                            <MyLabel as Loggable>::to_arrow([MyLabel("hey".into())]).unwrap(),
+                        ),
                     ), //
                 ]
                 .into_iter()
