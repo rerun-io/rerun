@@ -139,16 +139,21 @@
 //!
 
 mod component_type_info;
+mod transform_aspect;
 mod transform_forest;
-mod transform_frame_id_hash;
+mod transform_queries;
 mod transform_resolution_cache;
 
 pub use transform_forest::{PinholeTreeRoot, TransformForest, TransformFromToError, TransformInfo};
-pub use transform_frame_id_hash::TransformFrameIdHash;
+pub use transform_queries::{query_view_coordinates, query_view_coordinates_at_closest_ancestor};
 pub use transform_resolution_cache::{
     CachedTransformsForTimeline, PoseTransformArchetypeMap, ResolvedPinholeProjection,
-    TransformResolutionCache, query_view_coordinates, query_view_coordinates_at_closest_ancestor,
+    TransformResolutionCache,
 };
+
+// Re-export the transform frame id types from re_types.
+pub use re_types::TransformFrameIdHash;
+pub use re_types::components::TransformFrameId;
 
 /// Returns the view coordinates used for 2D (image) views.
 ///
