@@ -158,7 +158,7 @@ impl RerunCloudHandler {
                     )));
                 }
 
-                // Recursively walk the directory and grab all files
+                // Recursively walk the directory and grab all '.rrd' files
                 let mut dirs_to_visit = vec![path];
                 let mut files = Vec::new();
 
@@ -179,7 +179,9 @@ impl RerunCloudHandler {
 
                         if entry_path.is_dir() {
                             dirs_to_visit.push(entry_path);
-                        } else {
+                        } else if let Some(extension) = entry_path.extension()
+                            && extension == "rrd"
+                        {
                             files.push(entry_path);
                         }
                     }
