@@ -12,8 +12,8 @@ namespace rerun.archetypes;
 ///
 /// TODO: Add preliminary example
 table CoordinateFrame (
-  "attr.docs.category": "Spatial 3D",
-  "attr.docs.view_types": "Spatial3DView",
+  "attr.docs.category": "Spatial 3D", // TODO(RR-2699): time to introduce a doc category for transforms?
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView",
   "attr.rerun.state": "unstable",
   "attr.rust.derive": "PartialEq"
 ) {
