@@ -61,6 +61,13 @@ This is a diverging colormap, often used to visualize data with a meaningful cen
 where deviations from that center are important to highlight.
 It interpolates from red to orange to yellow to green to blue to violet.
 
+#### `Hsv` = 9
+The HSV colormap from Matplotlib.
+
+This is a cyclic colormap that follows the hue component of the HSV color space.
+It is useful for visualizing periodic or cyclic data.
+It interpolates from red through yellow, green, cyan, blue, magenta, and back to red.
+
 
 ## Arrow datatype
 ```

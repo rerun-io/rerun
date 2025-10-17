@@ -20,10 +20,11 @@ pub enum Colormap {
     Viridis = 6,
     CyanToYellow = 7,
     Spectral = 8,
+    Hsv = 9,
 }
 
 impl Colormap {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 9] = [
         Self::Grayscale,
         Self::Inferno,
         Self::Magma,
@@ -32,6 +33,7 @@ impl Colormap {
         Self::Viridis,
         Self::CyanToYellow,
         Self::Spectral,
+        Self::Hsv,
     ];
 }
 
@@ -46,6 +48,7 @@ impl std::fmt::Display for Colormap {
             Self::Viridis => write!(f, "Viridis"),
             Self::CyanToYellow => write!(f, "CyanToYellow"),
             Self::Spectral => write!(f, "Spectral"),
+            Self::Hsv => write!(f, "Hsv"),
         }
     }
 }
@@ -60,6 +63,7 @@ pub fn colormap_srgb(which: Colormap, t: f32) -> [u8; 4] {
         Colormap::Inferno => colormap_inferno_srgb(t),
         Colormap::CyanToYellow => colormap_cyan_to_yellow_srgb(t),
         Colormap::Spectral => colormap_spectral_srgb(t),
+        Colormap::Hsv => colormap_hsv_srgb(t),
     }
 }
 
@@ -236,4 +240,30 @@ pub fn colormap_spectral_srgb(t: f32) -> [u8; 4] {
 
     let c = c * 255.0;
     [c.x as u8, c.y as u8, c.z as u8, 255]
+}
+
+/// Returns sRGB color from HSV colormap, assuming `t` is normalized.
+///
+/// This colormap cycles through hues from red to yellow to green to cyan to blue to magenta and back to red.
+/// It uses full saturation and value (S=1, V=1), making it suitable for visualizing periodic or cyclic data.
+/// This matches matplotlib's HSV colormap.
+pub fn colormap_hsv_srgb(t: f32) -> [u8; 4] {
+    debug_assert!((0.0..=1.0).contains(&t));
+
+    // Convert t to hue in range [0, 6)
+    let h = t * 6.0;
+    let i = h.floor();
+    let f = h - i;
+
+    // Since S=1 and V=1, the conversion is simplified
+    let (r, g, b) = match i as i32 % 6 {
+        0 => (1.0, f, 0.0),       // Red to Yellow
+        1 => (1.0 - f, 1.0, 0.0), // Yellow to Green
+        2 => (0.0, 1.0, f),       // Green to Cyan
+        3 => (0.0, 1.0 - f, 1.0), // Cyan to Blue
+        4 => (f, 0.0, 1.0),       // Blue to Magenta
+        _ => (1.0, 0.0, 1.0 - f), // Magenta to Red
+    };
+
+    [(r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8, 255]
 }
