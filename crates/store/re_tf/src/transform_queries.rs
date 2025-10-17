@@ -120,31 +120,36 @@ fn query_and_resolve_instance_from_pose_for_archetype_name(
         Some(components::PoseTranslation3D::name())
     );
     debug_assert_eq!(descriptor_translations.archetype, Some(archetype_name));
-    let descriptor_rotation_axis_angles =
-        InstancePoses3D::descriptor_rotation_axis_angles().with_builtin_archetype(archetype_name);
-    let descriptor_quaternions =
-        InstancePoses3D::descriptor_quaternions().with_builtin_archetype(archetype_name);
-    let descriptor_scales =
-        InstancePoses3D::descriptor_scales().with_builtin_archetype(archetype_name);
-    let descriptor_mat3x3 =
-        InstancePoses3D::descriptor_mat3x3().with_builtin_archetype(archetype_name);
+    let identifier_translations = descriptor_translations.component;
+    let identifier_rotation_axis_angles = InstancePoses3D::descriptor_rotation_axis_angles()
+        .with_builtin_archetype(archetype_name)
+        .component;
+    let identifier_quaternions = InstancePoses3D::descriptor_quaternions()
+        .with_builtin_archetype(archetype_name)
+        .component;
+    let identifier_scales = InstancePoses3D::descriptor_scales()
+        .with_builtin_archetype(archetype_name)
+        .component;
+    let identifier_mat3x3 = InstancePoses3D::descriptor_mat3x3()
+        .with_builtin_archetype(archetype_name)
+        .component;
 
     let result = entity_db.latest_at(
         query,
         entity_path,
         [
-            descriptor_translations,
-            &descriptor_rotation_axis_angles,
-            &descriptor_quaternions,
-            &descriptor_scales,
-            &descriptor_mat3x3,
+            identifier_translations,
+            identifier_rotation_axis_angles,
+            identifier_quaternions,
+            identifier_scales,
+            identifier_mat3x3,
         ],
     );
 
     let max_num_instances = result
         .components
         .iter()
-        .map(|(component_descr, row)| row.num_instances(component_descr))
+        .map(|(component, row)| row.num_instances(*component))
         .max()
         .unwrap_or(0) as usize;
 
@@ -170,19 +175,19 @@ fn query_and_resolve_instance_from_pose_for_archetype_name(
     }
 
     let batch_translation = result
-        .component_batch::<components::PoseTranslation3D>(descriptor_translations)
+        .component_batch::<components::PoseTranslation3D>(identifier_translations)
         .unwrap_or_default();
     let batch_rotation_quat = result
-        .component_batch::<components::PoseRotationQuat>(&descriptor_quaternions)
+        .component_batch::<components::PoseRotationQuat>(identifier_quaternions)
         .unwrap_or_default();
     let batch_rotation_axis_angle = result
-        .component_batch::<components::PoseRotationAxisAngle>(&descriptor_rotation_axis_angles)
+        .component_batch::<components::PoseRotationAxisAngle>(identifier_rotation_axis_angles)
         .unwrap_or_default();
     let batch_scale = result
-        .component_batch::<components::PoseScale3D>(&descriptor_scales)
+        .component_batch::<components::PoseScale3D>(identifier_scales)
         .unwrap_or_default();
     let batch_mat3x3 = result
-        .component_batch::<components::PoseTransformMat3x3>(&descriptor_mat3x3)
+        .component_batch::<components::PoseTransformMat3x3>(identifier_mat3x3)
         .unwrap_or_default();
 
     if batch_translation.is_empty()
@@ -241,7 +246,7 @@ pub fn query_and_resolve_pinhole_projection_at_entity(
         .latest_at_component::<components::PinholeProjection>(
             entity_path,
             query,
-            &archetypes::Pinhole::descriptor_image_from_camera(),
+            archetypes::Pinhole::descriptor_image_from_camera().component,
         )
         .map(|(_index, image_from_camera)| ResolvedPinholeProjection {
             // Pinholes don't have an explicit target frame yet, so they always apply to the parent frame.
@@ -254,7 +259,7 @@ pub fn query_and_resolve_pinhole_projection_at_entity(
                 .latest_at_component::<components::Resolution>(
                     entity_path,
                     query,
-                    &archetypes::Pinhole::descriptor_resolution(),
+                    archetypes::Pinhole::descriptor_resolution().component,
                 )
                 .map(|(_index, resolution)| resolution),
             view_coordinates: {
@@ -277,13 +282,13 @@ pub fn query_view_coordinates(
         .latest_at_component::<components::ViewCoordinates>(
             entity_path,
             query,
-            &archetypes::Pinhole::descriptor_camera_xyz(),
+            archetypes::Pinhole::descriptor_camera_xyz().component,
         )
         .or_else(|| {
             entity_db.latest_at_component::<components::ViewCoordinates>(
                 entity_path,
                 query,
-                &archetypes::ViewCoordinates::descriptor_xyz(),
+                archetypes::ViewCoordinates::descriptor_xyz().component,
             )
         })
         .map(|(_index, view_coordinates)| view_coordinates)
@@ -303,13 +308,13 @@ pub fn query_view_coordinates_at_closest_ancestor(
         .latest_at_component_at_closest_ancestor::<components::ViewCoordinates>(
             entity_path,
             query,
-            &archetypes::Pinhole::descriptor_camera_xyz(),
+            archetypes::Pinhole::descriptor_camera_xyz().component,
         )
         .or_else(|| {
             entity_db.latest_at_component_at_closest_ancestor::<components::ViewCoordinates>(
                 entity_path,
                 query,
-                &archetypes::ViewCoordinates::descriptor_xyz(),
+                archetypes::ViewCoordinates::descriptor_xyz().component,
             )
         })
         .map(|(_path, _index, view_coordinates)| view_coordinates)
