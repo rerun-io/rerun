@@ -1,11 +1,12 @@
 //! Type-safe, composable transformations for Arrow arrays.
 
+use std::marker::PhantomData;
 use std::num::TryFromIntError;
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayRef, ArrowPrimitiveType, BinaryArray, FixedSizeListArray, ListArray,
-    PrimitiveArray, StructArray,
+    Array, ArrayRef, ArrowPrimitiveType, FixedSizeListArray, GenericBinaryArray, GenericListArray,
+    ListArray, OffsetSizeTrait, PrimitiveArray, StructArray,
 };
 use arrow::compute::cast;
 use arrow::datatypes::{DataType, Field};
@@ -663,55 +664,35 @@ impl Transform for Flatten {
     }
 }
 
-/// Converts a [`BinaryArray`] to a [`ListArray`] where each binary element becomes a list of `u8`.
+/// Converts binary arrays to list arrays where each binary element becomes a list of `u8`.
 ///
-/// Each byte slice in the [`BinaryArray`] is converted to a list of `u8` values.
-/// Null entries in the source array are preserved as null lists.
+/// The underlying bytes buffer is reused, making this transformation almost zero-copy.
 #[derive(Clone, Debug, Default)]
-pub struct BinaryToListUInt8;
+pub struct BinaryToListUInt8<OffsetSize: OffsetSizeTrait> {
+    _phantom: PhantomData<OffsetSize>,
+}
 
-impl BinaryToListUInt8 {
-    /// Create a new binary-to-list-uint8 transformation.
+impl<OffsetSize: OffsetSizeTrait> BinaryToListUInt8<OffsetSize> {
+    /// Create a new transformation to convert a [`BinaryArray`] to a [`ListArray`} of `u8`.
     pub fn new() -> Self {
-        Self
+        Default::default()
     }
 }
 
-impl Transform for BinaryToListUInt8 {
-    type Source = BinaryArray;
-    type Target = ListArray;
+impl<OffsetSize: OffsetSizeTrait> Transform for BinaryToListUInt8<OffsetSize> {
+    type Source = GenericBinaryArray<OffsetSize>;
+    type Target = GenericListArray<OffsetSize>;
 
-    fn transform(&self, source: &arrow::array::BinaryArray) -> Result<ListArray, Error> {
+    fn transform(&self, source: &GenericBinaryArray<OffsetSize>) -> Result<Self::Target, Error> {
         use arrow::array::UInt8Array;
-        use arrow::buffer::OffsetBuffer;
+        use arrow::buffer::ScalarBuffer;
 
-        let mut offsets = Vec::with_capacity(source.len() + 1);
-        let mut byte_values = Vec::new();
+        let scalar_buffer: ScalarBuffer<u8> = ScalarBuffer::from(source.values().clone());
+        let uint8_array = UInt8Array::new(scalar_buffer, None);
 
-        let mut current_offset = 0i32;
-        offsets.push(current_offset);
-
-        for i in 0..source.len() {
-            if source.is_null(i) {
-                offsets.push(current_offset);
-                continue;
-            }
-
-            let bytes = source.value(i);
-            byte_values.extend_from_slice(bytes);
-
-            current_offset =
-                i32::try_from(byte_values.len()).map_err(|err| Error::OffsetOverflow {
-                    byte_count: byte_values.len(),
-                    err,
-                })?;
-            offsets.push(current_offset);
-        }
-
-        let uint8_array = UInt8Array::from(byte_values);
-        let list = ListArray::new(
-            Arc::new(Field::new("item", DataType::UInt8, false)),
-            OffsetBuffer::new(offsets.into()),
+        let list = Self::Target::new(
+            Arc::new(Field::new_list_field(DataType::UInt8, false)),
+            source.offsets().clone(),
             Arc::new(uint8_array),
             source.nulls().cloned(),
         );
@@ -728,10 +709,10 @@ mod test {
 
     use arrow::{
         array::{
-            ArrayRef, Float32Array, Float64Array, Float64Builder, ListArray, ListBuilder,
-            RecordBatch, RecordBatchOptions, StructBuilder,
+            ArrayRef, Float32Array, Float64Array, Float64Builder, GenericByteBuilder, ListArray,
+            ListBuilder, RecordBatch, RecordBatchOptions, StructBuilder,
         },
-        datatypes::{DataType, Field, Fields, Schema},
+        datatypes::{DataType, Field, Fields, GenericBinaryType, Schema},
     };
 
     /// Helper function to wrap an [`ArrayRef`] into a [`RecordBatch`] for easier printing.
@@ -1032,11 +1013,8 @@ mod test {
         );
     }
 
-    #[test]
-    fn test_binary_to_list_uint8() {
-        use arrow::array::BinaryBuilder;
-
-        let mut builder = BinaryBuilder::new();
+    // Generic test for binary arrays.
+    fn impl_binary_test<T: OffsetSizeTrait>(mut builder: GenericByteBuilder<GenericBinaryType<T>>) {
         builder.append_value(b"hello");
         builder.append_value(b"world");
         builder.append_null();
@@ -1110,5 +1088,17 @@ mod test {
             assert_eq!(uint8.value(1), 0xFF);
             assert_eq!(uint8.value(2), 0x42);
         }
+    }
+
+    #[test]
+    fn test_binary_to_list_uint8() {
+        let builder = arrow::array::BinaryBuilder::new();
+        impl_binary_test(builder);
+    }
+
+    #[test]
+    fn test_large_binary_to_list_uint8() {
+        let builder = arrow::array::LargeBinaryBuilder::new();
+        impl_binary_test(builder);
     }
 }
