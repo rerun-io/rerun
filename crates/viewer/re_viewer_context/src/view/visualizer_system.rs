@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use nohash_hasher::IntSet;
 use re_chunk::ArchetypeName;
-use re_types::{Archetype, ComponentDescriptor, ComponentDescriptorSet};
+use re_types::{Archetype, ComponentIdentifier, ComponentSet};
 
 use crate::{
     ComponentFallbackProvider, DataBasedVisualizabilityFilter, IdentifiedViewSystem,
@@ -12,30 +12,30 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Default)]
-pub struct SortedComponentDescriptorSet(linked_hash_map::LinkedHashMap<ComponentDescriptor, ()>);
+pub struct SortedComponentSet(linked_hash_map::LinkedHashMap<ComponentIdentifier, ()>);
 
 pub type UnorderedArchetypeSet = IntSet<ArchetypeName>;
 
-impl SortedComponentDescriptorSet {
-    pub fn insert(&mut self, k: ComponentDescriptor) -> Option<()> {
+impl SortedComponentSet {
+    pub fn insert(&mut self, k: ComponentIdentifier) -> Option<()> {
         self.0.insert(k, ())
     }
 
-    pub fn extend(&mut self, iter: impl IntoIterator<Item = ComponentDescriptor>) {
+    pub fn extend(&mut self, iter: impl IntoIterator<Item = ComponentIdentifier>) {
         self.0.extend(iter.into_iter().map(|k| (k, ())));
     }
 
-    pub fn iter(&self) -> linked_hash_map::Keys<'_, ComponentDescriptor, ()> {
+    pub fn iter(&self) -> linked_hash_map::Keys<'_, ComponentIdentifier, ()> {
         self.0.keys()
     }
 
-    pub fn contains(&self, k: &ComponentDescriptor) -> bool {
+    pub fn contains(&self, k: &ComponentIdentifier) -> bool {
         self.0.contains_key(k)
     }
 }
 
-impl FromIterator<ComponentDescriptor> for SortedComponentDescriptorSet {
-    fn from_iter<I: IntoIterator<Item = ComponentDescriptor>>(iter: I) -> Self {
+impl FromIterator<ComponentIdentifier> for SortedComponentSet {
+    fn from_iter<I: IntoIterator<Item = ComponentIdentifier>>(iter: I) -> Self {
         Self(iter.into_iter().map(|k| (k, ())).collect())
     }
 }
@@ -48,29 +48,32 @@ pub struct VisualizerQueryInfo {
     /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
     ///
     /// This does not include indicator components.
-    pub required: ComponentDescriptorSet,
+    pub required: ComponentSet,
 
     /// Returns the list of components that the system _queries_.
     ///
     /// Must include required, usually excludes indicators.
     /// Order should reflect order in archetype docs & user code as well as possible.
-    pub queried: SortedComponentDescriptorSet,
+    pub queried: SortedComponentSet,
 }
 
 impl VisualizerQueryInfo {
     pub fn from_archetype<A: Archetype>() -> Self {
         Self {
             relevant_archetypes: std::iter::once(A::name()).collect(),
-            required: A::required_components().iter().cloned().collect(),
-            queried: A::all_components().iter().cloned().collect(),
+            required: A::required_components()
+                .iter()
+                .map(|c| c.component)
+                .collect(),
+            queried: A::all_components().iter().map(|c| c.component).collect(),
         }
     }
 
     pub fn empty() -> Self {
         Self {
             relevant_archetypes: Default::default(),
-            required: ComponentDescriptorSet::default(),
-            queried: SortedComponentDescriptorSet::default(),
+            required: ComponentSet::default(),
+            queried: SortedComponentSet::default(),
         }
     }
 }

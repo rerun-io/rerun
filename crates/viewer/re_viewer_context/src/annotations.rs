@@ -245,7 +245,7 @@ impl AnnotationMap {
                 ctx.recording().latest_at_component::<AnnotationContext>(
                     &entity,
                     time_query,
-                    &archetypes::AnnotationContext::descriptor_context(),
+                    archetypes::AnnotationContext::descriptor_context().component,
                 )
             {
                 let annotations = Annotations {
@@ -319,7 +319,7 @@ impl PerStoreChunkSubscriber for AnnotationContextStoreSubscriber {
             if event
                 .chunk
                 .components()
-                .contains_key(&archetypes::AnnotationContext::descriptor_context())
+                .contains_key(&archetypes::AnnotationContext::descriptor_context().component)
             {
                 let path = event.chunk.entity_path();
                 match event.diff.kind {

@@ -11,7 +11,7 @@ use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
 use re_renderer::{external::re_video::VideoLoadError, video::Video};
-use re_types::{ComponentDescriptor, components::MediaType};
+use re_types::{ComponentIdentifier, components::MediaType};
 use re_video::DecodeSettings;
 
 use crate::{
@@ -54,16 +54,16 @@ impl VideoAssetCache {
         &mut self,
         debug_name: String,
         blob_row_id: RowId,
-        blob_component_descriptor: &ComponentDescriptor,
+        blob_component: ComponentIdentifier,
         video_buffer: &re_types::datatypes::Blob,
         media_type: Option<&MediaType>,
         decode_settings: DecodeSettings,
     ) -> Arc<Result<Video, VideoLoadError>> {
         re_tracing::profile_function!(&debug_name);
 
-        // The descriptor should always be the one in the video asset archetype, but in the future
+        // The component should always be the one in the video asset archetype, but in the future
         // we may allow overrides such that it is sourced from somewhere else.
-        let blob_cache_key = StoredBlobCacheKey::new(blob_row_id, blob_component_descriptor);
+        let blob_cache_key = StoredBlobCacheKey::new(blob_row_id, blob_component);
 
         // In order to avoid loading the same video multiple times with
         // known and unknown media type, we have to resolve the media type before

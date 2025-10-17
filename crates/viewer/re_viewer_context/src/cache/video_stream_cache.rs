@@ -209,8 +209,8 @@ fn load_video_data_from_chunks(
 > {
     re_tracing::profile_function!();
 
-    let sample_descr = VideoStream::descriptor_sample();
-    let codec_descr = VideoStream::descriptor_codec();
+    let sample_component = VideoStream::descriptor_sample().component;
+    let codec_component = VideoStream::descriptor_codec().component;
 
     // Query for all video chunks on the **entire** timeline.
     // Tempting to bypass the query cache for this, but we don't expect to get new video chunks every frame
@@ -223,20 +223,20 @@ fn load_video_data_from_chunks(
     let query_results = store.storage_engine().cache().range(
         &entire_timeline_query,
         entity_path,
-        &[sample_descr.clone(), codec_descr.clone()],
+        [sample_component, codec_component],
     );
     let sample_chunks = query_results
-        .get_required(&sample_descr)
+        .get_required(sample_component)
         .map_err(|_err| VideoStreamProcessingError::NoVideoSamplesFound)?;
     let codec_chunks = query_results
-        .get_required(&codec_descr)
+        .get_required(codec_component)
         .map_err(|_err| VideoStreamProcessingError::MissingCodec)?;
 
     // Translate codec by looking at the last codec.
     // TODO(andreas): Should validate whether all codecs ever logged are the same, but it's a bit tedious.
     let last_codec = codec_chunks
         .last()
-        .and_then(|chunk| chunk.component_instance::<components::VideoCodec>(&codec_descr, 0, 0))
+        .and_then(|chunk| chunk.component_instance::<components::VideoCodec>(codec_component, 0, 0))
         .ok_or(VideoStreamProcessingError::MissingCodec)?
         .map_err(|err| VideoStreamProcessingError::FailedReadingCodec(Box::new(err)))?;
     let codec = match last_codec {
@@ -313,8 +313,8 @@ fn read_samples_from_chunk(
         ..
     } = video_descr;
 
-    let sample_descr = VideoStream::descriptor_sample();
-    let Some(raw_array) = chunk.raw_component_array(&sample_descr) else {
+    let sample_component = VideoStream::descriptor_sample().component;
+    let Some(raw_array) = chunk.raw_component_array(sample_component) else {
         // This chunk doesn't have any video chunks.
         return Ok(());
     };
@@ -328,7 +328,7 @@ fn read_samples_from_chunk(
     let time_ranges = chunk.time_range_per_component();
     match time_ranges
         .get(&timeline)
-        .and_then(|time_range| time_range.get(&sample_descr))
+        .and_then(|time_range| time_range.get(&sample_component))
     {
         Some(time_range) => {
             if time_range.min().as_i64() < previous_max_presentation_timestamp.0 {
@@ -375,8 +375,8 @@ fn read_samples_from_chunk(
     // Extract sample metadata.
     samples.extend(
         chunk
-            .iter_component_offsets(&sample_descr)
-            .zip(chunk.iter_component_indices(&timeline, &sample_descr))
+            .iter_component_offsets(sample_component)
+            .zip(chunk.iter_component_indices(timeline, sample_component))
             .enumerate()
             .filter_map(move |(idx, (component_offset, (time, _row_id)))| {
                 if component_offset.len == 0 {
@@ -564,10 +564,14 @@ impl Cache for VideoStreamCache {
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {
         re_tracing::profile_function!();
 
-        let sample_descr = VideoStream::descriptor_sample();
+        let sample_component = VideoStream::descriptor_sample().component;
 
         for event in events {
-            if !event.chunk.components().contains_component(&sample_descr) {
+            if !event
+                .chunk
+                .components()
+                .contains_component(sample_component)
+            {
                 continue;
             }
 

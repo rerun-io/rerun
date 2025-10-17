@@ -3,7 +3,7 @@ use std::{borrow::Cow, ops::RangeInclusive};
 use re_chunk::RowId;
 use re_log_types::hash::Hash64;
 use re_types::{
-    ComponentDescriptor,
+    ComponentIdentifier,
     components::Colormap,
     datatypes::{Blob, ChannelDatatype, ColorModel, ImageFormat},
     image::{ImageKind, rgb_from_yuv},
@@ -54,10 +54,10 @@ impl re_byte_size::SizeBytes for StoredBlobCacheKey {
 impl StoredBlobCacheKey {
     pub const ZERO: Self = Self(Hash64::ZERO);
 
-    pub fn new(blob_row_id: RowId, component_descriptor: &ComponentDescriptor) -> Self {
-        // Row ID + component descriptor is enough because in a single row & column there
+    pub fn new(blob_row_id: RowId, component: ComponentIdentifier) -> Self {
+        // Row ID + component is enough because in a single row & column there
         // can currently only be a single blob since blobs are internally stored as transparent dynamic byte arrays.
-        Self(Hash64::hash((blob_row_id, &component_descriptor)))
+        Self(Hash64::hash((blob_row_id, component)))
     }
 }
 
@@ -82,22 +82,13 @@ pub struct ImageInfo {
 impl ImageInfo {
     pub fn from_stored_blob(
         blob_row_id: RowId,
-        component_descriptor: &ComponentDescriptor,
+        component: ComponentIdentifier,
         buffer: Blob,
         format: ImageFormat,
         kind: ImageKind,
     ) -> Self {
-        // TODO(andreas): Once we introduce descriptor overrides,
-        // we need to make sure that the descriptor is the one used for _querying_ the blob.
-        // This also means that the `ImageKind` may change!
-        // But until then, image kind and descriptor should be in sync.
-        debug_assert_eq!(
-            ImageKind::from_archetype_name(component_descriptor.archetype),
-            kind
-        );
-
         Self {
-            buffer_content_hash: StoredBlobCacheKey::new(blob_row_id, component_descriptor),
+            buffer_content_hash: StoredBlobCacheKey::new(blob_row_id, component),
             buffer,
             format,
             kind,
