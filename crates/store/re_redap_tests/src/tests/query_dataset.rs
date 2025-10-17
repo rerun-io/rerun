@@ -1,7 +1,4 @@
-use std::sync::Arc;
-
 use futures::StreamExt as _;
-use itertools::Itertools as _;
 
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::{
@@ -12,10 +9,10 @@ use re_protos::{
     headers::RerunHeadersInjectorExt as _,
 };
 
-use crate::RecordBatchExt as _;
 use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
 };
+use crate::{FieldsExt as _, RecordBatchExt as _};
 
 pub async fn query_empty_dataset(service: impl RerunCloudService) {
     let dataset_name = "dataset";
@@ -141,29 +138,32 @@ async fn query_dataset_snapshot(
 
     // these are the only columns guaranteed to be returned by `query_dataset`
     let required_field = QueryDatasetResponse::fields();
-
     // Arrow's `Fields::contains` relies on ordering so we can't use it here. So we go the manual
     // way.
-    let sorted_filtered_fields = merged_chunk_info
-        .schema()
-        .fields()
-        .into_iter()
-        .filter(|field| required_field.contains(field))
-        .map(Arc::clone)
-        .sorted_by_key(|field| field.name().clone())
-        .collect_vec();
+    // let sorted_filtered_fields = merged_chunk_info
+    //     .schema()
+    //     .fields()
+    //     .into_iter()
+    //     .filter(|field| required_field.contains(field))
+    //     .map(Arc::clone)
+    //     .sorted_by_key(|field| field.name().clone())
+    //     .collect_vec();
+    //
+    // let sorted_required_fields = required_field
+    //     .clone()
+    //     .into_iter()
+    //     .sorted_by_key(|field| field.name().clone())
+    //     .map(Arc::new)
+    //     .collect_vec();
 
-    let sorted_required_fields = required_field
-        .clone()
-        .into_iter()
-        .sorted_by_key(|field| field.name().clone())
-        .map(Arc::new)
-        .collect_vec();
-
-    assert_eq!(
-        sorted_filtered_fields, sorted_required_fields,
+    assert!(
+        merged_chunk_info
+            .schema()
+            .fields()
+            .contains_unordered(&required_field),
         "query dataset must return all guaranteed fields\nExpected: {:#?}\nGot: {:#?}",
-        &sorted_required_fields, sorted_filtered_fields
+        merged_chunk_info.schema().fields(),
+        required_field,
     );
 
     let required_column_names = required_field

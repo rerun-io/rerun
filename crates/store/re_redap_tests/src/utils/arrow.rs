@@ -1,6 +1,8 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use arrow::compute::SortOptions;
+use arrow::datatypes::Fields;
 use arrow::{
     array::{ArrayRef, ListArray, StringArray},
     datatypes::{DataType, Field, Schema},
@@ -398,5 +400,24 @@ impl SchemaExt for arrow::datatypes::Schema {
                 }
             })
             .join("\n")
+    }
+}
+
+pub trait FieldsExt {
+    /// Returns true if all the required fields are present, regardless of the order.
+    fn contains_unordered<'a>(
+        &'a self,
+        required_fields: impl IntoIterator<Item = &'a Field>,
+    ) -> bool;
+}
+
+impl FieldsExt for Fields {
+    fn contains_unordered<'a>(
+        &'a self,
+        required_fields: impl IntoIterator<Item = &'a Field>,
+    ) -> bool {
+        let fields = self.iter().map(|f| f.as_ref()).collect::<HashSet<_>>();
+
+        required_fields.into_iter().all(|f| fields.contains(f))
     }
 }

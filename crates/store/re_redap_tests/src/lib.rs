@@ -21,7 +21,7 @@ mod tests;
 mod utils;
 
 pub use self::utils::{
-    arrow::{RecordBatchExt, SchemaExt},
+    arrow::{FieldsExt, RecordBatchExt, SchemaExt},
     path::TempPath,
     rerun::{
         TuidPrefix, create_nasty_recording, create_recording_with_embeddings,
