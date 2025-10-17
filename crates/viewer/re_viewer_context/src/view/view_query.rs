@@ -256,7 +256,7 @@ impl<'s> ViewQuery<'s> {
         )
     }
 
-    /// Iterates over all [`DataResult`]s of the [`ViewQuery`].
+    /// Iterates over all currently visible (i.e. at least one visualizer is active) [`DataResult`]s of the [`ViewQuery`].
     #[inline]
     pub fn iter_all_data_results(&self) -> impl Iterator<Item = &DataResult> + '_ {
         self.per_visualizer_data_results
@@ -264,7 +264,7 @@ impl<'s> ViewQuery<'s> {
             .flat_map(|data_results| data_results.iter().copied())
     }
 
-    /// Iterates over all entities of the [`ViewQuery`].
+    /// Iterates over all currently visible (i.e. at least one visualizer is active) entities of the [`ViewQuery`].
     #[inline]
     pub fn iter_all_entities(&self) -> impl Iterator<Item = &EntityPath> + '_ {
         self.iter_all_data_results()
