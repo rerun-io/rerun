@@ -570,8 +570,6 @@ fn get_tile_manager(
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(MapView => []);
-
 // TODO(ab, andreas): this is a partial copy past of re_view_spatial::picking_gpu. Should be
 // turned into a utility function.
 fn picking_gpu(

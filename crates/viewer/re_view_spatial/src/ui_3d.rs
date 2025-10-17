@@ -1,5 +1,7 @@
 use egui::{NumExt as _, emath::RectTransform};
 use glam::{Affine3A, Quat, Vec3};
+use re_log::ResultExt as _;
+use web_time::Instant;
 
 use macaw::BoundingBox;
 use re_log_types::EntityPath;
@@ -11,9 +13,9 @@ use re_tf::{image_view_coordinates, query_view_coordinates_at_closest_ancestor};
 use re_types::{
     blueprint::{
         archetypes::{Background, EyeControls3D, LineGrid3D},
-        components::GridSpacing,
+        components::{Eye3DKind, GridSpacing},
     },
-    components::{ViewCoordinates, Visible},
+    components::{LinearSpeed, ViewCoordinates, Visible},
     view_coordinates::SignedAxis3,
 };
 use re_ui::{ContextExt as _, Help, IconText, MouseButtonText, UiExt as _, icons};
@@ -97,6 +99,12 @@ fn ease_out(t: f32) -> f32 {
     1. - (1. - t) * (1. - t)
 }
 
+/// Properties stored in blueprint.
+pub struct BlueprintProperties {
+    pub speed: f64,
+    pub kind: Option<Eye3DKind>,
+}
+
 impl View3DState {
     pub fn reset_camera(
         &mut self,
@@ -112,11 +120,10 @@ impl View3DState {
     fn update_eye(
         &mut self,
         response: &egui::Response,
+        blueprint_properties: BlueprintProperties,
         bounding_boxes: &SceneBoundingBoxes,
         space_cameras: &[SpaceCamera3D],
         scene_view_coordinates: Option<ViewCoordinates>,
-        view_ctx: &ViewContext<'_>,
-        eye_property: &ViewProperty,
     ) -> ViewEye {
         // If the user has not interacted with the eye-camera yet, continue to
         // interpolate to the new default eye. This gives much better robustness
@@ -199,7 +206,7 @@ impl View3DState {
             0.0
         };
 
-        if view_eye.update(response, view_eye_drag_threshold, view_ctx, eye_property) {
+        if view_eye.update(response, view_eye_drag_threshold, blueprint_properties) {
             self.last_eye_interaction = Some(response.ctx.time());
             self.eye_interpolation = None;
             self.tracked_entity = None;
@@ -450,13 +457,33 @@ impl SpatialView3D {
             query.view_id,
         );
 
+        let view_context = self.view_context(ctx, query.view_id, state);
+
+        let speed = **eye_property
+            .component_or_fallback::<LinearSpeed>(
+                &view_context,
+                self,
+                &EyeControls3D::descriptor_speed(),
+            )
+            .unwrap_debug_or_log_error() // Should never fail.
+            .unwrap_or(1.0.into());
+
+        let kind = eye_property
+            .component_or_fallback::<Eye3DKind>(
+                &view_context,
+                self,
+                &EyeControls3D::descriptor_kind(),
+            )
+            .unwrap_debug_or_log_error(); // Should never fail.
+
+        let blueprint_properties = BlueprintProperties { speed, kind };
+
         let view_eye = state.state_3d.update_eye(
             &response,
+            blueprint_properties,
             &state.bounding_boxes,
             space_cameras,
             scene_view_coordinates,
-            &self.view_context(ctx, query.view_id, &state.clone()),
-            &eye_property,
         );
         let eye = view_eye.to_eye();
 

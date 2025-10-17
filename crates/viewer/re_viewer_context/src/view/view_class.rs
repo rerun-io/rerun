@@ -46,7 +46,7 @@ impl VisualizableFilterContext for () {
 //
 // TODO(andreas): Consider formulating a view instance context object that is passed to all
 // methods that operate on concrete views as opposed to be about general information on the class.
-pub trait ViewClass: Send + Sync {
+pub trait ViewClass: Send + Sync + 'static {
     /// Identifier string of this view class.
     ///
     /// By convention we use `PascalCase`.

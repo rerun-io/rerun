@@ -1,3 +1,4 @@
+use arrow::array::ArrayRef;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, external::re_query::LatestAtResults};
 use re_log_types::EntityPath;
@@ -5,9 +6,8 @@ use re_types::{
     Archetype, ArchetypeName, ComponentBatch, ComponentDescriptor, DeserializationError,
 };
 use re_viewer_context::{
-    BlueprintContext as _, ComponentFallbackError, ComponentFallbackProvider, QueryContext,
-    ViewContext, ViewId, ViewSystemExecutionError, ViewerContext,
-    external::re_entity_db::EntityTree,
+    BlueprintContext as _, ComponentFallbackError, FallbackContext, QueryContext, ViewContext,
+    ViewId, ViewSystemExecutionError, ViewerContext, external::re_entity_db::EntityTree,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -95,10 +95,10 @@ impl ViewProperty {
     pub fn component_or_fallback<C: re_types::Component>(
         &self,
         ctx: &ViewContext<'_>,
-        fallback_provider: &dyn ComponentFallbackProvider,
+        fallback_ctx: &dyn FallbackContext,
         component_descr: &ComponentDescriptor,
     ) -> Result<C, ViewPropertyQueryError> {
-        self.component_array_or_fallback::<C>(ctx, fallback_provider, component_descr)?
+        self.component_array_or_fallback::<C>(ctx, fallback_ctx, component_descr)?
             .into_iter()
             .next()
             .ok_or(ComponentFallbackError::UnexpectedEmptyFallback.into())
@@ -108,11 +108,11 @@ impl ViewProperty {
     pub fn component_array_or_fallback<C: re_types::Component>(
         &self,
         ctx: &ViewContext<'_>,
-        fallback_provider: &dyn ComponentFallbackProvider,
+        fallback_ctx: &dyn FallbackContext,
         component_descr: &ComponentDescriptor,
     ) -> Result<Vec<C>, ViewPropertyQueryError> {
         C::from_arrow(
-            self.component_or_fallback_raw(ctx, component_descr, fallback_provider)
+            self.component_or_fallback_raw(ctx, component_descr, fallback_ctx)
                 .as_ref(),
         )
         .map_err(|err| err.into())
@@ -167,15 +167,19 @@ impl ViewProperty {
         &self,
         ctx: &ViewContext<'_>,
         component_descr: &ComponentDescriptor,
-        fallback_provider: &dyn ComponentFallbackProvider,
-    ) -> arrow::array::ArrayRef {
+        fallback_ctx: &dyn FallbackContext,
+    ) -> ArrayRef {
         if let Some(value) = self.component_raw(component_descr)
             && !value.is_empty()
         {
             return value;
         }
 
-        fallback_provider.fallback_for(&self.query_context(ctx), component_descr)
+        ctx.viewer_ctx.component_fallback_registry.fallback_for(
+            fallback_ctx,
+            component_descr,
+            &self.query_context(ctx),
+        )
     }
 
     /// Save change to a blueprint component.

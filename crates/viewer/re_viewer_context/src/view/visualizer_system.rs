@@ -5,10 +5,10 @@ use re_chunk::ArchetypeName;
 use re_types::{Archetype, ComponentDescriptor, ComponentDescriptorSet};
 
 use crate::{
-    ComponentFallbackProvider, DataBasedVisualizabilityFilter, IdentifiedViewSystem,
+    DataBasedVisualizabilityFilter, FallbackProviderRegistry, IdentifiedViewSystem,
     MaybeVisualizableEntities, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, ViewSystemIdentifier, VisualizableEntities,
-    VisualizableFilterContext,
+    VisualizableFilterContext, component_fallbacks::FallbackContext,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -81,7 +81,7 @@ impl VisualizerQueryInfo {
 ///
 /// All visualizers are expected to be able to provide a fallback value for any component they're using
 /// via the [`ComponentFallbackProvider`] trait.
-pub trait VisualizerSystem: Send + Sync + 'static {
+pub trait VisualizerSystem: FallbackContext {
     // TODO(andreas): This should be able to list out the ContextSystems it needs.
 
     /// Information about which components are queried by the visualizer.
@@ -109,6 +109,9 @@ pub trait VisualizerSystem: Send + Sync + 'static {
         None
     }
 
+    /// Called just as this visualizer is registered.
+    fn on_register(&self, _fallbacks: &mut FallbackProviderRegistry) {}
+
     /// Queries the chunk store and performs data conversions to make it ready for display.
     ///
     /// Mustn't query any data outside of the archetype.
@@ -130,12 +133,13 @@ pub trait VisualizerSystem: Send + Sync + 'static {
 
     fn as_any(&self) -> &dyn std::any::Any;
 
-    /// Returns the fallback provider for this visualizer.
+    /// Returns the fallback context for this visualizer. Which is used for getting
+    /// fallback values.
     ///
     /// Visualizers should use this to report the fallback values they use when there is no data.
     /// The Rerun viewer will display these fallback values to the user to convey what the
     /// visualizer is doing.
-    fn fallback_provider(&self) -> &dyn ComponentFallbackProvider;
+    fn fallback_ctx(&self) -> &dyn FallbackContext;
 }
 
 pub struct VisualizerCollection {

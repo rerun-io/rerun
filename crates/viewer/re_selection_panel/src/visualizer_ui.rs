@@ -221,7 +221,7 @@ fn visualizer_components(
 
         // If we don't have a component type, we don't have a way to retrieve a fallback. Therefore, we return a `NullArray` as a dummy.
         let raw_fallback = visualizer
-            .fallback_provider()
+            .fallback_ctx()
             .fallback_for(&query_ctx, component_descr);
 
         // Determine where the final value comes from.

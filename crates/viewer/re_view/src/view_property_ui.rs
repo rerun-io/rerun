@@ -3,7 +3,7 @@ use re_types_core::{Archetype, ArchetypeReflectionMarker, reflection::ArchetypeF
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{
-    BlueprintContext as _, ComponentFallbackProvider, ComponentUiTypes, QueryContext, ViewContext,
+    BlueprintContext as _, ComponentUiTypes, FallbackContext, QueryContext, ViewContext,
     ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
@@ -14,18 +14,18 @@ use re_viewport_blueprint::ViewProperty;
 pub fn view_property_ui<A: Archetype + ArchetypeReflectionMarker>(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    fallback_provider: &dyn ComponentFallbackProvider,
+    fallback_ctx: &dyn FallbackContext,
 ) {
     let view_property =
         ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query(), ctx.view_id);
-    view_property_ui_impl(ctx, ui, &view_property, fallback_provider);
+    view_property_ui_impl(ctx, ui, &view_property, fallback_ctx);
 }
 
 fn view_property_ui_impl(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     property: &ViewProperty,
-    fallback_provider: &dyn ComponentFallbackProvider,
+    fallback_ctx: &dyn FallbackContext,
 ) {
     let reflection = ctx.viewer_ctx.reflection();
     let Some(archetype) = reflection.archetypes.get(&property.archetype_name) else {
@@ -52,7 +52,7 @@ fn view_property_ui_impl(
             property,
             archetype_display_name,
             &archetype.fields[0],
-            fallback_provider,
+            fallback_ctx,
         );
     } else {
         let sub_prop_ui = |ui: &mut egui::Ui| {
@@ -63,7 +63,7 @@ fn view_property_ui_impl(
                     property,
                     field.display_name,
                     field,
-                    fallback_provider,
+                    fallback_ctx,
                 );
             }
         };
@@ -90,7 +90,7 @@ pub fn view_property_component_ui(
     property: &ViewProperty,
     display_name: &str,
     field: &ArchetypeFieldReflection,
-    fallback_provider: &dyn ComponentFallbackProvider,
+    fallback_ctx: &dyn FallbackContext,
 ) {
     let component_descr = field.component_descriptor(property.archetype_name);
 
@@ -111,7 +111,7 @@ pub fn view_property_component_ui(
             &component_descr,
             row_id,
             component_array.as_deref(),
-            fallback_provider,
+            fallback_ctx,
         );
     };
 
@@ -124,7 +124,7 @@ pub fn view_property_component_ui(
             &component_descr,
             row_id,
             component_array.as_deref(),
-            fallback_provider,
+            fallback_ctx,
         );
     };
     // Do this as a separate step to avoid borrowing issues.

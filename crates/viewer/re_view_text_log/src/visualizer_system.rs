@@ -70,7 +70,7 @@ impl VisualizerSystem for TextLogSystem {
         self
     }
 
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+    fn fallback_ctx(&self) -> &dyn re_viewer_context::FallbackContext {
         self
     }
 }
@@ -144,5 +144,3 @@ impl TextLogSystem {
         }
     }
 }
-
-re_viewer_context::impl_component_fallback_provider!(TextLogSystem => []);

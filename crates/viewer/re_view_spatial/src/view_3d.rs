@@ -6,16 +6,16 @@ use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_tf::query_view_coordinates;
 use re_types::blueprint::archetypes::{EyeControls3D, LineGrid3D};
-use re_types::components;
+use re_types::components::{self, Plane3D};
 use re_types::{Component as _, View as _, ViewClassIdentifier, blueprint::archetypes::Background};
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
-    RecommendedView, SmallVisualizerSet, ViewClass, ViewClassExt as _, ViewClassRegistryError,
-    ViewContext, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
-    VisualizableFilterContext,
+    FallbackContext, IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities,
+    PerVisualizer, RecommendedView, SmallVisualizerSet, ViewClass, ViewClassExt as _,
+    ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    VisualizableEntities, VisualizableFilterContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -72,6 +72,39 @@ impl ViewClass for SpatialView3D {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
+        system_registry.register_fallback_provider(
+            &re_types::blueprint::archetypes::EyeControls3D::descriptor_speed(),
+            |_: &Self, ctx| {
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    re_log::error_once!(
+                        "Fallback for `LinearSpeed` queried on 3D view outside the context of a spatial view."
+                    );
+                    return 1.0.into();
+                };
+                let Some(view_eye) = &view_state.state_3d.view_eye else {
+                    // There's no view eye yet. This may happen on startup
+                    return 1.0.into();
+                };
+
+                view_eye.fallback_speed(ctx)
+            },
+        );
+        system_registry.register_fallback_provider(
+            &LineGrid3D::descriptor_plane(),
+            |_: &Self, ctx| {
+                const DEFAULT_PLANE: Plane3D = Plane3D::XY;
+
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    return DEFAULT_PLANE;
+                };
+
+                view_state
+                    .state_3d
+                    .scene_view_coordinates
+                    .and_then(|view_coordinates| view_coordinates.up())
+                    .map_or(DEFAULT_PLANE, |up| Plane3D::new(up.as_vec3(), 0.0))
+            },
+        );
         // Ensure spatial topology is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
 
@@ -455,7 +488,7 @@ impl ViewClass for SpatialView3D {
 fn view_property_ui_grid3d(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    fallback_provider: &dyn re_viewer_context::ComponentFallbackProvider,
+    fallback_ctx: &dyn FallbackContext,
 ) {
     let property = ViewProperty::from_archetype::<LineGrid3D>(
         ctx.blueprint_db(),
@@ -487,7 +520,7 @@ fn view_property_ui_grid3d(
                         let Ok(color) = property
                             .component_or_fallback::<re_types::components::Color>(
                                 ctx,
-                                fallback_provider,
+                                fallback_ctx,
                                 &LineGrid3D::descriptor_color(),
                             )
                         else {
@@ -519,7 +552,7 @@ fn view_property_ui_grid3d(
                     &property,
                     field.display_name,
                     field,
-                    fallback_provider,
+                    fallback_ctx,
                 );
             }
         }

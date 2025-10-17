@@ -126,7 +126,7 @@ fn determine_default_draworder(
     };
 
     let draw_order_array = visualizer
-        .fallback_provider()
+        .fallback_ctx()
         .fallback_for(ctx, draw_order_descriptor);
     let draw_order_array = DrawOrder::from_arrow(&draw_order_array)
         .ok()

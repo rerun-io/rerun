@@ -11,8 +11,8 @@ use re_types::{ComponentDescriptor, ComponentType};
 use re_ui::{UiExt as _, UiLayout};
 
 use crate::{
-    ComponentFallbackProvider, MaybeMutRef, QueryContext, ViewerContext,
-    blueprint_helpers::BlueprintContext as _,
+    MaybeMutRef, QueryContext, ViewerContext, blueprint_helpers::BlueprintContext as _,
+    component_fallbacks::FallbackContext,
 };
 
 /// Describes where an edit should be written to if any
@@ -549,7 +549,7 @@ impl ComponentUiRegistry {
         component_descr: &ComponentDescriptor,
         row_id: Option<RowId>,
         component_array: Option<&dyn arrow::array::Array>,
-        fallback_provider: &dyn ComponentFallbackProvider,
+        fallback_ctx: &dyn FallbackContext,
     ) {
         let multiline = true;
         self.edit_ui(
@@ -560,7 +560,7 @@ impl ComponentUiRegistry {
             component_descr,
             row_id,
             component_array,
-            fallback_provider,
+            fallback_ctx,
             multiline,
         );
     }
@@ -580,7 +580,7 @@ impl ComponentUiRegistry {
         component_descr: &ComponentDescriptor,
         row_id: Option<RowId>,
         component_query_result: Option<&dyn arrow::array::Array>,
-        fallback_provider: &dyn ComponentFallbackProvider,
+        fallback_ctx: &dyn FallbackContext,
     ) {
         let multiline = false;
         self.edit_ui(
@@ -591,7 +591,7 @@ impl ComponentUiRegistry {
             component_descr,
             row_id,
             component_query_result,
-            fallback_provider,
+            fallback_ctx,
             multiline,
         );
     }
@@ -606,7 +606,7 @@ impl ComponentUiRegistry {
         component_descr: &ComponentDescriptor,
         row_id: Option<RowId>,
         component_array: Option<&dyn arrow::array::Array>,
-        fallback_provider: &dyn ComponentFallbackProvider,
+        fallback_ctx: &dyn FallbackContext,
         allow_multiline: bool,
     ) {
         re_tracing::profile_function!(component_descr.display_name());
@@ -628,7 +628,11 @@ impl ComponentUiRegistry {
         if let Some(component_array) = component_array.filter(|array| !array.is_empty()) {
             run_with(component_array);
         } else {
-            let fallback = fallback_provider.fallback_for(ctx, component_descr);
+            let fallback = ctx.viewer_ctx().component_fallback_registry.fallback_for(
+                fallback_ctx,
+                component_descr,
+                ctx,
+            );
             run_with(fallback.as_ref());
         }
     }

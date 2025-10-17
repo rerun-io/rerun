@@ -357,7 +357,7 @@ fn add_new_default(
     };
 
     let initial_data = visualizer
-        .fallback_provider()
+        .fallback_ctx()
         .fallback_for(query_context, &component_descr);
 
     match Chunk::builder(defaults_path.clone())

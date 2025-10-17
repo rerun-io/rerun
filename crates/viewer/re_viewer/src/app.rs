@@ -16,9 +16,10 @@ use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, Item, NeedsRepaint, PlayState, RecordingOrTable,
-    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore,
-    TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError, command_channel,
+    ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint, PlayState,
+    RecordingOrTable, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _,
+    TableStore, TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError,
+    command_channel, create_component_fallback_registry,
     open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url},
     sanitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
@@ -81,6 +82,7 @@ pub struct App {
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
 
     component_ui_registry: ComponentUiRegistry,
+    component_fallback_registry: FallbackProviderRegistry,
 
     rx_log: ReceiveSet<DataSourceMessage>,
     rx_table: ReceiveSetTable,
@@ -265,6 +267,8 @@ impl App {
         let mut component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut component_ui_registry);
 
+        let component_fallback_registry = create_component_fallback_registry();
+
         let (_adapter_backend, _device_tier) = creation_context.wgpu_render_state.as_ref().map_or(
             (
                 wgpu::Backend::Noop,
@@ -352,6 +356,7 @@ impl App {
 
             text_log_rx,
             component_ui_registry,
+            component_fallback_registry,
             rx_log: Default::default(),
             rx_table: Default::default(),
             #[cfg(target_arch = "wasm32")]
@@ -2004,6 +2009,7 @@ impl App {
                             storage_context,
                             &self.reflection,
                             &self.component_ui_registry,
+                            &self.component_fallback_registry,
                             &self.view_class_registry,
                             &self.rx_log,
                             &self.command_sender,

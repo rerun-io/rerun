@@ -63,6 +63,24 @@ impl ViewClass for GraphView {
         &self,
         system_registry: &mut ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
+        fn valid_bound(rect: &egui::Rect) -> bool {
+            rect.is_finite() && rect.is_positive()
+        }
+
+        system_registry.register_fallback_provider(
+            &VisualBounds2D::descriptor_range(),
+            |_: &Self, ctx| {
+                let Ok(state) = ctx.view_state().downcast_ref::<GraphViewState>() else {
+                    return re_types::blueprint::components::VisualBounds2D::default();
+                };
+
+                match state.layout_state.bounding_rect() {
+                    Some(rect) if valid_bound(&rect) => rect.into(),
+                    _ => re_types::blueprint::components::VisualBounds2D::default(),
+                }
+            },
+        );
+
         system_registry.register_visualizer::<NodeVisualizer>()?;
         system_registry.register_visualizer::<EdgesVisualizer>()
     }

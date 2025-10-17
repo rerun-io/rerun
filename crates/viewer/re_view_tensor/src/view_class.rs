@@ -18,10 +18,9 @@ use re_view::view_property_ui;
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item,
     MaybeVisualizableEntities, PerVisualizer, SystemCommand, SystemCommandSender as _,
-    TensorStatsCache, TypedComponentFallbackProvider, ViewClass, ViewClassExt as _,
-    ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewerContext, VisualizableEntities, gpu_bridge,
-    suggest_view_for_each_entity,
+    TensorStatsCache, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId,
+    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    VisualizableEntities, gpu_bridge, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -726,16 +725,6 @@ fn selectors_ui(
         );
     }
 }
-
-impl TypedComponentFallbackProvider<Colormap> for TensorView {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Colormap {
-        // Viridis is a better fallback than Turbo for arbitrary tensors.
-        Colormap::Viridis
-    }
-}
-
-// Fallback for the various components of `TensorSliceSelection` is handled by `load_tensor_slice_selection_and_make_valid`.
-re_viewer_context::impl_component_fallback_provider!(TensorView => [Colormap]);
 
 #[test]
 fn test_help_view() {
