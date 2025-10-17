@@ -67,11 +67,11 @@
 //!                ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
 //! ```
 //!
-//! You can interact with these impliciately generated frames like with any other transform frame!
+//! You can interact with these implicitly generated frames like with any other transform frame!
 //! For example, let's say we log a manual transform relationship between two new frames called `robot_frame`
 //! and `left_frame`, associate them with `world/robot` and `world/robot/left` respectively.
 //! That would create two unconnected trees, but this can be handled by specifying another
-//! relationship from `robot` to `rerun_tf#world/robot`, leading to this setup:
+//! relationship from `robot_frame` to `rerun_tf#world/robot`, leading to this setup:
 //! ```text
 //!                                     ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐                                   ┌──────────────────┐
 //!                                            rerun_tf#world      ◀ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│      world       │
