@@ -5,10 +5,9 @@ use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 
 use re_byte_size::SizeBytes;
-use re_chunk::{Chunk, ChunkId};
+use re_chunk::{Chunk, ChunkId, ComponentIdentifier};
 use re_chunk_store::{ChunkStore, RangeQuery, TimeInt};
 use re_log_types::{AbsoluteTimeRange, EntityPath};
-use re_types_core::ComponentDescriptor;
 
 use crate::{QueryCache, QueryCacheKey, QueryError};
 
@@ -20,11 +19,11 @@ impl QueryCache {
     /// See [`RangeResults`] for more information about how to handle the results.
     ///
     /// This is a cached API -- data will be lazily cached upon access.
-    pub fn range<'a>(
+    pub fn range(
         &self,
         query: &RangeQuery,
         entity_path: &EntityPath,
-        component_descrs: impl IntoIterator<Item = &'a ComponentDescriptor>,
+        components: impl IntoIterator<Item = ComponentIdentifier>,
     ) -> RangeResults {
         re_tracing::profile_function!(entity_path.to_string());
 
@@ -35,16 +34,16 @@ impl QueryCache {
         // NOTE: This pre-filtering is extremely important: going through all these query layers
         // has non-negligible overhead even if the final result ends up being nothing, and our
         // number of queries for a frame grows linearly with the number of entity paths.
-        let component_descrs = component_descrs.into_iter().filter(|component_descr| {
-            store.entity_has_component_on_timeline(query.timeline(), entity_path, component_descr)
+        let components = components.into_iter().filter(|component_identifier| {
+            store.entity_has_component_on_timeline(
+                query.timeline(),
+                entity_path,
+                *component_identifier,
+            )
         });
 
-        for component_descr in component_descrs {
-            let key = QueryCacheKey::new(
-                entity_path.clone(),
-                *query.timeline(),
-                component_descr.clone(),
-            );
+        for component in components {
+            let key = QueryCacheKey::new(entity_path.clone(), *query.timeline(), component);
 
             let cache = Arc::clone(
                 self.range_per_cache_key
@@ -57,9 +56,9 @@ impl QueryCache {
 
             cache.handle_pending_invalidation();
 
-            let cached = cache.range(&store, query, entity_path, component_descr);
+            let cached = cache.range(&store, query, entity_path, component);
             if !cached.is_empty() {
-                results.add(component_descr.clone(), cached);
+                results.add(component, cached);
             }
         }
 
@@ -81,7 +80,7 @@ pub struct RangeResults {
     pub query: RangeQuery,
 
     /// Results for each individual component.
-    pub components: IntMap<ComponentDescriptor, Vec<Chunk>>,
+    pub components: IntMap<ComponentIdentifier, Vec<Chunk>>,
 }
 
 impl RangeResults {
@@ -95,9 +94,9 @@ impl RangeResults {
 
     /// Returns the [`Chunk`]s for the specified component.
     #[inline]
-    pub fn get(&self, component_descr: &ComponentDescriptor) -> Option<&[Chunk]> {
+    pub fn get(&self, component: ComponentIdentifier) -> Option<&[Chunk]> {
         self.components
-            .get(component_descr)
+            .get(&component)
             .map(|chunks| chunks.as_slice())
     }
 
@@ -105,9 +104,9 @@ impl RangeResults {
     ///
     /// Returns an error if the component is not present.
     #[inline]
-    pub fn get_required(&self, component_descr: &ComponentDescriptor) -> crate::Result<&[Chunk]> {
-        self.components.get(component_descr).map_or_else(
-            || Err(QueryError::PrimaryNotFound(component_descr.clone())),
+    pub fn get_required(&self, component: ComponentIdentifier) -> crate::Result<&[Chunk]> {
+        self.components.get(&component).map_or_else(
+            || Err(QueryError::PrimaryNotFound(component)),
             |chunks| Ok(chunks.as_slice()),
         )
     }
@@ -116,8 +115,8 @@ impl RangeResults {
 impl RangeResults {
     #[doc(hidden)]
     #[inline]
-    pub fn add(&mut self, component_descr: ComponentDescriptor, chunks: Vec<Chunk>) {
-        self.components.insert(component_descr, chunks);
+    pub fn add(&mut self, component: ComponentIdentifier, chunks: Vec<Chunk>) {
+        self.components.insert(component, chunks);
     }
 }
 
@@ -249,7 +248,7 @@ impl RangeCache {
         store: &ChunkStore,
         query: &RangeQuery,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Vec<Chunk> {
         re_tracing::profile_scope!("range", format!("{query:?}"));
 
@@ -263,7 +262,7 @@ impl RangeCache {
         // For all relevant chunks that we find, we process them according to the [`QueryCacheKey`], and
         // cache them.
 
-        let raw_chunks = store.range_relevant_chunks(query, entity_path, component_descr);
+        let raw_chunks = store.range_relevant_chunks(query, entity_path, component);
         for raw_chunk in &raw_chunks {
             self.chunks
                 .entry(raw_chunk.id())
@@ -272,7 +271,7 @@ impl RangeCache {
                     chunk: raw_chunk
                         // Densify the cached chunk according to the cache key's component, which
                         // will speed up future arrow operations on this chunk.
-                        .densified(component_descr)
+                        .densified(component)
                         // Pre-sort the cached chunk according to the cache key's timeline.
                         .sorted_by_timeline_if_unsorted(&self.cache_key.timeline_name),
                     resorted: !raw_chunk.is_timeline_sorted(&self.cache_key.timeline_name),
@@ -296,7 +295,7 @@ impl RangeCache {
 
                 let chunk = &cached_sorted_chunk.chunk;
 
-                chunk.range(query, component_descr)
+                chunk.range(query, component)
             })
             .filter(|chunk| !chunk.is_empty())
             .collect()
