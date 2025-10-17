@@ -6,7 +6,7 @@ use re_types::{
     },
     components::Position2D,
 };
-use re_viewer_context::{ComponentFallbackProvider, ViewContext};
+use re_viewer_context::ViewContext;
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 #[derive(Debug, PartialEq)]
@@ -32,15 +32,15 @@ pub struct ForceLayoutParams {
 }
 
 /// Convenience struct for querying the components of a blueprint archetype or its fallbacks.
-struct QueryArchetype<'a, T> {
+struct QueryArchetype<'a, V, T> {
     ctx: &'a ViewContext<'a>,
-    provider: &'a dyn ComponentFallbackProvider,
+    view: &'a V,
     property: ViewProperty,
     _marker: std::marker::PhantomData<T>,
 }
 
-impl<'a, T: Archetype> QueryArchetype<'a, T> {
-    fn new(ctx: &'a ViewContext<'a>, provider: &'a dyn ComponentFallbackProvider) -> Self {
+impl<'a, V: re_viewer_context::ViewClass, T: Archetype> QueryArchetype<'a, V, T> {
+    fn new(ctx: &'a ViewContext<'a>, view: &'a V) -> Self {
         let property = ViewProperty::from_archetype::<T>(
             ctx.viewer_ctx.blueprint_db(),
             ctx.blueprint_query(),
@@ -48,7 +48,7 @@ impl<'a, T: Archetype> QueryArchetype<'a, T> {
         );
         Self {
             ctx,
-            provider,
+            view,
             property,
             _marker: Default::default(),
         }
@@ -59,21 +59,21 @@ impl<'a, T: Archetype> QueryArchetype<'a, T> {
         R: Component + Default,
     {
         self.property
-            .component_or_fallback(self.ctx, self.provider, component_descr)
+            .component_or_fallback(self.ctx, self.view, component_descr)
     }
 }
 
 impl ForceLayoutParams {
-    pub fn get(
+    pub fn get<V: re_viewer_context::ViewClass>(
         ctx: &ViewContext<'_>,
-        provider: &dyn ComponentFallbackProvider,
+        provider: &V,
     ) -> Result<Self, ViewPropertyQueryError> {
         // Query the components for the archetype
-        let force_link = QueryArchetype::<ForceLink>::new(ctx, provider);
-        let force_many = QueryArchetype::<ForceManyBody>::new(ctx, provider);
-        let force_position = QueryArchetype::<ForcePosition>::new(ctx, provider);
-        let force_center = QueryArchetype::<ForceCenter>::new(ctx, provider);
-        let force_collision = QueryArchetype::<ForceCollisionRadius>::new(ctx, provider);
+        let force_link = QueryArchetype::<V, ForceLink>::new(ctx, provider);
+        let force_many = QueryArchetype::<V, ForceManyBody>::new(ctx, provider);
+        let force_position = QueryArchetype::<V, ForcePosition>::new(ctx, provider);
+        let force_center = QueryArchetype::<V, ForceCenter>::new(ctx, provider);
+        let force_collision = QueryArchetype::<V, ForceCollisionRadius>::new(ctx, provider);
 
         Ok(Self {
             // Link

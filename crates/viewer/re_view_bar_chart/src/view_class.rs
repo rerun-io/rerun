@@ -2,7 +2,7 @@ use egui::ahash::HashMap;
 use egui_plot::ColorConflictHandling;
 use re_log_types::EntityPath;
 use re_types::{
-    Archetype as _, View as _, ViewClassIdentifier,
+    View as _, ViewClassIdentifier,
     blueprint::{
         archetypes::{PlotBackground, PlotLegend},
         components::{Corner2D, Enabled},
@@ -14,9 +14,9 @@ use re_ui::{Help, IconText, MouseButtonText, icons, list_item};
 use re_view::{controls::SELECTION_RECT_ZOOM_BUTTON, view_property_ui};
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
-    TypedComponentFallbackProvider, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId,
-    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
-    VisualizableEntities, suggest_view_for_each_entity,
+    ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewerContext, VisualizableEntities,
+    suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -90,7 +90,14 @@ impl ViewClass for BarChartView {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        system_registry.register_visualizer::<BarChartVisualizerSystem>()
+        system_registry.register_visualizer::<BarChartVisualizerSystem>()?;
+
+        system_registry.register_fallback_provider::<Self, Corner2D>(
+            &PlotLegend::descriptor_corner(),
+            |_, _| Corner2D::RightTop,
+        );
+
+        Ok(())
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
@@ -384,38 +391,6 @@ impl ViewClass for BarChartView {
         Ok(())
     }
 }
-
-impl TypedComponentFallbackProvider<Corner2D> for BarChartView {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Corner2D {
-        // Explicitly pick RightCorner2D::RightTop, we don't want to make this dependent on the (arbitrary)
-        // default of Corner2D
-        Corner2D::RightTop
-    }
-}
-
-impl TypedComponentFallbackProvider<Color> for BarChartView {
-    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Color {
-        // Color is a fairly common component, make sure this is the right context.
-        if ctx.archetype_name == Some(PlotBackground::name()) {
-            ctx.viewer_ctx().tokens().viewport_background.into()
-        } else {
-            Color::default()
-        }
-    }
-}
-
-impl TypedComponentFallbackProvider<Enabled> for BarChartView {
-    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Enabled {
-        // Enabled is a fairly general component, make sure this is the right context.
-        if ctx.archetype_name == Some(PlotBackground::name()) {
-            Enabled(true.into())
-        } else {
-            Enabled::default()
-        }
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(BarChartView => [Corner2D, Color, Enabled]);
 
 #[test]
 fn test_help_view() {

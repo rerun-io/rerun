@@ -3,12 +3,13 @@ use itertools::Itertools as _;
 
 use nohash_hasher::IntMap;
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle};
-use re_types::ViewClassIdentifier;
+use re_types::{ComponentDescriptor, ViewClassIdentifier};
 
 use crate::{
-    IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, ViewClass,
-    ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, ViewerContext,
-    VisualizerCollection, VisualizerSystem,
+    FallbackContext, IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities,
+    PerVisualizer, QueryContext, ViewClass, ViewContextCollection, ViewContextSystem,
+    ViewSystemIdentifier, ViewerContext, VisualizerCollection, VisualizerSystem,
+    component_fallbacks::FallbackProviderRegistry,
     view::view_context_system::ViewContextSystemOncePerFrameResult,
 };
 
@@ -100,8 +101,10 @@ impl ViewSystemRegistrator<'_> {
                 .visualizers
                 .entry(T::identifier())
                 .or_insert_with(|| {
+                    let visualizer = T::default();
+                    visualizer.on_register(&mut self.registry.fallback_registry);
                     let entity_subscriber_handle = ChunkStore::register_subscriber(Box::new(
-                        VisualizerEntitySubscriber::new(&T::default()),
+                        VisualizerEntitySubscriber::new(&visualizer),
                     ));
 
                     VisualizerTypeRegistryEntry {
@@ -119,6 +122,24 @@ impl ViewSystemRegistrator<'_> {
                 T::identifier().as_str(),
             ))
         }
+    }
+
+    /// Register a fallback provider for a specific context and component.
+    ///
+    /// To use this context `T` has to be passed in as a fallback context when
+    /// retrieving fallbacks.
+    pub fn register_fallback_provider<T: FallbackContext, C: re_types::Component>(
+        &mut self,
+        descriptor: &ComponentDescriptor,
+        provider: impl Fn(&T, &QueryContext<'_>) -> C + Send + Sync + 'static,
+    ) {
+        self.registry
+            .fallback_registry
+            .register_context_fallback_provider(descriptor, provider);
+    }
+
+    pub fn fallback_registry(&mut self) -> &mut FallbackProviderRegistry {
+        &mut self.registry.fallback_registry
     }
 }
 
@@ -173,6 +194,7 @@ pub struct ViewClassRegistry {
     context_systems: HashMap<ViewSystemIdentifier, ContextSystemTypeRegistryEntry>,
     visualizers: HashMap<ViewSystemIdentifier, VisualizerTypeRegistryEntry>,
     placeholder: ViewClassRegistryEntry,
+    fallback_registry: FallbackProviderRegistry,
 }
 
 impl ViewClassRegistry {

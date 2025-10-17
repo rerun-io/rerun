@@ -1,6 +1,6 @@
 use re_viewer_context::{
-    ComponentFallbackProvider, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 /// An empty system to accept all entities in the view
@@ -31,17 +31,7 @@ impl VisualizerSystem for EmptySystem {
         self
     }
 
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+    fn fallback_ctx(&self) -> &dyn re_viewer_context::FallbackContext {
         self
-    }
-}
-
-impl ComponentFallbackProvider for EmptySystem {
-    fn try_provide_fallback(
-        &self,
-        _ctx: &re_viewer_context::QueryContext<'_>,
-        _component: re_types_core::ComponentType,
-    ) -> re_viewer_context::ComponentFallbackProviderResult {
-        re_viewer_context::ComponentFallbackProviderResult::ComponentNotHandled
     }
 }

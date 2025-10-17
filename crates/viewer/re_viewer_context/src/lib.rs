@@ -64,8 +64,8 @@ pub use self::{
         CommandReceiver, CommandSender, SystemCommand, SystemCommandSender, command_channel,
     },
     component_fallbacks::{
-        ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
-        TypedComponentFallbackProvider,
+        ComponentFallbackError, ComponentFallbackProviderResult, FallbackContext,
+        FallbackProviderRegistry, typed_fallback_for,
     },
     component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, EditTarget, VariantName},
     contents::{Contents, ContentsName, blueprint_id_to_tile_id},

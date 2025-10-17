@@ -5,8 +5,8 @@ use re_types::{
 };
 use re_view::DataResultQuery as _;
 use re_viewer_context::{
-    IdentifiedViewSystem, TypedComponentFallbackProvider, ViewContext, ViewContextCollection,
-    ViewQuery, ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 // ---
@@ -65,15 +65,7 @@ impl VisualizerSystem for TextDocumentSystem {
         self
     }
 
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+    fn fallback_ctx(&self) -> &dyn re_viewer_context::FallbackContext {
         self
     }
 }
-
-impl TypedComponentFallbackProvider<components::MediaType> for TextDocumentSystem {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> components::MediaType {
-        components::MediaType::plain_text()
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(TextDocumentSystem => [components::MediaType]);

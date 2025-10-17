@@ -245,9 +245,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
         self
     }
 
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+    fn fallback_ctx(&self) -> &dyn re_viewer_context::FallbackContext {
         self
     }
 }
-
-re_viewer_context::impl_component_fallback_provider!(Mesh3DVisualizer => []);

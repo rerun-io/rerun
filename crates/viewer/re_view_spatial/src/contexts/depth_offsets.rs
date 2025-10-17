@@ -125,9 +125,11 @@ fn determine_default_draworder(
         return DrawOrder::default();
     };
 
-    let draw_order_array = visualizer
-        .fallback_provider()
-        .fallback_for(ctx, draw_order_descriptor);
+    let draw_order_array = ctx.viewer_ctx().component_fallback_registry.fallback_for(
+        visualizer.fallback_ctx(),
+        draw_order_descriptor,
+        ctx,
+    );
     let draw_order_array = DrawOrder::from_arrow(&draw_order_array)
         .ok()
         .unwrap_or_default();
