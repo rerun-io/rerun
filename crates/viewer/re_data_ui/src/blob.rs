@@ -274,8 +274,7 @@ impl BlobUi {
         entity_path: &EntityPath,
     ) {
         if let Some(row_id) = self.row_id
-            && !ui_layout.is_single_line()
-            && ui_layout != UiLayout::Tooltip
+            && ui_layout == UiLayout::SelectionPanel
         {
             exif_ui(ui, StoredBlobCacheKey::new(row_id, &self.descr), &self.blob);
         }
