@@ -672,6 +672,10 @@ impl BlueprintTree {
         if ctx.selection_state().selected_items().single_item() != Some(item) {
             return;
         }
+        // Don't do keyboard navigation if something is focused
+        if ctx.egui_ctx().memory(|mem| mem.focused().is_some()) {
+            return;
+        }
 
         if ctx
             .egui_ctx()
