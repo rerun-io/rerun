@@ -52,6 +52,7 @@ define_redap_tests! {
     query_dataset::query_dataset_should_fail,
     query_dataset::query_empty_dataset,
     query_dataset::query_simple_dataset,
+    query_dataset::query_simple_dataset_with_layers,
     register_partition::register_and_scan_empty_dataset,
     register_partition::register_and_scan_simple_dataset,
     register_partition::register_and_scan_simple_dataset_with_layers,

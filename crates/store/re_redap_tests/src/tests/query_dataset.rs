@@ -74,6 +74,30 @@ pub async fn query_simple_dataset(service: impl RerunCloudService) {
     }
 }
 
+pub async fn query_simple_dataset_with_layers(service: impl RerunCloudService) {
+    let data_sources_def = DataSourcesDefinition::new([
+        LayerDefinition::simple("partition1", &["my/entity"]),
+        LayerDefinition::simple("partition1", &["extra/entity"]).layer_name("extra"),
+        LayerDefinition::simple("partition2", &["another/one"]).layer_name("base"),
+        LayerDefinition::simple("partition2", &["extra/entity"]).layer_name("extra"),
+        LayerDefinition::simple("partition3", &["i/am/alone"]),
+    ]);
+
+    let dataset_name = "dataset_with_layers";
+    service.create_dataset_entry_with_name(dataset_name).await;
+    service
+        .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
+        .await;
+
+    query_dataset_snapshot(
+        &service,
+        QueryDatasetRequest::default(),
+        dataset_name,
+        "simple_with_layer",
+    )
+    .await;
+}
+
 /// Test that failure cases return the correct error code.
 pub async fn query_dataset_should_fail(service: impl RerunCloudService) {
     let dataset_name = "dataset";
