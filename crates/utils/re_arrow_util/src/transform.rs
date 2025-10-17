@@ -72,10 +72,10 @@ pub enum Error {
     #[error("At least one field name is required")]
     NoFieldNames,
 
-    #[error("Offset overflow: total byte count {byte_count} exceeds i32::MAX: {err}")]
+    #[error("Offset overflow: cannot fit {actual} into {expected_type}")]
     OffsetOverflow {
-        byte_count: usize,
-        err: TryFromIntError,
+        actual: usize,
+        expected_type: &'static str,
     },
 
     #[error(transparent)]
@@ -668,31 +668,49 @@ impl Transform for Flatten {
 ///
 /// The underlying bytes buffer is reused, making this transformation almost zero-copy.
 #[derive(Clone, Debug, Default)]
-pub struct BinaryToListUInt8<OffsetSize: OffsetSizeTrait> {
-    _phantom: PhantomData<OffsetSize>,
+pub struct BinaryToListUInt8<O1: OffsetSizeTrait, O2: OffsetSizeTrait = O1> {
+    _from_offset: PhantomData<O1>,
+    _to_offset: PhantomData<O2>,
 }
 
-impl<OffsetSize: OffsetSizeTrait> BinaryToListUInt8<OffsetSize> {
-    /// Create a new transformation to convert a [`BinaryArray`] to a [`ListArray`} of `u8`.
+impl<O1: OffsetSizeTrait, O2: OffsetSizeTrait> BinaryToListUInt8<O1, O2> {
+    /// Create a new transformation to convert a [`BinaryArray`] to a [`ListArray`] of `u8`.
     pub fn new() -> Self {
         Default::default()
     }
 }
 
-impl<OffsetSize: OffsetSizeTrait> Transform for BinaryToListUInt8<OffsetSize> {
-    type Source = GenericBinaryArray<OffsetSize>;
-    type Target = GenericListArray<OffsetSize>;
+impl<O1: OffsetSizeTrait, O2: OffsetSizeTrait> Transform for BinaryToListUInt8<O1, O2> {
+    type Source = GenericBinaryArray<O1>;
+    type Target = GenericListArray<O2>;
 
-    fn transform(&self, source: &GenericBinaryArray<OffsetSize>) -> Result<Self::Target, Error> {
+    fn transform(&self, source: &GenericBinaryArray<O1>) -> Result<Self::Target, Error> {
         use arrow::array::UInt8Array;
         use arrow::buffer::ScalarBuffer;
 
         let scalar_buffer: ScalarBuffer<u8> = ScalarBuffer::from(source.values().clone());
         let uint8_array = UInt8Array::new(scalar_buffer, None);
 
+        // Convert from O1 to O2. Most offset buffers will be small in real-world
+        // examples, so we're fine copying them.
+        //
+        // This could be true zero copy if Rust had specialization.
+        // More info: https://std-dev-guide.rust-lang.org/policy/specialization.html
+        let old_offsets = source.offsets().iter();
+        let new_offsets: Result<Vec<O2>, Error> = old_offsets
+            .map(|&offset| {
+                let offset_usize = offset.as_usize();
+                O2::from_usize(offset_usize).ok_or_else(|| Error::OffsetOverflow {
+                    actual: offset_usize,
+                    expected_type: std::any::type_name::<O2>(),
+                })
+            })
+            .collect();
+        let offsets = arrow::buffer::OffsetBuffer::new(new_offsets?.into());
+
         let list = Self::Target::new(
             Arc::new(Field::new_list_field(DataType::UInt8, false)),
-            source.offsets().clone(),
+            offsets,
             Arc::new(uint8_array),
             source.nulls().cloned(),
         );
@@ -1013,8 +1031,15 @@ mod test {
         );
     }
 
-    // Generic test for binary arrays.
-    fn impl_binary_test<T: OffsetSizeTrait>(mut builder: GenericByteBuilder<GenericBinaryType<T>>) {
+    // Generic test for binary arrays where the offset is the same.
+    fn impl_binary_test<O1: OffsetSizeTrait, O2: OffsetSizeTrait>() {
+        println!(
+            "Testing '{}' -> '{}'",
+            std::any::type_name::<O1>(),
+            std::any::type_name::<O2>()
+        );
+
+        let mut builder = GenericByteBuilder::<GenericBinaryType<O1>>::new();
         builder.append_value(b"hello");
         builder.append_value(b"world");
         builder.append_null();
@@ -1025,7 +1050,9 @@ mod test {
         println!("Input:");
         println!("{}", DisplayRB(binary_array.clone()));
 
-        let result = BinaryToListUInt8::new().transform(&binary_array).unwrap();
+        let result = BinaryToListUInt8::<O1, O2>::new()
+            .transform(&binary_array)
+            .unwrap();
 
         println!("Output:");
         println!("{}", DisplayRB(result.clone()));
@@ -1092,13 +1119,43 @@ mod test {
 
     #[test]
     fn test_binary_to_list_uint8() {
-        let builder = arrow::array::BinaryBuilder::new();
-        impl_binary_test(builder);
+        // We test the different offset combinations.
+        impl_binary_test::<i32, i32>();
+        impl_binary_test::<i64, i32>();
+        impl_binary_test::<i32, i64>();
+        impl_binary_test::<i64, i64>();
     }
 
     #[test]
-    fn test_large_binary_to_list_uint8() {
-        let builder = arrow::array::LargeBinaryBuilder::new();
-        impl_binary_test(builder);
+    fn test_binary_offset_overflow() {
+        use arrow::array::LargeBinaryArray;
+        use arrow::buffer::OffsetBuffer;
+
+        // Create a LargeBinaryArray with an offset that exceeds i32::MAX
+        let large_offset = i32::MAX as i64 + 1;
+
+        let offsets = vec![0i64, large_offset];
+        let offsets_buffer = OffsetBuffer::new(offsets.into());
+
+        let values = vec![0u8; large_offset as usize];
+
+        let large_binary = LargeBinaryArray::new(offsets_buffer, values.into(), None);
+
+        // Try to convert from LargeBinaryArray (i64 offsets) to ListArray (i32 offsets)
+        let transform = BinaryToListUInt8::<i64, i32>::new();
+        let result = transform.transform(&large_binary);
+
+        // Should fail with OffsetOverflow
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            Error::OffsetOverflow {
+                actual,
+                expected_type,
+            } => {
+                assert_eq!(actual, large_offset as usize);
+                assert_eq!(expected_type, "i32");
+            }
+            other => panic!("Expected OffsetOverflow error, got: {other:?}"),
+        }
     }
 }
