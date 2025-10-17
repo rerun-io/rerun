@@ -63,6 +63,10 @@ pub struct AppOptions {
     /// see [`AppOptions::cache_subdirectory`].
     #[cfg(not(target_arch = "wasm32"))]
     pub cache_directory: Option<std::path::PathBuf>,
+
+    /// Enables experimental coordinate frame id overrides.
+    // TODO(RR-2700): Come up with something non-experimental.
+    pub experimental_coordinate_frame_display_and_override: bool,
 }
 
 impl Default for AppOptions {
@@ -90,6 +94,8 @@ impl Default for AppOptions {
 
             #[cfg(not(target_arch = "wasm32"))]
             cache_directory: Self::default_cache_directory(),
+
+            experimental_coordinate_frame_display_and_override: false,
         }
     }
 }
