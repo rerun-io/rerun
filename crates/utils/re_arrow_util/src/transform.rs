@@ -71,8 +71,11 @@ pub enum Error {
     #[error("At least one field name is required")]
     NoFieldNames,
 
-    #[error("Offset overflow: total byte count {byte_count} exceeds i32::MAX")]
-    OffsetOverflow { byte_count: usize },
+    #[error("Offset overflow: total byte count {byte_count} exceeds i32::MAX: {err}")]
+    OffsetOverflow {
+        byte_count: usize,
+        err: TryFromIntError,
+    },
 
     #[error(transparent)]
     Arrow(#[from] ArrowError),
@@ -698,8 +701,9 @@ impl Transform for BinaryToListUInt8 {
             byte_values.extend_from_slice(bytes);
 
             current_offset =
-                i32::try_from(byte_values.len()).map_err(|_| Error::OffsetOverflow {
+                i32::try_from(byte_values.len()).map_err(|err| Error::OffsetOverflow {
                     byte_count: byte_values.len(),
+                    err,
                 })?;
             offsets.push(current_offset);
         }
