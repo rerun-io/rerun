@@ -674,7 +674,7 @@ pub struct BinaryToListUInt8<O1: OffsetSizeTrait, O2: OffsetSizeTrait = O1> {
 }
 
 impl<O1: OffsetSizeTrait, O2: OffsetSizeTrait> BinaryToListUInt8<O1, O2> {
-    /// Create a new transformation to convert a [`BinaryArray`] to a [`ListArray`] of `u8`.
+    /// Create a new transformation to convert a binary array to a list array of `u8` arrays.
     pub fn new() -> Self {
         Default::default()
     }
