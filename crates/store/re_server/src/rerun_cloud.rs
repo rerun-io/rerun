@@ -7,6 +7,7 @@ use arrow::array::{
     TimestampSecondArray, UInt64Array,
 };
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
+use datafusion::logical_expr::dml::InsertOp;
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
 use tokio_stream::StreamExt as _;
@@ -16,6 +17,7 @@ use re_byte_size::SizeBytes as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
+use re_protos::cloud::v1alpha1::TableInsertMode;
 use re_protos::{
     cloud::v1alpha1::{
         DeleteEntryResponse, EntryDetails, EntryKind, GetDatasetManifestSchemaRequest,
@@ -614,6 +616,50 @@ impl RerunCloudService for RerunCloudHandler {
         ))
     }
 
+    async fn write_table(
+        &self,
+        request: tonic::Request<tonic::Streaming<re_protos::cloud::v1alpha1::WriteTableRequest>>,
+    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::WriteTableResponse>, tonic::Status>
+    {
+        let mut store = self.store.write().await;
+        let entry_id = get_entry_id_from_headers(&store, &request)?;
+
+        let mut request = request.into_inner();
+
+        while let Some(write_msg) = request.next().await {
+            let write_msg = write_msg?;
+
+            let rb = write_msg
+                .dataframe_part
+                .ok_or_else(|| {
+                    tonic::Status::invalid_argument("no data frame in WriteTableRequest")
+                })?
+                .decode()
+                .map_err(|err| {
+                    tonic::Status::internal(format!("Could not decode chunk: {err:#}"))
+                })?;
+
+            let Some(table) = store.table_mut(entry_id) else {
+                return Err(tonic::Status::not_found("table not found"));
+            };
+            let insert_op = match TableInsertMode::try_from(write_msg.insert_mode)
+                .map_err(|err| Status::invalid_argument(err.to_string()))?
+            {
+                TableInsertMode::TableInsertAppend => InsertOp::Append,
+                TableInsertMode::TableInsertReplace => InsertOp::Replace,
+                TableInsertMode::TableInsertOverwrite => InsertOp::Overwrite,
+            };
+
+            table.write_table(rb, insert_op).await.map_err(|err| {
+                tonic::Status::internal(format!("error writing to table: {err:#}"))
+            })?;
+        }
+
+        Ok(tonic::Response::new(
+            re_protos::cloud::v1alpha1::WriteTableResponse {},
+        ))
+    }
+
     /* Query schemas */
 
     async fn get_partition_table_schema(
@@ -1071,9 +1117,7 @@ impl RerunCloudService for RerunCloudHandler {
             .table(entry_id)
             .ok_or_else(|| Status::not_found(format!("Entry with ID {entry_id} not found")))?;
 
-        let table_provider = table.provider();
-
-        let schema = table_provider.schema();
+        let schema = table.schema();
 
         Ok(tonic::Response::new(
             re_protos::cloud::v1alpha1::GetTableSchemaResponse {

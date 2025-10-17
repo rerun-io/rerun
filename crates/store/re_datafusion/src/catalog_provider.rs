@@ -228,7 +228,7 @@ impl SchemaProvider for RedapSchemaProvider {
             (None, Some(schema_name)) => format!("{schema_name}.{table_name}"),
             _ => table_name.to_owned(),
         };
-        TableEntryTableProvider::new(self.client.clone(), table_name)
+        TableEntryTableProvider::new(self.client.clone(), table_name, self.runtime.clone())
             .into_provider()
             .await
             .map(Some)
