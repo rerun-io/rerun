@@ -12,8 +12,8 @@ use rerun::{
 };
 
 fn lens_flag() -> anyhow::Result<Lens> {
-    let step_fn = |list_array: ListArray| {
-        let (_, offsets, values, nulls) = list_array.into_parts();
+    let step_fn = |list_array: &ListArray| {
+        let (_, offsets, values, nulls) = list_array.clone().into_parts();
         let flag_array = values.as_any().downcast_ref::<StringArray>().unwrap();
 
         let scalar_array: Float64Array = flag_array
