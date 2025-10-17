@@ -1778,7 +1778,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Coordinate frame",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView"],
+                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![ArchetypeFieldReflection {
                     name: "frame_id",
                     display_name: "Frame id",
