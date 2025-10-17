@@ -666,7 +666,10 @@ impl VideoUi {
                 }
             }
             Self::Asset(video_result, timestamp, blob) => {
-                video_asset_result_ui(ui, ui_layout, video_result);
+                if ui_layout == UiLayout::SelectionPanel {
+                    video_asset_result_ui(ui, ui_layout, video_result);
+                }
+
                 // Show a mini video player for video blobs:
                 if !ui_layout.is_single_line()
                     && ui_layout != UiLayout::Tooltip

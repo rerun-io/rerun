@@ -260,7 +260,9 @@ fn component_list_ui(
                         }
                     });
 
-                    if let Some(data) = &data {
+                    if let Some(data) = &data
+                        && ui_layout == UiLayout::SelectionPanel
+                    {
                         content = data
                             .add_inline_buttons(
                                 ctx,
