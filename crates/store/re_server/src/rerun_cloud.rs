@@ -14,6 +14,7 @@ use tonic::{Code, Request, Response, Status};
 
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
+use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
@@ -989,7 +990,7 @@ impl RerunCloudService for RerunCloudHandler {
         drop(store);
 
         let mut chunks = Vec::new();
-        let compression = re_log_encoding::codec::Compression::Off;
+        let compression = re_log_encoding::rrd::Compression::Off;
 
         for (chunk_id, partition_id) in chunk_partition_pairs {
             let (dataset_id, store_handle) = store_handles.get(&partition_id).ok_or_else(|| {
@@ -1017,12 +1018,9 @@ impl RerunCloudService for RerunCloudHandler {
                     on_release: None,
                 };
 
-                let proto_msg = re_log_encoding::protobuf_conversions::arrow_msg_to_proto(
-                    &arrow_msg,
-                    store_id,
-                    compression,
-                )
-                .map_err(|err| tonic::Status::internal(format!("encoding failed: {err:#}")))?;
+                let proto_msg = arrow_msg
+                    .to_transport((store_id, compression))
+                    .map_err(|err| tonic::Status::internal(format!("encoding failed: {err:#}")))?;
 
                 chunks.push(proto_msg);
             }

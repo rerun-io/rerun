@@ -4,57 +4,11 @@ use std::io::Read as _;
 
 use re_build_info::CrateVersion;
 
-use crate::codec::Serializer;
-use crate::codec::file::EncodingOptions;
-use crate::codec::file::FileHeader;
-use crate::decoder::{ApplicationIdInjector, CachingApplicationIdInjector, DecodeError};
-
-// ---
-
-// TODO(cmc): This trait will be vastly improved and documented in a follow up that completely
-// revamps how codecs are defined and organized. For now, it's just undocumented bare minimum to
-// make `Decoder` work everywhere.
-
-pub trait FileEncoded: Sized {
-    fn decode(
-        app_id_injector: &mut impl ApplicationIdInjector,
-        message_kind: crate::codec::file::MessageKind,
-        buf: &[u8],
-    ) -> Result<Option<Self>, DecodeError>;
-
-    fn propagate_version(&mut self, version: Option<CrateVersion>) {
-        _ = self;
-        _ = version;
-    }
-}
-
-impl FileEncoded for re_log_types::LogMsg {
-    fn decode(
-        app_id_injector: &mut impl ApplicationIdInjector,
-        message_kind: crate::codec::file::MessageKind,
-        buf: &[u8],
-    ) -> Result<Option<Self>, DecodeError> {
-        crate::codec::file::decoder::decode_bytes_to_app(app_id_injector, message_kind, buf)
-    }
-
-    fn propagate_version(&mut self, version: Option<CrateVersion>) {
-        if let Self::SetStoreInfo(msg) = self {
-            // Propagate the protocol version from the header into the `StoreInfo` so that all
-            // parts of the app can easily access it.
-            msg.info.store_version = version;
-        }
-    }
-}
-
-impl FileEncoded for re_protos::log_msg::v1alpha1::log_msg::Msg {
-    fn decode(
-        _app_id_injector: &mut impl ApplicationIdInjector,
-        message_kind: crate::codec::file::MessageKind,
-        buf: &[u8],
-    ) -> Result<Option<Self>, DecodeError> {
-        crate::codec::file::decoder::decode_bytes_to_transport(message_kind, buf)
-    }
-}
+use crate::ToApplication as _;
+use crate::rrd::{
+    CodecError, Decodable as _, DecodeError, EncodingOptions, Serializer, StreamHeader,
+};
+use crate::{ApplicationIdInjector, CachingApplicationIdInjector};
 
 // ---
 
@@ -77,7 +31,7 @@ pub type DecoderApp = Decoder<re_log_types::LogMsg>;
 /// back via [`DecoderApp::try_read`].
 //
 // TODO(cmc): explain when you'd use this over StreamingDecoder and vice-versa.
-pub struct Decoder<T: FileEncoded> {
+pub struct Decoder<T> {
     /// The Rerun version used to encode the RRD data.
     ///
     /// `None` until a Rerun header has been processed.
@@ -124,13 +78,13 @@ enum State {
     /// The message content, serialized using `Protobuf`.
     ///
     /// Compression is only applied to individual `ArrowMsg`s, instead of the entire stream.
-    Message(crate::codec::file::MessageHeader),
+    Message(crate::rrd::MessageHeader),
 
     /// Stop reading.
     Aborted,
 }
 
-impl<T: FileEncoded> Decoder<T> {
+impl<T: DecoderEntrypoint> Decoder<T> {
     /// Instantiates a new lazy decoding iterator on top of the given buffered reader.
     ///
     /// This does not perform any IO until the returned iterator is polled. I.e. this will not
@@ -211,7 +165,62 @@ impl<T: FileEncoded> Decoder<T> {
     }
 }
 
-impl<T: FileEncoded> Decoder<T> {
+/// Implemented for top-level types that can kickoff decoding.
+///
+/// There are only two of them:
+/// * [`re_log_types::LogMsg`]: application-level root message
+/// * [`re_protos::log_msg::v1alpha1::log_msg::Msg`]: transport-level root message
+///
+/// This can be used to generically instantiate transport- and/or application-level decoders.
+/// See also:
+/// * [`DecoderTransport`]
+/// * [`DecoderApp`]
+///
+// TODO(cmc): technically this should be a sealed trait, but things are complicated enough as is.
+pub trait DecoderEntrypoint: Sized {
+    fn decode(
+        data: &[u8],
+        message_kind: crate::rrd::MessageKind,
+        app_id_injector: &mut impl ApplicationIdInjector,
+        patched_version: Option<CrateVersion>,
+    ) -> Result<Option<Self>, crate::rrd::CodecError>;
+}
+
+impl DecoderEntrypoint for re_log_types::LogMsg {
+    fn decode(
+        data: &[u8],
+        message_kind: crate::rrd::MessageKind,
+        app_id_injector: &mut impl ApplicationIdInjector,
+        patched_version: Option<CrateVersion>,
+    ) -> Result<Option<Self>, crate::rrd::CodecError> {
+        let Some(log_msg) = re_protos::log_msg::v1alpha1::log_msg::Msg::decode(
+            data,
+            message_kind,
+            app_id_injector,
+            patched_version,
+        )?
+        else {
+            return Ok(None);
+        };
+
+        log_msg
+            .to_application((app_id_injector, patched_version))
+            .map(Some)
+    }
+}
+
+impl DecoderEntrypoint for re_protos::log_msg::v1alpha1::log_msg::Msg {
+    fn decode(
+        data: &[u8],
+        message_kind: crate::rrd::MessageKind,
+        _app_id_injector: &mut impl ApplicationIdInjector,
+        _patched_version: Option<CrateVersion>,
+    ) -> Result<Option<Self>, crate::rrd::CodecError> {
+        Option::<Self>::from_rrd_bytes(data, message_kind)
+    }
+}
+
+impl<T: DecoderEntrypoint> Decoder<T> {
     #[expect(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
@@ -236,10 +245,10 @@ impl<T: FileEncoded> Decoder<T> {
         //TODO(#10730): remove this if/when we remove the legacy `StoreId` migration.
         loop {
             let result = self.try_read_impl();
-            if let Err(DecodeError::StoreIdMissingApplicationId {
+            if let Err(DecodeError::Codec(CodecError::StoreIdMissingApplicationId {
                 store_kind,
                 recording_id,
-            }) = result
+            })) = result
             {
                 re_log::warn_once!(
                     "Dropping message without application id which arrived before `SetStoreInfo` \
@@ -257,21 +266,25 @@ impl<T: FileEncoded> Decoder<T> {
             State::StreamHeader => {
                 let is_first_header = self.byte_chunks.num_read() == 0;
                 let position = self.byte_chunks.num_read();
-                if let Some(header) = self.byte_chunks.try_read(FileHeader::SIZE) {
-                    re_log::trace!(?header, "Decoding StreamHeader");
+                if let Some(header_data) =
+                    self.byte_chunks.try_read(StreamHeader::ENCODED_SIZE_BYTES)
+                {
+                    re_log::trace!(?header_data, "Decoding StreamHeader");
 
                     // header contains version and compression options
-                    let (version, options) = match FileHeader::options_from_bytes(header) {
+                    let version_and_options = StreamHeader::from_rrd_bytes(header_data, ())
+                        .and_then(|h| h.to_version_and_options());
+                    let (version, options) = match version_and_options {
                         Ok(ok) => ok,
                         Err(err) => {
                             // We expected a header, but didn't find one!
                             if is_first_header {
-                                return Err(err);
+                                return Err(err.into());
                             } else {
                                 re_log::error!(
                                     is_first_header,
                                     position,
-                                    "Trailing bytes in rrd stream: {header:?} ({err})"
+                                    "Trailing bytes in rrd stream: {header_data:?} ({err})"
                                 );
                                 self.state = State::Aborted;
                                 return Ok(None);
@@ -299,12 +312,12 @@ impl<T: FileEncoded> Decoder<T> {
             }
 
             State::MessageHeader => {
-                let mut peeked = [0u8; crate::codec::file::MessageHeader::SIZE_BYTES];
+                let mut peeked = [0u8; crate::rrd::MessageHeader::ENCODED_SIZE_BYTES];
                 if self.byte_chunks.try_peek(&mut peeked) == peeked.len() {
-                    let header = match crate::codec::file::MessageHeader::from_bytes(&peeked) {
+                    let header = match crate::rrd::MessageHeader::from_rrd_bytes(&peeked, ()) {
                         Ok(header) => header,
 
-                        Err(DecodeError::Codec(crate::codec::CodecError::UnknownMessageHeader)) => {
+                        Err(crate::rrd::CodecError::HeaderDecoding(_)) => {
                             // We failed to decode a `MessageHeader`: it might be because the
                             // stream is corrupt, or it might be because it just switched to a
                             // different, concatenated recording without having the courtesy of
@@ -317,7 +330,7 @@ impl<T: FileEncoded> Decoder<T> {
                     };
 
                     self.byte_chunks
-                        .try_read(crate::codec::file::MessageHeader::SIZE_BYTES)
+                        .try_read(crate::rrd::MessageHeader::ENCODED_SIZE_BYTES)
                         .expect("reading cannot fail if peeking worked");
 
                     re_log::trace!(?header, "MessageHeader");
@@ -333,21 +346,21 @@ impl<T: FileEncoded> Decoder<T> {
                 if let Some(bytes) = self.byte_chunks.try_read(header.len as usize) {
                     re_log::trace!(?header, "Read message");
 
-                    let message = match T::decode(&mut self.app_id_cache, header.kind, bytes) {
-                        Ok(msg) => msg,
-                        Err(err) => {
-                            // We successfully parsed a header, but decided to drop the message altogether.
-                            // We must go back to looking for headers, or the decoder will just be stuck in a dead
-                            // state forever.
-                            self.state = State::MessageHeader;
-                            return Err(err);
-                        }
-                    };
+                    let message =
+                        match T::decode(bytes, header.kind, &mut self.app_id_cache, self.version) {
+                            Ok(msg) => msg,
+                            Err(err) => {
+                                // We successfully parsed a header, but decided to drop the message altogether.
+                                // We must go back to looking for headers, or the decoder will just be stuck in a dead
+                                // state forever.
+                                self.state = State::MessageHeader;
+                                return Err(err.into());
+                            }
+                        };
 
-                    if let Some(mut message) = message {
+                    if let Some(message) = message {
                         re_log::trace!("Decoded new message");
 
-                        message.propagate_version(self.version);
                         self.state = State::MessageHeader;
                         return Ok(Some(message));
                     } else {
@@ -373,7 +386,7 @@ impl<T: FileEncoded> Decoder<T> {
 // ---
 
 /// Iteratively decodes the contents of an arbitrary buffered reader.
-pub struct DecoderIterator<T: FileEncoded, R: std::io::BufRead> {
+pub struct DecoderIterator<T, R: std::io::BufRead> {
     decoder: Decoder<T>,
     reader: R,
 
@@ -389,13 +402,13 @@ pub struct DecoderIterator<T: FileEncoded, R: std::io::BufRead> {
     first_msg: Option<T>,
 }
 
-impl<T: FileEncoded, R: std::io::BufRead> DecoderIterator<T, R> {
+impl<T, R: std::io::BufRead> DecoderIterator<T, R> {
     pub fn num_bytes_processed(&self) -> u64 {
         self.decoder.byte_chunks.num_read() as _
     }
 }
 
-impl<T: FileEncoded, R: std::io::BufRead> std::iter::Iterator for DecoderIterator<T, R> {
+impl<T: DecoderEntrypoint, R: std::io::BufRead> std::iter::Iterator for DecoderIterator<T, R> {
     type Item = Result<T, DecodeError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -588,7 +601,7 @@ mod tests {
     use re_log_types::{LogMsg, SetStoreInfo, StoreInfo};
 
     use crate::Encoder;
-    use crate::EncodingOptions;
+    use crate::rrd::EncodingOptions;
 
     use super::*;
 
@@ -856,10 +869,10 @@ mod tests_legacy {
     use re_chunk::RowId;
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
     use re_protos::log_msg::v1alpha1 as proto;
-    use re_protos::log_msg::v1alpha1::LogMsg as LogMsgProto;
+    use re_protos::log_msg::v1alpha1::log_msg::Msg as LogMsgProto;
 
-    use crate::Encoder;
-    use crate::codec::Compression;
+    use crate::rrd::Compression;
+    use crate::{Encoder, ToTransport as _};
 
     use super::*;
 
@@ -910,14 +923,10 @@ mod tests_legacy {
     fn legacy_fake_log_messages() -> Vec<LogMsgProto> {
         fake_log_messages()
             .into_iter()
-            .map(|msg| {
-                crate::protobuf_conversions::log_msg_to_proto(msg, Compression::Off).unwrap()
-            })
+            .map(|msg| msg.to_transport(Compression::Off).unwrap())
             .map(|mut log_msg| {
-                match &mut log_msg.msg {
-                    None => panic!("Unexpected `LogMsg` without payload"),
-
-                    Some(proto::log_msg::Msg::SetStoreInfo(set_store_info)) => {
+                match &mut log_msg {
+                    proto::log_msg::Msg::SetStoreInfo(set_store_info) => {
                         if let Some(store_info) = &mut set_store_info.info {
                             let Some(mut store_id) = store_info.store_id.clone() else {
                                 panic!("Unexpected missing `StoreId`");
@@ -935,14 +944,13 @@ mod tests_legacy {
                             panic!("Unexpected missing `store_info`")
                         }
                     }
-                    Some(
-                        proto::log_msg::Msg::ArrowMsg(proto::ArrowMsg { store_id, .. })
-                        | proto::log_msg::Msg::BlueprintActivationCommand(
-                            proto::BlueprintActivationCommand {
-                                blueprint_id: store_id,
-                                ..
-                            },
-                        ),
+
+                    proto::log_msg::Msg::ArrowMsg(proto::ArrowMsg { store_id, .. })
+                    | proto::log_msg::Msg::BlueprintActivationCommand(
+                        proto::BlueprintActivationCommand {
+                            blueprint_id: store_id,
+                            ..
+                        },
                     ) => {
                         let mut legacy_store_id =
                             store_id.clone().expect("messages should have store ids");
@@ -969,7 +977,7 @@ mod tests_legacy {
             write: &mut W,
         ) -> Result<u64, crate::EncodeError> {
             re_tracing::profile_function!();
-            let mut encoder = Encoder::new(version, options, write)?;
+            let mut encoder = Encoder::new_eager(version, options, write)?;
             let mut size_bytes = 0;
             for message in messages {
                 size_bytes += encoder.append(message?.borrow())?;
@@ -1055,33 +1063,21 @@ mod tests_legacy {
 
         let messages = legacy_fake_log_messages();
 
-        let options = [
-            EncodingOptions {
-                compression: Compression::Off,
-                serializer: Serializer::Protobuf,
-            },
-            EncodingOptions {
-                compression: Compression::LZ4,
-                serializer: Serializer::Protobuf,
-            },
-        ];
+        let mut file = vec![];
 
-        for options in options {
-            let mut file = vec![];
-
-            let mut encoder = Encoder::new(rrd_version, options, &mut file).unwrap();
-            for message in messages.clone() {
-                encoder
-                    .append_proto(message)
-                    .expect("encoding should succeed");
-            }
-            drop(encoder);
-
-            let decoded_messages: Vec<_> = DecoderApp::decode_lazy(file.as_slice())
-                .map(Result::unwrap)
-                .collect();
-            assert_eq!(decoded_messages.len(), messages.len());
+        let options = EncodingOptions::PROTOBUF_UNCOMPRESSED;
+        let mut encoder = Encoder::new_eager(rrd_version, options, &mut file).unwrap();
+        for message in messages.clone() {
+            encoder
+                .append_transport(&message)
+                .expect("encoding should succeed");
         }
+        drop(encoder);
+
+        let decoded_messages: Vec<_> = DecoderApp::decode_lazy(file.as_slice())
+            .map(Result::unwrap)
+            .collect();
+        assert_eq!(decoded_messages.len(), messages.len());
     }
 
     /// Test that legacy messages (aka `StoreId` without an application id) that arrive _before_
@@ -1095,50 +1091,32 @@ mod tests_legacy {
         // ensure the test data is as we expect
         let orig_message_count = messages.len();
         assert_eq!(orig_message_count, 3);
+        assert!(matches!(messages[0], proto::log_msg::Msg::SetStoreInfo(..)));
+        assert!(matches!(messages[1], proto::log_msg::Msg::ArrowMsg(..)));
         assert!(matches!(
-            messages[0].msg,
-            Some(proto::log_msg::Msg::SetStoreInfo(..))
+            messages[2],
+            proto::log_msg::Msg::BlueprintActivationCommand(..)
         ));
-        assert!(matches!(
-            messages[1].msg,
-            Some(proto::log_msg::Msg::ArrowMsg(..))
-        ));
-        assert!(matches!(
-            messages[2].msg,
-            Some(proto::log_msg::Msg::BlueprintActivationCommand(..))
-        ));
-
-        let options = [
-            EncodingOptions {
-                compression: Compression::Off,
-                serializer: Serializer::Protobuf,
-            },
-            EncodingOptions {
-                compression: Compression::LZ4,
-                serializer: Serializer::Protobuf,
-            },
-        ];
 
         // make out-of-order messages
         let mut out_of_order_messages = vec![messages[1].clone(), messages[2].clone()];
         out_of_order_messages.extend(messages);
 
-        for options in options {
-            let mut file = vec![];
+        let mut file = vec![];
 
-            let mut encoder = Encoder::new(rrd_version, options, &mut file).unwrap();
-            for message in out_of_order_messages.clone() {
-                encoder
-                    .append_proto(message)
-                    .expect("encoding should succeed");
-            }
-            drop(encoder);
-
-            let decoded_messages: Vec<_> = DecoderApp::decode_lazy(file.as_slice())
-                .map(Result::unwrap)
-                .collect();
-            assert_eq!(decoded_messages.len(), orig_message_count);
+        let options = EncodingOptions::PROTOBUF_UNCOMPRESSED;
+        let mut encoder = Encoder::new_eager(rrd_version, options, &mut file).unwrap();
+        for message in out_of_order_messages.clone() {
+            encoder
+                .append_transport(&message)
+                .expect("encoding should succeed");
         }
+        drop(encoder);
+
+        let decoded_messages: Vec<_> = DecoderApp::decode_lazy(file.as_slice())
+            .map(Result::unwrap)
+            .collect();
+        assert_eq!(decoded_messages.len(), orig_message_count);
     }
 
     /// Test that non-legacy message streams do not rely on the `SetStoreInfo` message to arrive first.
@@ -1213,7 +1191,7 @@ mod tests_legacy {
             {
                 let writer = std::io::Cursor::new(&mut data);
                 let mut encoder1 =
-                    crate::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+                    crate::Encoder::new_eager(CrateVersion::LOCAL, options, writer).unwrap();
                 for message in &messages {
                     encoder1.append(message).unwrap();
                 }
@@ -1226,7 +1204,7 @@ mod tests_legacy {
                 let mut writer = std::io::Cursor::new(&mut data);
                 writer.set_position(written);
                 let mut encoder2 =
-                    crate::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+                    crate::Encoder::new_eager(CrateVersion::LOCAL, options, writer).unwrap();
                 for message in &messages {
                     encoder2.append(message).unwrap();
                 }
@@ -1250,7 +1228,7 @@ mod tests_legacy {
             {
                 let writer = std::io::Cursor::new(&mut data);
                 let mut encoder1 =
-                    crate::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+                    crate::Encoder::new_eager(CrateVersion::LOCAL, options, writer).unwrap();
                 for message in &messages {
                     encoder1.append(message).unwrap();
                 }
@@ -1266,7 +1244,7 @@ mod tests_legacy {
                 let mut writer = std::io::Cursor::new(&mut data);
                 writer.set_position(written);
                 let mut encoder2 =
-                    crate::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+                    crate::Encoder::new_eager(CrateVersion::LOCAL, options, writer).unwrap();
                 for message in &messages {
                     encoder2.append(message).unwrap();
                 }
