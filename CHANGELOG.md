@@ -1,6 +1,6 @@
 # Rerun changelog
 
-## [0.26.0](https://github.com/rerun-io/rerun/compare/0.25.1...0.26.0) - TBD - TBD
+## 0.26.0 - TBD - TBD
 
 ### ⚠️ Breaking changes
 
