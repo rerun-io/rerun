@@ -159,6 +159,7 @@ def main() -> None:
         ticks = zip(
             offsets,
             (sim_times[offset : offset + args.temporal_batch_size] for offset in offsets),
+            strict=False,
         )
 
     time_column = None

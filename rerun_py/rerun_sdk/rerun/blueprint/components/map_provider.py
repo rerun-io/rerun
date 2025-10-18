@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -57,9 +57,9 @@ class MapProvider(Enum):
         return self.name
 
 
-MapProviderLike = Union[
-    MapProvider,
-    Literal[
+MapProviderLike = (
+    MapProvider
+    | Literal[
         "MapboxDark",
         "MapboxSatellite",
         "MapboxStreets",
@@ -68,10 +68,10 @@ MapProviderLike = Union[
         "mapboxsatellite",
         "mapboxstreets",
         "openstreetmap",
-    ],
-    int,
-]
-MapProviderArrayLike = Union[MapProviderLike, Sequence[MapProviderLike]]
+    ]
+    | int
+)
+MapProviderArrayLike = MapProvider | Sequence[MapProviderLike]
 
 
 class MapProviderBatch(BaseBatch[MapProviderArrayLike], ComponentBatchMixin):

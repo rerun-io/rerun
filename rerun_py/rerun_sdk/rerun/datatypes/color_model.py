@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -64,8 +64,8 @@ class ColorModel(ColorModelExt, Enum):
         return self.name
 
 
-ColorModelLike = Union[ColorModel, Literal["BGR", "BGRA", "L", "RGB", "RGBA", "bgr", "bgra", "l", "rgb", "rgba"], int]
-ColorModelArrayLike = Union[ColorModelLike, Sequence[ColorModelLike]]
+ColorModelLike = ColorModel | Literal["BGR", "BGRA", "L", "RGB", "RGBA", "bgr", "bgra", "l", "rgb", "rgba"] | int
+ColorModelArrayLike = ColorModel | Sequence[ColorModelLike]
 
 
 class ColorModelBatch(BaseBatch[ColorModelArrayLike]):

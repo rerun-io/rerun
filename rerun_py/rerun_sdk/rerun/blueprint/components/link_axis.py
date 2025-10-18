@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -51,8 +51,8 @@ class LinkAxis(Enum):
         return self.name
 
 
-LinkAxisLike = Union[LinkAxis, Literal["Independent", "LinkToGlobal", "independent", "linktoglobal"], int]
-LinkAxisArrayLike = Union[LinkAxisLike, Sequence[LinkAxisLike]]
+LinkAxisLike = LinkAxis | Literal["Independent", "LinkToGlobal", "independent", "linktoglobal"] | int
+LinkAxisArrayLike = LinkAxis | Sequence[LinkAxisLike]
 
 
 class LinkAxisBatch(BaseBatch[LinkAxisArrayLike], ComponentBatchMixin):

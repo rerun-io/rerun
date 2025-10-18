@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import collections
 from math import prod
-from typing import TYPE_CHECKING, Any, Final, Protocol, Union
+from typing import TYPE_CHECKING, Any, Final, Protocol
 
 import numpy as np
 import numpy.typing as npt
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
     from . import TensorBufferLike, TensorDataArrayLike, TensorDataLike
 
-    TensorLike = Union[TensorDataLike, TorchTensorLike]
+    TensorLike = TensorDataLike | TorchTensorLike
     """Type helper for a tensor-like object that can be logged to Rerun."""
 
 

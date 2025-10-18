@@ -30,7 +30,10 @@ import sys
 import time
 from functools import partial
 from glob import glob
-from typing import Callable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class Result:

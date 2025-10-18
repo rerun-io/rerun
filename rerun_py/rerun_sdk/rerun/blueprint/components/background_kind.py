@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -62,12 +62,12 @@ class BackgroundKind(Enum):
         return self.name
 
 
-BackgroundKindLike = Union[
-    BackgroundKind,
-    Literal["GradientBright", "GradientDark", "SolidColor", "gradientbright", "gradientdark", "solidcolor"],
-    int,
-]
-BackgroundKindArrayLike = Union[BackgroundKindLike, Sequence[BackgroundKindLike]]
+BackgroundKindLike = (
+    BackgroundKind
+    | Literal["GradientBright", "GradientDark", "SolidColor", "gradientbright", "gradientdark", "solidcolor"]
+    | int
+)
+BackgroundKindArrayLike = BackgroundKind | Sequence[BackgroundKindLike]
 
 
 class BackgroundKindBatch(BaseBatch[BackgroundKindArrayLike], ComponentBatchMixin):

@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -70,10 +70,10 @@ class FillMode(Enum):
         return self.name
 
 
-FillModeLike = Union[
-    FillMode, Literal["DenseWireframe", "MajorWireframe", "Solid", "densewireframe", "majorwireframe", "solid"], int
-]
-FillModeArrayLike = Union[FillModeLike, Sequence[FillModeLike]]
+FillModeLike = (
+    FillMode | Literal["DenseWireframe", "MajorWireframe", "Solid", "densewireframe", "majorwireframe", "solid"] | int
+)
+FillModeArrayLike = FillMode | Sequence[FillModeLike]
 
 
 class FillModeBatch(BaseBatch[FillModeArrayLike], ComponentBatchMixin):

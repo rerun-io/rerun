@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -80,8 +80,8 @@ class VideoCodec(Enum):
         return self.name
 
 
-VideoCodecLike = Union[VideoCodec, Literal["H264", "H265", "h264", "h265"], int]
-VideoCodecArrayLike = Union[VideoCodecLike, Sequence[VideoCodecLike]]
+VideoCodecLike = VideoCodec | Literal["H264", "H265", "h264", "h265"] | int
+VideoCodecArrayLike = VideoCodec | Sequence[VideoCodecLike]
 
 
 class VideoCodecBatch(BaseBatch[VideoCodecArrayLike], ComponentBatchMixin):

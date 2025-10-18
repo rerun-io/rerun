@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 import rerun as rr
 from rerun.components import HalfSize3DBatch, PoseRotationAxisAngleBatch, PoseRotationQuatBatch, PoseTranslation3DBatch
@@ -75,11 +75,11 @@ def test_ellipsoids() -> None:
         centers = cast("Vec3DArrayLike", centers)
         rotation_axis_angles = cast("RotationAxisAngleArrayLike", rotation_axis_angles)
         quaternions = cast("QuaternionArrayLike", quaternions)
-        line_radii = cast("Optional[Float32ArrayLike]", line_radii)
-        colors = cast("Optional[Rgba32ArrayLike]", colors)
-        labels = cast("Optional[Utf8ArrayLike]", labels)
-        class_ids = cast("Optional[ClassIdArrayLike]", class_ids)
-        fill_mode = cast("Optional[rr.components.FillMode]", fill_mode)
+        line_radii = cast("Float32ArrayLike | None", line_radii)
+        colors = cast("Rgba32ArrayLike | None", colors)
+        labels = cast("Utf8ArrayLike | None", labels)
+        class_ids = cast("ClassIdArrayLike | None", class_ids)
+        fill_mode = cast("rr.components.FillMode | None", fill_mode)
 
         print(
             f"rr.Ellipsoids3D(\n"

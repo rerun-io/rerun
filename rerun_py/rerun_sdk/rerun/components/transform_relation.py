@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -63,10 +63,10 @@ class TransformRelation(Enum):
         return self.name
 
 
-TransformRelationLike = Union[
-    TransformRelation, Literal["ChildFromParent", "ParentFromChild", "childfromparent", "parentfromchild"], int
-]
-TransformRelationArrayLike = Union[TransformRelationLike, Sequence[TransformRelationLike]]
+TransformRelationLike = (
+    TransformRelation | Literal["ChildFromParent", "ParentFromChild", "childfromparent", "parentfromchild"] | int
+)
+TransformRelationArrayLike = TransformRelation | Sequence[TransformRelationLike]
 
 
 class TransformRelationBatch(BaseBatch[TransformRelationArrayLike], ComponentBatchMixin):

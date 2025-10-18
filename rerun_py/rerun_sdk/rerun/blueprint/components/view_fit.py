@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -54,10 +54,10 @@ class ViewFit(Enum):
         return self.name
 
 
-ViewFitLike = Union[
-    ViewFit, Literal["Fill", "FillKeepAspectRatio", "Original", "fill", "fillkeepaspectratio", "original"], int
-]
-ViewFitArrayLike = Union[ViewFitLike, Sequence[ViewFitLike]]
+ViewFitLike = (
+    ViewFit | Literal["Fill", "FillKeepAspectRatio", "Original", "fill", "fillkeepaspectratio", "original"] | int
+)
+ViewFitArrayLike = ViewFit | Sequence[ViewFitLike]
 
 
 class ViewFitBatch(BaseBatch[ViewFitArrayLike], ComponentBatchMixin):
