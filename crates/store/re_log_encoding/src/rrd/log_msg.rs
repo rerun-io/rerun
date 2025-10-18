@@ -2,15 +2,10 @@ use crate::rrd::{CodecError, Decodable, Encodable, MessageHeader, MessageKind};
 
 // TODO: you will never use `LogMsg` here, but i should maybe explain why.
 
-// TODO: basically we want Read and Write but scoped to in-memory non-fallible implementations only
-// maybe i do something silly like this.
-// trait InMemoryIO: Read + Write {}
-// impl InMemoryIO for Cursor<Vec<u8>> {}
-// impl<'a> InMemoryIO for Cursor<&'a [u8]> {}
-
 // --- LogMsg (transport layer): re_protos::log_msg::v1alpha1::log_msg::Msg ---
 
 impl Encodable for re_protos::log_msg::v1alpha1::log_msg::Msg {
+    /// Serializes the appropriate `MessageHeader` simultaneously.
     fn to_rrd_bytes(&self, out: &mut Vec<u8>) -> Result<u64, CodecError> {
         use re_protos::external::prost::Message as _;
 
@@ -53,38 +48,54 @@ impl Encodable for re_protos::log_msg::v1alpha1::log_msg::Msg {
 // might be `MessageKind::End` (signifying end-of-stream), which has no representation in our Protobuf
 // definitions. I.e. `MessageKind::End` yields `None`.
 impl Decodable for Option<re_protos::log_msg::v1alpha1::log_msg::Msg> {
-    // NOTE: This is required because, in the native RRD protocol, `LogMsg`s are encoded _without_
-    // the associated `oneof` Protobuf layer. I.e. we do not serialize `re_protos::log_msg::v1alpha1::LogMsg`
-    // objects, but rather we serialize `re_protos::log_msg::v1alpha1::log_msg::Msg` objects.
-    //
-    // Therefore, we need an out-of-band `MessageKind` to know what we're trying to decode in the
-    // first place.
-    type Context<'a> = crate::rrd::MessageKind;
-
-    fn from_rrd_bytes(data: &[u8], msg_kind: Self::Context<'_>) -> Result<Self, CodecError> {
-        use re_protos::external::prost::Message as _;
+    /// This expects `data` to carry the `MessageHeader` bytes too!
+    fn from_rrd_bytes(data: &[u8]) -> Result<Self, CodecError> {
         use re_protos::log_msg::v1alpha1::{ArrowMsg, BlueprintActivationCommand, SetStoreInfo};
 
-        let msg = match msg_kind {
+        let header = MessageHeader::from_rrd_bytes(&data[..MessageHeader::ENCODED_SIZE_BYTES])?;
+
+        let data = &data[MessageHeader::ENCODED_SIZE_BYTES..];
+        let msg = match header.kind {
             MessageKind::SetStoreInfo => {
                 Some(re_protos::log_msg::v1alpha1::log_msg::Msg::SetStoreInfo(
-                    SetStoreInfo::decode(data)?,
+                    SetStoreInfo::from_rrd_bytes(data)?,
                 ))
             }
 
-            MessageKind::ArrowMsg => {
-                let msg = ArrowMsg::decode(data)?;
-                Some(re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(msg))
-            }
+            MessageKind::ArrowMsg => Some(re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(
+                ArrowMsg::from_rrd_bytes(data)?,
+            )),
 
-            MessageKind::BlueprintActivationCommand => {
-                let msg = BlueprintActivationCommand::decode(data)?;
-                Some(re_protos::log_msg::v1alpha1::log_msg::Msg::BlueprintActivationCommand(msg))
-            }
+            MessageKind::BlueprintActivationCommand => Some(
+                re_protos::log_msg::v1alpha1::log_msg::Msg::BlueprintActivationCommand(
+                    BlueprintActivationCommand::from_rrd_bytes(data)?,
+                ),
+            ),
 
             MessageKind::End => None,
         };
 
         Ok(msg)
+    }
+}
+
+impl Decodable for re_protos::log_msg::v1alpha1::SetStoreInfo {
+    fn from_rrd_bytes(data: &[u8]) -> Result<Self, CodecError> {
+        use re_protos::external::prost::Message as _;
+        Ok(Self::decode(data)?)
+    }
+}
+
+impl Decodable for re_protos::log_msg::v1alpha1::ArrowMsg {
+    fn from_rrd_bytes(data: &[u8]) -> Result<Self, CodecError> {
+        use re_protos::external::prost::Message as _;
+        Ok(Self::decode(data)?)
+    }
+}
+
+impl Decodable for re_protos::log_msg::v1alpha1::BlueprintActivationCommand {
+    fn from_rrd_bytes(data: &[u8]) -> Result<Self, CodecError> {
+        use re_protos::external::prost::Message as _;
+        Ok(Self::decode(data)?)
     }
 }

@@ -69,12 +69,17 @@ impl StreamingLogMsg {
         let mut log_msg_encoded = Vec::new();
         log_msg_proto.to_rrd_bytes(&mut log_msg_encoded)?;
 
-        let byte_len = log_msg_encoded.len() as _;
+        let byte_len =
+            log_msg_encoded.len() as u64 - crate::MessageHeader::ENCODED_SIZE_BYTES as u64;
 
         Ok(Self {
             kind: MessageKind::ArrowMsg,
             version: CrateVersion::LOCAL,
-            encoded: Some(log_msg_encoded.into()),
+            encoded: Some(
+                log_msg_encoded[crate::MessageHeader::ENCODED_SIZE_BYTES..]
+                    .to_vec()
+                    .into(),
+            ),
             decoded: Some(log_msg_proto),
             byte_span: Span {
                 start: 0,
@@ -112,10 +117,24 @@ impl StreamingLogMsg {
         }
 
         if let Some(encoded) = self.encoded.as_ref() {
-            return Option::<re_protos::log_msg::v1alpha1::log_msg::Msg>::from_rrd_bytes(
-                encoded, self.kind,
-            )
-            .map_err(Into::into);
+            return Ok(Some(match self.kind {
+                MessageKind::End => return Ok(None),
+                MessageKind::SetStoreInfo => {
+                    re_protos::log_msg::v1alpha1::log_msg::Msg::SetStoreInfo(
+                        re_protos::log_msg::v1alpha1::SetStoreInfo::from_rrd_bytes(encoded)?,
+                    )
+                }
+                MessageKind::ArrowMsg => re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(
+                    re_protos::log_msg::v1alpha1::ArrowMsg::from_rrd_bytes(encoded)?,
+                ),
+                MessageKind::BlueprintActivationCommand => {
+                    re_protos::log_msg::v1alpha1::log_msg::Msg::BlueprintActivationCommand(
+                        re_protos::log_msg::v1alpha1::BlueprintActivationCommand::from_rrd_bytes(
+                            encoded,
+                        )?,
+                    )
+                }
+            }));
         }
 
         Ok(None)
@@ -176,7 +195,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             .map_err(DecodeError::Read)?;
 
         let (version, encoding_opts) =
-            StreamHeader::from_rrd_bytes(&data, ()).and_then(|h| h.to_version_and_options())?;
+            StreamHeader::from_rrd_bytes(&data).and_then(|h| h.to_version_and_options())?;
 
         Ok(Self {
             version,
@@ -208,7 +227,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
 
     /// Returns true if `data` can be successfully decoded into a `FileHeader`.
     fn peek_file_header(data: &[u8]) -> bool {
-        StreamHeader::from_rrd_bytes(data, ()).is_ok()
+        StreamHeader::from_rrd_bytes(data).is_ok()
     }
 }
 
@@ -345,7 +364,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                 // We've found another file header in the middle of the stream, it's time to switch
                 // gears and start over on this new file.
                 let version_and_options =
-                    StreamHeader::from_rrd_bytes(data, ()).and_then(|h| h.to_version_and_options());
+                    StreamHeader::from_rrd_bytes(data).and_then(|h| h.to_version_and_options());
                 match version_and_options {
                     Ok((version, options)) => {
                         self.version = CrateVersion::max(self.version, version);
@@ -375,7 +394,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                         continue;
                     }
                     let data = &unprocessed_bytes[..header_size];
-                    let header = MessageHeader::from_rrd_bytes(data, ())?;
+                    let header = MessageHeader::from_rrd_bytes(data)?;
 
                     if unprocessed_bytes.len() < header.len as usize + header_size {
                         // Not enough data to read the message, need to wait for more
@@ -414,7 +433,21 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
             }
 
             let decoded = if opts.keep_decoded_protobuf {
-                Option::<re_protos::log_msg::v1alpha1::log_msg::Msg>::from_rrd_bytes(encoded, kind)?
+                Some(match kind {
+                    MessageKind::SetStoreInfo => re_protos::log_msg::v1alpha1::log_msg::Msg::SetStoreInfo(
+                        re_protos::log_msg::v1alpha1::SetStoreInfo::from_rrd_bytes(encoded)?
+                    ),
+
+                    MessageKind::ArrowMsg => re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(
+                        re_protos::log_msg::v1alpha1::ArrowMsg::from_rrd_bytes(encoded)?
+                    ),
+
+                    MessageKind::BlueprintActivationCommand => re_protos::log_msg::v1alpha1::log_msg::Msg::BlueprintActivationCommand(
+                        re_protos::log_msg::v1alpha1::BlueprintActivationCommand::from_rrd_bytes(encoded)?
+                    ),
+
+                    MessageKind::End => unreachable!(),
+                })
             } else {
                 None
             };
@@ -444,7 +477,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
     }
 }
 
-#[cfg(all(test, feature = "decoder", feature = "encoder"))]
+#[cfg(all(test, feature = "encoder"))]
 mod tests {
     use tokio_stream::StreamExt as _;
 
@@ -620,19 +653,10 @@ mod tests {
                 let data = &data[msg_expected.byte_span.try_cast::<usize>().unwrap().range()];
 
                 {
-                    use crate::rrd::MessageHeader;
-
-                    let header_size = std::mem::size_of::<MessageHeader>();
-                    let header_data = &data[..header_size];
-                    let header = MessageHeader::from_rrd_bytes(header_data, ()).unwrap();
-
-                    let data = &data[header_size..];
-                    let msg = Option::<re_protos::log_msg::v1alpha1::log_msg::Msg>::from_rrd_bytes(
-                        data,
-                        header.kind,
-                    )
-                    .unwrap()
-                    .unwrap();
+                    let msg =
+                        Option::<re_protos::log_msg::v1alpha1::log_msg::Msg>::from_rrd_bytes(data)
+                            .unwrap()
+                            .unwrap();
                     let msg = msg.to_application((&mut app_id_cache, None)).unwrap();
 
                     let msg_expected = msg_expected.decoded_transport().unwrap().unwrap();

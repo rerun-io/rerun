@@ -1,98 +1,16 @@
-use std::collections::VecDeque;
-use std::io::Cursor;
-use std::io::Read as _;
+use std::pin::Pin;
 
-use re_build_info::CrateVersion;
+use tokio::io::AsyncBufRead;
+use tokio_stream::{Stream, StreamExt as _};
 
-use crate::ToApplication as _;
-use crate::rrd::{
-    CodecError, Decodable as _, DecodeError, EncodingOptions, Serializer, StreamHeader,
-};
-use crate::{ApplicationIdInjector, CachingApplicationIdInjector};
+use crate::rrd::{DecodeError, Decoder, DecoderEntrypoint, decoder::state_machine::DecoderState};
 
 // ---
 
-/// A type alias for a [`Decoder`] that only decodes from raw bytes up to transport-level
-/// types (i.e. Protobuf payloads are decoded, but Arrow data is never touched).
-///
-/// See also [`DecoderTransport`].
-pub type DecoderTransport = Decoder<re_protos::log_msg::v1alpha1::log_msg::Msg>;
-
-/// A type alias for a [`Decoder`] that decodes all the way from raw bytes to
-/// application-level types (i.e. even Arrow layers are decoded).
-///
-/// See also [`DecoderApp`].
-pub type DecoderApp = Decoder<re_log_types::LogMsg>;
-
-// TODO:
-// * rrd::Encodable/rrd::Decodable: map RRD bytes to transport types and vice-versa, does nothing else (rrd::ToBytes, rrd::FromBytes?)
-//     * ToTransport/ToApplication: converts between transport and app level types, does every hack that exist
-//         * rrd::Decoder<T>/rrd::Encoder<T>: decode actual RRD streams using everything above
-
-/// The stream decoder is a state machine which ingests byte chunks and outputs messages once it
-/// has enough data to deserialize one.
-///
-/// Byte chunks are given to the stream via [`DecoderApp::push_byte_chunk`], and messages are read
-/// back via [`DecoderApp::try_read`].
-//
-// TODO(cmc): explain when you'd use this over StreamingDecoder and vice-versa.
-pub struct Decoder<T> {
-    /// The Rerun version used to encode the RRD data.
+impl<T: DecoderEntrypoint + Unpin> Decoder<T> {
+    /// Instantiates a new lazy decoding stream on top of the given buffered reader.
     ///
-    /// `None` until a Rerun header has been processed.
-    version: Option<CrateVersion>,
-
-    options: EncodingOptions,
-
-    /// Incoming byte chunks are stored here.
-    byte_chunks: ByteChunkBuffer,
-
-    /// The stream state.
-    state: State,
-
-    /// The application id cache used for migrating old data.
-    app_id_cache: CachingApplicationIdInjector,
-
-    _decodable: std::marker::PhantomData<T>,
-}
-
-///
-/// ```text,ignore
-/// StreamHeader
-///      |
-///      v
-/// MessageHeader
-/// ^           |
-/// |           |
-/// ---Message<--
-/// ```
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum State {
-    /// The beginning of the stream.
-    ///
-    /// The stream header contains the magic bytes (e.g. `RRF2`), the encoded version, and the
-    /// encoding options.
-    ///
-    /// After the stream header is read once, the state machine will only ever switch between
-    /// `MessageHeader` and `Message`
-    StreamHeader,
-
-    /// The beginning of a Protobuf message.
-    MessageHeader,
-
-    /// The message content, serialized using `Protobuf`.
-    ///
-    /// Compression is only applied to individual `ArrowMsg`s, instead of the entire stream.
-    Message(crate::rrd::MessageHeader),
-
-    /// Stop reading.
-    Aborted,
-}
-
-impl<T: DecoderEntrypoint> Decoder<T> {
-    /// Instantiates a new lazy decoding iterator on top of the given buffered reader.
-    ///
-    /// This does not perform any IO until the returned iterator is polled. I.e. this will not
+    /// This does not perform any IO until the returned stream is polled. I.e. this will not
     /// fail if the reader doesn't even contain valid RRD data.
     ///
     /// This takes a `BufRead` instead of a `Read` because:
@@ -100,25 +18,25 @@ impl<T: DecoderEntrypoint> Decoder<T> {
     /// * This lets the end-user in control of the buffering, which prevents unfortunately stacked
     ///   buffers (and thus exploding memory usage and copies).
     ///
-    /// See also [`Self::decode_lazy_with_opts`].
-    pub fn decode_lazy<R: std::io::BufRead>(reader: R) -> DecoderIterator<T, R> {
+    /// See also [`Self::decode_lazy_async_with_opts`].
+    pub fn decode_lazy_async<R: tokio::io::AsyncBufRead>(reader: R) -> DecoderStream<T, R> {
         let wait_for_eos = false;
-        Self::decode_lazy_with_opts(reader, wait_for_eos)
+        Self::decode_lazy_async_with_opts(reader, wait_for_eos)
     }
 
-    /// Same as [`Self::decode_lazy`], with extra options.
+    /// Same as [`Self::decode_lazy_async`], with extra options.
     ///
     /// * `wait_for_eos`: if true, the decoder will always wait for an end-of-stream marker before
     ///   calling it a day, even if the underlying reader has already reached its EOF state (…for now).
     ///   This only really makes sense when running in tail mode (see `RetryableFileReader`), otherwise
     ///   we'd rather terminate early when a potentially short-circuited (and therefore lacking a proper
     ///   end-of-stream marker) RRD stream indicates EOF.
-    pub fn decode_lazy_with_opts<R: std::io::BufRead>(
+    pub fn decode_lazy_async_with_opts<R: tokio::io::AsyncBufRead>(
         reader: R,
         wait_for_eos: bool,
-    ) -> DecoderIterator<T, R> {
+    ) -> DecoderStream<T, R> {
         let decoder = Self::new();
-        DecoderIterator {
+        DecoderStream {
             decoder,
             reader,
             wait_for_eos,
@@ -126,7 +44,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
         }
     }
 
-    /// Instantiates a new eager decoding iterator on top of the given buffered reader.
+    /// Instantiates a new eager decoding stream on top of the given buffered reader.
     ///
     /// This will perform a first decoding pass immediately. This allows this constructor to fail
     /// synchronously if the underlying reader doesn't even contain valid RRD data at all (e.g. magic
@@ -137,263 +55,45 @@ impl<T: DecoderEntrypoint> Decoder<T> {
     /// * This lets the end-user in control of the buffering, which prevents unfortunately stacked
     ///   buffers (and thus exploding memory usage and copies).
     ///
-    /// See also [`Self::decode_eager_with_opts`].
-    pub fn decode_eager<R: std::io::BufRead>(
+    /// See also [`Self::decode_eager_async_with_opts`].
+    pub async fn decode_eager_async<R: tokio::io::AsyncBufRead + Unpin>(
         reader: R,
-    ) -> Result<DecoderIterator<T, R>, DecodeError> {
+    ) -> Result<DecoderStream<T, R>, DecodeError> {
         let wait_for_eos = false;
-        Self::decode_eager_with_opts(reader, wait_for_eos)
+        Self::decode_eager_async_with_opts(reader, wait_for_eos).await
     }
 
-    /// Same as [`Self::decode_eager`], with extra options.
+    /// Same as [`Self::decode_eager_async`], with extra options.
     ///
     /// * `wait_for_eos`: if true, the decoder will always wait for an end-of-stream marker before
     ///   calling it a day, even if the underlying reader has already reached its EOF state (…for now).
     ///   This only really makes sense when running in tail mode (see `RetryableFileReader`), otherwise
     ///   we'd rather terminate early when a potentially short-circuited (and therefore lacking a proper
     ///   end-of-stream marker) RRD stream indicates EOF.
-    pub fn decode_eager_with_opts<R: std::io::BufRead>(
+    pub async fn decode_eager_async_with_opts<R: tokio::io::AsyncBufRead + Unpin>(
         reader: R,
         wait_for_eos: bool,
-    ) -> Result<DecoderIterator<T, R>, DecodeError> {
+    ) -> Result<DecoderStream<T, R>, DecodeError> {
         let decoder = Self::new();
-        let mut it = DecoderIterator {
+        let mut it = DecoderStream {
             decoder,
             reader,
             wait_for_eos,
             first_msg: None,
         };
 
-        it.first_msg = it.next().transpose()?;
+        it.first_msg = it.next().await.transpose()?;
 
         Ok(it)
-    }
-}
-
-/// Implemented for top-level types that can kickoff decoding.
-///
-/// There are only two of them:
-/// * [`re_log_types::LogMsg`]: application-level root message
-/// * [`re_protos::log_msg::v1alpha1::log_msg::Msg`]: transport-level root message
-///
-/// This can be used to generically instantiate transport- and/or application-level decoders.
-/// See also:
-/// * [`DecoderTransport`]
-/// * [`DecoderApp`]
-///
-// TODO(cmc): technically this should be a sealed trait, but things are complicated enough as is.
-pub trait DecoderEntrypoint: Sized {
-    fn decode(
-        data: &[u8],
-        message_kind: crate::rrd::MessageKind,
-        app_id_injector: &mut impl ApplicationIdInjector,
-        patched_version: Option<CrateVersion>,
-    ) -> Result<Option<Self>, crate::rrd::CodecError>;
-}
-
-impl DecoderEntrypoint for re_log_types::LogMsg {
-    fn decode(
-        data: &[u8],
-        message_kind: crate::rrd::MessageKind,
-        app_id_injector: &mut impl ApplicationIdInjector,
-        patched_version: Option<CrateVersion>,
-    ) -> Result<Option<Self>, crate::rrd::CodecError> {
-        let Some(log_msg) = re_protos::log_msg::v1alpha1::log_msg::Msg::decode(
-            data,
-            message_kind,
-            app_id_injector,
-            patched_version,
-        )?
-        else {
-            return Ok(None);
-        };
-
-        log_msg
-            .to_application((app_id_injector, patched_version))
-            .map(Some)
-    }
-}
-
-impl DecoderEntrypoint for re_protos::log_msg::v1alpha1::log_msg::Msg {
-    fn decode(
-        data: &[u8],
-        message_kind: crate::rrd::MessageKind,
-        _app_id_injector: &mut impl ApplicationIdInjector,
-        _patched_version: Option<CrateVersion>,
-    ) -> Result<Option<Self>, crate::rrd::CodecError> {
-        Option::<Self>::from_rrd_bytes(data, message_kind)
-    }
-}
-
-impl<T: DecoderEntrypoint> Decoder<T> {
-    #[expect(clippy::new_without_default)]
-    pub fn new() -> Self {
-        Self {
-            version: None,
-            // Note: `options` are filled in once we read `FileHeader`, so this value does not matter.
-            options: EncodingOptions::PROTOBUF_UNCOMPRESSED,
-            byte_chunks: ByteChunkBuffer::new(),
-            state: State::StreamHeader,
-            app_id_cache: CachingApplicationIdInjector::default(),
-            _decodable: std::marker::PhantomData::<T>,
-        }
-    }
-
-    /// Feed a bunch of bytes to the decoding state machine.
-    pub fn push_byte_chunk(&mut self, byte_chunk: Vec<u8>) {
-        self.byte_chunks.push(byte_chunk);
-    }
-
-    /// Read the next message in the stream, dropping messages missing application id that cannot
-    /// be migrated (because they arrived before `SetStoreInfo`).
-    pub fn try_read(&mut self) -> Result<Option<T>, DecodeError> {
-        //TODO(#10730): remove this if/when we remove the legacy `StoreId` migration.
-        loop {
-            let result = self.try_read_impl();
-            if let Err(DecodeError::Codec(CodecError::StoreIdMissingApplicationId {
-                store_kind,
-                recording_id,
-            })) = result
-            {
-                re_log::warn_once!(
-                    "Dropping message without application id which arrived before `SetStoreInfo` \
-                    (kind: {store_kind}, recording id: {recording_id}."
-                );
-            } else {
-                return result;
-            }
-        }
-    }
-
-    /// Read the next message in the stream.
-    fn try_read_impl(&mut self) -> Result<Option<T>, DecodeError> {
-        match self.state {
-            State::StreamHeader => {
-                let is_first_header = self.byte_chunks.num_read() == 0;
-                let position = self.byte_chunks.num_read();
-                if let Some(header_data) =
-                    self.byte_chunks.try_read(StreamHeader::ENCODED_SIZE_BYTES)
-                {
-                    re_log::trace!(?header_data, "Decoding StreamHeader");
-
-                    // header contains version and compression options
-                    let version_and_options = StreamHeader::from_rrd_bytes(header_data, ())
-                        .and_then(|h| h.to_version_and_options());
-                    let (version, options) = match version_and_options {
-                        Ok(ok) => ok,
-                        Err(err) => {
-                            // We expected a header, but didn't find one!
-                            if is_first_header {
-                                return Err(err.into());
-                            } else {
-                                re_log::error!(
-                                    is_first_header,
-                                    position,
-                                    "Trailing bytes in rrd stream: {header_data:?} ({err})"
-                                );
-                                self.state = State::Aborted;
-                                return Ok(None);
-                            }
-                        }
-                    };
-
-                    re_log::trace!(
-                        version = version.to_string(),
-                        ?options,
-                        "Found Stream Header"
-                    );
-
-                    self.version = Some(version);
-                    self.options = options;
-
-                    match self.options.serializer {
-                        Serializer::Protobuf => self.state = State::MessageHeader,
-                    }
-
-                    // we might have data left in the current byte chunk, immediately try to read
-                    // length of the next message.
-                    return self.try_read();
-                }
-            }
-
-            State::MessageHeader => {
-                let mut peeked = [0u8; crate::rrd::MessageHeader::ENCODED_SIZE_BYTES];
-                if self.byte_chunks.try_peek(&mut peeked) == peeked.len() {
-                    let header = match crate::rrd::MessageHeader::from_rrd_bytes(&peeked, ()) {
-                        Ok(header) => header,
-
-                        Err(crate::rrd::CodecError::HeaderDecoding(_)) => {
-                            // We failed to decode a `MessageHeader`: it might be because the
-                            // stream is corrupt, or it might be because it just switched to a
-                            // different, concatenated recording without having the courtesy of
-                            // announcing it via an EOS marker.
-                            self.state = State::StreamHeader;
-                            return self.try_read();
-                        }
-
-                        err @ Err(_) => err?,
-                    };
-
-                    self.byte_chunks
-                        .try_read(crate::rrd::MessageHeader::ENCODED_SIZE_BYTES)
-                        .expect("reading cannot fail if peeking worked");
-
-                    re_log::trace!(?header, "MessageHeader");
-
-                    self.state = State::Message(header);
-                    // we might have data left in the current byte chunk, immediately try to read
-                    // the message content.
-                    return self.try_read();
-                }
-            }
-
-            State::Message(header) => {
-                if let Some(bytes) = self.byte_chunks.try_read(header.len as usize) {
-                    re_log::trace!(?header, "Read message");
-
-                    let message =
-                        match T::decode(bytes, header.kind, &mut self.app_id_cache, self.version) {
-                            Ok(msg) => msg,
-                            Err(err) => {
-                                // We successfully parsed a header, but decided to drop the message altogether.
-                                // We must go back to looking for headers, or the decoder will just be stuck in a dead
-                                // state forever.
-                                self.state = State::MessageHeader;
-                                return Err(err.into());
-                            }
-                        };
-
-                    if let Some(message) = message {
-                        re_log::trace!("Decoded new message");
-
-                        self.state = State::MessageHeader;
-                        return Ok(Some(message));
-                    } else {
-                        re_log::trace!("End of stream - expecting a new Streamheader");
-
-                        // `None` means an end-of-stream marker was hit, but there might be another concatenated
-                        // stream behind, so try to start all over again.
-                        self.state = State::StreamHeader;
-                        return self.try_read();
-                    }
-                }
-            }
-
-            State::Aborted => {
-                return Ok(None);
-            }
-        }
-
-        Ok(None)
     }
 }
 
 // ---
 
 /// Iteratively decodes the contents of an arbitrary buffered reader.
-pub struct DecoderIterator<T, R: std::io::BufRead> {
-    decoder: Decoder<T>,
-    reader: R,
+pub struct DecoderStream<T, R: AsyncBufRead> {
+    pub decoder: Decoder<T>,
+    pub reader: R,
 
     /// If true, the decoder will always wait for an end-of-stream marker before calling it a day,
     /// even if the underlying reader has already reached its EOF state (…for now).
@@ -401,486 +101,101 @@ pub struct DecoderIterator<T, R: std::io::BufRead> {
     /// This only really makes sense when running in tail mode (see `RetryableFileReader`),
     /// otherwise we'd rather terminate early when a potentially short-circuited (and therefore
     /// lacking a proper end-of-stream marker) RRD stream indicates EOF.
-    wait_for_eos: bool,
+    pub wait_for_eos: bool,
 
     /// See [`Decoder::decode_eager`] for more information.
-    first_msg: Option<T>,
+    pub first_msg: Option<T>,
 }
 
-impl<T, R: std::io::BufRead> DecoderIterator<T, R> {
-    pub fn num_bytes_processed(&self) -> u64 {
-        self.decoder.byte_chunks.num_read() as _
-    }
-}
-
-impl<T: DecoderEntrypoint, R: std::io::BufRead> std::iter::Iterator for DecoderIterator<T, R> {
+// NOTE: This is the exact same implementation as `impl Iterator for DecoderIterator`, just asyncified.
+impl<T: DecoderEntrypoint + Unpin, R: AsyncBufRead + Unpin> Stream for DecoderStream<T, R> {
     type Item = Result<T, DecodeError>;
 
-    fn next(&mut self) -> Option<Self::Item> {
+    #[tracing::instrument(name = "streaming_decoder", level = "trace", skip_all)]
+    fn poll_next(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
         if let Some(first_msg) = self.first_msg.take() {
-            // The iterator was eagerly initialized so make sure to return the first message if there's any.
-            return Some(Ok(first_msg));
+            // The stream was eagerly initialized so make sure to return the first message if there's any.
+            return std::task::Poll::Ready(Some(Ok(first_msg)));
         }
 
         loop {
-            match self.decoder.try_read() {
-                Ok(Some(msg)) => return Some(Ok(msg)),
+            let Self {
+                decoder,
+                reader,
+                wait_for_eos,
+                first_msg: _,
+            } = &mut *self;
+
+            let mut reader = Pin::new(reader);
+
+            match decoder.try_read() {
+                Ok(Some(msg)) => return std::task::Poll::Ready(Some(Ok(msg))),
                 Ok(None) => {}
-                Err(err) => return Some(Err(err)),
+                Err(err) => return std::task::Poll::Ready(Some(Err(err))),
             }
 
-            match self.reader.fill_buf() {
+            match reader.as_mut().poll_fill_buf(cx) {
                 // EOF
-                Ok([]) => {
+                std::task::Poll::Ready(Ok([])) => {
                     // There's nothing more to read…
-                    match self.decoder.try_read() {
+                    match decoder.try_read() {
                         // …but we still have enough buffered that we can still manage to decode
                         // more messages, so go on for now.
-                        Ok(Some(msg)) => return Some(Ok(msg)),
+                        Ok(Some(msg)) => return std::task::Poll::Ready(Some(Ok(msg))),
 
                         // …and we don't want to explicitly wait around for more to come, so just leave.
-                        Ok(None) if !self.wait_for_eos => return None,
+                        Ok(None) if !*wait_for_eos => return std::task::Poll::Ready(None),
 
                         // …and the underlying decoder already considers that it's done (i.e. it's
                         // waiting for a whole new stream to begin): time to stop.
-                        Ok(None) if self.decoder.state == State::StreamHeader => {
-                            return None;
+                        Ok(None) if decoder.state == DecoderState::StreamHeader => {
+                            return std::task::Poll::Ready(None);
                         }
 
                         // …but the underlying decoder doesn't believe it's done yet (i.e. it's still
                         // waiting for an EOS marker to show up): we continue.
                         Ok(None) => {}
 
-                        Err(err) => return Some(Err(err)),
+                        Err(err) => return std::task::Poll::Ready(Some(Err(err))),
                     }
                 }
 
-                Ok(buf) => {
-                    self.decoder.push_byte_chunk(buf.to_vec());
+                std::task::Poll::Ready(Ok(buf)) => {
+                    decoder.push_byte_chunk(buf.to_vec());
                     let len = buf.len(); // borrowck limitation
-                    self.reader.consume(len);
+                    reader.consume(len);
                 }
 
-                Err(err) if err.kind() == std::io::ErrorKind::Interrupted => {}
+                std::task::Poll::Ready(Err(err))
+                    if err.kind() == std::io::ErrorKind::Interrupted => {}
 
-                Err(err) => return Some(Err(err.into())),
-            }
-        }
-    }
-}
-
-// ---
-
-/// A bunch of contiguous bytes.
-type ByteChunk = Cursor<Vec<u8>>;
-
-struct ByteChunkBuffer {
-    /// Any incoming byte chunks are queued until they are emptied.
-    queue: VecDeque<ByteChunk>,
-
-    /// This buffer is used as scratch space for any read bytes, so that we can return a contiguous
-    /// slice from `try_read`.
-    buffer: Vec<u8>,
-
-    /// How many bytes of valid data are currently in `self.buffer`.
-    buffer_fill: usize,
-
-    /// How many bytes have been read with [`Self::try_read`] so far?
-    num_read: usize,
-}
-
-impl ByteChunkBuffer {
-    fn new() -> Self {
-        Self {
-            queue: VecDeque::with_capacity(16),
-            buffer: Vec::with_capacity(1024),
-            buffer_fill: 0,
-            num_read: 0,
-        }
-    }
-
-    fn push(&mut self, byte_chunk: Vec<u8>) {
-        if byte_chunk.is_empty() {
-            return;
-        }
-        self.queue.push_back(ByteChunk::new(byte_chunk));
-    }
-
-    /// How many bytes have been read with [`Self::try_read`] so far?
-    fn num_read(&self) -> usize {
-        self.num_read
-    }
-
-    /// Attempt to read exactly `n` bytes out of the queued byte chunks.
-    ///
-    /// Returns `None` if there is not enough data to return a slice of `n` bytes.
-    ///
-    /// NOTE: `try_read` *must* be called with the same `n` until it returns `Some`,
-    /// otherwise this will discard any previously buffered data.
-    fn try_read(&mut self, n: usize) -> Option<&[u8]> {
-        // resize the buffer if the target has changed
-        if self.buffer.len() != n {
-            assert_eq!(
-                self.buffer_fill, 0,
-                "`try_read` called with different `n` for incomplete read"
-            );
-            self.buffer.resize(n, 0);
-            self.buffer_fill = 0;
-        }
-
-        // try to read some bytes from the front of the queue,
-        // until either:
-        // - we've read enough to return a slice of `n` bytes
-        // - we run out of byte chunks to read
-        // while also discarding any empty byte chunks
-        while self.buffer_fill != n {
-            if let Some(byte_chunk) = self.queue.front_mut() {
-                let remainder = &mut self.buffer[self.buffer_fill..];
-                self.buffer_fill += byte_chunk
-                    .read(remainder)
-                    .expect("failed to read from byte chunk");
-                if is_byte_chunk_empty(byte_chunk) {
-                    self.queue.pop_front();
+                std::task::Poll::Ready(Err(err)) => {
+                    return std::task::Poll::Ready(Some(Err(err.into())));
                 }
-            } else {
-                break;
+
+                std::task::Poll::Pending => return std::task::Poll::Pending,
             }
         }
-
-        if self.buffer_fill == n {
-            // ensure that a successful call to `try_read(N)`
-            // followed by another call to `try_read(N)` with the same `N`
-            // won't erroneously return the same bytes
-            self.buffer_fill = 0;
-            self.num_read += n;
-            Some(&self.buffer[..])
-        } else {
-            None
-        }
-    }
-
-    /// Attempt to peek exactly `n` bytes from of the queued byte chunks.
-    ///
-    /// Returns the number of bytes that could successfully be peeked, and therefore copied into `out`.
-    /// The returned value is guaranteed to never exceed `out.len`.
-    fn try_peek(&self, out: &mut [u8]) -> usize {
-        use std::io::Write as _;
-
-        let target_len = out.len();
-
-        let mut out = std::io::Cursor::new(out);
-        let mut n = 0;
-
-        // `try_read` will never read from the active buffer if `n` changes, so we must emulate the
-        // same behavior.
-        if target_len == self.buffer.len() {
-            n += out
-                .write(&self.buffer[..self.buffer_fill])
-                .expect("memcpy, cannot fail");
-        }
-
-        for byte_chunk in &self.queue {
-            if n == target_len {
-                return n;
-            }
-
-            let pos = byte_chunk.position() as usize;
-            n += out
-                .write(&byte_chunk.get_ref()[pos..])
-                .expect("memcpy, cannot fail");
-        }
-
-        n
     }
 }
 
-fn is_byte_chunk_empty(byte_chunk: &ByteChunk) -> bool {
-    byte_chunk.position() >= byte_chunk.get_ref().len() as u64
-}
-
-// ---
-
-#[cfg(test)]
+#[cfg(all(test, feature = "encoder"))]
 mod tests {
-    use re_chunk::RowId;
-    use re_log_types::{LogMsg, SetStoreInfo, StoreInfo};
-
-    use crate::Encoder;
-    use crate::rrd::EncodingOptions;
-
-    use super::*;
-
-    fn fake_log_msg() -> LogMsg {
-        LogMsg::SetStoreInfo(SetStoreInfo {
-            row_id: *RowId::ZERO,
-            info: StoreInfo {
-                store_version: Some(CrateVersion::LOCAL), // Encoder sets the crate version
-                ..StoreInfo::testing()
-            },
-        })
-    }
-
-    fn test_data(options: EncodingOptions, n: usize) -> (Vec<LogMsg>, Vec<u8>) {
-        let messages: Vec<_> = (0..n).map(|_| fake_log_msg()).collect();
-
-        let mut data = Vec::new();
-        Encoder::encode_into(
-            CrateVersion::LOCAL,
-            options,
-            messages.clone().into_iter().map(Ok),
-            &mut data,
-        )
-        .unwrap();
-
-        (messages, data)
-    }
-
-    macro_rules! assert_message_ok {
-        ($message:expr) => {{
-            match $message {
-                Ok(Some(message)) => {
-                    assert_eq!(&fake_log_msg(), &message);
-                    message
-                }
-                Ok(None) => {
-                    panic!("failed to read message: message could not be read in full");
-                }
-                Err(err) => {
-                    panic!("failed to read message: {err}");
-                }
-            }
-        }};
-    }
-
-    macro_rules! assert_message_incomplete {
-        ($message:expr) => {{
-            match $message {
-                Ok(None) => {}
-                Ok(Some(message)) => {
-                    panic!("expected message to be incomplete, instead received: {message:?}");
-                }
-                Err(err) => {
-                    panic!("failed to read message: {err}");
-                }
-            }
-        }};
-    }
-
-    #[test]
-    fn stream_whole_chunks_uncompressed_protobuf() {
-        let (input, data) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
-
-        let mut decoder = DecoderApp::new();
-
-        assert_message_incomplete!(decoder.try_read());
-
-        decoder.push_byte_chunk(data);
-
-        let decoded_messages: Vec<_> = (0..16)
-            .map(|_| assert_message_ok!(decoder.try_read()))
-            .collect();
-
-        assert_eq!(input, decoded_messages);
-    }
-
-    #[test]
-    fn stream_byte_chunks_uncompressed_protobuf() {
-        let (input, data) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
-
-        let mut decoder = DecoderApp::new();
-
-        assert_message_incomplete!(decoder.try_read());
-
-        for byte_chunk in data.chunks(1) {
-            decoder.push_byte_chunk(byte_chunk.to_vec());
-        }
-
-        let decoded_messages: Vec<_> = (0..16)
-            .map(|_| assert_message_ok!(decoder.try_read()))
-            .collect();
-
-        assert_eq!(input, decoded_messages);
-    }
-
-    #[test]
-    fn two_concatenated_streams_protobuf() {
-        let (input1, data1) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
-        let (input2, data2) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
-        let input = input1.into_iter().chain(input2).collect::<Vec<_>>();
-
-        let mut decoder = DecoderApp::new();
-
-        assert_message_incomplete!(decoder.try_read());
-
-        decoder.push_byte_chunk(data1);
-        decoder.push_byte_chunk(data2);
-
-        let decoded_messages: Vec<_> = (0..32)
-            .map(|_| assert_message_ok!(decoder.try_read()))
-            .collect();
-
-        assert_eq!(input, decoded_messages);
-    }
-
-    #[test]
-    fn stream_whole_chunks_compressed_protobuf() {
-        let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
-
-        let mut decoder = DecoderApp::new();
-
-        assert_message_incomplete!(decoder.try_read());
-
-        decoder.push_byte_chunk(data);
-
-        let decoded_messages: Vec<_> = (0..16)
-            .map(|_| assert_message_ok!(decoder.try_read()))
-            .collect();
-
-        assert_eq!(input, decoded_messages);
-    }
-
-    #[test]
-    fn stream_byte_chunks_compressed_protobuf() {
-        let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
-
-        let mut decoder = DecoderApp::new();
-
-        assert_message_incomplete!(decoder.try_read());
-
-        for byte_chunk in data.chunks(1) {
-            decoder.push_byte_chunk(byte_chunk.to_vec());
-        }
-
-        let decoded_messages: Vec<_> = (0..16)
-            .map(|_| assert_message_ok!(decoder.try_read()))
-            .collect();
-
-        assert_eq!(input, decoded_messages);
-    }
-
-    #[test]
-    fn stream_3x16_chunks_protobuf() {
-        let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
-
-        let mut decoder = DecoderApp::new();
-        let mut decoded_messages = vec![];
-
-        // keep pushing 3 chunks of 16 bytes at a time, and attempting to read messages
-        // until there are no more chunks
-        let mut byte_chunks = data.chunks(16).peekable();
-        while byte_chunks.peek().is_some() {
-            for _ in 0..3 {
-                if let Some(byte_chunk) = byte_chunks.next() {
-                    decoder.push_byte_chunk(byte_chunk.to_vec());
-                } else {
-                    break;
-                }
-            }
-
-            if let Some(message) = decoder.try_read().unwrap() {
-                decoded_messages.push(message);
-            }
-        }
-
-        assert_eq!(input, decoded_messages);
-    }
-
-    #[test]
-    fn stream_irregular_chunks_protobuf() {
-        // this attempts to stress-test `try_read` with byte chunks of various sizes
-
-        let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
-        let mut data = Cursor::new(data);
-
-        let mut decoder = DecoderApp::new();
-        let mut decoded_messages = vec![];
-
-        // read byte chunks 2xN bytes at a time, where `N` comes from a regular pattern
-        // this is slightly closer to using random numbers while still being
-        // fully deterministic
-
-        let pattern = [0, 3, 4, 70, 31];
-        let mut pattern_index = 0;
-        let mut temp = [0_u8; 71];
-
-        while data.position() < data.get_ref().len() as u64 {
-            for _ in 0..2 {
-                let n = data.read(&mut temp[..pattern[pattern_index]]).unwrap();
-                pattern_index = (pattern_index + 1) % pattern.len();
-                decoder.push_byte_chunk(temp[..n].to_vec());
-            }
-
-            while let Some(message) = decoder.try_read().unwrap() {
-                decoded_messages.push(message);
-            }
-        }
-
-        assert_eq!(input, decoded_messages);
-    }
-
-    #[test]
-    fn chunk_buffer_read_single_chunk() {
-        // reading smaller `n` from multiple larger byte chunks
-
-        let mut buffer = ByteChunkBuffer::new();
-
-        let data = &[0, 1, 2, 3, 4];
-        assert_eq!(None, buffer.try_read(1));
-        buffer.push(data.to_vec());
-        assert_eq!(Some(&data[..3]), buffer.try_read(3));
-        assert_eq!(Some(&data[3..]), buffer.try_read(2));
-        assert_eq!(None, buffer.try_read(1));
-    }
-
-    #[test]
-    fn chunk_buffer_read_multi_chunk() {
-        // reading a large `n` from multiple smaller byte chunks
-
-        let mut buffer = ByteChunkBuffer::new();
-
-        let byte_chunks: &[&[u8]] = &[&[0, 1, 2], &[3, 4]];
-
-        assert_eq!(None, buffer.try_read(1));
-        buffer.push(byte_chunks[0].to_vec());
-        assert_eq!(None, buffer.try_read(5));
-        buffer.push(byte_chunks[1].to_vec());
-        assert_eq!(Some(&[0, 1, 2, 3, 4][..]), buffer.try_read(5));
-        assert_eq!(None, buffer.try_read(1));
-    }
-
-    #[test]
-    fn chunk_buffer_read_same_n() {
-        // reading the same `n` multiple times should not return the same bytes
-
-        let mut buffer = ByteChunkBuffer::new();
-
-        let data = &[0, 1, 2, 3];
-        buffer.push(data.to_vec());
-        assert_eq!(data, buffer.try_read(4).unwrap());
-        assert_eq!(None, buffer.try_read(4));
-        let data = &[4, 5, 6, 7];
-        buffer.push(data.to_vec());
-        assert_eq!(data, buffer.try_read(4).unwrap());
-        assert_eq!(None, buffer.try_read(4));
-    }
-}
-
-// Legacy tests from the old decoder implementation.
-#[cfg(all(test, feature = "decoder", feature = "encoder"))]
-mod tests_legacy {
-    #![expect(clippy::unwrap_used)] // acceptable for tests
+    use tokio_stream::StreamExt as _;
 
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
-    use re_protos::log_msg::v1alpha1 as proto;
-    use re_protos::log_msg::v1alpha1::log_msg::Msg as LogMsgProto;
 
-    use crate::rrd::Compression;
-    use crate::{Encoder, ToTransport as _};
+    use crate::{
+        DecoderApp,
+        rrd::{Compression, EncodingOptions, Serializer},
+    };
 
-    use super::*;
-
+    #[expect(clippy::unwrap_used)] // acceptable for tests
     fn fake_log_messages() -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
 
@@ -921,87 +236,8 @@ mod tests_legacy {
         ]
     }
 
-    /// Convert the test log message to their proto version and tweak them so that:
-    /// - `StoreId` do not have an `ApplicationId`
-    /// - `StoreInfo` does have an `ApplicationId`
-    #[expect(deprecated)]
-    fn legacy_fake_log_messages() -> Vec<LogMsgProto> {
-        fake_log_messages()
-            .into_iter()
-            .map(|msg| msg.to_transport(Compression::Off).unwrap())
-            .map(|mut log_msg| {
-                match &mut log_msg {
-                    proto::log_msg::Msg::SetStoreInfo(set_store_info) => {
-                        if let Some(store_info) = &mut set_store_info.info {
-                            let Some(mut store_id) = store_info.store_id.clone() else {
-                                panic!("Unexpected missing `StoreId`");
-                            };
-
-                            // this should be a non-legacy proto
-                            assert_eq!(store_info.application_id, None);
-                            assert!(store_id.application_id.is_some());
-
-                            // turn this into a legacy proto
-                            store_info.application_id = store_id.application_id;
-                            store_id.application_id = None;
-                            store_info.store_id = Some(store_id);
-                        } else {
-                            panic!("Unexpected missing `store_info`")
-                        }
-                    }
-
-                    proto::log_msg::Msg::ArrowMsg(proto::ArrowMsg { store_id, .. })
-                    | proto::log_msg::Msg::BlueprintActivationCommand(
-                        proto::BlueprintActivationCommand {
-                            blueprint_id: store_id,
-                            ..
-                        },
-                    ) => {
-                        let mut legacy_store_id =
-                            store_id.clone().expect("messages should have store ids");
-                        assert!(legacy_store_id.application_id.is_some());
-
-                        // make legacy
-                        legacy_store_id.application_id = None;
-                        *store_id = Some(legacy_store_id);
-                    }
-                }
-
-                log_msg
-            })
-            .collect()
-    }
-
-    impl<W: std::io::Write> Encoder<W> {
-        /// Like [`Self::encode_into`], but intentionally omits the end-of-stream marker, for
-        /// testing purposes.
-        fn encode_into_without_eos(
-            version: CrateVersion,
-            options: EncodingOptions,
-            messages: impl IntoIterator<Item = re_chunk::ChunkResult<impl std::borrow::Borrow<LogMsg>>>,
-            write: &mut W,
-        ) -> Result<u64, crate::EncodeError> {
-            re_tracing::profile_function!();
-            let mut encoder = Encoder::new_eager(version, options, write)?;
-            let mut size_bytes = 0;
-            for message in messages {
-                size_bytes += encoder.append(message?.borrow())?;
-            }
-
-            {
-                encoder.flush_blocking()?;
-
-                // Intentionally leak it so we don't include the EOS marker on drop.
-                #[expect(clippy::mem_forget)]
-                std::mem::forget(encoder);
-            }
-
-            Ok(size_bytes)
-        }
-    }
-
-    #[test]
-    fn test_encode_decode() {
+    #[tokio::test]
+    async fn test_streaming_decoder_handles_corrupted_input_file() {
         let rrd_version = CrateVersion::LOCAL;
 
         let messages = fake_log_messages();
@@ -1017,164 +253,30 @@ mod tests_legacy {
             },
         ];
 
-        // Low-level
         for options in options {
-            let mut file = vec![];
-            crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut file)
+            let mut data = vec![];
+            crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut data)
                 .unwrap();
 
-            let decoded_messages: Vec<_> = DecoderApp::decode_lazy(file.as_slice())
-                .map(Result::unwrap)
-                .collect();
-            similar_asserts::assert_eq!(decoded_messages, messages);
-        }
+            // We cut the input file by one byte to simulate a corrupted file and check that we don't end up in an infinite loop
+            // waiting for more data when there's none to be read.
+            let data = &data[..data.len() - 1];
 
-        // Iterator
-        for options in options {
-            let mut file = vec![];
-            crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut file)
-                .unwrap();
+            let buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data));
 
-            let reader = std::io::BufReader::new(file.as_slice());
-            let decoded_messages: Vec<_> = DecoderApp::decode_lazy(reader)
-                .map(Result::unwrap)
-                .collect();
-            similar_asserts::assert_eq!(decoded_messages, messages);
-        }
+            let decoder = DecoderApp::decode_eager_async(buf_reader).await.unwrap();
+            let decoded_messages = decoder.map(Result::unwrap).collect::<Vec<_>>().await;
 
-        // Iterator: no EOS marker
-        for options in options {
-            let mut file = vec![];
-            crate::Encoder::encode_into_without_eos(
-                rrd_version,
-                options,
-                messages.iter().map(Ok),
-                &mut file,
-            )
-            .unwrap();
-
-            let reader = std::io::BufReader::new(file.as_slice());
-            let decoded_messages: Vec<_> = DecoderApp::decode_lazy(reader)
-                .map(Result::unwrap)
-                .collect();
             similar_asserts::assert_eq!(decoded_messages, messages);
         }
     }
 
-    /// Test that legacy messages (aka `StoreId` without an application id) are properly decoded.
-    #[test]
-    fn test_decode_legacy() {
-        let rrd_version = CrateVersion::LOCAL;
-
-        let messages = legacy_fake_log_messages();
-
-        let mut file = vec![];
-
-        let options = EncodingOptions::PROTOBUF_UNCOMPRESSED;
-        let mut encoder = Encoder::new_eager(rrd_version, options, &mut file).unwrap();
-        for message in messages.clone() {
-            encoder
-                .append_transport(&message)
-                .expect("encoding should succeed");
-        }
-        drop(encoder);
-
-        let decoded_messages: Vec<_> = DecoderApp::decode_lazy(file.as_slice())
-            .map(Result::unwrap)
-            .collect();
-        assert_eq!(decoded_messages.len(), messages.len());
-    }
-
-    /// Test that legacy messages (aka `StoreId` without an application id) that arrive _before_
-    /// a `SetStoreInfo` are dropped without failing.
-    #[test]
-    fn test_decode_legacy_out_of_order() {
-        let rrd_version = CrateVersion::LOCAL;
-
-        let messages = legacy_fake_log_messages();
-
-        // ensure the test data is as we expect
-        let orig_message_count = messages.len();
-        assert_eq!(orig_message_count, 3);
-        assert!(matches!(messages[0], proto::log_msg::Msg::SetStoreInfo(..)));
-        assert!(matches!(messages[1], proto::log_msg::Msg::ArrowMsg(..)));
-        assert!(matches!(
-            messages[2],
-            proto::log_msg::Msg::BlueprintActivationCommand(..)
-        ));
-
-        // make out-of-order messages
-        let mut out_of_order_messages = vec![messages[1].clone(), messages[2].clone()];
-        out_of_order_messages.extend(messages);
-
-        let mut file = vec![];
-
-        let options = EncodingOptions::PROTOBUF_UNCOMPRESSED;
-        let mut encoder = Encoder::new_eager(rrd_version, options, &mut file).unwrap();
-        for message in out_of_order_messages.clone() {
-            encoder
-                .append_transport(&message)
-                .expect("encoding should succeed");
-        }
-        drop(encoder);
-
-        let decoded_messages: Vec<_> = DecoderApp::decode_lazy(file.as_slice())
-            .map(Result::unwrap)
-            .collect();
-        assert_eq!(decoded_messages.len(), orig_message_count);
-    }
-
-    /// Test that non-legacy message streams do not rely on the `SetStoreInfo` message to arrive first.
-    #[test]
-    fn test_decode_out_of_order() {
+    #[tokio::test]
+    async fn test_streaming_decoder_happy_paths() {
         let rrd_version = CrateVersion::LOCAL;
 
         let messages = fake_log_messages();
 
-        // ensure the test data is as we expect
-        let orig_message_count = messages.len();
-        assert_eq!(orig_message_count, 3);
-        assert!(matches!(messages[0], LogMsg::SetStoreInfo { .. }));
-        assert!(matches!(messages[1], LogMsg::ArrowMsg { .. }));
-        assert!(matches!(
-            messages[2],
-            LogMsg::BlueprintActivationCommand { .. }
-        ));
-
-        let options = [
-            EncodingOptions {
-                compression: Compression::Off,
-                serializer: Serializer::Protobuf,
-            },
-            EncodingOptions {
-                compression: Compression::LZ4,
-                serializer: Serializer::Protobuf,
-            },
-        ];
-
-        // make out-of-order messages
-        let mut out_of_order_messages = vec![messages[1].clone(), messages[2].clone()];
-        out_of_order_messages.extend(messages);
-
-        for options in options {
-            let mut file = vec![];
-            crate::Encoder::encode_into(
-                rrd_version,
-                options,
-                out_of_order_messages.iter().map(Ok),
-                &mut file,
-            )
-            .unwrap();
-
-            let decoded_messages: Vec<_> = DecoderApp::decode_lazy(file.as_slice())
-                .map(Result::unwrap)
-                .collect();
-            similar_asserts::assert_eq!(decoded_messages, out_of_order_messages);
-        }
-    }
-
-    #[test]
-    fn test_concatenated_streams() {
         let options = [
             EncodingOptions {
                 compression: Compression::Off,
@@ -1188,82 +290,15 @@ mod tests_legacy {
 
         for options in options {
             let mut data = vec![];
+            crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut data)
+                .unwrap();
 
-            // write "2 files" i.e. 2 streams that end with end-of-stream markers
-            let messages = fake_log_messages();
+            let buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data));
 
-            // (2 encoders as each encoder writes a file header)
-            {
-                let writer = std::io::Cursor::new(&mut data);
-                let mut encoder1 =
-                    crate::Encoder::new_eager(CrateVersion::LOCAL, options, writer).unwrap();
-                for message in &messages {
-                    encoder1.append(message).unwrap();
-                }
-                encoder1.finish().unwrap();
-            }
+            let decoder = DecoderApp::decode_eager_async(buf_reader).await.unwrap();
+            let decoded_messages = decoder.map(Result::unwrap).collect::<Vec<_>>().await;
 
-            let written = data.len() as u64;
-
-            {
-                let mut writer = std::io::Cursor::new(&mut data);
-                writer.set_position(written);
-                let mut encoder2 =
-                    crate::Encoder::new_eager(CrateVersion::LOCAL, options, writer).unwrap();
-                for message in &messages {
-                    encoder2.append(message).unwrap();
-                }
-                encoder2.finish().unwrap();
-            }
-
-            let decoded_messages: Vec<_> = DecoderApp::decode_lazy(data.as_slice())
-                .map(Result::unwrap)
-                .collect();
-            similar_asserts::assert_eq!(decoded_messages, [messages.clone(), messages].concat());
-        }
-
-        // Same thing, but this time without EOS markers.
-        for options in options {
-            let mut data = vec![];
-
-            // write "2 files" i.e. 2 streams that do not end with end-of-stream markers
-            let messages = fake_log_messages();
-
-            // (2 encoders as each encoder writes a file header)
-            {
-                let writer = std::io::Cursor::new(&mut data);
-                let mut encoder1 =
-                    crate::Encoder::new_eager(CrateVersion::LOCAL, options, writer).unwrap();
-                for message in &messages {
-                    encoder1.append(message).unwrap();
-                }
-
-                // Intentionally leak it so we don't include the EOS marker on drop.
-                #[expect(clippy::mem_forget)]
-                std::mem::forget(encoder1);
-            }
-
-            let written = data.len() as u64;
-
-            {
-                let mut writer = std::io::Cursor::new(&mut data);
-                writer.set_position(written);
-                let mut encoder2 =
-                    crate::Encoder::new_eager(CrateVersion::LOCAL, options, writer).unwrap();
-                for message in &messages {
-                    encoder2.append(message).unwrap();
-                }
-
-                // Intentionally leak it so we don't include the EOS marker on drop.
-                #[expect(clippy::mem_forget)]
-                std::mem::forget(encoder2);
-            }
-
-            let decoded_messages: Vec<_> = DecoderApp::decode_lazy(data.as_slice())
-                .map(Result::unwrap)
-                .collect();
-            assert_eq!(messages.len() * 2, decoded_messages.len());
-            similar_asserts::assert_eq!(decoded_messages, [messages.clone(), messages].concat());
+            similar_asserts::assert_eq!(decoded_messages, messages);
         }
     }
 }
