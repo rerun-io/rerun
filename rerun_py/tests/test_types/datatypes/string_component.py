@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Union
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -37,10 +37,7 @@ class StringComponent:
 
 
 StringComponentLike = StringComponent
-StringComponentArrayLike = Union[
-    StringComponent,
-    Sequence[StringComponentLike],
-]
+StringComponentArrayLike = StringComponent | Sequence[StringComponentLike]
 
 
 class StringComponentBatch(BaseBatch[StringComponentArrayLike]):

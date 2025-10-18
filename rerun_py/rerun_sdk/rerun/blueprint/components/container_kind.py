@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -57,10 +57,15 @@ class ContainerKind(Enum):
         return self.name
 
 
-ContainerKindLike = Union[
-    ContainerKind, Literal["Grid", "Horizontal", "Tabs", "Vertical", "grid", "horizontal", "tabs", "vertical"], int
-]
-ContainerKindArrayLike = Union[ContainerKindLike, Sequence[ContainerKindLike]]
+ContainerKindLike = (
+    ContainerKind | Literal["Grid", "Horizontal", "Tabs", "Vertical", "grid", "horizontal", "tabs", "vertical"] | int
+)
+ContainerKindArrayLike = (
+    ContainerKind
+    | Literal["Grid", "Horizontal", "Tabs", "Vertical", "grid", "horizontal", "tabs", "vertical"]
+    | int
+    | Sequence[ContainerKindLike]
+)
 
 
 class ContainerKindBatch(BaseBatch[ContainerKindArrayLike], ComponentBatchMixin):

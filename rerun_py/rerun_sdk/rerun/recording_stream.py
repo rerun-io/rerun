@@ -5,7 +5,8 @@ import functools
 import inspect
 import math
 import uuid
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, TypeVar, overload
 
 from rerun_bindings import ChunkBatcherConfig  # noqa: TC002
 from typing_extensions import deprecated

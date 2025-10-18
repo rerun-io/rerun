@@ -133,6 +133,7 @@ class OPFProject:
             zip(
                 self.project.camera_list.cameras,
                 self.project.calibration.calibrated_cameras.cameras,
+                strict=False,
             ),
         ):
             if not str(camera.uri).endswith(".jpg"):

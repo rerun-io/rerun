@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -61,11 +61,11 @@ class VideoTimestamp:
 
 
 if TYPE_CHECKING:
-    VideoTimestampLike = Union[VideoTimestamp, int]
+    VideoTimestampLike = VideoTimestamp | int
 else:
     VideoTimestampLike = Any
 
-VideoTimestampArrayLike = Union[VideoTimestamp, Sequence[VideoTimestampLike], npt.NDArray[np.int64]]
+VideoTimestampArrayLike = VideoTimestamp | Sequence[VideoTimestampLike] | npt.NDArray[np.int64]
 
 
 class VideoTimestampBatch(BaseBatch[VideoTimestampArrayLike]):

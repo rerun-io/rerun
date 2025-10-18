@@ -8,7 +8,7 @@ namespace rerun.components;
 /// Each key-value pair is stored as a UTF-8 string mapping.
 table KeyValuePairs (
   "attr.python.aliases": "dict[str, str]",
-  "attr.python.array_aliases": "dict[str, str], Sequence[dict[str, str]]",
+  "attr.python.array_aliases": "dict[str, str] | Sequence[dict[str, str]]",
 
   /// TODO(#11107): Stabilize
   "attr.rerun.state": "unstable",

@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -54,8 +54,13 @@ class PanelState(Enum):
         return self.name
 
 
-PanelStateLike = Union[PanelState, Literal["Collapsed", "Expanded", "Hidden", "collapsed", "expanded", "hidden"], int]
-PanelStateArrayLike = Union[PanelStateLike, Sequence[PanelStateLike]]
+PanelStateLike = PanelState | Literal["Collapsed", "Expanded", "Hidden", "collapsed", "expanded", "hidden"] | int
+PanelStateArrayLike = (
+    PanelState
+    | Literal["Collapsed", "Expanded", "Hidden", "collapsed", "expanded", "hidden"]
+    | int
+    | Sequence[PanelStateLike]
+)
 
 
 class PanelStateBatch(BaseBatch[PanelStateArrayLike], ComponentBatchMixin):

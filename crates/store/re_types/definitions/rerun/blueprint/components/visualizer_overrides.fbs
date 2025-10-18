@@ -4,7 +4,7 @@ namespace rerun.blueprint.components;
 ///
 /// For details see [archetypes.VisualizerOverrides].
 table VisualizerOverride (
-  "attr.python.aliases": "str, list[str]",
+  "attr.python.aliases": "str | list[str]",
   "attr.python.array_aliases": "str",
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Default",

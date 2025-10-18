@@ -26,13 +26,16 @@ def log_data() -> None:
 
     coordinates = itertools.product(range(NUM_NODES), range(NUM_NODES))
 
-    nodes, colors = zip(*[
-        (
-            str(i),
-            rr.components.Color([round((x / (NUM_NODES - 1)) * 255), round((y / (NUM_NODES - 1)) * 255), 0]),
-        )
-        for i, (x, y) in enumerate(coordinates)
-    ])
+    nodes, colors = zip(
+        *[
+            (
+                str(i),
+                rr.components.Color([round((x / (NUM_NODES - 1)) * 255), round((y / (NUM_NODES - 1)) * 255), 0]),
+            )
+            for i, (x, y) in enumerate(coordinates)
+        ],
+        strict=False,
+    )
 
     rr.log(
         "/lattice",

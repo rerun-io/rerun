@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -118,9 +118,9 @@ class Colormap(Enum):
         return self.name
 
 
-ColormapLike = Union[
-    Colormap,
-    Literal[
+ColormapLike = (
+    Colormap
+    | Literal[
         "CyanToYellow",
         "Grayscale",
         "Inferno",
@@ -137,10 +137,32 @@ ColormapLike = Union[
         "spectral",
         "turbo",
         "viridis",
-    ],
-    int,
-]
-ColormapArrayLike = Union[ColormapLike, Sequence[ColormapLike]]
+    ]
+    | int
+)
+ColormapArrayLike = (
+    Colormap
+    | Literal[
+        "CyanToYellow",
+        "Grayscale",
+        "Inferno",
+        "Magma",
+        "Plasma",
+        "Spectral",
+        "Turbo",
+        "Viridis",
+        "cyantoyellow",
+        "grayscale",
+        "inferno",
+        "magma",
+        "plasma",
+        "spectral",
+        "turbo",
+        "viridis",
+    ]
+    | int
+    | Sequence[ColormapLike]
+)
 
 
 class ColormapBatch(BaseBatch[ColormapArrayLike], ComponentBatchMixin):

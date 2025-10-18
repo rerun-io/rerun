@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -74,14 +74,11 @@ class ClassDescriptionMapElem(ClassDescriptionMapElemExt):
 
 
 if TYPE_CHECKING:
-    ClassDescriptionMapElemLike = Union[ClassDescriptionMapElem, datatypes.ClassDescriptionLike]
+    ClassDescriptionMapElemLike = ClassDescriptionMapElem | datatypes.ClassDescriptionLike
 else:
     ClassDescriptionMapElemLike = Any
 
-ClassDescriptionMapElemArrayLike = Union[
-    ClassDescriptionMapElem,
-    Sequence[ClassDescriptionMapElemLike],
-]
+ClassDescriptionMapElemArrayLike = ClassDescriptionMapElem | Sequence[ClassDescriptionMapElemLike]
 
 
 class ClassDescriptionMapElemBatch(BaseBatch[ClassDescriptionMapElemArrayLike]):

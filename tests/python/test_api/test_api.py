@@ -17,11 +17,14 @@ import math
 import os
 import random
 import threading
-from typing import Callable
+from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def run_segmentation() -> None:
