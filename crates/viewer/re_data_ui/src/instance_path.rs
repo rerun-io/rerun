@@ -1,6 +1,8 @@
-use egui::RichText;
-use re_capabilities::MainThreadToken;
 use std::collections::BTreeMap;
+
+use egui::RichText;
+use itertools::Itertools as _;
+use re_capabilities::MainThreadToken;
 
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
@@ -111,6 +113,35 @@ impl DataUi for InstancePath {
                     if component_count > 1 { "s" } else { "" }
                 ),
             );
+        } else if ui_layout == UiLayout::Tooltip && unordered_components.len() > 3 {
+            // Too many to show all in a tooltip.
+            // A nice thing to do would be to looks for non-splatted components and only show them
+            // (if they are few, and self.instance != Instance::ALL),
+            // but for now we do something simpler:
+
+            let component_count = unordered_components.len();
+            ui.list_item_label(format!(
+                "{} component{}",
+                component_count,
+                if component_count > 1 { "s" } else { "" }
+            ));
+
+            let archetype_count = components_by_archetype.len();
+            ui.list_item_label(format!(
+                "{} archetype{}: {}",
+                archetype_count,
+                if archetype_count > 1 { "s" } else { "" },
+                components_by_archetype
+                    .keys()
+                    .map(|archetype| {
+                        if let Some(archetype) = archetype {
+                            archetype.short_name()
+                        } else {
+                            "<Without archetype>"
+                        }
+                    })
+                    .join(", ")
+            ));
         } else {
             // TODO(#7026): Instances today are too poorly defined:
             // For many archetypes it makes sense to slice through all their component arrays with the same index.
