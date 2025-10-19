@@ -24,18 +24,19 @@ pub type DecoderTransport = Decoder<re_protos::log_msg::v1alpha1::log_msg::Msg>;
 /// See also [`DecoderApp`].
 pub type DecoderApp = Decoder<re_log_types::LogMsg>;
 
-// TODO:
-// * rrd::Encodable/rrd::Decodable: map RRD bytes to transport types and vice-versa, does nothing else (rrd::ToBytes, rrd::FromBytes?)
-//     * ToTransport/ToApplication: converts between transport and app level types, does every hack that exist
-//         * rrd::Decoder<T>/rrd::Encoder<T>: decode actual RRD streams using everything above
-
-/// The stream decoder is a state machine which ingests byte chunks and outputs messages once it
-/// has enough data to deserialize one.
+/// A push-based state machine that ingests byte chunks and outputs messages once it has enough
+/// data to decode one.
 ///
 /// Byte chunks are given to the stream via [`DecoderApp::push_byte_chunk`], and messages are read
 /// back via [`DecoderApp::try_read`].
-//
-// TODO(cmc): explain when you'd use this over StreamingDecoder and vice-versa.
+///
+/// The unorthodox push-based model is what allows us to run this in all the weird environments
+/// that Rerun support (web, async, HTTP fetches, etc):
+/// * [`DecoderIterator`] implements a poll-based synchronous iterator on top of it.
+/// * [`DecoderStream`] implements a poll-based asynchronous stream on top of it.
+///
+/// [`DecoderIterator`]: [`crate::DecoderIterator`]
+/// [`DecoderStream`]: [`crate::DecoderStream`]
 pub struct Decoder<T> {
     /// The Rerun version used to encode the RRD data.
     ///

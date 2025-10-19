@@ -173,7 +173,12 @@ fn process_messages<W: std::io::Write>(
                     }
                 }
 
-                encoder.append_transport(&msg)?;
+                // Safety: we're just forwarding an existing message, we didn't change its payload
+                // in any meaningful way.
+                #[expect(unsafe_code)]
+                unsafe {
+                    encoder.append_transport(&msg)?;
+                }
             }
             Err(err) => {
                 re_log::error_once!("{}", re_error::format(err));

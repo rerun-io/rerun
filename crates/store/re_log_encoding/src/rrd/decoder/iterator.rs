@@ -169,7 +169,7 @@ impl<T: DecoderEntrypoint, R: std::io::BufRead> std::iter::Iterator for DecoderI
 
 #[cfg(all(test, feature = "encoder"))]
 mod tests {
-    #![expect(clippy::unwrap_used)] // tests
+    #![expect(unsafe_code, clippy::unwrap_used, clippy::undocumented_unsafe_blocks)] // tests
 
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
@@ -372,9 +372,11 @@ mod tests {
         let options = EncodingOptions::PROTOBUF_UNCOMPRESSED;
         let mut encoder = Encoder::new_eager(rrd_version, options, &mut file).unwrap();
         for message in messages.clone() {
-            encoder
-                .append_transport(&message)
-                .expect("encoding should succeed");
+            unsafe {
+                encoder
+                    .append_transport(&message)
+                    .expect("encoding should succeed");
+            }
         }
         drop(encoder);
 
@@ -411,9 +413,11 @@ mod tests {
         let options = EncodingOptions::PROTOBUF_UNCOMPRESSED;
         let mut encoder = Encoder::new_eager(rrd_version, options, &mut file).unwrap();
         for message in out_of_order_messages.clone() {
-            encoder
-                .append_transport(&message)
-                .expect("encoding should succeed");
+            unsafe {
+                encoder
+                    .append_transport(&message)
+                    .expect("encoding should succeed");
+            }
         }
         drop(encoder);
 

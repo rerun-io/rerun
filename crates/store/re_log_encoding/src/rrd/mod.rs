@@ -1,9 +1,21 @@
-//! Everything need to encode/decode and serialize/deserialize RRD streams.
+//! Everything needed to encode/decode and serialize/deserialize RRD streams.
 //!
-//! RRD streams are used where streaming Rerun data via files, standard I/O, HTTP, data loaders, etc.
+//! ⚠️Make sure to familiarize yourself with the [crate-level docs] first. ⚠️
 //!
-//! This is completely unrelated to the Rerun Data Protocol (Redap) gRPC API.
-//! This is also completely unrelated to the legacy SDK comms gRPC API.
+//! RRD streams are used everywhere gRPC isn't: files, standard I/O, HTTP fetches, data-loaders, etc.
+//! This module is completely unrelated to the Rerun Data Protocol (Redap) gRPC API.
+//! This module is also completely unrelated to the legacy SDK comms gRPC API.
+//!
+//! ## [`Encodable`]/[`Decodable`] vs. `Encoder`/`Decoder`
+//!
+//! The [`Encodable`]/[`Decodable`] traits specify how transport-level types should be encoded to
+//! and decoded from top-level RRD types, respectively. Only transport-level types can be encoded/decoded.
+//!
+//! That is all these traits do. They do not perform any kind of IO, they do not keep track of any
+//! sort of state. That's the job of the `Encoder` and `Decoder`: they provide the IO and the
+//! state machines that turn collections of `Encodable`s and `Decodable`s into actual RRD streams.
+//!
+//! [crate-level docs]: [`crate`]
 
 mod errors;
 mod headers;
@@ -51,14 +63,10 @@ pub const OLD_RRD_FOURCC: &[[u8; 4]] = &[*b"RRF0", *b"RRF1"];
 
 // ---
 
-// TODO:
-// * explain wtf are app-level vs. transport-level types
-// * why you cannot take app-level types
-
 /// Encodes transport-level types (i.e. Protobuf objects) into RRD bytes.
 ///
-/// The RRD protocol is pretty complex and mixes layers of custom binary protocols, Protobuf and
-/// Arrow encoded, and layer-specific compression schemes.
+/// The RRD protocol is pretty complex and mixes layers of custom binary, Protobuf and
+/// Arrow encoded data, as well layer-specific compression schemes.
 /// This trait takes care of all of that for you.
 ///
 /// This exclusively performs encoding and _nothing else_. In particular, it does not:
@@ -84,8 +92,8 @@ pub trait Encodable {
 
 /// Decodes RRD bytes into transport-level types (i.e. Protobuf objects).
 ///
-/// The RRD protocol is pretty complex and mixes layers of custom binary protocols, Protobuf and
-/// Arrow encoded, and layer-specific compression schemes.
+/// The RRD protocol is pretty complex and mixes layers of custom binary, Protobuf and
+/// Arrow encoded data, as well layer-specific compression schemes.
 /// This trait takes care of all of that for you.
 ///
 /// This exclusively performs encoding and _nothing else_. In particular, it does not:

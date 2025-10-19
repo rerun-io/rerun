@@ -1,3 +1,14 @@
+//! Everything needed to convert back and forth between transport-level and application-level types.
+//!
+//! ⚠️Make sure to familiarize yourself with the [crate-level docs] first. ⚠️
+//!
+//! This is where all the complex application-level logic that precedes encoding / follows decoding
+//! happens: Chunk/Sorbet migrations, data patching (app ID injection, version propagation, BW-compat hacks,
+//! etc).
+//!
+//! To go from a from a freshly decoded transport-level type to its application-level equivalent, use [`ToApplication`].
+//! To prepare an application-level type for encoding, use [`ToTransport`].
+
 use re_build_info::CrateVersion;
 use re_log_types::{BlueprintActivationCommand, SetStoreInfo};
 
@@ -11,7 +22,7 @@ use crate::rrd::CodecError;
 
 // ---
 
-// TODO: docs (no io ever, does all the crazy stuff though)
+/// Converts an application-level type to a transport-level type, ready for encoding.
 pub trait ToTransport {
     type Output;
     type Context<'a>;
@@ -40,7 +51,7 @@ impl ToTransport for re_log_types::ArrowMsg {
     }
 }
 
-// TODO: docs
+/// Converts a transport-level type to an application-level type, ready for use in the viewer.
 pub trait ToApplication {
     type Output;
     type Context<'a>;
@@ -334,7 +345,7 @@ fn encode_arrow(
     })
 }
 
-/// Decodes a potentially compressed IPC payload into a  native `RecordBatch`.
+/// Decodes a potentially compressed IPC payload into a native `RecordBatch`.
 //
 // TODO(cmc): can we use the File-oriented APIs in order to re-use the transport buffer as backing
 // storage for the final RecordBatch?

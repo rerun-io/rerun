@@ -136,14 +136,21 @@ impl<W: std::io::Write> Encoder<W> {
         re_tracing::profile_function!();
 
         let message = message.to_transport(self.compression)?;
-        self.append_transport(&message)
+        // Safety: we _are_ the encoder.
+        #[expect(unsafe_code)]
+        unsafe {
+            self.append_transport(&message)
+        }
     }
 
     /// Returns the size in bytes of the encoded data.
-    //
-    // TODO: explain
-    // TODO: this is unsafe since it bypasses compression/serializer.
-    pub fn append_transport(
+    ///
+    /// ## Safety
+    ///
+    /// `message` must respect the global settings of the encoder (e.g. the compression used),
+    /// otherwise the resulting RRD stream will be corrupt and unreadable.
+    #[expect(unsafe_code)]
+    pub unsafe fn append_transport(
         &mut self,
         message: &re_protos::log_msg::v1alpha1::log_msg::Msg,
     ) -> Result<u64, EncodeError> {

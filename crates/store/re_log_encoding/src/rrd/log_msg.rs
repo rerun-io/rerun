@@ -1,11 +1,7 @@
 use crate::rrd::{CodecError, Decodable, Encodable, MessageHeader, MessageKind};
 
-// TODO: you will never use `LogMsg` here, but i should maybe explain why.
-
-// --- LogMsg (transport layer): re_protos::log_msg::v1alpha1::log_msg::Msg ---
-
 impl Encodable for re_protos::log_msg::v1alpha1::log_msg::Msg {
-    /// Serializes the appropriate `MessageHeader` simultaneously.
+    /// Serializes the appropriate `MessageHeader` too!
     fn to_rrd_bytes(&self, out: &mut Vec<u8>) -> Result<u64, CodecError> {
         use re_protos::external::prost::Message as _;
 
