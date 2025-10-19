@@ -1,11 +1,11 @@
-use crate::{RecordBatchExt as _, SchemaExt as _};
+use futures::TryStreamExt as _;
 use itertools::Itertools as _;
+
 use re_protos::cloud::v1alpha1::ext::EntryDetails;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{FindEntriesRequest, GetTableSchemaRequest, ScanTableRequest};
-use re_sdk::external::re_log_encoding::codec::wire::decoder::Decode as _;
 
-use futures::TryStreamExt as _;
+use crate::{RecordBatchExt as _, SchemaExt as _};
 
 /// We want to make sure that the "__entries" table is present and has the expected schema and data.
 pub async fn list_entries_table(fe: impl RerunCloudService) {
@@ -66,7 +66,7 @@ pub async fn list_entries_table(fe: impl RerunCloudService) {
         .map(|resp| {
             resp.dataframe_part
                 .expect("Expected dataframe part")
-                .decode()
+                .try_into()
                 .expect("Failed to decode dataframe")
         })
         .collect_vec();

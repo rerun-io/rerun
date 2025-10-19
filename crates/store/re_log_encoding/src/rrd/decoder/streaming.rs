@@ -8,9 +8,8 @@ use re_build_info::CrateVersion;
 use re_chunk::Span;
 use re_log::external::log::warn;
 
-use crate::{
-    codec::file::{EncodingOptions, FileHeader, MessageHeader, MessageKind},
-    decoder::DecodeError,
+use crate::rrd::{
+    Decodable as _, DecodeError, EncodingOptions, MessageHeader, MessageKind, StreamHeader,
 };
 
 /// A transport-level `LogMsg` with extra contextual information.
@@ -54,7 +53,9 @@ impl StreamingLogMsg {
         store_id: re_log_types::StoreId,
         chunk: &re_chunk::Chunk,
     ) -> Result<Self, crate::EncodeError> {
-        let compression = crate::codec::Compression::Off;
+        use crate::{ToTransport as _, rrd::Encodable as _};
+
+        let compression = crate::rrd::Compression::Off;
 
         let arrow_msg = re_log_types::ArrowMsg {
             chunk_id: *chunk.id(),
@@ -63,19 +64,23 @@ impl StreamingLogMsg {
         };
 
         let log_msg = re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg);
-        let log_msg_proto =
-            crate::protobuf_conversions::log_msg_to_proto(log_msg.clone(), compression)?;
+        let log_msg_proto = log_msg.clone().to_transport(compression)?;
 
         let mut log_msg_encoded = Vec::new();
-        crate::codec::file::encoder::encode(&mut log_msg_encoded, &log_msg, compression)?;
+        log_msg_proto.to_rrd_bytes(&mut log_msg_encoded)?;
 
-        let byte_len = log_msg_encoded.len() as _;
+        let byte_len =
+            log_msg_encoded.len() as u64 - crate::MessageHeader::ENCODED_SIZE_BYTES as u64;
 
         Ok(Self {
             kind: MessageKind::ArrowMsg,
             version: CrateVersion::LOCAL,
-            encoded: Some(log_msg_encoded.into()),
-            decoded: log_msg_proto.msg,
+            encoded: Some(
+                log_msg_encoded[crate::MessageHeader::ENCODED_SIZE_BYTES..]
+                    .to_vec()
+                    .into(),
+            ),
+            decoded: Some(log_msg_proto),
             byte_span: Span {
                 start: 0,
                 len: byte_len,
@@ -97,6 +102,7 @@ impl StreamingLogMsg {
         &self,
     ) -> Result<Option<re_protos::log_msg::v1alpha1::log_msg::Msg>, DecodeError> {
         if let Some(mut decoded) = self.decoded.clone() {
+            // TODO(cmc): why on earth is this here??
             if let re_protos::log_msg::v1alpha1::log_msg::Msg::SetStoreInfo(msg) = &mut decoded {
                 // Propagate the protocol version from the header into the `StoreInfo` so that all
                 // parts of the app can easily access it.
@@ -111,7 +117,24 @@ impl StreamingLogMsg {
         }
 
         if let Some(encoded) = self.encoded.as_ref() {
-            return crate::codec::file::decoder::decode_bytes_to_transport(self.kind, encoded);
+            return Ok(Some(match self.kind {
+                MessageKind::End => return Ok(None),
+                MessageKind::SetStoreInfo => {
+                    re_protos::log_msg::v1alpha1::log_msg::Msg::SetStoreInfo(
+                        re_protos::log_msg::v1alpha1::SetStoreInfo::from_rrd_bytes(encoded)?,
+                    )
+                }
+                MessageKind::ArrowMsg => re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(
+                    re_protos::log_msg::v1alpha1::ArrowMsg::from_rrd_bytes(encoded)?,
+                ),
+                MessageKind::BlueprintActivationCommand => {
+                    re_protos::log_msg::v1alpha1::log_msg::Msg::BlueprintActivationCommand(
+                        re_protos::log_msg::v1alpha1::BlueprintActivationCommand::from_rrd_bytes(
+                            encoded,
+                        )?,
+                    )
+                }
+            }));
         }
 
         Ok(None)
@@ -164,14 +187,15 @@ impl StreamingDecoderOptions {
 
 impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
     pub async fn new(opts: StreamingDecoderOptions, mut reader: R) -> Result<Self, DecodeError> {
-        let mut data = [0_u8; FileHeader::SIZE];
+        let mut data = [0_u8; StreamHeader::ENCODED_SIZE_BYTES];
 
         reader
             .read_exact(&mut data)
             .await
             .map_err(DecodeError::Read)?;
 
-        let (version, encoding_opts) = FileHeader::options_from_bytes(&data)?;
+        let (version, encoding_opts) =
+            StreamHeader::from_rrd_bytes(&data).and_then(|h| h.to_version_and_options())?;
 
         Ok(Self {
             version,
@@ -180,7 +204,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             reader,
             unprocessed_bytes: BytesMut::default(),
             expect_more_data: false,
-            num_bytes_read: FileHeader::SIZE as _,
+            num_bytes_read: StreamHeader::ENCODED_SIZE_BYTES as _,
         })
     }
 
@@ -197,14 +221,13 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             reader,
             unprocessed_bytes: BytesMut::default(),
             expect_more_data: false,
-            num_bytes_read: FileHeader::SIZE as _,
+            num_bytes_read: StreamHeader::ENCODED_SIZE_BYTES as _,
         }
     }
 
     /// Returns true if `data` can be successfully decoded into a `FileHeader`.
     fn peek_file_header(data: &[u8]) -> bool {
-        let mut read = std::io::Cursor::new(data);
-        FileHeader::decode(&mut read).is_ok()
+        StreamHeader::from_rrd_bytes(data).is_ok()
     }
 }
 
@@ -334,31 +357,34 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
             should_read_more_data = true;
 
             // check if this is a start of a new concatenated file
-            if unprocessed_bytes.len() >= FileHeader::SIZE
-                && Self::peek_file_header(&unprocessed_bytes[..FileHeader::SIZE])
+            if unprocessed_bytes.len() >= StreamHeader::ENCODED_SIZE_BYTES
+                && Self::peek_file_header(&unprocessed_bytes[..StreamHeader::ENCODED_SIZE_BYTES])
             {
-                let data = &unprocessed_bytes[..FileHeader::SIZE];
+                let data = &unprocessed_bytes[..StreamHeader::ENCODED_SIZE_BYTES];
                 // We've found another file header in the middle of the stream, it's time to switch
                 // gears and start over on this new file.
-                match FileHeader::options_from_bytes(data) {
+                let version_and_options =
+                    StreamHeader::from_rrd_bytes(data).and_then(|h| h.to_version_and_options());
+                match version_and_options {
                     Ok((version, options)) => {
                         self.version = CrateVersion::max(self.version, version);
                         self.encoding_opts = options;
 
                         consume_if_needed(&mut self.reader, buf_length);
-                        self.unprocessed_bytes.advance(FileHeader::SIZE);
-                        self.num_bytes_read += FileHeader::SIZE as u64;
+                        self.unprocessed_bytes
+                            .advance(StreamHeader::ENCODED_SIZE_BYTES);
+                        self.num_bytes_read += StreamHeader::ENCODED_SIZE_BYTES as u64;
 
                         continue;
                     }
                     Err(err) => {
-                        return std::task::Poll::Ready(Some(Err(err)));
+                        return std::task::Poll::Ready(Some(Err(err.into())));
                     }
                 }
             }
 
             let (kind, encoded, processed_length) = match serializer {
-                crate::codec::Serializer::Protobuf => {
+                crate::rrd::Serializer::Protobuf => {
                     let header_size = std::mem::size_of::<MessageHeader>();
                     if unprocessed_bytes.len() < header_size {
                         // Not enough data to read the header, need to wait for more
@@ -368,7 +394,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                         continue;
                     }
                     let data = &unprocessed_bytes[..header_size];
-                    let header = MessageHeader::from_bytes(data)?;
+                    let header = MessageHeader::from_rrd_bytes(data)?;
 
                     if unprocessed_bytes.len() < header.len as usize + header_size {
                         // Not enough data to read the message, need to wait for more
@@ -387,12 +413,12 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
 
             if kind == MessageKind::End {
                 // we've reached the end of the stream (i.e. read the EoS header), we check if there's another file concatenated
-                if unprocessed_bytes.len() < processed_length + FileHeader::SIZE {
+                if unprocessed_bytes.len() < processed_length + StreamHeader::ENCODED_SIZE_BYTES {
                     return std::task::Poll::Ready(None);
                 }
 
-                let data =
-                    &unprocessed_bytes[processed_length..processed_length + FileHeader::SIZE];
+                let data = &unprocessed_bytes
+                    [processed_length..processed_length + StreamHeader::ENCODED_SIZE_BYTES];
                 if Self::peek_file_header(data) {
                     re_log::debug!(
                         "Reached end of stream, but it seems we have a concatenated file, continuing"
@@ -407,7 +433,21 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
             }
 
             let decoded = if opts.keep_decoded_protobuf {
-                crate::codec::file::decoder::decode_bytes_to_transport(kind, encoded)?
+                Some(match kind {
+                    MessageKind::SetStoreInfo => re_protos::log_msg::v1alpha1::log_msg::Msg::SetStoreInfo(
+                        re_protos::log_msg::v1alpha1::SetStoreInfo::from_rrd_bytes(encoded)?
+                    ),
+
+                    MessageKind::ArrowMsg => re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(
+                        re_protos::log_msg::v1alpha1::ArrowMsg::from_rrd_bytes(encoded)?
+                    ),
+
+                    MessageKind::BlueprintActivationCommand => re_protos::log_msg::v1alpha1::log_msg::Msg::BlueprintActivationCommand(
+                        re_protos::log_msg::v1alpha1::BlueprintActivationCommand::from_rrd_bytes(encoded)?
+                    ),
+
+                    MessageKind::End => unreachable!(),
+                })
             } else {
                 None
             };
@@ -437,8 +477,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
     }
 }
 
-#[cfg(feature = "testing")]
-#[cfg(all(test, feature = "decoder", feature = "encoder"))]
+#[cfg(all(test, feature = "encoder"))]
 mod tests {
     use tokio_stream::StreamExt as _;
 
@@ -447,10 +486,11 @@ mod tests {
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
 
     use crate::{
-        codec::Compression,
-        codec::Serializer,
-        decoder::streaming::{StreamingDecoder, StreamingDecoderOptions},
-        encoder::EncodingOptions,
+        ToApplication as _,
+        rrd::{
+            Compression, Decodable as _, EncodingOptions, Serializer, StreamingDecoder,
+            StreamingDecoderOptions,
+        },
     };
 
     #[expect(clippy::unwrap_used)] // acceptable for tests
@@ -526,14 +566,11 @@ mod tests {
                 .await
                 .unwrap();
 
-            let mut app_id_cache = crate::decoder::CachingApplicationIdInjector::default();
+            let mut app_id_cache = crate::CachingApplicationIdInjector::default();
             let decoded_messages: Vec<re_log_types::LogMsg> = decoder
                 .map(Result::unwrap)
                 .filter_map(|msg| msg.decoded_transport().unwrap())
-                .map(|msg| {
-                    crate::codec::file::decoder::decode_transport_to_app(&mut app_id_cache, msg)
-                        .unwrap()
-                })
+                .map(|msg| msg.to_application((&mut app_id_cache, None)).unwrap())
                 .collect::<Vec<_>>()
                 .await;
 
@@ -569,14 +606,11 @@ mod tests {
                 .await
                 .unwrap();
 
-            let mut app_id_cache = crate::decoder::CachingApplicationIdInjector::default();
+            let mut app_id_cache = crate::CachingApplicationIdInjector::default();
             let decoded_messages = decoder
                 .map(Result::unwrap)
                 .filter_map(|msg| msg.decoded_transport().unwrap())
-                .map(|msg| {
-                    crate::codec::file::decoder::decode_transport_to_app(&mut app_id_cache, msg)
-                        .unwrap()
-                })
+                .map(|msg| msg.to_application((&mut app_id_cache, None)).unwrap())
                 .collect::<Vec<_>>()
                 .await;
 
@@ -614,43 +648,30 @@ mod tests {
 
             let mut decoded_messages = decoder.collect::<Result<Vec<_>, _>>().await.unwrap();
 
-            let mut app_id_cache = crate::decoder::CachingApplicationIdInjector::default();
+            let mut app_id_cache = crate::CachingApplicationIdInjector::default();
             for msg_expected in &mut decoded_messages {
                 let data = &data[msg_expected.byte_span.try_cast::<usize>().unwrap().range()];
 
                 {
-                    use crate::codec::file;
+                    let msg =
+                        Option::<re_protos::log_msg::v1alpha1::log_msg::Msg>::from_rrd_bytes(data)
+                            .unwrap()
+                            .unwrap();
+                    let msg = msg.to_application((&mut app_id_cache, None)).unwrap();
 
-                    let header_size = std::mem::size_of::<file::MessageHeader>();
-                    let header_data = &data[..header_size];
-                    let header = file::MessageHeader::from_bytes(header_data).unwrap();
-
-                    let data = &data[header_size..];
-                    let msg = crate::codec::file::decoder::decode_bytes_to_app(
-                        &mut app_id_cache,
-                        header.kind,
-                        data,
-                    )
-                    .unwrap()
-                    .unwrap();
-
-                    let msg_expected = crate::codec::file::decoder::decode_transport_to_app(
-                        &mut app_id_cache,
-                        msg_expected.decoded_transport().unwrap().unwrap(),
-                    )
-                    .unwrap();
+                    let msg_expected = msg_expected.decoded_transport().unwrap().unwrap();
+                    let msg_expected = msg_expected
+                        .to_application((&mut app_id_cache, None))
+                        .unwrap();
                     similar_asserts::assert_eq!(msg_expected, msg);
                 }
             }
 
-            let mut app_id_cache = crate::decoder::CachingApplicationIdInjector::default();
+            let mut app_id_cache = crate::CachingApplicationIdInjector::default();
             let decoded_messages = decoded_messages
                 .iter_mut()
                 .filter_map(|msg| msg.decoded_transport().unwrap())
-                .map(|msg| {
-                    crate::codec::file::decoder::decode_transport_to_app(&mut app_id_cache, msg)
-                        .unwrap()
-                })
+                .map(|msg| msg.to_application((&mut app_id_cache, None)).unwrap())
                 .collect::<Vec<_>>();
 
             similar_asserts::assert_eq!(decoded_messages, messages);
