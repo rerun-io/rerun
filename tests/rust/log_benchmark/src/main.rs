@@ -137,26 +137,18 @@ fn main() -> anyhow::Result<()> {
     if check && let Some(storage) = storage {
         use rerun::external::re_log_encoding;
 
+        use rerun::external::re_log_encoding::ToTransport as _;
         let msgs: anyhow::Result<Vec<_>> = storage
             .take()
             .into_iter()
-            .map(|msg| {
-                Ok(re_log_encoding::protobuf_conversions::log_msg_to_proto(
-                    msg,
-                    re_log_encoding::codec::Compression::LZ4,
-                )?)
-            })
+            .map(|msg| Ok(msg.to_transport(re_log_encoding::rrd::Compression::LZ4)?))
             .collect();
 
+        use rerun::external::re_log_encoding::ToApplication as _;
         let mut app_id_injector = re_log_encoding::DummyApplicationIdInjector::new("dummy");
         let msgs: anyhow::Result<Vec<_>> = msgs?
             .into_iter()
-            .map(|msg| {
-                Ok(re_log_encoding::protobuf_conversions::log_msg_from_proto(
-                    &mut app_id_injector,
-                    msg,
-                )?)
-            })
+            .map(|msg| Ok(msg.to_application((&mut app_id_injector, None))?))
             .collect();
 
         let _ = msgs?;
