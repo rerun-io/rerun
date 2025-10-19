@@ -4,13 +4,11 @@ pub mod state_machine;
 
 mod iterator;
 mod stream;
-mod streaming; // TODO(cmc): destroy
 
 pub use self::{
     iterator::DecoderIterator,
     state_machine::{Decoder, DecoderApp, DecoderTransport},
     stream::DecoderStream,
-    streaming::{StreamingDecoder, StreamingDecoderOptions, StreamingLogMsg},
 };
 
 /// On failure to decode or serialize a `LogMsg`.

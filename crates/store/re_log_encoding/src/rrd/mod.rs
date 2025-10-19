@@ -31,7 +31,7 @@ pub use self::headers::{
 #[cfg(feature = "decoder")]
 pub use self::decoder::{
     DecodeError, Decoder, DecoderApp, DecoderEntrypoint, DecoderIterator, DecoderStream,
-    DecoderTransport, StreamingDecoder, StreamingDecoderOptions, StreamingLogMsg,
+    DecoderTransport,
 };
 
 #[cfg(feature = "encoder")]
