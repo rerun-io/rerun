@@ -66,16 +66,19 @@ pub async fn register_and_scan_simple_dataset(fe: impl RerunCloudService) {
         vec![
             DataSource {
                 storage_url: Some(partition1_url.to_string()),
+                prefix: false,
                 layer: None,
                 typ: DataSourceKind::Rrd as i32,
             }, //
             DataSource {
                 storage_url: Some(partition2_url.to_string()),
+                prefix: false,
                 layer: None,
                 typ: DataSourceKind::Rrd as i32,
             },
             DataSource {
                 storage_url: Some(partition3_url.to_string()),
+                prefix: false,
                 layer: None,
                 typ: DataSourceKind::Rrd as i32,
             },
@@ -143,6 +146,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
         vec![
             DataSource {
                 storage_url: Some(root_url.to_string()),
+                prefix: false,
                 layer: None,
                 typ: DataSourceKind::Rrd as i32,
             }, //
