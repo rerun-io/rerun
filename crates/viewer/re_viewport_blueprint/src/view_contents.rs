@@ -136,7 +136,7 @@ impl ViewContents {
             view_id,
         );
         let expressions = match property.component_array_or_empty::<QueryExpression>(
-            &blueprint_archetypes::ViewContents::descriptor_query(),
+            blueprint_archetypes::ViewContents::descriptor_query().component,
         ) {
             Ok(expressions) => expressions,
 
@@ -317,13 +317,13 @@ impl ViewContents {
                     continue;
                 };
                 components_for_defaults
-                    .extend(visualizer.visualizer_query_info().queried.iter().cloned());
+                    .extend(visualizer.visualizer_query_info().queried.iter().copied());
             }
 
             ctx.blueprint.latest_at(
                 blueprint_query,
                 &ViewBlueprint::defaults_path(self.view_id),
-                components_for_defaults.into_iter(),
+                components_for_defaults,
             )
         };
 

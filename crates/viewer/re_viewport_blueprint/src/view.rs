@@ -405,7 +405,7 @@ impl ViewBlueprint {
             self.id,
         );
         let ranges = property.component_array::<blueprint_components::VisibleTimeRange>(
-            &blueprint_archetypes::VisibleTimeRanges::descriptor_ranges(),
+            blueprint_archetypes::VisibleTimeRanges::descriptor_ranges().component,
         );
 
         let time_range = ranges.ok().flatten().and_then(|ranges| {
@@ -461,7 +461,7 @@ mod tests {
         example_components::{MyLabel, MyPoint, MyPoints},
     };
     use re_test_context::TestContext;
-    use re_types::{ComponentDescriptor, blueprint::archetypes::EntityBehavior};
+    use re_types::blueprint::archetypes::EntityBehavior;
     use re_viewer_context::{
         IndicatedEntities, MaybeVisualizableEntities, OverridePath, PerVisualizer,
         ViewClassPlaceholder, VisualizableEntities,
@@ -719,7 +719,7 @@ mod tests {
                     );
 
                     assert!(
-                        expected_overrides.remove(*component),
+                        expected_overrides.remove(component),
                         "Scenario {i}: expected override for {component} at {override_path:?} but got none"
                     );
 
