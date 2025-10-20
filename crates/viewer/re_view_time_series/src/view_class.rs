@@ -628,7 +628,7 @@ impl ViewClass for TimeSeriesView {
                     None
                 }
             }) {
-                ctx.handle_select_hover_drag_interactions(&response, hovered, false);
+                ctx.handle_select_hover_drag_interactions(&response, hovered, false, false);
             }
 
             // Can determine whether we're resetting only now since we need to know whether there's a plot item hovered.

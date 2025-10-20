@@ -377,7 +377,7 @@ impl ViewClass for BarChartView {
                 });
             if let Some(hovered) = hovered_data_result {
                 ctx.viewer_ctx
-                    .handle_select_hover_drag_interactions(&response, hovered, false);
+                    .handle_select_hover_drag_interactions(&response, hovered, false, false);
             }
         });
 

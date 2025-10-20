@@ -65,6 +65,8 @@ pub struct ApplicationSelectionState {
     /// Has selection changed since the previous frame?
     selection_changed: bool,
 
+    selection_changed_last_frame: bool,
+
     /// What objects are hovered? Read from this.
     hovered_previous_frame: ItemCollection,
 
@@ -102,6 +104,8 @@ impl ApplicationSelectionState {
 
         // Hovering needs to be refreshed every frame: If it wasn't hovered last frame, it's no longer hovered!
         self.hovered_previous_frame = std::mem::take(self.hovered_this_frame.get_mut());
+
+        self.selection_changed_last_frame = self.selection_changed;
 
         if self.selection_changed {
             self.selection_changed = false;
@@ -143,6 +147,10 @@ impl ApplicationSelectionState {
 
     pub fn hovered_item_context(&self) -> Option<&ItemContext> {
         self.hovered_previous_frame.iter_item_context().next()
+    }
+
+    pub fn selection_changed(&self) -> bool {
+        self.selection_changed_last_frame
     }
 
     pub fn highlight_for_ui_element(&self, test: &Item) -> HoverHighlight {

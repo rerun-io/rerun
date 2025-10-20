@@ -284,7 +284,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         egui::Button::selectable(is_selected, galley),
                     );
                     self.ctx
-                        .handle_select_hover_drag_interactions(&response, item, false);
+                        .handle_select_hover_drag_interactions(&response, item, false, false);
 
                     // TODO(emilk): expand column(s) to make sure the text fits (requires egui_table fix).
                 }
@@ -384,6 +384,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                                 re_viewer_context::Item::ComponentPath(
                                     component_column_descriptor.component_path(),
                                 ),
+                                false,
                                 false,
                             );
                         }

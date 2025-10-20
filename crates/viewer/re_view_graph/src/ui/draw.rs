@@ -414,6 +414,7 @@ pub fn draw_graph(
                 &resp,
                 Item::DataResult(query.view_id, instance_path),
                 false,
+                false,
             );
         }
     }

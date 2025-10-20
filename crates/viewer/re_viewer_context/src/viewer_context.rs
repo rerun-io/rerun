@@ -1,13 +1,6 @@
 use ahash::HashMap;
 use arrow::array::ArrayRef;
 
-use re_chunk_store::LatestAtQuery;
-use re_entity_db::InstancePath;
-use re_entity_db::entity_db::EntityDb;
-use re_log_types::{EntryId, TableId};
-use re_query::StorageEngineReadGuard;
-use re_ui::ContextExt as _;
-
 use crate::drag_and_drop::DragAndDropPayload;
 use crate::time_control::TimeControlCommand;
 use crate::{
@@ -17,6 +10,13 @@ use crate::{
     query_context::DataQueryResult,
 };
 use crate::{DisplayMode, GlobalContext, Item, StorageContext, StoreHub, SystemCommand};
+use re_chunk_store::LatestAtQuery;
+use re_entity_db::InstancePath;
+use re_entity_db::entity_db::EntityDb;
+use re_log_types::{EntryId, TableId};
+use re_query::StorageEngineReadGuard;
+use re_ui::ContextExt as _;
+use re_ui::list_item::ListItem;
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -250,11 +250,15 @@ impl ViewerContext<'_> {
     /// - …unless cmd/ctrl is held, in which case the item is added to the selection and the entire
     ///   selection is dragged.
     /// - When dragging a selected item, the entire selection is dragged as well.
+    ///
+    /// Set `focus_sync` to true if the _this_ is where the user would expect keyboard focus to be
+    /// when the item is selected (e.g. blueprint tree for views, recording panel for recordings).
     pub fn handle_select_hover_drag_interactions(
         &self,
         response: &egui::Response,
         interacted_items: impl Into<ItemCollection>,
         draggable: bool,
+        focus_sync: bool,
     ) {
         let mut interacted_items = interacted_items
             .into()
@@ -263,6 +267,26 @@ impl ViewerContext<'_> {
 
         if response.hovered() {
             selection_state.set_hovered(interacted_items.clone());
+        }
+
+        let single_selected = self.selection().single_item() == interacted_items.single_item();
+
+        // If we were just selected, scroll into view
+        if single_selected && self.selection_state().selection_changed() {
+            response.scroll_to_me(None);
+        }
+
+        if focus_sync && single_selected {
+            // If selection changes, and a single item is selected, the selected item should
+            // receive egui focus
+            let selection_changed = self.selection_state().selection_changed();
+
+            // If there is a single selected item and nothing is focused, focus that item.
+            let nothing_focused = response.ctx.memory(|mem| mem.focused().is_none());
+
+            if selection_changed || nothing_focused {
+                response.request_focus()
+            }
         }
 
         if draggable && response.drag_started() {
@@ -374,6 +398,9 @@ impl ViewerContext<'_> {
                         .send_system(SystemCommand::SetSelection(interacted_items));
                 }
             }
+        } else if ListItem::gained_focus_via_arrow_key(&response.ctx, response.id) {
+            self.command_sender()
+                .send_system(SystemCommand::SetSelection(interacted_items));
         }
     }
 
@@ -401,8 +428,9 @@ impl ViewerContext<'_> {
                 .lookup_datatype(&component)
                 .or_else(|| self.blueprint_engine().store().lookup_datatype(&component))
                 .unwrap_or_else(|| {
-                         re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
-                                    arrow::datatypes::DataType::Null})
+                    re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
+                    arrow::datatypes::DataType::Null
+                })
         };
 
         // TODO(andreas): Is this operation common enough to cache the result? If so, here or in the reflection data?

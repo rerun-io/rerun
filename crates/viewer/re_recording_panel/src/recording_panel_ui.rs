@@ -7,7 +7,7 @@ use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
 use re_log_types::TableId;
 use re_redap_browser::{Command, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers};
 use re_smart_channel::SmartChannelSource;
-use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
+use re_ui::list_item::{LabelContent, ListItem, ListItemContentButtonsExt as _};
 use re_ui::{OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
@@ -193,6 +193,11 @@ fn all_sections_ui(
                 .item_response
         };
 
+        if ListItem::gained_focus_via_arrow_key(ui.ctx(), response.id) {
+            ctx.command_sender()
+                .send_system(SystemCommand::SetSelection(item.into()));
+        }
+
         if response.clicked() {
             re_redap_browser::switch_to_welcome_screen(ctx.command_sender());
         }
@@ -269,7 +274,7 @@ fn server_section_ui(
         .item_response
         .on_hover_text(origin.to_string());
 
-    ctx.handle_select_hover_drag_interactions(&item_response, server_data.item(), false);
+    ctx.handle_select_hover_drag_interactions(&item_response, server_data.item(), false, true);
 
     if item_response.clicked() {
         ctx.command_sender()
@@ -553,7 +558,7 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
         app_id.data_ui_recording(ctx, ui, UiLayout::Tooltip);
     });
 
-    ctx.handle_select_hover_drag_interactions(&item_response, item, false);
+    ctx.handle_select_hover_drag_interactions(&item_response, item, false, true);
     if item_response.clicked() {
         //TODO(ab): shouldn't this be done by handle_select_hover_drag_interactions?
         ctx.command_sender()
