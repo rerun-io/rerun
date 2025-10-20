@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import psutil
 import pyarrow as pa
 import pytest
-from datafusion import col, functions as f
+from datafusion import DataFrameWriteOptions, InsertOp, SessionContext, col, functions as f
 from rerun.catalog import CatalogClient, EntryKind
 
 if TYPE_CHECKING:
@@ -131,7 +131,7 @@ class ServerInstance:
 
 
 @pytest.fixture(scope="module")
-def server_instance(table_filepath) -> Generator[ServerInstance, None, None]:
+def server_instance(table_filepath: pathlib.Path) -> Generator[ServerInstance, None, None]:
     assert DATASET_FILEPATH.is_dir()
     assert table_filepath.is_dir()
 
@@ -418,3 +418,32 @@ def test_datafusion_catalog_get_tables(server_instance: ServerInstance) -> None:
     df = ctx.sql("SELECT * FROM datafusion.public.simple_datatypes")
     rb = pa.Table.from_batches(df.collect())
     assert rb.num_rows > 0
+
+
+def test_datafusion_write_table(server_instance: ServerInstance) -> None:
+    table_name = "simple_datatypes"
+    ctx: SessionContext = server_instance.client.ctx
+
+    df_prior = ctx.table(table_name)
+    prior_count = df_prior.count()
+
+    df_smaller = ctx.table(table_name).filter(col("id") < 5)
+    smaller_count = df_smaller.count()
+
+    # Note: It is an anti-pattern to read from and write to the
+    # same table at the same time. This can cause infinite loops.
+    # Break the pattern by collecting into batches
+
+    batches = df_smaller.collect()
+    ctx.register_record_batches("batches", [batches])
+    df = ctx.table("batches")
+
+    # Verify append mode
+    df.write_table(table_name)
+    ctx.table(table_name).show()
+    assert ctx.table(table_name).count() == prior_count + smaller_count
+
+    # Verify overwrite mode
+    df.write_table(table_name, write_options=DataFrameWriteOptions(insert_operation=InsertOp.OVERWRITE))
+    ctx.table(table_name).show()
+    assert ctx.table(table_name).count() == smaller_count

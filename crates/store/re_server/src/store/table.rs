@@ -152,10 +152,10 @@ impl Table {
                     .clone()
                     .append(reader, Some(params))
                     .await
-                    .map_err(|err| DataFusionError::External(err.into()))
+                    .map_err(|err| DataFusionError::External(err.into()))?;
             }
             InsertOp::Replace => {
-                exec_err!("Invalid insert operation. Only append and overwrite are supported.")
+                exec_err!("Invalid insert operation. Only append and overwrite are supported.")?;
             }
             InsertOp::Overwrite => {
                 params.mode = WriteMode::Overwrite;
@@ -164,10 +164,17 @@ impl Table {
                     LanceDataset::write(reader, Arc::new(dataset.as_ref().clone()), Some(params))
                         .await
                         .map_err(|err| DataFusionError::External(err.into()))?;
-
-                Ok(())
             }
         }
+
+        let updated_table = Arc::new(
+            lance::Dataset::open(dataset.uri())
+                .await
+                .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?,
+        );
+
+        self.table = TableType::LanceDataset(updated_table);
+        Ok(())
     }
 
     pub async fn write_table(
