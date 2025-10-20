@@ -26,9 +26,7 @@ fn main() -> anyhow::Result<()> {
     let results: RangeResults = caches.range(
         &query,
         &entity_path.into(),
-        MyPoints::all_components()
-            .iter()
-            .map(|descriptor| descriptor.component), // no generics!
+        MyPoints::all_component_identifiers(),
     );
 
     // * `get_required` returns an error if the chunk is missing.

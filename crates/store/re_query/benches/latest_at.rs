@@ -269,13 +269,8 @@ fn query_and_visit_points(caches: &QueryCache, paths: &[EntityPath]) -> Vec<Save
 
     // TODO(jleibs): Add Radius once we have support for it in field_types
     for entity_path in paths {
-        let results: LatestAtResults = caches.latest_at(
-            &query,
-            entity_path,
-            Points2D::all_components()
-                .iter()
-                .map(|descriptor| descriptor.component), // no generics!
-        );
+        let results: LatestAtResults =
+            caches.latest_at(&query, entity_path, Points2D::all_component_identifiers());
 
         let points = results
             .component_batch_quiet::<Position2D>(Points2D::descriptor_positions().component)

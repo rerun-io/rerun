@@ -1068,13 +1068,7 @@ fn concurrent_multitenant_edge_case() {
     eprintln!("{store}");
 
     {
-        let cached = caches.range(
-            &query,
-            &entity_path,
-            MyPoints::all_components()
-                .iter()
-                .map(|descriptor| descriptor.component),
-        );
+        let cached = caches.range(&query, &entity_path, MyPoints::all_component_identifiers());
 
         let _cached_all_points = cached
             .get_required(MyPoints::descriptor_points().component)
@@ -1150,13 +1144,7 @@ fn concurrent_multitenant_edge_case2() {
 
     let query1 = RangeQuery::new(*timepoint1[0].0.name(), AbsoluteTimeRange::new(123, 223));
     {
-        let cached = caches.range(
-            &query1,
-            &entity_path,
-            MyPoints::all_components()
-                .iter()
-                .map(|descriptor| descriptor.component),
-        );
+        let cached = caches.range(&query1, &entity_path, MyPoints::all_component_identifiers());
 
         let _cached_all_points = cached
             .get_required(MyPoints::descriptor_points().component)
@@ -1167,13 +1155,7 @@ fn concurrent_multitenant_edge_case2() {
 
     let query2 = RangeQuery::new(*timepoint1[0].0.name(), AbsoluteTimeRange::new(423, 523));
     {
-        let cached = caches.range(
-            &query2,
-            &entity_path,
-            MyPoints::all_components()
-                .iter()
-                .map(|descriptor| descriptor.component),
-        );
+        let cached = caches.range(&query2, &entity_path, MyPoints::all_component_identifiers());
 
         let _cached_all_points = cached
             .get_required(MyPoints::descriptor_points().component)

@@ -914,9 +914,7 @@ fn query_and_resolve_tree_transform_at_entity(
     let results = entity_db.latest_at(
         query,
         entity_path,
-        archetypes::Transform3D::all_components()
-            .iter()
-            .map(|c| c.component),
+        archetypes::Transform3D::all_component_identifiers(),
     );
     if results.components.is_empty() {
         return None;
