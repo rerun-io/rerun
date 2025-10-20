@@ -168,7 +168,7 @@ pub async fn test_add_entity_to_view_bar_chart() {
     harness.click_nth_label("Bar chart", 0);
     harness.snapshot_app("add_entity_to_view_bar_chart_3");
 
-    // When addig a bar chart, to a new view, the origin is set to the entity path
+    // When adding a bar chart, to a new view, the origin is set to the entity path
     harness.right_click_nth_label("bar_chart", 3);
     harness.snapshot_app("add_entity_to_view_bar_chart_4");
 
@@ -193,7 +193,7 @@ pub async fn test_add_entity_to_view_text_log() {
     harness.click_nth_label("Text log", 0);
     harness.snapshot_app("add_entity_to_view_text_log_3");
 
-    // When addig a text log, to a new view, the origin is set to the entity path
+    // When adding a text log, to a new view, the origin is set to the entity path
     harness.right_click_nth_label("text_log", 3);
     harness.snapshot_app("add_entity_to_view_text_log_4");
 
@@ -218,7 +218,7 @@ pub async fn test_add_entity_to_view_tensor() {
     harness.click_nth_label("Tensor", 2);
     harness.snapshot_app("add_entity_to_view_tensor_3");
 
-    // When addig a text log, to a new view, the origin is set to the entity path
+    // When adding a text log, to a new view, the origin is set to the entity path
     harness.right_click_nth_label("tensor", 3);
     harness.snapshot_app("add_entity_to_view_tensor_4");
 
