@@ -114,14 +114,8 @@ impl ViewContextSystem for TransformTreeContext {
                         .get(&transform_frame_id_hash)
                         .map_or_else(
                             || 1.0,
-                            |entity_path_hashes| {
-                                let entity_path_hash = entity_path_hashes.first();
-                                // TODO: what if there's several?
-                                lookup_image_plane_distance(
-                                    ctx,
-                                    *entity_path_hash,
-                                    &latest_at_query,
-                                )
+                            |entity_paths| {
+                                lookup_image_plane_distance(ctx, entity_paths, &latest_at_query)
                             },
                         )
                 },
@@ -192,9 +186,19 @@ impl TransformTreeContext {
 
 fn lookup_image_plane_distance(
     ctx: &ViewContext<'_>,
-    entity_path_hash: EntityPathHash,
+    entity_path_hashes: &SmallVec1<[EntityPathHash; 1]>,
     latest_at_query: &LatestAtQuery,
 ) -> f32 {
+    // If there's several entity paths (with pinhole cameras) for the same transform id,
+    // we don't know which camera plane to use.
+    //
+    // That's rather strange, but can a scene can be set up for this to happen!
+    // Unfortunately it's also really hard to log a warning or anything at this point since
+    // we don't know the full entity path names.
+    //
+    // We're letting it slide for now since it's kinda hard to get into that situation.
+    let entity_path_hash = *entity_path_hashes.first();
+
     ctx.query_result
         .tree
         .lookup_result_by_path(entity_path_hash)
