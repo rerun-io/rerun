@@ -92,7 +92,7 @@ impl ViewportBlueprint {
         let results = blueprint_engine.cache().latest_at(
             query,
             &VIEWPORT_PATH.into(),
-            blueprint_archetypes::ViewportBlueprint::all_components().iter(),
+            blueprint_archetypes::ViewportBlueprint::all_component_identifiers(),
         );
 
         let root_container = results.component_mono::<RootContainer>(
