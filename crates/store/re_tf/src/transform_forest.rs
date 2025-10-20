@@ -620,6 +620,7 @@ fn pinhole3d_from_image_plane(
     pinhole_image_plane_distance: f32,
 ) -> glam::Affine3A {
     let ResolvedPinholeProjection {
+        target: _, // TODO(andreas): Make use of this.
         image_from_camera,
         resolution: _,
         view_coordinates,
@@ -668,11 +669,18 @@ fn transforms_at<'a>(
 ) -> TransformsAtEntity<'a> {
     // This is called very frequently, don't put a profile scope here.
 
-    let Some(entity_transforms) = transforms_for_timeline.entity_transforms(entity_path) else {
+    let Some(entity_transforms) = transforms_for_timeline
+        .frame_transforms(TransformFrameIdHash::from_entity_path(entity_path))
+    else {
         return TransformsAtEntity::default();
     };
 
-    let parent_from_entity_tree_transform = entity_transforms.latest_at_tree_transform(query);
+    let parent_from_entity_tree_transform = entity_transforms
+        .latest_at_transform(query)
+        //  TODO(RR-2511): Don't ignore target frame.
+        .map_or(glam::Affine3A::IDENTITY, |source_to_target| {
+            source_to_target.transform
+        });
     let entity_from_instance_poses = entity_transforms.latest_at_instance_poses_all(query);
     let pinhole_projection = entity_transforms.latest_at_pinhole(query);
 
