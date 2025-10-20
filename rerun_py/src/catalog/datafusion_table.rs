@@ -43,8 +43,6 @@ impl PyDataFusionTable {
 
         drop(client);
 
-        let name = self_.name.clone();
-
         let df = ctx.call_method1("read_table", (self_,))?;
 
         Ok(df)
