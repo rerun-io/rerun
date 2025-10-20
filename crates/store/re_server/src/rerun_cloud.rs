@@ -136,8 +136,7 @@ impl RerunCloudHandler {
     fn resolve_data_sources(data_sources: &[DataSource]) -> Result<Vec<DataSource>, tonic::Status> {
         let mut resolved = Vec::<DataSource>::with_capacity(data_sources.len());
         for source in data_sources {
-            let path = source.storage_url.path();
-            if path.ends_with('/') {
+            if source.is_prefix {
                 let path = source.storage_url.to_file_path().map_err(|_err| {
                     tonic::Status::invalid_argument(format!(
                         "getting file path from {:?}",
@@ -192,6 +191,7 @@ impl RerunCloudHandler {
                     file_url.set_path(&file_path.to_string_lossy());
                     resolved.push(DataSource {
                         storage_url: file_url,
+                        is_prefix: false,
                         ..source.clone()
                     });
                 }
@@ -566,10 +566,16 @@ impl RerunCloudService for RerunCloudHandler {
         for source in data_sources {
             let ext::DataSource {
                 storage_url,
+                is_prefix,
                 layer,
                 kind,
             } = source;
 
+            if is_prefix {
+                return Err(tonic::Status::internal(
+                    "register_with_dataset: prefix data sources should have been resolved already",
+                ));
+            }
             if layer != DataSource::DEFAULT_LAYER {
                 return Err(tonic::Status::unimplemented(format!(
                     "register_with_dataset: only 'base' layer is implemented, got {layer:?}"
