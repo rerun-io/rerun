@@ -333,9 +333,8 @@ namespace rerun {
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
         /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_secs_since_epoch, set_time_timestamp_nanos_since_epoch
-        void set_time_timestamp_secs_since_epoch(
-            std::string_view timeline_name, double seconds
-        ) const {
+        void set_time_timestamp_secs_since_epoch(std::string_view timeline_name, double seconds)
+            const {
             set_time_timestamp_nanos_since_epoch(
                 timeline_name,
                 static_cast<int64_t>(1e9 * seconds)
@@ -351,9 +350,8 @@ namespace rerun {
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
         /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_secs_since_epoch, set_time_timestamp_nanos_since_epoch
-        void set_time_timestamp_nanos_since_epoch(
-            std::string_view timeline_name, int64_t nanos
-        ) const;
+        void set_time_timestamp_nanos_since_epoch(std::string_view timeline_name, int64_t nanos)
+            const;
 
         /// Set the current time of the recording, for the current calling thread.
         ///
@@ -396,8 +394,7 @@ namespace rerun {
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
         /// @see set_time_sequence, set_time_nanos, reset_time, set_time, disable_timeline
-        [[deprecated(
-            "Use either `set_time_duration_secs` or `set_time_timestamp_secs_since_epoch`"
+        [[deprecated("Use either `set_time_duration_secs` or `set_time_timestamp_secs_since_epoch`"
         )]] void
             set_time_seconds(std::string_view timeline_name, double seconds) const {
             set_time_duration_secs(timeline_name, seconds);
@@ -566,9 +563,8 @@ namespace rerun {
         ///
         /// @see log, try_log, log_static, try_log_static
         template <typename... Ts>
-        void log_with_static(
-            std::string_view entity_path, bool static_, const Ts&... as_components
-        ) const {
+        void log_with_static(std::string_view entity_path, bool static_, const Ts&... as_components)
+            const {
             try_log_with_static(entity_path, static_, as_components...).handle();
         }
 
