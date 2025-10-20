@@ -25,6 +25,8 @@ class Points3D(Points3DExt, Archetype):
     """
     **Archetype**: A 3D point cloud with positions and optional colors, radii, labels, etc.
 
+    If there's more instance poses than positions, the last points' position will be repeated for the remaining poses.
+
     Examples
     --------
     ### Simple 3D points:

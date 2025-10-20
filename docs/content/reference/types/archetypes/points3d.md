@@ -5,6 +5,8 @@ title: "Points3D"
 
 A 3D point cloud with positions and optional colors, radii, labels, etc.
 
+If there's more instance poses than positions, the last points' position will be repeated for the remaining poses.
+
 ## Fields
 ### Required
 * `positions`: [`Position3D`](../components/position3d.md)
