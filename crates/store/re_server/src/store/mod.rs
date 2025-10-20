@@ -7,9 +7,8 @@ mod partition;
 mod table;
 
 pub use self::{
-    dataset::Dataset, error::Error, in_memory_store::InMemoryStore, layer::Layer,
-    partition::Partition,
-    chunk_key::ChunkKey
+    chunk_key::ChunkKey, dataset::Dataset, error::Error, in_memory_store::InMemoryStore,
+    layer::Layer, partition::Partition,
 };
 
 #[cfg(feature = "table")]

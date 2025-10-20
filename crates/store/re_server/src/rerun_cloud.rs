@@ -31,7 +31,7 @@ use re_protos::{
 
 use crate::{
     entrypoint::NamedPath,
-    store::{Dataset, InMemoryStore, ChunkKey},
+    store::{ChunkKey, Dataset, InMemoryStore},
 };
 
 #[derive(Debug, Default)]
