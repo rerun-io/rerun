@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use ahash::HashMap;
 
-use re_chunk::{RowId, TimePoint, UnitChunkShared};
+use re_chunk::{ComponentIdentifier, RowId, TimePoint, UnitChunkShared};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log::ResultExt as _;
@@ -267,7 +267,7 @@ impl ComponentUiRegistry {
         callback: impl Fn(
             &ViewerContext<'_>,
             &mut egui::Ui,
-            &ComponentDescriptor,
+            ComponentIdentifier,
             Option<RowId>,
             &dyn arrow::array::Array,
         ) -> Result<(), Box<dyn std::error::Error>>
@@ -286,7 +286,7 @@ impl ComponentUiRegistry {
                     }
                 }
 
-                let res = callback(ctx, ui, component_descriptor, row_id, value);
+                let res = callback(ctx, ui, component_descriptor.component, row_id, value);
 
                 if let Err(err) = res {
                     re_log::error_once!(
