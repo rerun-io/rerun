@@ -2,6 +2,7 @@ use std::hash::Hash;
 
 use egui::{
     CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Widget as _, WidgetInfo, WidgetText,
+    WidgetType,
     emath::{GuiRounding as _, Rot2},
     pos2,
 };
@@ -1249,13 +1250,16 @@ pub trait UiExt {
         content: impl FnOnce(&mut egui::Ui),
     ) {
         // TODO(emilk): make the button itself a `ListItem2`
-        egui::ComboBox::from_id_salt(id_salt)
-            .selected_text(selected_text)
+        let response = egui::ComboBox::from_id_salt(id_salt)
+            .selected_text(selected_text.clone())
             .show_ui(self.ui_mut(), |ui| {
                 list_item::list_item_scope(ui, "inner_scope", |ui| {
                     content(ui);
                 });
             });
+        response.response.widget_info(move || {
+            WidgetInfo::labeled(WidgetType::ComboBox, true, selected_text.clone())
+        });
     }
 
     /// Use the provided range as full span for the nested content.

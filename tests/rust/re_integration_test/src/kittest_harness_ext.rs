@@ -69,6 +69,7 @@ pub trait HarnessExt {
     // Clicks a node in the UI by its label.
     fn click_label(&mut self, label: &str);
     fn right_click_label(&mut self, label: &str);
+    fn click_label_contains(&mut self, label: &str);
     fn click_nth_label(&mut self, label: &str, index: usize);
     fn right_click_nth_label(&mut self, label: &str, index: usize);
     fn click_nth_label_modifiers(&mut self, label: &str, index: usize, modifiers: Modifiers);
@@ -242,6 +243,11 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
 
     fn right_click_label(&mut self, label: &str) {
         self.get_by_label(label).click_secondary();
+        self.run_ok();
+    }
+
+    fn click_label_contains(&mut self, label: &str) {
+        self.get_by_label_contains(label).click();
         self.run_ok();
     }
 

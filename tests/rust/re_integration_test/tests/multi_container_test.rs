@@ -1,3 +1,4 @@
+use egui_kittest::kittest::Queryable as _;
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
@@ -189,4 +190,96 @@ pub async fn test_multi_container_drag_container() {
 
     harness.drop_nth_label("Viewport (Grid container)", 0);
     harness.snapshot_app("multi_container_drag_container_6");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_add_container_from_blueprint_panel_menu() {
+    let mut harness = make_multi_view_test_harness();
+    add_containers_recursive(&mut harness, None, 1, 4, 0);
+
+    harness.click_label("Open menu with more options");
+    harness.snapshot_app("add_container_from_blueprint_panel_menu_1");
+
+    // Blueprint panel "..." icon
+    harness.click_label_contains("Add view or container");
+    harness.snapshot_app("add_container_from_blueprint_panel_menu_2");
+
+    harness.click_label("Horizontal");
+    harness.snapshot_app("add_container_from_blueprint_panel_menu_3");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_add_container_from_selection_panel() {
+    let mut harness = make_multi_view_test_harness();
+    add_containers_recursive(&mut harness, None, 1, 2, 0);
+    harness.set_selection_panel_opened(true);
+
+    harness.click_label("Viewport (Grid container)");
+    harness.snapshot_app("add_container_from_selection_panel_1");
+
+    // Selection panel "+" icon
+    harness.click_label("Add a new view or container to this container");
+    harness.snapshot_app("add_container_from_selection_panel_2");
+
+    harness.click_label("Vertical");
+    harness.snapshot_app("add_container_from_selection_panel_3");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_multi_change_container_type() {
+    let mut harness = make_multi_view_test_harness();
+    add_containers_recursive(&mut harness, None, 1, 2, 0);
+    harness.set_selection_panel_opened(true);
+
+    harness.click_nth_label("Vertical container", 0);
+    harness.snapshot_app("change_container_type_1");
+
+    harness.click_label("Vertical");
+    harness.snapshot_app("change_container_type_2");
+
+    harness.click_label("Horizontal");
+    harness.snapshot_app("change_container_type_3");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_simplify_container_hierarchy() {
+    let mut harness = make_multi_view_test_harness();
+    harness.set_selection_panel_opened(true);
+
+    // Set up a horizontal container with two vertical containers as its children
+    let root_cid = harness.add_blueprint_container(egui_tiles::ContainerKind::Horizontal, None);
+    let child_cid_1 =
+        harness.add_blueprint_container(egui_tiles::ContainerKind::Vertical, Some(root_cid));
+    harness.add_blueprint_container(egui_tiles::ContainerKind::Vertical, Some(root_cid));
+    harness.snapshot_app("simplify_container_hierarchy_1");
+
+    // Only add content to the first child, leave the second child empty
+    add_views_to_container(&mut harness, Some(child_cid_1), 2, 0);
+    harness.snapshot_app("simplify_container_hierarchy_2");
+
+    harness.click_nth_label("Horizontal container", 0);
+    harness.click_label("Simplify hierarchy");
+    harness.snapshot_app("simplify_container_hierarchy_3");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_simplify_root_hierarchy() {
+    let mut harness = make_multi_view_test_harness();
+    harness.set_selection_panel_opened(true);
+
+    // Set up a horizontal container with two vertical containers as its children
+    let root_cid = harness.add_blueprint_container(egui_tiles::ContainerKind::Horizontal, None);
+    let child_cid_1 =
+        harness.add_blueprint_container(egui_tiles::ContainerKind::Vertical, Some(root_cid));
+    harness.add_blueprint_container(egui_tiles::ContainerKind::Vertical, Some(root_cid));
+    harness.snapshot_app("simplify_root_hierarchy_1");
+
+    // Only add content to the first child, leave the second child empty
+    add_views_to_container(&mut harness, Some(child_cid_1), 2, 0);
+
+    harness.click_nth_label("Viewport (Grid container)", 0);
+    harness.snapshot_app("simplify_root_hierarchy_2");
+
+    harness.click_label("Simplify hierarchy");
+    harness.snapshot_app("simplify_root_hierarchy_3");
 }
