@@ -317,7 +317,7 @@ impl ViewContents {
                     continue;
                 };
                 components_for_defaults
-                    .extend(visualizer.visualizer_query_info().queried.iter().copied());
+                    .extend(visualizer.visualizer_query_info().queried_components());
             }
 
             ctx.blueprint.latest_at(
