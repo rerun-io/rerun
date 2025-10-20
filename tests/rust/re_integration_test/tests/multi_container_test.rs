@@ -264,7 +264,6 @@ pub async fn test_simplify_container_hierarchy() {
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_simplify_root_hierarchy() {
     let mut harness = make_multi_view_test_harness();
-    harness.set_selection_panel_opened(true);
 
     // Set up a horizontal container with two vertical containers as its children
     let root_cid = harness.add_blueprint_container(egui_tiles::ContainerKind::Horizontal, None);
@@ -279,6 +278,7 @@ pub async fn test_simplify_root_hierarchy() {
     harness.click_nth_label("Viewport (Grid container)", 0);
     harness.snapshot_app("simplify_root_hierarchy_2");
 
+    harness.set_selection_panel_opened(true);
     harness.click_label("Simplify hierarchy");
     harness.snapshot_app("simplify_root_hierarchy_3");
 }

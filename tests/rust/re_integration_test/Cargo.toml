@@ -22,7 +22,7 @@ re_server.workspace = true
 re_uri.workspace = true
 re_view_bar_chart.workspace = true
 re_view_text_log.workspace = true
-re_viewer = { workspace = true, features = ["testing"] }
+re_viewer = { workspace = true, features = ["testing", "map_view"] }
 re_viewport_blueprint.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
