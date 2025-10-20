@@ -1,6 +1,14 @@
 use ahash::HashMap;
 use arrow::array::ArrayRef;
 
+use re_chunk_store::LatestAtQuery;
+use re_entity_db::InstancePath;
+use re_entity_db::entity_db::EntityDb;
+use re_log_types::{EntryId, TableId};
+use re_query::StorageEngineReadGuard;
+use re_ui::ContextExt as _;
+use re_ui::list_item::ListItem;
+
 use crate::drag_and_drop::DragAndDropPayload;
 use crate::time_control::TimeControlCommand;
 use crate::{
@@ -10,13 +18,6 @@ use crate::{
     query_context::DataQueryResult,
 };
 use crate::{DisplayMode, GlobalContext, Item, StorageContext, StoreHub, SystemCommand};
-use re_chunk_store::LatestAtQuery;
-use re_entity_db::InstancePath;
-use re_entity_db::entity_db::EntityDb;
-use re_log_types::{EntryId, TableId};
-use re_query::StorageEngineReadGuard;
-use re_ui::ContextExt as _;
-use re_ui::list_item::ListItem;
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -399,6 +400,8 @@ impl ViewerContext<'_> {
                 }
             }
         } else if ListItem::gained_focus_via_arrow_key(&response.ctx, response.id) {
+            // We want the item to be selected if it was selected with arrow keys (in list_item)
+            // but not when focused using e.g. the tab key.
             self.command_sender()
                 .send_system(SystemCommand::SetSelection(interacted_items));
         }

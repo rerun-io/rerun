@@ -193,10 +193,7 @@ fn all_sections_ui(
                 .item_response
         };
 
-        if ListItem::gained_focus_via_arrow_key(ui.ctx(), response.id) {
-            ctx.command_sender()
-                .send_system(SystemCommand::SetSelection(item.into()));
-        }
+        ctx.handle_select_hover_drag_interactions(&response, item, false, true);
 
         if response.clicked() {
             re_redap_browser::switch_to_welcome_screen(ctx.command_sender());

@@ -150,7 +150,7 @@ impl ApplicationSelectionState {
     }
 
     pub fn selection_changed(&self) -> bool {
-        self.selection_changed_last_frame
+        self.selection_changed_last_frame || self.selection_changed
     }
 
     pub fn highlight_for_ui_element(&self, test: &Item) -> HoverHighlight {

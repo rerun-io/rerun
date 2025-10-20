@@ -1,12 +1,15 @@
 //! Core list item functionality.
 
-use crate::list_item::navigation::ListItemNavigation;
-use crate::{
-    DesignTokens, UiExt as _, design_tokens_of,
-    list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent},
-};
 use egui::{
     Color32, EventFilter, NumExt as _, Response, Sense, Shape, Ui, emath::GuiRounding as _,
+};
+
+use crate::{
+    DesignTokens, UiExt as _, design_tokens_of,
+    list_item::{
+        ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent,
+        navigation::ListItemNavigation,
+    },
 };
 
 struct ListItemResponse {

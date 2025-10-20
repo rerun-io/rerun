@@ -29,7 +29,7 @@ pub struct ListItemNavigation {
 impl ListItemNavigation {
     /// Returns true if this is the root scope.
     ///
-    /// If it is, you should end
+    /// If it is, you should call [`Self::end_if_root`] after showing the contents.
     pub fn init_if_root(ctx: &Context) -> bool {
         ctx.data_mut(|d| {
             let root = d.get_temp::<Self>(Id::NULL).is_none();
@@ -51,6 +51,9 @@ impl ListItemNavigation {
         });
     }
 
+    /// Did we gain focus via arrow key navigation?
+    ///
+    /// (As opposed to e.g. mouse click or tab key)
     pub fn gained_focus_via_arrow_key(ctx: &Context, list_item_id: Id) -> bool {
         ctx.memory_mut(|mem| {
             if mem.focused() == Some(list_item_id) {
@@ -62,6 +65,7 @@ impl ListItemNavigation {
         })
     }
 
+    /// Call this _only_ if [`Self::init_if_root`] returned true.
     pub fn end_if_root(ctx: &Context) {
         let navigation = ctx.data_mut(|d| d.remove_temp::<ListItemNavigation>(Id::NULL));
 
@@ -132,6 +136,7 @@ impl ListItemNavigation {
     }
 }
 
+/// Utility to check if focus was gained via arrow key navigation.
 #[derive(Debug, Clone)]
 struct GainedFocusViaArrowKey(Id);
 

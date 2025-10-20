@@ -822,13 +822,7 @@ pub fn entity_db_button_ui(
         }
     }
 
-    ctx.handle_select_hover_drag_interactions(&response, item.clone(), false, false);
-    if ctx.selection().single_item() == Some(&item) {
-        // If there is a single selected item and nothing is focused, focus that item.
-        if ui.ctx().memory(|mem| mem.focused().is_none()) {
-            response.request_focus();
-        }
-    }
+    ctx.handle_select_hover_drag_interactions(&response, item.clone(), false, true);
 }
 
 pub fn table_id_button_ui(
