@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    FixedSizeBinaryArray, ListBuilder, RecordBatchOptions, StringBuilder, UInt8Array, UInt64Array,
+    BinaryArray, BooleanArray, FixedSizeBinaryBuilder, ListBuilder, RecordBatchOptions,
+    StringBuilder, UInt8Array, UInt64Array,
 };
 use arrow::datatypes::FieldRef;
 use arrow::{
@@ -9,21 +10,32 @@ use arrow::{
     datatypes::{DataType, Field, Schema, TimeUnit},
     error::ArrowError,
 };
+
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
+use re_log_types::external::re_types_core::ComponentBatch as _;
 use re_log_types::{EntityPath, EntryId, TimeInt};
 use re_sorbet::ComponentColumnDescriptor;
 
 use crate::cloud::v1alpha1::{
-    EntryKind, GetDatasetSchemaResponse, QueryDatasetResponse, QueryTasksResponse,
-    RegisterWithDatasetResponse, ScanDatasetManifestResponse, ScanPartitionTableResponse,
-    VectorDistanceMetric,
+    EntryKind, FetchChunksRequest, GetDatasetSchemaResponse, QueryDatasetResponse,
+    QueryTasksResponse, RegisterWithDatasetResponse, ScanDatasetManifestResponse,
+    ScanPartitionTableResponse, VectorDistanceMetric,
 };
 use crate::common::v1alpha1::{
     ComponentDescriptor, DataframePart, TaskId,
     ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
 };
 use crate::{TypeConversionError, invalid_field, missing_field};
+
+/// Helper to simplify writing `field_XXX() -> FieldRef` methods.
+macro_rules! lazy_field_ref {
+    ($fld:expr) => {{
+        static FIELD: std::sync::OnceLock<FieldRef> = std::sync::OnceLock::new();
+        let field = FIELD.get_or_init(|| Arc::new($fld));
+        Arc::clone(field)
+    }};
+}
 
 // --- RegisterWithDatasetRequest ---
 
@@ -79,6 +91,42 @@ pub struct QueryDatasetRequest {
     pub query: Option<Query>,
 }
 
+impl Default for QueryDatasetRequest {
+    fn default() -> Self {
+        Self {
+            partition_ids: vec![],
+            chunk_ids: vec![],
+            entity_paths: vec![],
+            select_all_entity_paths: true,
+            fuzzy_descriptors: vec![],
+            exclude_static_data: false,
+            exclude_temporal_data: false,
+            scan_parameters: None,
+            query: None,
+        }
+    }
+}
+
+impl From<QueryDatasetRequest> for crate::cloud::v1alpha1::QueryDatasetRequest {
+    fn from(value: QueryDatasetRequest) -> Self {
+        Self {
+            partition_ids: value.partition_ids.into_iter().map(Into::into).collect(),
+            chunk_ids: value
+                .chunk_ids
+                .into_iter()
+                .map(|chunk_id| chunk_id.as_tuid().into())
+                .collect(),
+            entity_paths: value.entity_paths.into_iter().map(Into::into).collect(),
+            select_all_entity_paths: value.select_all_entity_paths,
+            fuzzy_descriptors: value.fuzzy_descriptors,
+            exclude_static_data: value.exclude_static_data,
+            exclude_temporal_data: value.exclude_temporal_data,
+            scan_parameters: value.scan_parameters.map(Into::into),
+            query: value.query.map(Into::into),
+        }
+    }
+}
+
 impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetRequest {
     type Error = tonic::Status;
 
@@ -129,12 +177,163 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
 // --- QueryDatasetResponse ---
 
 impl QueryDatasetResponse {
-    pub const PARTITION_ID: &str = "chunk_partition_id";
-    pub const CHUNK_ID: &str = "chunk_id";
-    pub const PARTITION_LAYER: &str = RegisterWithDatasetResponse::PARTITION_LAYER;
-    pub const CHUNK_KEY: &str = "chunk_key";
-    pub const CHUNK_IS_STATIC: &str = "chunk_is_static";
-    pub const CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
+    // These columns are guaranteed to be returned by `QueryDataset`. Additional columns may also be
+    // returned.
+    pub const FIELD_CHUNK_ID: &str = "chunk_id";
+    pub const FIELD_CHUNK_PARTITION_ID: &str = "chunk_partition_id";
+    pub const FIELD_CHUNK_LAYER_NAME: &str = "rerun_partition_layer";
+    pub const FIELD_CHUNK_KEY: &str = "chunk_key";
+    pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
+    pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
+
+    pub fn field_chunk_id() -> FieldRef {
+        lazy_field_ref!(
+            Field::new(Self::FIELD_CHUNK_ID, DataType::FixedSizeBinary(16), false).with_metadata(
+                [("rerun:kind".to_owned(), "control".to_owned())]
+                    .into_iter()
+                    .collect(),
+            )
+        )
+    }
+
+    pub fn field_chunk_partition_id() -> FieldRef {
+        lazy_field_ref!(
+            Field::new(Self::FIELD_CHUNK_PARTITION_ID, DataType::Utf8, false).with_metadata(
+                [("rerun:kind".to_owned(), "control".to_owned())]
+                    .into_iter()
+                    .collect(),
+            )
+        )
+    }
+
+    pub fn field_chunk_layer_name() -> FieldRef {
+        lazy_field_ref!(Field::new(
+            Self::FIELD_CHUNK_LAYER_NAME,
+            DataType::Utf8,
+            false
+        ))
+    }
+
+    pub fn field_chunk_key() -> FieldRef {
+        lazy_field_ref!(Field::new(Self::FIELD_CHUNK_KEY, DataType::Binary, false))
+    }
+
+    pub fn field_chunk_entity_path() -> FieldRef {
+        lazy_field_ref!(
+            Field::new(Self::FIELD_CHUNK_ENTITY_PATH, DataType::Utf8, false).with_metadata(
+                [("rerun:kind".to_owned(), "control".to_owned())]
+                    .into_iter()
+                    .collect(),
+            )
+        )
+    }
+
+    pub fn field_chunk_is_static() -> FieldRef {
+        lazy_field_ref!(
+            Field::new(Self::FIELD_CHUNK_IS_STATIC, DataType::Boolean, false).with_metadata(
+                [("rerun:kind".to_owned(), "control".to_owned())]
+                    .into_iter()
+                    .collect(),
+            )
+        )
+    }
+
+    pub fn fields() -> Vec<FieldRef> {
+        vec![
+            Self::field_chunk_id(),
+            Self::field_chunk_partition_id(),
+            Self::field_chunk_layer_name(),
+            Self::field_chunk_key(),
+            Self::field_chunk_entity_path(),
+            Self::field_chunk_is_static(),
+        ]
+    }
+
+    pub fn schema() -> arrow::datatypes::Schema {
+        Schema::new(Self::fields())
+    }
+
+    pub fn create_empty_dataframe() -> RecordBatch {
+        let schema = Arc::new(Self::schema());
+        RecordBatch::new_empty(schema)
+    }
+
+    pub fn create_dataframe(
+        chunk_ids: Vec<re_chunk::ChunkId>,
+        chunk_partition_ids: Vec<String>,
+        chunk_layer_names: Vec<String>,
+        chunk_keys: Vec<&[u8]>,
+        chunk_entity_paths: Vec<String>,
+        chunk_is_static: Vec<bool>,
+    ) -> arrow::error::Result<RecordBatch> {
+        let schema = Arc::new(Self::schema());
+
+        let columns: Vec<ArrayRef> = vec![
+            chunk_ids
+                .to_arrow()
+                .expect("to_arrow for ChunkIds never fails"),
+            Arc::new(StringArray::from(chunk_partition_ids)),
+            Arc::new(StringArray::from(chunk_layer_names)),
+            Arc::new(BinaryArray::from(chunk_keys)),
+            Arc::new(StringArray::from(chunk_entity_paths)),
+            Arc::new(BooleanArray::from(chunk_is_static)),
+        ];
+
+        RecordBatch::try_new_with_options(
+            schema,
+            columns,
+            &RecordBatchOptions::default().with_row_count(Some(chunk_ids.len())),
+        )
+    }
+}
+
+impl FetchChunksRequest {
+    // This is the only required column in the request.
+    pub const FIELD_CHUNK_KEY: &str = QueryDatasetResponse::FIELD_CHUNK_KEY;
+
+    //TODO(RR-2677): actually, these are also required for now.
+    pub const FIELD_CHUNK_ID: &str = QueryDatasetResponse::FIELD_CHUNK_ID;
+    pub const FIELD_CHUNK_PARTITION_ID: &str = QueryDatasetResponse::FIELD_CHUNK_PARTITION_ID;
+    pub const FIELD_CHUNK_LAYER_NAME: &str = QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME;
+
+    pub fn required_column_names() -> Vec<String> {
+        vec![
+            Self::FIELD_CHUNK_KEY.to_owned(),
+            //TODO(RR-2677): remove these
+            Self::FIELD_CHUNK_ID.to_owned(),
+            Self::FIELD_CHUNK_PARTITION_ID.to_owned(),
+            Self::FIELD_CHUNK_LAYER_NAME.to_owned(),
+        ]
+    }
+
+    pub fn field_chunk_id() -> FieldRef {
+        QueryDatasetResponse::field_chunk_id()
+    }
+
+    pub fn field_chunk_partition_id() -> FieldRef {
+        QueryDatasetResponse::field_chunk_partition_id()
+    }
+
+    pub fn field_chunk_layer_name() -> FieldRef {
+        QueryDatasetResponse::field_chunk_layer_name()
+    }
+
+    pub fn field_chunk_key() -> FieldRef {
+        QueryDatasetResponse::field_chunk_key()
+    }
+
+    pub fn fields() -> Vec<FieldRef> {
+        vec![
+            Self::field_chunk_id(),
+            Self::field_chunk_partition_id(),
+            Self::field_chunk_layer_name(),
+            Self::field_chunk_key(),
+        ]
+    }
+
+    pub fn schema() -> arrow::datatypes::Schema {
+        Schema::new(Self::fields())
+    }
 }
 
 // --- DoMaintenanceRequest ---
@@ -1197,11 +1396,11 @@ impl ScanPartitionTableResponse {
     pub const FIELD_SIZE_BYTES: &str = "rerun_size_bytes";
 
     pub fn field_layer_names_inner() -> FieldRef {
-        Arc::new(Field::new(Self::FIELD_LAYER_NAMES, DataType::Utf8, false))
+        lazy_field_ref!(Field::new(Self::FIELD_LAYER_NAMES, DataType::Utf8, false))
     }
 
     pub fn field_storage_urls_inner() -> FieldRef {
-        Arc::new(Field::new(Self::FIELD_STORAGE_URLS, DataType::Utf8, false))
+        lazy_field_ref!(Field::new(Self::FIELD_STORAGE_URLS, DataType::Utf8, false))
     }
 
     // NOTE: changing this method is a breaking change for implementation (aka it at least breaks
@@ -1353,6 +1552,11 @@ impl ScanDatasetManifestResponse {
         let row_count = partition_ids.len();
         let schema = Arc::new(Self::schema());
 
+        let mut schema_sha256_builder = FixedSizeBinaryBuilder::with_capacity(row_count, 32);
+        for sha256 in schema_sha256s {
+            schema_sha256_builder.append_value(sha256.as_slice())?;
+        }
+
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(layer_names)),
             Arc::new(StringArray::from(partition_ids)),
@@ -1362,10 +1566,7 @@ impl ScanDatasetManifestResponse {
             Arc::new(TimestampNanosecondArray::from(last_updated_at_times)),
             Arc::new(UInt64Array::from(num_chunks)),
             Arc::new(UInt64Array::from(size_bytes)),
-            Arc::new(
-                FixedSizeBinaryArray::try_from_iter(schema_sha256s.into_iter())
-                    .expect("sizes of nested slices are guaranteed to match"),
-            ),
+            Arc::new(schema_sha256_builder.finish()),
         ];
 
         RecordBatch::try_new_with_options(
@@ -1696,6 +1897,27 @@ impl TryFrom<QueryTasksRequest> for crate::cloud::v1alpha1::QueryTasksRequest {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use arrow::datatypes::ToByteSlice as _;
+
+    #[test]
+    fn test_query_dataset_response_create_dataframe() {
+        let chunk_ids = vec![re_chunk::ChunkId::new(), re_chunk::ChunkId::new()];
+        let chunk_partition_id = vec!["partition_id_1".to_owned(), "partition_id_2".to_owned()];
+        let chunk_layer_names = vec!["layer1".to_owned(), "layer2".to_owned()];
+        let chunk_keys = vec![b"key1".to_byte_slice(), b"key2".to_byte_slice()];
+        let chunk_entity_paths = vec!["/".to_owned(), "/".to_owned()];
+        let chunk_is_static = vec![true, false];
+
+        QueryDatasetResponse::create_dataframe(
+            chunk_ids,
+            chunk_partition_id,
+            chunk_layer_names,
+            chunk_keys,
+            chunk_entity_paths,
+            chunk_is_static,
+        )
+        .unwrap();
+    }
 
     /// Ensure `crate_dataframe` implementation is consistent with `schema()`
     #[test]
