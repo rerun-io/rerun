@@ -199,7 +199,7 @@ pub async fn test_add_container_from_blueprint_panel_menu() {
     harness.click_label("Open menu with more options");
     harness.snapshot_app("add_container_from_blueprint_panel_menu_1");
 
-    // Blueprint panel "..." icon
+    // Blueprint panel "…" icon
     harness.click_label_contains("Add view or container");
     harness.snapshot_app("add_container_from_blueprint_panel_menu_2");
 
