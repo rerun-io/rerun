@@ -1,6 +1,6 @@
 # Rerun changelog
 
-## 0.26.0 - TBD - TBD
+## 0.27.0 - TBD - TBD
 
 ### ⚠️ Breaking changes
 
