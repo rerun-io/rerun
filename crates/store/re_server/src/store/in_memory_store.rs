@@ -223,7 +223,7 @@ impl InMemoryStore {
         Ok(())
     }
 
-    #[cfg(feature = "lance")]
+    #[cfg(feature = "lance")] // only used by the `lance` feature
     fn add_table_entry(
         &mut self,
         entry_name: &str,
