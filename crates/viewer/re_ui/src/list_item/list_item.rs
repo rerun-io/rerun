@@ -531,14 +531,14 @@ impl ListItem {
                         vertical_arrows: true,
                         ..Default::default()
                     },
-                )
+                );
             });
             ListItemNavigation::with_mut(ui.ctx(), |nav| {
                 if nav.current_focused.is_none() {
                     if focused {
                         nav.current_focused = Some(id);
                         nav.focused_collapsed = collapse_openness.map(|o| o < 0.5);
-                        nav.focused_parent = nav.parent_stack.last().cloned()
+                        nav.focused_parent = nav.parent_stack.last().copied();
                     } else {
                         nav.previous_item = Some(id);
                     }

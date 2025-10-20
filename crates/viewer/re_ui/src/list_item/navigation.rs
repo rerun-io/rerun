@@ -44,9 +44,9 @@ impl ListItemNavigation {
 
     pub fn with_mut(ctx: &Context, f: impl FnOnce(&mut Self)) {
         ctx.data_mut(|d| {
-            // Having a `has_temp` and/or `get_temp_mut` would be nice...
+            // Having a `has_temp` and/or `get_temp_mut` would be nice…
             if d.get_temp::<Self>(Id::NULL).is_some() {
-                f(d.get_temp_mut_or_insert_with(Id::NULL, || unreachable!()))
+                f(d.get_temp_mut_or_insert_with(Id::NULL, || unreachable!()));
             }
         });
     }
@@ -67,7 +67,7 @@ impl ListItemNavigation {
 
     /// Call this _only_ if [`Self::init_if_root`] returned true.
     pub fn end_if_root(ctx: &Context) {
-        let navigation = ctx.data_mut(|d| d.remove_temp::<ListItemNavigation>(Id::NULL));
+        let navigation = ctx.data_mut(|d| d.remove_temp::<Self>(Id::NULL));
 
         debug_assert!(navigation.is_some(), "Expected to find ListItemNavigation");
 
@@ -92,7 +92,7 @@ impl ListItemNavigation {
                     }
 
                     if i.consume_key(Modifiers::COMMAND, egui::Key::ArrowDown) {
-                        if let Some(true) = navigation.focused_collapsed {
+                        if navigation.focused_collapsed == Some(true) {
                             expand_item = Some(current_focused);
                         } else {
                             // If it's expanded or not collapsible, focus the next item.

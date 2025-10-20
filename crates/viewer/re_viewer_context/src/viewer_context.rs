@@ -286,7 +286,7 @@ impl ViewerContext<'_> {
             let nothing_focused = response.ctx.memory(|mem| mem.focused().is_none());
 
             if selection_changed || nothing_focused {
-                response.request_focus()
+                response.request_focus();
             }
         }
 
