@@ -34,7 +34,6 @@ pub struct ComponentColumn {
     pub is_static: bool,
 }
 
-// TODO: remove redundant code with component column
 pub struct TimeColumn {
     /// The target entity path for this column.
     ///
@@ -241,7 +240,6 @@ impl Lens {
                 } else {
                     let mut existing = chunk.timelines().clone();
                     if let Some(columns) = time_builders.get_mut(&entity_path) {
-                        // TODO: remove clone
                         existing.extend(columns.clone());
                     }
                     existing
@@ -284,7 +282,7 @@ impl LensBuilder {
     /// Can be used to define one or more output columns that are derived from the
     /// component specified via [`Self::for_input_column`].
     ///
-    /// The output column will live on the same entity path as the input column.
+    /// The new column will be placed on the same entity path as the input column.
     pub fn add_output_column(
         mut self,
         component_descr: ComponentDescriptor,
@@ -300,31 +298,10 @@ impl LensBuilder {
         self
     }
 
-    /// Can be used to define one or more time columns that are derived from the
-    /// component specified via [`Self::for_input_column`].
-    ///
-    /// The added column will only show up in the viewer, if additional output columns
-    /// are created, for example via [`Self::add_output_column`].
-    pub fn add_time_column(
-        mut self,
-        timeline_name: impl Into<TimelineName>,
-        timeline_type: TimeType,
-        ops: impl IntoIterator<Item = Op>,
-    ) -> Self {
-        let column = TimeColumn {
-            new_entity_path: None,
-            timeline_name: timeline_name.into(),
-            timeline_type,
-            ops: ops.into_iter().collect(),
-        };
-        self.0.time_columns.push(column);
-        self
-    }
-
     /// Can be used to define one or more output columns that are derived from the
     /// component specified via [`Self::for_input_column`].
     ///
-    /// The output column will live on the same entity path as the input column.
+    /// The new column will be placed at `entity_path`.
     pub fn add_output_column_entity(
         mut self,
         entity_path: impl Into<EntityPath>,
@@ -341,14 +318,74 @@ impl LensBuilder {
         self
     }
 
+    /// Can be used to extract a time column from the component specified via
+    /// [`Self::for_input_column`].
+    ///
+    /// The output column will be placed on the same entity path as the input column.
+    pub fn add_time_column(
+        mut self,
+        timeline_name: impl Into<TimelineName>,
+        timeline_type: TimeType,
+        ops: impl IntoIterator<Item = Op>,
+    ) -> Self {
+        let column = TimeColumn {
+            new_entity_path: None,
+            timeline_name: timeline_name.into(),
+            timeline_type,
+            ops: ops.into_iter().collect(),
+        };
+        self.0.time_columns.push(column);
+        self
+    }
+
+    /// Can be used to extract a time column from the component specified via
+    /// [`Self::for_input_column`].
+    ///
+    /// The new column will be placed at `entity_path`.
+    pub fn add_time_column_entity(
+        mut self,
+        entity_path: impl Into<EntityPath>,
+        timeline_name: impl Into<TimelineName>,
+        timeline_type: TimeType,
+        ops: impl IntoIterator<Item = Op>,
+    ) -> Self {
+        let column = TimeColumn {
+            new_entity_path: Some(entity_path.into()),
+            timeline_name: timeline_name.into(),
+            timeline_type,
+            ops: ops.into_iter().collect(),
+        };
+        self.0.time_columns.push(column);
+        self
+    }
+
     /// Can be used to define one or more static output columns that are derived from the
     /// component specified via [`Self::for_input_column`].
     ///
-    /// The output column will live on the same entity path as the input column.
+    /// The new column will be placed on the same entity path as the input column.
     ///
     /// In most cases, static columns should have a single row only.
-    // TODO(grtlr): We don't provide a non-entity version of this method, because it is
-    //              likely to change again anyway.
+    pub fn add_static_output_column(
+        mut self,
+        component_descr: ComponentDescriptor,
+        ops: impl IntoIterator<Item = Op>,
+    ) -> Self {
+        let column = ComponentColumn {
+            new_entity_path: None,
+            component_descr,
+            ops: ops.into_iter().collect(),
+            is_static: true,
+        };
+        self.0.component_columns.push(column);
+        self
+    }
+
+    /// Can be used to define one or more static output columns that are derived from the
+    /// component specified via [`Self::for_input_column`].
+    ///
+    /// The new column will be placed at `entity_path`.
+    ///
+    /// In most cases, static columns should have a single row only.
     pub fn add_static_output_column_entity(
         mut self,
         entity_path: impl Into<EntityPath>,
