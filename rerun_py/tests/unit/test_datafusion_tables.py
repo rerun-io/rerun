@@ -430,20 +430,10 @@ def test_datafusion_write_table(server_instance: ServerInstance) -> None:
     df_smaller = ctx.table(table_name).filter(col("id") < 5)
     smaller_count = df_smaller.count()
 
-    # Note: It is an anti-pattern to read from and write to the
-    # same table at the same time. This can cause infinite loops.
-    # Break the pattern by collecting into batches
-
-    batches = df_smaller.collect()
-    ctx.register_record_batches("batches", [batches])
-    df = ctx.table("batches")
-
     # Verify append mode
-    df.write_table(table_name)
-    ctx.table(table_name).show()
+    df_smaller.write_table(table_name)
     assert ctx.table(table_name).count() == prior_count + smaller_count
 
     # Verify overwrite mode
-    df.write_table(table_name, write_options=DataFrameWriteOptions(insert_operation=InsertOp.OVERWRITE))
-    ctx.table(table_name).show()
+    df_smaller.write_table(table_name, write_options=DataFrameWriteOptions(insert_operation=InsertOp.OVERWRITE))
     assert ctx.table(table_name).count() == smaller_count
