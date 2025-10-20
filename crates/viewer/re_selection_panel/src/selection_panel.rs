@@ -515,7 +515,6 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
     use re_view::latest_at_with_blueprint_resolved_data;
 
     // TODO: Sync up with code in transform_tree_context?
-    // TODO: want to explicitely ignore
     let component_descr = archetypes::CoordinateFrame::descriptor_frame_id();
     let query_shadowed_components = true;
     let query_result = latest_at_with_blueprint_resolved_data(
@@ -576,8 +575,13 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
                 }
             }),
     )
-    .on_hover_text("The coordinate frame this entity is associated with.");
-    // TODO: link to docs?
+    .on_hover_ui(|ui| {
+        ui.markdown_ui(
+            "The coordinate frame this entity is associated with.
+
+To learn more about coordinate frames, see the [Spaces & Transforms](https://rerun.io/docs/concepts/spaces-and-transforms) in the manual.",
+        );
+    });
 
     if frame_id_before != frame_id {
         // Save as blueprint override.
