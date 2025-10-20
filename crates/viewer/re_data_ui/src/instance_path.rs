@@ -115,7 +115,7 @@ impl DataUi for InstancePath {
             );
         } else if ui_layout == UiLayout::Tooltip && unordered_components.len() > 3 {
             // Too many to show all in a tooltip.
-            // A nice thing to do would be to looks for non-splatted components and only show them
+            // A nice thing to do would be to look for non-splatted components and only show them
             // (if they are few, and self.instance != Instance::ALL),
             // but for now we do something simpler:
 
@@ -211,8 +211,6 @@ fn component_list_ui(
         Vec<(ComponentDescriptor, UnitChunkShared)>,
     >,
 ) {
-    let interactive = ui_layout != UiLayout::Tooltip;
-
     re_ui::list_item::list_item_scope(
         ui,
         egui::Id::from("component list").with(entity_path),
@@ -225,109 +223,119 @@ fn component_list_ui(
                 }
 
                 for (component_descr, unit) in components {
-                    let component_path =
-                        ComponentPath::new(entity_path.clone(), component_descr.component);
-
-                    let is_static = db
-                        .storage_engine()
-                        .store()
-                        .entity_has_static_component(entity_path, component_descr);
-                    let icon = if is_static {
-                        &re_ui::icons::COMPONENT_STATIC
-                    } else {
-                        &re_ui::icons::COMPONENT_TEMPORAL
-                    };
-                    let item = Item::ComponentPath(component_path);
-
-                    let mut list_item = ui.list_item().interactive(interactive);
-
-                    if interactive {
-                        let is_hovered = ctx.selection_state().highlight_for_ui_element(&item)
-                            == HoverHighlight::Hovered;
-                        list_item = list_item.force_hovered(is_hovered);
-                    }
-
-                    let data = ExtraDataUi::from_components(
+                    component_ui(
                         ctx,
+                        ui,
+                        ui_layout,
                         query,
+                        db,
                         entity_path,
+                        instance,
+                        components,
                         component_descr,
                         unit,
-                        components,
                     );
-
-                    let mut content = re_ui::list_item::PropertyContent::new(
-                        component_descr.archetype_field_name(),
-                    )
-                    .with_icon(icon)
-                    .value_fn(|ui, _| {
-                        if instance.is_all() {
-                            crate::ComponentPathLatestAtResults {
-                                component_path: ComponentPath::new(
-                                    entity_path.clone(),
-                                    component_descr.component,
-                                ),
-                                unit,
-                            }
-                            .data_ui(
-                                ctx,
-                                ui,
-                                UiLayout::List,
-                                query,
-                                db,
-                            );
-                        } else {
-                            ctx.component_ui_registry().component_ui(
-                                ctx,
-                                ui,
-                                UiLayout::List,
-                                query,
-                                db,
-                                entity_path,
-                                component_descr,
-                                unit,
-                                instance,
-                            );
-                        }
-                    });
-
-                    if let Some(data) = &data
-                        && ui_layout == UiLayout::SelectionPanel
-                    {
-                        content = data
-                            .add_inline_buttons(
-                                ctx,
-                                MainThreadToken::from_egui_ui(ui),
-                                entity_path,
-                                content,
-                            )
-                            .with_always_show_buttons(true);
-                    }
-
-                    let response = list_item.show_flat(ui, content).on_hover_ui(|ui| {
-                        if let Some(component_type) = component_descr.component_type {
-                            component_type.data_ui_recording(ctx, ui, UiLayout::Tooltip);
-                        }
-
-                        if let Some(array) = unit.component_batch_raw(component_descr) {
-                            re_ui::list_item::list_item_scope(ui, component_descr, |ui| {
-                                ui.list_item_flat_noninteractive(
-                                    re_ui::list_item::PropertyContent::new("Data type").value_text(
-                                        // TODO(#11071): use re_arrow_ui to format the datatype here
-                                        re_arrow_util::format_data_type(array.data_type()),
-                                    ),
-                                );
-                            });
-                        }
-                    });
-
-                    if interactive {
-                        ctx.handle_select_hover_drag_interactions(&response, item, false);
-                    }
                 }
             }
         },
     );
+}
+
+#[expect(clippy::too_many_arguments)]
+fn component_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    query: &re_chunk_store::LatestAtQuery,
+    db: &re_entity_db::EntityDb,
+    entity_path: &re_log_types::EntityPath,
+    instance: &re_log_types::Instance,
+    components: &[(ComponentDescriptor, UnitChunkShared)],
+    component_descr: &ComponentDescriptor,
+    unit: &UnitChunkShared,
+) {
+    let interactive = ui_layout != UiLayout::Tooltip;
+
+    let component_path = ComponentPath::new(entity_path.clone(), component_descr.component);
+
+    let is_static = db
+        .storage_engine()
+        .store()
+        .entity_has_static_component(entity_path, component_descr);
+    let icon = if is_static {
+        &re_ui::icons::COMPONENT_STATIC
+    } else {
+        &re_ui::icons::COMPONENT_TEMPORAL
+    };
+    let item = Item::ComponentPath(component_path);
+
+    let mut list_item = ui.list_item().interactive(interactive);
+
+    if interactive {
+        let is_hovered =
+            ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
+        list_item = list_item.force_hovered(is_hovered);
+    }
+
+    let data =
+        ExtraDataUi::from_components(ctx, query, entity_path, component_descr, unit, components);
+
+    let mut content =
+        re_ui::list_item::PropertyContent::new(component_descr.archetype_field_name())
+            .with_icon(icon)
+            .value_fn(|ui, _| {
+                if instance.is_all() {
+                    crate::ComponentPathLatestAtResults {
+                        component_path: ComponentPath::new(
+                            entity_path.clone(),
+                            component_descr.component,
+                        ),
+                        unit,
+                    }
+                    .data_ui(ctx, ui, UiLayout::List, query, db);
+                } else {
+                    ctx.component_ui_registry().component_ui(
+                        ctx,
+                        ui,
+                        UiLayout::List,
+                        query,
+                        db,
+                        entity_path,
+                        component_descr,
+                        unit,
+                        instance,
+                    );
+                }
+            });
+
+    if let Some(data) = &data
+        && ui_layout == UiLayout::SelectionPanel
+    {
+        content = data
+            .add_inline_buttons(ctx, MainThreadToken::from_egui_ui(ui), entity_path, content)
+            .with_always_show_buttons(true);
+    }
+
+    let response = list_item.show_flat(ui, content).on_hover_ui(|ui| {
+        if let Some(component_type) = component_descr.component_type {
+            component_type.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+        }
+
+        if let Some(array) = unit.component_batch_raw(component_descr) {
+            re_ui::list_item::list_item_scope(ui, component_descr, |ui| {
+                ui.list_item_flat_noninteractive(
+                    re_ui::list_item::PropertyContent::new("Data type").value_text(
+                        // TODO(#11071): use re_arrow_ui to format the datatype here
+                        re_arrow_util::format_data_type(array.data_type()),
+                    ),
+                );
+            });
+        }
+    });
+
+    if interactive {
+        ctx.handle_select_hover_drag_interactions(&response, item, false);
+    }
 }
 
 pub fn archetype_label_list_item_ui(ui: &mut egui::Ui, archetype: &Option<ArchetypeName>) {
