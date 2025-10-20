@@ -24,7 +24,7 @@ pub struct TransformTreeContext {
     transform_infos:
         IntMap<EntityPathHash, Result<re_tf::TransformInfo, re_tf::TransformFromToError>>,
     target_frame: TransformFrameIdHash,
-    pub transform_frame_id_hash_to_entity_path_hashes: EntityToTransformFrameIdMapping,
+    entity_transform_id_mapping: EntityTransformIdMapping,
 }
 
 impl Default for TransformTreeContext {
@@ -33,10 +33,23 @@ impl Default for TransformTreeContext {
             transform_forest: Arc::new(re_tf::TransformForest::default()),
             transform_infos: IntMap::default(),
             target_frame: TransformFrameIdHash::entity_path_hierarchy_root(),
-            transform_frame_id_hash_to_entity_path_hashes: EntityToTransformFrameIdMapping::default(
-            ),
+            entity_transform_id_mapping: EntityTransformIdMapping::default(),
         }
     }
+}
+
+#[derive(Clone, Default)]
+struct EntityTransformIdMapping {
+    /// Transform frame _usually_ map 1:1 to entity paths,
+    /// but if requested by the user, several entity paths can share the same transform id.
+    ///
+    /// Contains also implicit transform frame ids.
+    transform_frame_id_to_entity_path: IntMap<TransformFrameIdHash, SmallVec1<[EntityPathHash; 1]>>,
+
+    /// Entity path to transform frame id mapping.
+    ///
+    /// Does *not* contain any implicit transform frame id.
+    entity_path_to_transform_frame_id: IntMap<EntityPathHash, TransformFrameIdHash>,
 }
 
 impl IdentifiedViewSystem for TransformTreeContext {
@@ -83,8 +96,7 @@ impl ViewContextSystem for TransformTreeContext {
 
         // Build a lookup table from entity paths to their transform frame id hashes.
         // Currently we don't keep it around during the frame, but we may do so in the future.
-        self.transform_frame_id_hash_to_entity_path_hashes =
-            collect_entity_to_transform_frame_id_mapping(ctx, query);
+        self.entity_transform_id_mapping = collect_entity_to_transform_frame_id_mapping(ctx, query);
 
         let latest_at_query = query.latest_at_query();
 
@@ -92,11 +104,13 @@ impl ViewContextSystem for TransformTreeContext {
             .transform_forest
             .transform_from_to(
                 self.target_frame,
-                self.transform_frame_id_hash_to_entity_path_hashes
+                self.entity_transform_id_mapping
+                    .transform_frame_id_to_entity_path
                     .keys()
                     .copied(),
                 &|transform_frame_id_hash| {
-                    self.transform_frame_id_hash_to_entity_path_hashes
+                    self.entity_transform_id_mapping
+                        .transform_frame_id_to_entity_path
                         .get(&transform_frame_id_hash)
                         .map_or_else(
                             || 1.0,
@@ -121,7 +135,8 @@ impl ViewContextSystem for TransformTreeContext {
             transform_infos_per_frame
                 .into_iter()
                 .filter_map(|(transform_frame_id_hash, transform_info)| {
-                    self.transform_frame_id_hash_to_entity_path_hashes
+                    self.entity_transform_id_mapping
+                        .transform_frame_id_to_entity_path
                         .get(&transform_frame_id_hash)
                         .map(|entity_path_hashes| {
                             entity_path_hashes.iter().map(move |entity_path_hash| {
@@ -164,18 +179,13 @@ impl TransformTreeContext {
         self.target_frame
     }
 
-    // TODO(andreas): make this not suck, bit slow
+    /// Returns the transform frame id for a given entity path.
     #[inline]
     pub fn transform_frame_id_for(&self, entity_path: EntityPathHash) -> TransformFrameIdHash {
-        self.transform_frame_id_hash_to_entity_path_hashes
-            .iter()
-            .find_map(|(frame_id_hash, entity_path_hashes)| {
-                if entity_path_hashes.contains(&entity_path) {
-                    Some(*frame_id_hash)
-                } else {
-                    None
-                }
-            })
+        self.entity_transform_id_mapping
+            .entity_path_to_transform_frame_id
+            .get(&entity_path)
+            .copied()
             .unwrap_or_else(|| TransformFrameIdHash::from_entity_path_hash(entity_path))
     }
 }
@@ -204,15 +214,11 @@ fn lookup_image_plane_distance(
         .into()
 }
 
-/// Transform frame _usually_ map 1:1 to entity paths,
-/// but if requested by the user, several entity paths can share the same transform id.
-type EntityToTransformFrameIdMapping = IntMap<TransformFrameIdHash, SmallVec1<[EntityPathHash; 1]>>;
-
 /// Build a lookup table from entity paths to their transform frame id hashes.
 fn collect_entity_to_transform_frame_id_mapping(
     ctx: &ViewContext<'_>,
     query: &re_viewer_context::ViewQuery<'_>,
-) -> EntityToTransformFrameIdMapping {
+) -> EntityTransformIdMapping {
     // This is blueprint dependent data and may also change over recording time,
     // making it non-trivial to cache.
     // That said, it changes rarely, so there's definitely an opportunity here for lazy updates!
@@ -221,8 +227,11 @@ fn collect_entity_to_transform_frame_id_mapping(
     let latest_at_query = ctx.current_query();
     let transform_frame_id_descriptor = archetypes::CoordinateFrame::descriptor_frame_id();
 
-    let mut transform_frame_id_hash_to_entity_path_hashes =
-        EntityToTransformFrameIdMapping::default();
+    let mut entity_transform_id_mapping = EntityTransformIdMapping::default();
+    let EntityTransformIdMapping {
+        transform_frame_id_to_entity_path,
+        entity_path_to_transform_frame_id,
+    } = &mut entity_transform_id_mapping;
 
     for data_result in query.iter_all_data_results() {
         let query_shadowed_components = false;
@@ -243,15 +252,18 @@ fn collect_entity_to_transform_frame_id_mapping(
                 |frame_id| TransformFrameIdHash::new(&frame_id),
             );
 
-        match transform_frame_id_hash_to_entity_path_hashes.entry(frame_id) {
+        let entity_path_hash = data_result.entity_path.hash();
+
+        match transform_frame_id_to_entity_path.entry(frame_id) {
             std::collections::hash_map::Entry::Vacant(entry) => {
-                entry.insert(SmallVec1::new(data_result.entity_path.hash()));
+                entry.insert(SmallVec1::new(entity_path_hash));
             }
             std::collections::hash_map::Entry::Occupied(entry) => {
-                entry.into_mut().push(data_result.entity_path.hash());
+                entry.into_mut().push(entity_path_hash);
             }
         }
+        entity_path_to_transform_frame_id.insert(entity_path_hash, frame_id);
     }
 
-    transform_frame_id_hash_to_entity_path_hashes
+    entity_transform_id_mapping
 }
