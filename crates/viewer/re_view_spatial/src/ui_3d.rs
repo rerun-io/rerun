@@ -101,7 +101,11 @@ impl View3DState {
         &mut self,
         scene_bbox: &SceneBoundingBoxes,
         scene_view_coordinates: Option<ViewCoordinates>,
+        ctx: &ViewerContext<'_>,
+        eye_property: &ViewProperty,
     ) {
+        eye_property.clear_blueprint_component(ctx, EyeControls3D::descriptor_tracking_entity());
+
         self.last_eye_interaction = None;
         self.interpolate_to_view_eye(default_eye(&scene_bbox.current, scene_view_coordinates));
         self.tracked_entity = None;
@@ -198,6 +202,11 @@ impl View3DState {
         if view_eye.update(response, view_eye_drag_threshold, view_ctx, eye_property)
             && !(self.tracked_entity.is_some() && view_eye.ignore_input())
         {
+            eye_property.clear_blueprint_component(
+                view_ctx.viewer_ctx,
+                EyeControls3D::descriptor_tracking_entity(),
+            );
+
             self.last_eye_interaction = Some(Instant::now());
             self.eye_interpolation = None;
             self.tracked_entity = None;
@@ -562,6 +571,16 @@ impl SpatialView3D {
 
         let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config)?;
 
+        if let Ok(Some(entity_path)) = eye_property
+            .component_or_empty::<re_types::components::EntityPath>(
+                &EyeControls3D::descriptor_tracking_entity(),
+            )
+        {
+            state.state_3d.tracked_entity = Some(re_log_types::EntityPath::from_file_path(
+                std::path::Path::new(entity_path.as_str()),
+            ));
+        }
+
         // Track focused entity if any.
         if let Some(focused_item) = ctx.focused_item {
             let focused_entity = match focused_item {
@@ -575,9 +594,12 @@ impl SpatialView3D {
 
                 Item::View(view_id) => {
                     if view_id == &query.view_id {
-                        state
-                            .state_3d
-                            .reset_camera(&state.bounding_boxes, scene_view_coordinates);
+                        state.state_3d.reset_camera(
+                            &state.bounding_boxes,
+                            scene_view_coordinates,
+                            ctx,
+                            &eye_property,
+                        );
                     }
                     None
                 }

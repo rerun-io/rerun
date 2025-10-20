@@ -1,5 +1,6 @@
-use re_types::ViewClassIdentifier;
-use re_viewer_context::{Item, SystemCommand, SystemCommandSender as _, ViewId};
+use re_types::{ViewClassIdentifier, blueprint::archetypes::EyeControls3D};
+use re_viewer_context::{Item, ViewId};
+use re_viewport_blueprint::ViewProperty;
 
 use crate::{ContextMenuAction, ContextMenuContext};
 
@@ -22,6 +23,8 @@ impl ContextMenuAction for TrackEntity {
                 let mut show = false;
 
                 if is_3d_view(ctx, view_id)
+                    // we need to check if the focused entity is logged
+                    // because containers doesn't have bounding box or position
                     && ctx
                         .viewer_context
                         .recording()
@@ -44,28 +47,24 @@ impl ContextMenuAction for TrackEntity {
         view_id: &ViewId,
         instance_path: &re_entity_db::InstancePath,
     ) {
-        ctx.viewer_context
-            .global_context
-            .command_sender
-            .send_system(SystemCommand::SetTracked(
-                *view_id,
-                instance_path.entity_path.clone(),
-            ));
+        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
+            ctx.viewer_context.blueprint_db(),
+            ctx.viewer_context.blueprint_query,
+            *view_id,
+        );
+
+        eye_property.save_blueprint_component(
+            ctx.viewer_context,
+            &EyeControls3D::descriptor_tracking_entity(),
+            &re_types::components::EntityPath::from(&instance_path.entity_path),
+        );
     }
 }
 
 fn is_3d_view(ctx: &ContextMenuContext<'_>, view_id: &ViewId) -> bool {
-    let mut is_3d = false;
-
-    for current_views in ctx
-        .viewport_blueprint
+    ctx.viewport_blueprint
         .views
         .iter()
-        .filter(|x| x.0 == view_id)
-    {
-        if current_views.1.class_identifier() == ViewClassIdentifier::new("3D") {
-            is_3d = true;
-        }
-    }
-    is_3d
+        .filter(|view| view.0 == view_id)
+        .any(|current_view| current_view.1.class_identifier() == ViewClassIdentifier::new("3D"))
 }

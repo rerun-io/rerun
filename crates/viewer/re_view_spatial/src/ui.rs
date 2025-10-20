@@ -4,12 +4,15 @@ use macaw::BoundingBox;
 use re_data_ui::item_ui;
 use re_format::format_f32;
 use re_types::{
-    blueprint::components::VisualBounds2D, components::ViewCoordinates, image::ImageKind,
+    blueprint::{archetypes::EyeControls3D, components::VisualBounds2D},
+    components::ViewCoordinates,
+    image::ImageKind,
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
     HoverHighlight, ImageInfo, SelectionHighlight, ViewHighlights, ViewId, ViewState, ViewerContext,
 };
+use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     Pinhole,
@@ -137,6 +140,12 @@ impl SpatialViewState {
         scene_view_coordinates: Option<ViewCoordinates>,
         view_id: ViewId,
     ) {
+        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            view_id,
+        );
+
         if ui
             .button("Reset")
             .on_hover_text(
@@ -145,8 +154,12 @@ impl SpatialViewState {
             .clicked()
         {
             self.bounding_boxes.smoothed = self.bounding_boxes.current;
-            self.state_3d
-                .reset_camera(&self.bounding_boxes, scene_view_coordinates);
+            self.state_3d.reset_camera(
+                &self.bounding_boxes,
+                scene_view_coordinates,
+                ctx,
+                &eye_property,
+            );
         }
 
         {
@@ -162,13 +175,10 @@ impl SpatialViewState {
 
         ui.horizontal(|ui| {
             if let Some(tracked_entity) = self.state_3d.tracked_entity.clone() {
-                let (latest_at_query, _) =
-                    item_ui::guess_query_and_db_for_selected_entity(ctx, &tracked_entity);
-
                 ui.label("Tracked entity:");
                 item_ui::entity_path_button(
                     ctx,
-                    &latest_at_query,
+                    &ctx.blueprint_query,
                     ctx.recording(),
                     ui,
                     Some(view_id),

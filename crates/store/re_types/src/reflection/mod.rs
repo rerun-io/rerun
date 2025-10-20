@@ -3392,6 +3392,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         docstring_md: "Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).\n\nThe default depends on the control kind.\nFor orbit cameras it is derived from the distance to the orbit center.\nFor first person cameras it is derived from the scene size.",
                         is_required: false,
                     },
+                    ArchetypeFieldReflection {
+                        name: "tracking_entity",
+                        display_name: "Tracking entity",
+                        component_type: "rerun.components.EntityPath".into(),
+                        docstring_md: "Currently tracked entity.\n\nIf this is a camera, it takes over the camera pose, otherwise follows the entity.",
+                        is_required: false,
+                    },
                 ],
             },
         ),
