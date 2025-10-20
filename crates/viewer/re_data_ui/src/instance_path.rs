@@ -124,7 +124,7 @@ impl DataUi for InstancePath {
             let mut show_only_instanced = false;
 
             if !self.is_all() {
-                // Focus on the components that has different values per instance (non-splatted components):
+                // Focus on the components that have different values per instance (non-splatted components):
                 let instanced_components_by_archetype: BTreeMap<
                     Option<ArchetypeName>,
                     Vec<(ComponentDescriptor, UnitChunkShared)>,
