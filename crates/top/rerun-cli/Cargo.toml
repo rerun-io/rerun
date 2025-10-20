@@ -25,7 +25,7 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 
 [package.metadata.cargo-shear]
-# TODO(lancedb/lance#3073): remove `oss_server_table` feature flag
+# TODO(lancedb/lance#3073): remove `lance` feature flag
 ignored = ["re_server"]
 
 
@@ -67,7 +67,7 @@ base = ["native_viewer", "map_view", "oss_server"]
 ## The features we enable when we build the pre-built binaries during our releases,
 ## but excluding the web viewer.
 ## This may enable features that require extra build tools that not everyone has.
-release_no_web_viewer = ["base", "nasm", "oss_server_table"]
+release_no_web_viewer = ["base", "nasm", "lance"]
 
 ## The features we enable when we build the pre-built binaries during our releases.
 ## These are the binaries we put in our release artifacts, and bundle in our Python wheel.
@@ -93,7 +93,7 @@ oss_server = ["rerun/oss_server"]
 ## Add support for Lance tables in the in-memory OSS Rerun Server (`oss_server` feature flag).
 ## This is opt-in because of <https://github.com/lancedb/lance/issues/3073>.
 # TODO(lancedb/lance#3073): remove feature flag
-oss_server_table = ["re_server/table"]
+lance = ["re_server/lance"]
 
 ## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
 ##

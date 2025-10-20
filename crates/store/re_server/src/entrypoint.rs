@@ -80,7 +80,7 @@ impl Args {
 
             for table in &self.tables {
                 cfg_if::cfg_if! {
-                    if #[cfg(feature = "table")] {
+                    if #[cfg(feature = "lance")] {
                         builder = builder
                             .with_directory_as_table(
                                 table,
@@ -89,7 +89,7 @@ impl Args {
                             .await?;
                     } else {
                         _ = table;
-                        anyhow::bail!("re_server was not compiled with the 'table' feature");
+                        anyhow::bail!("re_server was not compiled with the 'lance' feature");
                     }
                 }
             }

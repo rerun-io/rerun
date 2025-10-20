@@ -30,7 +30,6 @@ pub enum Error {
     #[error("Layer '{0}' already exists")]
     LayerAlreadyExists(String),
 
-    #[cfg(feature = "table")]
     #[error(transparent)]
     DataFusionError(#[from] datafusion::error::DataFusionError),
 
@@ -59,9 +58,7 @@ impl From<Error> for tonic::Status {
             | Error::LayerNameNotFound(_, _, _)
             | Error::ChunkNotFound(_) => Self::not_found(format!("{err:#}")),
 
-            #[cfg(feature = "table")]
             Error::DataFusionError(err) => Self::internal(format!("DataFusion error: {err:#}")),
-
             Error::RrdLoadingError(err) => Self::internal(format!("{err:#}")),
 
             Error::FailedToDecodeChunkKey(_) => Self::invalid_argument(format!("{err:#}")),

@@ -14,10 +14,7 @@ publish = false
 re_protos.workspace = true
 re_redap_client.workspace = true
 re_sdk.workspace = true
-re_server = { workspace = true, features = [
-  # Opt-in to table feature, which requires protoc. See also https://github.com/lancedb/lance/issues/3073
-  "table",
-] }
+re_server.workspace = true
 re_uri.workspace = true
 re_viewer = { workspace = true, features = ["testing"] }
 re_viewport_blueprint.workspace = true

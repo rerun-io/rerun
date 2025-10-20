@@ -24,7 +24,8 @@ all-features = true
 default = []
 
 # TODO(lancedb/lance#3073): lance depends on system protoc, so lance must be an opt-in dependency
-table = ["dep:lance", "dep:chrono", "dep:datafusion"]
+## Enable reading in LanceDB files.
+lance = ["dep:lance"]
 
 [dependencies]
 
@@ -47,7 +48,9 @@ anyhow.workspace = true
 arrow.workspace = true
 bincode.workspace = true
 cfg-if.workspace = true
+chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["derive", "env"] }
+datafusion.workspace = true
 futures.workspace = true
 http.workspace = true
 itertools.workspace = true
@@ -68,8 +71,6 @@ url.workspace = true
 
 # Optional dependencies:
 # TODO(lancedb/lance#3073): lance depends on system protoc, so lance must be an opt-in dependency
-chrono = { workspace = true, optional = true, features = ["serde"] }
-datafusion = { workspace = true, optional = true }
 lance = { workspace = true, optional = true }
 
 

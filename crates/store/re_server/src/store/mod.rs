@@ -8,8 +8,5 @@ mod table;
 
 pub use self::{
     chunk_key::ChunkKey, dataset::Dataset, error::Error, in_memory_store::InMemoryStore,
-    layer::Layer, partition::Partition,
+    layer::Layer, partition::Partition, table::Table,
 };
-
-#[cfg(feature = "table")]
-pub use table::Table;

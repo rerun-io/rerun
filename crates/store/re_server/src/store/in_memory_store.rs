@@ -9,33 +9,25 @@ use crate::{
     store::{ChunkKey, Dataset, Error},
 };
 
-#[cfg(feature = "table")]
 use crate::store::Table;
 
-#[cfg(feature = "table")]
 const ENTRIES_TABLE_NAME: &str = "__entries";
 
 pub struct InMemoryStore {
     // TODO(ab): track created/modified time
     datasets: HashMap<EntryId, Dataset>,
-    id_by_name: HashMap<String, EntryId>,
-
-    #[cfg(feature = "table")]
     tables: HashMap<EntryId, Table>,
+    id_by_name: HashMap<String, EntryId>,
 }
 
 impl Default for InMemoryStore {
     fn default() -> Self {
-        #[cfg_attr(not(feature = "table"), expect(unused_mut))]
         let mut ret = Self {
             datasets: HashMap::default(),
-            id_by_name: HashMap::default(),
-
-            #[cfg(feature = "table")]
             tables: HashMap::default(),
+            id_by_name: HashMap::default(),
         };
 
-        #[cfg(feature = "table")]
         ret.update_entries_table()
             .expect("update_entries_table should never fail on initialization.");
 
@@ -156,13 +148,12 @@ impl InMemoryStore {
             }
         }
 
-        #[cfg(feature = "table")]
         self.update_entries_table()?;
 
         Ok(())
     }
 
-    #[cfg(feature = "table")]
+    #[cfg(feature = "lance")]
     pub async fn load_directory_as_table(
         &mut self,
         named_path: &NamedPath,
@@ -225,7 +216,7 @@ impl InMemoryStore {
         Ok(())
     }
 
-    #[cfg(feature = "table")]
+    #[cfg(feature = "lance")]
     fn add_table_entry(
         &mut self,
         entry_name: &str,
@@ -246,7 +237,6 @@ impl InMemoryStore {
     /// can remove this restriction if we change the store to be an
     /// `Arc<Mutex<_>>` and then have an ac-hoc table generation.
     /// TODO(#11369)
-    #[cfg(feature = "table")]
     fn update_entries_table(&mut self) -> Result<(), Error> {
         use std::sync::Arc;
 
@@ -324,29 +314,24 @@ impl InMemoryStore {
         self.datasets.values()
     }
 
-    #[cfg(feature = "table")]
     pub fn table(&self, entry_id: EntryId) -> Option<&Table> {
         self.tables.get(&entry_id)
     }
 
-    #[cfg(feature = "table")]
     pub fn table_mut(&mut self, entry_id: EntryId) -> Option<&mut Table> {
         self.tables.get_mut(&entry_id)
     }
 
-    #[cfg(feature = "table")]
     pub fn table_by_name(&self, name: &str) -> Option<&Table> {
         let entry_id = self.id_by_name.get(name).copied()?;
         self.table(entry_id)
     }
 
-    #[cfg(feature = "table")]
     pub fn iter_tables(&self) -> impl Iterator<Item = &Table> {
         self.tables.values()
     }
 }
 
-#[cfg(feature = "table")]
 fn generate_entries_table(
     entries: &[re_protos::cloud::v1alpha1::ext::EntryDetails],
 ) -> Result<arrow::array::RecordBatch, Error> {
@@ -424,7 +409,6 @@ fn generate_entries_table(
 }
 
 // Generate both functions
-#[cfg(feature = "table")]
 impl InMemoryStore {
     fn dataset_entries_table(&self) -> Result<arrow::array::RecordBatch, Error> {
         let details = self
