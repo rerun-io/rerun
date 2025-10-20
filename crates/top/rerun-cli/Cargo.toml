@@ -23,6 +23,12 @@ workspace = true
 all-features = true
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
+
+[package.metadata.cargo-shear]
+# TODO(lancedb/lance#3073): remove `oss_server_table` feature flag
+ignored = ["re_server"]
+
+
 [[bin]]
 name = "rerun"
 path = "src/bin/rerun.rs"
@@ -61,7 +67,7 @@ base = ["native_viewer", "map_view", "oss_server"]
 ## The features we enable when we build the pre-built binaries during our releases,
 ## but excluding the web viewer.
 ## This may enable features that require extra build tools that not everyone has.
-release_no_web_viewer = ["base", "nasm"]
+release_no_web_viewer = ["base", "nasm", "oss_server_table"]
 
 ## The features we enable when we build the pre-built binaries during our releases.
 ## These are the binaries we put in our release artifacts, and bundle in our Python wheel.
@@ -83,6 +89,11 @@ native_viewer = ["rerun/native_viewer"]
 
 ## Enable the in-memory Rerun Server, useful for testing.
 oss_server = ["rerun/oss_server"]
+
+## Add support for Lance tables in the in-memory OSS Rerun Server (`oss_server` feature flag).
+## This is opt-in because of <https://github.com/lancedb/lance/issues/3073>.
+# TODO(lancedb/lance#3073): remove feature flag
+oss_server_table = ["re_server/table"]
 
 ## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
 ##
@@ -112,6 +123,8 @@ rerun = { workspace = true, default-features = false, features = [
   "run",
   "server",
 ] }
+
+re_server = { workspace = true, optional = true }
 
 document-features.workspace = true
 mimalloc.workspace = true
