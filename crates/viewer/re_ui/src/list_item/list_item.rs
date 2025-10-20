@@ -581,7 +581,7 @@ impl ListItem {
         let focused = style_response.has_focus();
         let visuals = ListVisuals {
             theme: ui.theme(),
-            hovered: hovered || focused, // TODO: Should we have a separate focused style?
+            hovered: hovered || focused,
             selected,
             active,
             interactive,
