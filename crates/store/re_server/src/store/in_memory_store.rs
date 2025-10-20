@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
+use arrow::array::RecordBatch;
 use re_chunk_store::{Chunk, ChunkStoreConfig};
 use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId};
@@ -23,14 +24,12 @@ pub struct InMemoryStore {
 impl Default for InMemoryStore {
     fn default() -> Self {
         let mut ret = Self {
-            datasets: HashMap::default(),
             tables: HashMap::default(),
+            datasets: HashMap::default(),
             id_by_name: HashMap::default(),
         };
-
         ret.update_entries_table()
             .expect("update_entries_table should never fail on initialization.");
-
         ret
     }
 }
@@ -334,7 +333,7 @@ impl InMemoryStore {
 
 fn generate_entries_table(
     entries: &[re_protos::cloud::v1alpha1::ext::EntryDetails],
-) -> Result<arrow::array::RecordBatch, Error> {
+) -> Result<RecordBatch, Error> {
     use std::sync::Arc;
 
     use arrow::{
@@ -410,7 +409,7 @@ fn generate_entries_table(
 
 // Generate both functions
 impl InMemoryStore {
-    fn dataset_entries_table(&self) -> Result<arrow::array::RecordBatch, Error> {
+    fn dataset_entries_table(&self) -> Result<RecordBatch, Error> {
         let details = self
             .datasets
             .values()
@@ -419,7 +418,7 @@ impl InMemoryStore {
         generate_entries_table(&details)
     }
 
-    fn table_entries_table(&self) -> Result<arrow::array::RecordBatch, Error> {
+    fn table_entries_table(&self) -> Result<RecordBatch, Error> {
         let details = self
             .tables
             .values()

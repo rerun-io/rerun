@@ -67,7 +67,7 @@ base = ["native_viewer", "map_view", "oss_server"]
 ## The features we enable when we build the pre-built binaries during our releases,
 ## but excluding the web viewer.
 ## This may enable features that require extra build tools that not everyone has.
-release_no_web_viewer = ["base", "nasm", "lance"]
+release_no_web_viewer = ["base", "lance", "nasm"]
 
 ## The features we enable when we build the pre-built binaries during our releases.
 ## These are the binaries we put in our release artifacts, and bundle in our Python wheel.

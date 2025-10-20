@@ -306,9 +306,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         let entries = match kind {
             Some(EntryKind::Dataset) => self.find_datasets(entry_id, name).await?,
-
             Some(EntryKind::Table) => self.find_tables(entry_id, name).await?,
-
             None => {
                 let mut datasets = match self.find_datasets(entry_id, name.clone()).await {
                     Ok(datasets) => datasets,
@@ -321,19 +319,17 @@ impl RerunCloudService for RerunCloudHandler {
                     }
                 };
 
-                {
-                    let tables = match self.find_tables(entry_id, name).await {
-                        Ok(tables) => tables,
-                        Err(err) => {
-                            if err.code() == Code::NotFound {
-                                vec![]
-                            } else {
-                                return Err(err);
-                            }
+                let tables = match self.find_tables(entry_id, name).await {
+                    Ok(tables) => tables,
+                    Err(err) => {
+                        if err.code() == Code::NotFound {
+                            vec![]
+                        } else {
+                            return Err(err);
                         }
-                    };
-                    datasets.extend(tables);
-                }
+                    }
+                };
+                datasets.extend(tables);
 
                 datasets
             }
