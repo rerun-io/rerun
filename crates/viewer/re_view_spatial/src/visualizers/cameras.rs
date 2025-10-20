@@ -1,7 +1,6 @@
 use glam::vec3;
 use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
-use re_tf::TransformFrameIdHash;
 use re_types::{
     Archetype as _,
     archetypes::Pinhole,
