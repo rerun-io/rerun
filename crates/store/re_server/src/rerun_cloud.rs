@@ -1,8 +1,9 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-};
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 
+use ahash::HashMap;
+use arrow::array::BinaryArray;
+use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
@@ -18,8 +19,11 @@ use re_protos::{
         QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse, QueryTasksRequest,
         QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
         RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
-        ScanPartitionTableResponse,
-        ext::{self, CreateDatasetEntryResponse, DataSource, ReadDatasetEntryResponse},
+        ScanPartitionTableResponse, ScanTableResponse,
+        ext::{
+            self, CreateDatasetEntryResponse, DataSource, ReadDatasetEntryResponse,
+            ReadTableEntryResponse,
+        },
         rerun_cloud_service_server::RerunCloudService,
     },
     common::v1alpha1::{
@@ -29,10 +33,8 @@ use re_protos::{
     headers::RerunHeadersExtractorExt as _,
 };
 
-use crate::{
-    entrypoint::NamedPath,
-    store::{ChunkKey, Dataset, InMemoryStore},
-};
+use crate::entrypoint::NamedPath;
+use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
 
 #[derive(Debug, Default)]
 pub struct RerunCloudHandlerSettings {}
@@ -325,7 +327,7 @@ impl RerunCloudHandler {
         };
 
         Ok(table_iter
-            .map(crate::store::Table::as_entry_details)
+            .map(Table::as_entry_details)
             .map(Into::into)
             .collect())
     }
@@ -388,7 +390,6 @@ impl RerunCloudService for RerunCloudHandler {
                         }
                     }
                 };
-
                 let tables = match self.find_tables(entry_id, name).await {
                     Ok(tables) => tables,
                     Err(err) => {
@@ -400,7 +401,6 @@ impl RerunCloudService for RerunCloudHandler {
                     }
                 };
                 datasets.extend(tables);
-
                 datasets
             }
             _ => {
@@ -488,7 +488,7 @@ impl RerunCloudService for RerunCloudHandler {
         })?;
 
         Ok(tonic::Response::new(
-            ext::ReadTableEntryResponse {
+            ReadTableEntryResponse {
                 table_entry: table.as_table_entry(),
             }
             .into(),
@@ -597,7 +597,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         let mut request = request.into_inner();
 
-        let mut chunk_stores = ahash::HashMap::default();
+        let mut chunk_stores = HashMap::default();
 
         while let Some(chunk_msg) = request.next().await {
             let chunk_msg = chunk_msg?;
@@ -1008,7 +1008,7 @@ impl RerunCloudService for RerunCloudHandler {
             let chunk_keys_arr = chunk_info_batch
                 .column(chunk_key_col_idx)
                 .as_any()
-                .downcast_ref::<arrow::array::BinaryArray>()
+                .downcast_ref::<BinaryArray>()
                 .ok_or_else(|| {
                     tonic::Status::invalid_argument(format!(
                         "{} must be binary array",
@@ -1124,7 +1124,7 @@ impl RerunCloudService for RerunCloudHandler {
             .table(entry_id)
             .ok_or_else(|| Status::not_found(format!("Entry with ID {entry_id} not found")))?;
 
-        let ctx = datafusion::prelude::SessionContext::default();
+        let ctx = SessionContext::default();
         let plan = table
             .provider()
             .scan(&ctx.state(), None, &[], None)
@@ -1139,7 +1139,7 @@ impl RerunCloudService for RerunCloudHandler {
             batch
                 .map_err(|err| tonic::Status::from_error(Box::new(err)))?
                 .encode()
-                .map(|batch| re_protos::cloud::v1alpha1::ScanTableResponse {
+                .map(|batch| ScanTableResponse {
                     dataframe_part: Some(batch),
                 })
                 .map_err(|err| tonic::Status::internal(format!("Error encoding chunk: {err:#}")))

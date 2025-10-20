@@ -1,16 +1,25 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
-use arrow::array::RecordBatch;
+use ahash::HashMap;
+use arrow::array::{
+    ArrayRef, Int32Array, RecordBatch, RecordBatchOptions, StringArray, TimestampNanosecondArray,
+};
+use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
+use datafusion::catalog::MemTable;
+use datafusion::common::DataFusionError;
+use itertools::Itertools as _;
+
 use re_chunk_store::{Chunk, ChunkStoreConfig};
 use re_log_types::{EntryId, StoreId, StoreKind};
-use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId};
-
-use crate::{
-    entrypoint::NamedPath,
-    store::{ChunkKey, Dataset, Error},
+use re_protos::{
+    cloud::v1alpha1::{EntryKind, ext::EntryDetails},
+    common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId},
 };
+use re_tuid::Tuid;
+use re_types_core::{ComponentBatch as _, Loggable as _};
 
-use crate::store::Table;
+use crate::entrypoint::NamedPath;
+use crate::store::{ChunkKey, Dataset, Error, Table};
 
 const ENTRIES_TABLE_NAME: &str = "__entries";
 
@@ -148,7 +157,6 @@ impl InMemoryStore {
         }
 
         self.update_entries_table()?;
-
         Ok(())
     }
 
@@ -331,24 +339,7 @@ impl InMemoryStore {
     }
 }
 
-fn generate_entries_table(
-    entries: &[re_protos::cloud::v1alpha1::ext::EntryDetails],
-) -> Result<RecordBatch, Error> {
-    use std::sync::Arc;
-
-    use arrow::{
-        array::{
-            ArrayRef, Int32Array, RecordBatch, RecordBatchOptions, StringArray,
-            TimestampNanosecondArray,
-        },
-        datatypes::{DataType, Field, Schema, TimeUnit},
-    };
-    use datafusion::error::DataFusionError;
-    use itertools::Itertools as _;
-
-    use re_tuid::Tuid;
-    use re_types_core::{ComponentBatch as _, Loggable as _};
-
+fn generate_entries_table(entries: &[EntryDetails]) -> Result<RecordBatch, Error> {
     #[expect(clippy::type_complexity)]
     let (id, name, entry_kind, created_at, updated_at): (
         Vec<Tuid>,
@@ -427,10 +418,7 @@ impl InMemoryStore {
         generate_entries_table(&details)
     }
 
-    pub fn entries_table(&self) -> Result<datafusion::catalog::MemTable, Error> {
-        use re_protos::cloud::v1alpha1::{EntryKind, ext::EntryDetails};
-        use re_tuid::Tuid;
-
+    pub fn entries_table(&self) -> Result<MemTable, Error> {
         let dataset_rb = self.dataset_entries_table()?;
         let table_rb = self.table_entries_table()?;
 
@@ -447,10 +435,8 @@ impl InMemoryStore {
 
         let schema = dataset_rb.schema();
 
-        let result_table = datafusion::catalog::MemTable::try_new(
-            schema,
-            vec![vec![dataset_rb, table_rb, entry_table_rb]],
-        )?;
+        let result_table =
+            MemTable::try_new(schema, vec![vec![dataset_rb, table_rb, entry_table_rb]])?;
 
         Ok(result_table)
     }
