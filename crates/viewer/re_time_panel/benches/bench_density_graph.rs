@@ -43,7 +43,7 @@ fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: 
 
             let item = TimePanelItem {
                 entity_path,
-                component_descr: None,
+                component: None,
             };
 
             let time_range = db
