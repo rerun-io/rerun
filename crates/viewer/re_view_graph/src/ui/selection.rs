@@ -61,8 +61,9 @@ pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
             .expect("forces are required to have an `Enabled` component");
 
         let component_descr = field.component_descriptor(property.archetype_name);
-        let component_array = property.component_raw(&component_descr);
-        let row_id = property.component_row_id(&component_descr);
+        let component = component_descr.component;
+        let component_array = property.component_raw(component);
+        let row_id = property.component_row_id(component);
 
         let singleline_ui: &dyn Fn(&mut egui::Ui) = &|ui| {
             ctx.viewer_ctx.component_ui_registry().singleline_edit_ui(
