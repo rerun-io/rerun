@@ -2725,6 +2725,7 @@ impl RecordingStream {
 #[cfg(test)]
 mod tests {
     use insta::assert_debug_snapshot;
+    use itertools::Itertools as _;
     use re_log_types::example_components::{MyLabel, MyPoints};
 
     use super::*;
@@ -2738,7 +2739,8 @@ mod tests {
                 .entries(
                     self.0
                         .component_descriptors()
-                        .map(|d| d.display_name().to_owned()),
+                        .map(|d| d.display_name().to_owned())
+                        .sorted(),
                 )
                 .finish()
         }

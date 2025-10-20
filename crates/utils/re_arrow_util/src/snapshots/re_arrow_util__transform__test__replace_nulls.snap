@@ -1,6 +1,6 @@
 ---
 source: crates/utils/re_arrow_util/src/transform.rs
-expression: "format!(\"{}\", DisplayRB::from(result))"
+expression: "format!(\"{}\", DisplayRB(result.clone()))"
 ---
 ┌────────────────────────────────────────────┐
 │ col                                        │

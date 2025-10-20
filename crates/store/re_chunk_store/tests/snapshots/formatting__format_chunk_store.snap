@@ -1,6 +1,5 @@
 ---
 source: crates/store/re_chunk_store/tests/formatting.rs
-assertion_line: 56
 expression: "format!(\"{:240}\", store)"
 ---
 ChunkStore {
