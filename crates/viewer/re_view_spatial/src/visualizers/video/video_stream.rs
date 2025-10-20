@@ -94,7 +94,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
             let opacity_result = data_result.latest_at_with_blueprint_resolved_data_for_component(
                 ctx,
                 &latest_at,
-                &VideoStream::descriptor_opacity(),
+                VideoStream::descriptor_opacity().component,
             );
             let all_opacities =
                 opacity_result.iter_as(view_query.timeline, VideoStream::descriptor_opacity());

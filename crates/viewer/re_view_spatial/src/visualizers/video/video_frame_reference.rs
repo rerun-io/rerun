@@ -279,20 +279,20 @@ fn latest_at_query_video_from_datastore(
     let results = ctx.recording_engine().cache().latest_at(
         &query,
         entity_path,
-        AssetVideo::all_components().iter(),
+        AssetVideo::all_component_identifiers(),
     );
 
-    let blob_row_id = results.component_row_id(&AssetVideo::descriptor_blob())?;
-    let blob = results.component_instance::<Blob>(0, &AssetVideo::descriptor_blob())?;
+    let blob_row_id = results.component_row_id(AssetVideo::descriptor_blob().component)?;
+    let blob = results.component_instance::<Blob>(0, AssetVideo::descriptor_blob().component)?;
     let media_type =
-        results.component_instance::<MediaType>(0, &AssetVideo::descriptor_media_type());
+        results.component_instance::<MediaType>(0, AssetVideo::descriptor_media_type().component);
 
     let video = ctx.store_context.caches.entry(|c: &mut VideoAssetCache| {
         let debug_name = entity_path.to_string();
         c.entry(
             debug_name,
             blob_row_id,
-            &AssetVideo::descriptor_blob(),
+            AssetVideo::descriptor_blob().component,
             &blob,
             media_type.as_ref(),
             ctx.app_options().video_decoder_settings(),
