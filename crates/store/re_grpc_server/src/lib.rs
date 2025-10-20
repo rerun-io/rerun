@@ -57,7 +57,7 @@ pub struct ServerOptions {
     /// Start garbage collecting old data when we reach this.
     ///
     /// If server & client are running on the same machine and all clients are expected to connect before
-    /// any data is sent, it is  highly recommended that you set the memory limit to `0B`,
+    /// any data is sent, it is highly recommended that you set the memory limit to `0B`,
     /// otherwise you're potentially doubling your memory usage!
     pub memory_limit: MemoryLimit,
 }
