@@ -405,19 +405,21 @@ impl SchemaExt for arrow::datatypes::Schema {
 
 pub trait FieldsExt {
     /// Returns true if all the required fields are present, regardless of the order.
-    fn contains_unordered<'a>(
-        &'a self,
-        required_fields: impl IntoIterator<Item = &'a Field>,
+    fn contains_unordered(
+        &self,
+        required_fields: impl IntoIterator<Item = impl AsRef<Field>>,
     ) -> bool;
 }
 
 impl FieldsExt for Fields {
-    fn contains_unordered<'a>(
-        &'a self,
-        required_fields: impl IntoIterator<Item = &'a Field>,
+    fn contains_unordered(
+        &self,
+        required_fields: impl IntoIterator<Item = impl AsRef<Field>>,
     ) -> bool {
         let fields = self.iter().map(|f| f.as_ref()).collect::<HashSet<_>>();
 
-        required_fields.into_iter().all(|f| fields.contains(f))
+        required_fields
+            .into_iter()
+            .all(|f| fields.contains(f.as_ref()))
     }
 }

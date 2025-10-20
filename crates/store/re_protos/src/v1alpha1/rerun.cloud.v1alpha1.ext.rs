@@ -28,6 +28,15 @@ use crate::common::v1alpha1::{
 };
 use crate::{TypeConversionError, invalid_field, missing_field};
 
+/// Helper to simplify writing `field_XXX() -> FieldRef` methods.
+macro_rules! lazy_field_ref {
+    ($fld:expr) => {{
+        static FIELD: std::sync::OnceLock<FieldRef> = std::sync::OnceLock::new();
+        let field = FIELD.get_or_init(|| Arc::new($fld));
+        Arc::clone(field)
+    }};
+}
+
 // --- RegisterWithDatasetRequest ---
 
 #[derive(Debug)]
@@ -177,47 +186,59 @@ impl QueryDatasetResponse {
     pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
     pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
 
-    pub fn field_chunk_id() -> Field {
-        Field::new(Self::FIELD_CHUNK_ID, DataType::FixedSizeBinary(16), false).with_metadata(
-            [("rerun:kind".to_owned(), "control".to_owned())]
-                .into_iter()
-                .collect(),
+    pub fn field_chunk_id() -> FieldRef {
+        lazy_field_ref!(
+            Field::new(Self::FIELD_CHUNK_ID, DataType::FixedSizeBinary(16), false).with_metadata(
+                [("rerun:kind".to_owned(), "control".to_owned())]
+                    .into_iter()
+                    .collect(),
+            )
         )
     }
 
-    pub fn field_chunk_partition_id() -> Field {
-        Field::new(Self::FIELD_CHUNK_PARTITION_ID, DataType::Utf8, false).with_metadata(
-            [("rerun:kind".to_owned(), "control".to_owned())]
-                .into_iter()
-                .collect(),
+    pub fn field_chunk_partition_id() -> FieldRef {
+        lazy_field_ref!(
+            Field::new(Self::FIELD_CHUNK_PARTITION_ID, DataType::Utf8, false).with_metadata(
+                [("rerun:kind".to_owned(), "control".to_owned())]
+                    .into_iter()
+                    .collect(),
+            )
         )
     }
 
-    pub fn field_chunk_layer_name() -> Field {
-        Field::new(Self::FIELD_CHUNK_LAYER_NAME, DataType::Utf8, false)
+    pub fn field_chunk_layer_name() -> FieldRef {
+        lazy_field_ref!(Field::new(
+            Self::FIELD_CHUNK_LAYER_NAME,
+            DataType::Utf8,
+            false
+        ))
     }
 
-    pub fn field_chunk_key() -> Field {
-        Field::new(Self::FIELD_CHUNK_KEY, DataType::Binary, false)
+    pub fn field_chunk_key() -> FieldRef {
+        lazy_field_ref!(Field::new(Self::FIELD_CHUNK_KEY, DataType::Binary, false))
     }
 
-    pub fn field_chunk_entity_path() -> Field {
-        Field::new(Self::FIELD_CHUNK_ENTITY_PATH, DataType::Utf8, false).with_metadata(
-            [("rerun:kind".to_owned(), "control".to_owned())]
-                .into_iter()
-                .collect(),
+    pub fn field_chunk_entity_path() -> FieldRef {
+        lazy_field_ref!(
+            Field::new(Self::FIELD_CHUNK_ENTITY_PATH, DataType::Utf8, false).with_metadata(
+                [("rerun:kind".to_owned(), "control".to_owned())]
+                    .into_iter()
+                    .collect(),
+            )
         )
     }
 
-    pub fn field_chunk_is_static() -> Field {
-        Field::new(Self::FIELD_CHUNK_IS_STATIC, DataType::Boolean, false).with_metadata(
-            [("rerun:kind".to_owned(), "control".to_owned())]
-                .into_iter()
-                .collect(),
+    pub fn field_chunk_is_static() -> FieldRef {
+        lazy_field_ref!(
+            Field::new(Self::FIELD_CHUNK_IS_STATIC, DataType::Boolean, false).with_metadata(
+                [("rerun:kind".to_owned(), "control".to_owned())]
+                    .into_iter()
+                    .collect(),
+            )
         )
     }
 
-    pub fn fields() -> Vec<Field> {
+    pub fn fields() -> Vec<FieldRef> {
         vec![
             Self::field_chunk_id(),
             Self::field_chunk_partition_id(),
@@ -285,23 +306,23 @@ impl FetchChunksRequest {
         ]
     }
 
-    pub fn field_chunk_id() -> Field {
+    pub fn field_chunk_id() -> FieldRef {
         QueryDatasetResponse::field_chunk_id()
     }
 
-    pub fn field_chunk_partition_id() -> Field {
+    pub fn field_chunk_partition_id() -> FieldRef {
         QueryDatasetResponse::field_chunk_partition_id()
     }
 
-    pub fn field_chunk_layer_name() -> Field {
+    pub fn field_chunk_layer_name() -> FieldRef {
         QueryDatasetResponse::field_chunk_layer_name()
     }
 
-    pub fn field_chunk_key() -> Field {
+    pub fn field_chunk_key() -> FieldRef {
         QueryDatasetResponse::field_chunk_key()
     }
 
-    pub fn fields() -> Vec<Field> {
+    pub fn fields() -> Vec<FieldRef> {
         vec![
             Self::field_chunk_id(),
             Self::field_chunk_partition_id(),
@@ -1375,11 +1396,11 @@ impl ScanPartitionTableResponse {
     pub const FIELD_SIZE_BYTES: &str = "rerun_size_bytes";
 
     pub fn field_layer_names_inner() -> FieldRef {
-        Arc::new(Field::new(Self::FIELD_LAYER_NAMES, DataType::Utf8, false))
+        lazy_field_ref!(Field::new(Self::FIELD_LAYER_NAMES, DataType::Utf8, false))
     }
 
     pub fn field_storage_urls_inner() -> FieldRef {
-        Arc::new(Field::new(Self::FIELD_STORAGE_URLS, DataType::Utf8, false))
+        lazy_field_ref!(Field::new(Self::FIELD_STORAGE_URLS, DataType::Utf8, false))
     }
 
     // NOTE: changing this method is a breaking change for implementation (aka it at least breaks
