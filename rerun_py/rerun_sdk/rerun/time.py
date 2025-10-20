@@ -154,7 +154,7 @@ def to_nanos_since_epoch(
         return int(timestamp.value)
     else:
         raise TypeError(
-            f"set_time: timestamp must be an int, float, datetime, or numpy.datetime64 object, got {type(timestamp)}",
+            f"set_time: timestamp must be an int, float, datetime, numpy.datetime64, or pyarrow.TimestampScalar object, got {type(timestamp)}",
         )
 
 
