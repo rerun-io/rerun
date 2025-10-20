@@ -132,6 +132,23 @@ pub fn test_transform_clamping() {
                         .with_scales([(1.0, 1.0, 1.0), (2.0, 2.0, 2.0)]),
                 )
         });
+
+        test_context.log_entity("points/more_transforms_than_positions", |builder| {
+            builder
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::default(),
+                    &re_types::archetypes::Points3D::new([(0.0, 5.0, 0.0)])
+                        .with_colors([0x0000FFFF])
+                        .with_radii([-5.]),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::default(),
+                    &re_types::archetypes::InstancePoses3D::new()
+                        .with_translations([(1.0, 1.0, 1.0), (2.0, 2.0, 2.0)]),
+                )
+        });
     }
 
     let view_ids = setup_blueprint(&mut test_context);
@@ -144,7 +161,7 @@ pub fn test_transform_clamping() {
 }
 
 #[expect(clippy::unwrap_used)]
-fn setup_blueprint(test_context: &mut TestContext) -> (ViewId, ViewId) {
+fn setup_blueprint(test_context: &mut TestContext) -> (ViewId, ViewId, ViewId) {
     test_context.setup_viewport_blueprint(|_ctx, blueprint| {
         let view_blueprint_boxes = ViewBlueprint::new(
             re_view_spatial::SpatialView3D::identifier(),
@@ -162,22 +179,36 @@ fn setup_blueprint(test_context: &mut TestContext) -> (ViewId, ViewId) {
             },
         );
 
+        let view_blueprint_points = ViewBlueprint::new(
+            re_view_spatial::SpatialView3D::identifier(),
+            RecommendedView {
+                origin: "/points".into(),
+                query_filter: "+ $origin/**".parse().unwrap(),
+            },
+        );
+
         let view_id_boxes = view_blueprint_boxes.id;
         let view_id_spheres = view_blueprint_spheres.id;
+        let view_id_points = view_blueprint_points.id;
 
         blueprint.add_views(
-            [view_blueprint_boxes, view_blueprint_spheres].into_iter(),
+            [
+                view_blueprint_boxes,
+                view_blueprint_spheres,
+                view_blueprint_points,
+            ]
+            .into_iter(),
             None,
             None,
         );
 
-        (view_id_boxes, view_id_spheres)
+        (view_id_boxes, view_id_spheres, view_id_points)
     })
 }
 
 fn run_view_ui_and_save_snapshot(
     test_context: &TestContext,
-    (view_id_boxes, view_id_spheres): (ViewId, ViewId),
+    (view_id_boxes, view_id_spheres, view_id_points): (ViewId, ViewId, ViewId),
     name: &str,
     size: egui::Vec2,
 ) {
@@ -200,6 +231,32 @@ fn run_view_ui_and_save_snapshot(
             // * NO other boxes/spheres, in particular no magenta ones!
 
             let name = format!("{name}_{target}");
+            let raw_input = harness.input_mut();
+            raw_input
+                .events
+                .push(egui::Event::PointerMoved((100.0, 100.0).into()));
+            raw_input.events.push(egui::Event::MouseWheel {
+                unit: egui::MouseWheelUnit::Line,
+                delta: egui::Vec2::UP * 2.0,
+                modifiers: egui::Modifiers::default(),
+            });
+            harness.run_steps(10);
+
+            harness.snapshot(&name);
+        }
+
+        // Points don't have scale, so we test them separately.
+        {
+            let mut harness = test_context
+                .setup_kittest_for_rendering_3d(size)
+                .build_ui(|ui| {
+                    test_context.run_with_single_view(ui, view_id_points);
+                });
+
+            // For both you should see:
+            // * 2x blue
+
+            let name = format!("{name}_points");
             let raw_input = harness.input_mut();
             raw_input
                 .events

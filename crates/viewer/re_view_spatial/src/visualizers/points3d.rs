@@ -97,7 +97,7 @@ impl Points3DVisualizer {
 
             for world_from_obj in ent_context
                 .transform_info
-                .reference_from_instances(Points3D::name())
+                .target_from_instances(Points3D::name())
                 .iter()
                 .copied()
             {
