@@ -79,12 +79,19 @@ impl Args {
             }
 
             for table in &self.tables {
-                builder = builder
-                    .with_directory_as_table(
-                        table,
-                        re_protos::common::v1alpha1::ext::IfDuplicateBehavior::Error,
-                    )
-                    .await?;
+                cfg_if::cfg_if! {
+                    if #[cfg(feature = "table")] {
+                        builder = builder
+                            .with_directory_as_table(
+                                table,
+                                re_protos::common::v1alpha1::ext::IfDuplicateBehavior::Error,
+                            )
+                            .await?;
+                    } else {
+                        _ = table;
+                        anyhow::bail!("re_server was not compiled with the 'table' feature");
+                    }
+                }
             }
 
             RerunCloudServiceServer::new(builder.build())

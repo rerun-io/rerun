@@ -1,9 +1,8 @@
-use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
-use ahash::HashMap;
-use arrow::array::BinaryArray;
-use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
@@ -19,11 +18,8 @@ use re_protos::{
         QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse, QueryTasksRequest,
         QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
         RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
-        ScanPartitionTableResponse, ScanTableResponse,
-        ext::{
-            self, CreateDatasetEntryResponse, DataSource, ReadDatasetEntryResponse,
-            ReadTableEntryResponse,
-        },
+        ScanPartitionTableResponse,
+        ext::{self, CreateDatasetEntryResponse, DataSource, ReadDatasetEntryResponse},
         rerun_cloud_service_server::RerunCloudService,
     },
     common::v1alpha1::{
@@ -33,8 +29,10 @@ use re_protos::{
     headers::RerunHeadersExtractorExt as _,
 };
 
-use crate::entrypoint::NamedPath;
-use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
+use crate::{
+    entrypoint::NamedPath,
+    store::{Dataset, InMemoryStore, ChunkKey},
+};
 
 #[derive(Debug, Default)]
 pub struct RerunCloudHandlerSettings {}
@@ -62,6 +60,7 @@ impl RerunCloudHandlerBuilder {
         Ok(self)
     }
 
+    #[cfg(feature = "table")]
     pub async fn with_directory_as_table(
         mut self,
         path: &NamedPath,
@@ -206,6 +205,7 @@ impl RerunCloudHandler {
             .collect())
     }
 
+    #[cfg(feature = "table")]
     async fn find_tables(
         &self,
         entry_id: Option<EntryId>,
@@ -256,7 +256,7 @@ impl RerunCloudHandler {
         };
 
         Ok(table_iter
-            .map(Table::as_entry_details)
+            .map(crate::store::Table::as_entry_details)
             .map(Into::into)
             .collect())
     }
@@ -307,8 +307,19 @@ impl RerunCloudService for RerunCloudHandler {
 
         let entries = match kind {
             Some(EntryKind::Dataset) => self.find_datasets(entry_id, name).await?,
-            Some(EntryKind::Table) => self.find_tables(entry_id, name).await?,
+
+            Some(EntryKind::Table) => {
+                cfg_if::cfg_if! {
+                    if #[cfg(feature = "table")] {
+                        self.find_tables(entry_id, name).await?
+                    } else {
+                        return Err(Status::unimplemented("find_entries: Tables not supported. Compile with 'table' feature."));
+                    }
+                }
+            }
+
             None => {
+                #[cfg_attr(not(feature = "table"), expect(unused_mut))]
                 let mut datasets = match self.find_datasets(entry_id, name.clone()).await {
                     Ok(datasets) => datasets,
                     Err(err) => {
@@ -319,17 +330,22 @@ impl RerunCloudService for RerunCloudHandler {
                         }
                     }
                 };
-                let tables = match self.find_tables(entry_id, name).await {
-                    Ok(tables) => tables,
-                    Err(err) => {
-                        if err.code() == Code::NotFound {
-                            vec![]
-                        } else {
-                            return Err(err);
+
+                #[cfg(feature = "table")]
+                {
+                    let tables = match self.find_tables(entry_id, name).await {
+                        Ok(tables) => tables,
+                        Err(err) => {
+                            if err.code() == Code::NotFound {
+                                vec![]
+                            } else {
+                                return Err(err);
+                            }
                         }
-                    }
-                };
-                datasets.extend(tables);
+                    };
+                    datasets.extend(tables);
+                }
+
                 datasets
             }
             _ => {
@@ -404,24 +420,31 @@ impl RerunCloudService for RerunCloudHandler {
         tonic::Response<re_protos::cloud::v1alpha1::ReadTableEntryResponse>,
         tonic::Status,
     > {
-        let store = self.store.read().await;
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "table")] {
+                let store = self.store.read().await;
 
-        let id = request
-            .into_inner()
-            .id
-            .ok_or(Status::invalid_argument("No table entry ID provided"))?
-            .try_into()?;
+                let id = request
+                    .into_inner()
+                    .id
+                    .ok_or(Status::invalid_argument("No table entry ID provided"))?
+                    .try_into()?;
 
-        let table = store.table(id).ok_or_else(|| {
-            tonic::Status::not_found(format!("table with entry ID '{id}' not found"))
-        })?;
+                let table = store.table(id).ok_or_else(|| {
+                    tonic::Status::not_found(format!("table with entry ID '{id}' not found"))
+                })?;
 
-        Ok(tonic::Response::new(
-            ReadTableEntryResponse {
-                table_entry: table.as_table_entry(),
+                Ok(tonic::Response::new(
+                    ext::ReadTableEntryResponse {
+                        table_entry: table.as_table_entry(),
+                    }
+                    .into(),
+                ))
+            } else {
+                _ = request;
+                Err(tonic::Status::unimplemented("Tables not supported. Compile with 'table' feature."))
             }
-            .into(),
-        ))
+        }
     }
 
     async fn delete_entry(
@@ -519,7 +542,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         let mut request = request.into_inner();
 
-        let mut chunk_stores = HashMap::default();
+        let mut chunk_stores = ahash::HashMap::default();
 
         while let Some(chunk_msg) = request.next().await {
             let chunk_msg = chunk_msg?;
@@ -930,7 +953,7 @@ impl RerunCloudService for RerunCloudHandler {
             let chunk_keys_arr = chunk_info_batch
                 .column(chunk_key_col_idx)
                 .as_any()
-                .downcast_ref::<BinaryArray>()
+                .downcast_ref::<arrow::array::BinaryArray>()
                 .ok_or_else(|| {
                     tonic::Status::invalid_argument(format!(
                         "{} must be binary array",
@@ -1007,27 +1030,34 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::GetTableSchemaRequest>,
     ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::GetTableSchemaResponse>, Status> {
-        let store = self.store.read().await;
-        let Some(entry_id) = request.into_inner().table_id else {
-            return Err(Status::not_found("Table ID not specified in request"));
-        };
-        let entry_id = entry_id.try_into()?;
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "table")] {
+                let store = self.store.read().await;
+                let Some(entry_id) = request.into_inner().table_id else {
+                    return Err(Status::not_found("Table ID not specified in request"));
+                };
+                let entry_id = entry_id.try_into()?;
 
-        let table = store
-            .table(entry_id)
-            .ok_or_else(|| Status::not_found(format!("Entry with ID {entry_id} not found")))?;
+                let table = store
+                    .table(entry_id)
+                    .ok_or_else(|| Status::not_found(format!("Entry with ID {entry_id} not found")))?;
 
-        let table_provider = table.provider();
+                let table_provider = table.provider();
 
-        let schema = table_provider.schema();
+                let schema = table_provider.schema();
 
-        Ok(tonic::Response::new(
-            re_protos::cloud::v1alpha1::GetTableSchemaResponse {
-                schema: Some(schema.as_ref().try_into().map_err(|err| {
-                    Status::internal(format!("Unable to serialize Arrow schema: {err:#}"))
-                })?),
-            },
-        ))
+                Ok(tonic::Response::new(
+                    re_protos::cloud::v1alpha1::GetTableSchemaResponse {
+                        schema: Some(schema.as_ref().try_into().map_err(|err| {
+                            Status::internal(format!("Unable to serialize Arrow schema: {err:#}"))
+                        })?),
+                    },
+                ))
+            } else {
+                _ = request;
+                Err(tonic::Status::unimplemented("Tables not supported. Compile with 'table' feature."))
+            }
+        }
     }
 
     type ScanTableStream = ScanTableResponseStream;
@@ -1036,40 +1066,47 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::ScanTableRequest>,
     ) -> Result<tonic::Response<Self::ScanTableStream>, Status> {
-        let store = self.store.read().await;
-        let Some(entry_id) = request.into_inner().table_id else {
-            return Err(Status::not_found("Table ID not specified in request"));
-        };
-        let entry_id = entry_id.try_into()?;
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "table")] {
+                let store = self.store.read().await;
+                let Some(entry_id) = request.into_inner().table_id else {
+                    return Err(Status::not_found("Table ID not specified in request"));
+                };
+                let entry_id = entry_id.try_into()?;
 
-        let table = store
-            .table(entry_id)
-            .ok_or_else(|| Status::not_found(format!("Entry with ID {entry_id} not found")))?;
+                let table = store
+                    .table(entry_id)
+                    .ok_or_else(|| Status::not_found(format!("Entry with ID {entry_id} not found")))?;
 
-        let ctx = SessionContext::default();
-        let plan = table
-            .provider()
-            .scan(&ctx.state(), None, &[], None)
-            .await
-            .map_err(|err| Status::internal(format!("failed to scan table: {err:#}")))?;
+                let ctx = datafusion::prelude::SessionContext::default();
+                let plan = table
+                    .provider()
+                    .scan(&ctx.state(), None, &[], None)
+                    .await
+                    .map_err(|err| Status::internal(format!("failed to scan table: {err:#}")))?;
 
-        let stream = plan
-            .execute(0, ctx.task_ctx())
-            .map_err(|err| tonic::Status::from_error(Box::new(err)))?;
+                let stream = plan
+                    .execute(0, ctx.task_ctx())
+                    .map_err(|err| tonic::Status::from_error(Box::new(err)))?;
 
-        let resp_stream = stream.map(|batch| {
-            batch
-                .map_err(|err| tonic::Status::from_error(Box::new(err)))?
-                .encode()
-                .map(|batch| ScanTableResponse {
-                    dataframe_part: Some(batch),
-                })
-                .map_err(|err| tonic::Status::internal(format!("Error encoding chunk: {err:#}")))
-        });
+                let resp_stream = stream.map(|batch| {
+                    batch
+                        .map_err(|err| tonic::Status::from_error(Box::new(err)))?
+                        .encode()
+                        .map(|batch| re_protos::cloud::v1alpha1::ScanTableResponse {
+                            dataframe_part: Some(batch),
+                        })
+                        .map_err(|err| tonic::Status::internal(format!("Error encoding chunk: {err:#}")))
+                });
 
-        Ok(tonic::Response::new(
-            Box::pin(resp_stream) as Self::ScanTableStream
-        ))
+                Ok(tonic::Response::new(
+                    Box::pin(resp_stream) as Self::ScanTableStream
+                ))
+            } else {
+                _ = request;
+                Err(tonic::Status::unimplemented("Tables not supported. Compile with 'table' feature."))
+            }
+        }
     }
 
     // --- Tasks service ---

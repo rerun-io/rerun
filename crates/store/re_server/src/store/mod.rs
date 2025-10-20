@@ -7,6 +7,10 @@ mod partition;
 mod table;
 
 pub use self::{
-    chunk_key::ChunkKey, dataset::Dataset, error::Error, in_memory_store::InMemoryStore,
-    layer::Layer, partition::Partition, table::Table,
+    dataset::Dataset, error::Error, in_memory_store::InMemoryStore, layer::Layer,
+    partition::Partition,
+    chunk_key::ChunkKey
 };
+
+#[cfg(feature = "table")]
+pub use table::Table;

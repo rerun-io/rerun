@@ -1,3 +1,5 @@
+#![cfg(feature = "table")]
+
 use std::sync::Arc;
 
 use datafusion::catalog::TableProvider;

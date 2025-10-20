@@ -9502,6 +9502,7 @@ dependencies = [
  "anyhow",
  "arrow",
  "bincode",
+ "cfg-if",
  "chrono",
  "clap",
  "datafusion",

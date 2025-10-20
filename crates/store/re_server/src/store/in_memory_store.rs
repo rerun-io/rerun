@@ -1,48 +1,44 @@
-use std::sync::Arc;
-
-use ahash::HashMap;
-use arrow::array::{
-    ArrayRef, Int32Array, RecordBatch, RecordBatchOptions, StringArray, TimestampNanosecondArray,
-};
-use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
-use datafusion::catalog::{MemTable, TableProvider};
-use datafusion::common::DataFusionError;
-use itertools::Itertools as _;
-use lance::datafusion::LanceTableProvider;
+use std::{collections::HashMap, sync::Arc};
 
 use re_chunk_store::{Chunk, ChunkStoreConfig};
 use re_log_types::{EntryId, StoreId, StoreKind};
-use re_protos::{
-    cloud::v1alpha1::{
-        EntryKind, SystemTableKind,
-        ext::{EntryDetails, SystemTable},
-    },
-    common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId},
+use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId};
+
+use crate::{
+    entrypoint::NamedPath,
+    store::{ChunkKey, Dataset, Error},
 };
-use re_tuid::Tuid;
-use re_types_core::{ComponentBatch as _, Loggable as _};
 
-use crate::entrypoint::NamedPath;
-use crate::store::{ChunkKey, Dataset, Error, Table};
+#[cfg(feature = "table")]
+use crate::store::Table;
 
+#[cfg(feature = "table")]
 const ENTRIES_TABLE_NAME: &str = "__entries";
 
 pub struct InMemoryStore {
     // TODO(ab): track created/modified time
     datasets: HashMap<EntryId, Dataset>,
-    tables: HashMap<EntryId, Table>,
     id_by_name: HashMap<String, EntryId>,
+
+    #[cfg(feature = "table")]
+    tables: HashMap<EntryId, Table>,
 }
 
 impl Default for InMemoryStore {
     fn default() -> Self {
+        #[cfg_attr(not(feature = "table"), expect(unused_mut))]
         let mut ret = Self {
-            tables: HashMap::default(),
             datasets: HashMap::default(),
             id_by_name: HashMap::default(),
+
+            #[cfg(feature = "table")]
+            tables: HashMap::default(),
         };
+
+        #[cfg(feature = "table")]
         ret.update_entries_table()
             .expect("update_entries_table should never fail on initialization.");
+
         ret
     }
 }
@@ -160,15 +156,20 @@ impl InMemoryStore {
             }
         }
 
+        #[cfg(feature = "table")]
         self.update_entries_table()?;
+
         Ok(())
     }
 
+    #[cfg(feature = "table")]
     pub async fn load_directory_as_table(
         &mut self,
         named_path: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<(), Error> {
+        use std::sync::Arc;
+
         let directory = named_path.path.canonicalize()?;
         if !directory.is_dir() {
             return Err(std::io::Error::new(
@@ -195,7 +196,11 @@ impl InMemoryStore {
         let table = lance::Dataset::open(path)
             .await
             .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?;
-        let provider = Arc::new(LanceTableProvider::new(Arc::new(table), false, false));
+        let provider = Arc::new(lance::datafusion::LanceTableProvider::new(
+            Arc::new(table),
+            false,
+            false,
+        ));
 
         let entry_id = EntryId::new();
 
@@ -220,11 +225,12 @@ impl InMemoryStore {
         Ok(())
     }
 
+    #[cfg(feature = "table")]
     fn add_table_entry(
         &mut self,
         entry_name: &str,
         entry_id: EntryId,
-        provider: Arc<dyn TableProvider>,
+        provider: std::sync::Arc<dyn datafusion::catalog::TableProvider>,
     ) -> Result<(), Error> {
         self.id_by_name.insert(entry_name.to_owned(), entry_id);
         self.tables.insert(
@@ -240,7 +246,12 @@ impl InMemoryStore {
     /// can remove this restriction if we change the store to be an
     /// `Arc<Mutex<_>>` and then have an ac-hoc table generation.
     /// TODO(#11369)
+    #[cfg(feature = "table")]
     fn update_entries_table(&mut self) -> Result<(), Error> {
+        use std::sync::Arc;
+
+        use re_protos::cloud::v1alpha1::{SystemTableKind, ext::SystemTable};
+
         let entries_table_id = *self
             .id_by_name
             .entry(ENTRIES_TABLE_NAME.to_owned())
@@ -313,25 +324,47 @@ impl InMemoryStore {
         self.datasets.values()
     }
 
+    #[cfg(feature = "table")]
     pub fn table(&self, entry_id: EntryId) -> Option<&Table> {
         self.tables.get(&entry_id)
     }
 
+    #[cfg(feature = "table")]
     pub fn table_mut(&mut self, entry_id: EntryId) -> Option<&mut Table> {
         self.tables.get_mut(&entry_id)
     }
 
+    #[cfg(feature = "table")]
     pub fn table_by_name(&self, name: &str) -> Option<&Table> {
         let entry_id = self.id_by_name.get(name).copied()?;
         self.table(entry_id)
     }
 
+    #[cfg(feature = "table")]
     pub fn iter_tables(&self) -> impl Iterator<Item = &Table> {
         self.tables.values()
     }
 }
 
-fn generate_entries_table(entries: &[EntryDetails]) -> Result<RecordBatch, Error> {
+#[cfg(feature = "table")]
+fn generate_entries_table(
+    entries: &[re_protos::cloud::v1alpha1::ext::EntryDetails],
+) -> Result<arrow::array::RecordBatch, Error> {
+    use std::sync::Arc;
+
+    use arrow::{
+        array::{
+            ArrayRef, Int32Array, RecordBatch, RecordBatchOptions, StringArray,
+            TimestampNanosecondArray,
+        },
+        datatypes::{DataType, Field, Schema, TimeUnit},
+    };
+    use datafusion::error::DataFusionError;
+    use itertools::Itertools as _;
+
+    use re_tuid::Tuid;
+    use re_types_core::{ComponentBatch as _, Loggable as _};
+
     #[expect(clippy::type_complexity)]
     let (id, name, entry_kind, created_at, updated_at): (
         Vec<Tuid>,
@@ -391,8 +424,9 @@ fn generate_entries_table(entries: &[EntryDetails]) -> Result<RecordBatch, Error
 }
 
 // Generate both functions
+#[cfg(feature = "table")]
 impl InMemoryStore {
-    fn dataset_entries_table(&self) -> Result<RecordBatch, Error> {
+    fn dataset_entries_table(&self) -> Result<arrow::array::RecordBatch, Error> {
         let details = self
             .datasets
             .values()
@@ -401,7 +435,7 @@ impl InMemoryStore {
         generate_entries_table(&details)
     }
 
-    fn table_entries_table(&self) -> Result<RecordBatch, Error> {
+    fn table_entries_table(&self) -> Result<arrow::array::RecordBatch, Error> {
         let details = self
             .tables
             .values()
@@ -410,7 +444,10 @@ impl InMemoryStore {
         generate_entries_table(&details)
     }
 
-    pub fn entries_table(&self) -> Result<MemTable, Error> {
+    pub fn entries_table(&self) -> Result<datafusion::catalog::MemTable, Error> {
+        use re_protos::cloud::v1alpha1::{EntryKind, ext::EntryDetails};
+        use re_tuid::Tuid;
+
         let dataset_rb = self.dataset_entries_table()?;
         let table_rb = self.table_entries_table()?;
 
@@ -427,8 +464,10 @@ impl InMemoryStore {
 
         let schema = dataset_rb.schema();
 
-        let result_table =
-            MemTable::try_new(schema, vec![vec![dataset_rb, table_rb, entry_table_rb]])?;
+        let result_table = datafusion::catalog::MemTable::try_new(
+            schema,
+            vec![vec![dataset_rb, table_rb, entry_table_rb]],
+        )?;
 
         Ok(result_table)
     }
