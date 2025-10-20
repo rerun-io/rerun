@@ -120,6 +120,15 @@ When importing a `trait` to use its trait methods, do this: `use Trait as _;`. T
 
 When intentionally ignoring a `Result`, prefer `foo().ok();` over `let _ = foo();`. The former shows what is happening, and will fail to compile if `foo`:s return type ever changes.
 
+### `use` statements
+We should only use file-wide `use` statements for things that are repeatedly used throughout the file.
+If you’re only using it once or twice: use a fully-qualified path.
+If you’re only using it within a single function, put the `use` statement inside that function.
+
+This makes it _a lot_ easier to refactor code (moving/removing functions, feature-gating, …), and minimizes merge conflicts due to churn in the `use` block at the top of the file.
+
+Rust-Analyzer has great built-in functionality for toggling between use and fully-qualified path. It’s easy to change one into the other when first writing the code.
+
 ### `TODO`:s
 When you must remember to do something before merging a PR, write `TODO` or `FIXME` in any file. The CI will not be green until you either remove them or rewrite them as `TODO(yourname)`.
 
