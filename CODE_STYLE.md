@@ -127,6 +127,8 @@ If you’re only using it within a single function, put the `use` statement insi
 
 This makes it _a lot_ easier to refactor code (moving/removing functions, feature-gating, …), and minimizes merge conflicts due to churn in the `use` block at the top of the file.
 
+(It also means you don't have to scroll to the top of the file to understand where a one-off identifier comes from).
+
 Rust-Analyzer has great built-in functionality for toggling between use and fully-qualified path. It’s easy to change one into the other when first writing the code.
 
 ### `TODO`:s
