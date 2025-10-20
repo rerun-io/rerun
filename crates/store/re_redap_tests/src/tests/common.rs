@@ -250,6 +250,7 @@ impl DataSourcesDefinition {
             .map(|(layer_name, path)| DataSource {
                 storage_url: Some(Url::from_file_path(path.as_path()).unwrap().to_string()),
                 layer: layer_name.clone(),
+                prefix: false,
                 typ: DataSourceKind::Rrd as i32,
             })
             .collect()
