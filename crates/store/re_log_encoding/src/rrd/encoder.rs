@@ -9,7 +9,7 @@ use re_log_types::LogMsg;
 use crate::ToTransport as _;
 use crate::rrd::{
     CodecError, Compression, Encodable as _, EncodingOptions, MessageHeader, MessageKind,
-    Serializer, StreamHeader,
+    Serializer, StreamFooter, StreamHeader,
 };
 
 // ----------------------------------------------------------------------------
@@ -58,6 +58,7 @@ impl From<ChunkError> for EncodeError {
 //
 // TODO(cmc): I hate not having a `BufWrite` trait. This is just asking for trouble.
 pub struct Encoder<W: std::io::Write> {
+    version: CrateVersion,
     serializer: Serializer,
     compression: Compression,
 
@@ -115,6 +116,7 @@ impl<W: std::io::Write> Encoder<W> {
         write.write_all(&out)?;
 
         Ok(Self {
+            version,
             serializer: options.serializer,
             compression: options.compression,
             write: Some(write),
@@ -184,6 +186,8 @@ impl<W: std::io::Write> Encoder<W> {
     /// * Concatenated RRD file streams (e.g. `cat *.rrd | rerun -`).
     #[inline]
     pub fn finish(&mut self) -> Result<(), EncodeError> {
+        // TODO: can we at least merge the writes?
+
         if self.is_finished {
             return Ok(());
         }
@@ -203,6 +207,52 @@ impl<W: std::io::Write> Encoder<W> {
                 .to_rrd_bytes(&mut header)?;
                 w.write_all(&header)?;
             }
+        }
+
+        // TODO: the short-term goal should be to have a footer working, ignoring its contents
+        // (just give it an encoded_size and stash an ArrowMsg (!) in there, basically).
+
+        // TODO: say we add a footer here, ye?
+        // TODO: from an encoding standpoint, that's really all there is to it (obviously we do
+        // have to keep track of all the chunks and build the actual index etc, but i mean IO +
+        // encoding wise).
+
+        {
+            use arrow::array::RecordBatch;
+            use arrow::datatypes::Schema;
+            use std::sync::Arc;
+
+            // TODO(cmc): the extra heap-alloc and copy could be easily avoided.
+            let mut out = Vec::new();
+
+            let store_id = re_log_types::StoreId::empty_recording();
+            let payload = RecordBatch::new_empty(Arc::new(Schema::empty()));
+            let payload: re_protos::common::v1alpha1::DataframePart = payload.into();
+
+            // TODO: if we go this route, we need compression though
+            use re_protos::external::prost::Message as _;
+            let len = payload.encoded_len() as u64;
+            payload.encode(&mut out).unwrap();
+
+            // let msg = re_log_types::ArrowMsg {
+            //     chunk_id: *re_chunk::ChunkId::ZERO,
+            //     batch: payload,
+            //     on_release: None,
+            // }
+            // .to_transport((store_id, Compression::LZ4))?;
+            // let len = msg.to_rrd_bytes(&mut out)?;
+
+            // TODO: actual crc lulz
+            let crc = out.iter().fold(0u32, |acc, &b| acc.wrapping_add(b as u32));
+
+            {
+                // TODO(cmc): the extra heap-alloc and copy could be easily avoided.
+                let mut out = Vec::new();
+                StreamFooter { len, crc }.to_rrd_bytes(&mut out)?;
+                w.write_all(&out)?;
+            }
+
+            w.write_all(&out)?;
         }
 
         self.is_finished = true;

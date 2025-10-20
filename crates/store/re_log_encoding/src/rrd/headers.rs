@@ -1,5 +1,8 @@
 use crate::rrd::{Decodable, Encodable, OptionsError};
 
+// TODO: the fact that the RRD format isn't self-synchronising is kind of a PITA, but then again we
+// carry arbitrary payloads so that seems par for the course.
+
 // --- FileHeader ---
 
 pub use re_build_info::CrateVersion; // convenience
@@ -188,6 +191,79 @@ impl Decodable for StreamHeader {
     }
 }
 
+// ---
+
+// TODO: let's try to put a footer, any footer, and see what happens, i guess
+
+// TODO: im starting to think that we need both a FooterStart and FooterEnd kinda thing, actually:
+// * one when moving forward through a stream, so the decoder can have a clue wtf is going on
+// * one when going straight for the footer
+
+// TODO: let's not fuck this up and have a magic value from the start in there (RRZ2?)
+//
+// The best thing possible would be to follow the classic `[MAGIC][LENGTH][PAYLOAD...][CRC]`
+// structure everywhere, but not sure if we can do so in a bw way everywhere (RRF3?).
+
+// TODO: the fact that we do not track the format version in redap shouldnt even be a problem since
+// we just assume the chunk keys to point to ArrowMsgs directly anyway.
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StreamFooter {
+    pub len: u64,
+    // TODO: crc in the header seems a bit unorthodox, but do we care?
+    pub crc: u32,
+}
+
+impl StreamFooter {
+    pub const ENCODED_SIZE_BYTES: usize = 16;
+    pub const FOURCC: [u8; 4] = *b"RRSF";
+}
+
+impl Encodable for StreamFooter {
+    fn to_rrd_bytes(&self, out: &mut Vec<u8>) -> Result<u64, crate::rrd::CodecError> {
+        let Self { len, crc } = self;
+
+        let before = out.len() as u64;
+
+        out.extend_from_slice(&Self::FOURCC);
+        out.extend_from_slice(&len.to_le_bytes());
+        out.extend_from_slice(&crc.to_le_bytes());
+
+        let n = out.len() as u64 - before;
+        assert_eq!(Self::ENCODED_SIZE_BYTES as u64, n);
+
+        Ok(n)
+    }
+}
+
+impl Decodable for StreamFooter {
+    fn from_rrd_bytes(data: &[u8]) -> Result<Self, crate::rrd::CodecError> {
+        if data.len() != Self::ENCODED_SIZE_BYTES {
+            return Err(crate::rrd::CodecError::FooterDecoding(format!(
+                "invalid StreamFooter length (expected {} but got {})",
+                Self::ENCODED_SIZE_BYTES,
+                data.len()
+            )));
+        }
+
+        let to_array_4b = |slice: &[u8]| slice.try_into().expect("always returns an Ok() variant");
+
+        let fourcc: [u8; 4] = to_array_4b(&data[0..4]);
+        if fourcc != Self::FOURCC {
+            return Err(crate::rrd::CodecError::FooterDecoding(format!(
+                "invalid StreamFooter FourCC (expected {:?} but got {:?})",
+                Self::FOURCC,
+                fourcc,
+            )));
+        }
+
+        let len = u64::from_le_bytes(data[4..12].try_into().expect("cannot fail, checked above"));
+        let crc = u32::from_le_bytes(data[12..16].try_into().expect("cannot fail, checked above"));
+
+        Ok(Self { len, crc })
+    }
+}
+
 // --- MessageHeader ---
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
@@ -207,6 +283,18 @@ impl MessageKind {
     const BLUEPRINT_ACTIVATION_COMMAND: u64 = 3;
 }
 
+// TODO: if we did have magic bytes for some various headers, that would also avoid some hacks in
+// the decoder itself (maybe remove the need for peeking altogether?).
+// And it would certainly avoid introducing even more hacks to differentiate between a stream
+// header and a stream footer when a messageheader fails to decode.
+
+// TODO: we definitely do not need 64bits of `kind` here, so we could retrofit a simple magic value
+// in there. it's not foolproof in and of itself, but combined with everything else it almost is,
+// and would make the RRD format self-synchronising. That would ofc be a breaking change but it's
+// certainly possible to make it bw compatible somehow.
+// I should really open an issue for this.
+//
+// This is especially useful because the Compression field in the header is useless.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MessageHeader {
     pub kind: MessageKind,
@@ -223,6 +311,12 @@ impl Encodable for MessageHeader {
 
         let before = out.len() as u64;
 
+        // TODO: nooooooooooooo, i forgot this is all little endian 😭 that means we cannot
+        // possibly make this bw compatible, we're fucked.
+        // we can duplicate the state machine for RRF3, none of the decoders on top change, it's
+        // fine. And if we go there then... well we can do whatever the fuck we want really.
+        //
+        // Begs the question: what would we want to do if there was no baggage?
         out.extend_from_slice(&(kind as u64).to_le_bytes());
         out.extend_from_slice(&len.to_le_bytes());
 

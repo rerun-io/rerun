@@ -25,8 +25,12 @@ pub enum CodecError {
     #[error("Data was from an old, incompatible Rerun version")]
     OldRrdVersion,
 
+    // TODO: this says message header even though it's used for the stream header too
     #[error("Failed to decode message header {0}")]
     HeaderDecoding(String),
+
+    #[error("Failed to decode message footer {0}")]
+    FooterDecoding(String),
 
     #[error("Arrow IPC deserialization error: {0}")]
     ArrowDeserialization(::arrow::error::ArrowError),

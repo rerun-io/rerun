@@ -37,7 +37,7 @@ pub mod stream_from_http;
 pub use self::errors::{CodecError, NotAnRrdError, OptionsError};
 pub use self::headers::{
     Compression, CrateVersion, EncodingOptions, MessageHeader, MessageKind, Serializer,
-    StreamHeader,
+    StreamFooter, StreamHeader,
 };
 
 #[cfg(feature = "decoder")]

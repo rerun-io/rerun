@@ -5,9 +5,10 @@ use std::io::Read as _;
 use re_build_info::CrateVersion;
 
 use crate::CachingApplicationIdInjector;
+use crate::ToApplication;
 use crate::rrd::{
     CodecError, Decodable as _, DecodeError, DecoderEntrypoint, EncodingOptions, Serializer,
-    StreamHeader,
+    StreamFooter, StreamHeader,
 };
 
 // ---
@@ -57,7 +58,8 @@ pub struct Decoder<T> {
     pub(crate) _decodable: std::marker::PhantomData<T>,
 }
 
-///
+// TODO: already outdated
+//
 /// ```text,ignore
 /// StreamHeader
 ///      |
@@ -74,6 +76,7 @@ pub enum DecoderState {
     /// The stream header contains the magic bytes (e.g. `RRF2`), the encoded version, and the
     /// encoding options.
     ///
+    /// TODO: yea i dunno about that
     /// After the stream header is read once, the state machine will only ever switch between
     /// `MessageHeader` and `Message`
     StreamHeader,
@@ -81,10 +84,21 @@ pub enum DecoderState {
     /// The beginning of a Protobuf message.
     MessageHeader,
 
+    // TODO: also outdated (the serializer is configurable?)
     /// The message content, serialized using `Protobuf`.
     ///
     /// Compression is only applied to individual `ArrowMsg`s, instead of the entire stream.
     Message(crate::rrd::MessageHeader),
+
+    // TODO: that's actually the _first_ thing we do! we start there, see if there's a footer, and
+    // then we know where to stop.
+    // But the state machine cannot guarantee this, it has to happen at the IO layer, i guess?
+    // specifically, we need something that's Seek -- so maybe that becomes the great divider.
+    //
+    //
+    StreamFooter,
+
+    Footer(crate::rrd::StreamFooter),
 
     /// Stop reading.
     Aborted,
@@ -181,6 +195,8 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                 }
             }
 
+            // TODO: like this could become DecoderState::NextHeader -- but we do need to make sure
+            // that everything still works for both old and new rrds
             DecoderState::MessageHeader => {
                 let mut peeked = [0u8; crate::rrd::MessageHeader::ENCODED_SIZE_BYTES];
                 if self.byte_chunks.try_peek(&mut peeked) == peeked.len() {
@@ -188,11 +204,16 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                         Ok(header) => header,
 
                         Err(crate::rrd::CodecError::HeaderDecoding(_)) => {
+                            // TODO: this explanation is therefore outdated
+                            //
                             // We failed to decode a `MessageHeader`: it might be because the
                             // stream is corrupt, or it might be because it just switched to a
                             // different, concatenated recording without having the courtesy of
                             // announcing it via an EOS marker.
-                            self.state = DecoderState::StreamHeader;
+
+                            // TODO: or it might be a footer? 🙈
+
+                            self.state = DecoderState::StreamFooter;
                             return self.try_read();
                         }
 
@@ -246,14 +267,114 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                         self.state = DecoderState::MessageHeader;
                         return Ok(Some(message));
                     } else {
-                        re_log::trace!("End of stream - expecting a new Streamheader");
+                        re_log::trace!("End of stream - expecting a new Streamheader"); // TODO: not really
 
                         // `None` means an end-of-stream marker was hit, but there might be another concatenated
                         // stream behind, so try to start all over again.
-                        self.state = DecoderState::StreamHeader;
+                        self.state = DecoderState::StreamFooter;
                         return self.try_read();
                     }
                 }
+            }
+
+            // TODO: one theory is that we put the index data into the End message, and then the
+            // footer is only used to reference where the End messages can be found.
+            // When data gets concatenated, that makes no sense though... unless all things that
+            // accept concatenated things somehow make sure that these End messages get merged
+            // together -- wait, no, that does not make sense.
+            //
+            // TODO: what's fking weird is that our existing StreamHeader can appear multiple times
+            // in a stream due to the concatenated shenanigans.
+            // Which leads to a natural question: what can we do about the concatenated bullshit?
+            // Looking at the contents of the StreamHeader:
+            //    pub fourcc: [u8; 4],
+            //    pub version: [u8; 4],
+            //    pub options: EncodingOptions,
+            // The situation is actually kinda fucked, since the 2 streams might not have the same
+            // compression and such. why is there a compression setting at the stream level btw?
+            // isn't it already at the arrowmsg level? wtf?
+            //
+            // TODO: the thing about footers, they only really make sense in actual files, they are
+            // somewhat useless in streams.
+            // Well, actually that's not necessarily true. Computing the index in the footers can
+            // be costly enough that it's still worth reading all the stream just to not have to
+            // recompute the footer, hmm...
+            // #[cfg(TODO)]
+            DecoderState::StreamFooter => {
+                eprintln!("XXX");
+                // TODO: what does one expect after a footer? nothing, i guess
+
+                // TODO: how does one actually expect to use a footer in practice?
+                // * sure, the decoder should return it if it finds one, makes no sense not to
+                //   do that.
+                // * for sure, there should be completely orthogonal path that just tries to
+                //   look for footers?
+                // * actually, the decoder could just start there first, and then it knows
+                //   where to stop during normal processing! ha-ha!
+
+                let mut peeked = [0u8; crate::rrd::StreamFooter::ENCODED_SIZE_BYTES];
+                if self.byte_chunks.try_peek(&mut peeked) == peeked.len() {
+                    let footer = match crate::rrd::StreamFooter::from_rrd_bytes(&peeked) {
+                        Ok(footer) => footer,
+
+                        Err(crate::rrd::CodecError::FooterDecoding(err)) => {
+                            // We failed to decode a `StreamFooter`: it might be because the
+                            // stream is corrupt, or it might be because it just switched to a
+                            // different, concatenated recording without having the courtesy of
+                            // announcing it via an EOS marker.
+
+                            // eprintln!("XXXXXXXXXXX {err}");
+                            self.state = DecoderState::StreamHeader;
+                            return self.try_read();
+                        }
+
+                        err @ Err(_) => err?,
+                    };
+
+                    self.byte_chunks
+                        .try_read(crate::rrd::StreamFooter::ENCODED_SIZE_BYTES)
+                        .expect("reading cannot fail if peeking worked");
+
+                    re_log::trace!(?footer, "StreamFooter");
+
+                    self.state = DecoderState::Footer(footer);
+                    // we might have data left in the current byte chunk, immediately try to read
+                    // the footer content.
+                    return self.try_read();
+                }
+            }
+
+            // TODO: now there will be a bunch of questions such as...
+            // * what do we do when the decoded stream has multiple footers?
+            // * what can of api do we expose to go straight to the footer?
+            DecoderState::Footer(footer) => {
+                eprintln!("YYY");
+                // dbg!(footer);
+
+                let start_offset = self.byte_chunks.num_read() as u64;
+
+                if let Some(bytes) = self.byte_chunks.try_read(footer.len as usize) {
+                    re_log::trace!(?footer, "Read message");
+
+                    // TODO
+                    let crc = bytes
+                        .iter()
+                        .fold(0u32, |acc, &b| acc.wrapping_add(b as u32));
+                    assert_eq!(footer.crc, crc);
+
+                    use re_protos::external::prost::Message as _;
+                    let batch =
+                        re_protos::common::v1alpha1::DataframePart::decode(&*bytes).unwrap();
+                    let batch: arrow::array::RecordBatch = batch.try_into().unwrap();
+                    // dbg!(batch);
+
+                    // let msg = re_protos::log_msg::v1alpha1::ArrowMsg::from_rrd_bytes(&bytes)?;
+                    // dbg!(&msg.to_application(())?.batch);
+                }
+
+                // TODO: explain
+                self.state = DecoderState::StreamHeader;
+                return self.try_read();
             }
 
             DecoderState::Aborted => {
