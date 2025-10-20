@@ -9676,7 +9676,6 @@ dependencies = [
  "re_test_context",
  "re_tracing",
  "re_types",
- "re_types_core",
  "re_ui",
  "re_viewer_context",
  "re_viewport_blueprint",
