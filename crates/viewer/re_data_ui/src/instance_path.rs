@@ -175,20 +175,20 @@ impl DataUi for InstancePath {
         if instance.is_all() {
             // There are some examples where we need to combine several archetypes for a single preview.
             // For instance `VideoFrameReference` and `VideoAsset` are used together for a single preview.
-            let components = components_by_archetype
+            let all_components = components_by_archetype
                 .values()
                 .flatten()
                 .cloned()
                 .collect::<Vec<_>>();
 
-            for (descr, shared) in &components {
+            for (descr, shared) in &all_components {
                 if let Some(data) = ExtraDataUi::from_components(
                     ctx,
                     query,
                     entity_path,
                     descr,
                     shared,
-                    &components,
+                    &all_components,
                 ) {
                     data.data_ui(ctx, ui, ui_layout, query, entity_path);
                 }
@@ -215,14 +215,14 @@ fn component_list_ui(
         ui,
         egui::Id::from("component list").with(entity_path),
         |ui| {
-            for (archetype, components) in components_by_archetype {
+            for (archetype, archetype_components) in components_by_archetype {
                 if archetype.is_none() && components_by_archetype.len() == 1 {
                     // They are all without archetype, so we can skip the label.
                 } else {
                     archetype_label_list_item_ui(ui, archetype);
                 }
 
-                for (component_descr, unit) in components {
+                for (component_descr, unit) in archetype_components {
                     component_ui(
                         ctx,
                         ui,
@@ -231,7 +231,7 @@ fn component_list_ui(
                         db,
                         entity_path,
                         instance,
-                        components,
+                        archetype_components,
                         component_descr,
                         unit,
                     );
@@ -250,7 +250,7 @@ fn component_ui(
     db: &re_entity_db::EntityDb,
     entity_path: &re_log_types::EntityPath,
     instance: &re_log_types::Instance,
-    components: &[(ComponentDescriptor, UnitChunkShared)],
+    archetype_components: &[(ComponentDescriptor, UnitChunkShared)],
     component_descr: &ComponentDescriptor,
     unit: &UnitChunkShared,
 ) {
@@ -277,8 +277,14 @@ fn component_ui(
         list_item = list_item.force_hovered(is_hovered);
     }
 
-    let data =
-        ExtraDataUi::from_components(ctx, query, entity_path, component_descr, unit, components);
+    let data = ExtraDataUi::from_components(
+        ctx,
+        query,
+        entity_path,
+        component_descr,
+        unit,
+        archetype_components,
+    );
 
     let mut content =
         re_ui::list_item::PropertyContent::new(component_descr.archetype_field_name())
