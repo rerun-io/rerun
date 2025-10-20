@@ -122,6 +122,76 @@ impl RerunCloudHandler {
             })
             .collect())
     }
+
+    fn resolve_data_sources(data_sources: &[DataSource]) -> Result<Vec<DataSource>, tonic::Status> {
+        let mut resolved = Vec::<DataSource>::with_capacity(data_sources.len());
+        for source in data_sources {
+            if source.is_prefix {
+                let path = source.storage_url.to_file_path().map_err(|_err| {
+                    tonic::Status::invalid_argument(format!(
+                        "getting file path from {:?}",
+                        source.storage_url
+                    ))
+                })?;
+                let meta = std::fs::metadata(&path).map_err(|err| match err.kind() {
+                    std::io::ErrorKind::NotFound => {
+                        tonic::Status::invalid_argument(format!("Directory not found: {:?}", &path))
+                    }
+                    _ => tonic::Status::invalid_argument(format!(
+                        "Failed to read directory metadata {path:?}: {err:#}"
+                    )),
+                })?;
+                if !meta.is_dir() {
+                    return Err(tonic::Status::invalid_argument(format!(
+                        "Expected directory, got file: {path:?}"
+                    )));
+                }
+
+                // Recursively walk the directory and grab all '.rrd' files
+                let mut dirs_to_visit = vec![path];
+                let mut files = Vec::new();
+
+                while let Some(current_dir) = dirs_to_visit.pop() {
+                    let entries = std::fs::read_dir(&current_dir).map_err(|err| {
+                        tonic::Status::internal(format!(
+                            "Failed to read directory {current_dir:?}: {err:#}"
+                        ))
+                    })?;
+
+                    for entry in entries {
+                        let entry = entry.map_err(|err| {
+                            tonic::Status::internal(format!(
+                                "Failed to read directory entry: {err:#}"
+                            ))
+                        })?;
+                        let entry_path = entry.path();
+
+                        if entry_path.is_dir() {
+                            dirs_to_visit.push(entry_path);
+                        } else if let Some(extension) = entry_path.extension()
+                            && extension == "rrd"
+                        {
+                            files.push(entry_path);
+                        }
+                    }
+                }
+
+                for file_path in files {
+                    let mut file_url = source.storage_url.clone();
+                    file_url.set_path(&file_path.to_string_lossy());
+                    resolved.push(DataSource {
+                        storage_url: file_url,
+                        is_prefix: false,
+                        ..source.clone()
+                    });
+                }
+            } else {
+                resolved.push(source.clone());
+            }
+        }
+
+        Ok(resolved)
+    }
 }
 
 impl std::fmt::Debug for RerunCloudHandler {
@@ -439,8 +509,6 @@ impl RerunCloudService for RerunCloudHandler {
 
     // --- Manifest Registry ---
 
-    /* Write data */
-
     async fn register_with_dataset(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::RegisterWithDatasetRequest>,
@@ -465,12 +533,21 @@ impl RerunCloudService for RerunCloudHandler {
         let mut storage_urls: Vec<String> = vec![];
         let mut task_ids: Vec<String> = vec![];
 
+        let data_sources = Self::resolve_data_sources(&data_sources)?;
+
         for source in data_sources {
             let ext::DataSource {
                 storage_url,
+                is_prefix,
                 layer,
                 kind,
             } = source;
+
+            if is_prefix {
+                return Err(tonic::Status::internal(
+                    "register_with_dataset: prefix data sources should have been resolved already",
+                ));
+            }
 
             if kind != ext::DataSourceKind::Rrd {
                 return Err(tonic::Status::unimplemented(
