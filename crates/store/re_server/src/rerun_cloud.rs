@@ -3,12 +3,6 @@ use std::sync::Arc;
 
 use ahash::HashMap;
 use arrow::array::BinaryArray;
-use arrow::array::{
-    ArrayRef, BooleanArray, DurationNanosecondArray, Int64Array, RecordBatch, RecordBatchOptions,
-    StringArray, TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
-    TimestampSecondArray, UInt64Array,
-};
-use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use datafusion::logical_expr::dml::InsertOp;
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
