@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
-use arrow::array::RecordBatchOptions;
 use arrow::{
-    array::RecordBatch,
-    datatypes::{Schema, SchemaBuilder},
+    array::{ArrayRef, RecordBatch, RecordBatchOptions},
+    datatypes::{Field, Schema, SchemaBuilder},
 };
 use itertools::Itertools as _;
 
@@ -13,6 +12,7 @@ use itertools::Itertools as _;
 ///
 /// ⚠️ This is *not* recursive! E.g. for a `StructArray` containing 2 fields, only the field
 /// corresponding to the `StructArray` itself will be made nullable.
+//TODO: extension trait
 pub fn make_batch_nullable(batch: &RecordBatch) -> RecordBatch {
     let schema = Schema::new_with_metadata(
         batch
@@ -73,7 +73,7 @@ pub fn concat_polymorphic_batches(batches: &[RecordBatch]) -> arrow::error::Resu
                 RecordBatch::try_new_with_options(
                     schema_merged.clone(),
                     columns,
-                    &RecordBatchOptions::default(),
+                    &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
                 )
             })
             .collect();
@@ -83,6 +83,69 @@ pub fn concat_polymorphic_batches(batches: &[RecordBatch]) -> arrow::error::Resu
     arrow::compute::concat_batches(&schema_merged, &batches_patched)
 }
 
+/// Concatenate the give [`RecordBatch`]es horizontally.
+///
+/// Both batches must have the same number of rows, and a non-overlapping schema.
+//TODO: extension trait
+pub fn concat_record_batches_horizontally(
+    left_batch: &RecordBatch,
+    right_batch: &RecordBatch,
+) -> arrow::error::Result<RecordBatch> {
+    if left_batch.num_rows() != right_batch.num_rows() {
+        return Err(arrow::error::ArrowError::InvalidArgumentError(
+            "RecordBatches must have the same number of rows".to_owned(),
+        ));
+    }
+
+    let merged_schema = Schema::try_merge([
+        Arc::unwrap_or_clone(left_batch.schema()),
+        Arc::unwrap_or_clone(right_batch.schema()),
+    ])?;
+
+    if merged_schema.fields().len()
+        != left_batch.schema().fields().len() + right_batch.schema().fields().len()
+    {
+        return Err(arrow::error::ArrowError::InvalidArgumentError(
+            "RecordBatches must have a non-overlapping schema".to_owned(),
+        ));
+    }
+
+    let mut columns: Vec<ArrayRef> = Vec::new();
+    columns.extend_from_slice(left_batch.columns());
+    columns.extend_from_slice(right_batch.columns());
+
+    RecordBatch::try_new_with_options(
+        Arc::new(merged_schema),
+        columns,
+        &RecordBatchOptions::default().with_row_count(Some(left_batch.num_rows())),
+    )
+}
+
+/// Reorders the columns of a [`RecordBatch`] based on a comparison function.
+//TODO: extension trait
+pub fn sort_columns_by(
+    batch: RecordBatch,
+    cmp_fn: impl Fn(&Field, &Field) -> std::cmp::Ordering,
+) -> arrow::error::Result<RecordBatch> {
+    let (schema_ref, columns, row_count) = batch.into_parts();
+    let Schema { fields, metadata } = Arc::unwrap_or_clone(schema_ref);
+
+    let (fields, columns): (Vec<_>, Vec<_>) = fields
+        .iter()
+        .map(Arc::clone)
+        .zip(columns)
+        .sorted_by(|(left_field, _), (right_field, _)| {
+            cmp_fn(left_field.as_ref(), right_field.as_ref())
+        })
+        .unzip();
+
+    RecordBatch::try_new_with_options(
+        Arc::new(Schema::new_with_metadata(fields, metadata)),
+        columns,
+        &RecordBatchOptions::default().with_row_count(Some(row_count)),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     #![expect(clippy::disallowed_methods)]
@@ -90,7 +153,10 @@ mod tests {
     use std::sync::Arc;
 
     use arrow::{
-        array::{BooleanArray, Int32Array, RecordBatch, StringArray, StructArray, UInt64Array},
+        array::{
+            BooleanArray, Float64Array, Int32Array, RecordBatch, StringArray, StructArray,
+            UInt64Array,
+        },
         datatypes::{DataType, Field, Schema},
     };
 
@@ -290,5 +356,384 @@ mod tests {
             row_count: 3,
         }
         "###);
+    }
+
+    #[test]
+    fn test_concat_horizontally_basic() {
+        // Create first batch with two columns
+        let schema1 = Arc::new(Schema::new(vec![
+            Field::new("a", DataType::Int32, false),
+            Field::new("b", DataType::Utf8, false),
+        ]));
+        let batch1 = RecordBatch::try_new(
+            schema1,
+            vec![
+                Arc::new(Int32Array::from(vec![1, 2, 3])),
+                Arc::new(StringArray::from(vec!["foo", "bar", "baz"])),
+            ],
+        )
+        .unwrap();
+
+        // Create second batch with two columns
+        let schema2 = Arc::new(Schema::new(vec![
+            Field::new("c", DataType::Float64, false),
+            Field::new("d", DataType::Int32, false),
+        ]));
+        let batch2 = RecordBatch::try_new(
+            schema2,
+            vec![
+                Arc::new(Float64Array::from(vec![1.1, 2.2, 3.3])),
+                Arc::new(Int32Array::from(vec![10, 20, 30])),
+            ],
+        )
+        .unwrap();
+
+        // Concatenate
+        let result = concat_record_batches_horizontally(&batch1, &batch2).unwrap();
+
+        // Verify schema
+        assert_eq!(result.num_columns(), 4);
+        assert_eq!(result.num_rows(), 3);
+        assert_eq!(result.schema().field(0).name(), "a");
+        assert_eq!(result.schema().field(1).name(), "b");
+        assert_eq!(result.schema().field(2).name(), "c");
+        assert_eq!(result.schema().field(3).name(), "d");
+
+        // Verify data
+        let col_a = result
+            .column(0)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
+        assert_eq!(col_a.value(0), 1);
+        assert_eq!(col_a.value(1), 2);
+        assert_eq!(col_a.value(2), 3);
+
+        let col_d = result
+            .column(3)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
+        assert_eq!(col_d.value(0), 10);
+        assert_eq!(col_d.value(1), 20);
+        assert_eq!(col_d.value(2), 30);
+    }
+
+    #[test]
+    fn test_concat_horizontally_different_row_counts_fails() {
+        let schema1 = Arc::new(Schema::new(vec![Field::new("a", DataType::Int32, false)]));
+        let batch1 =
+            RecordBatch::try_new(schema1, vec![Arc::new(Int32Array::from(vec![1, 2, 3]))]).unwrap();
+
+        let schema2 = Arc::new(Schema::new(vec![Field::new("b", DataType::Int32, false)]));
+        let batch2 = RecordBatch::try_new(
+            schema2,
+            vec![Arc::new(Int32Array::from(vec![10, 20]))], // Only 2 rows
+        )
+        .unwrap();
+
+        let result = concat_record_batches_horizontally(&batch1, &batch2);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("must have the same number of rows")
+        );
+    }
+
+    #[test]
+    fn test_concat_horizontally_empty_batches() {
+        let schema1 = Arc::new(Schema::new(vec![Field::new("a", DataType::Int32, false)]));
+        let batch1 =
+            RecordBatch::try_new(schema1, vec![Arc::new(Int32Array::from(Vec::<i32>::new()))])
+                .unwrap();
+
+        let schema2 = Arc::new(Schema::new(vec![Field::new("b", DataType::Utf8, false)]));
+        let batch2 = RecordBatch::try_new(
+            schema2,
+            vec![Arc::new(StringArray::from(Vec::<String>::new()))],
+        )
+        .unwrap();
+
+        let result = concat_record_batches_horizontally(&batch1, &batch2).unwrap();
+        assert_eq!(result.num_rows(), 0);
+        assert_eq!(result.num_columns(), 2);
+    }
+
+    #[test]
+    fn test_concat_horizontally_preserves_column_order() {
+        let schema1 = Arc::new(Schema::new(vec![
+            Field::new("col1", DataType::Int32, false),
+            Field::new("col2", DataType::Int32, false),
+        ]));
+        let batch1 = RecordBatch::try_new(
+            schema1,
+            vec![
+                Arc::new(Int32Array::from(vec![1])),
+                Arc::new(Int32Array::from(vec![2])),
+            ],
+        )
+        .unwrap();
+
+        let schema2 = Arc::new(Schema::new(vec![
+            Field::new("col3", DataType::Int32, false),
+            Field::new("col4", DataType::Int32, false),
+        ]));
+        let batch2 = RecordBatch::try_new(
+            schema2,
+            vec![
+                Arc::new(Int32Array::from(vec![3])),
+                Arc::new(Int32Array::from(vec![4])),
+            ],
+        )
+        .unwrap();
+
+        let result = concat_record_batches_horizontally(&batch1, &batch2).unwrap();
+
+        // Verify columns appear in order: col1, col2, col3, col4
+        assert_eq!(result.schema().field(0).name(), "col1");
+        assert_eq!(result.schema().field(1).name(), "col2");
+        assert_eq!(result.schema().field(2).name(), "col3");
+        assert_eq!(result.schema().field(3).name(), "col4");
+    }
+
+    #[test]
+    fn test_concat_duplicate_field_names() {
+        // Create first batch with column "id"
+        let schema1 = Arc::new(Schema::new(vec![
+            Field::new("id", DataType::Int32, false),
+            Field::new("name", DataType::Utf8, false),
+        ]));
+        let batch1 = RecordBatch::try_new(
+            schema1,
+            vec![
+                Arc::new(Int32Array::from(vec![1, 2, 3])),
+                Arc::new(StringArray::from(vec!["foo", "bar", "baz"])),
+            ],
+        )
+        .unwrap();
+
+        // Create second batch that ALSO has column "id"
+        let schema2 = Arc::new(Schema::new(vec![
+            Field::new("id", DataType::Int32, false), // Duplicate!
+            Field::new("value", DataType::Float64, false),
+        ]));
+        let batch2 = RecordBatch::try_new(
+            schema2,
+            vec![
+                Arc::new(Int32Array::from(vec![10, 20, 30])),
+                Arc::new(Float64Array::from(vec![1.1, 2.2, 3.3])),
+            ],
+        )
+        .unwrap();
+
+        let result = concat_record_batches_horizontally(&batch1, &batch2);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("RecordBatches must have a non-overlapping schema")
+        );
+    }
+
+    #[test]
+    fn test_concat_preserves_metadata() {
+        use std::collections::HashMap;
+
+        // Create schema with schema-level metadata
+        let mut schema1_metadata = HashMap::new();
+        schema1_metadata.insert("source".to_owned(), "batch_data".to_owned());
+        schema1_metadata.insert("left_version".to_owned(), "1.0".to_owned());
+
+        let schema1 = Arc::new(
+            Schema::new(vec![
+                Field::new("id", DataType::Int32, false).with_metadata(HashMap::from([(
+                    "field_meta".to_owned(),
+                    "id_info".to_owned(),
+                )])),
+                Field::new("name", DataType::Utf8, false),
+            ])
+            .with_metadata(schema1_metadata),
+        );
+
+        let batch1 = RecordBatch::try_new(
+            schema1,
+            vec![
+                Arc::new(Int32Array::from(vec![1, 2])),
+                Arc::new(StringArray::from(vec!["a", "b"])),
+            ],
+        )
+        .unwrap();
+
+        // Create schema with NON-conflicting metadata
+        let mut schema2_metadata = HashMap::new();
+        schema2_metadata.insert("source".to_owned(), "batch_data".to_owned()); // Same value!
+        schema2_metadata.insert("right_timestamp".to_owned(), "2025-10-20".to_owned()); // Different key
+
+        let schema2 = Arc::new(
+            Schema::new(vec![
+                Field::new("value", DataType::Float64, false)
+                    .with_metadata(HashMap::from([("unit".to_owned(), "meters".to_owned())])),
+            ])
+            .with_metadata(schema2_metadata),
+        );
+
+        let batch2 =
+            RecordBatch::try_new(schema2, vec![Arc::new(Float64Array::from(vec![1.5, 2.5]))])
+                .unwrap();
+
+        let result = concat_record_batches_horizontally(&batch1, &batch2).unwrap();
+
+        // Verify schema-level metadata is merged
+        let result_metadata = result.schema_ref().metadata();
+        assert_eq!(
+            result_metadata.get("source"),
+            Some(&"batch_data".to_owned())
+        );
+        assert_eq!(result_metadata.get("left_version"), Some(&"1.0".to_owned()));
+        assert_eq!(
+            result_metadata.get("right_timestamp"),
+            Some(&"2025-10-20".to_owned())
+        );
+
+        // Verify field-level metadata is preserved
+        let id_field = result.schema_ref().field(0);
+        assert_eq!(id_field.name(), "id");
+        assert_eq!(
+            id_field.metadata().get("field_meta"),
+            Some(&"id_info".to_owned())
+        );
+
+        let value_field = result.schema_ref().field(2);
+        assert_eq!(value_field.name(), "value");
+        assert_eq!(
+            value_field.metadata().get("unit"),
+            Some(&"meters".to_owned())
+        );
+    }
+
+    #[test]
+    fn test_concat_conflicting_schema_metadata_fails() {
+        use std::collections::HashMap;
+
+        // When both schemas have the same metadata key with different values,
+        // try_merge REJECTS the merge
+        let mut metadata1 = HashMap::new();
+        metadata1.insert("owner".to_owned(), "alice".to_owned());
+
+        let schema1 = Arc::new(
+            Schema::new(vec![Field::new("a", DataType::Int32, false)]).with_metadata(metadata1),
+        );
+
+        let mut metadata2 = HashMap::new();
+        metadata2.insert("owner".to_owned(), "bob".to_owned()); // Conflict!
+
+        let schema2 = Arc::new(
+            Schema::new(vec![Field::new("b", DataType::Int32, false)]).with_metadata(metadata2),
+        );
+
+        let batch1 =
+            RecordBatch::try_new(schema1, vec![Arc::new(Int32Array::from(vec![1, 2]))]).unwrap();
+
+        let batch2 =
+            RecordBatch::try_new(schema2, vec![Arc::new(Int32Array::from(vec![3, 4]))]).unwrap();
+
+        // This should fail due to conflicting metadata
+        let result = concat_record_batches_horizontally(&batch1, &batch2);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("conflicting metadata")
+        );
+    }
+
+    #[test]
+    fn test_sort_columns_by() {
+        let schema = Arc::new(Schema::new(vec![
+            Field::new("zebra", DataType::Int32, false),
+            Field::new("apple", DataType::Utf8, false),
+            Field::new("mango", DataType::Int32, false),
+        ]));
+
+        let batch = RecordBatch::try_new(
+            schema,
+            vec![
+                Arc::new(Int32Array::from(vec![1, 2, 3])) as ArrayRef,
+                Arc::new(StringArray::from(vec!["a", "b", "c"])) as ArrayRef,
+                Arc::new(Int32Array::from(vec![10, 20, 30])) as ArrayRef,
+            ],
+        )
+        .unwrap();
+
+        let sorted = sort_columns_by(batch, |a, b| a.name().cmp(b.name())).unwrap();
+
+        let names: Vec<_> = sorted
+            .schema_ref()
+            .fields()
+            .iter()
+            .map(|f| f.name().to_owned())
+            .collect();
+        assert_eq!(names, vec!["apple", "mango", "zebra"]);
+
+        // Verify data moved with columns
+        let apple_col = sorted
+            .column(0)
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
+        assert_eq!(apple_col.value(0), "a");
+
+        let mango_col = sorted
+            .column(1)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
+        assert_eq!(mango_col.value(0), 10);
+    }
+
+    #[test]
+    fn test_sort_columns_by_preserves_metadata() {
+        let mut metadata = std::collections::HashMap::new();
+        metadata.insert("key".to_owned(), "value".to_owned());
+
+        let schema = Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new("b", DataType::Int32, false),
+                Field::new("a", DataType::Int32, false),
+            ],
+            metadata.clone(),
+        ));
+
+        let batch = RecordBatch::try_new(
+            schema,
+            vec![
+                Arc::new(Int32Array::from(vec![1])) as ArrayRef,
+                Arc::new(Int32Array::from(vec![2])) as ArrayRef,
+            ],
+        )
+        .unwrap();
+
+        let sorted = sort_columns_by(batch, |a, b| a.name().cmp(b.name())).unwrap();
+
+        assert_eq!(sorted.schema_ref().metadata(), &metadata);
+    }
+
+    #[test]
+    fn test_sort_columns_by_empty_batch() {
+        let schema = Arc::new(Schema::new(vec![Field::new("a", DataType::Int32, false)]));
+        let batch = RecordBatch::try_new(
+            schema,
+            vec![Arc::new(Int32Array::from(Vec::<i32>::new())) as ArrayRef],
+        )
+        .unwrap();
+
+        let sorted = sort_columns_by(batch, |a, b| a.name().cmp(b.name())).unwrap();
+
+        assert_eq!(sorted.num_rows(), 0);
+        assert_eq!(sorted.num_columns(), 1);
     }
 }

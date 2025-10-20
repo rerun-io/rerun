@@ -1,8 +1,8 @@
-use std::collections::HashMap;
-
+use arrow::array::RecordBatch;
 use arrow::datatypes::Schema;
 use arrow::error::ArrowError;
 use sha2::Digest as _;
+use std::collections::HashMap;
 
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreHandle;
@@ -76,6 +76,12 @@ impl Layer {
         ));
 
         Ok(hash)
+    }
+
+    pub fn compute_properties(
+        &self,
+    ) -> Result<RecordBatch, re_chunk_store::ExtractPropertiesError> {
+        self.store_handle.read().extract_properties()
     }
 }
 

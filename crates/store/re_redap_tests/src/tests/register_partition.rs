@@ -219,7 +219,8 @@ async fn scan_partition_table_and_snapshot(
     let filtered_batch = batch
         .unfiltered_columns(&unstable_column_names)
         .auto_sort_rows()
-        .unwrap();
+        .unwrap()
+        .sort_property_columns();
 
     insta::assert_snapshot!(
         format!("{snapshot_name}_partitions_schema"),
@@ -282,7 +283,8 @@ async fn scan_dataset_manifest_and_snapshot(
     let filtered_batch = batch
         .unfiltered_columns(&unstable_column_names)
         .auto_sort_rows()
-        .unwrap();
+        .unwrap()
+        .sort_property_columns();
 
     insta::assert_snapshot!(
         format!("{snapshot_name}_manifest_schema"),

@@ -1,9 +1,9 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
+use std::sync::Arc;
 
-use arrow::array::RecordBatch;
-use arrow::datatypes::Schema;
-
+use arrow::array::{RecordBatch, RecordBatchOptions};
+use arrow::datatypes::{Fields, Schema};
 use itertools::Either;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
@@ -120,8 +120,11 @@ impl Dataset {
     }
 
     //TODO(RR-2604): add support for property columns
-    pub fn partition_table(&self) -> arrow::error::Result<RecordBatch> {
+    pub fn partition_table(&self) -> Result<RecordBatch, Error> {
         let row_count = self.partitions.len();
+
+        let mut all_partition_properties = Vec::with_capacity(row_count);
+
         let mut partition_ids = Vec::with_capacity(row_count);
         let mut layer_names = Vec::with_capacity(row_count);
         let mut storage_urls = Vec::with_capacity(row_count);
@@ -130,13 +133,50 @@ impl Dataset {
         let mut size_bytes = Vec::with_capacity(row_count);
 
         for (partition_id, partition) in &self.partitions {
-            let (layer_names_row, storage_urls_row): (Vec<_>, Vec<_>) =
-                itertools::multiunzip(partition.iter_layers().map(|(layer_name, _)| {
-                    (
-                        layer_name.to_owned(),
-                        format!("memory:///{}/{partition_id}/{layer_name}", self.id),
-                    )
-                }));
+            let layer_count = partition.layer_count();
+            let mut layer_names_row = Vec::with_capacity(layer_count);
+            let mut storage_urls_row = Vec::with_capacity(layer_count);
+
+            let mut current_partition_properties = BTreeMap::default();
+
+            for (layer_name, layer) in partition.iter_layers() {
+                layer_names_row.push(layer_name.to_owned());
+                storage_urls_row.push(format!("memory:///{}/{partition_id}/{layer_name}", self.id));
+
+                let layer_properties = layer
+                    .compute_properties()
+                    .map_err(Error::failed_to_extract_properties)?;
+
+                // Accumulate properties.
+                //
+                // The semantics for the layer to partition property propagation is that the
+                // last registered layer wins. The code below achieves this by virtual of the
+                // layers being iterated in registration order.
+                for (col_idx, field) in layer_properties.schema().fields().iter().enumerate() {
+                    current_partition_properties.insert(
+                        Arc::clone(field),
+                        Arc::clone(layer_properties.column(col_idx)),
+                    );
+                }
+            }
+
+            let properties_batch = RecordBatch::try_new_with_options(
+                Arc::new(Schema::new_with_metadata(
+                    current_partition_properties
+                        .keys()
+                        .map(Arc::clone)
+                        .collect::<Fields>(),
+                    Default::default(),
+                )),
+                current_partition_properties.into_values().collect(),
+                // There should always be exactly one row, one per partition. Also, we must specify
+                // it anyway for the cases where there are no properties at all (so arrow is unable
+                // to infer the row count).
+                &RecordBatchOptions::default().with_row_count(Some(1)),
+            )
+            .map_err(Error::failed_to_extract_properties)?;
+
+            all_partition_properties.push(properties_batch);
 
             partition_ids.push(partition_id.to_string());
             layer_names.push(layer_names_row);
@@ -146,7 +186,11 @@ impl Dataset {
             size_bytes.push(partition.size_bytes());
         }
 
-        ScanPartitionTableResponse::create_dataframe(
+        let properties_record_batch =
+            re_arrow_util::concat_polymorphic_batches(all_partition_properties.as_slice())
+                .map_err(Error::failed_to_extract_properties)?;
+
+        let base_record_batch = ScanPartitionTableResponse::create_dataframe(
             partition_ids,
             layer_names,
             storage_urls,
@@ -154,9 +198,16 @@ impl Dataset {
             num_chunks,
             size_bytes,
         )
+        .map_err(Error::failed_to_extract_properties)?;
+
+        re_arrow_util::concat_record_batches_horizontally(
+            &base_record_batch,
+            &properties_record_batch,
+        )
+        .map_err(Error::failed_to_extract_properties)
     }
 
-    pub fn dataset_manifest(&self) -> arrow::error::Result<RecordBatch> {
+    pub fn dataset_manifest(&self) -> Result<RecordBatch, Error> {
         let row_count = self.partitions.values().map(|p| p.layer_count()).sum();
         let mut layer_names = Vec::with_capacity(row_count);
         let mut partition_ids = Vec::with_capacity(row_count);
@@ -168,7 +219,7 @@ impl Dataset {
         let mut size_bytes = Vec::with_capacity(row_count);
         let mut schema_sha256s = Vec::with_capacity(row_count);
 
-        //for layer in self.partitions.iter().flat_map(|(partition_id, p)| p.iter_layers()) {}
+        let mut properties = Vec::with_capacity(row_count);
 
         for (layer_name, partition_id, layer) in
             self.partitions
@@ -188,10 +239,20 @@ impl Dataset {
             last_updated_at.push(layer.last_updated_at().as_nanosecond() as i64);
             num_chunks.push(layer.num_chunks());
             size_bytes.push(layer.size_bytes());
-            schema_sha256s.push(layer.schema_sha256()?);
+            schema_sha256s.push(
+                layer
+                    .schema_sha256()
+                    .map_err(Error::failed_to_extract_properties)?,
+            );
+
+            properties.push(
+                layer
+                    .compute_properties()
+                    .map_err(Error::failed_to_extract_properties)?,
+            );
         }
 
-        ScanDatasetManifestResponse::create_dataframe(
+        let base_record_batch = ScanDatasetManifestResponse::create_dataframe(
             layer_names,
             partition_ids,
             storage_urls,
@@ -202,6 +263,17 @@ impl Dataset {
             size_bytes,
             schema_sha256s,
         )
+        .map_err(Error::failed_to_extract_properties)?;
+
+        let properties_record_batch =
+            re_arrow_util::concat_polymorphic_batches(properties.as_slice())
+                .map_err(Error::failed_to_extract_properties)?;
+
+        re_arrow_util::concat_record_batches_horizontally(
+            &base_record_batch,
+            &properties_record_batch,
+        )
+        .map_err(Error::failed_to_extract_properties)
     }
 
     pub fn layer_store_handle(
