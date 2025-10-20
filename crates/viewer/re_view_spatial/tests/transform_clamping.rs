@@ -138,15 +138,18 @@ pub fn test_transform_clamping() {
                 .with_archetype(
                     RowId::new(),
                     TimePoint::default(),
-                    &re_types::archetypes::Points3D::new([(0.0, 5.0, 0.0)])
-                        .with_colors([0x0000FFFF])
+                    &re_types::archetypes::Points3D::new([(0.0, 5.0, 0.0), (0.1, 5.1, 0.1)])
+                        .with_colors([0x0000FFFF, 0xFF0000FF])
                         .with_radii([-5.]),
                 )
                 .with_archetype(
                     RowId::new(),
                     TimePoint::default(),
-                    &re_types::archetypes::InstancePoses3D::new()
-                        .with_translations([(1.0, 1.0, 1.0), (2.0, 2.0, 2.0)]),
+                    &re_types::archetypes::InstancePoses3D::new().with_translations([
+                        (1.0, 1.0, 1.0),
+                        (2.0, 2.0, 2.0),
+                        (3.0, 3.0, 3.0),
+                    ]),
                 )
         });
     }
@@ -254,7 +257,9 @@ fn run_view_ui_and_save_snapshot(
                 });
 
             // For both you should see:
-            // * 2x blue
+            // * 3x red
+            // * 3x blue
+            // * these points should be in three distinct clusters.
 
             let name = format!("{name}_points");
             let raw_input = harness.input_mut();
