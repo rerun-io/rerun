@@ -1,4 +1,3 @@
-use egui_kittest::kittest::Queryable as _;
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
@@ -244,7 +243,6 @@ pub async fn test_multi_change_container_type() {
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_simplify_container_hierarchy() {
     let mut harness = make_multi_view_test_harness();
-    harness.set_selection_panel_opened(true);
 
     // Set up a horizontal container with two vertical containers as its children
     let root_cid = harness.add_blueprint_container(egui_tiles::ContainerKind::Horizontal, None);
@@ -257,6 +255,7 @@ pub async fn test_simplify_container_hierarchy() {
     add_views_to_container(&mut harness, Some(child_cid_1), 2, 0);
     harness.snapshot_app("simplify_container_hierarchy_2");
 
+    harness.set_selection_panel_opened(true);
     harness.click_nth_label("Horizontal container", 0);
     harness.click_label("Simplify hierarchy");
     harness.snapshot_app("simplify_container_hierarchy_3");
