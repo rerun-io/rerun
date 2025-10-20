@@ -49,7 +49,6 @@ def test_to_nanos_invalid(duration: Any) -> None:
 
 
 class MockPandasTimestamp(datetime):
-    # __slots__ = ("nanoseconds",)
     nanoseconds: int = 0
 
     def __new__(cls, *args: Any, nanoseconds: int = 0, **kwargs: dict[str, Any]) -> MockPandasTimestamp:
