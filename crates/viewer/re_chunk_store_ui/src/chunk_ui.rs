@@ -7,8 +7,7 @@ use itertools::Itertools as _;
 
 use re_byte_size::SizeBytes;
 use re_chunk_store::Chunk;
-use re_log_types::{Timeline, TimestampFormat};
-use re_types::datatypes::TimeInt;
+use re_log_types::{TimeInt, Timeline, TimestampFormat};
 use re_ui::{UiExt as _, list_item};
 
 use crate::sort::{SortColumn, SortDirection, sortable_column_header_ui};
@@ -82,9 +81,9 @@ impl ChunkUi {
         let components = chunk
             .components()
             .iter()
-            .map(|(component_desc, list_array)| {
+            .map(|(component, (_desc, list_array))| {
                 (
-                    component_desc.clone(),
+                    component,
                     // TODO(#11071): use re_arrow_ui to format the datatype here
                     re_arrow_util::format_data_type(list_array.data_type()),
                 )
@@ -102,15 +101,13 @@ impl ChunkUi {
                 });
             }
 
-            for (component_desc, datatype) in &components {
+            for (component, datatype) in &components {
                 row.col(|ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                    let response = ui
-                        .button(component_desc.component.as_str())
-                        .on_hover_ui(|ui| {
-                            ui.label(format!("{datatype}\n\nClick header to copy"));
-                        });
+                    let response = ui.button(component.as_str()).on_hover_ui(|ui| {
+                        ui.label(format!("{datatype}\n\nClick header to copy"));
+                    });
 
                     if response.clicked() {
                         ui.ctx().copy_text(datatype.clone());
@@ -142,16 +139,17 @@ impl ChunkUi {
                 row.col(|ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                    let time = TimeInt::from(time_column.times_raw()[row_index]);
+                    let time = TimeInt::try_from(time_column.times_raw()[row_index])
+                        .unwrap_or(TimeInt::STATIC);
                     ui.label(time_column.timeline().typ().format(time, timestamp_format));
                 });
             }
 
-            for component_desc in components.keys() {
+            for component in components.keys() {
                 row.col(|ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                    let component_data = chunk.component_batch_raw(component_desc, row_index);
+                    let component_data = chunk.component_batch_raw(**component, row_index);
                     match component_data {
                         Some(Ok(data)) => {
                             re_arrow_ui::arrow_ui(
