@@ -34,6 +34,10 @@ impl Partition {
         }
     }
 
+    pub fn layer_count(&self) -> usize {
+        self.layers.len()
+    }
+
     /// Iterate over layers.
     ///
     /// Layers are iterated in (registration time, layer name) order, as per how they should appear

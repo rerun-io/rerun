@@ -56,7 +56,7 @@ impl InMemoryStore {
 
     /// Returns the chunks corresponding to the provided chunk keys.
     ///
-    /// The chunks are returned in the same order as they are requested.
+    /// Important: there is no guarantee on the order of the returned chunks.
     pub fn chunks_from_chunk_keys(
         &self,
         chunk_keys: &[ChunkKey],

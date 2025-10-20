@@ -3,7 +3,6 @@ use std::path::Path;
 
 use arrow::array::RecordBatch;
 use arrow::datatypes::Schema;
-use arrow::error::ArrowError;
 
 use itertools::Either;
 
@@ -53,6 +52,9 @@ impl Dataset {
             .ok_or_else(|| Error::PartitionIdNotFound(partition_id.clone(), self.id))
     }
 
+    /// Returns the partitions from the given list of id.
+    ///
+    /// As per our proto conventions, all partitions are returned if none is listed.
     pub fn partitions_from_ids<'a>(
         &'a self,
         partition_ids: &'a [PartitionId],
@@ -119,15 +121,16 @@ impl Dataset {
 
     //TODO(RR-2604): add support for property columns
     pub fn partition_table(&self) -> arrow::error::Result<RecordBatch> {
-        let (partition_ids, last_updated_at, num_chunks, size_bytes, layer_names, storage_urls): (
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-        ) = itertools::multiunzip(self.partitions.iter().map(|(partition_id, partition)| {
-            let (layer_names, storage_urls): (Vec<_>, Vec<_>) =
+        let row_count = self.partitions.len();
+        let mut partition_ids = Vec::with_capacity(row_count);
+        let mut layer_names = Vec::with_capacity(row_count);
+        let mut storage_urls = Vec::with_capacity(row_count);
+        let mut last_updated_at = Vec::with_capacity(row_count);
+        let mut num_chunks = Vec::with_capacity(row_count);
+        let mut size_bytes = Vec::with_capacity(row_count);
+
+        for (partition_id, partition) in &self.partitions {
+            let (layer_names_row, storage_urls_row): (Vec<_>, Vec<_>) =
                 itertools::multiunzip(partition.iter_layers().map(|(layer_name, _)| {
                     (
                         layer_name.to_owned(),
@@ -135,15 +138,13 @@ impl Dataset {
                     )
                 }));
 
-            (
-                partition_id.to_string(),
-                partition.last_updated_at().as_nanosecond() as i64,
-                partition.num_chunks(),
-                partition.size_bytes(),
-                layer_names,
-                storage_urls,
-            )
-        }));
+            partition_ids.push(partition_id.to_string());
+            layer_names.push(layer_names_row);
+            storage_urls.push(storage_urls_row);
+            last_updated_at.push(partition.last_updated_at().as_nanosecond() as i64);
+            num_chunks.push(partition.num_chunks());
+            size_bytes.push(partition.size_bytes());
+        }
 
         ScanPartitionTableResponse::create_dataframe(
             partition_ids,
@@ -156,49 +157,39 @@ impl Dataset {
     }
 
     pub fn dataset_manifest(&self) -> arrow::error::Result<RecordBatch> {
-        let (
-            layer_names,
-            partition_ids,
-            storage_urls,
-            layer_types,
-            registration_times,
-            last_updated_at,
-            num_chunks,
-            size_bytes,
-            schema_sha256s,
-        ): (
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-            Vec<_>,
-        ) = itertools::process_results(
+        let row_count = self.partitions.values().map(|p| p.layer_count()).sum();
+        let mut layer_names = Vec::with_capacity(row_count);
+        let mut partition_ids = Vec::with_capacity(row_count);
+        let mut storage_urls = Vec::with_capacity(row_count);
+        let mut layer_types = Vec::with_capacity(row_count);
+        let mut registration_times = Vec::with_capacity(row_count);
+        let mut last_updated_at = Vec::with_capacity(row_count);
+        let mut num_chunks = Vec::with_capacity(row_count);
+        let mut size_bytes = Vec::with_capacity(row_count);
+        let mut schema_sha256s = Vec::with_capacity(row_count);
+
+        //for layer in self.partitions.iter().flat_map(|(partition_id, p)| p.iter_layers()) {}
+
+        for (layer_name, partition_id, layer) in
             self.partitions
                 .iter()
                 .flat_map(|(partition_id, partition)| {
                     let partition_id = partition_id.to_string();
-                    partition.iter_layers().map(
-                        move |(layer_name, layer)| -> Result<_, ArrowError> {
-                            Ok((
-                                layer_name.to_owned(),
-                                partition_id.clone(),
-                                format!("memory:///{}/{partition_id}/{layer_name}", self.id),
-                                layer.layer_type().to_owned(),
-                                layer.registration_time().as_nanosecond() as i64,
-                                layer.last_updated_at().as_nanosecond() as i64,
-                                layer.num_chunks(),
-                                layer.size_bytes(),
-                                layer.schema_sha256()?,
-                            ))
-                        },
-                    )
-                }),
-            |iter| itertools::multiunzip(iter),
-        )?;
+                    partition
+                        .iter_layers()
+                        .map(move |(layer_name, layer)| (layer_name, partition_id.clone(), layer))
+                })
+        {
+            layer_names.push(layer_name.to_owned());
+            storage_urls.push(format!("memory:///{}/{partition_id}/{layer_name}", self.id));
+            partition_ids.push(partition_id);
+            layer_types.push(layer.layer_type().to_owned());
+            registration_times.push(layer.registration_time().as_nanosecond() as i64);
+            last_updated_at.push(layer.last_updated_at().as_nanosecond() as i64);
+            num_chunks.push(layer.num_chunks());
+            size_bytes.push(layer.size_bytes());
+            schema_sha256s.push(layer.schema_sha256()?);
+        }
 
         ScanDatasetManifestResponse::create_dataframe(
             layer_names,

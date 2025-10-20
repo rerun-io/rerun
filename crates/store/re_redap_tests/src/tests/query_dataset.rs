@@ -113,7 +113,7 @@ pub async fn query_dataset_should_fail(service: impl RerunCloudService) {
             },
             tonic::Code::InvalidArgument,
         ),
-        //TODO(ab): add more failure cases
+        //TODO(#11591): add more failure cases
     ];
 
     for (descr, request, expected_code) in test_cases {
