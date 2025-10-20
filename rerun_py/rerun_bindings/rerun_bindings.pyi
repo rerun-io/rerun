@@ -1437,6 +1437,24 @@ class DatasetEntry(Entry):
 
         """
 
+    def register_prefix(self, recordings_prefix: str, recordings_layer: str | None = None) -> Tasks:
+        """
+        Register all RRDs under a given prefix to the dataset and return a handle to the tasks.
+
+        This method initiates the registration of multiple recordings to the dataset, and returns
+        the corresponding task ids in a [`Tasks`] object.
+
+        Parameters
+        ----------
+        recordings_prefix: str
+            The prefix under which to register all RRDs.
+
+        recordings_layer: Optional[str]
+            The layer to which the recordings will be registered to.
+            If `None`, this defaults to `"base"`.
+
+        """
+
     def download_partition(self, partition_id: str) -> Recording:
         """Download a partition from the dataset."""
 
