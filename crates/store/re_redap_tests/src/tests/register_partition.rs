@@ -146,7 +146,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
         vec![
             DataSource {
                 storage_url: Some(root_url.to_string()),
-                prefix: false,
+                prefix: true,
                 layer: None,
                 typ: DataSourceKind::Rrd as i32,
             }, //
