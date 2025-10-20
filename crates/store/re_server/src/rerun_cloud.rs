@@ -671,8 +671,12 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<tonic::Streaming<re_protos::cloud::v1alpha1::WriteTableRequest>>,
     ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::WriteTableResponse>, tonic::Status>
     {
-        let mut store = self.store.write().await;
-        let entry_id = get_entry_id_from_headers(&store, &request)?;
+        // Limit the scope of the lock here to prevent deadlocks
+        // when reading and writing to the same table
+        let entry_id = {
+            let store = self.store.read().await;
+            get_entry_id_from_headers(&store, &request)?
+        };
 
         let mut request = request.into_inner();
 
@@ -689,6 +693,7 @@ impl RerunCloudService for RerunCloudHandler {
                     tonic::Status::internal(format!("Could not decode chunk: {err:#}"))
                 })?;
 
+            let mut store = self.store.write().await;
             let Some(table) = store.table_mut(entry_id) else {
                 return Err(tonic::Status::not_found("table not found"));
             };
