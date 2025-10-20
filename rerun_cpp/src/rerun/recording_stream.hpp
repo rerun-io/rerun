@@ -179,8 +179,9 @@ namespace rerun {
         /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
         /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
         ///
-        /// It is highly recommended that you set the memory limit to `0B` if both the server and client are running
-        /// on the same machine, otherwise you're potentially doubling your memory usage!
+        /// If server & client are running on the same machine and all clients are expected to connect before
+        /// any data is sent, it is  highly recommended that you set the memory limit to `0B`,
+        /// otherwise you're potentially doubling your memory usage!
         ///
         /// Returns the URI of the gRPC server so you can connect to it from a viewer.
         ///
@@ -332,8 +333,9 @@ namespace rerun {
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
         /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_secs_since_epoch, set_time_timestamp_nanos_since_epoch
-        void set_time_timestamp_secs_since_epoch(std::string_view timeline_name, double seconds)
-            const {
+        void set_time_timestamp_secs_since_epoch(
+            std::string_view timeline_name, double seconds
+        ) const {
             set_time_timestamp_nanos_since_epoch(
                 timeline_name,
                 static_cast<int64_t>(1e9 * seconds)
@@ -349,8 +351,9 @@ namespace rerun {
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
         /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_secs_since_epoch, set_time_timestamp_nanos_since_epoch
-        void set_time_timestamp_nanos_since_epoch(std::string_view timeline_name, int64_t nanos)
-            const;
+        void set_time_timestamp_nanos_since_epoch(
+            std::string_view timeline_name, int64_t nanos
+        ) const;
 
         /// Set the current time of the recording, for the current calling thread.
         ///
@@ -393,7 +396,8 @@ namespace rerun {
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
         /// @see set_time_sequence, set_time_nanos, reset_time, set_time, disable_timeline
-        [[deprecated("Use either `set_time_duration_secs` or `set_time_timestamp_secs_since_epoch`"
+        [[deprecated(
+            "Use either `set_time_duration_secs` or `set_time_timestamp_secs_since_epoch`"
         )]] void
             set_time_seconds(std::string_view timeline_name, double seconds) const {
             set_time_duration_secs(timeline_name, seconds);
@@ -562,8 +566,9 @@ namespace rerun {
         ///
         /// @see log, try_log, log_static, try_log_static
         template <typename... Ts>
-        void log_with_static(std::string_view entity_path, bool static_, const Ts&... as_components)
-            const {
+        void log_with_static(
+            std::string_view entity_path, bool static_, const Ts&... as_components
+        ) const {
             try_log_with_static(entity_path, static_, as_components...).handle();
         }
 

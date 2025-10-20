@@ -490,8 +490,9 @@ impl RecordingStreamBuilder {
     /// You can limit the amount of data buffered by the gRPC server with the `server_options` argument.
     /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
     ///
-    /// It is highly recommended that you set the memory limit to `0B` if both the server and client are running
-    /// on the same machine, otherwise you're potentially doubling your memory usage!
+    /// If server & client are running on the same machine and all clients are expected to connect before
+    /// any data is sent, it is  highly recommended that you set the memory limit to `0B`,
+    /// otherwise you're potentially doubling your memory usage!
     pub fn serve_grpc_opts(
         self,
         bind_ip: impl AsRef<str>,
