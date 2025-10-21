@@ -8,7 +8,6 @@ use datafusion::{
 };
 use tracing::instrument;
 
-use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_protos::{
     cloud::v1alpha1::{ScanDatasetManifestRequest, ScanDatasetManifestResponse},
@@ -98,7 +97,7 @@ impl GrpcStreamToTable for DatasetManifestProvider {
             .ok_or(DataFusionError::Execution(
                 "DataFrame missing from DatasetManifest response".to_owned(),
             ))?
-            .decode()
+            .try_into()
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }
 }

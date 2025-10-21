@@ -11,7 +11,7 @@ use re_log_types::{DataSourceMessage, LogMsg};
 /// in `Following` mode rather than `Playing` mode.
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
-pub fn stream_rrd_from_http_to_channel(
+pub fn stream_from_http_to_channel(
     url: String,
     follow: bool,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
@@ -23,7 +23,7 @@ pub fn stream_rrd_from_http_to_channel(
             follow,
         },
     );
-    stream_rrd_from_http(
+    stream_from_http(
         url.clone(),
         Arc::new(move |msg| {
             if let Some(on_msg) = &on_msg {
@@ -67,7 +67,7 @@ pub enum HttpMessage {
 
 pub type HttpMessageCallback = dyn Fn(HttpMessage) -> ControlFlow<()> + Send + Sync;
 
-pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
+pub fn stream_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
     ehttp::streaming::fetch(ehttp::Request::get(&url), {
@@ -152,7 +152,7 @@ mod web_event_listener {
                 Ok(message_event) => {
                     let uint8_array = Uint8Array::new(&message_event.data());
                     let result: Vec<u8> = uint8_array.to_vec();
-                    crate::stream_rrd_from_http::decode_rrd(result, Arc::clone(&on_msg));
+                    crate::rrd::stream_from_http::decode_rrd(result, Arc::clone(&on_msg));
                 }
                 Err(js_val) => {
                     re_log::error!("Incoming event was not a MessageEvent. {:?}", js_val);
