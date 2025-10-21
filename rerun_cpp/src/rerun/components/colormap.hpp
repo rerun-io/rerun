@@ -80,9 +80,10 @@ namespace rerun::components {
 
         /// The Twilight colormap from Matplotlib.
         ///
-        /// This is a perceptually uniform cyclic colormap.
-        /// It is useful for visualizing periodic or cyclic data such as phase angles or time of day.
-        /// It interpolates from light purple through blue to black, then through red back to light purple.
+        /// This is a perceptually uniform cyclic colormap from Matplotlib, it is useful for
+        /// visualizing periodic or cyclic data.
+        ///
+        /// It interpolates from white to blue to purple to red to orange and back to white.
         Twilight = 9,
     };
 } // namespace rerun::components

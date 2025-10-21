@@ -245,8 +245,10 @@ pub fn colormap_spectral_srgb(t: f32) -> [u8; 4] {
 /// Returns sRGB polynomial approximation from Twilight color map, assuming `t` is normalized.
 ///
 /// This is a perceptually uniform cyclic colormap from Matplotlib.
-/// It is useful for visualizing periodic or cyclic data such as phase angles or time of day.
-/// It interpolates from light purple through blue to black, then through red back to light purple.
+/// It is useful for visualizing periodic or cyclic data.
+///
+/// It interpolates from white to blue to purple to red to orange and back to white.
+///
 /// Data from <https://github.com/matplotlib/matplotlib> (matplotlib's twilight colormap).
 pub fn colormap_twilight_srgb(t: f32) -> [u8; 4] {
     const C0: Vec3A = Vec3A::new(0.99435322698120, 0.85170793387210, 0.93942033498486);
