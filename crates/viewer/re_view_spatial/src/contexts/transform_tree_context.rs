@@ -244,7 +244,7 @@ fn collect_entity_to_transform_frame_id_mapping(
             None,
             &latest_at_query,
             data_result,
-            [&transform_frame_id_descriptor],
+            [transform_frame_id_descriptor.component],
             query_shadowed_components,
         );
 

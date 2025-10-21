@@ -522,7 +522,7 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
         None,
         &ctx.current_query(),
         data_result,
-        [&component_descr],
+        [component_descr.component],
         query_shadowed_components,
     );
 
@@ -542,9 +542,9 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
             .value_text_mut(&mut frame_id)
             .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
                 // TODO: some copy pasta going on here which we might want to avoid.
-                let result_override = query_result.overrides.get(&component_descr);
+                let result_override = query_result.overrides.get(component_descr.component);
                 let raw_override = result_override
-                    .and_then(|c| c.non_empty_component_batch_raw(&component_descr))
+                    .and_then(|c| c.non_empty_component_batch_raw(component_descr.component))
                     .map(|(_, array)| array);
 
                 if ui
@@ -560,7 +560,7 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
                 let override_differs_from_default = raw_override
                 != ctx
                     .viewer_ctx
-                    .raw_latest_at_in_default_blueprint(override_path, &component_descr);
+                    .raw_latest_at_in_default_blueprint(override_path, component_descr.component);
                 if ui
                     .add_enabled(
                         override_differs_from_default,

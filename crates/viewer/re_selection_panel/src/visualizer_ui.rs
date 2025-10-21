@@ -1,7 +1,7 @@
 use egui::RichText;
 use itertools::Itertools as _;
 
-use re_chunk::{ComponentIdentifier, RowId};
+use re_chunk::RowId;
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath};
