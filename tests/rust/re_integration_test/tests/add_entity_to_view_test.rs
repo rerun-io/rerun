@@ -124,6 +124,7 @@ pub async fn test_add_entity_to_view_boxes3d() {
     harness.snapshot_app("add_entity_to_view_boxes3d_4");
 
     harness.click_label("Remove");
+    harness.set_selection_panel_opened(false);
     harness.snapshot_app("add_entity_to_view_boxes3d_5");
 }
 
@@ -148,6 +149,7 @@ pub async fn test_add_entity_to_view_boxes2d() {
     harness.snapshot_app("add_entity_to_view_boxes2d_4");
 
     harness.click_label("Remove");
+    harness.set_selection_panel_opened(false);
     harness.snapshot_app("add_entity_to_view_boxes2d_5");
 }
 
@@ -173,6 +175,7 @@ pub async fn test_add_entity_to_view_bar_chart() {
     harness.snapshot_app("add_entity_to_view_bar_chart_4");
 
     harness.click_label("Remove");
+    harness.set_selection_panel_opened(false);
     harness.snapshot_app("add_entity_to_view_bar_chart_5");
 }
 
@@ -198,6 +201,7 @@ pub async fn test_add_entity_to_view_text_log() {
     harness.snapshot_app("add_entity_to_view_text_log_4");
 
     harness.click_label("Remove");
+    harness.set_selection_panel_opened(false);
     harness.snapshot_app("add_entity_to_view_text_log_5");
 }
 
@@ -223,5 +227,6 @@ pub async fn test_add_entity_to_view_tensor() {
     harness.snapshot_app("add_entity_to_view_tensor_4");
 
     harness.click_label("Remove");
+    harness.set_selection_panel_opened(false);
     harness.snapshot_app("add_entity_to_view_tensor_5");
 }
