@@ -26,14 +26,14 @@ fn main() -> anyhow::Result<()> {
     let results: RangeResults = caches.range(
         &query,
         &entity_path.into(),
-        MyPoints::all_components().iter(), // no generics!
+        MyPoints::all_component_identifiers(),
     );
 
     // * `get_required` returns an error if the chunk is missing.
     // * `get` returns an option.
-    let all_points_chunks = results.get_required(&MyPoints::descriptor_points())?;
-    let all_colors_chunks = results.get(&MyPoints::descriptor_colors());
-    let all_labels_chunks = results.get(&MyPoints::descriptor_labels());
+    let all_points_chunks = results.get_required(MyPoints::descriptor_points().component)?;
+    let all_colors_chunks = results.get(MyPoints::descriptor_colors().component);
+    let all_labels_chunks = results.get(MyPoints::descriptor_labels().component);
 
     // You can always use the standard deserialization path.
     //
@@ -43,8 +43,9 @@ fn main() -> anyhow::Result<()> {
     // to reference to.
     let all_points_indexed = all_points_chunks.iter().flat_map(|chunk| {
         izip!(
-            chunk.iter_component_indices(query.timeline(), &MyPoints::descriptor_points()),
-            chunk.iter_component::<MyPoint>(&MyPoints::descriptor_points()),
+            chunk
+                .iter_component_indices(*query.timeline(), MyPoints::descriptor_points().component),
+            chunk.iter_component::<MyPoint>(MyPoints::descriptor_points().component),
         )
     });
     let all_labels_indexed = all_labels_chunks
@@ -52,8 +53,11 @@ fn main() -> anyhow::Result<()> {
         .iter()
         .flat_map(|chunk| {
             izip!(
-                chunk.iter_component_indices(query.timeline(), &MyPoints::descriptor_labels()),
-                chunk.iter_component::<MyLabel>(&MyPoints::descriptor_labels())
+                chunk.iter_component_indices(
+                    *query.timeline(),
+                    MyPoints::descriptor_labels().component
+                ),
+                chunk.iter_component::<MyLabel>(MyPoints::descriptor_labels().component)
             )
         });
 
@@ -64,8 +68,11 @@ fn main() -> anyhow::Result<()> {
         .iter()
         .flat_map(|chunk| {
             izip!(
-                chunk.iter_component_indices(query.timeline(), &MyPoints::descriptor_colors()),
-                chunk.iter_slices::<u32>(MyPoints::descriptor_colors()),
+                chunk.iter_component_indices(
+                    *query.timeline(),
+                    MyPoints::descriptor_colors().component
+                ),
+                chunk.iter_slices::<u32>(MyPoints::descriptor_colors().component),
             )
         });
 

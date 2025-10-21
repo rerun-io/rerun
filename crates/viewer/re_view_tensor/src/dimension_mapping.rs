@@ -38,17 +38,17 @@ impl TensorSliceSelection {
         re_tracing::profile_function!();
 
         let mut width = slice_selection.component_or_empty::<TensorWidthDimension>(
-            &archetypes::TensorSliceSelection::descriptor_width(),
+            archetypes::TensorSliceSelection::descriptor_width().component,
         )?;
         let mut height = slice_selection.component_or_empty::<TensorHeightDimension>(
-            &archetypes::TensorSliceSelection::descriptor_height(),
+            archetypes::TensorSliceSelection::descriptor_height().component,
         )?;
         let mut indices = slice_selection
             .component_array_or_empty::<TensorDimensionIndexSelection>(
-                &archetypes::TensorSliceSelection::descriptor_indices(),
+                archetypes::TensorSliceSelection::descriptor_indices().component,
             )?;
         let mut slider = slice_selection.component_array::<TensorDimensionIndexSlider>(
-            &archetypes::TensorSliceSelection::descriptor_slider(),
+            archetypes::TensorSliceSelection::descriptor_slider().component,
         )?;
 
         make_width_height_valid(shape, &mut width, &mut height);

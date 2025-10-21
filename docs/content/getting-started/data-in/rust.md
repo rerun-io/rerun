@@ -179,8 +179,8 @@ rec.log(
 Which only leaves the beads:
 
 ```rust
-let mut rng = rand::thread_rng();
-let offsets = (0..NUM_POINTS).map(|_| rng.r#gen::<f32>()).collect_vec();
+let mut rng = rand::rng();
+let offsets = (0..NUM_POINTS).map(|_| rng.random::<f32>()).collect_vec();
 
 let beads = lines
     .iter()

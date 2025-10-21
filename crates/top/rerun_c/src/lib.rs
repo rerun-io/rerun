@@ -1027,7 +1027,9 @@ fn rr_recording_stream_log_impl(
             let datatype = component_type.datatype.clone();
             let array = unsafe { FFI_ArrowArray::from_raw(array) }; // Move out from `batches`
             let values = unsafe { arrow_array_from_c_ffi(array, datatype) }?;
-            components.insert(component_type.descriptor.clone(), values);
+            let batch =
+                re_sdk::SerializedComponentBatch::new(values, component_type.descriptor.clone());
+            components.insert(batch.descriptor.component, batch);
         }
     }
 

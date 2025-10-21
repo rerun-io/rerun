@@ -3,7 +3,9 @@ use std::sync::Arc;
 use arrow::array::ArrayRef;
 use rand::Rng as _;
 
-use re_chunk::{Chunk, ChunkId, LatestAtQuery, RowId, TimeInt, TimePoint, TimelineName};
+use re_chunk::{
+    Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RowId, TimeInt, TimePoint, TimelineName,
+};
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreDiffKind, GarbageCollectionOptions,
     GarbageCollectionTarget,
@@ -22,21 +24,21 @@ use re_types::{
 fn query_latest_array(
     store: &ChunkStore,
     entity_path: &EntityPath,
-    component_descr: &ComponentDescriptor,
+    component: ComponentIdentifier,
     query: &LatestAtQuery,
 ) -> Option<(TimeInt, RowId, ArrayRef)> {
     re_tracing::profile_function!();
 
     let ((data_time, row_id), unit) = store
-        .latest_at_relevant_chunks(query, entity_path, component_descr)
+        .latest_at_relevant_chunks(query, entity_path, component)
         .into_iter()
         .filter_map(|chunk| {
-            let chunk = chunk.latest_at(query, component_descr).into_unit()?;
+            let chunk = chunk.latest_at(query, component).into_unit()?;
             chunk.index(&query.timeline()).map(|index| (index, chunk))
         })
         .max_by_key(|(index, _chunk)| *index)?;
 
-    unit.component_batch_raw(component_descr)
+    unit.component_batch_raw(component)
         .map(|array| (data_time, row_id, array))
 }
 
@@ -46,7 +48,7 @@ fn query_latest_array(
 fn simple() -> anyhow::Result<()> {
     re_log::setup_logging();
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
@@ -58,10 +60,10 @@ fn simple() -> anyhow::Result<()> {
         for i in 0..num_ents {
             let entity_path = EntityPath::from(format!("this/that/{i}"));
 
-            let num_frames = rng.gen_range(0..=100);
-            let frames = (0..num_frames).filter(|_| rand::thread_rng().r#gen());
+            let num_frames = rng.random_range(0..=100);
+            let frames = (0..num_frames).filter(|_| rand::rng().random());
             for frame_nr in frames {
-                let num_instances = rng.gen_range(0..=1_000);
+                let num_instances = rng.random_range(0..=1_000);
                 let chunk = Chunk::builder(entity_path.clone())
                     .with_component_batch(
                         RowId::new(),
@@ -196,7 +198,7 @@ fn simple_static() -> anyhow::Result<()> {
             let (_data_time, row_id, _array) = query_latest_array(
                 &store,
                 &entity_path,
-                component_descr,
+                component_descr.component,
                 &LatestAtQuery::new(timeline_frame_nr, frame_nr),
             )
             .unwrap();
@@ -299,7 +301,7 @@ fn protected() -> anyhow::Result<()> {
                 let row_id = query_latest_array(
                     &store,
                     &entity_path,
-                    component_descr,
+                    component_descr.component,
                     &LatestAtQuery::new(timeline_frame_nr, frame_nr),
                 )
                 .map(|(_data_time, row_id, _array)| row_id);
@@ -516,8 +518,13 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
                                entity_path: &EntityPath,
                                query: &LatestAtQuery,
                                expected_row_id: Option<RowId>| {
-        let row_id = query_latest_array(store, entity_path, &MyIndex::partial_descriptor(), query)
-            .map(|(_data_time, row_id, _array)| row_id);
+        let row_id = query_latest_array(
+            store,
+            entity_path,
+            MyIndex::partial_descriptor().component,
+            query,
+        )
+        .map(|(_data_time, row_id, _array)| row_id);
 
         assert_eq!(expected_row_id, row_id);
     };

@@ -1,10 +1,12 @@
 //! Type-safe, composable transformations for Arrow arrays.
 
+use std::marker::PhantomData;
 use std::num::TryFromIntError;
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayRef, ArrowPrimitiveType, FixedSizeListArray, ListArray, PrimitiveArray, StructArray,
+    Array, ArrayRef, ArrowPrimitiveType, FixedSizeListArray, GenericBinaryArray, GenericListArray,
+    ListArray, OffsetSizeTrait, PrimitiveArray, StructArray,
 };
 use arrow::compute::cast;
 use arrow::datatypes::{DataType, Field};
@@ -69,6 +71,12 @@ pub enum Error {
 
     #[error("At least one field name is required")]
     NoFieldNames,
+
+    #[error("Offset overflow: cannot fit {actual} into {expected_type}")]
+    OffsetOverflow {
+        actual: usize,
+        expected_type: &'static str,
+    },
 
     #[error(transparent)]
     Arrow(#[from] ArrowError),
@@ -656,16 +664,73 @@ impl Transform for Flatten {
     }
 }
 
+/// Converts binary arrays to list arrays where each binary element becomes a list of `u8`.
+///
+/// The underlying bytes buffer is reused, making this transformation almost zero-copy.
+#[derive(Clone, Debug, Default)]
+pub struct BinaryToListUInt8<O1: OffsetSizeTrait, O2: OffsetSizeTrait = O1> {
+    _from_offset: PhantomData<O1>,
+    _to_offset: PhantomData<O2>,
+}
+
+impl<O1: OffsetSizeTrait, O2: OffsetSizeTrait> BinaryToListUInt8<O1, O2> {
+    /// Create a new transformation to convert a binary array to a list array of `u8` arrays.
+    pub fn new() -> Self {
+        Default::default()
+    }
+}
+
+impl<O1: OffsetSizeTrait, O2: OffsetSizeTrait> Transform for BinaryToListUInt8<O1, O2> {
+    type Source = GenericBinaryArray<O1>;
+    type Target = GenericListArray<O2>;
+
+    fn transform(&self, source: &GenericBinaryArray<O1>) -> Result<Self::Target, Error> {
+        use arrow::array::UInt8Array;
+        use arrow::buffer::ScalarBuffer;
+
+        let scalar_buffer: ScalarBuffer<u8> = ScalarBuffer::from(source.values().clone());
+        let uint8_array = UInt8Array::new(scalar_buffer, None);
+
+        // Convert from O1 to O2. Most offset buffers will be small in real-world
+        // examples, so we're fine copying them.
+        //
+        // This could be true zero copy if Rust had specialization.
+        // More info: https://std-dev-guide.rust-lang.org/policy/specialization.html
+        let old_offsets = source.offsets().iter();
+        let new_offsets: Result<Vec<O2>, Error> = old_offsets
+            .map(|&offset| {
+                let offset_usize = offset.as_usize();
+                O2::from_usize(offset_usize).ok_or_else(|| Error::OffsetOverflow {
+                    actual: offset_usize,
+                    expected_type: std::any::type_name::<O2>(),
+                })
+            })
+            .collect();
+        let offsets = arrow::buffer::OffsetBuffer::new(new_offsets?.into());
+
+        let list = Self::Target::new(
+            Arc::new(Field::new_list_field(DataType::UInt8, false)),
+            offsets,
+            Arc::new(uint8_array),
+            source.nulls().cloned(),
+        );
+
+        Ok(list)
+    }
+}
+
 #[cfg(test)]
 mod test {
+    use std::sync::Arc;
+
     use super::*;
 
     use arrow::{
         array::{
-            ArrayRef, Float32Array, Float64Array, Float64Builder, ListArray, ListBuilder,
-            RecordBatch, RecordBatchOptions, StructBuilder,
+            ArrayRef, Float32Array, Float64Array, Float64Builder, GenericByteBuilder, ListArray,
+            ListBuilder, RecordBatch, RecordBatchOptions, StructBuilder,
         },
-        datatypes::{DataType, Field, Fields, Schema},
+        datatypes::{DataType, Field, Fields, GenericBinaryType, Schema},
     };
 
     /// Helper function to wrap an [`ArrayRef`] into a [`RecordBatch`] for easier printing.
@@ -678,17 +743,12 @@ mod test {
             .unwrap()
     }
 
-    struct DisplayRB(RecordBatch);
+    struct DisplayRB<T: Array + Clone + 'static>(T);
 
-    impl From<ListArray> for DisplayRB {
-        fn from(array: ListArray) -> Self {
-            Self(wrap_in_record_batch(Arc::new(array)))
-        }
-    }
-
-    impl std::fmt::Display for DisplayRB {
+    impl<T: Array + Clone + 'static> std::fmt::Display for DisplayRB<T> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "{}", re_format_arrow::format_record_batch(&self.0))
+            let rb = wrap_in_record_batch(Arc::new(self.0.clone()));
+            write!(f, "{}", re_format_arrow::format_record_batch(&rb))
         }
     }
 
@@ -821,7 +881,7 @@ mod test {
     #[test]
     fn simple() {
         let array = create_nasty_component_column();
-        println!("{}", DisplayRB::from(array.clone()));
+        println!("{}", DisplayRB(array.clone()));
 
         let pipeline = MapList::new(GetField::new("poses"))
             .then(Flatten::new())
@@ -829,13 +889,13 @@ mod test {
 
         let result: ListArray = pipeline.transform(&array).unwrap();
 
-        insta::assert_snapshot!("simple", format!("{}", DisplayRB::from(result.clone())));
+        insta::assert_snapshot!("simple", format!("{}", DisplayRB(result.clone())));
     }
 
     #[test]
     fn add_one_to_leaves() {
         let array = create_nasty_component_column();
-        println!("{}", DisplayRB::from(array.clone()));
+        println!("{}", DisplayRB(array.clone()));
 
         let pipeline = MapList::new(GetField::new("poses"))
             .then(Flatten::new())
@@ -849,13 +909,16 @@ mod test {
 
         let result = pipeline.transform(&array).unwrap();
 
-        insta::assert_snapshot!("add_one_to_leaves", format!("{}", DisplayRB::from(result)));
+        insta::assert_snapshot!(
+            "add_one_to_leaves",
+            format!("{}", DisplayRB(result.clone()))
+        );
     }
 
     #[test]
     fn convert_to_f32() {
         let array = create_nasty_component_column();
-        println!("{}", DisplayRB::from(array.clone()));
+        println!("{}", DisplayRB(array.clone()));
 
         let pipeline = MapList::new(GetField::new("poses"))
             .then(Flatten::new())
@@ -867,13 +930,13 @@ mod test {
 
         let result = pipeline.transform(&array).unwrap();
 
-        insta::assert_snapshot!("convert_to_f32", format!("{}", DisplayRB::from(result)));
+        insta::assert_snapshot!("convert_to_f32", format!("{}", DisplayRB(result.clone())));
     }
 
     #[test]
     fn replace_nulls() {
         let array = create_nasty_component_column();
-        println!("{}", DisplayRB::from(array.clone()));
+        println!("{}", DisplayRB(array.clone()));
 
         let pipeline = MapList::new(GetField::new("poses"))
             .then(Flatten::new())
@@ -886,13 +949,13 @@ mod test {
 
         let result = pipeline.transform(&array).unwrap();
 
-        insta::assert_snapshot!("replace_nulls", format!("{}", DisplayRB::from(result)));
+        insta::assert_snapshot!("replace_nulls", format!("{}", DisplayRB(result.clone())));
     }
 
     #[test]
     fn test_flatten_single_element() {
         let array = create_nasty_component_column();
-        println!("{}", DisplayRB::from(array.clone()));
+        println!("{}", DisplayRB(array.clone()));
 
         let pipeline = MapList::new(GetField::new("poses")).then(Flatten::new());
 
@@ -900,7 +963,7 @@ mod test {
 
         insta::assert_snapshot!(
             "flatten_single_element",
-            format!("{}", DisplayRB::from(result))
+            format!("{}", DisplayRB(result.clone()))
         );
     }
 
@@ -959,13 +1022,141 @@ mod test {
 
         let list_of_lists = outer_builder.finish();
 
-        println!("{}", DisplayRB::from(list_of_lists.clone()));
+        println!("{}", DisplayRB(list_of_lists.clone()));
 
         let result = Flatten::new().transform(&list_of_lists).unwrap();
 
         insta::assert_snapshot!(
             "flatten_multiple_elements",
-            format!("{}", DisplayRB::from(result))
+            format!("{}", DisplayRB(result.clone()))
         );
+    }
+
+    // Generic test for binary arrays where the offset is the same.
+    fn impl_binary_test<O1: OffsetSizeTrait, O2: OffsetSizeTrait>() {
+        println!(
+            "Testing '{}' -> '{}'",
+            std::any::type_name::<O1>(),
+            std::any::type_name::<O2>()
+        );
+
+        let mut builder = GenericByteBuilder::<GenericBinaryType<O1>>::new();
+        builder.append_value(b"hello");
+        builder.append_value(b"world");
+        builder.append_null();
+        builder.append_value(b"");
+        builder.append_value([0x00, 0xFF, 0x42]);
+        let binary_array = builder.finish();
+
+        println!("Input:");
+        println!("{}", DisplayRB(binary_array.clone()));
+
+        let result = BinaryToListUInt8::<O1, O2>::new()
+            .transform(&binary_array)
+            .unwrap();
+
+        println!("Output:");
+        println!("{}", DisplayRB(result.clone()));
+
+        // Verify structure
+        assert_eq!(result.len(), 5);
+        assert!(!result.is_null(0));
+        assert!(!result.is_null(1));
+        assert!(result.is_null(2));
+        assert!(!result.is_null(3));
+        assert!(!result.is_null(4));
+
+        {
+            let list = result.value(0);
+            let uint8 = list
+                .as_any()
+                .downcast_ref::<arrow::array::UInt8Array>()
+                .unwrap();
+            assert_eq!(uint8.len(), 5);
+            assert_eq!(uint8.value(0) as char, 'h');
+            assert_eq!(uint8.value(1) as char, 'e');
+            assert_eq!(uint8.value(2) as char, 'l');
+            assert_eq!(uint8.value(3) as char, 'l');
+            assert_eq!(uint8.value(4) as char, 'o');
+        }
+
+        {
+            let list = result.value(1);
+            let uint8 = list
+                .as_any()
+                .downcast_ref::<arrow::array::UInt8Array>()
+                .unwrap();
+            assert_eq!(list.len(), 5);
+            assert_eq!(uint8.value(0) as char, 'w');
+            assert_eq!(uint8.value(1) as char, 'o');
+            assert_eq!(uint8.value(2) as char, 'r');
+            assert_eq!(uint8.value(3) as char, 'l');
+            assert_eq!(uint8.value(4) as char, 'd');
+        }
+
+        assert!(result.is_null(2));
+
+        {
+            let list = result.value(3);
+            let uint8 = list
+                .as_any()
+                .downcast_ref::<arrow::array::UInt8Array>()
+                .unwrap();
+            assert_eq!(uint8.len(), 0);
+        }
+
+        {
+            let list = result.value(4);
+            let uint8 = list
+                .as_any()
+                .downcast_ref::<arrow::array::UInt8Array>()
+                .unwrap();
+            assert_eq!(uint8.len(), 3);
+            assert_eq!(uint8.value(0), 0x00);
+            assert_eq!(uint8.value(1), 0xFF);
+            assert_eq!(uint8.value(2), 0x42);
+        }
+    }
+
+    #[test]
+    fn test_binary_to_list_uint8() {
+        // We test the different offset combinations.
+        impl_binary_test::<i32, i32>();
+        impl_binary_test::<i64, i32>();
+        impl_binary_test::<i32, i64>();
+        impl_binary_test::<i64, i64>();
+    }
+
+    #[test]
+    fn test_binary_offset_overflow() {
+        use arrow::array::LargeBinaryArray;
+        use arrow::buffer::OffsetBuffer;
+
+        // Create a LargeBinaryArray with an offset that exceeds i32::MAX
+        let large_offset = i32::MAX as i64 + 1;
+
+        let offsets = vec![0i64, large_offset];
+        let offsets_buffer = OffsetBuffer::new(offsets.into());
+
+        let values = vec![0u8; large_offset as usize];
+
+        let large_binary = LargeBinaryArray::new(offsets_buffer, values.into(), None);
+
+        // Try to convert from LargeBinaryArray (i64 offsets) to ListArray (i32 offsets)
+        let transform = BinaryToListUInt8::<i64, i32>::new();
+        let result = transform.transform(&large_binary);
+
+        // Should fail with OffsetOverflow
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            Error::OffsetOverflow {
+                actual,
+                expected_type,
+            } => {
+                assert_eq!(actual, large_offset as usize);
+                assert_eq!(expected_type, "i32");
+            }
+            other => panic!("Expected OffsetOverflow error, got: {other:?}"),
+        }
     }
 }

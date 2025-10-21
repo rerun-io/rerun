@@ -1,14 +1,14 @@
 ---
 source: crates/store/re_tf/src/transform_forest.rs
-expression: "pretty_print_entity_path_hashes_in(transform_forest.transform_from_to(target.hash(),\nsources.iter().map(|s| s.hash()), &|_| { 1.0 }).collect::<Vec<_>>(),\n&all_entity_paths)"
+expression: "pretty_print_transform_frame_ids_in(&result, &all_transform_frame_ids)"
 ---
 [
     (
-        /,
+        rerun_tf#/,
         Ok(
             TransformInfo {
-                root: /,
-                target_from_entity: Affine3A {
+                root: rerun_tf#/,
+                target_from_source: Affine3A {
                     matrix3: Mat3A {
                         x_axis: Vec3A(
                             1.0,
@@ -63,11 +63,11 @@ expression: "pretty_print_entity_path_hashes_in(transform_forest.transform_from_
         ),
     ),
     (
-        /top,
+        rerun_tf#/top,
         Ok(
             TransformInfo {
-                root: /,
-                target_from_entity: Affine3A {
+                root: rerun_tf#/,
+                target_from_source: Affine3A {
                     matrix3: Mat3A {
                         x_axis: Vec3A(
                             1.0,
@@ -197,11 +197,11 @@ expression: "pretty_print_entity_path_hashes_in(transform_forest.transform_from_
         ),
     ),
     (
-        /top/pinhole,
+        rerun_tf#/top/pinhole,
         Ok(
             TransformInfo {
-                root: /top/pinhole,
-                target_from_entity: Affine3A {
+                root: rerun_tf#/top/pinhole,
+                target_from_source: Affine3A {
                     matrix3: Mat3A {
                         x_axis: Vec3A(
                             1.0,
@@ -256,11 +256,11 @@ expression: "pretty_print_entity_path_hashes_in(transform_forest.transform_from_
         ),
     ),
     (
-        /top/child3d,
+        rerun_tf#/top/child3d,
         Ok(
             TransformInfo {
-                root: /,
-                target_from_entity: Affine3A {
+                root: rerun_tf#/,
+                target_from_source: Affine3A {
                     matrix3: Mat3A {
                         x_axis: Vec3A(
                             1.0,
@@ -315,19 +315,19 @@ expression: "pretty_print_entity_path_hashes_in(transform_forest.transform_from_
         ),
     ),
     (
-        /top/nonexistent,
+        rerun_tf#/top/nonexistent,
         Err(
             UnknownSourceFrame(
-                /top/nonexistent,
+                rerun_tf#/top/nonexistent,
             ),
         ),
     ),
     (
-        /top/pinhole/child2d,
+        rerun_tf#/top/pinhole/child2d,
         Ok(
             TransformInfo {
-                root: /top/pinhole,
-                target_from_entity: Affine3A {
+                root: rerun_tf#/top/pinhole,
+                target_from_source: Affine3A {
                     matrix3: Mat3A {
                         x_axis: Vec3A(
                             1.0,

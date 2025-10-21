@@ -30,8 +30,6 @@ use crate::{
     },
 };
 
-// TODO(#9832): Support opacity for videos
-// TODO(jan): Fallback opacity in the same way as color/depth/segmentation images
 pub struct VideoFrameReferenceVisualizer {
     pub data: SpatialViewVisualizerData,
 }
@@ -170,7 +168,10 @@ impl VideoFrameReferenceVisualizer {
 
         let world_from_entity = spatial_ctx
             .transform_info
-            .single_entity_transform_required(ctx.target_entity_path, VideoFrameReference::name());
+            .single_transform_required_for_entity(
+                ctx.target_entity_path,
+                VideoFrameReference::name(),
+            );
 
         // Note that we may or may not know the video size independently of error occurrence.
         // (if it's just a decoding error we may still know the size from the container!)
@@ -278,20 +279,20 @@ fn latest_at_query_video_from_datastore(
     let results = ctx.recording_engine().cache().latest_at(
         &query,
         entity_path,
-        AssetVideo::all_components().iter(),
+        AssetVideo::all_component_identifiers(),
     );
 
-    let blob_row_id = results.component_row_id(&AssetVideo::descriptor_blob())?;
-    let blob = results.component_instance::<Blob>(0, &AssetVideo::descriptor_blob())?;
+    let blob_row_id = results.component_row_id(AssetVideo::descriptor_blob().component)?;
+    let blob = results.component_instance::<Blob>(0, AssetVideo::descriptor_blob().component)?;
     let media_type =
-        results.component_instance::<MediaType>(0, &AssetVideo::descriptor_media_type());
+        results.component_instance::<MediaType>(0, AssetVideo::descriptor_media_type().component);
 
     let video = ctx.store_context.caches.entry(|c: &mut VideoAssetCache| {
         let debug_name = entity_path.to_string();
         c.entry(
             debug_name,
             blob_row_id,
-            &AssetVideo::descriptor_blob(),
+            AssetVideo::descriptor_blob().component,
             &blob,
             media_type.as_ref(),
             ctx.app_options().video_decoder_settings(),

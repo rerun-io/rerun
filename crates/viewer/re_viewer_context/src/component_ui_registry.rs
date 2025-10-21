@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use ahash::HashMap;
 
-use re_chunk::{RowId, TimePoint, UnitChunkShared};
+use re_chunk::{ComponentIdentifier, RowId, TimePoint, UnitChunkShared};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log::ResultExt as _;
@@ -267,7 +267,7 @@ impl ComponentUiRegistry {
         callback: impl Fn(
             &ViewerContext<'_>,
             &mut egui::Ui,
-            &ComponentDescriptor,
+            ComponentIdentifier,
             Option<RowId>,
             &dyn arrow::array::Array,
         ) -> Result<(), Box<dyn std::error::Error>>
@@ -286,7 +286,7 @@ impl ComponentUiRegistry {
                     }
                 }
 
-                let res = callback(ctx, ui, component_descriptor, row_id, value);
+                let res = callback(ctx, ui, component_descriptor.component, row_id, value);
 
                 if let Err(err) = res {
                     re_log::error_once!(
@@ -356,7 +356,7 @@ impl ComponentUiRegistry {
         // Don't use component.raw_instance here since we want to handle the case where there's several
         // elements differently.
         // Also, it allows us to slice the array without cloning any elements.
-        let Some(array) = unit.component_batch_raw(component_descr) else {
+        let Some(array) = unit.component_batch_raw(component_descr.component) else {
             re_log::error_once!("Couldn't get {component_descr}: missing");
             ui.error_with_details_on_hover(format!("Couldn't get {component_descr}: missing"));
             return;

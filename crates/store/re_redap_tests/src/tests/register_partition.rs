@@ -1,12 +1,10 @@
 #![expect(clippy::unwrap_used)]
 
+use arrow::array::RecordBatch;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
-
 use url::Url;
 
-use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_log_types::EntryId;
 use re_protos::{
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DataSource, DataSourceKind, ScanDatasetManifestRequest,
@@ -16,114 +14,135 @@ use re_protos::{
     headers::RerunHeadersInjectorExt as _,
 };
 
-use crate::tests::common::register_with_dataset;
-use crate::{RecordBatchExt as _, create_simple_recording};
+use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _};
+use crate::{RecordBatchExt as _, create_simple_recording_in};
 
-pub async fn register_and_scan_simple_dataset(fe: impl RerunCloudService) {
+pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
+    let data_sources_def = DataSourcesDefinition::new([
+        LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
+        LayerDefinition::simple("my_partition_id2", &["my/entity"]),
+        LayerDefinition::simple(
+            "my_partition_id3",
+            &["my/entity", "another/one", "yet/another/one"],
+        ),
+    ]);
+
+    let dataset_name = "my_dataset1";
+    service.create_dataset_entry_with_name(dataset_name).await;
+    service
+        .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
+        .await;
+
+    scan_partition_table_and_snapshot(&service, dataset_name, "simple").await;
+    scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple").await;
+}
+
+pub async fn register_and_scan_simple_dataset_with_layers(service: impl RerunCloudService) {
+    let data_sources_def = DataSourcesDefinition::new([
+        LayerDefinition::simple(
+            "partition1",
+            &["my/entity", "another/one", "yet/another/one"],
+        ),
+        LayerDefinition::simple("partition1", &["extra/entity"]).layer_name("extra"),
+        LayerDefinition::simple("partition2", &["another/one", "yet/another/one"])
+            .layer_name("base"),
+        LayerDefinition::simple("partition2", &["extra/entity"]).layer_name("extra"),
+        LayerDefinition::simple("partition3", &["i/am/alone"]),
+    ]);
+
+    let dataset_name = "dataset_with_layers";
+    service.create_dataset_entry_with_name(dataset_name).await;
+    service
+        .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
+        .await;
+
+    scan_partition_table_and_snapshot(&service, dataset_name, "simple_with_layers").await;
+    scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple_with_layers").await;
+}
+
+pub async fn register_with_prefix(fe: impl RerunCloudService) {
+    let root_dir = tempfile::tempdir().expect("creating temp dir");
+
+    // Note: for this test, we don't use teh `DataSourceDefinition` abstraction here because we need
+    // tight control of where the RRDs are stored.
     let tuid_prefix1 = 1;
-    let partition1_path = create_simple_recording(
+    create_simple_recording_in(
         tuid_prefix1,
         "my_partition_id1",
         &["my/entity", "my/other/entity"],
+        root_dir.path(),
     )
-    .unwrap();
-    let partition1_url = Url::from_file_path(partition1_path.as_path()).unwrap();
+    .expect("creating recording");
 
     let tuid_prefix2 = 2;
-    let partition2_path =
-        create_simple_recording(tuid_prefix2, "my_partition_id2", &["my/entity"]).unwrap();
-    let partition2_url = Url::from_file_path(partition2_path.as_path()).unwrap();
+    create_simple_recording_in(
+        tuid_prefix2,
+        "my_partition_id2",
+        &["my/entity"],
+        root_dir.path(),
+    )
+    .expect("creating recording");
 
     let tuid_prefix3 = 3;
-    let partition3_path = create_simple_recording(
+    create_simple_recording_in(
         tuid_prefix3,
         "my_partition_id3",
         &["my/entity", "another/one", "yet/another/one"],
+        root_dir.path(),
     )
+    .expect("creating recording");
+
+    let dataset_name = "my_dataset1";
+    fe.create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
+        name: Some(dataset_name.to_owned()),
+        id: None,
+    }))
+    .await
     .unwrap();
-    let partition3_url = Url::from_file_path(partition3_path.as_path()).unwrap();
 
-    let dataset_id: EntryId = {
-        let resp = fe
-            .create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
-                name: Some("my_dataset1".to_owned()),
-                id: None,
-            }))
-            .await
-            .unwrap();
+    let root_url =
+        Url::parse(&format!("file://{}/", root_dir.path().display())).expect("creating root url");
 
-        resp.into_inner()
-            .dataset
-            .and_then(|d| d.details?.id)
-            .unwrap()
-            .try_into()
-            .unwrap()
-    };
-
-    register_with_dataset(
-        &fe,
-        dataset_id,
+    fe.register_with_dataset_name(
+        dataset_name,
         vec![
             DataSource {
-                storage_url: Some(partition1_url.to_string()),
+                storage_url: Some(root_url.to_string()),
+                prefix: true,
                 layer: None,
                 typ: DataSourceKind::Rrd as i32,
             }, //
-            DataSource {
-                storage_url: Some(partition2_url.to_string()),
-                layer: None,
-                typ: DataSourceKind::Rrd as i32,
-            },
-            DataSource {
-                storage_url: Some(partition3_url.to_string()),
-                layer: None,
-                typ: DataSourceKind::Rrd as i32,
-            },
         ],
     )
     .await;
 
-    scan_partition_table_and_snapshot(&fe, dataset_id, "list_all").await;
-    scan_dataset_manifest_and_snapshot(&fe, dataset_id, "manifest_list_all").await;
+    scan_partition_table_and_snapshot(&fe, dataset_name, "register_prefix_partitions").await;
+    scan_dataset_manifest_and_snapshot(&fe, dataset_name, "register_prefix_manifest").await;
 }
 
 // Scanning an empty dataset should return an empty dataframe with the expected schema -- not a
 // NOT_FOUND error.
-pub async fn register_and_scan_empty_dataset(fe: impl RerunCloudService) {
-    let dataset_id: EntryId = {
-        let resp = fe
-            .create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
-                name: Some("my_dataset1".to_owned()),
-                id: None,
-            }))
-            .await
-            .unwrap();
+pub async fn register_and_scan_empty_dataset(service: impl RerunCloudService) {
+    let dataset_name = "empty_dataset";
+    service.create_dataset_entry_with_name(dataset_name).await;
 
-        resp.into_inner()
-            .dataset
-            .and_then(|d| d.details?.id)
-            .unwrap()
-            .try_into()
-            .unwrap()
-    };
-
-    scan_partition_table_and_snapshot(&fe, dataset_id, "list_empty").await;
-    scan_dataset_manifest_and_snapshot(&fe, dataset_id, "manifest_list_empty").await;
+    scan_partition_table_and_snapshot(&service, dataset_name, "empty").await;
+    scan_dataset_manifest_and_snapshot(&service, dataset_name, "empty").await;
 }
 
 // ---
 
 async fn scan_partition_table_and_snapshot(
-    fe: &impl RerunCloudService,
-    dataset_id: EntryId,
+    service: &impl RerunCloudService,
+    dataset_name: &str,
     snapshot_name: &str,
 ) {
-    let resps: Vec<_> = fe
+    let resps: Vec<_> = service
         .scan_partition_table(
             tonic::Request::new(ScanPartitionTableRequest {
                 columns: vec![], // all of them
             })
-            .with_entry_id(dataset_id)
+            .with_entry_name(dataset_name)
             .unwrap(),
         )
         .await
@@ -133,9 +152,9 @@ async fn scan_partition_table_and_snapshot(
         .await
         .unwrap();
 
-    let batches = resps
+    let batches: Vec<RecordBatch> = resps
         .into_iter()
-        .map(|resp| resp.data.unwrap().decode().unwrap())
+        .map(|resp| resp.data.unwrap().try_into().unwrap())
         .collect_vec();
 
     let batch = arrow::compute::concat_batches(
@@ -164,43 +183,38 @@ async fn scan_partition_table_and_snapshot(
     let filtered_batch = batch.filtered_columns(&columns_names);
 
     insta::assert_snapshot!(
-        format!("{snapshot_name}_schema"),
+        format!("{snapshot_name}_partitions_schema"),
         batch.format_schema_snapshot()
     );
     insta::assert_snapshot!(
-        format!("{snapshot_name}_data"),
+        format!("{snapshot_name}_partitions_data"),
         filtered_batch.format_snapshot(false)
     );
 }
 
 async fn scan_dataset_manifest_and_snapshot(
-    fe: &impl RerunCloudService,
-    dataset_id: EntryId,
+    service: &impl RerunCloudService,
+    dataset_name: &str,
     snapshot_name: &str,
 ) {
-    let response = fe
+    let resps: Vec<_> = service
         .scan_dataset_manifest(
             tonic::Request::new(ScanDatasetManifestRequest {
                 columns: vec![], // all of them
             })
-            .with_entry_id(dataset_id)
+            .with_entry_name(dataset_name)
             .unwrap(),
         )
-        .await;
+        .await
+        .unwrap()
+        .into_inner()
+        .try_collect()
+        .await
+        .unwrap();
 
-    //TODO(RR-2482): remove this once OSS server implements this endpoint
-    if response
-        .as_ref()
-        .is_err_and(|status| status.code() == tonic::Code::Unimplemented)
-    {
-        return;
-    }
-
-    let resps: Vec<_> = response.unwrap().into_inner().try_collect().await.unwrap();
-
-    let batches = resps
+    let batches: Vec<RecordBatch> = resps
         .into_iter()
-        .map(|resp| resp.data.unwrap().decode().unwrap())
+        .map(|resp| resp.data.unwrap().try_into().unwrap())
         .collect_vec();
 
     let batch = arrow::compute::concat_batches(
@@ -231,11 +245,11 @@ async fn scan_dataset_manifest_and_snapshot(
         .unwrap();
 
     insta::assert_snapshot!(
-        format!("{snapshot_name}_schema"),
+        format!("{snapshot_name}_manifest_schema"),
         batch.format_schema_snapshot()
     );
     insta::assert_snapshot!(
-        format!("{snapshot_name}_data"),
+        format!("{snapshot_name}_manifest_data"),
         filtered_batch.format_snapshot(false)
     );
 }

@@ -1,6 +1,6 @@
 use re_chunk_store::{RowId, external::re_chunk::ChunkBuilder};
 use re_log_types::{EntityPath, TimePoint, Timeline};
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
@@ -92,7 +92,6 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
         [TimeControlCommand::SetActiveTimeline(*timeline.name())],
     );
 
-    let allowed_broken_pixels = if two_series_per_entity { 5 } else { 2 };
     let view_id = setup_blueprint(&mut test_context);
     test_context.run_view_ui_and_save_snapshot(
         view_id,
@@ -105,7 +104,7 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
             }
         ),
         egui::vec2(300.0, 300.0),
-        Some(SnapshotOptions::new().failed_pixel_count_threshold(allowed_broken_pixels)),
+        None,
     );
 }
 
@@ -203,13 +202,7 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
     if multiple_scalars {
         name += "_two_series_per_entity";
     }
-    let num_allowed_broken_pixels = if multiple_scalars { 5 } else { 0 };
-    test_context.run_view_ui_and_save_snapshot(
-        view_id,
-        &name,
-        egui::vec2(300.0, 300.0),
-        Some(SnapshotOptions::new().failed_pixel_count_threshold(num_allowed_broken_pixels)),
-    );
+    test_context.run_view_ui_and_save_snapshot(view_id, &name, egui::vec2(300.0, 300.0), None);
 }
 
 /// Test the per series visibility setting
@@ -344,12 +337,7 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
     if multiple_scalars {
         name += "_two_series_per_entity";
     }
-    test_context.run_view_ui_and_save_snapshot(
-        view_id,
-        &name,
-        egui::vec2(300.0, 300.0),
-        Some(SnapshotOptions::new().failed_pixel_count_threshold(5)),
-    );
+    test_context.run_view_ui_and_save_snapshot(view_id, &name, egui::vec2(300.0, 300.0), None);
 }
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
@@ -439,10 +427,5 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool) {
     } else {
         "bootstrapped_secondaries_full"
     };
-    test_context.run_view_ui_and_save_snapshot(
-        view_id,
-        name,
-        egui::vec2(300.0, 300.0),
-        Some(SnapshotOptions::new().failed_pixel_count_threshold(2)),
-    );
+    test_context.run_view_ui_and_save_snapshot(view_id, name, egui::vec2(300.0, 300.0), None);
 }

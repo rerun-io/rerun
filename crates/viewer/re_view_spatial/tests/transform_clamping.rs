@@ -1,6 +1,6 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
@@ -183,8 +183,7 @@ fn run_view_ui_and_save_snapshot(
 ) {
     for (target, view_id) in [("boxes", view_id_boxes), ("spheres", view_id_spheres)] {
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size(size)
+            .setup_kittest_for_rendering_3d(size)
             .build_ui(|ui| {
                 test_context.run_with_single_view(ui, view_id);
             });
@@ -211,14 +210,8 @@ fn run_view_ui_and_save_snapshot(
                 modifiers: egui::Modifiers::default(),
             });
             harness.run_steps(10);
-            let broken_pixels_fraction = 0.0045;
 
-            harness.snapshot_options(
-                &name,
-                &SnapshotOptions::new().failed_pixel_count_threshold(
-                    (size.x * size.y * broken_pixels_fraction).round() as usize,
-                ),
-            );
+            harness.snapshot(&name);
         }
     }
 }
