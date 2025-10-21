@@ -4,6 +4,8 @@
 //! we should not leak these elements into the public API. This allows us to
 //! evolve the definition of lenses over time, if requirements change.
 
+use std::collections::HashMap;
+
 use arrow::{
     array::{Int64Array, ListArray},
     datatypes::DataType,
@@ -211,13 +213,14 @@ impl Lens {
             ));
         }
 
-        let mut time_builders = ahash::HashMap::default();
+        let mut time_builders: ahash::HashMap<
+            &EntityPath,
+            HashMap<TimelineName, re_chunk::TimeColumn>,
+        > = ahash::HashMap::default();
         for time in &self.time_columns {
             let entity_path = time.new_entity_path.as_ref().unwrap_or(chunk.entity_path());
 
-            let time_entry = time_builders.entry(entity_path).or_insert_with(
-                <std::collections::HashMap<TimelineName, re_chunk::TimeColumn>>::default,
-            );
+            let time_entry = time_builders.entry(entity_path).or_default();
 
             if time_entry.contains_key(&time.timeline_name) {
                 re_log::warn_once!("Replacing duplicated time column {}", time.timeline_name);
