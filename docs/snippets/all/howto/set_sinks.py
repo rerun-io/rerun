@@ -6,11 +6,15 @@ import rerun as rr
 # Initialize the SDK and give our recording a unique name
 rr.init("rerun_example_set_sinks")
 
+stream = rr.BinaryStream()
+
 rr.set_sinks(
     # Connect to a local viewer using the default URL
     rr.GrpcSink(),
     # Write data to a `data.rrd` file in the current directory
     rr.FileSink("data.rrd"),
+    # Stream bytes that can be consumed programmatically
+    stream,
 )
 
 # Create some data
@@ -29,3 +33,9 @@ rr.log(
     # log data as a 3D point cloud archetype
     rr.Points3D(positions, colors=colors, radii=0.5),
 )
+
+# Flush the stream to make sure all data is available and read the bytes.
+stream.flush(timeout_sec=None)
+chunk = stream.read()
+if chunk:
+    print(f"Received {len(chunk)} bytes from BinaryStream")

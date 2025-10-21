@@ -5,7 +5,7 @@ use std::{
     borrow::Borrow as _,
     io::IsTerminal as _,
     path::PathBuf,
-    sync::{LazyLock, OnceLock},
+    sync::{Arc, LazyLock, OnceLock},
     time::Duration,
 };
 
@@ -26,7 +26,9 @@ use re_log_types::{LogMsg, RecordingId};
 use re_sdk::{
     ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, TimeCell,
     external::re_log_encoding::Encoder,
-    sink::{BinaryStreamStorage, CallbackSink, MemorySinkStorage, SinkFlushError},
+    sink::{
+        BinaryStreamSink, BinaryStreamStorage, CallbackSink, MemorySinkStorage, SinkFlushError,
+    },
     time::TimePoint,
 };
 #[cfg(feature = "web_viewer")]
@@ -163,6 +165,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyMemorySinkStorage>()?;
     m.add_class::<PyRecordingStream>()?;
     m.add_class::<PyBinarySinkStorage>()?;
+    m.add_class::<PyBinaryStream>()?;
     m.add_class::<PyFileSink>()?;
     m.add_class::<PyGrpcSink>()?;
     m.add_class::<PyComponentDescriptor>()?;
@@ -959,10 +962,13 @@ fn set_sinks(
             let sink = re_sdk::sink::FileSink::new(sink.path.clone())
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
             resolved_sinks.push(Box::new(sink));
+        } else if let Ok(stream) = sink.downcast_bound::<PyBinaryStream>(py) {
+            let sink = stream.get().prepare_sink(&recording.0);
+            resolved_sinks.push(sink);
         } else {
             let type_name = sink.bind(py).get_type().name()?;
             return Err(PyRuntimeError::new_err(format!(
-                "{type_name} is not a valid LogSink, must be one of: GrpcSink, FileSink"
+                "{type_name} is not a valid LogSink, must be one of: GrpcSink, FileSink, BinaryStream"
             )));
         }
     }
@@ -1267,21 +1273,140 @@ fn set_callback_sink_blueprint(
 /// Create a new binary stream sink, and return the associated binary stream.
 #[pyfunction]
 #[pyo3(signature = (recording = None))]
-fn binary_stream(
-    recording: Option<&PyRecordingStream>,
-    py: Python<'_>,
-) -> Option<PyBinarySinkStorage> {
+fn binary_stream(recording: Option<&PyRecordingStream>, py: Python<'_>) -> Option<PyBinaryStream> {
     let recording = get_data_recording(recording)?;
+    let rec = recording.0.clone();
 
     // The call to memory may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
-    let inner = py.allow_threads(|| {
-        let storage = recording.binary_stream();
+    let storage = py.allow_threads(move || {
+        let (sink, storage) = BinaryStreamSink::new(rec.clone());
+        rec.set_sink(Box::new(sink));
         flush_garbage_queue();
         storage
     });
 
-    Some(PyBinarySinkStorage { inner })
+    let stream = PyBinaryStream::new_unbound();
+    stream.store_storage(storage);
+
+    Some(stream)
+}
+
+#[pyclass(frozen, eq, hash, name = "BinaryStream")]
+struct PyBinaryStream {
+    storage: parking_lot::Mutex<Option<Arc<BinaryStreamStorage>>>,
+}
+
+impl PartialEq for PyBinaryStream {
+    fn eq(&self, other: &Self) -> bool {
+        if std::ptr::eq(self, other) {
+            return true;
+        }
+
+        let this = self.storage.lock();
+        let that = other.storage.lock();
+
+        match (&*this, &*that) {
+            (Some(a), Some(b)) => Arc::ptr_eq(a, b),
+            (None, None) => true,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for PyBinaryStream {}
+
+impl std::hash::Hash for PyBinaryStream {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let guard = self.storage.lock();
+
+        if let Some(storage) = &*guard {
+            state.write_usize(Arc::as_ptr(storage) as usize);
+        } else {
+            state.write_usize(0);
+        }
+    }
+}
+
+impl PyBinaryStream {
+    fn new_unbound() -> Self {
+        Self {
+            storage: parking_lot::Mutex::new(None),
+        }
+    }
+
+    fn store_storage(&self, storage: BinaryStreamStorage) {
+        self.store_storage_arc(Arc::new(storage));
+    }
+
+    fn store_storage_arc(&self, storage: Arc<BinaryStreamStorage>) {
+        let mut guard = self.storage.lock();
+        *guard = Some(storage);
+    }
+
+    fn try_clone_storage(&self) -> PyResult<Arc<BinaryStreamStorage>> {
+        self.storage
+            .lock()
+            .as_ref()
+            .cloned()
+            .ok_or_else(|| PyRuntimeError::new_err("BinaryStream is not bound to a recording"))
+    }
+
+    fn prepare_sink(&self, recording: &RecordingStream) -> Box<dyn re_sdk::sink::LogSink> {
+        let (sink, storage) = BinaryStreamSink::new(recording.clone());
+        self.store_storage(storage);
+        Box::new(sink)
+    }
+}
+
+#[pymethods]
+impl PyBinaryStream {
+    #[new]
+    fn new() -> Self {
+        Self::new_unbound()
+    }
+
+    #[pyo3(signature = (*, flush = true, flush_timeout_sec = None))]
+    fn read<'p>(
+        &self,
+        py: Python<'p>,
+        flush: bool,
+        flush_timeout_sec: Option<f32>,
+    ) -> PyResult<Option<Bound<'p, PyBytes>>> {
+        let storage = self.try_clone_storage()?;
+
+        py.allow_threads(move || -> PyResult<_> {
+            if flush {
+                let timeout = duration_from_option(flush_timeout_sec.map(f32::into))?;
+                storage
+                    .flush(timeout)
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+            }
+
+            let bytes = storage.read();
+
+            flush_garbage_queue();
+
+            Ok(bytes)
+        })
+        .map(|bytes| bytes.map(|bytes| PyBytes::new(py, &bytes)))
+    }
+
+    #[pyo3(signature = (*, timeout_sec = None))]
+    fn flush(&self, py: Python<'_>, timeout_sec: Option<f32>) -> PyResult<()> {
+        let storage = self.try_clone_storage()?;
+
+        py.allow_threads(move || -> PyResult<_> {
+            let timeout = duration_from_option(timeout_sec.map(f32::into))?;
+            storage
+                .flush(timeout)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            flush_garbage_queue();
+
+            Ok(())
+        })
+    }
 }
 
 #[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
@@ -1429,6 +1554,13 @@ fn duration_from_sec(seconds: f64) -> PyResult<Duration> {
         Err(PyRuntimeError::new_err("duration must be non-negative"))
     } else {
         Ok(Duration::try_from_secs_f64(seconds).unwrap_or(Duration::MAX))
+    }
+}
+
+fn duration_from_option(seconds: Option<f64>) -> PyResult<Duration> {
+    match seconds {
+        Some(seconds) => duration_from_sec(seconds),
+        None => Ok(Duration::MAX),
     }
 }
 

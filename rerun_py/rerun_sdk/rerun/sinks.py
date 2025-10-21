@@ -11,7 +11,7 @@ from rerun_bindings import (
 from typing_extensions import deprecated
 
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
-from rerun.recording_stream import RecordingStream, get_application_id
+from rerun.recording_stream import BinaryStream, RecordingStream, get_application_id
 
 from ._spawn import _spawn_viewer
 
@@ -31,7 +31,7 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
     return bindings.is_enabled()  # type: ignore[no-any-return]
 
 
-LogSinkLike = Union[GrpcSink, FileSink]
+LogSinkLike = Union[GrpcSink, FileSink, BinaryStream]
 
 
 def set_sinks(
@@ -56,7 +56,7 @@ def set_sinks(
     sinks:
         A list of sinks to wrap.
 
-        See [`rerun.GrpcSink`][], [`rerun.FileSink`][].
+        See [`rerun.GrpcSink`][], [`rerun.FileSink`][], [`rerun.BinaryStream`][].
     default_blueprint:
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, the new blueprint won't become active until the user
