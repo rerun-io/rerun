@@ -123,6 +123,7 @@ jobs:
 
   build-rerun-cli:
     name: Build rerun-cli (${{ needs.set-config.outputs.RUNNER }})
+    timeout-minutes: 60
 
     needs: [set-config]
 

@@ -38,6 +38,7 @@ jobs:
   #   except that uploads are done to GCS instead of PyPI.
 
   checks:
+    timeout-minutes: 60
     name: "Checks"
     runs-on: ubuntu-latest
 

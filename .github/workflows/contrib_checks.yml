@@ -44,6 +44,7 @@ permissions:
 jobs:
   py-lints:
     name: Python lints (ruff, mypy, …)
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,6 +61,7 @@ jobs:
 
   py-test-docs:
     name: Test Python Docs
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -75,6 +77,7 @@ jobs:
 
   no-codegen-changes:
     name: Check if running codegen would produce any changes
+    timeout-minutes: 60
     # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
     runs-on: ubuntu-22.04-large
     steps:
@@ -95,6 +98,7 @@ jobs:
 
   rs-lints:
     name: Rust lints (fmt, check, clippy, tests, doc)
+    timeout-minutes: 60
     # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
     runs-on: ubuntu-22.04-large
     steps:
@@ -137,6 +141,7 @@ jobs:
 
   rerun-lints:
     name: Rerun lints
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -155,6 +160,7 @@ jobs:
 
   toml-format-check:
     name: Toml format check
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -168,6 +174,7 @@ jobs:
 
   check-too-large-files:
     name: Check for too large files
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -181,6 +188,7 @@ jobs:
 
   check-example-thumbnails:
     name: Check Python example thumbnails
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -194,6 +202,7 @@ jobs:
 
   spell-check:
     name: Spell Check
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Actions Repository
@@ -204,6 +213,7 @@ jobs:
 
   cpp-formatting:
     name: C++ formatting check
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -217,6 +227,7 @@ jobs:
 
   cpp-tests:
     name: C++ tests
+    timeout-minutes: 60
     runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v4

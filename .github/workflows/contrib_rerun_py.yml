@@ -39,6 +39,7 @@ jobs:
   build-wheels:
     name: Build Wheels
     runs-on: ubuntu-latest-16-cores
+    timeout-minutes: 60
     container:
       image: rerunio/ci_docker:0.16.0
     steps:
