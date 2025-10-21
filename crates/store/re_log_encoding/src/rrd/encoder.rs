@@ -5,53 +5,44 @@ use std::borrow::Borrow;
 use re_build_info::CrateVersion;
 use re_chunk::{ChunkError, ChunkResult};
 use re_log_types::LogMsg;
-use re_protos::log_msg::v1alpha1::LogMsg as LogMsgProto;
 
-use crate::codec::file::{FileHeader, MessageHeader, MessageKind};
-use crate::codec::{Compression, Serializer};
-
-pub use crate::codec::file::EncodingOptions; // for convenience
+use crate::ToTransport as _;
+use crate::rrd::{
+    CodecError, Compression, Encodable as _, EncodingOptions, MessageHeader, MessageKind,
+    Serializer, StreamHeader,
+};
 
 // ----------------------------------------------------------------------------
 
 /// On failure to encode or serialize a [`LogMsg`].
 #[derive(thiserror::Error, Debug)]
 pub enum EncodeError {
-    #[error("Failed to write: {0}")]
-    Write(#[from] std::io::Error),
-
-    #[error("lz4 error: {0}")]
-    Lz4(#[from] lz4_flex::block::CompressError),
-
-    #[error("Protobuf error: {0}")]
-    Protobuf(#[from] re_protos::external::prost::EncodeError),
-
-    #[error("Arrow error: {0}")]
-    Arrow(#[from] arrow::error::ArrowError),
-
-    #[error("{0}")]
-    Codec(#[from] crate::codec::CodecError),
-
-    #[error("Integer overflow: {0}")]
-    Overflow(#[from] std::num::TryFromIntError),
-
-    #[error("Chunk error: {0}")]
-    Chunk(Box<ChunkError>),
-
     #[error("Called append on already finished encoder")]
     AlreadyFinished,
 
     #[error("Called append on already unwrapped encoder")]
     AlreadyUnwrapped,
 
-    #[error("Missing field: {0}")]
-    MissingField(&'static str),
+    #[error("Failed to write: {0}")]
+    Write(#[from] std::io::Error),
+
+    #[error("{0}")]
+    Codec(Box<crate::rrd::CodecError>),
+
+    #[error("Chunk error: {0}")]
+    Chunk(Box<ChunkError>),
 }
 
 const _: () = assert!(
     std::mem::size_of::<EncodeError>() <= 48,
     "Error type is too large. Try to reduce its size by boxing some of its variants.",
 );
+
+impl From<CodecError> for EncodeError {
+    fn from(err: CodecError) -> Self {
+        Self::Codec(Box::new(err))
+    }
+}
 
 impl From<ChunkError> for EncodeError {
     fn from(err: ChunkError) -> Self {
@@ -64,6 +55,8 @@ impl From<ChunkError> for EncodeError {
 /// Encode a stream of [`LogMsg`] into an `.rrd` file.
 ///
 /// When dropped, it will automatically insert an end-of-stream marker, if that wasn't already done manually.
+//
+// TODO(cmc): I hate not having a `BufWrite` trait. This is just asking for trouble.
 pub struct Encoder<W: std::io::Write> {
     serializer: Serializer,
     compression: Compression,
@@ -80,7 +73,7 @@ pub struct Encoder<W: std::io::Write> {
 
 impl Encoder<Vec<u8>> {
     pub fn local() -> Result<Self, EncodeError> {
-        Self::new(
+        Self::new_eager(
             CrateVersion::LOCAL,
             EncodingOptions::PROTOBUF_COMPRESSED,
             Vec::new(),
@@ -106,17 +99,28 @@ impl Encoder<Vec<u8>> {
 }
 
 impl<W: std::io::Write> Encoder<W> {
-    pub fn new(
+    /// Creates a new [`Encoder`].
+    ///
+    /// This will immediately write the [`StreamHeader`] to the output stream as part of
+    /// initialization (hence `_eager`).
+    ///
+    /// There is no `_lazy` version. Make one if you need one.
+    pub fn new_eager(
         version: CrateVersion,
         options: EncodingOptions,
         mut write: W,
     ) -> Result<Self, EncodeError> {
-        FileHeader {
-            fourcc: crate::RRD_FOURCC,
+        // TODO(cmc): the extra heap-alloc and copy could be easily avoided with the
+        // introduction of an InMemoryWriter trait or similar. In practice it makes no
+        // difference and the cognitive overhead of this crate is already through the roof.
+        let mut out = Vec::new();
+        StreamHeader {
+            fourcc: crate::rrd::RRD_FOURCC,
             version: version.to_bytes(),
             options,
         }
-        .encode(&mut write)?;
+        .to_rrd_bytes(&mut out)?;
+        write.write_all(&out)?;
 
         Ok(Self {
             serializer: options.serializer,
@@ -128,31 +132,36 @@ impl<W: std::io::Write> Encoder<W> {
     }
 
     /// Returns the size in bytes of the encoded data.
-    pub fn append(&mut self, message: &LogMsg) -> Result<u64, EncodeError> {
+    pub fn append(&mut self, message: &re_log_types::LogMsg) -> Result<u64, EncodeError> {
         if self.is_finished {
             return Err(EncodeError::AlreadyFinished);
         }
 
-        let Some(w) = self.write.as_mut() else {
+        if self.write.is_none() {
             return Err(EncodeError::AlreadyUnwrapped);
-        };
+        }
 
         re_tracing::profile_function!();
 
-        self.scratch.clear();
-        match self.serializer {
-            Serializer::Protobuf => {
-                crate::codec::file::encoder::encode(&mut self.scratch, message, self.compression)?;
-
-                w.write_all(&self.scratch)
-                    .map(|_| self.scratch.len() as _)
-                    .map_err(EncodeError::Write)
-            }
+        let message = message.to_transport(self.compression)?;
+        // Safety: the compression settings of this message are consistent with this stream.
+        #[expect(unsafe_code)]
+        unsafe {
+            self.append_transport(&message)
         }
     }
 
     /// Returns the size in bytes of the encoded data.
-    pub fn append_proto(&mut self, message: LogMsgProto) -> Result<u64, EncodeError> {
+    ///
+    /// ## Safety
+    ///
+    /// `message` must respect the global settings of the encoder (e.g. the compression used),
+    /// otherwise the resulting RRD stream will be corrupt and unreadable.
+    #[expect(unsafe_code)]
+    pub unsafe fn append_transport(
+        &mut self,
+        message: &re_protos::log_msg::v1alpha1::log_msg::Msg,
+    ) -> Result<u64, EncodeError> {
         if self.is_finished {
             return Err(EncodeError::AlreadyFinished);
         }
@@ -166,8 +175,7 @@ impl<W: std::io::Write> Encoder<W> {
         self.scratch.clear();
         match self.serializer {
             Serializer::Protobuf => {
-                crate::codec::file::encoder::encode_proto(&mut self.scratch, message)?;
-
+                message.to_rrd_bytes(&mut self.scratch)?;
                 w.write_all(&self.scratch)
                     .map(|_| self.scratch.len() as _)
                     .map_err(EncodeError::Write)
@@ -194,11 +202,16 @@ impl<W: std::io::Write> Encoder<W> {
 
         match self.serializer {
             Serializer::Protobuf => {
+                // TODO(cmc): the extra heap-alloc and copy could be easily avoided with the
+                // introduction of an InMemoryWriter trait or similar. In practice it makes no
+                // difference and the cognitive overhead of this crate is already through the roof.
+                let mut header = Vec::new();
                 MessageHeader {
                     kind: MessageKind::End,
                     len: 0,
                 }
-                .encode(w)?;
+                .to_rrd_bytes(&mut header)?;
+                w.write_all(&header)?;
             }
         }
 
@@ -233,7 +246,7 @@ impl<W: std::io::Write> Encoder<W> {
         write: &mut W,
     ) -> Result<u64, EncodeError> {
         re_tracing::profile_function!();
-        let mut encoder = Encoder::new(version, options, write)?;
+        let mut encoder = Encoder::new_eager(version, options, write)?;
         let mut size_bytes = 0;
         for message in messages {
             size_bytes += encoder.append(message?.borrow())?;

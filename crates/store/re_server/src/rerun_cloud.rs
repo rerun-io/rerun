@@ -2,14 +2,14 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use ahash::HashMap;
-use arrow::array::BinaryArray;
+use arrow::array::{BinaryArray, RecordBatch};
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
-use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
+use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
@@ -62,6 +62,7 @@ impl RerunCloudHandlerBuilder {
         Ok(self)
     }
 
+    #[cfg(feature = "lance")]
     pub async fn with_directory_as_table(
         mut self,
         path: &NamedPath,
@@ -122,6 +123,76 @@ impl RerunCloudHandler {
                 })
             })
             .collect())
+    }
+
+    fn resolve_data_sources(data_sources: &[DataSource]) -> Result<Vec<DataSource>, tonic::Status> {
+        let mut resolved = Vec::<DataSource>::with_capacity(data_sources.len());
+        for source in data_sources {
+            if source.is_prefix {
+                let path = source.storage_url.to_file_path().map_err(|_err| {
+                    tonic::Status::invalid_argument(format!(
+                        "getting file path from {:?}",
+                        source.storage_url
+                    ))
+                })?;
+                let meta = std::fs::metadata(&path).map_err(|err| match err.kind() {
+                    std::io::ErrorKind::NotFound => {
+                        tonic::Status::invalid_argument(format!("Directory not found: {:?}", &path))
+                    }
+                    _ => tonic::Status::invalid_argument(format!(
+                        "Failed to read directory metadata {path:?}: {err:#}"
+                    )),
+                })?;
+                if !meta.is_dir() {
+                    return Err(tonic::Status::invalid_argument(format!(
+                        "Expected directory, got file: {path:?}"
+                    )));
+                }
+
+                // Recursively walk the directory and grab all '.rrd' files
+                let mut dirs_to_visit = vec![path];
+                let mut files = Vec::new();
+
+                while let Some(current_dir) = dirs_to_visit.pop() {
+                    let entries = std::fs::read_dir(&current_dir).map_err(|err| {
+                        tonic::Status::internal(format!(
+                            "Failed to read directory {current_dir:?}: {err:#}"
+                        ))
+                    })?;
+
+                    for entry in entries {
+                        let entry = entry.map_err(|err| {
+                            tonic::Status::internal(format!(
+                                "Failed to read directory entry: {err:#}"
+                            ))
+                        })?;
+                        let entry_path = entry.path();
+
+                        if entry_path.is_dir() {
+                            dirs_to_visit.push(entry_path);
+                        } else if let Some(extension) = entry_path.extension()
+                            && extension == "rrd"
+                        {
+                            files.push(entry_path);
+                        }
+                    }
+                }
+
+                for file_path in files {
+                    let mut file_url = source.storage_url.clone();
+                    file_url.set_path(&file_path.to_string_lossy());
+                    resolved.push(DataSource {
+                        storage_url: file_url,
+                        is_prefix: false,
+                        ..source.clone()
+                    });
+                }
+            } else {
+                resolved.push(source.clone());
+            }
+        }
+
+        Ok(resolved)
     }
 }
 
@@ -438,8 +509,6 @@ impl RerunCloudService for RerunCloudHandler {
 
     // --- Manifest Registry ---
 
-    /* Write data */
-
     async fn register_with_dataset(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::RegisterWithDatasetRequest>,
@@ -464,12 +533,21 @@ impl RerunCloudService for RerunCloudHandler {
         let mut storage_urls: Vec<String> = vec![];
         let mut task_ids: Vec<String> = vec![];
 
+        let data_sources = Self::resolve_data_sources(&data_sources)?;
+
         for source in data_sources {
             let ext::DataSource {
                 storage_url,
+                is_prefix,
                 layer,
                 kind,
             } = source;
+
+            if is_prefix {
+                return Err(tonic::Status::internal(
+                    "register_with_dataset: prefix data sources should have been resolved already",
+                ));
+            }
 
             if kind != ext::DataSourceKind::Rrd {
                 return Err(tonic::Status::unimplemented(
@@ -501,9 +579,7 @@ impl RerunCloudService for RerunCloudHandler {
         .map_err(|err| tonic::Status::internal(format!("Failed to create dataframe: {err:#}")))?;
         Ok(tonic::Response::new(
             re_protos::cloud::v1alpha1::RegisterWithDatasetResponse {
-                data: Some(record_batch.encode().map_err(|err| {
-                    tonic::Status::internal(format!("Failed to encode dataframe: {err:#}"))
-                })?),
+                data: Some(record_batch.into()),
             },
         ))
     }
@@ -524,10 +600,10 @@ impl RerunCloudService for RerunCloudHandler {
         while let Some(chunk_msg) = request.next().await {
             let chunk_msg = chunk_msg?;
 
-            let chunk_batch = chunk_msg
+            let chunk_batch: RecordBatch = chunk_msg
                 .chunk
                 .ok_or_else(|| tonic::Status::invalid_argument("no chunk in WriteChunksRequest"))?
-                .decode()
+                .try_into()
                 .map_err(|err| {
                     tonic::Status::internal(format!("Could not decode chunk: {err:#}"))
                 })?;
@@ -632,12 +708,9 @@ impl RerunCloudService for RerunCloudHandler {
         })?;
 
         let stream = futures::stream::once(async move {
-            record_batch
-                .encode()
-                .map(|data| ScanPartitionTableResponse { data: Some(data) })
-                .map_err(|err| {
-                    tonic::Status::internal(format!("failed encoding metadata: {err:#}"))
-                })
+            Ok(ScanPartitionTableResponse {
+                data: Some(record_batch.into()),
+            })
         });
 
         Ok(tonic::Response::new(
@@ -691,12 +764,9 @@ impl RerunCloudService for RerunCloudHandler {
         })?;
 
         let stream = futures::stream::once(async move {
-            record_batch
-                .encode()
-                .map(|data| ScanDatasetManifestResponse { data: Some(data) })
-                .map_err(|err| {
-                    tonic::Status::internal(format!("failed encoding metadata: {err:#}"))
-                })
+            Ok(ScanDatasetManifestResponse {
+                data: Some(record_batch.into()),
+            })
         });
 
         Ok(tonic::Response::new(
@@ -799,11 +869,7 @@ impl RerunCloudService for RerunCloudHandler {
         if chunk_stores.is_empty() {
             let stream = futures::stream::iter([{
                 let batch = QueryDatasetResponse::create_empty_dataframe();
-                let data =
-                    Some(batch.encode().map_err(|err| {
-                        tonic::Status::internal(format!("encoding failed: {err:#}"))
-                    })?);
-
+                let data = Some(batch.into());
                 Ok(QueryDatasetResponse { data })
             }]);
 
@@ -886,10 +952,7 @@ impl RerunCloudService for RerunCloudHandler {
                     tonic::Status::internal(format!("Failed to create dataframe: {err:#}"))
                 })?;
 
-                let data =
-                    Some(batch.encode().map_err(|err| {
-                        tonic::Status::internal(format!("encoding failed: {err:#}"))
-                    })?);
+                let data = Some(batch.into());
 
                 Ok(QueryDatasetResponse { data })
             },
@@ -911,7 +974,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         let mut chunk_keys = vec![];
         for chunk_info_data in request.chunk_infos {
-            let chunk_info_batch = chunk_info_data.decode().map_err(|err| {
+            let chunk_info_batch: RecordBatch = chunk_info_data.try_into().map_err(|err| {
                 tonic::Status::internal(format!("Failed to decode chunk_info: {err:#}"))
             })?;
 
@@ -957,7 +1020,7 @@ impl RerunCloudService for RerunCloudHandler {
             .await
             .chunks_from_chunk_keys(&chunk_keys)?;
 
-        let compression = re_log_encoding::codec::Compression::Off;
+        let compression = re_log_encoding::Compression::Off;
 
         let encoded_chunks = chunks
             .into_iter()
@@ -972,12 +1035,9 @@ impl RerunCloudService for RerunCloudHandler {
                     on_release: None,
                 };
 
-                re_log_encoding::protobuf_conversions::arrow_msg_to_proto(
-                    &arrow_msg,
-                    store_id,
-                    compression,
-                )
-                .map_err(|err| tonic::Status::internal(format!("encoding failed: {err:#}")))
+                arrow_msg
+                    .to_transport((store_id, compression))
+                    .map_err(|err| tonic::Status::internal(format!("encoding failed: {err:#}")))
             })
             .collect::<Result<Vec<_>, _>>()?;
 
@@ -1058,13 +1118,10 @@ impl RerunCloudService for RerunCloudHandler {
             .map_err(|err| tonic::Status::from_error(Box::new(err)))?;
 
         let resp_stream = stream.map(|batch| {
-            batch
-                .map_err(|err| tonic::Status::from_error(Box::new(err)))?
-                .encode()
-                .map(|batch| ScanTableResponse {
-                    dataframe_part: Some(batch),
-                })
-                .map_err(|err| tonic::Status::internal(format!("Error encoding chunk: {err:#}")))
+            let batch = batch.map_err(|err| tonic::Status::from_error(Box::new(err)))?;
+            Ok(ScanTableResponse {
+                dataframe_part: Some(batch.into()),
+            })
         });
 
         Ok(tonic::Response::new(
@@ -1110,9 +1167,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         // All tasks finish immediately in the OSS server
         Ok(tonic::Response::new(QueryTasksResponse {
-            data: Some(rb.encode().map_err(|err| {
-                tonic::Status::internal(format!("Failed to encode response: {err:#}"))
-            })?),
+            data: Some(rb.into()),
         }))
     }
 

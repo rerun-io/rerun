@@ -5,7 +5,7 @@ use re_log_encoding::Encoder;
 use re_protos::{
     common::v1alpha1::ApplicationId,
     log_msg::v1alpha1::{
-        ArrowMsg, BlueprintActivationCommand, LogMsg, SetStoreInfo, StoreInfo, log_msg::Msg,
+        ArrowMsg, BlueprintActivationCommand, SetStoreInfo, StoreInfo, log_msg::Msg,
     },
 };
 
@@ -106,9 +106,9 @@ fn process_messages<W: std::io::Write>(
     let mut num_blueprint_activations = 0;
 
     // TODO(grtlr): encoding should match the original (just like in `rrd stats`).
-    let options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
+    let options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
     let version = re_build_info::CrateVersion::LOCAL;
-    let mut encoder = Encoder::new(version, options, writer)?;
+    let mut encoder = Encoder::new_eager(version, options, writer)?;
 
     while let Ok((_input, res)) = receiver.recv() {
         let mut is_success = true;
@@ -173,9 +173,12 @@ fn process_messages<W: std::io::Write>(
                     }
                 }
 
-                // modify msg
-                let log_msg = LogMsg { msg: Some(msg) };
-                encoder.append_proto(log_msg)?;
+                // Safety: we're just forwarding an existing message, we didn't change its payload
+                // in any meaningful way.
+                #[expect(unsafe_code)]
+                unsafe {
+                    encoder.append_transport(&msg)?;
+                }
             }
             Err(err) => {
                 re_log::error_once!("{}", re_error::format(err));

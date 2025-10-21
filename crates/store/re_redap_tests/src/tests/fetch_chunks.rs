@@ -2,7 +2,6 @@ use futures::StreamExt as _;
 use itertools::Itertools as _;
 use std::collections::HashSet;
 
-use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_protos::{
     cloud::v1alpha1::{
         FetchChunksRequest, QueryDatasetResponse, ext::QueryDatasetRequest,
@@ -11,6 +10,7 @@ use re_protos::{
     common::v1alpha1::ext::ScanParameters,
     headers::RerunHeadersInjectorExt as _,
 };
+use re_sdk::external::re_log_encoding::ToApplication as _;
 use re_tuid::Tuid;
 use re_types_core::Loggable as _;
 
@@ -51,7 +51,7 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
         .unwrap()
         .into_inner()
         .flat_map(|resp| futures::stream::iter(resp.unwrap().data))
-        .map(|dfp| dfp.decode().unwrap())
+        .map(|dfp| dfp.try_into().unwrap())
         .collect::<Vec<_>>()
         .await;
 
@@ -64,17 +64,13 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
 
     let mut chunks = service
         .fetch_chunks(tonic::Request::new(FetchChunksRequest {
-            chunk_infos: vec![chunk_keys.encode().unwrap()],
+            chunk_infos: vec![chunk_keys.into()],
         }))
         .await
         .unwrap()
         .into_inner()
         .flat_map(|resp| futures::stream::iter(resp.unwrap().chunks))
-        .map(|msg| {
-            re_chunk::Chunk::from_arrow_msg(
-                &re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&msg).unwrap(),
-            )
-        })
+        .map(|msg| re_chunk::Chunk::from_arrow_msg(&msg.to_application(()).unwrap()))
         .collect::<Vec<_>>()
         .await
         .into_iter()
@@ -153,7 +149,7 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
         .unwrap()
         .into_inner()
         .flat_map(|resp| futures::stream::iter(resp.unwrap().data))
-        .map(|dfp| dfp.decode().unwrap())
+        .map(|dfp| dfp.try_into().unwrap())
         .collect::<Vec<_>>()
         .await;
 
@@ -182,7 +178,7 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
         .unwrap()
         .into_inner()
         .flat_map(|resp| futures::stream::iter(resp.unwrap().data))
-        .map(|dfp| dfp.decode().unwrap())
+        .map(|dfp| dfp.try_into().unwrap())
         .collect::<Vec<_>>()
         .await;
 
@@ -195,17 +191,13 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
 
     let chunks = service
         .fetch_chunks(tonic::Request::new(FetchChunksRequest {
-            chunk_infos: vec![chunk_info.encode().unwrap()],
+            chunk_infos: vec![chunk_info.clone().into()],
         }))
         .await
         .unwrap()
         .into_inner()
         .flat_map(|resp| futures::stream::iter(resp.unwrap().chunks))
-        .map(|msg| {
-            re_chunk::Chunk::from_arrow_msg(
-                &re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&msg).unwrap(),
-            )
-        })
+        .map(|msg| re_chunk::Chunk::from_arrow_msg(&msg.to_application(()).unwrap()))
         .collect::<Vec<_>>()
         .await
         .into_iter()

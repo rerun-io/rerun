@@ -200,9 +200,8 @@ impl SeriesPointsSystem {
                 None,
                 &query,
                 data_result,
-                archetypes::Scalars::all_components()
-                    .iter()
-                    .chain(archetypes::SeriesPoints::all_components().iter()),
+                archetypes::Scalars::all_component_identifiers()
+                    .chain(archetypes::SeriesPoints::all_component_identifiers()),
             );
 
             // If we have no scalars, we can't do anything.
@@ -250,7 +249,7 @@ impl SeriesPointsSystem {
                 None,
                 &LatestAtQuery::new(query.timeline, query.range.min()),
                 data_result,
-                archetypes::SeriesPoints::all_components().iter(),
+                archetypes::SeriesPoints::all_component_identifiers(),
                 query_shadowed_components,
             );
 
@@ -298,7 +297,7 @@ impl SeriesPointsSystem {
 
                         if let Some(marker_shapes) = all_marker_shapes_chunks[0]
                             .iter_component::<MarkerShape>(
-                                &archetypes::SeriesPoints::descriptor_markers(),
+                                archetypes::SeriesPoints::descriptor_markers().component,
                             )
                             .next()
                         {
@@ -320,7 +319,7 @@ impl SeriesPointsSystem {
                             .iter()
                             .map(|chunk| {
                                 chunk.iter_component::<MarkerShape>(
-                                    &archetypes::SeriesPoints::descriptor_markers(),
+                                    archetypes::SeriesPoints::descriptor_markers().component,
                                 )
                             })
                             .collect_vec();
@@ -331,8 +330,8 @@ impl SeriesPointsSystem {
                             let all_marker_shapes_indices =
                                 all_marker_shapes_chunks.iter().flat_map(|chunk| {
                                     chunk.iter_component_indices(
-                                        query.timeline(),
-                                        &archetypes::SeriesPoints::descriptor_markers(),
+                                        *query.timeline(),
+                                        archetypes::SeriesPoints::descriptor_markers().component,
                                     )
                                 });
                             itertools::izip!(all_marker_shapes_indices, all_marker_shapes)

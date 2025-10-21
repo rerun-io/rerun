@@ -1,6 +1,5 @@
 use futures::StreamExt as _;
 
-use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::{
     cloud::v1alpha1::{
         QueryDatasetResponse, ext::QueryDatasetRequest,
@@ -154,7 +153,7 @@ async fn query_dataset_snapshot(
         .unwrap()
         .into_inner()
         .flat_map(|resp| futures::stream::iter(resp.unwrap().data))
-        .map(|dfp| dfp.decode().unwrap())
+        .map(|dfp| dfp.try_into().unwrap())
         .collect::<Vec<_>>()
         .await;
 

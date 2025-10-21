@@ -215,6 +215,11 @@ message DataSource {
   /// Defaults to `base` if unspecified.
   optional string layer = 3;
 
+  /// Is this a prefix URL (a directory)?
+  /// If true, all files of `typ` under this prefix will be
+  /// considered part of this data source.
+  bool prefix = 4;
+
   // What kind of data is it (e.g. rrd, mcap, Lance, etc)?
   DataSourceKind typ = 2;
 }

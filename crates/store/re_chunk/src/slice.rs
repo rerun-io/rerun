@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_log_types::TimelineName;
-use re_types_core::ComponentDescriptor;
+use re_types_core::{ComponentIdentifier, SerializedComponentColumn};
 
 use crate::{Chunk, RowId, TimeColumn};
 
@@ -16,17 +16,13 @@ use crate::{Chunk, RowId, TimeColumn};
 // Most of them are indirectly stressed by our higher-level query tests anyhow.
 
 impl Chunk {
-    /// Returns the cell corresponding to the specified [`RowId`] for a given [`re_types_core::ComponentDescriptor`].
+    /// Returns the cell corresponding to the specified [`RowId`] for a given [`re_types_core::ComponentIdentifier`].
     ///
     /// This is `O(log(n))` if `self.is_sorted()`, and `O(n)` otherwise.
     ///
     /// Reminder: duplicated `RowId`s results in undefined behavior.
-    pub fn cell(
-        &self,
-        row_id: RowId,
-        component_desc: &ComponentDescriptor,
-    ) -> Option<ArrowArrayRef> {
-        let list_array = self.components.get(component_desc)?;
+    pub fn cell(&self, row_id: RowId, component: ComponentIdentifier) -> Option<ArrowArrayRef> {
+        let list_array = self.components.get_array(component)?;
 
         if self.is_sorted() {
             let row_ids = self.row_ids_slice();
@@ -89,9 +85,12 @@ impl Chunk {
                 .map(|(timeline, time_column)| (*timeline, time_column.row_sliced(index, len)))
                 .collect(),
             components: components
-                .iter()
-                .map(|(component_desc, list_array)| {
-                    (component_desc.clone(), list_array.clone().slice(index, len))
+                .values()
+                .map(|column| {
+                    SerializedComponentColumn::new(
+                        column.list_array.clone().slice(index, len),
+                        column.descriptor.clone(),
+                    )
                 })
                 .collect(),
         };
@@ -167,18 +166,18 @@ impl Chunk {
         chunk
     }
 
-    /// Slices the [`Chunk`] horizontally by keeping only the selected `component_descr`.
+    /// Slices the [`Chunk`] horizontally by keeping only the selected `component`.
     ///
     /// The result is a new [`Chunk`] with the same rows and (at-most) one component column.
     /// All non-component columns will be kept as-is.
     ///
-    /// If `component_descr` is not found within the [`Chunk`], the end result will be the same as the
+    /// If `component` is not found within the [`Chunk`], the end result will be the same as the
     /// current chunk but without any component column.
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn component_sliced(&self, component_descr: &ComponentDescriptor) -> Self {
+    pub fn component_sliced(&self, component: ComponentIdentifier) -> Self {
         let Self {
             id,
             entity_path,
@@ -196,13 +195,16 @@ impl Chunk {
             is_sorted: *is_sorted,
             row_ids: row_ids.clone(),
             timelines: timelines.clone(),
-            components: crate::ChunkComponents(
-                components
-                    .get(component_descr)
-                    .map(|list_array| (component_descr.clone(), list_array.clone()))
-                    .into_iter()
-                    .collect(),
-            ),
+            components: components
+                .get(component)
+                .map(|column| {
+                    SerializedComponentColumn::new(
+                        column.list_array.clone(),
+                        column.descriptor.clone(),
+                    )
+                })
+                .into_iter()
+                .collect(),
         };
 
         #[cfg(debug_assertions)]
@@ -255,20 +257,20 @@ impl Chunk {
         chunk
     }
 
-    /// Densifies the [`Chunk`] vertically based on the `component_descriptor` column.
+    /// Densifies the [`Chunk`] vertically based on the `componentiptor` column.
     ///
-    /// Densifying here means dropping all rows where the associated value in the `component_descriptor`
+    /// Densifying here means dropping all rows where the associated value in the `componentiptor`
     /// column is null.
     ///
-    /// The result is a new [`Chunk`] where the `component_descriptor` column is guaranteed to be dense.
+    /// The result is a new [`Chunk`] where the `componentiptor` column is guaranteed to be dense.
     ///
-    /// If `component_descriptor` doesn't exist in this [`Chunk`], or if it is already dense, this method
+    /// If `componentiptor` doesn't exist in this [`Chunk`], or if it is already dense, this method
     /// is a no-op.
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn densified(&self, component_descr_pov: &ComponentDescriptor) -> Self {
+    pub fn densified(&self, component_pov: ComponentIdentifier) -> Self {
         let Self {
             id,
             entity_path,
@@ -283,7 +285,7 @@ impl Chunk {
             return self.clone();
         }
 
-        let Some(component_list_array) = self.components.get(component_descr_pov) else {
+        let Some(component_list_array) = self.components.get_array(component_pov) else {
             return self.clone();
         };
 
@@ -308,10 +310,11 @@ impl Chunk {
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(&validity_filter)))
                 .collect(),
             components: components
-                .iter()
-                .map(|(component_desc, list_array)| {
-                    let filtered = re_arrow_util::filter_array(list_array, &validity_filter);
-                    let filtered = if component_desc == component_descr_pov {
+                .values()
+                .map(|column| {
+                    let filtered =
+                        re_arrow_util::filter_array(&column.list_array, &validity_filter);
+                    let filtered = if column.descriptor.component == component_pov {
                         // Make sure we fully remove the validity bitmap for the densified
                         // component.
                         // This will allow further operations on this densified chunk to take some
@@ -322,7 +325,7 @@ impl Chunk {
                         filtered
                     };
 
-                    (component_desc.clone(), filtered)
+                    SerializedComponentColumn::new(filtered, column.descriptor.clone())
                 })
                 .collect(),
         };
@@ -382,13 +385,16 @@ impl Chunk {
                 .map(|(&timeline, time_column)| (timeline, time_column.emptied()))
                 .collect(),
             components: components
-                .iter()
-                .map(|(component_desc, list_array)| {
-                    let field = match list_array.data_type() {
+                .values()
+                .map(|column| {
+                    let field = match column.list_array.data_type() {
                         arrow::datatypes::DataType::List(field) => field.clone(),
                         _ => unreachable!("This is always s list array"),
                     };
-                    (component_desc.clone(), ArrowListArray::new_null(field, 0))
+                    SerializedComponentColumn::new(
+                        ArrowListArray::new_null(field, 0),
+                        column.descriptor.clone(),
+                    )
                 })
                 .collect(),
         }
@@ -489,10 +495,10 @@ impl Chunk {
                 .collect(),
             components: self
                 .components
-                .iter()
-                .map(|(component_desc, list_array)| {
-                    let filtered = re_arrow_util::take_array(list_array, &indices);
-                    (component_desc.clone(), filtered)
+                .values()
+                .map(|column| {
+                    let filtered = re_arrow_util::take_array(&column.list_array, &indices);
+                    SerializedComponentColumn::new(filtered, column.descriptor.clone())
                 })
                 .collect(),
         };
@@ -560,10 +566,10 @@ impl Chunk {
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(filter)))
                 .collect(),
             components: components
-                .iter()
-                .map(|(component_desc, list_array)| {
-                    let filtered = re_arrow_util::filter_array(list_array, filter);
-                    (component_desc.clone(), filtered)
+                .values()
+                .map(|column| {
+                    let filtered = re_arrow_util::filter_array(&column.list_array, filter);
+                    SerializedComponentColumn::new(filtered, column.descriptor.clone())
                 })
                 .collect(),
         };
@@ -643,10 +649,10 @@ impl Chunk {
                 .map(|(&timeline, time_column)| (timeline, time_column.taken(indices)))
                 .collect(),
             components: components
-                .iter()
-                .map(|(component_desc, list_array)| {
-                    let taken = re_arrow_util::take_array(list_array, indices);
-                    (component_desc.clone(), taken)
+                .values()
+                .map(|column| {
+                    let taken = re_arrow_util::take_array(&column.list_array, indices);
+                    SerializedComponentColumn::new(taken, column.descriptor.clone())
                 })
                 .collect(),
         };
@@ -832,6 +838,10 @@ mod tests {
 
     #[test]
     fn cell() -> anyhow::Result<()> {
+        let mypoints_points_component = MyPoints::descriptor_points().component;
+        let mypoints_colors_component = MyPoints::descriptor_colors().component;
+        let mypoints_labels_component = MyPoints::descriptor_labels().component;
+
         let entity_path = "my/entity";
 
         let row_id1 = RowId::ZERO.incremented_by(10);
@@ -924,29 +934,29 @@ mod tests {
         eprintln!("chunk:\n{chunk}");
 
         let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-            (row_id1, MyPoints::descriptor_points(), Some(points1 as _)),
-            (row_id2, MyPoints::descriptor_labels(), Some(labels4 as _)),
-            (row_id3, MyPoints::descriptor_colors(), None),
-            (row_id4, MyPoints::descriptor_labels(), Some(labels2 as _)),
-            (row_id5, MyPoints::descriptor_colors(), Some(colors5 as _)),
+            (row_id1, mypoints_points_component, Some(points1 as _)),
+            (row_id2, mypoints_labels_component, Some(labels4 as _)),
+            (row_id3, mypoints_colors_component, None),
+            (row_id4, mypoints_labels_component, Some(labels2 as _)),
+            (row_id5, mypoints_colors_component, Some(colors5 as _)),
         ];
 
         assert!(!chunk.is_sorted());
-        for (row_id, component_desc, expected) in expectations {
+        for (row_id, component, expected) in expectations {
             let expected = expected
                 .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
-            eprintln!("{component_desc} @ {row_id}");
-            similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
+            eprintln!("{component} @ {row_id}");
+            similar_asserts::assert_eq!(expected, chunk.cell(*row_id, *component));
         }
 
         chunk.sort_if_unsorted();
         assert!(chunk.is_sorted());
 
-        for (row_id, component_desc, expected) in expectations {
+        for (row_id, component, expected) in expectations {
             let expected = expected
                 .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
-            eprintln!("{component_desc} @ {row_id}");
-            similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
+            eprintln!("{component} @ {row_id}");
+            similar_asserts::assert_eq!(expected, chunk.cell(*row_id, *component));
         }
 
         Ok(())
@@ -954,6 +964,10 @@ mod tests {
 
     #[test]
     fn dedupe_temporal() -> anyhow::Result<()> {
+        let mypoints_points_component = MyPoints::descriptor_points().component;
+        let mypoints_colors_component = MyPoints::descriptor_colors().component;
+        let mypoints_labels_component = MyPoints::descriptor_labels().component;
+
         let entity_path = "my/entity";
 
         let row_id1 = RowId::new();
@@ -1051,20 +1065,20 @@ mod tests {
             assert_eq!(2, got.num_rows());
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id3, MyPoints::descriptor_points(), Some(points3 as _)),
-                (row_id3, MyPoints::descriptor_colors(), None),
-                (row_id3, MyPoints::descriptor_labels(), Some(labels3 as _)),
+                (row_id3, mypoints_points_component, Some(points3 as _)),
+                (row_id3, mypoints_colors_component, None),
+                (row_id3, mypoints_labels_component, Some(labels3 as _)),
                 //
-                (row_id5, MyPoints::descriptor_points(), None),
-                (row_id5, MyPoints::descriptor_colors(), Some(colors5 as _)),
-                (row_id5, MyPoints::descriptor_labels(), Some(labels5 as _)),
+                (row_id5, mypoints_points_component, None),
+                (row_id5, mypoints_colors_component, Some(colors5 as _)),
+                (row_id5, mypoints_labels_component, Some(labels5 as _)),
             ];
 
-            for (row_id, component_desc, expected) in expectations {
+            for (row_id, component, expected) in expectations {
                 let expected = expected
                     .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
-                eprintln!("{component_desc} @ {row_id}");
-                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
+                eprintln!("{component} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, *component));
             }
         }
 
@@ -1074,28 +1088,28 @@ mod tests {
             assert_eq!(5, got.num_rows());
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id1, MyPoints::descriptor_points(), Some(points1 as _)),
-                (row_id1, MyPoints::descriptor_colors(), None),
-                (row_id1, MyPoints::descriptor_labels(), Some(labels1 as _)),
-                (row_id2, MyPoints::descriptor_points(), None),
-                (row_id2, MyPoints::descriptor_colors(), None),
-                (row_id2, MyPoints::descriptor_labels(), Some(labels2 as _)),
-                (row_id3, MyPoints::descriptor_points(), Some(points3 as _)),
-                (row_id3, MyPoints::descriptor_colors(), None),
-                (row_id3, MyPoints::descriptor_labels(), Some(labels3 as _)),
-                (row_id4, MyPoints::descriptor_points(), None),
-                (row_id4, MyPoints::descriptor_colors(), Some(colors4 as _)),
-                (row_id4, MyPoints::descriptor_labels(), Some(labels4 as _)),
-                (row_id5, MyPoints::descriptor_points(), None),
-                (row_id5, MyPoints::descriptor_colors(), Some(colors5 as _)),
-                (row_id5, MyPoints::descriptor_labels(), Some(labels5 as _)),
+                (row_id1, mypoints_points_component, Some(points1 as _)),
+                (row_id1, mypoints_colors_component, None),
+                (row_id1, mypoints_labels_component, Some(labels1 as _)),
+                (row_id2, mypoints_points_component, None),
+                (row_id2, mypoints_colors_component, None),
+                (row_id2, mypoints_labels_component, Some(labels2 as _)),
+                (row_id3, mypoints_points_component, Some(points3 as _)),
+                (row_id3, mypoints_colors_component, None),
+                (row_id3, mypoints_labels_component, Some(labels3 as _)),
+                (row_id4, mypoints_points_component, None),
+                (row_id4, mypoints_colors_component, Some(colors4 as _)),
+                (row_id4, mypoints_labels_component, Some(labels4 as _)),
+                (row_id5, mypoints_points_component, None),
+                (row_id5, mypoints_colors_component, Some(colors5 as _)),
+                (row_id5, mypoints_labels_component, Some(labels5 as _)),
             ];
 
-            for (row_id, component_desc, expected) in expectations {
+            for (row_id, component, expected) in expectations {
                 let expected = expected
                     .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
-                eprintln!("{component_desc} @ {row_id}");
-                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
+                eprintln!("{component} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, *component));
             }
         }
 
@@ -1104,6 +1118,10 @@ mod tests {
 
     #[test]
     fn dedupe_static() -> anyhow::Result<()> {
+        let mypoints_points_component = MyPoints::descriptor_points().component;
+        let mypoints_colors_component = MyPoints::descriptor_colors().component;
+        let mypoints_labels_component = MyPoints::descriptor_labels().component;
+
         let entity_path = "my/entity";
 
         let row_id1 = RowId::new();
@@ -1182,16 +1200,16 @@ mod tests {
             assert_eq!(1, got.num_rows());
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id5, MyPoints::descriptor_points(), None),
-                (row_id5, MyPoints::descriptor_colors(), Some(colors5 as _)),
-                (row_id5, MyPoints::descriptor_labels(), Some(labels5 as _)),
+                (row_id5, mypoints_points_component, None),
+                (row_id5, mypoints_colors_component, Some(colors5 as _)),
+                (row_id5, mypoints_labels_component, Some(labels5 as _)),
             ];
 
-            for (row_id, component_descr, expected) in expectations {
+            for (row_id, component, expected) in expectations {
                 let expected = expected
                     .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
-                eprintln!("{component_descr} @ {row_id}");
-                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_descr));
+                eprintln!("{component} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, *component));
             }
         }
 
@@ -1201,16 +1219,16 @@ mod tests {
             assert_eq!(1, got.num_rows());
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id5, MyPoints::descriptor_points(), None),
-                (row_id5, MyPoints::descriptor_colors(), Some(colors5 as _)),
-                (row_id5, MyPoints::descriptor_labels(), Some(labels5 as _)),
+                (row_id5, mypoints_points_component, None),
+                (row_id5, mypoints_colors_component, Some(colors5 as _)),
+                (row_id5, mypoints_labels_component, Some(labels5 as _)),
             ];
 
-            for (row_id, component_type, expected) in expectations {
+            for (row_id, component, expected) in expectations {
                 let expected = expected
                     .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
-                eprintln!("{component_type} @ {row_id}");
-                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_type));
+                eprintln!("{component} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, *component));
             }
         }
 
@@ -1219,6 +1237,10 @@ mod tests {
 
     #[test]
     fn filtered() -> anyhow::Result<()> {
+        let mypoints_points_component = MyPoints::descriptor_points().component;
+        let mypoints_colors_component = MyPoints::descriptor_colors().component;
+        let mypoints_labels_component = MyPoints::descriptor_labels().component;
+
         let entity_path = "my/entity";
 
         let row_id1 = RowId::new();
@@ -1322,24 +1344,24 @@ mod tests {
             );
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id1, MyPoints::descriptor_points(), Some(points1 as _)),
-                (row_id1, MyPoints::descriptor_colors(), None),
-                (row_id1, MyPoints::descriptor_labels(), Some(labels1 as _)),
+                (row_id1, mypoints_points_component, Some(points1 as _)),
+                (row_id1, mypoints_colors_component, None),
+                (row_id1, mypoints_labels_component, Some(labels1 as _)),
                 //
-                (row_id3, MyPoints::descriptor_points(), Some(points3 as _)),
-                (row_id3, MyPoints::descriptor_colors(), None),
-                (row_id3, MyPoints::descriptor_labels(), Some(labels3 as _)),
+                (row_id3, mypoints_points_component, Some(points3 as _)),
+                (row_id3, mypoints_colors_component, None),
+                (row_id3, mypoints_labels_component, Some(labels3 as _)),
                 //
-                (row_id5, MyPoints::descriptor_points(), None),
-                (row_id5, MyPoints::descriptor_colors(), Some(colors5 as _)),
-                (row_id5, MyPoints::descriptor_labels(), Some(labels5 as _)),
+                (row_id5, mypoints_points_component, None),
+                (row_id5, mypoints_colors_component, Some(colors5 as _)),
+                (row_id5, mypoints_labels_component, Some(labels5 as _)),
             ];
 
-            for (row_id, component_type, expected) in expectations {
+            for (row_id, component, expected) in expectations {
                 let expected = expected
                     .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
-                eprintln!("{component_type} @ {row_id}");
-                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_type));
+                eprintln!("{component} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, *component));
             }
         }
 
@@ -1367,6 +1389,10 @@ mod tests {
     #[test]
     fn taken() -> anyhow::Result<()> {
         use arrow::array::Int32Array as ArrowInt32Array;
+
+        let mypoints_points_component = MyPoints::descriptor_points().component;
+        let mypoints_colors_component = MyPoints::descriptor_colors().component;
+        let mypoints_labels_component = MyPoints::descriptor_labels().component;
 
         let entity_path = "my/entity";
 
@@ -1471,24 +1497,24 @@ mod tests {
             assert_eq!(indices.len(), got.num_rows());
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id1, MyPoints::descriptor_points(), Some(points1 as _)),
-                (row_id1, MyPoints::descriptor_colors(), None),
-                (row_id1, MyPoints::descriptor_labels(), Some(labels1 as _)),
+                (row_id1, mypoints_points_component, Some(points1 as _)),
+                (row_id1, mypoints_colors_component, None),
+                (row_id1, mypoints_labels_component, Some(labels1 as _)),
                 //
-                (row_id3, MyPoints::descriptor_points(), Some(points3 as _)),
-                (row_id3, MyPoints::descriptor_colors(), None),
-                (row_id3, MyPoints::descriptor_labels(), Some(labels3 as _)),
+                (row_id3, mypoints_points_component, Some(points3 as _)),
+                (row_id3, mypoints_colors_component, None),
+                (row_id3, mypoints_labels_component, Some(labels3 as _)),
                 //
-                (row_id5, MyPoints::descriptor_points(), None),
-                (row_id5, MyPoints::descriptor_colors(), Some(colors5 as _)),
-                (row_id5, MyPoints::descriptor_labels(), Some(labels5 as _)),
+                (row_id5, mypoints_points_component, None),
+                (row_id5, mypoints_colors_component, Some(colors5 as _)),
+                (row_id5, mypoints_labels_component, Some(labels5 as _)),
             ];
 
-            for (row_id, component_type, expected) in expectations {
+            for (row_id, component, expected) in expectations {
                 let expected = expected
                     .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
-                eprintln!("{component_type} @ {row_id}");
-                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_type));
+                eprintln!("{component} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, *component));
             }
         }
 

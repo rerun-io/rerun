@@ -39,7 +39,7 @@ pub enum FileSinkError {
 
     /// Error encoding a log message.
     #[error("Failed to encode LogMsg: {0}")]
-    LogMsgEncode(#[from] crate::encoder::EncodeError),
+    LogMsgEncode(#[from] crate::rrd::EncodeError),
 }
 
 enum Command {
@@ -81,7 +81,7 @@ impl FileSink {
     /// Start writing log messages to a file at the given path.
     pub fn new(path: impl Into<std::path::PathBuf>) -> Result<Self, FileSinkError> {
         // We always compress on disk
-        let encoding_options = crate::encoder::EncodingOptions::PROTOBUF_COMPRESSED;
+        let encoding_options = crate::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
 
         let (tx, rx) = std::sync::mpsc::channel();
 
@@ -96,7 +96,7 @@ impl FileSink {
         let file = std::fs::File::create(&path)
             .map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
         let encoder =
-            crate::Encoder::new(re_build_info::CrateVersion::LOCAL, encoding_options, file)?;
+            crate::Encoder::new_eager(re_build_info::CrateVersion::LOCAL, encoding_options, file)?;
         let join_handle = spawn_and_stream(Some(&path), encoder, rx)?;
 
         Ok(Self {
@@ -108,13 +108,13 @@ impl FileSink {
 
     /// Start writing log messages to standard output.
     pub fn stdout() -> Result<Self, FileSinkError> {
-        let encoding_options = crate::encoder::EncodingOptions::PROTOBUF_COMPRESSED;
+        let encoding_options = crate::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
 
         let (tx, rx) = std::sync::mpsc::channel();
 
         re_log::debug!("Writing to stdout…");
 
-        let encoder = crate::Encoder::new(
+        let encoder = crate::Encoder::new_eager(
             re_build_info::CrateVersion::LOCAL,
             encoding_options,
             std::io::stdout(),

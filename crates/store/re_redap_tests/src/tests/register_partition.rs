@@ -1,19 +1,21 @@
 #![expect(clippy::unwrap_used)]
 
+use arrow::array::RecordBatch;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
+use url::Url;
 
-use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::{
     cloud::v1alpha1::{
-        ScanDatasetManifestRequest, ScanDatasetManifestResponse, ScanPartitionTableRequest,
-        ScanPartitionTableResponse, rerun_cloud_service_server::RerunCloudService,
+        CreateDatasetEntryRequest, DataSource, DataSourceKind, ScanDatasetManifestRequest,
+        ScanDatasetManifestResponse, ScanPartitionTableRequest, ScanPartitionTableResponse,
+        rerun_cloud_service_server::RerunCloudService,
     },
     headers::RerunHeadersInjectorExt as _,
 };
 
 use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _};
-use crate::RecordBatchExt as _;
+use crate::{RecordBatchExt as _, create_simple_recording_in};
 
 pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
     let data_sources_def = DataSourcesDefinition::new([
@@ -58,6 +60,66 @@ pub async fn register_and_scan_simple_dataset_with_layers(service: impl RerunClo
     scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple_with_layers").await;
 }
 
+pub async fn register_with_prefix(fe: impl RerunCloudService) {
+    let root_dir = tempfile::tempdir().expect("creating temp dir");
+
+    // Note: for this test, we don't use teh `DataSourceDefinition` abstraction here because we need
+    // tight control of where the RRDs are stored.
+    let tuid_prefix1 = 1;
+    create_simple_recording_in(
+        tuid_prefix1,
+        "my_partition_id1",
+        &["my/entity", "my/other/entity"],
+        root_dir.path(),
+    )
+    .expect("creating recording");
+
+    let tuid_prefix2 = 2;
+    create_simple_recording_in(
+        tuid_prefix2,
+        "my_partition_id2",
+        &["my/entity"],
+        root_dir.path(),
+    )
+    .expect("creating recording");
+
+    let tuid_prefix3 = 3;
+    create_simple_recording_in(
+        tuid_prefix3,
+        "my_partition_id3",
+        &["my/entity", "another/one", "yet/another/one"],
+        root_dir.path(),
+    )
+    .expect("creating recording");
+
+    let dataset_name = "my_dataset1";
+    fe.create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
+        name: Some(dataset_name.to_owned()),
+        id: None,
+    }))
+    .await
+    .unwrap();
+
+    let root_url =
+        Url::parse(&format!("file://{}/", root_dir.path().display())).expect("creating root url");
+
+    fe.register_with_dataset_name(
+        dataset_name,
+        vec![
+            DataSource {
+                storage_url: Some(root_url.to_string()),
+                prefix: true,
+                layer: None,
+                typ: DataSourceKind::Rrd as i32,
+            }, //
+        ],
+    )
+    .await;
+
+    scan_partition_table_and_snapshot(&fe, dataset_name, "register_prefix_partitions").await;
+    scan_dataset_manifest_and_snapshot(&fe, dataset_name, "register_prefix_manifest").await;
+}
+
 // Scanning an empty dataset should return an empty dataframe with the expected schema -- not a
 // NOT_FOUND error.
 pub async fn register_and_scan_empty_dataset(service: impl RerunCloudService) {
@@ -90,9 +152,9 @@ async fn scan_partition_table_and_snapshot(
         .await
         .unwrap();
 
-    let batches = resps
+    let batches: Vec<RecordBatch> = resps
         .into_iter()
-        .map(|resp| resp.data.unwrap().decode().unwrap())
+        .map(|resp| resp.data.unwrap().try_into().unwrap())
         .collect_vec();
 
     let batch = arrow::compute::concat_batches(
@@ -150,9 +212,9 @@ async fn scan_dataset_manifest_and_snapshot(
         .await
         .unwrap();
 
-    let batches = resps
+    let batches: Vec<RecordBatch> = resps
         .into_iter()
-        .map(|resp| resp.data.unwrap().decode().unwrap())
+        .map(|resp| resp.data.unwrap().try_into().unwrap())
         .collect_vec();
 
     let batch = arrow::compute::concat_batches(

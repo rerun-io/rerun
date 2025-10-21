@@ -5,7 +5,7 @@ use nohash_hasher::IntMap;
 use re_log_types::{EntityPath, NonMinI64, TimePoint, Timeline, TimelineName};
 use re_types_core::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
-use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn, chunk::ChunkComponents};
+use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
 
 // ---
 
@@ -297,16 +297,14 @@ impl ChunkBuilder {
 
         let components = {
             re_tracing::profile_scope!("components");
-            ChunkComponents(
-                components
-                    .into_iter()
-                    .filter_map(|(component_desc, arrays)| {
-                        let arrays = arrays.iter().map(|array| array.as_deref()).collect_vec();
-                        re_arrow_util::arrays_to_list_array_opt(&arrays)
-                            .map(|list_array| (component_desc, list_array))
-                    })
-                    .collect(),
-            )
+            components
+                .into_iter()
+                .filter_map(|(component_desc, arrays)| {
+                    let arrays = arrays.iter().map(|array| array.as_deref()).collect_vec();
+                    re_arrow_util::arrays_to_list_array_opt(&arrays)
+                        .map(|list_array| (component_desc, list_array))
+                })
+                .collect()
         };
 
         Chunk::from_native_row_ids(id, entity_path, None, &row_ids, timelines, components)
@@ -350,23 +348,21 @@ impl ChunkBuilder {
                 .map(|(timeline, time_column)| (timeline, time_column.build()))
                 .collect(),
             {
-                ChunkComponents(
-                    components
-                        .into_iter()
-                        .filter_map(|(component_desc, arrays)| {
-                            let arrays = arrays.iter().map(|array| array.as_deref()).collect_vec();
-                            // If we know the datatype in advance, we're able to keep even fully sparse
-                            // columns around.
-                            if let Some(datatype) = datatypes.get(&component_desc) {
-                                re_arrow_util::arrays_to_list_array(datatype.clone(), &arrays)
-                                    .map(|list_array| (component_desc, list_array))
-                            } else {
-                                re_arrow_util::arrays_to_list_array_opt(&arrays)
-                                    .map(|list_array| (component_desc, list_array))
-                            }
-                        })
-                        .collect(),
-                )
+                components
+                    .into_iter()
+                    .filter_map(|(component_desc, arrays)| {
+                        let arrays = arrays.iter().map(|array| array.as_deref()).collect_vec();
+                        // If we know the datatype in advance, we're able to keep even fully sparse
+                        // columns around.
+                        if let Some(datatype) = datatypes.get(&component_desc) {
+                            re_arrow_util::arrays_to_list_array(datatype.clone(), &arrays)
+                                .map(|list_array| (component_desc, list_array))
+                        } else {
+                            re_arrow_util::arrays_to_list_array_opt(&arrays)
+                                .map(|list_array| (component_desc, list_array))
+                        }
+                    })
+                    .collect()
             },
         )
     }
