@@ -266,7 +266,12 @@ async fn fetch_table_details(
         origin: origin.clone(),
     })?;
 
-    let table_provider = TableEntryTableProvider::new(client, id, runtime.inner().clone())
+    #[cfg(target_arch = "wasm32")]
+    let runtime = None;
+    #[cfg(not(target_arch = "wasm32"))]
+    let runtime = Some(runtime.inner().clone());
+
+    let table_provider = TableEntryTableProvider::new(client, id, runtime)
         .into_provider()
         .await
         .map_err(|err| ApiError::internal(err, "failed creating table-entry table provider"))?;

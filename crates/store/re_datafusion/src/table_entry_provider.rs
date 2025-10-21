@@ -38,7 +38,7 @@ use crate::wasm_compat::make_future_send;
 pub struct TableEntryTableProvider {
     client: ConnectionClient,
     table: EntryIdOrName,
-    runtime: Handle,
+    runtime: Option<Handle>,
 
     // cache the table id when resolved
     table_id: Option<EntryId>,
@@ -54,7 +54,11 @@ impl std::fmt::Debug for TableEntryTableProvider {
 }
 
 impl TableEntryTableProvider {
-    pub fn new(client: ConnectionClient, table: impl Into<EntryIdOrName>, runtime: Handle) -> Self {
+    pub fn new(
+        client: ConnectionClient,
+        table: impl Into<EntryIdOrName>,
+        runtime: Option<Handle>,
+    ) -> Self {
         Self {
             client,
             table: table.into(),
@@ -63,7 +67,7 @@ impl TableEntryTableProvider {
         }
     }
 
-    pub fn new_entry_list(client: ConnectionClient, runtime: Handle) -> Self {
+    pub fn new_entry_list(client: ConnectionClient, runtime: Option<Handle>) -> Self {
         Self::new(client, "__entries", runtime)
     }
 
@@ -186,11 +190,14 @@ impl GrpcStreamToTable for TableEntryTableProvider {
             InsertOp::Replace => TableInsertMode::TableInsertReplace,
             InsertOp::Overwrite => TableInsertMode::TableInsertOverwrite,
         };
+        let Some(runtime) = self.runtime.clone() else {
+            return exec_err!("Writing to table provider is not supported without tokio runtime");
+        };
         Ok(Arc::new(TableEntryWriterExec::new(
             self.client.clone(),
             input,
             num_partitions,
-            self.runtime.clone(),
+            runtime,
             entry_id,
             insert_op,
         )))
