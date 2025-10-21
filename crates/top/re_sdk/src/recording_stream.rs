@@ -1345,12 +1345,7 @@ impl RecordingStream {
 
         let components: IntMap<_, _> = comp_batches
             .into_iter()
-            .map(|comp_batch| {
-                (
-                    comp_batch.descriptor.component,
-                    (comp_batch.descriptor, comp_batch.array),
-                )
-            })
+            .map(|comp_batch| (comp_batch.descriptor.component, comp_batch))
             .collect();
 
         // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
@@ -2727,6 +2722,7 @@ mod tests {
     use insta::assert_debug_snapshot;
     use itertools::Itertools as _;
     use re_log_types::example_components::{MyLabel, MyPoints};
+    use re_types::SerializedComponentBatch;
 
     use super::*;
 
@@ -3038,27 +3034,27 @@ mod tests {
                 components: [
                     (
                         MyPoints::descriptor_points().component,
-                        (
-                            MyPoints::descriptor_points(),
+                        SerializedComponentBatch::new(
                             <MyPoint as Loggable>::to_arrow([
                                 MyPoint::new(10.0, 10.0),
                                 MyPoint::new(20.0, 20.0),
                             ])
                             .unwrap(),
+                            MyPoints::descriptor_points(),
                         ),
                     ), //
                     (
                         MyPoints::descriptor_colors().component,
-                        (
-                            MyPoints::descriptor_colors(),
+                        SerializedComponentBatch::new(
                             <MyColor as Loggable>::to_arrow([MyColor(0x8080_80FF)]).unwrap(),
+                            MyPoints::descriptor_colors(),
                         ),
                     ), //
                     (
                         MyPoints::descriptor_labels().component,
-                        (
-                            MyPoints::descriptor_labels(),
+                        SerializedComponentBatch::new(
                             <MyLabel as Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
+                            MyPoints::descriptor_labels(),
                         ),
                     ), //
                 ]
@@ -3074,23 +3070,23 @@ mod tests {
                 components: [
                     (
                         MyPoints::descriptor_points().component,
-                        (
-                            MyPoints::descriptor_points(),
+                        SerializedComponentBatch::new(
                             <MyPoint as Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
+                            MyPoints::descriptor_points(),
                         ),
                     ), //
                     (
                         MyPoints::descriptor_colors().component,
-                        (
-                            MyPoints::descriptor_colors(),
+                        SerializedComponentBatch::new(
                             <MyColor as Loggable>::to_arrow([] as [MyColor; 0]).unwrap(),
+                            MyPoints::descriptor_colors(),
                         ),
                     ), //
                     (
                         MyPoints::descriptor_labels().component,
-                        (
-                            MyPoints::descriptor_labels(),
+                        SerializedComponentBatch::new(
                             <MyLabel as Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
+                            MyPoints::descriptor_labels(),
                         ),
                     ), //
                 ]
@@ -3106,23 +3102,23 @@ mod tests {
                 components: [
                     (
                         MyPoints::descriptor_points().component,
-                        (
-                            MyPoints::descriptor_points(),
+                        SerializedComponentBatch::new(
                             <MyPoint as Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
+                            MyPoints::descriptor_points(),
                         ),
                     ), //
                     (
                         MyPoints::descriptor_colors().component,
-                        (
-                            MyPoints::descriptor_colors(),
+                        SerializedComponentBatch::new(
                             <MyColor as Loggable>::to_arrow([MyColor(0xFFFF_FFFF)]).unwrap(),
+                            MyPoints::descriptor_colors(),
                         ),
                     ), //
                     (
                         MyPoints::descriptor_labels().component,
-                        (
-                            MyPoints::descriptor_labels(),
+                        SerializedComponentBatch::new(
                             <MyLabel as Loggable>::to_arrow([MyLabel("hey".into())]).unwrap(),
+                            MyPoints::descriptor_labels(),
                         ),
                     ), //
                 ]

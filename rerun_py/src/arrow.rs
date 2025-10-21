@@ -73,7 +73,8 @@ pub fn build_row_from_components(
     for (component_descr, array) in components_per_descr {
         let component_descr = descriptor_to_rust(&component_descr)?;
         let list_array = array_to_rust(&array)?;
-        components.insert(component_descr.component, (component_descr, list_array));
+        let batch = re_sdk::SerializedComponentBatch::new(list_array, component_descr);
+        components.insert(batch.descriptor.component, batch);
     }
 
     Ok(PendingRow {
