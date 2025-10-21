@@ -169,7 +169,7 @@ fn colormap_category_ui(
         );
 
     for option in re_types::components::Colormap::variants()
-        .into_iter()
+        .iter()
         .filter(|&&colormap| colormap_category(colormap) == category)
     {
         response |= colormap_variant_ui(ctx.render_ctx(), ui, option, selected);
@@ -192,6 +192,19 @@ pub fn colormap_to_re_renderer(colormap: re_types::components::Colormap) -> re_r
     }
 }
 
+/// Possible categories of colormaps.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ColormapCategory {
+    /// Colormaps that progress from one color to another in a single direction.
+    Sequential,
+
+    /// Colormaps that transition between two contrasting colors, often with a neutral midpoint.
+    Diverging,
+
+    /// Colormaps that wrap around.
+    Cyclic,
+}
+
 pub fn colormap_category(colormap: re_types::components::Colormap) -> ColormapCategory {
     match colormap {
         re_types::components::Colormap::Grayscale
@@ -205,11 +218,4 @@ pub fn colormap_category(colormap: re_types::components::Colormap) -> ColormapCa
         }
         re_types::components::Colormap::Twilight => ColormapCategory::Cyclic,
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ColormapCategory {
-    Sequential,
-    Diverging,
-    Cyclic,
 }
