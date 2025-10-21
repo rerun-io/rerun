@@ -251,8 +251,35 @@ impl GrpcOnRequest {
 }
 
 impl<B> tower_http::trace::OnRequest<B> for GrpcOnRequest {
-    fn on_request(&mut self, _request: &http::Request<B>, _span: &tracing::Span) {
-        tracing::trace!("grpc_on_request");
+    fn on_request(&mut self, request: &http::Request<B>, span: &tracing::Span) {
+        // It's important that we log the start of gRPC requests in case of a crash!
+
+        let Some(span_metadata) = SpanMetadata::get_opt(span.id().as_ref()) else {
+            tracing::info!(
+                uri = %request.uri(),
+                "grpc_on_request with unknown span.id"
+            );
+            return;
+        };
+
+        let SpanMetadata {
+            endpoint,
+            client_version,
+            server_version,
+            email,
+            entry_id: dataset_id,
+            first_chunk_returned: _,
+            grpc_eos_classifier: _,
+        } = span_metadata.clone();
+
+        let client_version = client_version.as_deref().unwrap_or("undefined");
+        let server_version = server_version.as_deref().unwrap_or("undefined");
+        let email = email.as_deref().unwrap_or("undefined");
+        let dataset_id = dataset_id.as_deref().unwrap_or("undefined");
+
+        // NOTE: repeat all these attributes so services such as CloudWatch, which don't really
+        // support OTLP, can actually see them.
+        tracing::info!(%endpoint, %client_version, %server_version, %email, %dataset_id, "grpc_on_request");
     }
 }
 
