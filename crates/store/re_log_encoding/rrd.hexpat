@@ -65,14 +65,14 @@ namespace EncodingOptions {
     };
 }
 
-struct FileHeader {
+struct StreamHeader {
     char magic[4] [[comment("RRF0/RRF1/RRF2")]];
     Version version;
     EncodingOptions opts;
-} [[single_color, color("E6194B"), format("FileHeader::fmt"), comment("Custom binary encoding")]];
+} [[single_color, color("E6194B"), format("StreamHeader::fmt"), comment("Custom binary encoding")]];
 
-namespace FileHeader {
-    fn fmt(FileHeader fh) {
+namespace StreamHeader {
+    fn fmt(StreamHeader fh) {
         return std::format("Rerun RRD v{} [{}]", fh.version, fh.opts);
     };
 }
@@ -125,20 +125,20 @@ namespace Message {
 
 // --- Entrypoint ---
 
-FileHeader file_header @ 0;
+StreamHeader stream_header @ 0;
 
 // TODO(cmc): These older ones were MsgPack so we don't actually support them anyhow…
 std::assert_warn(
-       file_header.magic == "RRF0"
-    || file_header.magic == "RRF1"
-    || file_header.magic == "RRF2",
-    std::format("invalid magic bytes: expected RRF[0|1|2], got {} instead", file_header.magic)
+       stream_header.magic == "RRF0"
+    || stream_header.magic == "RRF1"
+    || stream_header.magic == "RRF2",
+    std::format("invalid magic bytes: expected RRF[0|1|2], got {} instead", stream_header.magic)
 );
 
 Message messages[while (true)] @ $;
 
 // TODO(cmc): and then here there's the whole mess where you might of might not have an EOS marker, and
-// might or might not have a FileHeader that follows.
+// might or might not have a StreamHeader that follows.
 // I.e. if parsing fails, we need to try and start again.
 
 

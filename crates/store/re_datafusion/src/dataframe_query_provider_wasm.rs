@@ -26,7 +26,6 @@ use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
 };
-use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::{FetchChunksRequest, ScanPartitionTableResponse};
 use re_redap_client::ConnectionClient;
@@ -66,12 +65,7 @@ impl DataframePartitionStream {
         &mut self,
         partition_id: &str,
     ) -> Result<ChunkStoreHandle, DataFusionError> {
-        let chunk_infos = self
-            .chunk_infos
-            .iter()
-            .map(|batch| batch.encode())
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| exec_datafusion_err!("{err}"))?;
+        let chunk_infos = self.chunk_infos.iter().map(Into::into).collect::<Vec<_>>();
         let fetch_chunks_request = FetchChunksRequest { chunk_infos };
 
         let fetch_chunks_response_stream = self

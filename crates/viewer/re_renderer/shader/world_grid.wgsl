@@ -91,8 +91,17 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     let line_anti_alias = plane_unit_pixel_derivative;
     let width_in_pixels = config.thickness_ui * frame.pixels_from_point;
     let width_in_grid_units = width_in_pixels * plane_unit_pixel_derivative;
-    var intensity_base = linearstep2(width_in_grid_units + line_anti_alias, width_in_grid_units - line_anti_alias,
-                                        distance_to_grid_line_base);
+    var intensity_base = linearstep2(width_in_grid_units + line_anti_alias,
+                                     width_in_grid_units - line_anti_alias,
+                                     distance_to_grid_line_base);
+
+    var fully_invisible_spacing = 2.0; // when lines are this close together, they are invisible
+    var fully_visible_spacing = 10.0; // when lines are this far apart, they have full intensity
+
+    if frame.deterministic_rendering == 1 {
+        // Fade it out a little bit earlier to reduce numeric noise close to the horizon
+        fully_invisible_spacing *= 2.0;
+    }
 
     // Fade lines that get too close to each other.
     // Once the number of pixels per line (== from one line to the next) is below a threshold fade them out.
@@ -104,16 +113,17 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     //
     // Tried smoothstep here, but didn't feel right even with lots of range tweaking.
     let screen_space_line_spacing = 1.0 / max(width_in_grid_units.x, width_in_grid_units.y);
-    let grid_closeness_fade = linearstep(2.0, 10.0, screen_space_line_spacing);
+    let grid_closeness_fade = linearstep(fully_invisible_spacing, fully_visible_spacing, screen_space_line_spacing);
     intensity_base *= grid_closeness_fade;
 
     // Every tenth line is a more intense, we call those "cardinal" lines.
     // Experimented previously with more levels of cardinal lines, but it gets too busy:
     // It seems that if we want to go down this path, we should ensure that there's only two levels of lines on screen at a time.
     let distance_to_grid_line_cardinal = calc_distance_to_grid_line(in.scaled_world_plane_position * 0.1);
-    var intensity_cardinal = linearstep2(width_in_grid_units + line_anti_alias, width_in_grid_units - line_anti_alias,
-                                              distance_to_grid_line_cardinal * 10.0);
-    let cardinal_grid_closeness_fade = linearstep(2.0, 10.0, screen_space_line_spacing * 10.0); // Fade cardinal lines a little bit earlier (because it looks nicer)
+    var intensity_cardinal = linearstep2(width_in_grid_units + line_anti_alias,
+                                         width_in_grid_units - line_anti_alias,
+                                         distance_to_grid_line_cardinal * 10.0);
+    let cardinal_grid_closeness_fade = linearstep(fully_invisible_spacing, fully_visible_spacing, screen_space_line_spacing * 10.0);
     intensity_cardinal *= cardinal_grid_closeness_fade;
 
     // Combine all lines.
@@ -121,13 +131,13 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     // Lerp for cardinal & regular.
     // This way we don't break anti-aliasing (as addition would!), mute the regular lines, and make cardinals weaker when there's no regular to support them.
     let cardinal_and_regular = mix(intensity_base, intensity_cardinal, in.next_cardinality_interpolation);
-    // X and Y are combined like akin to premultiplied alpha operations.
-    let intensity_combined = saturate(cardinal_and_regular.x * (1.0 - cardinal_and_regular.y) + cardinal_and_regular.y);
+
+    let intensity_combined = max(cardinal_and_regular.x, cardinal_and_regular.y);
 
     return config.color * intensity_combined;
 
     // Useful debugging visualizations:
-    //return vec4f(line_cardinality - line_base_cardinality, 0.0, 0.0, 1.0);
-    //return vec4f(intensity_combined);
-    //return vec4f(grid_closeness_fade, cardinal_grid_closeness_fade, 0.0, 1.0);
+    // return vec4f(line_cardinality - line_base_cardinality, 0.0, 0.0, 1.0);
+    // return vec4f(intensity_combined);
+    // return vec4f(grid_closeness_fade, cardinal_grid_closeness_fade, 0.0, 1.0);
 }

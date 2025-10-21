@@ -10,7 +10,6 @@ use tracing::Instrument as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::QueryExpression;
 use re_datafusion::query_from_query_expression;
-use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{
@@ -346,7 +345,7 @@ impl ConnectionHandle {
                     .map_err(to_py_err)?
                     .dataframe_part()
                     .map_err(to_py_err)?
-                    .decode()
+                    .try_into()
                     .map_err(to_py_err)?;
 
                 Ok(status_table)
@@ -380,7 +379,7 @@ impl ConnectionHandle {
                 // loop until all the tasks are done or the timeout is reached: both cases
                 // will complete the stream
                 while let Some(response) = response_stream.next().await {
-                    let item = response
+                    let item: RecordBatch = response
                         .map_err(|err| {
                             ApiError::tonic(
                                 err,
@@ -397,7 +396,7 @@ impl ConnectionHandle {
                             );
                             to_py_err(err)
                         })?
-                        .decode()
+                        .try_into()
                         .map_err(to_py_err)?;
 
                     // TODO(andrea): all this column unwrapping is a bit hideous. Maybe the idea of returning a dataframe rather
@@ -554,7 +553,7 @@ impl ConnectionHandle {
                     .map_err(to_py_err)?
                     .into_iter()
                     .filter_map(|response| response.data)
-                    .map(|dataframe_part| dataframe_part.decode().map_err(to_py_err))
+                    .map(|dataframe_part| dataframe_part.try_into().map_err(to_py_err))
                     .collect();
 
                 let record_batches = record_batches?;

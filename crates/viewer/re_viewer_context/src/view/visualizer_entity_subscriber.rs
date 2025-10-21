@@ -2,10 +2,10 @@ use ahash::HashMap;
 use bit_vec::BitVec;
 use nohash_hasher::{IntMap, IntSet};
 
-use re_chunk::ArchetypeName;
+use re_chunk::{ArchetypeName, ComponentIdentifier};
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPathHash, StoreId};
-use re_types::ComponentDescriptor;
+use re_types_core::SerializedComponentColumn;
 
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, ViewSystemIdentifier,
@@ -34,7 +34,7 @@ pub struct VisualizerEntitySubscriber {
     relevant_archetypes: IntSet<ArchetypeName>,
 
     /// Assigns each required component an index.
-    required_components_indices: IntMap<ComponentDescriptor, usize>,
+    required_components_indices: IntMap<ComponentIdentifier, usize>,
 
     per_store_mapping: HashMap<StoreId, VisualizerEntityMapping>,
 
@@ -178,7 +178,8 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                         .diff
                         .chunk
                         .components()
-                        .has_component_with_archetype(*archetype)
+                        .component_descriptors()
+                        .any(|component_descr| component_descr.archetype == Some(*archetype))
                 })
             {
                 store_mapping
@@ -201,8 +202,12 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
             }
 
             #[expect(clippy::iter_over_hash_type)]
-            for (component_desc, list_array) in event.diff.chunk.components().iter() {
-                if let Some(index) = self.required_components_indices.get(component_desc) {
+            for SerializedComponentColumn {
+                list_array,
+                descriptor,
+            } in event.diff.chunk.components().values()
+            {
+                if let Some(index) = self.required_components_indices.get(&descriptor.component) {
                     // The component might be present, but logged completely empty.
                     // That shouldn't count towards filling "having the required component present"!
                     // (Note: This happens frequently now with `Transform3D`'s component which always get logged, thus tripping of the `AxisLengthDetector`!)` )

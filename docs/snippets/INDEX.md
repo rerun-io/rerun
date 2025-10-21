@@ -263,7 +263,10 @@ _All snippets, organized by the blueprint-related [`Archetype`](https://rerun.io
 | **`DataframeQuery`** | `views⁠/⁠dataframe` | Use a blueprint to customize a DataframeView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/dataframe.py) |  |  |
 | **`EntityBehavior`** | `archetypes⁠/⁠entity_behavior` | Configure interactivity & visibility of entities | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/entity_behavior.py) |  |  |
 | **`EyeControls3D`** | `views⁠/⁠spatial3d` | Use a blueprint to customize a Spatial3DView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/spatial3d.py) |  |  |
+| **`GraphBackground`** | `views⁠/⁠graph` | Use a blueprint to customize a graph view | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/graph.py) |  |  |
 | **`LineGrid3D`** | `views⁠/⁠spatial3d` | Use a blueprint to customize a Spatial3DView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/spatial3d.py) |  |  |
+| **`PlotBackground`** | `views⁠/⁠bar_chart` | Use a blueprint to show a bar chart | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/bar_chart.py) |  |  |
+| **`PlotBackground`** | `views⁠/⁠timeseries` | Use a blueprint to customize a TimeSeriesView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/timeseries.py) |  |  |
 | **`PlotLegend`** | `views⁠/⁠timeseries` | Use a blueprint to customize a TimeSeriesView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/timeseries.py) |  |  |
 | **`ScalarAxis`** | `views⁠/⁠timeseries` | Use a blueprint to customize a TimeSeriesView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/timeseries.py) |  |  |
 | **`TensorScalarMapping`** | `views⁠/⁠tensor` | Use a blueprint to show a tensor view | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/tensor.py) |  |  |

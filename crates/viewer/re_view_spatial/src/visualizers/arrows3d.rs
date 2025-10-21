@@ -71,7 +71,7 @@ impl Arrows3DVisualizer {
 
             let world_from_obj = ent_context
                 .transform_info
-                .single_entity_transform_required(entity_path, Arrows3D::name());
+                .single_transform_required_for_entity(entity_path, Arrows3D::name());
 
             let mut line_batch = line_builder
                 .batch(entity_path.to_string())

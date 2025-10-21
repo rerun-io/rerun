@@ -79,8 +79,7 @@ fn load_blueprint_from_file(test_context: &mut TestContext, path: &Path) {
 
 fn take_snapshot(test_context: &TestContext, snapshot_name: &str) {
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(egui::vec2(600.0, 400.0))
+        .setup_kittest_for_rendering_ui([600.0, 400.0])
         .build_ui(|ui| {
             test_context.run_ui(ui, |ctx, ui| {
                 let viewport_blueprint = re_viewport_blueprint::ViewportBlueprint::from_db(

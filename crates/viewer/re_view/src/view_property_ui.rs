@@ -93,9 +93,10 @@ pub fn view_property_component_ui(
     fallback_provider: &dyn ComponentFallbackProvider,
 ) {
     let component_descr = field.component_descriptor(property.archetype_name);
+    let component = component_descr.component;
 
-    let component_array = property.component_raw(&component_descr);
-    let row_id = property.component_row_id(&component_descr);
+    let component_array = property.component_raw(component);
+    let row_id = property.component_row_id(component);
 
     let viewer_ctx = ctx.viewer_ctx();
     let ui_types = viewer_ctx
@@ -201,10 +202,11 @@ fn menu_more(
     property: &ViewProperty,
     component_descr: &ComponentDescriptor,
 ) {
-    let component_array = property.component_raw(component_descr);
+    let component = component_descr.component;
+    let component_array = property.component_raw(component);
 
     let property_differs_from_default = component_array
-        != ctx.raw_latest_at_in_default_blueprint(&property.blueprint_store_path, component_descr);
+        != ctx.raw_latest_at_in_default_blueprint(&property.blueprint_store_path, component);
 
     let response = ui
         .add_enabled(

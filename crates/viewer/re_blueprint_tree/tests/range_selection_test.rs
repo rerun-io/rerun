@@ -1,10 +1,10 @@
 #![cfg(feature = "testing")]
 
-use egui::{Modifiers, Vec2};
+use egui::Modifiers;
 use egui_kittest::kittest::Queryable as _;
+
 use re_blueprint_tree::BlueprintTree;
-use re_chunk_store::RowId;
-use re_chunk_store::external::re_chunk::ChunkBuilder;
+use re_chunk_store::{RowId, external::re_chunk::ChunkBuilder};
 use re_log_types::build_frame_nr;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
@@ -35,8 +35,7 @@ fn test_range_selection_in_blueprint_tree() {
     );
 
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(Vec2::new(400.0, 500.0))
+        .setup_kittest_for_rendering_ui([400.0, 500.0])
         .build(|ctx| {
             // We must create a side panel here (instead of the default central panel, as
             // `list_item::LabelContent`'s sizing behave differently there.

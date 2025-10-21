@@ -1,5 +1,5 @@
 use re_log_types::TimePoint;
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::{RowId, archetypes::Mesh3D};
 use re_viewer_context::{RecommendedView, ViewClass as _};
@@ -44,14 +44,8 @@ pub fn test_single_channel_mesh() {
     let size = egui::vec2(300.0, 300.0);
 
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
+        .setup_kittest_for_rendering_3d(size)
         .build_ui(|ui| test_context.run_with_single_view(ui, view_id));
 
-    let broken_pixels_fraction = 0.0004;
-    harness.snapshot_options(
-        "mesh3d_grayscale_texture",
-        &SnapshotOptions::new()
-            .failed_pixel_count_threshold((size.x * size.y * broken_pixels_fraction) as usize),
-    );
+    harness.snapshot("mesh3d_grayscale_texture");
 }

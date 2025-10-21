@@ -14,7 +14,6 @@ use tracing::instrument;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_datafusion::{DatasetManifestProvider, PartitionTableProvider, SearchResultsTableProvider};
-use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{StoreId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
@@ -664,11 +663,7 @@ impl PyDatasetEntry {
                     ),
                 ),
             }),
-            query: Some(
-                query
-                    .encode()
-                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
-            ),
+            query: Some(query.into()),
             scan_parameters: None,
         };
 
@@ -714,11 +709,7 @@ impl PyDatasetEntry {
                     top_k: Some(top_k),
                 })),
             }),
-            query: Some(
-                query
-                    .encode()
-                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
-            ),
+            query: Some(query.into()),
             scan_parameters: None,
         };
 

@@ -1,5 +1,134 @@
 # Rerun changelog
 
+## [0.26.0](https://github.com/rerun-io/rerun/compare/0.25.1...0.26.0) - 2025-10-13 - Viewer improvements and table filtering upgrades
+
+### ✨ Overview & highlights
+
+We have started aiming for a higher release cadence, with smaller, more frequent releases.
+
+#### 🧩 Blueprint improvements
+
+Blueprints now give you more control over playback and visualization settings.
+You can define playback speed and FPS directly in blueprints, and manage time and timeline behavior through them as well.
+The Blueprint panel is now always resizable, and we've added support for customizing plot backgrounds.
+
+<img src="https://static.rerun.io/plot_background/d1b00e09cf5097eb11738821fa27c3660501158b/480w.png" alt="">
+
+#### Table filtering upgrades
+
+Table filtering just got a lot more capable. You can now filter on timestamps, use new string operators like `starts with`, `ends with`, and `does not contain`, and combine these with improved numeric and boolean filtering.
+
+<img src="https://static.rerun.io/improved_table_filtering/c9198336beb89e7064da8139539be667ede020a1/480w.png" alt="">
+
+### ⚠️ Breaking changes
+
+#### 🐍 Python SDK
+
+The `blocking` argument for `flush` has been removed, use the new `timeout_sec` argument instead, for non-blocking calls, set `timeout_sec=0`.
+Mostly you can just call `.flush()` with no arguments.
+
+We also have started using named arguments (kw-args) for more of our functions, this will make it easier for us to evolve our APIs in the future, when adding new arguments, or renaming old ones.
+
+See the
+🧳 [Migration guide](https://rerun.io/docs/reference/migration/migration-0-26) for more details.
+
+### 🔎 Details
+
+#### 🪵 Log API
+- Merge `DroppableEncoder` and `Encoder` into a single facility [#11446](https://github.com/rerun-io/rerun/pull/11446)
+- Encoder: simplified APIs and improved discoverability [#11450](https://github.com/rerun-io/rerun/pull/11450)
+- Introduce `Lens` as a concept for semantic mapping of arbitrary data [#11394](https://github.com/rerun-io/rerun/pull/11394)
+
+#### 🐍 Python API
+- Add module definition to all `pyclasses` [#11268](https://github.com/rerun-io/rerun/pull/11268)
+- Python SDK: Add `timeout_sec` argument to `flush` [#11295](https://github.com/rerun-io/rerun/pull/11295)
+- Python SDK: remove `blocking` argument of `flush` [#11314](https://github.com/rerun-io/rerun/pull/11314)
+- Fix instances of `newest_first` not working correctly [#11326](https://github.com/rerun-io/rerun/pull/11326)
+- Update Schema to make query view requirements clearer [#11287](https://github.com/rerun-io/rerun/pull/11287)
+- Fix error when logging `AnyValues` with empty columns [#11322](https://github.com/rerun-io/rerun/pull/11322)
+- Include "outer nullability" when we format column datatypes [#11339](https://github.com/rerun-io/rerun/pull/11339)
+- Fix error message for what package to install [#11398](https://github.com/rerun-io/rerun/pull/11398)
+- Py-SDK: More kw-args [#11384](https://github.com/rerun-io/rerun/pull/11384)
+- Add meaningful equality comparisons to many rust wrappers [#11401](https://github.com/rerun-io/rerun/pull/11401)
+- Remove deprecated methods from `AnyValues` [#11390](https://github.com/rerun-io/rerun/pull/11390) (thanks [@Weijun-H](https://github.com/Weijun-H)!)
+- Introduce the dataset manifest and remove layer information from the partition table [#11423](https://github.com/rerun-io/rerun/pull/11423)
+- Make time and timeline controlled by blueprint [#11405](https://github.com/rerun-io/rerun/pull/11405)
+
+#### 🦀 Rust API
+- Remove deprecated methods from `AnyValues` [#11390](https://github.com/rerun-io/rerun/pull/11390) (thanks [@Weijun-H](https://github.com/Weijun-H)!)
+
+#### 🪳 Bug fixes
+- Fix edge case for parsing videos with constant frame size [#11226](https://github.com/rerun-io/rerun/pull/11226)
+- Fix title bar height on macOS Tahoe [#11241](https://github.com/rerun-io/rerun/pull/11241)
+- Blueprint panel can now always be resized [#11046](https://github.com/rerun-io/rerun/pull/11046)
+- Fix rare issue where video stream sample indices would be determined incorrectly, breaking video inspection UI & playback [#11308](https://github.com/rerun-io/rerun/pull/11308)
+- Fix links to custom timelines [#11333](https://github.com/rerun-io/rerun/pull/11333)
+- Fix url edit warning spam [#11330](https://github.com/rerun-io/rerun/pull/11330)
+- Fix race condition for ui adjustments while loading recordings from redap client [#11365](https://github.com/rerun-io/rerun/pull/11365)
+- Fix formatting and parsing of component paths in URLs [#11364](https://github.com/rerun-io/rerun/pull/11364)
+- Share button on notebook no longer uses the current base url for web viewer urls [#11379](https://github.com/rerun-io/rerun/pull/11379)
+- Enable "Close current recording" only when there's a recording [#11353](https://github.com/rerun-io/rerun/pull/11353)
+- Do not include metadata when rendering table in html [#11463](https://github.com/rerun-io/rerun/pull/11463)
+- Data loaders: fix multiple nasty bugs when working with virtual FDs (e.g. `<(...)` FIFOs) [#11486](https://github.com/rerun-io/rerun/pull/11486)
+- Fix data corruption during compression of large chunks [#11525](https://github.com/rerun-io/rerun/pull/11525)
+
+#### 🌁 Viewer improvements
+- Keep last paused time in web-viewer url [#11246](https://github.com/rerun-io/rerun/pull/11246)
+- Add limited support for out-of-order video stream samples [#11307](https://github.com/rerun-io/rerun/pull/11307)
+- Better video stream errors for missing samples & key frames [#11310](https://github.com/rerun-io/rerun/pull/11310)
+- Add optional viewer url parameter to web app options [#11296](https://github.com/rerun-io/rerun/pull/11296)
+- Add spectral colormap [#11298](https://github.com/rerun-io/rerun/pull/11298)
+- Better gRPC errors [#11335](https://github.com/rerun-io/rerun/pull/11335)
+- Fix `UnixEpoch` display/parsing inconsistency [#11491](https://github.com/rerun-io/rerun/pull/11491)
+- Blueprint plot background [#11494](https://github.com/rerun-io/rerun/pull/11494)
+- Put playback speed and fps in blueprint [#11490](https://github.com/rerun-io/rerun/pull/11490)
+
+#### 🗄️ OSS server
+- Add table support to OSS server [#11356](https://github.com/rerun-io/rerun/pull/11356)
+
+#### 🚀 Performance improvements
+- Determine per-view overrides in parallel (-> faster many entities + many views on native) [#11439](https://github.com/rerun-io/rerun/pull/11439)
+- Improve many-entity performance by fixing redundant `AnnotationContext` lookups (also affects scene without annotation contexts) [#11445](https://github.com/rerun-io/rerun/pull/11445)
+
+#### 🧑‍🏫 Examples
+- refactor: Move examples for notebook viewer and callbacks to `examples/python` [#11416](https://github.com/rerun-io/rerun/pull/11416) (thanks [@Weijun-H](https://github.com/Weijun-H)!)
+
+#### 📚 Docs
+- Add how to connect the server to the CLI command output [#11400](https://github.com/rerun-io/rerun/pull/11400)
+
+#### 🖼 UI improvements
+- Add copy-button to the recording link table item [#11242](https://github.com/rerun-io/rerun/pull/11242)
+- Add copy link context menu to server entries [#11235](https://github.com/rerun-io/rerun/pull/11235)
+- Add support for displaying timezone with our timestamps [#11234](https://github.com/rerun-io/rerun/pull/11234)
+- Show loading screen when opening link [#11270](https://github.com/rerun-io/rerun/pull/11270)
+- Support filtering by timestamp in table view [#11227](https://github.com/rerun-io/rerun/pull/11227)
+- Add `starts with`/`ends with` string filters to table [#11341](https://github.com/rerun-io/rerun/pull/11341)
+- Mark valid data ranges in timeline when loading data via range-limited URL [#11340](https://github.com/rerun-io/rerun/pull/11340)
+- Add `does not contain` operator to string column filtering [#11349](https://github.com/rerun-io/rerun/pull/11349)
+- Copy button on some selection items [#11337](https://github.com/rerun-io/rerun/pull/11337)
+- Add `is not` to timestamp filtering [#11366](https://github.com/rerun-io/rerun/pull/11366)
+- Add `is not` to nullable boolean filter [#11371](https://github.com/rerun-io/rerun/pull/11371)
+- Treat`!=` filtering of numerical column as the inverse of `==` (aka. outer-NOT and ALL semantics) [#11372](https://github.com/rerun-io/rerun/pull/11372)
+- Add context menu button to copy partition name [#11378](https://github.com/rerun-io/rerun/pull/11378)
+- Store (and display) recordings in insertion order [#11415](https://github.com/rerun-io/rerun/pull/11415)
+
+#### 🎨 Renderer improvements
+- Export `BindGroupEntry` type to re_renderer rust dependents [#11406](https://github.com/rerun-io/rerun/pull/11406) (thanks [@Weijun-H](https://github.com/Weijun-H)!)
+
+#### 🧢 MCAP
+- Add support for `enum` in protobuf MCAP messages [#11280](https://github.com/rerun-io/rerun/pull/11280)
+- Represent enums from `protobuf` messages as `StructArray` [#11458](https://github.com/rerun-io/rerun/pull/11458)
+- Reflection-based `protobuf` parser only returns single component [#11459](https://github.com/rerun-io/rerun/pull/11459)
+- Add reflection based support for deserializing ROS2 MCAP [#11367](https://github.com/rerun-io/rerun/pull/11367)
+- Reflection-based ROS2 parser now only returns single component [#11480](https://github.com/rerun-io/rerun/pull/11480)
+
+#### 🧑‍💻 Dev-experience
+- Improve rrd loading errors by checking FourCC first [#11265](https://github.com/rerun-io/rerun/pull/11265)
+
+#### 📦 Dependencies
+- Update to wgpu 26 [#11300](https://github.com/rerun-io/rerun/pull/11300)
+- Update DataFusion to version 49.0.2 [#11291](https://github.com/rerun-io/rerun/pull/11291)
+
 
 ## [0.25.1](https://github.com/rerun-io/rerun/compare/0.25.0...0.25.1) - 2025-09-19 - Bug fixes
 - Fix vector search [#11259](https://github.com/rerun-io/rerun/pull/11259)

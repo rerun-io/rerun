@@ -88,6 +88,8 @@ impl Points3DVisualizer {
 
             let positions = bytemuck::cast_slice(data.positions);
 
+            let obj_space_bounding_box = macaw::BoundingBox::from_points(positions.iter().copied());
+
             // Has not custom fallback for radius, so we use the default.
             // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
             let radii =
@@ -95,10 +97,15 @@ impl Points3DVisualizer {
             let colors =
                 process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
-            let world_from_obj = ent_context
+            // TODO(grtlr): The following is a quick fix to get multiple instance poses to work
+            // with point clouds: We sent the same point cloud multiple times to the GPU (bad
+            // for memory) and render them with multiple draw calls across different batches (bad
+            // for performance).
+            for world_from_obj in ent_context
                 .transform_info
-                .single_entity_transform_required(entity_path, Points3D::name());
-
+                .target_from_instances(Points3D::name())
+                .iter()
+                .copied()
             {
                 let point_batch = point_builder
                     .batch(entity_path.to_string())
@@ -125,33 +132,35 @@ impl Points3DVisualizer {
                         }
                     }
                 }
-            }
 
-            let obj_space_bounding_box = macaw::BoundingBox::from_points(positions.iter().copied());
-            self.data
-                .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
+                self.data.add_bounding_box(
+                    entity_path.hash(),
+                    obj_space_bounding_box,
+                    world_from_obj,
+                );
 
-            load_keypoint_connections(
-                line_builder,
-                &ent_context.annotations,
-                world_from_obj,
-                entity_path,
-                &keypoints,
-            )?;
-
-            self.data.ui_labels.extend(process_labels_3d(
-                LabeledBatch {
+                load_keypoint_connections(
+                    line_builder,
+                    &ent_context.annotations,
+                    world_from_obj,
                     entity_path,
-                    num_instances,
-                    overall_position: obj_space_bounding_box.center(),
-                    instance_positions: positions.iter().copied(),
-                    labels: &data.labels,
-                    colors: &colors,
-                    show_labels: data.show_labels.unwrap_or_else(|| self.fallback_for(ctx)),
-                    annotation_infos: &annotation_infos,
-                },
-                world_from_obj,
-            ));
+                    &keypoints,
+                )?;
+
+                self.data.ui_labels.extend(process_labels_3d(
+                    LabeledBatch {
+                        entity_path,
+                        num_instances,
+                        overall_position: obj_space_bounding_box.center(),
+                        instance_positions: positions.iter().copied(),
+                        labels: &data.labels,
+                        colors: &colors,
+                        show_labels: data.show_labels.unwrap_or_else(|| self.fallback_for(ctx)),
+                        annotation_infos: &annotation_infos,
+                    },
+                    world_from_obj,
+                ));
+            }
         }
 
         Ok(())

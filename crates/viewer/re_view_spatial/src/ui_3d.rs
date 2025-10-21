@@ -1,6 +1,5 @@
 use egui::{NumExt as _, emath::RectTransform};
 use glam::{Affine3A, Quat, Vec3};
-use web_time::Instant;
 
 use macaw::BoundingBox;
 use re_log_types::EntityPath;
@@ -47,7 +46,9 @@ pub struct View3DState {
 
     /// Used to show the orbit center of the eye-camera when the user interacts.
     /// None: user has never interacted with the eye-camera.
-    pub last_eye_interaction: Option<Instant>,
+    ///
+    /// The time here is "egui time" (seconds).
+    pub last_eye_interaction: Option<f64>,
 
     /// Currently tracked entity.
     ///
@@ -199,7 +200,7 @@ impl View3DState {
         };
 
         if view_eye.update(response, view_eye_drag_threshold, view_ctx, eye_property) {
-            self.last_eye_interaction = Some(Instant::now());
+            self.last_eye_interaction = Some(response.ctx.time());
             self.eye_interpolation = None;
             self.tracked_entity = None;
             self.camera_before_tracked_entity = None;
@@ -331,10 +332,10 @@ impl View3DState {
         self.spin
     }
 
-    pub fn set_spin(&mut self, spin: bool) {
+    pub fn set_spin(&mut self, ctx: &egui::Context, spin: bool) {
         if spin != self.spin {
             self.spin = spin;
-            self.last_eye_interaction = Some(Instant::now());
+            self.last_eye_interaction = Some(ctx.time());
         }
     }
 }
@@ -588,7 +589,7 @@ impl SpatialView3D {
                 }
             };
             if let Some(entity_path) = focused_entity {
-                state.state_3d.last_eye_interaction = Some(Instant::now());
+                state.state_3d.last_eye_interaction = Some(ui.time());
 
                 // TODO(#4812): We currently only track cameras on double click since tracking arbitrary entities was deemed too surprising.
                 if find_camera(space_cameras, entity_path).is_some() {
@@ -791,7 +792,7 @@ fn show_orbit_eye_center(
 
     let should_show_center_of_orbit_camera = state_3d
         .last_eye_interaction
-        .is_some_and(|d| d.elapsed().as_secs_f32() < 0.35);
+        .is_some_and(|time| (egui_ctx.time() - time) < 0.35);
 
     if !state_3d.eye_interact_fade_in && should_show_center_of_orbit_camera {
         // Any interaction immediately causes fade in to start if it's not already on.

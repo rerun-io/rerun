@@ -117,6 +117,10 @@ impl ViewportUi {
                 }
             });
 
+            let mut hover_rects = Vec::new();
+            let mut selection_rects = Vec::new();
+            let mut drop_target_rects = Vec::new();
+
             // Outline hovered & selected tiles:
             for contents in blueprint.contents_iter() {
                 let tile_id = contents.as_tile_id();
@@ -125,8 +129,9 @@ impl ViewportUi {
 
                     let mut hovered = ctx.hovered().contains_item(&item);
                     let selected = ctx.selection().contains_item(&item);
+                    let pointer_in_rect = ui.rect_contains_pointer(rect);
 
-                    if hovered && ui.rect_contains_pointer(rect) {
+                    if pointer_in_rect {
                         // Showing a hover-outline when hovering the same thing somewhere else
                         // (e.g. in the blueprint panel) is really helpful,
                         // but showing a hover-outline when just dragging around the camera is
@@ -135,34 +140,14 @@ impl ViewportUi {
                     }
 
                     // Handle drag-and-drop if this is a view.
-                    //TODO(#8428): simplify with let-chains
-                    let should_display_drop_destination_frame = 'scope: {
-                        if !ui.rect_contains_pointer(rect) {
-                            break 'scope false;
-                        }
-
-                        let Some(view_blueprint) = contents
-                            .as_view_id()
-                            .and_then(|view_id| self.blueprint.view(&view_id))
-                        else {
-                            break 'scope false;
-                        };
-
-                        let Some(dragged_payload) = dragged_payload else {
-                            break 'scope false;
-                        };
-
+                    let should_display_drop_destination_frame = if pointer_in_rect
+                        && let Some(view_id) = contents.as_view_id()
+                        && let Some(view_blueprint) = self.blueprint.view(&view_id)
+                        && let Some(dragged_payload) = dragged_payload
+                    {
                         Self::handle_drop_entities_to_view(ctx, view_blueprint, dragged_payload)
-                    };
-
-                    let stroke = if should_display_drop_destination_frame {
-                        tokens.drop_target_container_stroke
-                    } else if hovered {
-                        ui.ctx().hover_stroke()
-                    } else if selected {
-                        ui.ctx().selection_stroke()
                     } else {
-                        continue;
+                        false
                     };
 
                     if matches!(contents, Contents::View(_))
@@ -172,24 +157,43 @@ impl ViewportUi {
                         continue;
                     }
 
-                    // We want the rectangle to be on top of everything in the viewport,
-                    // including stuff in "zoom-pan areas", like we use in the graph view.
-                    let top_layer_id =
-                        egui::LayerId::new(ui.layer_id().order, ui.id().with("child_id"));
-                    ui.ctx().set_sublayer(ui.layer_id(), top_layer_id); // Make sure it is directly on top of the ui layer
-
-                    // We paint the stroke on the inside so the panel-resize lines don't cover the highlight rectangle.
-                    let painter = ui.painter().clone().with_layer_id(top_layer_id);
-                    painter.rect_stroke(rect, 0.0, stroke, egui::StrokeKind::Inside);
-
                     if should_display_drop_destination_frame {
-                        painter.rect_filled(
-                            rect.shrink(stroke.width),
-                            0.0,
-                            stroke.color.gamma_multiply(0.1),
-                        );
+                        drop_target_rects.push(rect);
+                    } else if hovered {
+                        hover_rects.push(rect);
+                    } else if selected {
+                        selection_rects.push(rect);
                     }
                 }
+            }
+
+            // We want the rectangle to be on top of everything in the viewport,
+            // including stuff in "zoom-pan areas", like we use in the graph view.
+            let top_layer_id = egui::LayerId::new(ui.layer_id().order, ui.id().with("child_id"));
+            ui.ctx().set_sublayer(ui.layer_id(), top_layer_id); // Make sure it is directly on top of the ui layer
+            let painter = ui.painter().clone().with_layer_id(top_layer_id);
+
+            // Draw selection outlines
+            let selection_stroke = ui.ctx().selection_stroke();
+            for rect in selection_rects {
+                painter.rect_stroke(rect, 0.0, selection_stroke, egui::StrokeKind::Inside);
+            }
+
+            // Draw hover outlines
+            let hover_stroke = ui.ctx().hover_stroke();
+            for rect in hover_rects {
+                painter.rect_stroke(rect, 0.0, hover_stroke, egui::StrokeKind::Inside);
+            }
+
+            // Draw drop target outlines
+            let drop_target_stroke = tokens.drop_target_container_stroke;
+            for rect in drop_target_rects {
+                painter.rect_stroke(rect, 0.0, drop_target_stroke, egui::StrokeKind::Inside);
+                painter.rect_filled(
+                    rect.shrink(drop_target_stroke.width),
+                    0.0,
+                    drop_target_stroke.color.gamma_multiply(0.1),
+                );
             }
 
             if blueprint.maximized.is_none() {

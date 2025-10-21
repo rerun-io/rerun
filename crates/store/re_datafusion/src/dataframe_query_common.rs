@@ -21,12 +21,11 @@ use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
 
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
-use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
+use re_protos::cloud::v1alpha1::FetchChunksRequest;
 use re_protos::{
     cloud::v1alpha1::{
-        GetDatasetSchemaRequest, QueryDatasetRequest, QueryDatasetResponse,
-        ScanPartitionTableResponse,
+        GetDatasetSchemaRequest, QueryDatasetRequest, ScanPartitionTableResponse,
         ext::{Query, QueryLatestAt, QueryRange},
     },
     common::v1alpha1::ext::ScanParameters,
@@ -109,16 +108,6 @@ impl DataframeQueryTableProvider {
 
         let query = query_from_query_expression(query_expression);
 
-        let fields_of_interest = [
-            QueryDatasetResponse::PARTITION_ID,
-            QueryDatasetResponse::CHUNK_ID,
-            QueryDatasetResponse::PARTITION_LAYER,
-            QueryDatasetResponse::CHUNK_KEY,
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect::<Vec<_>>();
-
         let dataset_query = QueryDatasetRequest {
             partition_ids: partition_ids
                 .iter()
@@ -136,7 +125,7 @@ impl DataframeQueryTableProvider {
             query: Some(query.into()),
             scan_parameters: Some(
                 ScanParameters {
-                    columns: fields_of_interest,
+                    columns: FetchChunksRequest::required_column_names(),
                     ..Default::default()
                 }
                 .into(),
@@ -164,7 +153,7 @@ impl DataframeQueryTableProvider {
             .filter_map(|response| response.data)
             .map(|dataframe_part| {
                 dataframe_part
-                    .decode()
+                    .try_into()
                     .map_err(|err| exec_datafusion_err!("{err}"))
             })
             .collect::<Result<Vec<_>, _>>()?

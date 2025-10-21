@@ -1344,11 +1344,14 @@ fn stream_to_rrd_on_disk(
 
     re_log::info!("Saving incoming log stream to {path:?}. Abort with Ctrl-C.");
 
-    let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
+    let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
     let file =
         std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-    let mut encoder =
-        re_log_encoding::Encoder::new(re_build_info::CrateVersion::LOCAL, encoding_options, file)?;
+    let mut encoder = re_log_encoding::Encoder::new_eager(
+        re_build_info::CrateVersion::LOCAL,
+        encoding_options,
+        file,
+    )?;
 
     loop {
         if let Ok(msg) = rx.recv() {

@@ -1779,7 +1779,7 @@ impl App {
 
             let file_name = if let Some(rec_name) = store
                 .recording_info_property::<re_types::components::Name>(
-                    &re_types::archetypes::RecordingInfo::descriptor_name(),
+                    re_types::archetypes::RecordingInfo::descriptor_name().component,
                 ) {
                 rec_name.to_string()
             } else {
@@ -2131,8 +2131,8 @@ impl App {
             );
         }
 
-        let msg_will_add_new_store = matches!(&msg, LogMsg::SetStoreInfo(..))
-            && !store_hub.store_bundle().contains(store_id);
+        // Note that the `SetStoreInfo` message might be missing. It's not strictly necessary to add a new store.
+        let msg_will_add_new_store = !store_hub.store_bundle().contains(store_id);
 
         let entity_db = store_hub.entity_db_mut(store_id);
         if entity_db.data_source.is_none() {
@@ -2169,53 +2169,14 @@ impl App {
             }
         }
 
-        let is_example = entity_db.store_class().is_example();
-
+        #[expect(clippy::match_same_arms)]
         match &msg {
             LogMsg::SetStoreInfo(_) => {
-                if channel_source.select_when_loaded() {
-                    // Set the recording-id after potentially creating the store in the hub.
-                    // This ordering is important because the `StoreHub` internally
-                    // updates the app-id when changing the recording.
-                    match store_id.kind() {
-                        StoreKind::Recording => {
-                            re_log::trace!("Opening a new recording: '{store_id:?}'");
-                            self.make_store_active_and_highlight(store_hub, egui_ctx, store_id);
-                        }
-                        StoreKind::Blueprint => {
-                            // We wait with activating blueprints until they are fully loaded,
-                            // so that we don't run heuristics on half-loaded blueprints.
-                            // Otherwise on a mixed connection (SDK sending both blueprint and recording)
-                            // the blueprint won't be activated until the whole _recording_ has finished loading.
-                        }
-                    }
-                }
-
-                if cfg!(target_arch = "wasm32")
-                    && !self.startup_options.is_in_notebook
-                    && !is_example
-                {
-                    use std::sync::Once;
-                    static ONCE: Once = Once::new();
-                    ONCE.call_once(|| {
-                        // Tell the user there is a faster native viewer they can use instead of the web viewer:
-                        let notification = re_ui::notifications::Notification::new(
-                                re_ui::notifications::NotificationLevel::Tip, "For better performance, try the native Rerun Viewer!").with_link(
-                                re_ui::Link {
-                                    text: "Install…".into(),
-                                    url: "https://rerun.io/docs/getting-started/installing-viewer#installing-the-viewer".into(),
-                                }
-                            )
-                            .no_toast()
-                            .permanent_dismiss_id(egui::Id::new("install_native_viewer_prompt"));
-                        self.command_sender
-                            .send_system(SystemCommand::ShowNotification(notification));
-                    });
-                }
+                // Causes a new store typically. But that's handled below via `on_new_store`.
             }
 
             LogMsg::ArrowMsg(_, _) => {
-                // Handled by `EntityDb::add`
+                // Handled by `EntityDb::add`.
             }
 
             LogMsg::BlueprintActivationCommand(cmd) => match store_id.kind() {
@@ -2263,10 +2224,60 @@ impl App {
             },
         }
 
-        // Do analytics/events after ingesting the new message,
-        // because `entity_db.store_info` needs to be set.
+        // Handle any action that is triggered by a new store _after_ processing the message that caused it.
+        if msg_will_add_new_store {
+            self.on_new_store(egui_ctx, store_id, channel_source, store_hub);
+        }
+    }
+
+    fn on_new_store(
+        &self,
+        egui_ctx: &egui::Context,
+        store_id: &StoreId,
+        channel_source: &SmartChannelSource,
+        store_hub: &mut StoreHub,
+    ) {
+        if channel_source.select_when_loaded() {
+            // Set the recording-id after potentially creating the store in the hub.
+            // This ordering is important because the `StoreHub` internally
+            // updates the app-id when changing the recording.
+            match store_id.kind() {
+                StoreKind::Recording => {
+                    re_log::trace!("Opening a new recording: '{store_id:?}'");
+                    self.make_store_active_and_highlight(store_hub, egui_ctx, store_id);
+                }
+                StoreKind::Blueprint => {
+                    // We wait with activating blueprints until they are fully loaded,
+                    // so that we don't run heuristics on half-loaded blueprints.
+                    // Otherwise on a mixed connection (SDK sending both blueprint and recording)
+                    // the blueprint won't be activated until the whole _recording_ has finished loading.
+                }
+            }
+        }
+
         let entity_db = store_hub.entity_db_mut(store_id);
-        if msg_will_add_new_store && entity_db.store_kind() == StoreKind::Recording {
+        let is_example = entity_db.store_class().is_example();
+
+        if cfg!(target_arch = "wasm32") && !self.startup_options.is_in_notebook && !is_example {
+            use std::sync::Once;
+            static ONCE: Once = Once::new();
+            ONCE.call_once(|| {
+                // Tell the user there is a faster native viewer they can use instead of the web viewer:
+                let notification = re_ui::notifications::Notification::new(
+                        re_ui::notifications::NotificationLevel::Tip, "For better performance, try the native Rerun Viewer!").with_link(
+                        re_ui::Link {
+                            text: "Install…".into(),
+                            url: "https://rerun.io/docs/getting-started/installing-viewer#installing-the-viewer".into(),
+                        }
+                    )
+                    .no_toast()
+                    .permanent_dismiss_id(egui::Id::new("install_native_viewer_prompt"));
+                self.command_sender
+                    .send_system(SystemCommand::ShowNotification(notification));
+            });
+        }
+
+        if entity_db.store_kind() == StoreKind::Recording {
             #[cfg(feature = "analytics")]
             if let Some(analytics) = re_analytics::Analytics::global_or_init()
                 && let Some(event) =
@@ -2368,8 +2379,7 @@ impl App {
             let chunk = &event.diff.chunk;
 
             // For speed, we don't care about the order of the following log statements, so we silence this warning
-            #[expect(clippy::iter_over_hash_type)]
-            for component_descr in chunk.components().keys() {
+            for component_descr in chunk.components().component_descriptors() {
                 if let Some(archetype_name) = component_descr.archetype {
                     if let Some(archetype) = self.reflection.archetypes.get(&archetype_name) {
                         for &view_type in archetype.view_types {
@@ -3313,7 +3323,7 @@ fn save_recording(
 
     let file_name = if let Some(recording_name) = entity_db
         .recording_info_property::<re_types::components::Name>(
-            &re_types::archetypes::RecordingInfo::descriptor_name(),
+            re_types::archetypes::RecordingInfo::descriptor_name().component,
         ) {
         format!("{}.rrd", sanitize_file_name(&recording_name))
     } else {
@@ -3447,7 +3457,7 @@ async fn async_save_dialog(
         return Ok(()); // aborted
     };
 
-    let options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
+    let options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
     let mut bytes = Vec::new();
     re_log_encoding::Encoder::encode_into(rrd_version, options, messages, &mut bytes)?;
     file_handle.write(&bytes).await.context("Failed to save")

@@ -53,7 +53,7 @@ impl Cache for ImageStatsCache {
                             .flat_map(|descr| {
                                 let kind = ImageKind::from_archetype_name(descr.archetype);
                                 event.chunk.row_ids().map(move |row_id| {
-                                    (StoredBlobCacheKey::new(row_id, &descr), kind)
+                                    (StoredBlobCacheKey::new(row_id, descr.component), kind)
                                 })
                             }),
                     )

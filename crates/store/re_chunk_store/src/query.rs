@@ -10,9 +10,7 @@ use saturating_cast::SaturatingCast as _;
 use re_chunk::{Chunk, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::AbsoluteTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_types_core::{
-    ComponentDescriptor, ComponentDescriptorSet, ComponentType, UnorderedComponentDescriptorSet,
-};
+use re_types_core::{ComponentDescriptor, ComponentSet, UnorderedComponentSet};
 
 use crate::{ChunkStore, store::ChunkIdSetPerTime};
 
@@ -57,10 +55,10 @@ impl ChunkStore {
             .collect()
     }
 
-    /// Retrieve all [`ComponentDescriptor`]s in the store.
+    /// Retrieve all [`ComponentIdentifier`]s in the store.
     ///
     /// See also [`Self::all_components_sorted`].
-    pub fn all_components(&self) -> IntSet<ComponentDescriptor> {
+    pub fn all_components(&self) -> UnorderedComponentSet {
         self.static_chunk_ids_per_entity
             .values()
             .flat_map(|static_chunks_per_component| static_chunks_per_component.keys())
@@ -75,14 +73,14 @@ impl ChunkStore {
                         )
                     }),
             )
-            .cloned()
+            .copied()
             .collect()
     }
 
-    /// Retrieve all [`ComponentDescriptor`]s in the store.
+    /// Retrieve all [`ComponentIdentifier`]s in the store.
     ///
     /// See also [`Self::all_components`].
-    pub fn all_components_sorted(&self) -> ComponentDescriptorSet {
+    pub fn all_components_sorted(&self) -> ComponentSet {
         self.static_chunk_ids_per_entity
             .values()
             .flat_map(|static_chunks_per_component| static_chunks_per_component.keys())
@@ -97,11 +95,11 @@ impl ChunkStore {
                         )
                     }),
             )
-            .cloned()
+            .copied()
             .collect()
     }
 
-    /// Retrieve all the [`ComponentDescriptor`]s that have been written to for a given [`EntityPath`] on
+    /// Retrieve all the [`ComponentIdentifier`]s that have been written to for a given [`EntityPath`] on
     /// the specified [`Timeline`].
     ///
     /// Static components are always included in the results.
@@ -111,21 +109,21 @@ impl ChunkStore {
         &self,
         timeline: &TimelineName,
         entity_path: &EntityPath,
-    ) -> Option<UnorderedComponentDescriptorSet> {
+    ) -> Option<UnorderedComponentSet> {
         re_tracing::profile_function!();
 
-        let static_components: Option<UnorderedComponentDescriptorSet> = self
+        let static_components: Option<UnorderedComponentSet> = self
             .static_chunk_ids_per_entity
             .get(entity_path)
             .map(|static_chunks_per_component| {
                 static_chunks_per_component
                     .keys()
-                    .cloned()
-                    .collect::<UnorderedComponentDescriptorSet>()
+                    .copied()
+                    .collect::<UnorderedComponentSet>()
             })
             .filter(|names| !names.is_empty());
 
-        let temporal_components: Option<UnorderedComponentDescriptorSet> = self
+        let temporal_components: Option<UnorderedComponentSet> = self
             .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .map(|temporal_chunk_ids_per_timeline| {
@@ -134,8 +132,8 @@ impl ChunkStore {
                     .map(|temporal_chunk_ids_per_component| {
                         temporal_chunk_ids_per_component
                             .keys()
-                            .cloned()
-                            .collect::<UnorderedComponentDescriptorSet>()
+                            .copied()
+                            .collect::<UnorderedComponentSet>()
                     })
                     .unwrap_or_default()
             })
@@ -150,7 +148,7 @@ impl ChunkStore {
         }
     }
 
-    /// Retrieve all the [`ComponentDescriptor`]s that have been written to for a given [`EntityPath`] on
+    /// Retrieve all the [`ComponentIdentifier`]s that have been written to for a given [`EntityPath`] on
     /// the specified [`Timeline`].
     ///
     /// Static components are always included in the results.
@@ -160,21 +158,21 @@ impl ChunkStore {
         &self,
         timeline: &TimelineName,
         entity_path: &EntityPath,
-    ) -> Option<ComponentDescriptorSet> {
+    ) -> Option<ComponentSet> {
         re_tracing::profile_function!();
 
-        let static_components: Option<ComponentDescriptorSet> = self
+        let static_components: Option<ComponentSet> = self
             .static_chunk_ids_per_entity
             .get(entity_path)
             .map(|static_chunks_per_component| {
                 static_chunks_per_component
                     .keys()
-                    .cloned()
-                    .collect::<ComponentDescriptorSet>()
+                    .copied()
+                    .collect::<ComponentSet>()
             })
             .filter(|names| !names.is_empty());
 
-        let temporal_components: Option<ComponentDescriptorSet> = self
+        let temporal_components: Option<ComponentSet> = self
             .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .map(|temporal_chunk_ids_per_timeline| {
@@ -183,8 +181,8 @@ impl ChunkStore {
                     .map(|temporal_chunk_ids_per_component| {
                         temporal_chunk_ids_per_component
                             .keys()
-                            .cloned()
-                            .collect::<ComponentDescriptorSet>()
+                            .copied()
+                            .collect::<ComponentSet>()
                     })
                     .unwrap_or_default()
             })
@@ -199,7 +197,7 @@ impl ChunkStore {
         }
     }
 
-    /// Retrieve all the [`ComponentDescriptor`]s that have been written to for a given [`EntityPath`].
+    /// Retrieve all the [`ComponentIdentifier`]s that have been written to for a given [`EntityPath`].
     ///
     /// Static components are always included in the results.
     ///
@@ -207,24 +205,24 @@ impl ChunkStore {
     pub fn all_components_for_entity(
         &self,
         entity_path: &EntityPath,
-    ) -> Option<UnorderedComponentDescriptorSet> {
+    ) -> Option<UnorderedComponentSet> {
         re_tracing::profile_function!();
 
-        let static_components: Option<UnorderedComponentDescriptorSet> = self
+        let static_components: Option<UnorderedComponentSet> = self
             .static_chunk_ids_per_entity
             .get(entity_path)
             .map(|static_chunks_per_component| {
-                static_chunks_per_component.keys().cloned().collect()
+                static_chunks_per_component.keys().copied().collect()
             });
 
-        let temporal_components: Option<UnorderedComponentDescriptorSet> = self
+        let temporal_components: Option<UnorderedComponentSet> = self
             .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .map(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline
                     .iter()
                     .flat_map(|(_, temporal_chunk_ids_per_component)| {
-                        temporal_chunk_ids_per_component.keys().cloned()
+                        temporal_chunk_ids_per_component.keys().copied()
                     })
                     .collect()
             });
@@ -238,7 +236,7 @@ impl ChunkStore {
         }
     }
 
-    /// Retrieve all the [`ComponentDescriptor`]s that have been written to for a given [`EntityPath`].
+    /// Retrieve all the [`ComponentIdentifier`]s that have been written to for a given [`EntityPath`].
     ///
     /// Static components are always included in the results.
     ///
@@ -246,24 +244,24 @@ impl ChunkStore {
     pub fn all_components_for_entity_sorted(
         &self,
         entity_path: &EntityPath,
-    ) -> Option<ComponentDescriptorSet> {
+    ) -> Option<ComponentSet> {
         re_tracing::profile_function!();
 
-        let static_components: Option<ComponentDescriptorSet> = self
+        let static_components: Option<ComponentSet> = self
             .static_chunk_ids_per_entity
             .get(entity_path)
             .map(|static_chunks_per_component| {
-                static_chunks_per_component.keys().cloned().collect()
+                static_chunks_per_component.keys().copied().collect()
             });
 
-        let temporal_components: Option<ComponentDescriptorSet> = self
+        let temporal_components: Option<ComponentSet> = self
             .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .map(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline
                     .iter()
                     .flat_map(|(_, temporal_chunk_ids_per_component)| {
-                        temporal_chunk_ids_per_component.keys().cloned()
+                        temporal_chunk_ids_per_component.keys().copied()
                     })
                     .collect()
             });
@@ -278,89 +276,16 @@ impl ChunkStore {
     }
 
     /// Retrieves the [`ComponentDescriptor`] at a given [`EntityPath`] that has a certain [`ComponentIdentifier`].
+    // TODO(andreas): The descriptor for a given identifier should never change within a recording.
     pub fn entity_component_descriptor(
         &self,
         entity_path: &EntityPath,
-        identifier: ComponentIdentifier,
+        component: ComponentIdentifier,
     ) -> Option<ComponentDescriptor> {
-        let matches = |descr: &&ComponentDescriptor| descr.component == identifier;
-
-        let static_chunks = self.static_chunk_ids_per_entity.get(entity_path);
-        let static_components_descr =
-            static_chunks
-                .iter()
-                .flat_map(|static_chunks_per_component| {
-                    static_chunks_per_component.keys().filter(matches)
-                });
-
-        let temporal_chunks = self
-            .temporal_chunk_ids_per_entity_per_component
-            .get(entity_path);
-        let temporal_components_descr =
-            temporal_chunks
-                .iter()
-                .flat_map(|temporal_chunk_ids_per_timeline| {
-                    temporal_chunk_ids_per_timeline.iter().flat_map(
-                        |(_, temporal_chunk_ids_per_component)| {
-                            temporal_chunk_ids_per_component.keys().filter(matches)
-                        },
-                    )
-                });
-
-        let mut iter = static_components_descr.chain(temporal_components_descr);
-        let result = iter.next();
-
-        if cfg!(debug_assertions) {
-            for other in iter {
-                if result != Some(other) {
-                    re_log::error!("column is not unique: expected {result:?} found {other:?}");
-                }
-            }
-        }
-
-        result.cloned()
-    }
-
-    /// Lists all [`ComponentDescriptor`]s at a given [`EntityPath`] that use a certain [`ComponentType`].
-    ///
-    /// [`ComponentType`] alone does not uniquely identify a component, which is why this method returns a set
-    /// of [`ComponentDescriptor`]s. If you want to retrieve a specific component it's better to use
-    /// [`ChunkStore::entity_component_descriptor`].
-    pub fn entity_component_descriptors_with_type(
-        &self,
-        entity_path: &EntityPath,
-        component_type: ComponentType,
-    ) -> IntSet<ComponentDescriptor> {
-        let static_chunks = self.static_chunk_ids_per_entity.get(entity_path);
-        let static_components_descr =
-            static_chunks
-                .iter()
-                .flat_map(|static_chunks_per_component| {
-                    static_chunks_per_component
-                        .keys()
-                        .filter(|descr| descr.component_type == Some(component_type))
-                });
-
-        let temporal_chunks = self
-            .temporal_chunk_ids_per_entity_per_component
-            .get(entity_path);
-        let temporal_components_descr =
-            temporal_chunks
-                .iter()
-                .flat_map(|temporal_chunk_ids_per_timeline| {
-                    temporal_chunk_ids_per_timeline.iter().flat_map(
-                        |(_, temporal_chunk_ids_per_component)| {
-                            temporal_chunk_ids_per_component
-                                .keys()
-                                .filter(|descr| descr.component_type == Some(component_type))
-                        },
-                    )
-                });
-
-        static_components_descr
-            .chain(temporal_components_descr)
-            .cloned()
-            .collect()
+        self.per_column_metadata
+            .get(entity_path)
+            .and_then(|per_identifier| per_identifier.get(&component))
+            .map(|(component_descr, _, _)| component_descr.clone())
     }
 
     /// Check whether an entity has a static component or a temporal component on the specified timeline.
@@ -371,16 +296,12 @@ impl ChunkStore {
         &self,
         timeline: &TimelineName,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
-        self.entity_has_static_component(entity_path, component_descr)
-            || self.entity_has_temporal_component_on_timeline(
-                timeline,
-                entity_path,
-                component_descr,
-            )
+        self.entity_has_static_component(entity_path, component)
+            || self.entity_has_temporal_component_on_timeline(timeline, entity_path, component)
     }
 
     /// Check whether an entity has a static component or a temporal component on any timeline.
@@ -389,12 +310,12 @@ impl ChunkStore {
     pub fn entity_has_component(
         &self,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
-        self.entity_has_static_component(entity_path, component_descr)
-            || self.entity_has_temporal_component(entity_path, component_descr)
+        self.entity_has_static_component(entity_path, component)
+            || self.entity_has_temporal_component(entity_path, component)
     }
 
     /// Check whether an entity has a specific static component.
@@ -404,14 +325,14 @@ impl ChunkStore {
     pub fn entity_has_static_component(
         &self,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.static_chunk_ids_per_entity
             .get(entity_path)
             .is_some_and(|static_chunk_ids_per_component| {
-                static_chunk_ids_per_component.contains_key(component_descr)
+                static_chunk_ids_per_component.contains_key(&component)
             })
     }
 
@@ -422,7 +343,7 @@ impl ChunkStore {
     pub fn entity_has_temporal_component(
         &self,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
@@ -431,7 +352,7 @@ impl ChunkStore {
             .iter()
             .flat_map(|temporal_chunk_ids_per_timeline| temporal_chunk_ids_per_timeline.values())
             .any(|temporal_chunk_ids_per_component| {
-                temporal_chunk_ids_per_component.contains_key(component_descr)
+                temporal_chunk_ids_per_component.contains_key(&component)
             })
     }
 
@@ -443,7 +364,7 @@ impl ChunkStore {
         &self,
         timeline: &TimelineName,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
@@ -454,7 +375,7 @@ impl ChunkStore {
                 temporal_chunk_ids_per_timeline.get(timeline)
             })
             .any(|temporal_chunk_ids_per_component| {
-                temporal_chunk_ids_per_component.contains_key(component_descr)
+                temporal_chunk_ids_per_component.contains_key(&component)
             })
     }
 
@@ -619,7 +540,7 @@ impl ChunkStore {
 
 // LatestAt
 impl ChunkStore {
-    /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`] and [`ComponentDescriptor`].
+    /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`] and [`ComponentIdentifier`].
     ///
     /// The returned vector is guaranteed free of duplicates, by definition.
     ///
@@ -637,7 +558,7 @@ impl ChunkStore {
         &self,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Vec<Arc<Chunk>> {
         // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
         //re_tracing::profile_function!(format!("{query:?}"));
@@ -648,9 +569,7 @@ impl ChunkStore {
         if let Some(static_chunk) = self
             .static_chunk_ids_per_entity
             .get(entity_path)
-            .and_then(|static_chunks_per_component| {
-                static_chunks_per_component.get(component_descr)
-            })
+            .and_then(|static_chunks_per_component| static_chunks_per_component.get(&component))
             .and_then(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
         {
             return vec![Arc::clone(static_chunk)];
@@ -663,7 +582,7 @@ impl ChunkStore {
                 temporal_chunk_ids_per_timeline.get(&query.timeline())
             })
             .and_then(|temporal_chunk_ids_per_component| {
-                temporal_chunk_ids_per_component.get(component_descr)
+                temporal_chunk_ids_per_component.get(&component)
             })
             .and_then(|temporal_chunk_ids_per_time| {
                 self.latest_at(query, temporal_chunk_ids_per_time)
@@ -672,7 +591,7 @@ impl ChunkStore {
 
         debug_assert!(
             chunks.iter().map(|chunk| chunk.id()).all_unique(),
-            "{entity_path}:{component_descr} @ {query:?}",
+            "{entity_path}:{component} @ {query:?}",
         );
 
         chunks
@@ -815,7 +734,7 @@ impl ChunkStore {
 
 // Range
 impl ChunkStore {
-    /// Returns the most-relevant chunk(s) for the given [`RangeQuery`] and [`ComponentDescriptor`].
+    /// Returns the most-relevant chunk(s) for the given [`RangeQuery`] and [`ComponentIdentifier`].
     ///
     /// The returned vector is guaranteed free of duplicates, by definition.
     ///
@@ -831,16 +750,14 @@ impl ChunkStore {
         &self,
         query: &RangeQuery,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Vec<Arc<Chunk>> {
         re_tracing::profile_function!(format!("{query:?}"));
 
         if let Some(static_chunk) = self
             .static_chunk_ids_per_entity
             .get(entity_path)
-            .and_then(|static_chunks_per_component| {
-                static_chunks_per_component.get(component_descr)
-            })
+            .and_then(|static_chunks_per_component| static_chunks_per_component.get(&component))
             .and_then(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
         {
             return vec![Arc::clone(static_chunk)];
@@ -855,7 +772,7 @@ impl ChunkStore {
                         temporal_chunk_ids_per_timeline.get(query.timeline())
                     })
                     .and_then(|temporal_chunk_ids_per_component| {
-                        temporal_chunk_ids_per_component.get(component_descr)
+                        temporal_chunk_ids_per_component.get(&component)
                     })
                     .into_iter(),
             )
@@ -870,7 +787,7 @@ impl ChunkStore {
                     .is_some_and(|time_column| {
                         time_column
                             .time_range_per_component(chunk.components())
-                            .get(component_descr)
+                            .get(&component)
                             .is_some_and(|time_range| time_range.intersects(query.range()))
                     })
             })
