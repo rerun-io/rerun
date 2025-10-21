@@ -88,6 +88,8 @@ impl Points3DVisualizer {
 
             let positions = bytemuck::cast_slice(data.positions);
 
+            let obj_space_bounding_box = macaw::BoundingBox::from_points(positions.iter().copied());
+
             // Has not custom fallback for radius, so we use the default.
             // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
             let radii =
@@ -127,8 +129,6 @@ impl Points3DVisualizer {
                     }
                 }
 
-                let obj_space_bounding_box =
-                    macaw::BoundingBox::from_points(positions.iter().copied());
                 self.data.add_bounding_box(
                     entity_path.hash(),
                     obj_space_bounding_box,
