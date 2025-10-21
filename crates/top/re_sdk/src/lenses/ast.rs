@@ -8,7 +8,7 @@ use arrow::{array::ListArray, datatypes::DataType};
 
 use re_chunk::{Chunk, ChunkComponents, ChunkId, ComponentIdentifier, EntityPath};
 use re_log_types::EntityPathFilter;
-use re_types::ComponentDescriptor;
+use re_types::{ComponentDescriptor, SerializedComponentColumn};
 
 use super::{Error, op};
 
@@ -123,13 +123,10 @@ impl Lens {
 impl Lens {
     /// Applies this lens and crates one or more chunks.
     fn apply(&self, chunk: &Chunk) -> Vec<Chunk> {
-        let found = chunk
-            .components()
-            .iter()
-            .find(|(descr, _array)| descr.component == self.input.component);
+        let found = chunk.components().get(self.input.component);
 
         // This means we drop chunks that belong to the same entity but don't have the component.
-        let Some((_component_descr, list_array)) = found else {
+        let Some(column) = found else {
             return Default::default();
         };
 
@@ -144,11 +141,11 @@ impl Lens {
                 .entry((entity_path.clone(), output.is_static))
                 .or_insert_with(ChunkComponents::default);
 
-            if components.contains_component(&output.component_descr) {
+            if components.contains_key(&output.component_descr.component) {
                 re_log::warn_once!("Replacing duplicated component {}", output.component_descr);
             }
 
-            let mut list_array_result = list_array.clone();
+            let mut list_array_result = column.list_array.clone();
             for op in &output.ops {
                 match op.call(list_array_result) {
                     Ok(result) => {
@@ -166,7 +163,10 @@ impl Lens {
                 }
             }
 
-            components.insert(output.component_descr.clone(), list_array_result);
+            components.insert(SerializedComponentColumn::new(
+                list_array_result,
+                output.component_descr.clone(),
+            ));
         }
 
         builders

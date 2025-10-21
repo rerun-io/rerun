@@ -107,17 +107,22 @@ fn annotation_info(
     // This code uses the first one that shows up.
     // We should search instead for a class id that is likely a sibling of the keypoint id.
     let storage_engine = ctx.recording().storage_engine();
-    let possible_class_id_descriptors = storage_engine
-        .store()
-        .entity_component_descriptors_with_type(entity_path, components::ClassId::name());
-    let picked_class_id_descriptors = possible_class_id_descriptors.iter().next()?;
+    let store = storage_engine.store();
+    let mut possible_class_id_components = store
+        .all_components_for_entity(entity_path)?
+        .into_iter()
+        .filter(|component| {
+            let descriptor = store.entity_component_descriptor(entity_path, *component);
+            descriptor.is_some_and(|d| d.component_type == Some(components::ClassId::name()))
+        });
+    let picked_class_id_component = possible_class_id_components.next()?;
 
     let (_, class_id) = ctx
         .recording()
         .latest_at_component_quiet::<components::ClassId>(
             entity_path,
             query,
-            picked_class_id_descriptors,
+            picked_class_id_component,
         )?;
 
     let annotations = crate::annotations(ctx, query, entity_path);

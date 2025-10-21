@@ -43,10 +43,9 @@ fn filter_blob_removed_events(
                             descr.component_type == Some(re_types::components::Blob::name())
                         })
                         .flat_map(|descr| {
-                            event
-                                .chunk
-                                .row_ids()
-                                .map(move |row_id| crate::StoredBlobCacheKey::new(row_id, &descr))
+                            event.chunk.row_ids().map(move |row_id| {
+                                crate::StoredBlobCacheKey::new(row_id, descr.component)
+                            })
                         }),
                 )
             } else {

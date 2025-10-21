@@ -53,7 +53,7 @@ impl VisualizerSystem for TensorSystem {
                 annotations,
                 &timeline_query,
                 data_result,
-                Tensor::all_components().iter(),
+                Tensor::all_component_identifiers(),
                 query_shadowed_defaults,
             );
 
@@ -65,7 +65,7 @@ impl VisualizerSystem for TensorSystem {
             let timeline = query.timeline;
             let all_tensors_indexed = all_tensor_chunks.iter().flat_map(move |chunk| {
                 chunk
-                    .iter_component_indices(&timeline)
+                    .iter_component_indices(timeline)
                     .zip(chunk.iter_component::<TensorData>())
             });
             let all_ranges = results.iter_as(timeline, Tensor::descriptor_value_range());
@@ -144,7 +144,7 @@ impl TypedComponentFallbackProvider<re_types::components::ValueRange> for Tensor
         if let Some(((_time, row_id), tensor)) = ctx.recording().latest_at_component::<TensorData>(
             ctx.target_entity_path,
             ctx.query,
-            &Tensor::descriptor_data(),
+            Tensor::descriptor_data().component,
         ) {
             let tensor_stats = ctx
                 .store_ctx()

@@ -14,6 +14,7 @@ use re_types::{Component, ComponentDescriptor, RowId};
 /// subsequent lookups for data inside those chunks need the component descriptor again.
 /// By bundling references to chunks and descriptor,
 /// we can avoid having to pass the descriptor around in the code.
+// TODO(andreas): Does this have to be a descriptor? Component identifier is almost certainly enough, which would simplify this a lot.
 #[derive(Debug, Clone)]
 pub struct ChunksWithDescriptor<'chunk> {
     pub chunks: Cow<'chunk, [Chunk]>,
@@ -35,6 +36,7 @@ impl ChunksWithDescriptor<'_> {
 /// Note that the descriptor is not owned, but borrowed here since it's typically returned
 /// only by iterating over a [`ChunksWithDescriptor`].
 // TODO(#10460): Chunk descriptor referencing should be made trivial so that it doesn't matter whether we borrow or copy it.
+// TODO(andreas): Does this have to be a descriptor? Component identifier is almost certainly enough, which would simplify this a lot.
 #[derive(Debug, Clone)]
 pub struct ChunkWithDescriptor<'chunk, 'descriptor> {
     pub chunk: &'chunk Chunk,
@@ -46,9 +48,10 @@ impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
     #[inline]
     pub fn iter_component_indices(
         &self,
-        timeline: &TimelineName,
+        timeline: TimelineName,
     ) -> impl Iterator<Item = (TimeInt, RowId)> + 'chunk + use<'chunk> {
-        self.chunk.iter_component_indices(timeline, self.descriptor)
+        self.chunk
+            .iter_component_indices(timeline, self.descriptor.component)
     }
 
     /// See [`Chunk::iter_slices`].
@@ -56,7 +59,7 @@ impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
     pub fn iter_slices<S: ChunkComponentSlicer + 'chunk>(
         &self,
     ) -> impl Iterator<Item = S::Item<'chunk>> + 'chunk + use<'chunk, S> {
-        self.chunk.iter_slices::<S>(self.descriptor.clone())
+        self.chunk.iter_slices::<S>(self.descriptor.component)
     }
 
     /// See [`Chunk::iter_component`].
@@ -64,7 +67,7 @@ impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
     pub fn iter_component<C: Component>(
         &self,
     ) -> ChunkComponentIter<C, impl Iterator<Item = Span<usize>> + 'chunk + use<'chunk, C>> {
-        self.chunk.iter_component::<C>(self.descriptor)
+        self.chunk.iter_component::<C>(self.descriptor.component)
     }
 
     /// See [`Chunk::iter_component_timepoints`].
@@ -72,6 +75,7 @@ impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
     pub fn iter_component_timepoints(
         &self,
     ) -> impl Iterator<Item = TimePoint> + 'chunk + use<'chunk> {
-        self.chunk.iter_component_timepoints(self.descriptor)
+        self.chunk
+            .iter_component_timepoints(self.descriptor.component)
     }
 }

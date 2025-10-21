@@ -679,11 +679,11 @@ impl TransformResolutionCache {
             if aspects.contains(TransformAspect::Clear) {
                 re_tracing::profile_scope!("check for recursive clears");
 
-                let descr = re_types::archetypes::Clear::descriptor_is_recursive();
+                let component = re_types::archetypes::Clear::descriptor_is_recursive().component;
 
                 let recursively_cleared_times = chunk
-                    .iter_component_indices(timeline, &descr)
-                    .zip(chunk.iter_slices::<bool>(descr.clone()))
+                    .iter_component_indices(*timeline, component)
+                    .zip(chunk.iter_slices::<bool>(component))
                     .filter_map(|((time, _row_id), bool_slice)| {
                         bool_slice
                             .values()
@@ -914,7 +914,7 @@ fn query_and_resolve_tree_transform_at_entity(
     let results = entity_db.latest_at(
         query,
         entity_path,
-        archetypes::Transform3D::all_components().iter(),
+        archetypes::Transform3D::all_component_identifiers(),
     );
     if results.components.is_empty() {
         return None;
@@ -927,14 +927,14 @@ fn query_and_resolve_tree_transform_at_entity(
 
     // The order of the components here is important, and checked by `debug_assert_transform_field_order`
     if let Some(translation) = results.component_mono_with_log_level::<components::Translation3D>(
-        &archetypes::Transform3D::descriptor_translation(),
+        archetypes::Transform3D::descriptor_translation().component,
         mono_log_level,
     ) {
         transform = Affine3A::from(translation);
     }
     if let Some(axis_angle) = results
         .component_mono_with_log_level::<components::RotationAxisAngle>(
-            &archetypes::Transform3D::descriptor_rotation_axis_angle(),
+            archetypes::Transform3D::descriptor_rotation_axis_angle().component,
             mono_log_level,
         )
     {
@@ -945,7 +945,7 @@ fn query_and_resolve_tree_transform_at_entity(
         }
     }
     if let Some(quaternion) = results.component_mono_with_log_level::<components::RotationQuat>(
-        &archetypes::Transform3D::descriptor_quaternion(),
+        archetypes::Transform3D::descriptor_quaternion().component,
         mono_log_level,
     ) {
         if let Ok(quaternion) = Affine3A::try_from(quaternion) {
@@ -955,7 +955,7 @@ fn query_and_resolve_tree_transform_at_entity(
         }
     }
     if let Some(scale) = results.component_mono_with_log_level::<components::Scale3D>(
-        &archetypes::Transform3D::descriptor_scale(),
+        archetypes::Transform3D::descriptor_scale().component,
         mono_log_level,
     ) {
         if scale.x() == 0.0 && scale.y() == 0.0 && scale.z() == 0.0 {
@@ -964,7 +964,7 @@ fn query_and_resolve_tree_transform_at_entity(
         transform *= Affine3A::from(scale);
     }
     if let Some(mat3x3) = results.component_mono_with_log_level::<components::TransformMat3x3>(
-        &archetypes::Transform3D::descriptor_mat3x3(),
+        archetypes::Transform3D::descriptor_mat3x3().component,
         mono_log_level,
     ) {
         let affine_transform = Affine3A::from(mat3x3);
@@ -975,7 +975,7 @@ fn query_and_resolve_tree_transform_at_entity(
     }
 
     if results.component_mono_with_log_level::<components::TransformRelation>(
-        &archetypes::Transform3D::descriptor_relation(),
+        archetypes::Transform3D::descriptor_relation().component,
         mono_log_level,
     ) == Some(components::TransformRelation::ChildFromParent)
     {
