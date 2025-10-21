@@ -13,7 +13,7 @@ use re_viewer_context::{DataResult, QueryRange, ViewContext, ViewQuery, ViewerCo
 
 // ---
 
-/// Queries for the given `component_types` using range semantics with blueprint support.
+/// Queries for the given `components` using range semantics with blueprint support.
 ///
 /// Data will be resolved, in order of priority:
 /// - Data overrides from the blueprint
@@ -52,7 +52,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
     }
 }
 
-/// Queries for the given `component_types` using latest-at semantics with blueprint support.
+/// Queries for the given `components` using latest-at semantics with blueprint support.
 ///
 /// Data will be resolved, in order of priority:
 /// - Data overrides from the blueprint

@@ -500,7 +500,7 @@ fn static_unsorted() -> anyhow::Result<()> {
 
 // ---
 
-// TODO(andread): This doesn't have to take a full descriptor, but all our access methods are using descriptors right now.
+// TODO(andreas): This doesn't have to take a full descriptor, but all our access methods are using descriptors right now.
 fn query_and_compare(
     (component_desc, query): (ComponentDescriptor, &RangeQuery),
     chunk: &Chunk,
