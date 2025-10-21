@@ -269,11 +269,7 @@ impl Chunk {
 
         let Some(struct_array) = list_array.values().downcast_array_ref::<ArrowStructArray>()
         else {
-            if cfg!(debug_assertions) {
-                panic!("downcast failed for {component}, data discarded");
-            } else {
-                re_log::error_once!("downcast failed for {component}, data discarded");
-            }
+            error_on_downcast_failure(component, "ArrowStructArray", list_array.data_type());
             return Either::Left(std::iter::empty());
         };
 
@@ -284,7 +280,9 @@ impl Chunk {
             .find_map(|(i, field)| (field.name() == field_name).then_some(i))
         else {
             if cfg!(debug_assertions) {
-                panic!("field {field_name} not found for {component}, data discarded");
+                panic!(
+                    "[DEBUG ASSERT] field {field_name} not found for {component}, data discarded"
+                );
             } else {
                 re_log::error_once!("field {field_name} not found for {component}, data discarded");
             }
@@ -293,7 +291,9 @@ impl Chunk {
 
         if field_idx >= struct_array.num_columns() {
             if cfg!(debug_assertions) {
-                panic!("field {field_name} not found for {component}, data discarded");
+                panic!(
+                    "[DEBUG ASSERT] field {field_name} not found for {component}, data discarded"
+                );
             } else {
                 re_log::error_once!("field {field_name} not found for {component}, data discarded");
                 return Either::Left(std::iter::empty());
@@ -338,11 +338,7 @@ where
     T: ArrowNativeType,
 {
     let Some(values) = array.downcast_array_ref::<ArrowPrimitiveArray<P>>() else {
-        if cfg!(debug_assertions) {
-            panic!("[DEBUG ASSERT] downcast failed for {component}, data discarded");
-        } else {
-            re_log::error_once!("downcast failed for {component}, data discarded");
-        }
+        error_on_downcast_failure(component, "ArrowPrimitiveArray<T>", array.data_type());
         return Either::Left(std::iter::empty());
     };
     let values = values.values().as_ref();
@@ -398,11 +394,7 @@ where
     T: ArrowNativeType + bytemuck::Pod,
 {
     let Some(fixed_size_list_array) = array.downcast_array_ref::<ArrowFixedSizeListArray>() else {
-        if cfg!(debug_assertions) {
-            panic!("downcast failed for {component}, data discarded");
-        } else {
-            re_log::error_once!("downcast failed for {component}, data discarded");
-        }
+        error_on_downcast_failure(component, "ArrowFixedSizeListArray", array.data_type());
         return Either::Left(std::iter::empty());
     };
 
@@ -410,11 +402,11 @@ where
         .values()
         .downcast_array_ref::<ArrowPrimitiveArray<P>>()
     else {
-        if cfg!(debug_assertions) {
-            panic!("downcast failed for {component}, data discarded");
-        } else {
-            re_log::error_once!("downcast failed for {component}, data discarded");
-        }
+        error_on_downcast_failure(
+            component,
+            "ArrowPrimitiveArray<P>",
+            fixed_size_list_array.data_type(),
+        );
         return Either::Left(std::iter::empty());
     };
 
@@ -476,36 +468,20 @@ where
     T: ArrowNativeType,
 {
     let Some(inner_list_array) = array.downcast_array_ref::<ArrowListArray>() else {
-        if cfg!(debug_assertions) {
-            panic!(
-                "DEBUG BUILD: {component} had unexpected datatype: {:?}",
-                array.data_type()
-            );
-        } else {
-            re_log::error_once!(
-                "{component} had unexpected datatype: {:?}. Data discarded",
-                array.data_type()
-            );
-            return Either::Left(std::iter::empty());
-        }
+        error_on_downcast_failure(component, "ArrowListArray", array.data_type());
+        return Either::Left(std::iter::empty());
     };
 
     let Some(values) = inner_list_array
         .values()
         .downcast_array_ref::<ArrowPrimitiveArray<P>>()
     else {
-        if cfg!(debug_assertions) {
-            panic!(
-                "DEBUG BUILD: {component} had unexpected datatype: {:?}",
-                array.data_type()
-            );
-        } else {
-            re_log::error_once!(
-                "{component} had unexpected datatype: {:?}. Data discarded",
-                array.data_type()
-            );
-            return Either::Left(std::iter::empty());
-        }
+        error_on_downcast_failure(
+            component,
+            "ArrowPrimitiveArray<P>",
+            inner_list_array.data_type(),
+        );
+        return Either::Left(std::iter::empty());
     };
 
     let values = values.values();
@@ -633,11 +609,7 @@ where
     T: ArrowNativeType + bytemuck::Pod,
 {
     let Some(inner_list_array) = array.downcast_array_ref::<ArrowListArray>() else {
-        if cfg!(debug_assertions) {
-            panic!("downcast failed for {component}, data discarded");
-        } else {
-            re_log::error_once!("downcast failed for {component}, data discarded");
-        }
+        error_on_downcast_failure(component, "ArrowListArray", array.data_type());
         return Either::Left(std::iter::empty());
     };
 
@@ -648,11 +620,11 @@ where
         .values()
         .downcast_array_ref::<ArrowFixedSizeListArray>()
     else {
-        if cfg!(debug_assertions) {
-            panic!("downcast failed for {component}, data discarded");
-        } else {
-            re_log::error_once!("downcast failed for {component}, data discarded");
-        }
+        error_on_downcast_failure(
+            component,
+            "ArrowFixedSizeListArray",
+            inner_list_array.data_type(),
+        );
         return Either::Left(std::iter::empty());
     };
 
@@ -660,11 +632,11 @@ where
         .values()
         .downcast_array_ref::<ArrowPrimitiveArray<P>>()
     else {
-        if cfg!(debug_assertions) {
-            panic!("downcast failed for {component}, data discarded");
-        } else {
-            re_log::error_once!("downcast failed for {component}, data discarded");
-        }
+        error_on_downcast_failure(
+            component,
+            "ArrowPrimitiveArray<P>",
+            fixed_size_list_array.data_type(),
+        );
         return Either::Left(std::iter::empty());
     };
 
@@ -731,11 +703,7 @@ impl ChunkComponentSlicer for String {
         component_spans: impl Iterator<Item = Span<usize>> + 'a,
     ) -> impl Iterator<Item = Vec<ArrowString>> + 'a {
         let Some(utf8_array) = array.downcast_array_ref::<ArrowStringArray>() else {
-            if cfg!(debug_assertions) {
-                panic!("downcast failed for {component}, data discarded");
-            } else {
-                re_log::error_once!("downcast failed for {component}, data discarded");
-            }
+            error_on_downcast_failure(component, "ArrowStringArray", array.data_type());
             return Either::Left(std::iter::empty());
         };
 
@@ -763,11 +731,7 @@ impl ChunkComponentSlicer for bool {
         component_spans: impl Iterator<Item = Span<usize>> + 'a,
     ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
         let Some(values) = array.downcast_array_ref::<ArrowBooleanArray>() else {
-            if cfg!(debug_assertions) {
-                panic!("downcast failed for {component}, data discarded");
-            } else {
-                re_log::error_once!("downcast failed for {component}, data discarded");
-            }
+            error_on_downcast_failure(component, "ArrowBooleanArray", array.data_type());
             return Either::Left(std::iter::empty());
         };
         let values = values.values().clone();
@@ -971,6 +935,22 @@ impl Chunk {
             values: Arc::new(values),
             offsets: Either::Right(self.iter_component_offsets(component)),
         }
+    }
+}
+
+fn error_on_downcast_failure(
+    component: ComponentIdentifier,
+    target: &str,
+    actual: &arrow::datatypes::DataType,
+) {
+    if cfg!(debug_assertions) {
+        panic!(
+            "[DEBUG ASSERT] downcast failed to {target} failed for {component}. Array data type was {actual:?}. Data discarded"
+        );
+    } else {
+        re_log::error_once!(
+            "downcast failed to {target} for {component}. Array data type was {actual:?}. data discarded"
+        );
     }
 }
 
