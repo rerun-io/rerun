@@ -247,33 +247,33 @@ fn run_view_ui_and_save_snapshot(
 
             harness.snapshot(&name);
         }
+    }
 
-        // Points don't have scale, so we test them separately.
-        {
-            let mut harness = test_context
-                .setup_kittest_for_rendering_3d(size)
-                .build_ui(|ui| {
-                    test_context.run_with_single_view(ui, view_id_points);
-                });
-
-            // For both you should see:
-            // * 3x red
-            // * 3x blue
-            // * these points should be in three distinct clusters.
-
-            let name = format!("{name}_points");
-            let raw_input = harness.input_mut();
-            raw_input
-                .events
-                .push(egui::Event::PointerMoved((100.0, 100.0).into()));
-            raw_input.events.push(egui::Event::MouseWheel {
-                unit: egui::MouseWheelUnit::Line,
-                delta: egui::Vec2::UP * 2.0,
-                modifiers: egui::Modifiers::default(),
+    // Points don't have scale, so we test them separately.
+    {
+        let mut harness = test_context
+            .setup_kittest_for_rendering_3d(size)
+            .build_ui(|ui| {
+                test_context.run_with_single_view(ui, view_id_points);
             });
-            harness.run_steps(10);
 
-            harness.snapshot(&name);
-        }
+        // For both you should see:
+        // * 3x red
+        // * 3x blue
+        // * these points should be in three distinct clusters.
+
+        let name = format!("{name}_points");
+        let raw_input = harness.input_mut();
+        raw_input
+            .events
+            .push(egui::Event::PointerMoved((100.0, 100.0).into()));
+        raw_input.events.push(egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Line,
+            delta: egui::Vec2::UP * 2.0,
+            modifiers: egui::Modifiers::default(),
+        });
+        harness.run_steps(10);
+
+        harness.snapshot(&name);
     }
 }
