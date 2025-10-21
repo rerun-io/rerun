@@ -11922,6 +11922,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "test_out_of_order_transforms"
+version = "0.27.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "glam",
+ "re_log",
+ "rerun",
+]
+
+[[package]]
 name = "test_ui_wakeup"
 version = "0.27.0-alpha.1+dev"
 dependencies = [
