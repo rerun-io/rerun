@@ -67,6 +67,7 @@ impl RerunCloudHandlerBuilder {
         Ok(self)
     }
 
+    #[cfg(feature = "lance")]
     pub async fn with_directory_as_table(
         mut self,
         path: &NamedPath,
