@@ -436,6 +436,76 @@ impl<B> tower_http::trace::OnBodyChunk<B> for GrpcOnFirstBodyChunk {
     }
 }
 
+/// Implements a [`tower_http::trace::OnFailure`] middleware.
+///
+/// This handles immediate failures that are classified as `ClassifiedResponse::Ready(Err)`.
+/// These failures bypass the normal `on_eos` callback, so we need to emit the counter here.
+#[derive(Clone)]
+pub struct GrpcOnFailure {
+    counter: opentelemetry::metrics::Counter<u64>,
+}
+
+impl GrpcOnFailure {
+    #[expect(clippy::new_without_default)] // future-proofing
+    pub fn new() -> Self {
+        let meter = opentelemetry::global::meter("grpc");
+        let counter = meter
+            .u64_counter("grpc_on_eos")
+            .with_description("End-of-stream counter for all gRPC endpoints")
+            .build();
+        Self { counter }
+    }
+}
+
+impl tower_http::trace::OnFailure<tower_http::classify::GrpcFailureClass> for GrpcOnFailure {
+    fn on_failure(
+        &mut self,
+        failure_classification: tower_http::classify::GrpcFailureClass,
+        _latency: std::time::Duration,
+        span: &tracing::Span,
+    ) {
+        let Some(span_metadata) = SpanMetadata::remove_opt(span.id().as_ref()) else {
+            return;
+        };
+
+        let grpc_code = match failure_classification {
+            tower_http::classify::GrpcFailureClass::Code(code) => {
+                tonic::Code::from_i32(code.into())
+            }
+            tower_http::classify::GrpcFailureClass::Error(err) => {
+                tonic::Status::from_error(err.into()).code()
+            }
+        };
+        let grpc_status = format!("{grpc_code:?}");
+
+        let client_version = span_metadata
+            .client_version
+            .as_deref()
+            .unwrap_or("undefined");
+        let server_version = span_metadata
+            .server_version
+            .as_deref()
+            .unwrap_or("undefined");
+        let email = span_metadata.email.as_deref().unwrap_or("undefined");
+        let dataset_id = span_metadata.entry_id.as_deref().unwrap_or("undefined");
+
+        // NOTE: We don't log here since grpc_on_response already logged the error
+        // We just need to emit the counter metric
+
+        self.counter.add(
+            1,
+            &[
+                opentelemetry::KeyValue::new("endpoint", span_metadata.endpoint),
+                opentelemetry::KeyValue::new("grpc_status", grpc_status),
+                opentelemetry::KeyValue::new("client_version", client_version.to_owned()),
+                opentelemetry::KeyValue::new("server_version", server_version.to_owned()),
+                opentelemetry::KeyValue::new("email", email.to_owned()),
+                opentelemetry::KeyValue::new("dataset_id", dataset_id.to_owned()),
+            ],
+        );
+    }
+}
+
 /// Implements a [`tower_http::trace::OnEos`] middleware.
 ///
 /// Note that even unary endpoints are implemented as streams internally, and will therefore be
@@ -466,6 +536,9 @@ impl tower_http::trace::OnEos for GrpcOnEos {
         span: &tracing::Span,
     ) {
         let Some(span_metadata) = SpanMetadata::remove_opt(span.id().as_ref()) else {
+            tracing::debug!(
+                "on_eos called but span metadata already removed (likely by on_failure)"
+            );
             return;
         };
 
@@ -542,6 +615,7 @@ pub type ServerTelemetryLayer = tower::layer::util::Stack<
             GrpcOnResponse,
             GrpcOnFirstBodyChunk,
             GrpcOnEos,
+            GrpcOnFailure,
         >,
         tower::layer::util::Identity,
     >,
@@ -557,7 +631,8 @@ pub fn new_server_telemetry_layer() -> ServerTelemetryLayer {
         .on_request(GrpcOnRequest::new())
         .on_response(GrpcOnResponse::new())
         .on_body_chunk(GrpcOnFirstBodyChunk::new())
-        .on_eos(GrpcOnEos::new());
+        .on_eos(GrpcOnEos::new())
+        .on_failure(GrpcOnFailure::new());
 
     tower::ServiceBuilder::new()
         .layer(trace_layer)
