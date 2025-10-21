@@ -1137,10 +1137,10 @@ impl TimePanel {
                         let mut selection = ctx.selection().clone();
                         selection.extend(items);
                         ctx.command_sender()
-                            .send_system(SystemCommand::SetSelection(selection));
+                            .send_system(SystemCommand::set_selection(selection));
                     } else {
                         ctx.command_sender()
-                            .send_system(SystemCommand::SetSelection(items));
+                            .send_system(SystemCommand::set_selection(items));
                     }
                 }
             }

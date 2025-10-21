@@ -233,9 +233,7 @@ impl ViewClass for GraphView {
         if resp.clicked() {
             // clicked elsewhere, select the view
             ctx.command_sender()
-                .send_system(SystemCommand::SetSelection(
-                    Item::View(query.view_id).into(),
-                ));
+                .send_system(SystemCommand::set_selection(Item::View(query.view_id)));
         }
 
         // Update blueprint if changed

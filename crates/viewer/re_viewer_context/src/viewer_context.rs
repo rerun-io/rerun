@@ -9,6 +9,7 @@ use re_query::StorageEngineReadGuard;
 use re_ui::ContextExt as _;
 use re_ui::list_item::ListItem;
 
+use crate::command_sender::{SelectionSource, SetSelection};
 use crate::drag_and_drop::DragAndDropPayload;
 use crate::time_control::TimeControlCommand;
 use crate::{
@@ -272,7 +273,7 @@ impl ViewerContext<'_> {
         let single_selected = self.selection().single_item() == interacted_items.single_item();
 
         // If we were just selected, scroll into view
-        if single_selected && self.selection_state().selection_changed() {
+        if single_selected && self.selection_state().selection_changed().is_some() {
             response.scroll_to_me(None);
         }
 
@@ -288,7 +289,7 @@ impl ViewerContext<'_> {
             let dragged_items = if !is_already_selected && is_cmd_held {
                 selected_items.extend(interacted_items);
                 self.command_sender()
-                    .send_system(SystemCommand::SetSelection(selected_items.clone()));
+                    .send_system(SystemCommand::set_selection(selected_items.clone()));
                 selected_items
             } else if !is_already_selected {
                 interacted_items
@@ -379,17 +380,20 @@ impl ViewerContext<'_> {
                     );
 
                     self.command_sender()
-                        .send_system(SystemCommand::SetSelection(new_selection));
+                        .send_system(SystemCommand::set_selection(new_selection));
                 } else {
                     self.command_sender()
-                        .send_system(SystemCommand::SetSelection(interacted_items));
+                        .send_system(SystemCommand::set_selection(interacted_items));
                 }
             }
         } else if ListItem::gained_focus_via_arrow_key(&response.ctx, response.id) {
             // We want the item to be selected if it was selected with arrow keys (in list_item)
             // but not when focused using e.g. the tab key.
             self.command_sender()
-                .send_system(SystemCommand::SetSelection(interacted_items));
+                .send_system(SystemCommand::SetSelection(
+                    SetSelection::new(interacted_items)
+                        .with_source(SelectionSource::ListItemNavigation),
+                ));
         }
     }
 
@@ -409,8 +413,13 @@ impl ViewerContext<'_> {
         let single_selected = self.selection().single_item() == interacted_items.single_item();
         if single_selected {
             // If selection changes, and a single item is selected, the selected item should
-            // receive egui focus
-            let selection_changed = self.selection_state().selection_changed();
+            // receive egui focus.
+            // We avoid doing this if selection happened due to list item navigation to avoid
+            // a feedback loop.
+            let selection_changed = self
+                .selection_state()
+                .selection_changed()
+                .is_some_and(|source| source != SelectionSource::ListItemNavigation);
 
             // If there is a single selected item and nothing is focused, focus that item.
             let nothing_focused = response.ctx.memory(|mem| mem.focused().is_none());

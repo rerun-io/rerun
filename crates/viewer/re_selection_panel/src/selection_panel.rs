@@ -575,7 +575,7 @@ fn clone_view_button_ui(
             .on_click(|| {
                 if let Some(new_view_id) = viewport.duplicate_view(&view_id, ctx) {
                     ctx.command_sender()
-                        .send_system(SystemCommand::SetSelection(Item::View(new_view_id).into()));
+                        .send_system(SystemCommand::set_selection(Item::View(new_view_id)));
                     viewport.mark_user_interaction(ctx);
                 }
             })

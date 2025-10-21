@@ -641,7 +641,7 @@ impl TestContext {
             };
 
             self.command_sender
-                .send_system(SystemCommand::SetSelection(item.clone().into()));
+                .send_system(SystemCommand::set_selection(item.clone().into()));
         }
 
         if let Some((timeline, timecell)) = when {
@@ -694,7 +694,7 @@ impl TestContext {
                         .drop_entity_path_recursive(&entity_path);
                 }
 
-                SystemCommand::SetSelection(item) => {
+                SystemCommand::set_selection(item) => {
                     self.selection_state.lock().set_selection(item);
                 }
 

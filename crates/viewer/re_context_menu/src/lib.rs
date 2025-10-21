@@ -123,7 +123,7 @@ fn context_menu_ui_for_item_with_context_impl(
                         if item_response.hovered() && item_response.secondary_clicked() {
                             show_context_menu(&item_collection);
                             ctx.command_sender()
-                                .send_system(SystemCommand::SetSelection(item_collection));
+                                .send_system(SystemCommand::set_selection(item_collection));
                         } else {
                             show_context_menu(ctx.selection());
                         }
@@ -137,7 +137,7 @@ fn context_menu_ui_for_item_with_context_impl(
 
                     if item_response.secondary_clicked() {
                         ctx.command_sender()
-                            .send_system(SystemCommand::SetSelection(item_collection));
+                            .send_system(SystemCommand::set_selection(item_collection));
                     }
                 }
 

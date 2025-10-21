@@ -1047,8 +1047,8 @@ impl App {
                 self.app_options_mut().inspect_blueprint_timeline = show;
             }
 
-            SystemCommand::SetSelection(items) => {
-                if let Some(item) = items.single_item() {
+            SystemCommand::SetSelection(set) => {
+                if let Some(item) = set.selection.single_item() {
                     match item {
                         Item::RedapEntry(entry) => {
                             self.state
@@ -1085,7 +1085,7 @@ impl App {
                     }
                 }
 
-                self.state.selection_state.set_selection(items);
+                self.state.selection_state.set_selection(set);
                 egui_ctx.request_repaint(); // Make sure we actually see the new selection.
             }
 
@@ -1265,7 +1265,7 @@ impl App {
             };
 
             self.command_sender
-                .send_system(SystemCommand::SetSelection(item.clone().into()));
+                .send_system(SystemCommand::set_selection(item.clone()));
         }
 
         if let Some((timeline, timecell)) = when {
@@ -2055,9 +2055,10 @@ impl App {
                     } else {
                         re_log::debug!("Inserted table store with id: `{}`", table.id);
                     }
-                    self.command_sender.send_system(SystemCommand::SetSelection(
-                        re_viewer_context::Item::TableId(table.id.clone()).into(),
-                    ));
+                    self.command_sender
+                        .send_system(SystemCommand::set_selection(
+                            re_viewer_context::Item::TableId(table.id.clone()),
+                        ));
 
                     // If the viewer is in the background, tell the user that it has received something new.
                     egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
@@ -2361,9 +2362,10 @@ impl App {
         store_hub.set_active_recording_id(store_id.clone());
 
         // Also select the new recording:
-        self.command_sender.send_system(SystemCommand::SetSelection(
-            re_viewer_context::Item::StoreId(store_id.clone()).into(),
-        ));
+        self.command_sender
+            .send_system(SystemCommand::set_selection(
+                re_viewer_context::Item::StoreId(store_id.clone()),
+            ));
 
         // If the viewer is in the background, tell the user that it has received something new.
         egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(

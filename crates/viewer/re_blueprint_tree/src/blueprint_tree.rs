@@ -546,7 +546,7 @@ impl BlueprintTree {
                     .clicked()
                 {
                     ctx.command_sender()
-                        .send_system(SystemCommand::SetSelection(item.into()));
+                        .send_system(SystemCommand::set_selection(item));
                 }
 
                 return;
@@ -706,10 +706,10 @@ impl BlueprintTree {
                         let mut selection = ctx.selection().clone();
                         selection.extend(items);
                         ctx.command_sender()
-                            .send_system(SystemCommand::SetSelection(selection));
+                            .send_system(SystemCommand::set_selection(selection));
                     } else {
                         ctx.command_sender()
-                            .send_system(SystemCommand::SetSelection(items));
+                            .send_system(SystemCommand::set_selection(items));
                     }
                 }
             }

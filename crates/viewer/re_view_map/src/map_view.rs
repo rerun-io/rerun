@@ -495,17 +495,15 @@ fn handle_ui_interactions(
         if map_response.double_clicked() {
             // Select the entire entity
             ctx.command_sender()
-                .send_system(SystemCommand::SetSelection(
-                    Item::DataResult(query.view_id, instance_path.entity_path.clone().into())
-                        .into(),
-                ));
+                .send_system(SystemCommand::set_selection(Item::DataResult(
+                    query.view_id,
+                    instance_path.entity_path.clone().into(),
+                )));
         }
     } else if map_response.clicked() {
         // clicked elsewhere, select the view
         ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(
-                Item::View(query.view_id).into(),
-            ));
+            .send_system(SystemCommand::set_selection(Item::View(query.view_id)));
     } else if map_response.hovered() {
         ctx.selection_state().set_hovered(Item::View(query.view_id));
     }

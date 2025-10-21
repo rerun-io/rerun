@@ -294,9 +294,7 @@ impl ViewportUi {
                 });
 
             ctx.command_sender()
-                .send_system(SystemCommand::SetSelection(
-                    Item::View(view_blueprint.id).into(),
-                ));
+                .send_system(SystemCommand::set_selection(Item::View(view_blueprint.id)));
 
             // drop is completed, no need for highlighting anymore
             false

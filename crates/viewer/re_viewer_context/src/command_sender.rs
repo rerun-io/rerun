@@ -105,7 +105,7 @@ pub enum SystemCommand {
     CopyViewerUrl(String),
 
     /// Set the item selection.
-    SetSelection(crate::ItemCollection),
+    SetSelection(SetSelection),
 
     TimeControlCommands {
         store_id: StoreId,
@@ -136,7 +136,45 @@ pub enum SystemCommand {
 
 impl SystemCommand {
     pub fn clear_selection() -> Self {
-        Self::SetSelection(crate::ItemCollection::default())
+        Self::set_selection(crate::ItemCollection::default())
+    }
+
+    pub fn set_selection(selection: impl Into<SetSelection>) -> Self {
+        Self::SetSelection(selection.into())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SelectionSource {
+    ListItemNavigation,
+    Other,
+}
+
+pub struct SetSelection {
+    pub selection: crate::ItemCollection,
+    pub source: SelectionSource,
+}
+
+impl SetSelection {
+    pub fn new(selection: impl Into<crate::ItemCollection>) -> SetSelection {
+        Self {
+            selection: selection.into(),
+            source: SelectionSource::Other,
+        }
+    }
+
+    pub fn with_source(mut self, source: SelectionSource) -> Self {
+        self.source = source;
+        self
+    }
+}
+
+impl<T: Into<crate::ItemCollection>> From<T> for SetSelection {
+    fn from(selection: T) -> Self {
+        Self {
+            selection: selection.into(),
+            source: SelectionSource::Other,
+        }
     }
 }
 

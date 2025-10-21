@@ -223,7 +223,7 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
             .set_cloned_blueprint_active_for_app(&blueprint_id)
             .expect("Failed to set blueprint as active");
 
-        app.command_sender.send_system(SystemCommand::SetSelection(
+        app.command_sender.send_system(SystemCommand::set_selection(
             re_viewer_context::Item::StoreId(recording_store_id.clone()).into(),
         ));
         self.run_ok();
