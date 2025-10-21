@@ -1,4 +1,4 @@
-use re_types::reflection::Enum as _;
+use re_types::{ColormapCategory, reflection::Enum as _};
 use re_ui::list_item;
 
 use crate::{
@@ -79,7 +79,6 @@ fn colormap_variant_ui(
     let mut response = list_item.show_flat(
         ui,
         list_item::CustomContent::new(|ui, _| {
-            // Draw colormap preview first (on the left)
             if let Err(err) = colormap_preview_ui(render_ctx, ui, *option) {
                 re_log::error_once!("Failed to paint colormap preview: {err}");
             }
@@ -93,6 +92,38 @@ fn colormap_variant_ui(
     if response.clicked() {
         *map = *option;
         response.mark_changed();
+    }
+
+    response
+}
+
+fn colormap_category_ui(
+    ctx: &crate::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    category: ColormapCategory,
+    selected: &mut re_types::components::Colormap,
+) -> egui::Response {
+    let label_content = match category {
+        ColormapCategory::Sequential => "Sequential",
+        ColormapCategory::Diverging => "Diverging",
+        ColormapCategory::Cyclic => "Cyclic",
+    };
+
+    let mut response = list_item::ListItem::new()
+        .interactive(false)
+        .header()
+        .show_flat(
+            ui,
+            list_item::LabelContent::header(label_content)
+                .strong(true)
+                .min_desired_width(MIN_WIDTH),
+        );
+
+    for option in re_types::components::Colormap::variants()
+        .iter()
+        .filter(|&&colormap| colormap.category() == category)
+    {
+        response |= colormap_variant_ui(ctx.render_ctx(), ui, option, selected);
     }
 
     response
@@ -146,38 +177,6 @@ pub fn colormap_edit_or_view_ui(
     }
 }
 
-fn colormap_category_ui(
-    ctx: &crate::ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    category: ColormapCategory,
-    selected: &mut re_types::components::Colormap,
-) -> egui::Response {
-    let label_content = match category {
-        ColormapCategory::Sequential => "Sequential",
-        ColormapCategory::Diverging => "Diverging",
-        ColormapCategory::Cyclic => "Cyclic",
-    };
-
-    let mut response = list_item::ListItem::new()
-        .interactive(false)
-        .header()
-        .show_flat(
-            ui,
-            list_item::LabelContent::header(label_content)
-                .strong(true)
-                .min_desired_width(MIN_WIDTH),
-        );
-
-    for option in re_types::components::Colormap::variants()
-        .iter()
-        .filter(|&&colormap| colormap_category(colormap) == category)
-    {
-        response |= colormap_variant_ui(ctx.render_ctx(), ui, option, selected);
-    }
-
-    response
-}
-
 pub fn colormap_to_re_renderer(colormap: re_types::components::Colormap) -> re_renderer::Colormap {
     match colormap {
         re_types::components::Colormap::Grayscale => re_renderer::Colormap::Grayscale,
@@ -189,33 +188,5 @@ pub fn colormap_to_re_renderer(colormap: re_types::components::Colormap) -> re_r
         re_types::components::Colormap::CyanToYellow => re_renderer::Colormap::CyanToYellow,
         re_types::components::Colormap::Spectral => re_renderer::Colormap::Spectral,
         re_types::components::Colormap::Twilight => re_renderer::Colormap::Twilight,
-    }
-}
-
-/// Possible categories of colormaps.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ColormapCategory {
-    /// Colormaps that progress from one color to another in a single direction.
-    Sequential,
-
-    /// Colormaps that transition between two contrasting colors, often with a neutral midpoint.
-    Diverging,
-
-    /// Colormaps that wrap around.
-    Cyclic,
-}
-
-pub fn colormap_category(colormap: re_types::components::Colormap) -> ColormapCategory {
-    match colormap {
-        re_types::components::Colormap::Grayscale
-        | re_types::components::Colormap::Inferno
-        | re_types::components::Colormap::Magma
-        | re_types::components::Colormap::Plasma
-        | re_types::components::Colormap::Viridis
-        | re_types::components::Colormap::Turbo => ColormapCategory::Sequential,
-        re_types::components::Colormap::CyanToYellow | re_types::components::Colormap::Spectral => {
-            ColormapCategory::Diverging
-        }
-        re_types::components::Colormap::Twilight => ColormapCategory::Cyclic,
     }
 }

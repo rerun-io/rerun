@@ -244,8 +244,8 @@ pub fn colormap_spectral_srgb(t: f32) -> [u8; 4] {
 
 /// Returns sRGB polynomial approximation from Twilight color map, assuming `t` is normalized.
 ///
-/// This is a perceptually uniform cyclic colormap from Matplotlib.
-/// It is useful for visualizing periodic or cyclic data.
+/// This is a perceptually uniform cyclic colormap from Matplotlib, it is useful for
+/// visualizing periodic or cyclic data.
 ///
 /// It interpolates from white to blue to purple to red to orange and back to white.
 ///
