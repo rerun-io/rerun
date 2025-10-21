@@ -250,7 +250,7 @@ fn run_view_ui_and_save_snapshot(
     }
 
     // Points don't have scale, so we test them separately.
-    {
+    for _ in 0..2 {
         let mut harness = test_context
             .setup_kittest_for_rendering_3d(size)
             .build_ui(|ui| {
