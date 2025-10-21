@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Union
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -39,10 +39,7 @@ class AffixFuzzer2:
 
 
 AffixFuzzer2Like = AffixFuzzer2
-AffixFuzzer2ArrayLike = Union[
-    AffixFuzzer2,
-    Sequence[AffixFuzzer2Like],
-]
+AffixFuzzer2ArrayLike = AffixFuzzer2 | Sequence[AffixFuzzer2Like]
 
 
 class AffixFuzzer2Batch(BaseBatch[AffixFuzzer2ArrayLike]):

@@ -190,7 +190,7 @@ def _log_components(
 
     added = set()
 
-    for descr, array in zip(descriptors, arrow_arrays):
+    for descr, array in zip(descriptors, arrow_arrays, strict=False):
         # Array could be None if there was an error producing the empty array
         # Nothing we can do at this point other than ignore it. Some form of error
         # should have been logged.

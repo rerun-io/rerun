@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Callable, Self
+from typing import Any, Self
 
 import datafusion as dfn
 import pyarrow as pa

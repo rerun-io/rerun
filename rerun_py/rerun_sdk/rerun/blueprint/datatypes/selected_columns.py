@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -44,16 +44,13 @@ if TYPE_CHECKING:
     from ... import datatypes
     from ...blueprint import datatypes as blueprint_datatypes
 
-    SelectedColumnsLike = Union[
-        SelectedColumns, Sequence[Union[blueprint_datatypes.ComponentColumnSelectorLike, datatypes.Utf8Like]]
-    ]
+    SelectedColumnsLike = (
+        SelectedColumns | Sequence[blueprint_datatypes.ComponentColumnSelectorLike | datatypes.Utf8Like]
+    )
 else:
     SelectedColumnsLike = Any
 
-SelectedColumnsArrayLike = Union[
-    SelectedColumns,
-    Sequence[SelectedColumnsLike],
-]
+SelectedColumnsArrayLike = SelectedColumns | Sequence[SelectedColumnsLike]
 
 
 class SelectedColumnsBatch(BaseBatch[SelectedColumnsArrayLike]):

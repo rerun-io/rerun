@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -60,8 +60,10 @@ class MagnificationFilter(Enum):
         return self.name
 
 
-MagnificationFilterLike = Union[MagnificationFilter, Literal["Linear", "Nearest", "linear", "nearest"], int]
-MagnificationFilterArrayLike = Union[MagnificationFilterLike, Sequence[MagnificationFilterLike]]
+MagnificationFilterLike = MagnificationFilter | Literal["Linear", "Nearest", "linear", "nearest"] | int
+MagnificationFilterArrayLike = (
+    MagnificationFilter | Literal["Linear", "Nearest", "linear", "nearest"] | int | Sequence[MagnificationFilterLike]
+)
 
 
 class MagnificationFilterBatch(BaseBatch[MagnificationFilterArrayLike], ComponentBatchMixin):

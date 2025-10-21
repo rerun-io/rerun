@@ -226,7 +226,7 @@ def main() -> None:
     viewer = []
     web = []
 
-    for commit_info, pr_info in zip(commit_infos, pr_infos):
+    for commit_info, pr_info in zip(commit_infos, pr_infos, strict=False):
         hexsha = commit_info.hexsha
         title = commit_info.title
         pr_number = commit_info.pr_number

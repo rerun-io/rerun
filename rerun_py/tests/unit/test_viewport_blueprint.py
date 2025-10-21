@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 from rerun.blueprint.archetypes.viewport_blueprint import ViewportBlueprint
 from rerun.blueprint.components.auto_layout import AutoLayoutBatch
@@ -54,11 +54,11 @@ def test_viewport_blueprint() -> None:
         past_viewer_recommendations,
     ) in all_arrays:
         # mypy can't track types properly through itertools zip so re-cast
-        root_container = cast("Optional[UuidLike]", root_container)
-        maximized = cast("Optional[UuidLike]", maximized)
-        auto_layout = cast("Optional[BoolLike]", auto_layout)
-        auto_views = cast("Optional[BoolLike]", auto_views)
-        past_viewer_recommendations = cast("Optional[UInt64ArrayLike]", past_viewer_recommendations)
+        root_container = cast("UuidLike | None", root_container)
+        maximized = cast("UuidLike | None", maximized)
+        auto_layout = cast("BoolLike | None", auto_layout)
+        auto_views = cast("BoolLike | None", auto_views)
+        past_viewer_recommendations = cast("UInt64ArrayLike | None", past_viewer_recommendations)
 
         print(
             "rr.ViewportBlueprint(\n",
