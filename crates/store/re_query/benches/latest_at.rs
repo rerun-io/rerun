@@ -166,10 +166,10 @@ fn batch_strings(c: &mut Criterion) {
 
 pub fn build_some_point2d(len: usize) -> Vec<Position2D> {
     use rand::Rng as _;
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     (0..len)
-        .map(|_| Position2D::new(rng.gen_range(0.0..10.0), rng.gen_range(0.0..10.0)))
+        .map(|_| Position2D::new(rng.random_range(0.0..10.0), rng.random_range(0.0..10.0)))
         .collect()
 }
 
@@ -185,13 +185,13 @@ pub fn build_frame_nr(frame_nr: TimeInt) -> (Timeline, TimeInt) {
 
 pub fn build_some_strings(len: usize) -> Vec<Text> {
     use rand::Rng as _;
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     (0..len)
         .map(|_| {
-            let ilen: usize = rng.gen_range(0..100);
-            let s: String = rand::thread_rng()
-                .sample_iter(&rand::distributions::Alphanumeric)
+            let ilen: usize = rng.random_range(0..100);
+            let s: String = rand::rng()
+                .sample_iter(&rand::distr::Alphanumeric)
                 .take(ilen)
                 .map(char::from)
                 .collect();
@@ -269,17 +269,14 @@ fn query_and_visit_points(caches: &QueryCache, paths: &[EntityPath]) -> Vec<Save
 
     // TODO(jleibs): Add Radius once we have support for it in field_types
     for entity_path in paths {
-        let results: LatestAtResults = caches.latest_at(
-            &query,
-            entity_path,
-            Points2D::all_components().iter(), // no generics!
-        );
+        let results: LatestAtResults =
+            caches.latest_at(&query, entity_path, Points2D::all_component_identifiers());
 
         let points = results
-            .component_batch_quiet::<Position2D>(&Points2D::descriptor_positions())
+            .component_batch_quiet::<Position2D>(Points2D::descriptor_positions().component)
             .unwrap();
         let colors = results
-            .component_batch_quiet::<Color>(&Points2D::descriptor_colors())
+            .component_batch_quiet::<Color>(Points2D::descriptor_colors().component)
             .unwrap_or_default();
         let color_default_fn = || Color::from(0xFF00FFFF);
 
@@ -304,18 +301,18 @@ fn query_and_visit_strings(caches: &QueryCache, paths: &[EntityPath]) -> Vec<Sav
 
     let mut strings = Vec::with_capacity(NUM_STRINGS as _);
 
+    let component_points = Points2D::descriptor_positions().component;
+    let component_labels = Points2D::descriptor_labels().component;
+
     for entity_path in paths {
-        let results: LatestAtResults = caches.latest_at(
-            &query,
-            entity_path,
-            Points2D::all_components().iter(), // no generics!
-        );
+        let results: LatestAtResults =
+            caches.latest_at(&query, entity_path, [component_points, component_labels]);
 
         let points = results
-            .component_batch_quiet::<Position2D>(&Points2D::descriptor_positions())
+            .component_batch_quiet::<Position2D>(component_points)
             .unwrap();
         let labels = results
-            .component_batch_quiet::<Text>(&Points2D::descriptor_labels())
+            .component_batch_quiet::<Text>(component_labels)
             .unwrap_or_default();
         let label_default_fn = || Text(String::new().into());
 

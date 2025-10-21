@@ -80,7 +80,7 @@ fn main() {
     let thread = std::thread::Builder::new()
         .name("cargo_run_wasm".into())
         .spawn(|| {
-            cargo_run_wasm::run_wasm_with_css(CSS);
+            cargo_run_wasm::run_wasm_cli_with_css(CSS);
         })
         .expect("Failed to spawn thread");
 

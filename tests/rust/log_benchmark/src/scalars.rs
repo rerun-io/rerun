@@ -30,7 +30,7 @@ fn prepare() -> Input {
         // Random walk:
         for (_, scalars) in &mut current {
             for scalar in scalars {
-                *scalar += rng.gen_range(-0.1..=0.1);
+                *scalar += rng.random_range(-0.1..=0.1);
             }
         }
         time_steps.push(current.clone());
@@ -48,6 +48,7 @@ fn execute(rec: &rerun::RecordingStream, input: Input) -> anyhow::Result<()> {
         for (entity_path, scalars) in time_snapshot {
             re_tracing::profile_scope!("log_entity");
 
+            #[expect(clippy::cast_possible_wrap)] // usize -> i64 is fine
             rec.set_time_sequence("frame", time_index as i64);
             rec.log(entity_path.clone(), &rerun::Scalars::new(scalars))?;
         }

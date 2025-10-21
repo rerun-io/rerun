@@ -47,7 +47,7 @@ map_view = ["dep:re_view_map"]
 ## This only works on native.
 perf_telemetry = ["dep:re_perf_telemetry", "re_redap_client/perf_telemetry"]
 
-testing = ["dep:egui_kittest", "dep:tokio"]
+testing = ["dep:egui_kittest", "dep:tokio", "re_ui/testing"]
 
 
 [dependencies]

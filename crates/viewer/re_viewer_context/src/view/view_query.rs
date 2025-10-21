@@ -2,16 +2,13 @@ use std::collections::BTreeMap;
 
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
-use re_chunk::TimelineName;
+use re_chunk::{ComponentIdentifier, TimelineName};
 use smallvec::SmallVec;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, TimeInt};
 use re_log_types::StoreKind;
-use re_types::{
-    ComponentDescriptor,
-    blueprint::archetypes::{self as blueprint_archetypes, EntityBehavior},
-};
+use re_types::blueprint::archetypes::{self as blueprint_archetypes, EntityBehavior};
 
 use crate::{
     DataResultTree, QueryRange, ViewHighlights, ViewId, ViewSystemIdentifier, ViewerContext,
@@ -44,7 +41,7 @@ pub struct PropertyOverrides {
     /// like `Visible`, `Interactive` or transform components.
     // TODO(jleibs): Consider something like `tinymap` for this.
     // TODO(andreas): Should be a `Cow` to not do as many clones.
-    pub component_overrides: IntMap<ComponentDescriptor, OverridePath>,
+    pub component_overrides: IntMap<ComponentIdentifier, OverridePath>,
 
     /// Whether the entity is visible.
     ///
@@ -111,11 +108,11 @@ impl DataResult {
         new_value: bool,
     ) {
         // Check if we should instead clear an existing override.
-        if self.has_override(ctx, &EntityBehavior::descriptor_visible()) {
+        if self.has_override(ctx, EntityBehavior::descriptor_visible().component) {
             let parent_visibility = self
                 .entity_path
                 .parent()
-                .and_then(|parent_path| data_result_tree.lookup_result_by_path(&parent_path))
+                .and_then(|parent_path| data_result_tree.lookup_result_by_path(parent_path.hash()))
                 .is_none_or(|data_result| data_result.is_visible());
 
             if parent_visibility == new_value {
@@ -146,11 +143,11 @@ impl DataResult {
         new_value: bool,
     ) {
         // Check if we should instead clear an existing override.
-        if self.has_override(ctx, &EntityBehavior::descriptor_interactive()) {
+        if self.has_override(ctx, EntityBehavior::descriptor_interactive().component) {
             let parent_interactivity = self
                 .entity_path
                 .parent()
-                .and_then(|parent_path| data_result_tree.lookup_result_by_path(&parent_path))
+                .and_then(|parent_path| data_result_tree.lookup_result_by_path(parent_path.hash()))
                 .is_none_or(|data_result| data_result.is_interactive());
 
             if parent_interactivity == new_value {
@@ -168,23 +165,23 @@ impl DataResult {
         );
     }
 
-    fn has_override(&self, ctx: &ViewerContext<'_>, component_descr: &ComponentDescriptor) -> bool {
+    fn has_override(&self, ctx: &ViewerContext<'_>, component: ComponentIdentifier) -> bool {
         self.property_overrides
             .component_overrides
-            .get(component_descr)
+            .get(&component)
             .is_some_and(|OverridePath { store_kind, path }| {
                 match store_kind {
                     StoreKind::Blueprint => ctx.store_context.blueprint.latest_at(
                         ctx.blueprint_query,
                         path,
-                        [component_descr],
+                        [component],
                     ),
                     StoreKind::Recording => {
                         ctx.recording()
-                            .latest_at(&ctx.current_query(), path, [component_descr])
+                            .latest_at(&ctx.current_query(), path, [component])
                     }
                 }
-                .get(component_descr)
+                .get(component)
                 .is_some()
             })
     }

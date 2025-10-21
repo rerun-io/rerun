@@ -245,6 +245,8 @@ pub fn tracking_stats() -> Option<TrackingStatistics> {
                 .drain(..)
                 .chain(top_medium_callstacks.drain(..))
                 .collect();
+
+            #[expect(clippy::cast_possible_wrap)]
             top_callstacks.sort_by_key(|c| -(c.extant.size as i64));
 
             TrackingStatistics {

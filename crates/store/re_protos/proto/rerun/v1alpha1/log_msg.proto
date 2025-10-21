@@ -4,6 +4,20 @@ package rerun.log_msg.v1alpha1;
 
 import "rerun/v1alpha1/common.proto";
 
+// There are 3 different `LogMsg`-related types that you will very often encounter: `re_log_types::LogMsg`,
+// `re_protos::log_msg::v1alpha1::LogMsg` and `re_protos::log_msg::v1alpha1::log_msg::Msg`.
+//
+// Mixing them up is a common source of pain and confusion, so let's go over what each does:
+// * `re_log_types::LogMsg` is the application-level type that we use all across the viewer
+//   codebase. It can be obtained by calling `to_application()` on one of the transport-level
+//   `LogMsg` types which, among many other things, will perform Chunk/Sorbet-level migrations.
+//   `re_log_types::LogMsg` isn't used in Redap, where everything is done at the transport-level, always.
+// * `re_protos::log_msg::v1alpha1::LogMsg` is the transport-level definition of `LogMsg`. It is an
+//   artifact of how `oneof` works in Protobuf: all it does is carry a `re_protos::log_msg::v1alpha1::log_msg::Msg`.
+//   For that reason, it is never directly used, except by the legacy SDK comms protocol.
+// * Finally, `re_protos::log_msg::v1alpha1::log_msg::Msg` is the real transport-level type that we
+//   care about. It is used all over the place when encoding and decoding RRD streams.
+//
 // TODO(#8631): Remove `LogMsg`
 message LogMsg {
   oneof msg {
@@ -58,7 +72,7 @@ message ArrowMsg {
   // Compression algorithm used.
   Compression compression = 2;
 
-  int32 uncompressed_size = 3;
+  uint64 uncompressed_size = 3;
 
   // Encoding of the payload.
   Encoding encoding = 4;

@@ -104,21 +104,26 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             else {
                 continue;
             };
-            let world_from_obj = if let Some(twod_in_threed_info) =
-                &transform_info.twod_in_threed_info
+            let world_from_obj = if let Some(pinhole_tree_root_info) =
+                transforms.pinhole_tree_root_info(transform_info.tree_root())
             {
-                if twod_in_threed_info.parent_pinhole != data_result.entity_path {
+                if transform_info.tree_root()
+                    == re_tf::TransformFrameIdHash::from_entity_path(&data_result.entity_path)
+                {
+                    // We're _at_ that pinhole.
+                    // Don't apply the from-2D transform, stick with the last known 3D.
+                    pinhole_tree_root_info.parent_root_from_pinhole_root
+                } else {
                     // We're inside a 2D space. But this is a 3D transform.
                     // Something is wrong here and this is not the right place to report it.
                     // Better just don't draw the axis!
                     continue;
-                } else {
-                    // Don't apply the from-2D transform, stick with the last known 3D.
-                    twod_in_threed_info.reference_from_pinhole_entity
                 }
             } else {
-                transform_info
-                    .single_entity_transform_required(&data_result.entity_path, Transform3D::name())
+                transform_info.single_transform_required_for_entity(
+                    &data_result.entity_path,
+                    Transform3D::name(),
+                )
             };
 
             // Note, we use this interface instead of `data_result.latest_at_with_blueprint_resolved_data` to avoid querying
@@ -129,7 +134,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 None,
                 &latest_at_query,
                 data_result,
-                [&Transform3D::descriptor_axis_length()],
+                [Transform3D::descriptor_axis_length().component],
                 false,
             );
 
@@ -230,7 +235,7 @@ impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer 
         // If there is a camera in the scene and it has a pinhole, use the image plane distance to determine the axis length.
         if let Some(length) = query_result
             .tree
-            .lookup_result_by_path(ctx.target_entity_path)
+            .lookup_result_by_path(ctx.target_entity_path.hash())
             .cloned()
             .and_then(|data_result| {
                 if data_result
@@ -293,7 +298,7 @@ impl VisualizerSystem for AxisLengthDetector {
 
         query_info
             .required
-            .insert(Transform3D::descriptor_axis_length());
+            .insert(Transform3D::descriptor_axis_length().component);
 
         query_info
     }

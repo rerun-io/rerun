@@ -177,9 +177,10 @@ exclude = [
   'https://picsum.photos/*',
 
   # These are APIs:
-  'https://rerun.io/login',
-  'https://rerun.io/api',
+  'https://api.linear.app/graphql',
   'https://api.workos.com/.*',
+  'https://rerun.io/api',
+  'https://rerun.io/login',
 
   # '^file:///',                                  # Ignore local file links. They need to be tested, but it's useful for external links we have to ping.
 ]

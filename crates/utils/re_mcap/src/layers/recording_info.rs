@@ -1,5 +1,6 @@
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
 use re_types::archetypes::RecordingInfo;
+use saturating_cast::SaturatingCast as _;
 
 use crate::Error;
 
@@ -23,7 +24,9 @@ impl Layer for McapRecordingInfoLayer {
         let properties = summary
             .stats
             .as_ref()
-            .map(|s| RecordingInfo::new().with_start_time(s.message_start_time as i64))
+            .map(|s| {
+                RecordingInfo::new().with_start_time(s.message_start_time.saturating_cast::<i64>())
+            })
             .unwrap_or_default();
 
         let chunk = Chunk::builder(EntityPath::properties())

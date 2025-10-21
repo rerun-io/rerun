@@ -29,6 +29,7 @@ byteorder.workspace = true
 cdr-encoding.workspace = true
 mcap.workspace = true
 prost-reflect.workspace = true
+saturating_cast.workspace = true
 serde.workspace = true
 serde_bytes.workspace = true
 thiserror.workspace = true

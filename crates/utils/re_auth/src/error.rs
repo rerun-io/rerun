@@ -16,11 +16,11 @@ pub enum Error {
     #[error("token verification failed")]
     InvalidToken,
 
-    #[cfg(feature = "workos")]
-    #[error("failed to load external provider JWKS: {0}")]
-    ContextLoad(crate::workos::ContextLoadError),
+    #[cfg(feature = "oauth")]
+    #[error("failed to fetch JWKS")]
+    JwksFetch(crate::oauth::api::Error),
 
-    #[cfg(feature = "workos")]
+    #[cfg(feature = "oauth")]
     #[error(
         "no external provider configured, configure one using `RedapProvider::with_external_provider`"
     )]

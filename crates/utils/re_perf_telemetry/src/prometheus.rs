@@ -1,5 +1,7 @@
 //! Prometheus-specific metric conversion and encoding utilities
 
+#![expect(clippy::cast_possible_wrap)] // u64 -> i64
+
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::fmt::Write as _;

@@ -248,10 +248,11 @@ impl Query {
             .and_then(|component_sel| {
                 all_components
                     .iter()
-                    .any(|descr| descr.component.as_str() == component_sel.component)
+                    .copied()
+                    .any(|component| component.as_str() == component_sel.component)
                     .then_some(component_sel.component.into())
             })
-            .or_else(|| all_components.iter().map(|descr| descr.component).next());
+            .or_else(|| all_components.iter().next().copied());
 
         //
         // UI for filter entity and component
@@ -280,11 +281,11 @@ impl Query {
                     egui::ComboBox::new("pov_component", "")
                         .selected_text(filter_component.map_or("-", |c| c.as_str()))
                         .show_ui(ui, |ui| {
-                            for descr in all_components {
+                            for component in all_components {
                                 ui.selectable_value(
                                     &mut filter_component,
-                                    Some(descr.component),
-                                    descr.component.as_str(),
+                                    Some(component),
+                                    component.as_str(),
                                 );
                             }
                         });

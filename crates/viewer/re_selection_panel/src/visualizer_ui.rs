@@ -1,12 +1,12 @@
 use egui::RichText;
 use itertools::Itertools as _;
 
-use re_chunk::{RowId, UnitChunkShared};
+use re_chunk::{ComponentIdentifier, RowId, UnitChunkShared};
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath};
 use re_types::blueprint::archetypes::VisualizerOverrides;
-use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
+use re_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::external::arrow::array::ArrayRef;
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item};
@@ -26,7 +26,7 @@ pub fn visualizer_ui(
     let query_result = ctx.lookup_query_result(view.id);
     let Some(data_result) = query_result
         .tree
-        .lookup_result_by_path(entity_path)
+        .lookup_result_by_path(entity_path.hash())
         .cloned()
     else {
         ui.error_label("Entity not found in view");
@@ -171,10 +171,10 @@ fn visualizer_components(
 ) {
     fn non_empty_component_batch_raw(
         unit: Option<&UnitChunkShared>,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Option<(Option<RowId>, ArrayRef)> {
         let unit = unit?;
-        let batch = unit.component_batch_raw(component_descr)?;
+        let batch = unit.component_batch_raw(component)?;
         if batch.is_empty() {
             None
         } else {
@@ -194,30 +194,32 @@ fn visualizer_components(
         None, // TODO(andreas): Figure out how to deal with annotation context here.
         &store_query,
         data_result,
-        query_info.queried.iter(),
+        query_info.queried_components(),
         query_shadowed_defaults,
     );
 
     // TODO(andreas): Should we show required components in a special way?
     for component_descr in sorted_component_list_by_archetype_for_ui(
         ctx.viewer_ctx.reflection(),
-        query_info.queried.iter(),
+        query_info.queried.iter().cloned(),
     )
     .values()
     .flatten()
     {
         // TODO(andreas): What about annotation context?
 
+        let component = component_descr.component;
+
         // Query all the sources for our value.
         // (technically we only need to query those that are shown, but rolling this out makes things easier).
-        let result_override = query_result.overrides.get(component_descr);
-        let raw_override = non_empty_component_batch_raw(result_override, component_descr);
+        let result_override = query_result.overrides.get(component);
+        let raw_override = non_empty_component_batch_raw(result_override, component);
 
-        let result_store = query_result.results.get(component_descr);
-        let raw_store = non_empty_component_batch_raw(result_store, component_descr);
+        let result_store = query_result.results.get(component);
+        let raw_store = non_empty_component_batch_raw(result_store, component);
 
-        let result_default = query_result.defaults.get(component_descr);
-        let raw_default = non_empty_component_batch_raw(result_default, component_descr);
+        let result_default = query_result.defaults.get(component);
+        let raw_default = non_empty_component_batch_raw(result_default, component);
 
         // If we don't have a component type, we don't have a way to retrieve a fallback. Therefore, we return a `NullArray` as a dummy.
         let raw_fallback = visualizer
@@ -519,7 +521,7 @@ fn menu_more(
     let override_differs_from_default = raw_override
         != &ctx
             .viewer_ctx
-            .raw_latest_at_in_default_blueprint(override_path, &component_descr);
+            .raw_latest_at_in_default_blueprint(override_path, component_descr.component);
     if ui
         .add_enabled(
             override_differs_from_default,

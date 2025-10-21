@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use egui::accesskit::Role;
-use egui_kittest::{SnapshotOptions, kittest::Queryable as _};
+use egui_kittest::kittest::Queryable as _;
 
 use re_test_context::TestContext;
 use re_types::components::Colormap;
@@ -50,10 +50,7 @@ async fn menu_without_recording() {
     harness.run_ok();
     // Mask the shortcut for quitting, it's platform-dependent.
     harness.mask(harness.get_by_label_contains("Quit").rect());
-    harness.snapshot_options(
-        "menu_without_recording",
-        &SnapshotOptions::new().failed_pixel_count_threshold(2),
-    );
+    harness.snapshot("menu_without_recording");
 }
 
 /// Tests the colormap selector UI with snapshot testing.
@@ -65,20 +62,26 @@ fn colormap_selector_ui() {
     test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
     re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
 
-    let mut harness = test_context.setup_kittest_for_rendering().build_ui(|ui| {
-        re_ui::apply_style_and_install_loaders(ui.ctx());
+    let mut harness = test_context
+        .setup_kittest_for_rendering_ui([200.0, 250.0])
+        .build_ui(|ui| {
+            re_ui::apply_style_and_install_loaders(ui.ctx());
 
-        test_context.run(&ui.ctx().clone(), |ctx: &ViewerContext<'_>| {
-            ui.horizontal(|ui| {
-                ui.label("Colormap:");
+            test_context.run(&ui.ctx().clone(), |ctx: &ViewerContext<'_>| {
+                ui.horizontal(|ui| {
+                    ui.label("Colormap:");
 
-                let mut test_colormap = Colormap::Spectral;
-                let mut colormap_ref = MaybeMutRef::MutRef(&mut test_colormap);
+                    let mut test_colormap = Colormap::Spectral;
+                    let mut colormap_ref = MaybeMutRef::MutRef(&mut test_colormap);
 
-                re_viewer_context::gpu_bridge::colormap_edit_or_view_ui(ctx, ui, &mut colormap_ref);
+                    re_viewer_context::gpu_bridge::colormap_edit_or_view_ui(
+                        ctx,
+                        ui,
+                        &mut colormap_ref,
+                    );
+                });
             });
         });
-    });
 
     harness.run();
     harness.fit_contents();
@@ -91,8 +94,5 @@ fn colormap_selector_ui() {
 
     harness.fit_contents();
     harness.run();
-    harness.snapshot_options(
-        "colormap_selector_open",
-        &SnapshotOptions::new().threshold(2.0),
-    );
+    harness.snapshot("colormap_selector_open");
 }

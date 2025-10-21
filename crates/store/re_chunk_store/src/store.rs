@@ -263,17 +263,17 @@ pub struct ChunkIdSetPerTime {
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 
-pub type ChunkIdSetPerTimePerComponentDescriptor = IntMap<ComponentDescriptor, ChunkIdSetPerTime>;
+pub type ChunkIdSetPerTimePerComponent = IntMap<ComponentIdentifier, ChunkIdSetPerTime>;
 
-pub type ChunkIdSetPerTimePerComponentDescriptorPerTimeline =
-    IntMap<TimelineName, ChunkIdSetPerTimePerComponentDescriptor>;
+pub type ChunkIdSetPerTimePerComponentPerTimeline =
+    IntMap<TimelineName, ChunkIdSetPerTimePerComponent>;
 
-pub type ChunkIdSetPerTimePerComponentDescriptorPerTimelinePerEntity =
-    IntMap<EntityPath, ChunkIdSetPerTimePerComponentDescriptorPerTimeline>;
+pub type ChunkIdSetPerTimePerComponentPerTimelinePerEntity =
+    IntMap<EntityPath, ChunkIdSetPerTimePerComponentPerTimeline>;
 
-pub type ChunkIdPerComponentDescriptor = IntMap<ComponentDescriptor, ChunkId>;
+pub type ChunkIdPerComponent = IntMap<ComponentIdentifier, ChunkId>;
 
-pub type ChunkIdPerComponentDescriptorPerEntity = IntMap<EntityPath, ChunkIdPerComponentDescriptor>;
+pub type ChunkIdPerComponentPerEntity = IntMap<EntityPath, ChunkIdPerComponent>;
 
 pub type ChunkIdSetPerTimePerTimeline = IntMap<TimelineName, ChunkIdSetPerTime>;
 
@@ -428,13 +428,13 @@ pub struct ChunkStore {
     /// This is effectively all chunks in global data order. Used for garbage collection.
     pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, ChunkId>,
 
-    /// All temporal [`ChunkId`]s for all entities on all timelines, further indexed by [`ComponentDescriptor`].
+    /// All temporal [`ChunkId`]s for all entities on all timelines, further indexed by [`ComponentIdentifier`].
     ///
     /// See also:
     /// * [`Self::temporal_chunk_ids_per_entity`].
     /// * [`Self::static_chunk_ids_per_entity`].
     pub(crate) temporal_chunk_ids_per_entity_per_component:
-        ChunkIdSetPerTimePerComponentDescriptorPerTimelinePerEntity,
+        ChunkIdSetPerTimePerComponentPerTimelinePerEntity,
 
     /// All temporal [`ChunkId`]s for all entities on all timelines, without the [`ComponentType`] index.
     ///
@@ -453,7 +453,7 @@ pub struct ChunkStore {
     /// Static data unconditionally shadows temporal data at query time.
     ///
     /// Existing temporal will not be removed. Events won't be fired.
-    pub(crate) static_chunk_ids_per_entity: ChunkIdPerComponentDescriptorPerEntity,
+    pub(crate) static_chunk_ids_per_entity: ChunkIdPerComponentPerEntity,
 
     /// Accumulated size statitistics for all static [`Chunk`]s currently present in the store.
     ///
@@ -658,25 +658,25 @@ impl ChunkStore {
     pub fn lookup_column_metadata(
         &self,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Option<ColumnMetadata> {
         let ColumnMetadataState {
             is_semantically_empty,
         } = self
             .per_column_metadata
             .get(entity_path)
-            .and_then(|per_identifier| per_identifier.get(&component_descr.component))
+            .and_then(|per_identifier| per_identifier.get(&component))
             .map(|(_, metadata_state, _)| metadata_state)?;
 
         let is_static = self
             .static_chunk_ids_per_entity
             .get(entity_path)
-            .is_some_and(|per_descr| per_descr.get(component_descr).is_some());
+            .is_some_and(|per_component| per_component.get(&component).is_some());
 
         use re_types_core::Archetype as _;
         let is_tombstone = re_types_core::archetypes::Clear::all_components()
             .iter()
-            .any(|descr| descr == component_descr);
+            .any(|descr| descr.component == component);
 
         Some(ColumnMetadata {
             is_static,

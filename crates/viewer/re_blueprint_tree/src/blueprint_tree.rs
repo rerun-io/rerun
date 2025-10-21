@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::InstancePath;
-use re_log_types::{ApplicationId, EntityPath};
+use re_log_types::{ApplicationId, EntityPath, EntityPathHash};
 use re_ui::filter_widget::format_matching_text;
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{
@@ -216,7 +216,23 @@ impl BlueprintTree {
                     container_data.name.as_ref()
                 ))
                 .label_style(contents_name_style(&container_data.name))
-                .with_icon(icon_for_container_kind(&container_data.kind)),
+                .with_icon(icon_for_container_kind(&container_data.kind))
+                .subdued(!container_data.visible)
+                .with_buttons(|ui| {
+                    // If this has been hidden in a blueprint we want to be
+                    // able to make it visible again in the viewer.
+                    if !container_data.visible {
+                        let mut visible_after = container_data.visible;
+                        visibility_button_ui(ui, true, &mut visible_after);
+                        if visible_after != container_data.visible {
+                            viewport_blueprint.set_content_visibility(
+                                ctx,
+                                &Contents::Container(viewport_blueprint.root_container),
+                                visible_after,
+                            );
+                        }
+                    }
+                }),
             );
 
         for child in &container_data.children {
@@ -226,7 +242,7 @@ impl BlueprintTree {
                 blueprint_tree_data,
                 ui,
                 child,
-                true,
+                container_data.visible,
             );
         }
 
@@ -670,6 +686,10 @@ impl BlueprintTree {
         item: &Item,
     ) {
         if ctx.selection_state().selected_items().single_item() != Some(item) {
+            return;
+        }
+        // Don't do keyboard navigation if something is focused
+        if ctx.egui_ctx().memory(|mem| mem.focused().is_some()) {
             return;
         }
 
@@ -1169,7 +1189,8 @@ impl BlueprintTree {
                 ctx.focused_item.clone()
             }
             Item::InstancePath(instance_path) => {
-                let view_ids = list_views_with_entity(ctx, viewport, &instance_path.entity_path);
+                let view_ids =
+                    list_views_with_entity(ctx, viewport, instance_path.entity_path.hash());
 
                 // focus on the first matching data result
                 let res = view_ids
@@ -1232,7 +1253,9 @@ impl BlueprintTree {
         entity_path: &EntityPath,
     ) {
         let result_tree = &ctx.lookup_query_result(*view_id).tree;
-        if result_tree.lookup_node_by_path(entity_path).is_some()
+        if result_tree
+            .lookup_node_by_path(entity_path.hash())
+            .is_some()
             && let Some(root_node) = result_tree.root_node()
         {
             EntityPath::incremental_walk(Some(&root_node.data_result.entity_path), entity_path)
@@ -1342,7 +1365,7 @@ fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui)
 fn list_views_with_entity(
     ctx: &ViewerContext<'_>,
     viewport: &ViewportBlueprint,
-    entity_path: &EntityPath,
+    entity_path: EntityPathHash,
 ) -> SmallVec<[ViewId; 4]> {
     let mut view_ids = SmallVec::new();
     let _ignored = viewport.visit_contents::<()>(&mut |contents, _| {

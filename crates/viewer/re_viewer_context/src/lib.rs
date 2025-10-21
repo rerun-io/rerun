@@ -110,7 +110,7 @@ pub use self::{
         PropertyOverrides, RecommendedView, SmallVisualizerSet, SystemExecutionOutput, ViewClass,
         ViewClassExt, ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry,
         ViewClassRegistryError, ViewContext, ViewContextCollection, ViewContextSystem,
-        ViewContextSystemStaticExecResult, ViewEntityHighlight, ViewHighlights, ViewOutlineMasks,
+        ViewContextSystemOncePerFrameResult, ViewEntityHighlight, ViewHighlights, ViewOutlineMasks,
         ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates,
         ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
         VisualizableFilterContext, VisualizerCollection, VisualizerQueryInfo, VisualizerSystem,

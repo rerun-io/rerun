@@ -1,3 +1,5 @@
+#![expect(clippy::cast_possible_wrap)] // u64 -> i64 is fine
+
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 

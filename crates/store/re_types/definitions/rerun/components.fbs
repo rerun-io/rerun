@@ -62,6 +62,7 @@ include "./components/texcoord2d.fbs";
 include "./components/text.fbs";
 include "./components/text_log_level.fbs";
 include "./components/timestamp.fbs";
+include "./components/transform_frame_id.fbs";
 include "./components/transform_mat3x3.fbs";
 include "./components/transform_relation.fbs";
 include "./components/translation3d.fbs";

@@ -1,9 +1,6 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_test_context::{
-    TestContext,
-    external::egui_kittest::{OsThreshold, SnapshotOptions},
-};
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
@@ -163,15 +160,11 @@ fn run_view_ui_and_save_snapshot(
     size: egui::Vec2,
 ) {
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
+        .setup_kittest_for_rendering_3d(size)
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
 
     harness.run();
-    harness.snapshot_options(
-        name,
-        &SnapshotOptions::new().failed_pixel_count_threshold(OsThreshold::new(0).macos(40)),
-    );
+    harness.snapshot(name);
 }

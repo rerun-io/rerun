@@ -147,6 +147,17 @@ impl TimeInt {
             None => self,
         }
     }
+
+    /// Calculates the midpoint (average) between `self` and `rhs`.
+    ///
+    /// If either is static (non-temporal), then this returns [`Self::STATIC`].
+    #[inline]
+    pub fn midpoint(&self, rhs: Self) -> Self {
+        match (self.0, rhs.0) {
+            (Some(lhs), Some(rhs)) => Self::from(lhs.midpoint(rhs)),
+            _ => Self::STATIC,
+        }
+    }
 }
 
 impl TryFrom<i64> for TimeInt {

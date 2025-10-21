@@ -18,16 +18,9 @@ pub fn is_component_static(ctx: &ViewerContext<'_>, component_path: &ComponentPa
         component,
     } = component_path;
     let (_query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
-    let engine = db.storage_engine();
-    let Some(component_descriptor) = engine
+    db.storage_engine()
         .store()
-        .entity_component_descriptor(entity_path, *component)
-    else {
-        return false;
-    };
-    engine
-        .store()
-        .entity_has_static_component(entity_path, &component_descriptor)
+        .entity_has_static_component(entity_path, *component)
 }
 
 #[must_use]
@@ -94,9 +87,9 @@ impl ItemTitle {
 
     pub fn from_store_id(ctx: &ViewerContext<'_>, store_id: &re_log_types::StoreId) -> Self {
         let title = if let Some(entity_db) = ctx.storage_context.bundle.get(store_id) {
-            if let Some(started) = entity_db
-                .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
-            {
+            if let Some(started) = entity_db.recording_info_property::<Timestamp>(
+                RecordingInfo::descriptor_start_time().component,
+            ) {
                 let time = re_log_types::Timestamp::from(started.0)
                     .format_time_compact(ctx.app_options().timestamp_format);
                 format!("{} - {time}", store_id.application_id())

@@ -1,19 +1,18 @@
-use arrow::datatypes::Schema as ArrowSchema;
+use arrow::{array::RecordBatch, datatypes::Schema as ArrowSchema};
 use tokio_stream::{Stream, StreamExt as _};
 use tonic::codegen::{Body, StdError};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_protos::{
     TypeConversionError,
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind, FetchChunksRequest,
         FindEntriesRequest, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-        GetPartitionTableSchemaRequest, GetPartitionTableSchemaResponse, QueryDatasetRequest,
-        QueryDatasetResponse, QueryTasksOnCompletionResponse, QueryTasksResponse,
-        ReadDatasetEntryRequest, ReadTableEntryRequest, RegisterWithDatasetResponse,
-        ScanPartitionTableRequest, ScanPartitionTableResponse,
+        GetDatasetSchemaRequest, GetPartitionTableSchemaRequest, GetPartitionTableSchemaResponse,
+        QueryDatasetRequest, QueryDatasetResponse, QueryTasksOnCompletionResponse,
+        QueryTasksResponse, ReadDatasetEntryRequest, ReadTableEntryRequest,
+        RegisterWithDatasetResponse, ScanPartitionTableRequest, ScanPartitionTableResponse,
         ext::{
             CreateDatasetEntryResponse, DataSource, DataSourceKind, DatasetDetails, DatasetEntry,
             EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails as _,
@@ -30,10 +29,10 @@ use re_protos::{
     },
     external::prost::bytes::Bytes,
     headers::RerunHeadersInjectorExt as _,
-    missing_field,
+    invalid_schema, missing_column, missing_field,
 };
 
-use crate::{StreamEntryError, StreamError, StreamTasksError};
+use crate::ApiError;
 
 pub type FetchChunksResponseStream = std::pin::Pin<
     Box<
@@ -82,31 +81,32 @@ where
     pub async fn find_entries(
         &mut self,
         filter: EntryFilter,
-    ) -> Result<Vec<EntryDetails>, StreamError> {
+    ) -> Result<Vec<EntryDetails>, ApiError> {
         let result = self
             .inner()
             .find_entries(FindEntriesRequest {
                 filter: Some(filter),
             })
             .await
-            .map_err(|err| StreamEntryError::Find(err.into()))?
+            .map_err(|err| ApiError::tonic(err, "/FindEntries failed"))?
             .into_inner()
             .entries;
 
-        Ok(result
+        result
             .into_iter()
             .map(TryInto::try_into)
-            .collect::<Result<Vec<EntryDetails>, _>>()?)
+            .collect::<Result<Vec<EntryDetails>, _>>()
+            .map_err(|err| ApiError::serialization(err, "failed parsing /FindEntries response"))
     }
 
     /// Delete the provided entry.
-    pub async fn delete_entry(&mut self, entry_id: EntryId) -> Result<(), StreamError> {
+    pub async fn delete_entry(&mut self, entry_id: EntryId) -> Result<(), ApiError> {
         self.inner()
             .delete_entry(DeleteEntryRequest {
                 id: Some(entry_id.into()),
             })
             .await
-            .map_err(|err| StreamEntryError::Delete(err.into()))?;
+            .map_err(|err| ApiError::tonic(err, "/DeleteEntry failed"))?;
 
         Ok(())
     }
@@ -116,7 +116,7 @@ where
         &mut self,
         entry_id: EntryId,
         entry_details_update: EntryDetailsUpdate,
-    ) -> Result<EntryDetails, StreamError> {
+    ) -> Result<EntryDetails, ApiError> {
         let response: UpdateEntryResponse = self
             .inner()
             .update_entry(tonic::Request::new(
@@ -127,11 +127,31 @@ where
                 .into(),
             ))
             .await
-            .map_err(|err| StreamEntryError::Update(err.into()))?
+            .map_err(|err| ApiError::tonic(err, "/UpdateEntry failed"))?
             .into_inner()
-            .try_into()?;
+            .try_into()
+            .map_err(|err| ApiError::serialization(err, "failed parsing /UpdateEntry response"))?;
 
         Ok(response.entry_details)
+    }
+
+    /// Get the Arrow schema for a dataset entry.
+    pub async fn get_dataset_schema(&mut self, entry_id: EntryId) -> Result<ArrowSchema, ApiError> {
+        self.inner()
+            .get_dataset_schema(
+                tonic::Request::new(GetDatasetSchemaRequest {})
+                    .with_entry_id(entry_id)
+                    .map_err(|err| {
+                        ApiError::tonic(err, "failed building /GetDatasetSchema request")
+                    })?,
+            )
+            .await
+            .map_err(|err| ApiError::tonic(err, "/GetDatasetSchema failed"))?
+            .into_inner()
+            .schema()
+            .map_err(|err| {
+                ApiError::serialization(err, "failed parsing /GetDatasetSchema response")
+            })
     }
 
     /// Create a new dataset entry.
@@ -139,7 +159,7 @@ where
         &mut self,
         name: String,
         entry_id: Option<EntryId>,
-    ) -> Result<DatasetEntry, StreamError> {
+    ) -> Result<DatasetEntry, ApiError> {
         let response: CreateDatasetEntryResponse = self
             .inner()
             .create_dataset_entry(CreateDatasetEntryRequest {
@@ -147,9 +167,12 @@ where
                 id: entry_id.map(Into::into),
             })
             .await
-            .map_err(|err| StreamEntryError::Create(err.into()))?
+            .map_err(|err| ApiError::tonic(err, "/CreateDatasetEntry failed"))?
             .into_inner()
-            .try_into()?;
+            .try_into()
+            .map_err(|err| {
+                ApiError::serialization(err, "failed parsing /CreateDatasetEntry response")
+            })?;
 
         Ok(response.dataset)
     }
@@ -158,18 +181,23 @@ where
     pub async fn read_dataset_entry(
         &mut self,
         entry_id: EntryId,
-    ) -> Result<DatasetEntry, StreamError> {
+    ) -> Result<DatasetEntry, ApiError> {
         let response: ReadDatasetEntryResponse = self
             .inner()
             .read_dataset_entry(
                 tonic::Request::new(ReadDatasetEntryRequest {})
                     .with_entry_id(entry_id)
-                    .map_err(|err| StreamEntryError::InvalidId(err.into()))?,
+                    .map_err(|err| {
+                        ApiError::tonic(err, "failed building /ReadDatasetEntry request")
+                    })?,
             )
             .await
-            .map_err(|err| StreamEntryError::Read(err.into()))?
+            .map_err(|err| ApiError::tonic(err, "/ReadDatasetEntry failed"))?
             .into_inner()
-            .try_into()?;
+            .try_into()
+            .map_err(|err| {
+                ApiError::serialization(err, "failed parsing /ReadDatasetEntry response")
+            })?;
 
         Ok(response.dataset_entry)
     }
@@ -179,7 +207,7 @@ where
         &mut self,
         entry_id: EntryId,
         dataset_details: DatasetDetails,
-    ) -> Result<DatasetEntry, StreamError> {
+    ) -> Result<DatasetEntry, ApiError> {
         let response: UpdateDatasetEntryResponse = self
             .inner()
             .update_dataset_entry(tonic::Request::new(
@@ -190,24 +218,30 @@ where
                 .into(),
             ))
             .await
-            .map_err(|err| StreamEntryError::Update(err.into()))?
+            .map_err(|err| ApiError::tonic(err, "/UpdateDatasetEntry failed"))?
             .into_inner()
-            .try_into()?;
+            .try_into()
+            .map_err(|err| {
+                ApiError::serialization(err, "failed parsing /UpdateDatasetEntry response")
+            })?;
 
         Ok(response.dataset_entry)
     }
 
     /// Get information on a table entry.
-    pub async fn read_table_entry(&mut self, entry_id: EntryId) -> Result<TableEntry, StreamError> {
+    pub async fn read_table_entry(&mut self, entry_id: EntryId) -> Result<TableEntry, ApiError> {
         let response: ReadTableEntryResponse = self
             .inner()
             .read_table_entry(ReadTableEntryRequest {
                 id: Some(entry_id.into()),
             })
             .await
-            .map_err(|err| StreamEntryError::Read(err.into()))?
+            .map_err(|err| ApiError::tonic(err, "/ReadTableEntry failed"))?
             .into_inner()
-            .try_into()?;
+            .try_into()
+            .map_err(|err| {
+                ApiError::serialization(err, "failed parsing /ReadTableEntry response")
+            })?;
 
         Ok(response.table_entry)
     }
@@ -216,20 +250,27 @@ where
     pub async fn get_partition_table_schema(
         &mut self,
         entry_id: EntryId,
-    ) -> Result<ArrowSchema, StreamError> {
-        Ok(self
-            .inner()
+    ) -> Result<ArrowSchema, ApiError> {
+        self.inner()
             .get_partition_table_schema(
                 tonic::Request::new(GetPartitionTableSchemaRequest {})
                     .with_entry_id(entry_id)
-                    .map_err(|err| StreamEntryError::InvalidId(err.into()))?,
+                    .map_err(|err| {
+                        ApiError::tonic(err, "failed building /GetPartitionTableSchema request")
+                    })?,
             )
             .await
-            .map_err(|err| StreamEntryError::GetPartitionTableSchema(err.into()))?
+            .map_err(|err| ApiError::tonic(err, "GetPartitionTableSchema failed"))?
             .into_inner()
             .schema
-            .ok_or_else(|| missing_field!(GetPartitionTableSchemaResponse, "schema"))?
-            .try_into()?)
+            .ok_or_else(|| {
+                let err = missing_field!(GetPartitionTableSchemaResponse, "schema");
+                ApiError::serialization(err, "missing field in /GetPartitionTableSchema response")
+            })?
+            .try_into()
+            .map_err(|err| {
+                ApiError::serialization(err, "failed parsing /GetPartitionTableSchema response")
+            })
     }
 
     /// Get a list of partition IDs for the given dataset entry ID.
@@ -237,7 +278,7 @@ where
     pub async fn get_dataset_partition_ids(
         &mut self,
         entry_id: EntryId,
-    ) -> Result<Vec<PartitionId>, StreamError> {
+    ) -> Result<Vec<PartitionId>, ApiError> {
         const COLUMN_NAME: &str = ScanPartitionTableResponse::FIELD_PARTITION_ID;
 
         let mut stream = self
@@ -247,26 +288,52 @@ where
                     columns: vec![COLUMN_NAME.to_owned()],
                 })
                 .with_entry_id(entry_id)
-                .map_err(|err| StreamEntryError::InvalidId(err.into()))?,
+                .map_err(|err| {
+                    ApiError::tonic(err, "failed building /ScanPartitionTable request")
+                })?,
             )
             .await
-            .map_err(|err| StreamEntryError::ReadPartitions(err.into()))?
+            .map_err(|err| ApiError::tonic(err, "/ScanPartitionTable failed"))?
             .into_inner();
 
         let mut partition_ids = Vec::new();
 
         while let Some(resp) = stream.next().await {
-            let record_batch = resp
-                .map_err(|err| StreamEntryError::ReadPartitions(err.into()))?
-                .data()?
-                .decode()?;
+            let record_batch: RecordBatch = resp
+                .map_err(|err| {
+                    ApiError::tonic(err, "failed receiving item from /ScanPartitionTable stream")
+                })?
+                .data()
+                .map_err(|err| {
+                    ApiError::serialization(
+                        err,
+                        "failed parsing item from /ScanPartitionTable stream",
+                    )
+                })?
+                .try_into()
+                .map_err(|err| {
+                    ApiError::serialization(
+                        err,
+                        "failed decoding item from /ScanPartitionTable stream",
+                    )
+                })?;
 
-            let partition_id_col = record_batch
-                .column_by_name(COLUMN_NAME)
-                .ok_or_else(|| StreamError::MissingDataframeColumn(COLUMN_NAME.to_owned()))?;
+            let partition_id_col = record_batch.column_by_name(COLUMN_NAME).ok_or_else(|| {
+                let err = missing_column!(ScanPartitionTableResponse, COLUMN_NAME);
+                ApiError::serialization(
+                    err,
+                    "missing column from item in /ScanPartitionTable stream",
+                )
+            })?;
 
-            let partition_id_array =
-                partition_id_col.try_downcast_array_ref::<arrow::array::StringArray>()?;
+            let partition_id_array = partition_id_col
+                .try_downcast_array_ref::<arrow::array::StringArray>()
+                .map_err(|err| {
+                    ApiError::serialization(
+                        err,
+                        "unexpected types in item in /ScanPartitionTable stream",
+                    )
+                })?;
 
             partition_ids.extend(
                 partition_id_array
@@ -282,20 +349,27 @@ where
     pub async fn get_dataset_manifest_schema(
         &mut self,
         entry_id: EntryId,
-    ) -> Result<ArrowSchema, StreamError> {
-        Ok(self
-            .inner()
+    ) -> Result<ArrowSchema, ApiError> {
+        self.inner()
             .get_dataset_manifest_schema(
                 tonic::Request::new(GetDatasetManifestSchemaRequest {})
                     .with_entry_id(entry_id)
-                    .map_err(|err| StreamEntryError::InvalidId(err.into()))?,
+                    .map_err(|err| {
+                        ApiError::tonic(err, "failed building /GetDatasetManifestSchema request")
+                    })?,
             )
             .await
-            .map_err(|err| StreamEntryError::GetDatasetManifestSchema(err.into()))?
+            .map_err(|err| ApiError::tonic(err, "/GetDatasetManifestSchema failed"))?
             .into_inner()
             .schema
-            .ok_or_else(|| missing_field!(GetDatasetManifestSchemaResponse, "schema"))?
-            .try_into()?)
+            .ok_or_else(|| {
+                let err = missing_field!(GetDatasetManifestSchemaResponse, "schema");
+                ApiError::serialization(err, "missing field in /GetDatasetManifestSchema response")
+            })?
+            .try_into()
+            .map_err(|err| {
+                ApiError::serialization(err, "failed parsing /GetDatasetManifestSchema response")
+            })
     }
 
     /// Fetches all chunks for a specified partition. You can include/exclude static/temporal chunks.
@@ -307,17 +381,7 @@ where
         exclude_static_data: bool,
         exclude_temporal_data: bool,
         query: Option<re_protos::cloud::v1alpha1::Query>,
-    ) -> Result<FetchChunksResponseStream, StreamError> {
-        let fields_of_interest = [
-            QueryDatasetResponse::PARTITION_ID,
-            QueryDatasetResponse::CHUNK_ID,
-            QueryDatasetResponse::PARTITION_LAYER,
-            QueryDatasetResponse::CHUNK_KEY,
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect::<Vec<_>>();
-
+    ) -> Result<FetchChunksResponseStream, ApiError> {
         let query_request = QueryDatasetRequest {
             partition_ids: vec![partition_id.into()],
             chunk_ids: vec![],
@@ -328,7 +392,7 @@ where
             exclude_temporal_data,
             query,
             scan_parameters: Some(ScanParameters {
-                columns: fields_of_interest,
+                columns: FetchChunksRequest::required_column_names(),
                 ..Default::default()
             }),
         };
@@ -338,10 +402,10 @@ where
             .query_dataset(
                 tonic::Request::new(query_request)
                     .with_entry_id(dataset_id)
-                    .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?,
+                    .map_err(|err| ApiError::tonic(err, "failed building /QueryDataset request"))?,
             )
             .await
-            .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?
+            .map_err(|err| ApiError::tonic(err, "/QueryDataset failed"))?
             .into_inner();
 
         let chunk_info_batches = response_stream
@@ -349,12 +413,21 @@ where
             .await
             .into_iter()
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?
+            .map_err(|err| {
+                ApiError::tonic(
+                    err,
+                    "failed receiving items in /QueryDataset response stream",
+                )
+            })?
             .into_iter()
             .map(|resp| {
-                resp.data.ok_or(crate::StreamError::MissingData(
-                    "missing data in QueryDatasetResponse".to_owned(),
-                ))
+                resp.data.ok_or_else(|| {
+                    let err = missing_field!(QueryDatasetResponse, "data");
+                    ApiError::serialization(
+                        err,
+                        "missing field in item in /QueryDataset response stream",
+                    )
+                })
             })
             .collect::<Result<Vec<_>, _>>()?;
 
@@ -371,7 +444,7 @@ where
             .inner()
             .fetch_chunks(fetch_chunks_request)
             .await
-            .map_err(|err| crate::StreamPartitionError::StreamingChunks(err.into()))?
+            .map_err(|err| ApiError::tonic(err, "/FetchChunks failed"))?
             .into_inner();
 
         Ok(Box::pin(fetch_chunks_response_stream))
@@ -387,23 +460,29 @@ where
         dataset_id: EntryId,
         data_sources: Vec<DataSource>,
         on_duplicate: IfDuplicateBehavior,
-    ) -> Result<Vec<RegisterWithDatasetTaskDescriptor>, StreamError> {
+    ) -> Result<Vec<RegisterWithDatasetTaskDescriptor>, ApiError> {
         let req = tonic::Request::new(RegisterWithDatasetRequest {
             data_sources,
             on_duplicate,
         })
         .with_entry_id(dataset_id)
-        .map_err(|err| StreamEntryError::InvalidId(err.into()))?;
+        .map_err(|err| ApiError::tonic(err, "failed building /RegisterWithDataset request"))?;
 
-        let response = self
+        let response: RecordBatch = self
             .inner()
             .register_with_dataset(req.map(Into::into))
             .await
-            .map_err(|err| StreamEntryError::RegisterData(err.into()))?
+            .map_err(|err| ApiError::tonic(err, "/RegisterWithDataset failed"))?
             .into_inner()
             .data
-            .ok_or_else(|| missing_field!(RegisterWithDatasetResponse, "data"))?
-            .decode()?;
+            .ok_or_else(|| {
+                let err = missing_field!(RegisterWithDatasetResponse, "data");
+                ApiError::serialization(err, "missing field in /RegisterWithDataset response")
+            })?
+            .try_into()
+            .map_err(|err| {
+                ApiError::serialization(err, "failed decoding /RegisterWithDataset response")
+            })?;
 
         // TODO(andrea): why is the schema completely off?
         #[expect(clippy::overly_complex_bool_expr)]
@@ -412,12 +491,14 @@ where
                 .schema()
                 .contains(&RegisterWithDatasetResponse::schema())
         {
-            return Err(StreamError::MissingDataframeColumn(
-                "invalid schema for RegisterWithDatasetResponse".to_owned(),
+            let err = invalid_schema!(RegisterWithDatasetResponse);
+            return Err(ApiError::serialization(
+                err,
+                "invalid schema in /RegisterWithDataset response",
             ));
         }
 
-        let get_string_array = |column_name: &str| {
+        let get_string_array = |column_name: &'static str| {
             response
                 .column_by_name(column_name)
                 .and_then(|column| {
@@ -425,7 +506,10 @@ where
                         .try_downcast_array_ref::<arrow::array::StringArray>()
                         .ok()
                 })
-                .ok_or_else(|| StreamError::MissingDataframeColumn(column_name.to_owned()))
+                .ok_or_else(|| {
+                    let err = missing_column!(RegisterWithDatasetResponse, column_name);
+                    ApiError::serialization(err, "missing column in /RegisterWithDataset response")
+                })
         };
 
         let partition_id_column = get_string_array(RegisterWithDatasetResponse::PARTITION_ID)?;
@@ -433,11 +517,16 @@ where
             response
                 .column_by_name(RegisterWithDatasetResponse::PARTITION_TYPE)
                 .ok_or_else(|| {
-                    StreamError::MissingDataframeColumn(
-                        RegisterWithDatasetResponse::PARTITION_TYPE.to_owned(),
-                    )
+                    let err = missing_column!(
+                        RegisterWithDatasetResponse,
+                        RegisterWithDatasetResponse::PARTITION_TYPE
+                    );
+                    ApiError::serialization(err, "missing column in /RegisterWithDataset response")
                 })?,
-        )?;
+        )
+        .map_err(|err| {
+            ApiError::serialization(err, "failed parsing /RegisterWithDataset response")
+        })?;
         let storage_url_column = get_string_array(RegisterWithDatasetResponse::STORAGE_URL)?;
         let task_id_column = get_string_array(RegisterWithDatasetResponse::TASK_ID)?;
 
@@ -452,19 +541,33 @@ where
                 partition_id: PartitionId::new(
                     partition_id
                         .ok_or_else(|| {
-                            StreamError::MissingData("Unexpected null partition id".to_owned())
+                            let err = missing_field!(RegisterWithDatasetResponse, "partition_id");
+                            ApiError::serialization(
+                                err,
+                                "missing field in /RegisterWithDataset response",
+                            )
                         })?
                         .to_owned(),
                 ),
                 partition_type,
                 storage_url: url::Url::parse(storage_url.ok_or_else(|| {
-                    StreamError::MissingData("Unexpected null storage_url".to_owned())
+                    let err = missing_field!(RegisterWithDatasetResponse, "storage_url");
+                    ApiError::serialization(err, "missing field in /RegisterWithDataset response")
                 })?)
-                .map_err(TypeConversionError::UrlParseError)?,
+                .map_err(|err| {
+                    ApiError::serialization(
+                        TypeConversionError::UrlParseError(err),
+                        "failed to parse /RegisterWithDataset response",
+                    )
+                })?,
                 task_id: TaskId {
                     id: task_id
                         .ok_or_else(|| {
-                            StreamError::MissingData("Unexpected null task_id".to_owned())
+                            let err = missing_field!(RegisterWithDatasetResponse, "task_id");
+                            ApiError::serialization(
+                                err,
+                                "missing field in /RegisterWithDataset response",
+                            )
                         })?
                         .to_owned(),
                 },
@@ -479,19 +582,24 @@ where
         &mut self,
         name: String,
         url: url::Url,
-    ) -> Result<TableEntry, StreamError> {
+    ) -> Result<TableEntry, ApiError> {
         let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
             name,
-            provider_details: LanceTable { table_url: url }.try_as_any()?,
+            provider_details: LanceTable { table_url: url }.try_as_any().map_err(|err| {
+                ApiError::serialization(err, "failed building /RegisterTable request")
+            })?,
         };
 
         let response: RegisterTableResponse = self
             .inner()
             .register_table(tonic::Request::new(request.into()))
             .await
-            .map_err(|err| StreamEntryError::RegisterTable(err.into()))?
+            .map_err(|err| ApiError::tonic(err, "/RegisterTable failed"))?
             .into_inner()
-            .try_into()?;
+            .try_into()
+            .map_err(|err| {
+                ApiError::serialization(err, "failed parsing /RegisterTable response")
+            })?;
 
         Ok(response.table_entry)
     }
@@ -505,7 +613,7 @@ where
         compact_fragments: bool,
         cleanup_before: Option<jiff::Timestamp>,
         unsafe_allow_recent_cleanup: bool,
-    ) -> Result<(), StreamError> {
+    ) -> Result<(), ApiError> {
         self.inner()
             .do_maintenance(
                 tonic::Request::new(
@@ -519,26 +627,26 @@ where
                     .into(),
                 )
                 .with_entry_id(dataset_id)
-                .map_err(|err| StreamEntryError::InvalidId(err.into()))?,
+                .map_err(|err| ApiError::tonic(err, "failed building /DoMaintenance request"))?,
             )
             .await
-            .map_err(|err| StreamEntryError::Maintenance(err.into()))?;
+            .map_err(|err| ApiError::tonic(err, "/DoMaintenance failed"))?;
 
         Ok(())
     }
 
-    pub async fn do_global_maintenance(&mut self) -> Result<(), StreamError> {
+    pub async fn do_global_maintenance(&mut self) -> Result<(), ApiError> {
         self.inner()
             .do_global_maintenance(tonic::Request::new(
                 re_protos::cloud::v1alpha1::DoGlobalMaintenanceRequest {},
             ))
             .await
-            .map_err(|err| StreamEntryError::Maintenance(err.into()))?;
+            .map_err(|err| ApiError::tonic(err, "/DoGlobalMaintenance failed"))?;
 
         Ok(())
     }
 
-    pub async fn get_table_names(&mut self) -> Result<Vec<String>, StreamError> {
+    pub async fn get_table_names(&mut self) -> Result<Vec<String>, ApiError> {
         Ok(self
             .find_entries(re_protos::cloud::v1alpha1::EntryFilter {
                 entry_kind: Some(EntryKind::Table.into()),
@@ -555,13 +663,15 @@ where
         &mut self,
         task_ids: Vec<TaskId>,
         timeout: std::time::Duration,
-    ) -> Result<tonic::Streaming<QueryTasksOnCompletionResponse>, StreamError> {
+    ) -> Result<tonic::Streaming<QueryTasksOnCompletionResponse>, ApiError> {
         let q = QueryTasksOnCompletionRequest { task_ids, timeout };
         let response = self
             .inner()
-            .query_tasks_on_completion(tonic::Request::new(q.try_into()?))
+            .query_tasks_on_completion(tonic::Request::new(q.try_into().map_err(|err| {
+                ApiError::serialization(err, "failed building /QueryTasksOnCompletion request")
+            })?))
             .await
-            .map_err(|err| StreamTasksError::StreamingTaskResults(err.into()))?
+            .map_err(|err| ApiError::tonic(err, "/QueryTasksOnCompletion failed"))?
             .into_inner();
         Ok(response)
     }
@@ -569,13 +679,15 @@ where
     pub async fn query_tasks(
         &mut self,
         task_ids: Vec<TaskId>,
-    ) -> Result<QueryTasksResponse, StreamError> {
+    ) -> Result<QueryTasksResponse, ApiError> {
         let q = QueryTasksRequest { task_ids };
         let response = self
             .inner()
-            .query_tasks(tonic::Request::new(q.try_into()?))
+            .query_tasks(tonic::Request::new(q.try_into().map_err(|err| {
+                ApiError::serialization(err, "failed building /QueryTasks request")
+            })?))
             .await
-            .map_err(|err| StreamTasksError::StreamingTaskResults(err.into()))?
+            .map_err(|err| ApiError::tonic(err, "/QueryTasks failed"))?
             .into_inner();
         Ok(response)
     }

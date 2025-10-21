@@ -59,12 +59,14 @@ fn main(in: FragmentInput, @builtin(position) frag_coord: vec4<f32>) -> @locatio
         rgb = skybox_light_srgb(camera_dir);
     }
 
-    // Apply dithering in gamma space.
-    // TODO(andreas): Once we switch to HDR outputs, this can be removed.
-    //                As of writing, the render target itself is (s)RGB8, so we need to dither while we still have maximum precision.
-    var rgb_gamma_dithered = dither_interleaved(rgb, 256.0, frag_coord);
+    if frame.deterministic_rendering == 1 {
+        return vec4f(linear_from_srgb(rgb), 1.0); // Without dithering
+    } else {
+        // Apply dithering in gamma space.
+        // TODO(andreas): Once we switch to HDR outputs, this can be removed.
+        //                As of writing, the render target itself is (s)RGB8, so we need to dither while we still have maximum precision.
+        var rgb_gamma_dithered = dither_interleaved(rgb, 256.0, frag_coord);
 
-    return vec4f(linear_from_srgb(rgb_gamma_dithered), 1.0);
-    //return vec4f(linear_from_srgb(rgb), 1.0); // Without dithering
-    //return vec4f(camera_dir, 1.0);
+        return vec4f(linear_from_srgb(rgb_gamma_dithered), 1.0);
+    }
 }

@@ -5,9 +5,10 @@ use re_types::{
         self,
         archetypes::{
             ForceCenter, ForceCollisionRadius, ForceLink, ForceManyBody, ForcePosition,
-            VisualBounds2D,
+            GraphBackground, VisualBounds2D,
         },
     },
+    components::Color,
 };
 use re_ui::{self, Help, IconText, MouseButtonText, UiExt as _, icons};
 use re_view::{controls::DRAG_PAN2D_BUTTON, view_property_ui};
@@ -133,6 +134,7 @@ impl ViewClass for GraphView {
 
         re_ui::list_item::list_item_scope(ui, "graph_selection_ui", |ui| {
             let ctx = self.view_context(ctx, view_id, state);
+            view_property_ui::<GraphBackground>(&ctx, ui, self);
             view_property_ui::<VisualBounds2D>(&ctx, ui, self);
             view_property_force_ui::<ForceLink>(&ctx, ui, self);
             view_property_force_ui::<ForceManyBody>(&ctx, ui, self);
@@ -169,6 +171,17 @@ impl ViewClass for GraphView {
         let view_ctx = self.view_context(ctx, query.view_id, state);
         let params = ForceLayoutParams::get(&view_ctx, self)?;
 
+        let background = ViewProperty::from_archetype::<GraphBackground>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.view_id,
+        );
+        let background_color = background.component_or_fallback::<Color>(
+            &view_ctx,
+            self,
+            &GraphBackground::descriptor_color(),
+        )?;
+
         let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
@@ -192,6 +205,8 @@ impl ViewClass for GraphView {
         let level_of_detail = LevelOfDetail::from_scaling(scale.min_elem());
 
         let mut hover_click_item: Option<(Item, egui::Response)> = None;
+
+        ui.painter().rect_filled(rect_in_ui, 0.0, background_color);
 
         let resp = egui::Scene::new()
             .show(ui, &mut scene_rect, |ui| {

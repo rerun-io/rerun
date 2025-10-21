@@ -113,7 +113,7 @@ impl DataQueryResult {
     #[inline]
     pub fn result_for_entity(&self, path: &EntityPath) -> Option<&DataResult> {
         self.tree
-            .lookup_result_by_path(path)
+            .lookup_result_by_path(path.hash())
             .filter(|result| !result.tree_prefix_only)
     }
 }
@@ -242,20 +242,16 @@ impl DataResultTree {
         self.data_results.get_mut(handle)
     }
 
-    /// Look up a [`DataResultNode`] in the tree based on an [`EntityPath`].
+    /// Look up a [`DataResultNode`] in the tree based on an [`EntityPathHash`].
     #[inline]
-    pub fn lookup_node_by_path(&self, path: &EntityPath) -> Option<&DataResultNode> {
-        self.data_results_by_path
-            .get(&path.hash())
-            .and_then(|handle| self.lookup_node(*handle))
+    pub fn lookup_node_by_path(&self, path: EntityPathHash) -> Option<&DataResultNode> {
+        self.lookup_node(*self.data_results_by_path.get(&path)?)
     }
 
-    /// Look up a [`DataResult`] in the tree based on an [`EntityPath`].
+    /// Look up a [`DataResult`] in the tree based on an [`EntityPathHash`].
     #[inline]
-    pub fn lookup_result_by_path(&self, path: &EntityPath) -> Option<&DataResult> {
-        self.data_results_by_path
-            .get(&path.hash())
-            .and_then(|handle| self.lookup_result(*handle))
+    pub fn lookup_result_by_path(&self, path: EntityPathHash) -> Option<&DataResult> {
+        self.lookup_result(*self.data_results_by_path.get(&path)?)
     }
 
     #[inline]

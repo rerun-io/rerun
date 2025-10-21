@@ -39,8 +39,6 @@ pub struct TokenCommand {}
 
 impl AuthCommands {
     pub fn run(&self, runtime: &tokio::runtime::Handle) -> Result<(), re_auth::cli::Error> {
-        let context = runtime.block_on(re_auth::workos::AuthContext::load())?;
-
         match self {
             Self::Login(args) => {
                 let options = re_auth::cli::LoginOptions {
@@ -48,10 +46,10 @@ impl AuthCommands {
                     open_browser: !args.no_open_browser,
                     force_login: args.force,
                 };
-                runtime.block_on(re_auth::cli::login(&context, options))
+                runtime.block_on(re_auth::cli::login(options))
             }
 
-            Self::Token(_) => runtime.block_on(re_auth::cli::token(&context)),
+            Self::Token(_) => runtime.block_on(re_auth::cli::token()),
         }
     }
 }

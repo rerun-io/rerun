@@ -20,7 +20,6 @@ use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use datafusion::{error::DataFusionError, execution::SendableRecordBatchStream};
 use futures_util::{Stream, StreamExt as _};
-use re_log_encoding::codec::wire::encoder::Encode as _;
 use tokio::runtime::Handle;
 use tokio::sync::Notify;
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -71,7 +70,7 @@ pub struct DataframePartitionStreamInner {
     client: ConnectionClient,
     chunk_infos: Vec<RecordBatch>,
 
-    chunk_tx: Option<Sender<Result<ChunksWithPartition, re_redap_client::StreamError>>>,
+    chunk_tx: Option<Sender<Result<ChunksWithPartition, re_redap_client::ApiError>>>,
     store_output_channel: Receiver<RecordBatch>,
     io_join_handle: Option<JoinHandle<Result<(), DataFusionError>>>,
 
@@ -329,7 +328,7 @@ async fn send_next_row(
 // TODO(#10781) - support for sending intermediate results/chunks
 #[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_store_cpu_worker_thread(
-    mut input_channel: Receiver<Result<ChunksWithPartition, re_redap_client::StreamError>>,
+    mut input_channel: Receiver<Result<ChunksWithPartition, re_redap_client::ApiError>>,
     output_channel: Sender<RecordBatch>,
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
@@ -412,13 +411,9 @@ async fn chunk_store_cpu_worker_thread(
 async fn chunk_stream_io_loop(
     mut client: ConnectionClient,
     chunk_infos: Vec<RecordBatch>,
-    output_channel: Sender<Result<ChunksWithPartition, re_redap_client::StreamError>>,
+    output_channel: Sender<Result<ChunksWithPartition, re_redap_client::ApiError>>,
 ) -> Result<(), DataFusionError> {
-    let chunk_infos = chunk_infos
-        .into_iter()
-        .map(|batch| batch.encode())
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|err| exec_datafusion_err!("{err}"))?;
+    let chunk_infos: Vec<_> = chunk_infos.into_iter().map(Into::into).collect();
 
     // TODO(zehiko) same as previously with get_chunks, we keep sending 1 request per partition.
     // As these batches are sorted per partition (see docs above), this ensures that ordering by

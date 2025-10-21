@@ -1,6 +1,7 @@
 use h264_reader::nal::{self, Nal as _};
 use itertools::Itertools as _;
 use re_span::Span;
+use saturating_cast::SaturatingCast as _;
 
 use super::{GroupOfPictures, SampleMetadata, VideoDataDescription, VideoLoadError};
 
@@ -51,7 +52,7 @@ impl VideoDataDescription {
 
                 let decode_timestamp = Time::new(sample.decode_timestamp);
                 let presentation_timestamp = Time::new(sample.composition_timestamp);
-                let duration = Time::new(sample.duration as i64);
+                let duration = Time::new(sample.duration.saturating_cast());
 
                 let byte_span = Span {
                     start: sample.offset as u32,
@@ -144,7 +145,7 @@ impl VideoDataDescription {
             encoding_details: Some(codec_details_from_stds(track, stsd)?),
             timescale: Some(timescale),
             delivery_method: VideoDeliveryMethod::Static {
-                duration: Time::new(track.duration as i64),
+                duration: Time::new(track.duration.saturating_cast()),
             },
             samples_statistics,
             gops,

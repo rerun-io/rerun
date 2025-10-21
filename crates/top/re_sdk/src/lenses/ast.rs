@@ -6,9 +6,10 @@
 
 use arrow::{array::ListArray, datatypes::DataType};
 
+use re_arrow_util::transform::{self, Transform as _};
 use re_chunk::{Chunk, ChunkComponents, ChunkId, ComponentIdentifier, EntityPath};
 use re_log_types::EntityPathFilter;
-use re_types::ComponentDescriptor;
+use re_types::{ComponentDescriptor, SerializedComponentColumn};
 
 use super::{Error, op};
 
@@ -28,6 +29,8 @@ pub struct OutputColumn {
     pub is_static: bool,
 }
 
+type CustomFn = Box<dyn Fn(&ListArray) -> Result<ListArray, Error> + Sync + Send>;
+
 /// Provides commonly used transformations of component columns.
 ///
 /// Individual operations are wrapped to hide their implementation details.
@@ -38,8 +41,17 @@ pub enum Op {
     /// Efficiently casts a component to a new `DataType`.
     Cast(op::Cast),
 
+    /// Flattens a list array inside a component.
+    ///
+    /// Takes `List<List<T>>` and flattens it to `List<T>` by concatenating all inner lists
+    /// within each outer list row.
+    /// Inner nulls are preserved, outer nulls are skipped.
+    ///
+    /// Example: `[[1, 2, 3], [4, null, 5], null, [6]]` becomes `[1, 2, 3, 4, null, 5, 6]`.
+    Flatten,
+
     /// A user-defined arbitrary function to convert a component column.
-    Func(Box<dyn Fn(ListArray) -> Result<ListArray, Error> + Sync + Send>),
+    Func(CustomFn),
 }
 
 impl std::fmt::Debug for Op {
@@ -47,6 +59,7 @@ impl std::fmt::Debug for Op {
         match self {
             Self::AccessField(inner) => f.debug_tuple("AccessField").field(inner).finish(),
             Self::Cast(inner) => f.debug_tuple("Cast").field(inner).finish(),
+            Self::Flatten => f.debug_tuple("Flatten").finish(),
             Self::Func(_) => f.debug_tuple("Func").field(&"<function>").finish(),
         }
     }
@@ -75,20 +88,34 @@ impl Op {
         Self::func(move |_| Ok(value.clone()))
     }
 
+    /// Flattens a list array inside a component.
+    ///
+    /// Takes `List<List<T>>` and flattens it to `List<T>` by concatenating all inner lists
+    /// within each outer list row.
+    /// Inner nulls are preserved, outer nulls are skipped.
+    ///
+    /// Example: `[[1, 2, 3], [4, null, 5], null, [6]]` becomes `[1, 2, 3, 4, null, 5, 6]`.
+    pub fn flatten() -> Self {
+        Self::Flatten
+    }
+
     /// A user-defined arbitrary function to convert a component column.
     pub fn func<F>(func: F) -> Self
     where
-        F: Fn(ListArray) -> Result<ListArray, Error> + Send + Sync + 'static,
+        F: for<'a> Fn(&'a ListArray) -> Result<ListArray, Error> + Send + Sync + 'static,
     {
         Self::Func(Box::new(func))
     }
 }
 
 impl Op {
-    fn call(&self, list_array: ListArray) -> Result<ListArray, Error> {
+    fn call(&self, list_array: &ListArray) -> Result<ListArray, Error> {
         match self {
             Self::Cast(op) => op.call(list_array),
             Self::AccessField(op) => op.call(list_array),
+            Self::Flatten => transform::Flatten::new()
+                .transform(list_array)
+                .map_err(Into::into),
             Self::Func(func) => func(list_array),
         }
     }
@@ -123,13 +150,10 @@ impl Lens {
 impl Lens {
     /// Applies this lens and crates one or more chunks.
     fn apply(&self, chunk: &Chunk) -> Vec<Chunk> {
-        let found = chunk
-            .components()
-            .iter()
-            .find(|(descr, _array)| descr.component == self.input.component);
+        let found = chunk.components().get(self.input.component);
 
         // This means we drop chunks that belong to the same entity but don't have the component.
-        let Some((_component_descr, list_array)) = found else {
+        let Some(column) = found else {
             return Default::default();
         };
 
@@ -144,13 +168,13 @@ impl Lens {
                 .entry((entity_path.clone(), output.is_static))
                 .or_insert_with(ChunkComponents::default);
 
-            if components.contains_component(&output.component_descr) {
+            if components.contains_key(&output.component_descr.component) {
                 re_log::warn_once!("Replacing duplicated component {}", output.component_descr);
             }
 
-            let mut list_array_result = list_array.clone();
+            let mut list_array_result = column.list_array.clone();
             for op in &output.ops {
-                match op.call(list_array_result) {
+                match op.call(&list_array_result) {
                     Ok(result) => {
                         list_array_result = result;
                     }
@@ -166,7 +190,10 @@ impl Lens {
                 }
             }
 
-            components.insert(output.component_descr.clone(), list_array_result);
+            components.insert(SerializedComponentColumn::new(
+                list_array_result,
+                output.component_descr.clone(),
+            ));
         }
 
         builders
@@ -314,6 +341,8 @@ impl LensRegistry {
 
 #[cfg(test)]
 mod test {
+    #![expect(clippy::cast_possible_wrap)]
+
     use std::sync::Arc;
 
     use re_chunk::{
@@ -530,7 +559,7 @@ mod test {
         let original_chunk = nullability_chunk();
         println!("{original_chunk}");
 
-        let count_fn = |list_array: ListArray| {
+        let count_fn = |list_array: &ListArray| {
             let mut builder = ListBuilder::new(Int32Builder::new());
 
             for maybe_array in list_array.iter() {

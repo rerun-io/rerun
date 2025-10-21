@@ -3,12 +3,10 @@
 
 #![cfg(feature = "testing")]
 
-use egui::Vec2;
-use egui_kittest::{OsThreshold, SnapshotError, SnapshotOptions};
+use egui_kittest::{SnapshotError, SnapshotOptions};
 use itertools::Itertools as _;
 
-use re_blueprint_tree::BlueprintTree;
-use re_blueprint_tree::data::BlueprintTreeData;
+use re_blueprint_tree::{BlueprintTree, data::BlueprintTreeData};
 use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_log_types::{EntityPath, build_frame_nr};
@@ -189,8 +187,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
     );
 
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(Vec2::new(400.0, 800.0))
+        .setup_kittest_for_rendering_ui([400.0, 800.0])
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                 re_context_menu::collapse_expand::collapse_expand_view(
@@ -213,17 +210,12 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
 
     harness.run();
 
-    let options = SnapshotOptions::new()
-        .output_path(format!(
-            "tests/snapshots/view_structure_test/{}",
-            filter_query
-                .map(|query| format!("query-{}", query.replace(' ', ",").replace('/', "_")))
-                .unwrap_or("no-query".to_owned())
-        ))
-        // @wumpf's Windows machine needs a bit of a higher threshold to pass this test due to discrepancies in text rendering.
-        // (Software Rasterizer on CI seems fine with the default).
-        .threshold(OsThreshold::new(SnapshotOptions::default().threshold).windows(0.8))
-        .failed_pixel_count_threshold(OsThreshold::new(0).windows(15));
+    let options = SnapshotOptions::new().output_path(format!(
+        "tests/snapshots/view_structure_test/{}",
+        filter_query
+            .map(|query| format!("query-{}", query.replace(' ', ",").replace('/', "_")))
+            .unwrap_or("no-query".to_owned())
+    ));
 
     harness.try_snapshot_options(test_case.name, &options)
 }

@@ -180,12 +180,12 @@ impl Cache for MeshCache {
                     let contains_asset_blob = event
                         .chunk
                         .components()
-                        .contains_component(&Asset3D::descriptor_blob());
+                        .contains_component(Asset3D::descriptor_blob().component);
 
                     let contains_vertex_positions = event
                         .chunk
                         .components()
-                        .contains_component(&Mesh3D::descriptor_vertex_positions());
+                        .contains_component(Mesh3D::descriptor_vertex_positions().component);
 
                     contains_asset_blob || contains_vertex_positions
                 };

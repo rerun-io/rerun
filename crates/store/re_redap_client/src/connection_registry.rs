@@ -8,9 +8,9 @@ use tonic::Code;
 use re_auth::Jwt;
 use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest};
 
-use crate::TonicStatusError;
 use crate::connection_client::GenericConnectionClient;
-use crate::grpc::{ConnectionError, RedapClient, RedapClientInner};
+use crate::grpc::{RedapClient, RedapClientInner};
+use crate::{ApiError, TonicStatusError};
 
 /// This is the type of `ConnectionClient` used throughout the viewer, where the
 /// `ConnectionRegistry` is used.
@@ -55,42 +55,23 @@ impl ConnectionRegistry {
 
 /// Possible errors when creating a connection.
 #[derive(Debug, thiserror::Error)]
-pub enum ClientConnectionError {
-    /// Native connection error
-    #[cfg(not(target_arch = "wasm32"))]
-    #[error("Connection error\nDetails:{0}")]
-    Tonic(#[from] tonic::transport::Error),
-
-    #[error("server is expecting an unencrypted connection (try `rerun+http://` if you are sure)")]
-    UnencryptedServer,
-
-    #[error("the server requires an authentication token, but none was provided\nDetails:{0}")]
+pub enum ClientCredentialsError {
+    #[error("the server requires an authentication token but none was provided\nDetails:{0}")]
     UnauthenticatedMissingToken(TonicStatusError),
 
     #[error("the server rejected the provided authentication token\nDetails:{0}")]
     UnauthenticatedBadToken(TonicStatusError),
-
-    #[error("failed to obtain server version\nDetails:{0}")]
-    AuthCheckError(TonicStatusError),
 }
 
-impl From<ConnectionError> for ClientConnectionError {
-    fn from(value: ConnectionError) -> Self {
-        match value {
-            #[cfg(not(target_arch = "wasm32"))]
-            ConnectionError::Tonic(err) => Self::Tonic(err),
-
-            ConnectionError::UnencryptedServer => Self::UnencryptedServer,
-        }
+impl ClientCredentialsError {
+    #[inline]
+    pub fn is_missing_token(&self) -> bool {
+        matches!(self, Self::UnauthenticatedMissingToken(_))
     }
-}
 
-impl ClientConnectionError {
-    pub fn is_token_error(&self) -> bool {
-        matches!(
-            self,
-            Self::UnauthenticatedMissingToken(_) | Self::UnauthenticatedBadToken(_)
-        )
+    #[inline]
+    pub fn is_wrong_token(&self) -> bool {
+        matches!(self, Self::UnauthenticatedBadToken(_))
     }
 }
 
@@ -143,12 +124,10 @@ impl ConnectionRegistryHandle {
     /// use the following token, in this order:
     /// - The fallback token, if set via [`Self::set_fallback_token`].
     /// - The `REDAP_TOKEN` environment variable is set.
+    /// - Local credentials for Rerun Cloud
     ///
     /// Failing that, no token will be used.
-    pub async fn client(
-        &self,
-        origin: re_uri::Origin,
-    ) -> Result<ConnectionClient, ClientConnectionError> {
+    pub async fn client(&self, origin: re_uri::Origin) -> Result<ConnectionClient, ApiError> {
         // happy path
         {
             let inner = self.inner.read().await;
@@ -177,7 +156,7 @@ impl ConnectionRegistryHandle {
                 Ok(res) => res,
                 Err(err) => {
                     // if we had a saved token, it doesn't work, so we forget about it
-                    if err.is_token_error() {
+                    if err.is_client_credentials_error() {
                         let mut inner = self.inner.write().await;
 
                         // make sure that we're not deleting some token that another thread might
@@ -220,7 +199,7 @@ impl ConnectionRegistryHandle {
     async fn try_create_raw_client(
         origin: re_uri::Origin,
         possible_tokens: impl Iterator<Item = Jwt>,
-    ) -> Result<(RedapClient, Option<Jwt>), ClientConnectionError> {
+    ) -> Result<(RedapClient, Option<Jwt>), ApiError> {
         let mut first_failed_token_attempt = None;
 
         for token in possible_tokens {
@@ -233,7 +212,7 @@ impl ConnectionRegistryHandle {
             match result {
                 Ok(raw_client) => return Ok((raw_client, Some(token))),
 
-                Err(err) if err.is_token_error() => {
+                Err(err) if err.is_client_credentials_error() => {
                     // remember about the first occurrence of this error but continue trying other
                     // tokens
                     if first_failed_token_attempt.is_none() {
@@ -265,14 +244,16 @@ impl ConnectionRegistryHandle {
     async fn create_and_validate_raw_client_with_token(
         origin: re_uri::Origin,
         token: Option<Jwt>,
-    ) -> Result<RedapClient, ClientConnectionError> {
-        let mut raw_client = match crate::grpc::client(origin.clone(), token.clone()).await {
-            Ok(raw_client) => raw_client,
+    ) -> Result<RedapClient, ApiError> {
+        let credentials: Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync> =
+            match &token {
+                Some(token) => Arc::new(re_auth::credentials::StaticCredentialsProvider::new(
+                    token.clone(),
+                )),
+                None => Arc::new(re_auth::credentials::CliCredentialsProvider::new()),
+            };
 
-            Err(err) => {
-                return Err(err.into());
-            }
-        };
+        let mut raw_client = crate::grpc::client(origin.clone(), credentials).await?;
 
         // Call the version endpoint to check that authentication is successful. It's ok to do this
         // since we're caching the client, so we're not spamming such a request unnecessarily.
@@ -291,15 +272,19 @@ impl ConnectionRegistryHandle {
             // catch unauthenticated errors and forget the token if they happen
             Err(err) if err.code() == Code::Unauthenticated => {
                 if token.is_none() {
-                    Err(ClientConnectionError::UnauthenticatedMissingToken(
-                        err.into(),
+                    Err(ApiError::credentials(
+                        ClientCredentialsError::UnauthenticatedMissingToken(err.into()),
+                        "verifying credentials",
                     ))
                 } else {
-                    Err(ClientConnectionError::UnauthenticatedBadToken(err.into()))
+                    Err(ApiError::credentials(
+                        ClientCredentialsError::UnauthenticatedBadToken(err.into()),
+                        "verifying credentials",
+                    ))
                 }
             }
 
-            Err(err) => Err(ClientConnectionError::AuthCheckError(err.into())),
+            Err(err) => Err(ApiError::tonic(err, "verifying credentials")),
 
             Ok(_) => Ok(raw_client),
         }

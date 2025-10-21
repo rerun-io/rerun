@@ -34,6 +34,7 @@ impl CError {
                 // `c_char` is something different depending on platforms, and this is needed for
                 // when it's the same as `u8`.
                 #[allow(trivial_numeric_casts, clippy::allow_attributes)]
+                #[expect(clippy::cast_possible_wrap)] // intentional!
                 {
                     message_c[bytes_next] = *byte as _;
                 }

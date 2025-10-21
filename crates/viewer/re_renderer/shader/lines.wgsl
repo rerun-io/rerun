@@ -343,6 +343,11 @@ fn compute_coverage(in: VertexOut) -> f32 {
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4f {
     var coverage = compute_coverage(in);
+
+    if frame.deterministic_rendering == 1 {
+        coverage = step(0.5, coverage);
+    }
+
     if coverage < 0.001 {
         discard;
     }

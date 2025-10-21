@@ -1,8 +1,10 @@
 use std::{collections::BTreeSet, sync::Arc};
 
+use egui::Modifiers;
+use egui::PointerButton;
 use egui::accesskit::Toggled;
 use egui_kittest::kittest::NodeT as _;
-use egui_kittest::{SnapshotOptions, kittest::Queryable as _};
+use egui_kittest::kittest::Queryable as _;
 use parking_lot::Mutex;
 use re_sdk::{
     Component as _, ComponentDescriptor, EntityPath, EntityPathPart, RecordingInfo, StoreId,
@@ -67,7 +69,15 @@ pub trait HarnessExt {
     // Clicks a node in the UI by its label.
     fn click_label(&mut self, label: &str);
     fn right_click_label(&mut self, label: &str);
+    fn click_nth_label(&mut self, label: &str, index: usize);
     fn right_click_nth_label(&mut self, label: &str, index: usize);
+    fn click_nth_label_modifiers(&mut self, label: &str, index: usize, modifiers: Modifiers);
+    fn hover_label_contains(&mut self, label: &str);
+    fn hover_nth_label(&mut self, label: &str, index: usize);
+
+    // Drag-and-drop functions. You can use `hover` between `drag` and `drop`.
+    fn drag_nth_label(&mut self, label: &str, index: usize);
+    fn drop_nth_label(&mut self, label: &str, index: usize);
 
     // Takes a snapshot of the current app state with good-enough snapshot options.
     fn snapshot_app(&mut self, snapshot_name: &str);
@@ -245,9 +255,51 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         nodes.swap_remove(index)
     }
 
+    fn click_nth_label(&mut self, label: &str, index: usize) {
+        self.click_nth_label_modifiers(label, index, Modifiers::NONE);
+    }
+
     fn right_click_nth_label(&mut self, label: &str, index: usize) {
         self.get_nth_label(label, index).click_secondary();
         self.run_ok();
+    }
+
+    fn hover_label_contains(&mut self, label: &str) {
+        self.get_by_label_contains(label).hover();
+        self.run_ok();
+    }
+
+    fn hover_nth_label(&mut self, label: &str, index: usize) {
+        self.get_nth_label(label, index).hover();
+        self.run_ok();
+    }
+
+    fn click_nth_label_modifiers(&mut self, label: &str, index: usize, modifiers: Modifiers) {
+        self.get_nth_label(label, index).click_modifiers(modifiers);
+        self.run_ok();
+    }
+
+    fn drag_nth_label(&mut self, label: &str, index: usize) {
+        let node = self.get_nth_label(label, index);
+        let event = egui::Event::PointerButton {
+            pos: node.rect().center(),
+            button: PointerButton::Primary,
+            pressed: true,
+            modifiers: Modifiers::NONE,
+        };
+        self.event(event);
+    }
+
+    fn drop_nth_label(&mut self, label: &str, index: usize) {
+        let node = self.get_nth_label(label, index);
+        let event = egui::Event::PointerButton {
+            pos: node.rect().center(),
+            button: PointerButton::Primary,
+            pressed: false,
+            modifiers: Modifiers::NONE,
+        };
+        self.event(event);
+        self.remove_cursor();
     }
 
     fn debug_viewer_state(&mut self) {
@@ -273,14 +325,7 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
 
     fn snapshot_app(&mut self, snapshot_name: &str) {
         self.run_ok();
-        // TODO(aedm): we allow some pixel differences because of a font rendering issue:
-        // https://github.com/rerun-io/rerun/issues/11448
-        self.snapshot_options(
-            snapshot_name,
-            &SnapshotOptions::new()
-                .threshold(1.5) // Anti-aliasing implementations have considerable platform-specific differences
-                .failed_pixel_count_threshold(20),
-        );
+        self.snapshot(snapshot_name);
     }
 
     fn add_blueprint_container(

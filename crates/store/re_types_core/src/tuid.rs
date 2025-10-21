@@ -11,6 +11,7 @@ use crate::{DeserializationError, Loggable};
 
 // ---
 
+#[expect(clippy::cast_possible_wrap)]
 const BYTE_WIDTH: i32 = std::mem::size_of::<Tuid>() as i32;
 
 pub fn tuids_to_arrow(tuids: &[Tuid]) -> FixedSizeBinaryArray {

@@ -9,6 +9,8 @@ use std::cmp::Ordering;
 
 /// Natural ordering for strings, so that "file5" < "file10".
 pub fn compare(a: &str, b: &str) -> Ordering {
+    #![expect(clippy::cast_possible_wrap)]
+
     natord::compare_iter(
         a.chars(),
         b.chars(),

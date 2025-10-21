@@ -250,6 +250,8 @@ mod tests {
 
     impl GlobalCounts {
         fn on_events(&mut self, events: &[ChunkStoreEvent]) {
+            #![expect(clippy::cast_possible_wrap)] // as i64 won't overflow
+
             for event in events {
                 let delta_chunks = event.delta();
                 let delta_rows = delta_chunks * event.chunk.num_rows() as i64;
@@ -262,11 +264,11 @@ mod tests {
                     .entry(event.chunk.entity_path().clone())
                     .or_default() += delta_chunks;
 
-                for (component_desc, list_array) in event.chunk.components().iter() {
-                    let delta = event.delta() * list_array.iter().flatten().count() as i64;
+                for column in event.chunk.components().values() {
+                    let delta = event.delta() * column.list_array.iter().flatten().count() as i64;
                     *self
                         .component_descrs
-                        .entry(component_desc.clone())
+                        .entry(column.descriptor.clone())
                         .or_default() += delta;
                 }
 

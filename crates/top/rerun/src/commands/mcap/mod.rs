@@ -130,9 +130,9 @@ fn process_mcap<W: std::io::Write>(
 ) -> anyhow::Result<()> {
     let mut num_total_msgs = 0;
     let mut topics = BTreeSet::new();
-    let options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
+    let options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
     let version = re_build_info::CrateVersion::LOCAL;
-    let mut encoder = Encoder::new(version, options, writer)?;
+    let mut encoder = Encoder::new_eager(version, options, writer)?;
 
     while let Ok(res) = receiver.recv() {
         num_total_msgs += 1;

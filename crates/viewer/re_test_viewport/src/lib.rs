@@ -158,13 +158,13 @@ impl TestContextExt for TestContext {
         let mut view_states = self.view_states.lock();
         let view_state = view_states.get_mut_or_create(view_id, view_class);
 
-        let context_system_static_exec_results = class_registry
-            .run_static_context_systems_for_views(ctx, std::iter::once(class_identifier));
+        let context_system_once_per_frame_results = class_registry
+            .run_once_per_frame_context_systems(ctx, std::iter::once(class_identifier));
         let (view_query, system_execution_output) = execute_systems_for_view(
             ctx,
             &view_blueprint,
             view_state,
-            &context_system_static_exec_results,
+            &context_system_once_per_frame_results,
         );
 
         view_class
@@ -188,14 +188,15 @@ impl TestContextExt for TestContext {
         size: egui::Vec2,
         snapshot_options: Option<SnapshotOptions>,
     ) {
-        let snapshot_options = snapshot_options.unwrap_or_default();
-        let mut harness = self
-            .setup_kittest_for_rendering()
-            .with_size(size)
-            .build_ui(|ui| {
-                self.run_with_single_view(ui, view_id);
-            });
+        let mut harness = self.setup_kittest_for_rendering_3d(size).build_ui(|ui| {
+            self.run_with_single_view(ui, view_id);
+        });
         harness.run();
-        harness.snapshot_options(snapshot_name, &snapshot_options);
+
+        if let Some(snapshot_options) = snapshot_options {
+            harness.snapshot_options(snapshot_name, &snapshot_options);
+        } else {
+            harness.snapshot(snapshot_name);
+        }
     }
 }

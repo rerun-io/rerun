@@ -147,8 +147,13 @@ fn coverage(world_position: vec3f, radius: f32, point_center: vec3f) -> f32 {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4f {
-    let cov = coverage(in.world_position, in.radius, in.point_center);
-    if cov < 0.001 {
+    var coverage = coverage(in.world_position, in.radius, in.point_center);
+
+    if frame.deterministic_rendering == 1 {
+        coverage = step(0.5, coverage);
+    }
+
+    if coverage < 0.001 {
         discard;
     }
 
@@ -159,7 +164,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
     if has_any_flag(batch.flags, FLAG_ENABLE_SHADING) {
         shading = max(0.4, sqrt(1.2 - distance(in.point_center, in.world_position) / in.radius)); // quick and dirty coloring
     }
-    return vec4f(in.color.rgb * shading, cov);
+    return vec4f(in.color.rgb * shading, coverage);
 }
 
 @fragment

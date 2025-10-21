@@ -4,103 +4,23 @@ use std::task::Poll;
 
 use ahash::HashMap;
 use datafusion::catalog::TableProvider;
-use datafusion::common::DataFusionError;
 use datafusion::prelude::SessionContext;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
 
 use re_dataframe_ui::RequestedObject;
 use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
-use re_log_encoding::codec::CodecError;
 use re_log_types::EntryId;
 use re_protos::TypeConversionError;
 use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableEntry};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, ext::DatasetEntry};
 use re_protos::external::prost;
 use re_protos::external::prost::Name as _;
-use re_redap_client::{
-    ClientConnectionError, ConnectionClient, ConnectionRegistryHandle, StreamError,
-};
-use re_sorbet::SorbetError;
+use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
 use re_ui::{Icon, icons};
 use re_viewer_context::AsyncRuntimeHandle;
 
-pub type EntryResult<T> = Result<T, EntryError>;
-
-#[expect(clippy::enum_variant_names)]
-#[derive(Debug, thiserror::Error)]
-pub enum EntryError {
-    #[error(transparent)]
-    ClientConnectionError(#[from] ClientConnectionError),
-
-    #[error(transparent)]
-    StreamError(#[from] StreamError),
-
-    #[error(transparent)]
-    TypeConversionError(#[from] TypeConversionError),
-
-    #[error(transparent)]
-    CodecError(#[from] CodecError),
-
-    #[error(transparent)]
-    SorbetError(#[from] SorbetError),
-
-    #[error(transparent)]
-    DataFusionError(Box<DataFusionError>),
-}
-
-const _: () = assert!(
-    std::mem::size_of::<EntryError>() <= 80,
-    "Error type is too large. Try to reduce its size by boxing some of its variants.",
-);
-
-impl From<DataFusionError> for EntryError {
-    fn from(err: DataFusionError) -> Self {
-        Self::DataFusionError(Box::new(err))
-    }
-}
-
-impl EntryError {
-    fn client_connection_error(&self) -> Option<&ClientConnectionError> {
-        // Be explicit here so we don't miss any future variants that might have a `tonic::Status`.
-        match self {
-            Self::ClientConnectionError(err)
-            | Self::StreamError(StreamError::ClientConnectionError(err)) => Some(err),
-
-            Self::StreamError(
-                StreamError::Tokio(_)
-                | StreamError::CodecError(_)
-                | StreamError::ChunkError(_)
-                | StreamError::DecodeError(_)
-                | StreamError::EntryError(_)
-                | StreamError::PartitionError(_)
-                | StreamError::TasksError(_)
-                | StreamError::TypeConversionError(_)
-                | StreamError::MissingDataframeColumn(_)
-                | StreamError::MissingData(_)
-                | StreamError::ArrowError(_),
-            )
-            | Self::TypeConversionError(_)
-            | Self::CodecError(_)
-            | Self::SorbetError(_)
-            | Self::DataFusionError(_) => None,
-        }
-    }
-
-    pub fn is_missing_token(&self) -> bool {
-        matches!(
-            self.client_connection_error(),
-            Some(ClientConnectionError::UnauthenticatedMissingToken(_))
-        )
-    }
-
-    pub fn is_wrong_token(&self) -> bool {
-        matches!(
-            self.client_connection_error(),
-            Some(ClientConnectionError::UnauthenticatedBadToken(_))
-        )
-    }
-}
+pub type EntryResult<T> = Result<T, ApiError>;
 
 pub struct Dataset {
     pub dataset_entry: DatasetEntry,
@@ -202,7 +122,7 @@ impl Entries {
         self.entries.try_as_ref()?.as_ref().ok()?.get(&entry_id)
     }
 
-    pub fn state(&self) -> Poll<Result<&HashMap<EntryId, Entry>, &EntryError>> {
+    pub fn state(&self) -> Poll<Result<&HashMap<EntryId, Entry>, &ApiError>> {
         self.entries
             .try_as_ref()
             .map_or(Poll::Pending, |r| match r {
@@ -298,9 +218,10 @@ fn fetch_entry_details(
 
         EntryKind::Unspecified => {
             let kind = entry.kind;
+            let err = TypeConversionError::from(prost::UnknownEnumValue(kind as i32));
             Some(Right(future::ready((
                 entry,
-                Err(TypeConversionError::from(prost::UnknownEnumValue(kind as i32)).into()),
+                Err(ApiError::serialization(err, "unknown entry kind")),
             ))))
         }
     }
@@ -321,7 +242,8 @@ async fn fetch_dataset_details(
 
     let table_provider = PartitionTableProvider::new(client, id)
         .into_provider()
-        .await?;
+        .await
+        .map_err(|err| ApiError::internal(err, "failed creating partition table provider"))?;
 
     Ok((result, table_provider))
 }
@@ -338,7 +260,8 @@ async fn fetch_table_details(
 
     let table_provider = TableEntryTableProvider::new(client, id)
         .into_provider()
-        .await?;
+        .await
+        .map_err(|err| ApiError::internal(err, "failed creating table-entry table provider"))?;
 
     Ok((result, table_provider))
 }
