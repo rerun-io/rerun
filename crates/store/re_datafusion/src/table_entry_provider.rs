@@ -337,10 +337,9 @@ impl RecordBatchGrpcOutputStream {
                     .with_entry_id(table_id)?;
                 let mut client = client;
 
-                client.inner().write_table(stream).await
+                client.write_table(stream).await
             }
-            .await
-            .map(|_| ());
+            .await;
 
             #[expect(clippy::let_underscore_must_use)]
             let _ = thread_status_tx.send(shutdown_response);
