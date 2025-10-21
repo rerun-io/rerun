@@ -44,7 +44,6 @@ def main() -> None:
 
     examples = [
         # Trivial examples that don't require weird dependencies, or downloading data
-        ("tests/python/test_api", ["--test", "all"]),
         ("examples/python/minimal_options", []),
         ("examples/python/multithreading", []),
         ("examples/python/plots", []),

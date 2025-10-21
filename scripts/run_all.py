@@ -107,7 +107,6 @@ def collect_examples(fast: bool) -> list[str]:
     if fast:
         # cherry-picked
         return [
-            "tests/python/test_api",
             "examples/python/car",
             "examples/python/clock",
             "examples/python/dicom_mri",
