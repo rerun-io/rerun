@@ -695,10 +695,13 @@ impl RerunCloudService for RerunCloudHandler {
             let insert_op = match TableInsertMode::try_from(write_msg.insert_mode)
                 .map_err(|err| Status::invalid_argument(err.to_string()))?
             {
-                TableInsertMode::Append => InsertOp::Append,
-                TableInsertMode::Replace => InsertOp::Replace,
-                TableInsertMode::Overwrite => InsertOp::Overwrite,
-            };
+                TableInsertMode::Unspecified => Err(Status::invalid_argument(
+                    "table insert mode must be specified",
+                )),
+                TableInsertMode::Append => Ok(InsertOp::Append),
+                TableInsertMode::Replace => Ok(InsertOp::Replace),
+                TableInsertMode::Overwrite => Ok(InsertOp::Overwrite),
+            }?;
 
             table.write_table(rb, insert_op).await.map_err(|err| {
                 tonic::Status::internal(format!("error writing to table: {err:#}"))

@@ -1530,12 +1530,13 @@ impl VectorDistanceMetric {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum TableInsertMode {
+    Unspecified = 0,
     /// Appends new rows to the existing table without modifying any existing rows.
-    Append = 0,
+    Append = 1,
     /// Replace existing rows that collide with the inserted rows. Replacement is typically based on a unique key or primary key.
-    Replace = 1,
+    Replace = 2,
     /// Overwrites all existing rows in the table with the new rows.
-    Overwrite = 2,
+    Overwrite = 3,
 }
 impl TableInsertMode {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -1544,6 +1545,7 @@ impl TableInsertMode {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
+            Self::Unspecified => "TABLE_INSERT_MODE_UNSPECIFIED",
             Self::Append => "TABLE_INSERT_MODE_APPEND",
             Self::Replace => "TABLE_INSERT_MODE_REPLACE",
             Self::Overwrite => "TABLE_INSERT_MODE_OVERWRITE",
@@ -1552,6 +1554,7 @@ impl TableInsertMode {
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
+            "TABLE_INSERT_MODE_UNSPECIFIED" => Some(Self::Unspecified),
             "TABLE_INSERT_MODE_APPEND" => Some(Self::Append),
             "TABLE_INSERT_MODE_REPLACE" => Some(Self::Replace),
             "TABLE_INSERT_MODE_OVERWRITE" => Some(Self::Overwrite),
