@@ -42,6 +42,12 @@ pub enum Op {
     Cast(op::Cast),
 
     /// Flattens a list array inside a component.
+    ///
+    /// Takes `List<List<T>>` and flattens it to `List<T>` by concatenating all inner lists
+    /// within each outer list row.
+    /// Inner nulls are preserved, outer nulls are skipped.
+    ///
+    /// Example: `[[1, 2, 3], [4, null, 5], null, [6]]` becomes `[1, 2, 3, 4, null, 5, 6]`.
     Flatten,
 
     /// A user-defined arbitrary function to convert a component column.
@@ -86,6 +92,9 @@ impl Op {
     ///
     /// Takes `List<List<T>>` and flattens it to `List<T>` by concatenating all inner lists
     /// within each outer list row.
+    /// Inner nulls are preserved, outer nulls are skipped.
+    ///
+    /// Example: `[[1, 2, 3], [4, null, 5], null, [6]]` becomes `[1, 2, 3, 4, null, 5, 6]`.
     pub fn flatten() -> Self {
         Self::Flatten
     }
