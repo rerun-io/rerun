@@ -7,9 +7,12 @@ use datafusion::error::DataFusionError;
 use datafusion::execution::SessionStateBuilder;
 use datafusion::logical_expr::dml::InsertOp;
 use futures::StreamExt as _;
-use lance::Dataset as LanceDataset;
-use lance::datafusion::LanceTableProvider;
-use lance::dataset::{WriteMode, WriteParams};
+#[cfg(feature = "lance")]
+use lance::{
+    Dataset as LanceDataset,
+    datafusion::LanceTableProvider,
+    dataset::{WriteMode, WriteParams},
+};
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::{
     EntryKind,
@@ -20,6 +23,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub enum TableType {
     DataFusionTable(Arc<dyn TableProvider>),
+    #[cfg(feature = "lance")]
     LanceDataset(Arc<LanceDataset>),
 }
 
@@ -93,6 +97,7 @@ impl Table {
     pub fn schema(&self) -> SchemaRef {
         match &self.table {
             TableType::DataFusionTable(t) => t.schema(),
+            #[cfg(feature = "lance")]
             TableType::LanceDataset(dataset) => Arc::new(Schema::from(dataset.schema())),
         }
     }
@@ -100,6 +105,7 @@ impl Table {
     pub fn provider(&self) -> Arc<dyn TableProvider> {
         match &self.table {
             TableType::DataFusionTable(t) => Arc::clone(t),
+            #[cfg(feature = "lance")]
             TableType::LanceDataset(dataset) => Arc::new(LanceTableProvider::new(
                 Arc::new(dataset.as_ref().clone()),
                 false,
@@ -129,6 +135,7 @@ impl Table {
         Ok(())
     }
 
+    #[cfg(feature = "lance")]
     async fn write_table_lance_dataset(
         &mut self,
         rb: RecordBatch,
@@ -183,6 +190,7 @@ impl Table {
         insert_op: InsertOp,
     ) -> Result<(), DataFusionError> {
         match &self.table {
+            #[cfg(feature = "lance")]
             TableType::LanceDataset(_) => self.write_table_lance_dataset(rb, insert_op).await,
             TableType::DataFusionTable(_) => self.write_table_provider(rb, insert_op).await,
         }
