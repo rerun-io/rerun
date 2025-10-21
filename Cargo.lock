@@ -11945,17 +11945,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "test_pinhole_projection"
-version = "0.27.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "image",
- "re_log",
- "rerun",
-]
-
-[[package]]
 name = "test_send_columns"
 version = "0.27.0-alpha.1+dev"
 dependencies = [
