@@ -423,6 +423,9 @@ fn dataset_entry_ui(
         }
     });
 
+    ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
+    ctx.handle_select_focus_sync(&item_response, item.clone());
+
     if item_response.clicked() {
         ctx.command_sender()
             .send_system(SystemCommand::set_selection(item));
@@ -454,6 +457,9 @@ fn remote_table_entry_ui(
     let list_item = ui.list_item().selected(*is_selected).active(*is_active);
     let list_item_content = LabelContent::new(text).with_icon(icon);
     let item_response = list_item.show_hierarchical(ui, list_item_content);
+
+    ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
+    ctx.handle_select_focus_sync(&item_response, item.clone());
 
     if item_response.clicked() {
         ctx.command_sender()
