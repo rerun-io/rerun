@@ -52,13 +52,13 @@ As of 0.23, we automatically migrate data from older versions, with an N-1 compa
 
 Before doing anything, read all the steps in full!
 
-### 1. Determine what the next version should be.
+### 1. Determine what the next version should be
 
 There usually isn't any ambiguity, as releases are planned ahead of time.
 
 You can always find the latest release on our [GitHub releases](https://github.com/rerun-io/rerun/releases/tag/prerelease) page.
 
-### 2. Create a release branch.
+### 2. Create a release branch
 
 The branch name is the single source of truth for the _release version_. Our release workflow automatically updates all versions
 in the repository to what is specified in the branch name, so the format is important:
@@ -80,12 +80,13 @@ You can do this either using `git` on your command line, or through the UI:
 
 Once the branch has been created, push it to the remote repository.
 
-For patch releases, immediately bump the crate versions to dev version, so that any testing done against this branch will not look like the old version:
+For patch releases, immediately bump the crate versions to the dev version and then commit and push the changes, so that any testing done against this branch will not look like the old version:
+
 ```sh
 pixi run python scripts/ci/crates.py version --exact 0.x.y --dev
 ```
 
-### 3. If this is a patch release, cherry-pick commits for inclusion in the release into the branch.
+### 3. If this is a patch release, cherry-pick commits for inclusion in the release into the branch
 
 When done, run [`cargo semver-checks`](https://github.com/obi1kenobi/cargo-semver-checks) to check that we haven't introduced any semver breaking changes.
 
@@ -102,7 +103,7 @@ Where `z` is the previous patch number.
 
 Note that the `cherry-pick` will fail if there are no additional `docs-latest` commits to include, which is fine.
 
-### 4. Update [`CHANGELOG.md`](./CHANGELOG.md).
+### 4. Update [`CHANGELOG.md`](./CHANGELOG.md)
 
 Update the change log. It should include:
 
@@ -112,13 +113,13 @@ Update the change log. It should include:
 -   A gif or screenshot showing one or more major new features
     - Try to avoid `mp4`s, gifs have a better experience on GitHub
     - You can upload images to a PR, use the link it generates to use GitHub as an image hosting service.
--   Run `pip install GitPython && scripts/generate_changelog.py > new_changelog.md`
+-   Run `pixi run -e py python scripts/generate_changelog.py > new_changelog.md`
 -   Edit PR descriptions/labels to improve the generated changelog
 -   Copy-paste the results into `CHANGELOG.md`.
 -   Editorialize the changelog if necessary
 -   Make sure the changelog includes instructions for handling any breaking changes
 
-### 5. Clean up documentation links.
+### 5. Clean up documentation links
 
 Remove all the `attr.docs.unreleased` attributes in all `.fbs` files, followed by `pixi run codegen`.
 
@@ -126,19 +127,19 @@ Remove the speculative link markers (`?speculative-link`).
 
 Once you're done, commit and push onto the release branch.
 
-### 6. Run the [release workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml).
+### 6. Run the [release workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml)
 
 In the UI:
 
 -   Set `Use workflow from` to the release branch you created in step (2).
 -   Then choose one of the following values in the dropdown:
-  - `alpha` if the branch name is `prepare-release-x.y.z-alpha.N`.
-    This will create a one-off alpha release.
+    - `alpha` if the branch name is `prepare-release-x.y.z-alpha.N`.
+        This will create a one-off alpha release.
 
-  - `rc` if the branch name is `prepare-release-x.y.z`.
-    This will create a pull request for the release, and publish a release candidate.
+    - `rc` if the branch name is `prepare-release-x.y.z`.
+      This will create a pull request for the release, and publish a release candidate.
 
-  - `final` for the final public release
+    - `final` for the final public release
 
 ![Image showing the Run workflow UI. It can be found at https://github.com/rerun-io/rerun/actions/workflows/release.yml](https://github.com/rerun-io/rerun/assets/1665677/6cdc8e7e-c0fc-4cf1-99cb-0749957b8328)
 
