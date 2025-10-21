@@ -125,6 +125,8 @@ Remove all the `attr.docs.unreleased` attributes in all `.fbs` files, followed b
 
 Remove the speculative link markers (`?speculative-link`).
 
+Update the [python support table](./rerun_py/docs/gen_common_index.py) for the major release.
+
 Once you're done, commit and push onto the release branch.
 
 ### 6. Run the [release workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml)

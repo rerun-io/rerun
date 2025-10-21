@@ -62,7 +62,7 @@ def mux_h264_to_mp4(times: ChunkedArray, samples: ChunkedArray, output_path: str
     print(f"Offsetting timestamps with start time: {start_time}")
 
     # Demux and mux packets.
-    for packet, time in zip(input_container.demux(input_stream), times):
+    for packet, time in zip(input_container.demux(input_stream), times, strict=False):
         packet.time_base = Fraction(1, 1_000_000_000)  # Assuming duration timestamps in nanoseconds.
         packet.pts = int(time.value - start_time.value)
         packet.dts = packet.pts  # dts == pts since there's no B-frames.

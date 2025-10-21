@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Union
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -48,9 +48,9 @@ class Quaternion(QuaternionExt):
 
 
 QuaternionLike = Quaternion
-QuaternionArrayLike = Union[
-    Quaternion, Sequence[QuaternionLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]]
-]
+QuaternionArrayLike = (
+    Quaternion | Sequence[QuaternionLike] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[float]]
+)
 
 
 class QuaternionBatch(BaseBatch[QuaternionArrayLike]):

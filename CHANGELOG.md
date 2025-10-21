@@ -1,5 +1,12 @@
 # Rerun changelog
 
+## 0.27.0 - TBD - TBD
+
+### ⚠️ Breaking changes
+
+- Minimum supported Python is now 3.10.
+
+
 ## [0.26.0](https://github.com/rerun-io/rerun/compare/0.25.1...0.26.0) - 2025-10-13 - Viewer improvements and table filtering upgrades
 
 ### ✨ Overview & highlights

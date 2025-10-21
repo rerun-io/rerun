@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -156,9 +156,9 @@ class PixelFormat(Enum):
         return self.name
 
 
-PixelFormatLike = Union[
-    PixelFormat,
-    Literal[
+PixelFormatLike = (
+    PixelFormat
+    | Literal[
         "NV12",
         "Y8_FullRange",
         "Y8_LimitedRange",
@@ -179,10 +179,36 @@ PixelFormatLike = Union[
         "y_u_v24_fullrange",
         "y_u_v24_limitedrange",
         "yuy2",
-    ],
-    int,
-]
-PixelFormatArrayLike = Union[PixelFormatLike, Sequence[PixelFormatLike]]
+    ]
+    | int
+)
+PixelFormatArrayLike = (
+    PixelFormat
+    | Literal[
+        "NV12",
+        "Y8_FullRange",
+        "Y8_LimitedRange",
+        "YUY2",
+        "Y_U_V12_FullRange",
+        "Y_U_V12_LimitedRange",
+        "Y_U_V16_FullRange",
+        "Y_U_V16_LimitedRange",
+        "Y_U_V24_FullRange",
+        "Y_U_V24_LimitedRange",
+        "nv12",
+        "y8_fullrange",
+        "y8_limitedrange",
+        "y_u_v12_fullrange",
+        "y_u_v12_limitedrange",
+        "y_u_v16_fullrange",
+        "y_u_v16_limitedrange",
+        "y_u_v24_fullrange",
+        "y_u_v24_limitedrange",
+        "yuy2",
+    ]
+    | int
+    | Sequence[PixelFormatLike]
+)
 
 
 class PixelFormatBatch(BaseBatch[PixelFormatArrayLike]):

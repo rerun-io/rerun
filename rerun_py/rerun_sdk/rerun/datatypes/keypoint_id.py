@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -52,11 +52,11 @@ class KeypointId:
 
 
 if TYPE_CHECKING:
-    KeypointIdLike = Union[KeypointId, int]
+    KeypointIdLike = KeypointId | int
 else:
     KeypointIdLike = Any
 
-KeypointIdArrayLike = Union[KeypointId, Sequence[KeypointIdLike], int, npt.ArrayLike]
+KeypointIdArrayLike = KeypointId | Sequence[KeypointIdLike] | int | npt.ArrayLike
 
 
 class KeypointIdBatch(BaseBatch[KeypointIdArrayLike]):
