@@ -94,7 +94,7 @@ impl PyTableEntry {
                     TableEntryTableProvider::new(
                         connection.client().await?,
                         id,
-                        get_tokio_runtime().handle().clone(),
+                        Some(get_tokio_runtime().handle().clone()),
                     )
                     .into_provider()
                     .await

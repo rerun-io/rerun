@@ -186,9 +186,9 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         let num_partitions = input.properties().output_partitioning().partition_count();
         let entry_id = self.clone().table_id().await?;
         let insert_op = match insert_op {
-            InsertOp::Append => TableInsertMode::TableInsertAppend,
-            InsertOp::Replace => TableInsertMode::TableInsertReplace,
-            InsertOp::Overwrite => TableInsertMode::TableInsertOverwrite,
+            InsertOp::Append => TableInsertMode::Append,
+            InsertOp::Replace => TableInsertMode::Replace,
+            InsertOp::Overwrite => TableInsertMode::Overwrite,
         };
         let Some(runtime) = self.runtime.clone() else {
             return exec_err!("Writing to table provider is not supported without tokio runtime");
@@ -381,37 +381,25 @@ impl Stream for RecordBatchGrpcOutputStream {
             Poll::Ready(Some(Ok(batch))) => {
                 // Send to gRPC if we have a sender
                 if let Some(ref grpc_sender) = self.grpc_sender {
-                    match batch.try_into() {
-                        Ok(dataframe_part) => {
-                            let request = WriteTableRequest {
-                                dataframe_part: Some(dataframe_part),
-                                insert_mode: self.insert_op.into(),
-                            };
-                            // Check if channel is still open
-                            if grpc_sender.sender.send(request).is_err() {
-                                // Channel closed - the gRPC task may have failed
-                                // Check if we have a stored error
-                                if let Some(status) = self.grpc_error.take() {
-                                    return Poll::Ready(Some(Err(DataFusionError::External(
-                                        Box::new(status),
-                                    ))));
-                                } else {
-                                    // Channel closed without error - treat as broken pipe
-                                    return Poll::Ready(Some(Err(DataFusionError::External(
-                                        Box::new(std::io::Error::new(
-                                            std::io::ErrorKind::BrokenPipe,
-                                            "gRPC stream closed unexpectedly",
-                                        )),
-                                    ))));
-                                }
-                            }
-                        }
-                        Err(err) => {
-                            // Conversion error
+                    let dataframe_part = batch.into();
+                    let request = WriteTableRequest {
+                        dataframe_part: Some(dataframe_part),
+                        insert_mode: self.insert_op.into(),
+                    };
+                    // Check if channel is still open
+                    if grpc_sender.sender.send(request).is_err() {
+                        // Channel closed - the gRPC task may have failed
+                        // Check if we have a stored error
+                        if let Some(status) = self.grpc_error.take() {
+                            return Poll::Ready(Some(Err(DataFusionError::External(Box::new(
+                                status,
+                            )))));
+                        } else {
+                            // Channel closed without error - treat as broken pipe
                             return Poll::Ready(Some(Err(DataFusionError::External(Box::new(
                                 std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    format!("Failed to convert batch: {err}"),
+                                    std::io::ErrorKind::BrokenPipe,
+                                    "gRPC stream closed unexpectedly",
                                 ),
                             )))));
                         }

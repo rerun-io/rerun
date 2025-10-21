@@ -695,9 +695,9 @@ impl RerunCloudService for RerunCloudHandler {
             let insert_op = match TableInsertMode::try_from(write_msg.insert_mode)
                 .map_err(|err| Status::invalid_argument(err.to_string()))?
             {
-                TableInsertMode::TableInsertAppend => InsertOp::Append,
-                TableInsertMode::TableInsertReplace => InsertOp::Replace,
-                TableInsertMode::TableInsertOverwrite => InsertOp::Overwrite,
+                TableInsertMode::Append => InsertOp::Append,
+                TableInsertMode::Replace => InsertOp::Replace,
+                TableInsertMode::Overwrite => InsertOp::Overwrite,
             };
 
             table.write_table(rb, insert_op).await.map_err(|err| {
