@@ -4,6 +4,12 @@ order: 984
 ---
 <!--   ^^^ this number must be _decremented_ when you copy/paste this file -->
 
+## `cargo install rerun-cli` requires `protoc`
+
+In order to install the Rerun CLI via cargo, you have to have a `protoc` installation on the `PATH` or `PROTOC` environment variable.
+
+To install it on macOS, run `brew install protobuf`. It is also available at https://github.com/protocolbuffers/protobuf/releases. For more information see https://docs.rs/prost-build/#sourcing-protoc.
+
 ## Python SDK: removed `blocking` argument for `flush`
 Use the new `timeout_sec` argument instead.
 For non-blocking, use `timeout_sec=0`.

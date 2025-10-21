@@ -23,6 +23,9 @@ all-features = true
 [features]
 default = []
 
+# TODO(lancedb/lance#3073): lance depends on system protoc, so lance must be an opt-in dependency
+## Enable reading in LanceDB files.
+lance = ["dep:lance"]
 
 [dependencies]
 
@@ -40,17 +43,21 @@ re_tuid.workspace = true
 re_types_core.workspace = true
 
 # External
+ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
-clap = { workspace = true, features = ["derive", "env"] }
+bincode.workspace = true
+cfg-if.workspace = true
 chrono = { workspace = true, features = ["serde"] }
+clap = { workspace = true, features = ["derive", "env"] }
 datafusion.workspace = true
 futures.workspace = true
+http.workspace = true
 itertools.workspace = true
 jiff.workspace = true
-lance.workspace = true
-http.workspace = true
 nohash-hasher.workspace = true
+serde.workspace = true
+sha2.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
 tokio-stream.workspace = true
@@ -60,6 +67,11 @@ tower.workspace = true
 tower-service.workspace = true
 tracing.workspace = true
 url.workspace = true
+
+
+# Optional dependencies:
+# TODO(lancedb/lance#3073): lance depends on system protoc, so lance must be an opt-in dependency
+lance = { workspace = true, optional = true }
 
 
 [dev-dependencies]
