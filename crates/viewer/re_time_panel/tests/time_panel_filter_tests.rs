@@ -34,7 +34,7 @@ pub fn test_various_filter_ui_snapshot() {
     TimePanel::ensure_registered_subscribers();
 
     for filter_query in filter_queries() {
-        let test_context = prepare_test_context();
+        let mut test_context = prepare_test_context();
 
         let mut time_panel = TimePanel::default();
         if let Some(query) = filter_query {
@@ -42,7 +42,7 @@ pub fn test_various_filter_ui_snapshot() {
         }
 
         run_time_panel_and_save_snapshot(
-            &test_context,
+            &mut test_context,
             time_panel,
             &format!(
                 "various_filters-{}",
@@ -57,7 +57,7 @@ pub fn test_various_filter_ui_snapshot() {
 #[test]
 pub fn test_various_filter_insta_snapshot() {
     for filter_query in filter_queries() {
-        let test_context = prepare_test_context();
+        let mut test_context = prepare_test_context();
 
         let streams_tree_data = test_context.run_once_in_egui_central_panel(|viewer_ctx, _| {
             let mut filter_state = FilterState::default();
@@ -114,7 +114,7 @@ fn add_point_to_chunk_builder(builder: ChunkBuilder) -> ChunkBuilder {
 }
 
 fn run_time_panel_and_save_snapshot(
-    test_context: &TestContext,
+    test_context: &mut TestContext,
     mut time_panel: TimePanel,
     snapshot_name: &str,
 ) {

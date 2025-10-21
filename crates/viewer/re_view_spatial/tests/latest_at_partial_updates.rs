@@ -74,7 +74,7 @@ fn test_latest_at_partial_update() {
 
     let view_id = setup_blueprint(&mut test_context);
     run_view_ui_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         view_id,
         "latest_at_partial_updates",
         egui::vec2(200.0, 200.0),
@@ -110,7 +110,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &TestContext,
+    test_context: &mut TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,

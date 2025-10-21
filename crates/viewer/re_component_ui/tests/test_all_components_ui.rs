@@ -215,7 +215,7 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
 /// Test all components UI in a narrow list item context.
 #[test]
 pub fn test_all_components_ui_as_list_items_narrow() {
-    let test_context = get_test_context();
+    let mut test_context = get_test_context();
     let test_cases = test_cases(&test_context.reflection);
     let snapshot_options =
         SnapshotOptions::new().output_path("tests/snapshots/all_components_list_item_narrow");
@@ -224,7 +224,7 @@ pub fn test_all_components_ui_as_list_items_narrow() {
         .iter()
         .map(|test_case| {
             test_single_component_ui_as_list_item(
-                &test_context,
+                &mut test_context,
                 test_case,
                 200.0,
                 &snapshot_options,
@@ -239,7 +239,7 @@ pub fn test_all_components_ui_as_list_items_narrow() {
 /// Test all components UI in a wide list item context.
 #[test]
 pub fn test_all_components_ui_as_list_items_wide() {
-    let test_context = get_test_context();
+    let mut test_context = get_test_context();
     let test_cases = test_cases(&test_context.reflection);
     let snapshot_options =
         SnapshotOptions::new().output_path("tests/snapshots/all_components_list_item_wide");
@@ -248,7 +248,7 @@ pub fn test_all_components_ui_as_list_items_wide() {
         .iter()
         .map(|test_case| {
             test_single_component_ui_as_list_item(
-                &test_context,
+                &mut test_context,
                 test_case,
                 600.0,
                 &snapshot_options,
@@ -261,7 +261,7 @@ pub fn test_all_components_ui_as_list_items_wide() {
 }
 
 fn test_single_component_ui_as_list_item(
-    test_context: &TestContext,
+    test_context: &mut TestContext,
     test_case: &TestCase,
     ui_width: f32,
     _snapshot_options: &SnapshotOptions,

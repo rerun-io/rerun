@@ -28,7 +28,7 @@ pub trait TestContextExt {
     fn run_with_single_view(&self, ui: &mut egui::Ui, view_id: ViewId);
 
     fn run_view_ui_and_save_snapshot(
-        &self,
+        &mut self,
         view_id: ViewId,
         snapshot_name: &str,
         size: egui::Vec2,
@@ -182,7 +182,7 @@ impl TestContextExt for TestContext {
     }
 
     fn run_view_ui_and_save_snapshot(
-        &self,
+        &mut self,
         view_id: ViewId,
         snapshot_name: &str,
         size: egui::Vec2,

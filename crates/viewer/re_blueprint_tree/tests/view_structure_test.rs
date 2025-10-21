@@ -161,7 +161,7 @@ fn test_all_snapshot_test_cases() {
 }
 
 fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(), SnapshotError> {
-    let test_context = test_context(test_case);
+    let mut test_context = test_context(test_case);
     let view_id = ViewId::hashed_from_str(VIEW_ID);
 
     let mut blueprint_tree = BlueprintTree::default();

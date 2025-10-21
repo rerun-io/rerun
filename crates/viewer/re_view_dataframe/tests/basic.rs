@@ -64,7 +64,7 @@ pub fn test_unknown_timeline() {
     );
 
     run_view_selection_panel_ui_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         view_id,
         "unknown_timeline_selection_panel_ui",
         egui::vec2(300.0, 450.0),
@@ -95,7 +95,7 @@ fn setup_blueprint(test_context: &mut TestContext, timeline_name: &TimelineName)
 }
 
 fn run_view_selection_panel_ui_and_save_snapshot(
-    test_context: &TestContext,
+    test_context: &mut TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,

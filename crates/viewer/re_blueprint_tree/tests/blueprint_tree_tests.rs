@@ -27,7 +27,7 @@ fn basic_blueprint_panel_should_match_snapshot() {
     });
 
     let blueprint_tree = BlueprintTree::default();
-    run_blueprint_panel_and_save_snapshot(&test_context, blueprint_tree, "basic_blueprint_panel");
+    run_blueprint_panel_and_save_snapshot(&mut test_context, blueprint_tree, "basic_blueprint_panel");
 }
 
 // ---
@@ -96,10 +96,10 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
 
 #[test]
 fn blueprint_panel_filter_active_inside_origin_should_match_snapshot() {
-    let (test_context, blueprint_tree) = setup_filter_test(Some("left"));
+    let (mut test_context, blueprint_tree) = setup_filter_test(Some("left"));
 
     run_blueprint_panel_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         blueprint_tree,
         "blueprint_panel_filter_active_inside_origin",
     );
@@ -107,10 +107,10 @@ fn blueprint_panel_filter_active_inside_origin_should_match_snapshot() {
 
 #[test]
 fn blueprint_panel_filter_active_outside_origin_should_match_snapshot() {
-    let (test_context, blueprint_tree) = setup_filter_test(Some("out"));
+    let (mut test_context, blueprint_tree) = setup_filter_test(Some("out"));
 
     run_blueprint_panel_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         blueprint_tree,
         "blueprint_panel_filter_active_outside_origin",
     );
@@ -118,10 +118,10 @@ fn blueprint_panel_filter_active_outside_origin_should_match_snapshot() {
 
 #[test]
 fn blueprint_panel_filter_active_above_origin_should_match_snapshot() {
-    let (test_context, blueprint_tree) = setup_filter_test(Some("path"));
+    let (mut test_context, blueprint_tree) = setup_filter_test(Some("path"));
 
     run_blueprint_panel_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         blueprint_tree,
         "blueprint_panel_filter_active_above_origin",
     );
@@ -178,7 +178,7 @@ fn add_point_to_chunk_builder(builder: ChunkBuilder) -> ChunkBuilder {
 }
 
 fn run_blueprint_panel_and_save_snapshot(
-    test_context: &TestContext,
+    test_context: &mut TestContext,
     mut blueprint_tree: BlueprintTree,
     snapshot_name: &str,
 ) {

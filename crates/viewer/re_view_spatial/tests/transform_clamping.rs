@@ -156,7 +156,7 @@ pub fn test_transform_clamping() {
 
     let view_ids = setup_blueprint(&mut test_context);
     run_view_ui_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         view_ids,
         "transform_clamping",
         egui::vec2(300.0, 300.0),
@@ -210,7 +210,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> (ViewId, ViewId, ViewId) {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &TestContext,
+    test_context: &mut TestContext,
     (view_id_boxes, view_id_spheres, view_id_points): (ViewId, ViewId, ViewId),
     name: &str,
     size: egui::Vec2,

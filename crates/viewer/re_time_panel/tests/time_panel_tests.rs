@@ -42,7 +42,7 @@ pub fn time_panel_two_sections() {
     add_sparse_data(&mut test_context);
 
     run_time_panel_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         TimePanel::default(),
         300.0,
         false,
@@ -72,7 +72,7 @@ pub fn time_panel_two_sections_with_valid_range() {
     );
 
     run_time_panel_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         TimePanel::default(),
         300.0,
         false,
@@ -89,7 +89,7 @@ pub fn time_panel_two_sections_with_valid_range() {
     );
 
     run_time_panel_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         TimePanel::default(),
         300.0,
         false,
@@ -128,7 +128,7 @@ pub fn time_panel_two_sections_with_two_valid_ranges() {
     );
 
     run_time_panel_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         TimePanel::default(),
         300.0,
         false,
@@ -145,7 +145,7 @@ pub fn time_panel_two_sections_with_two_valid_ranges() {
     );
 
     run_time_panel_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         TimePanel::default(),
         300.0,
         false,
@@ -190,7 +190,7 @@ pub fn time_panel_dense_data() {
     });
 
     run_time_panel_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         TimePanel::default(),
         300.0,
         false,
@@ -254,7 +254,7 @@ pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_na
         time_panel.activate_filter(query);
     }
 
-    run_time_panel_and_save_snapshot(&test_context, time_panel, 300.0, false, snapshot_name);
+    run_time_panel_and_save_snapshot(&mut test_context, time_panel, 300.0, false, snapshot_name);
 }
 
 // --
@@ -287,7 +287,7 @@ pub fn test_various_entity_kinds_in_time_panel() {
             let time_panel = TimePanel::default();
 
             run_time_panel_and_save_snapshot(
-                &test_context,
+                &mut test_context,
                 time_panel,
                 1200.0,
                 true,
@@ -316,7 +316,7 @@ pub fn test_focused_item_is_focused() {
     let time_panel = TimePanel::default();
 
     run_time_panel_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         time_panel,
         200.0,
         false,
@@ -389,7 +389,7 @@ pub fn log_static_data(test_context: &mut TestContext, entity_path: impl Into<En
 }
 
 fn run_time_panel_and_save_snapshot(
-    test_context: &TestContext,
+    test_context: &mut TestContext,
     mut time_panel: TimePanel,
     height: f32,
     expand_all: bool,

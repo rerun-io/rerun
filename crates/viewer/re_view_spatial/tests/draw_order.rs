@@ -146,7 +146,7 @@ pub fn test_draw_order() {
         ))
     });
     run_view_ui_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         view_id,
         "draw_order",
         egui::vec2(300.0, 150.0) * 2.0,
@@ -154,7 +154,7 @@ pub fn test_draw_order() {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &TestContext,
+    test_context: &mut TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,

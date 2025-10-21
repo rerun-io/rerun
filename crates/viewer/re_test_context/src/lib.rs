@@ -370,8 +370,12 @@ impl TestContext {
     }
 
     /// Set up for rendering UI, with not 3D/2D in it.
+    ///
+    /// Note: This method takes `&mut self` to ensure only one harness can be created at a time
+    /// via the borrow checker, preventing accidentally nesting tests where harnesses interact
+    /// with each other.
     pub fn setup_kittest_for_rendering_ui(
-        &self,
+        &mut self,
         size: impl Into<egui::Vec2>,
     ) -> egui_kittest::HarnessBuilder<()> {
         self.setup_kittest_for_rendering(re_ui::testing::TestOptions::Gui, size.into())
@@ -380,15 +384,20 @@ impl TestContext {
     /// Set up for rendering 3D/2D and maybe UI.
     ///
     /// This has slightly higher error tolerances than [`Self::setup_kittest_for_rendering_ui`].
+    ///
+    /// Note: This method takes `&mut self` to ensure only one harness can be created at a time
+    /// via the borrow checker, preventing accidentally nesting tests where harnesses interact
+    /// with each other.
     pub fn setup_kittest_for_rendering_3d(
-        &self,
+        &mut self,
         size: impl Into<egui::Vec2>,
     ) -> egui_kittest::HarnessBuilder<()> {
         self.setup_kittest_for_rendering(re_ui::testing::TestOptions::Rendering3D, size.into())
     }
 
+    #[expect(clippy::needless_pass_by_ref_mut)]
     fn setup_kittest_for_rendering(
-        &self,
+        &mut self,
         option: re_ui::testing::TestOptions,
         size: egui::Vec2,
     ) -> egui_kittest::HarnessBuilder<()> {

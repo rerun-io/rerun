@@ -140,7 +140,7 @@ pub fn test_transform_hierarchy() {
     let view_id = setup_blueprint(&mut test_context);
 
     run_view_ui_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         timeline_step,
         view_id,
         "transform_hierarchy",
@@ -161,7 +161,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &TestContext,
+    test_context: &mut TestContext,
     timeline: Timeline,
     view_id: ViewId,
     name: &str,

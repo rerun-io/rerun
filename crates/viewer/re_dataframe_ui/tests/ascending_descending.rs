@@ -16,7 +16,7 @@ use re_viewer_context::AsyncRuntimeHandle;
 #[tokio::test]
 async fn test_no_sort() {
     let (session_context, table_ref) = prepare_session_context();
-    let test_context = TestContext::new();
+    let mut test_context = TestContext::new();
     let runtime_handle = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().unwrap();
 
     let table_status = Arc::new(Mutex::new(None::<TableStatus>));
@@ -39,7 +39,7 @@ async fn test_no_sort() {
 #[tokio::test]
 async fn test_ascending() {
     let (session_context, table_ref) = prepare_session_context();
-    let test_context = TestContext::new();
+    let mut test_context = TestContext::new();
     let runtime_handle = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().unwrap();
 
     let table_status = Arc::new(Mutex::new(None::<TableStatus>));
@@ -66,7 +66,7 @@ async fn test_ascending() {
 #[tokio::test]
 async fn test_descending() {
     let (session_context, table_ref) = prepare_session_context();
-    let test_context = TestContext::new();
+    let mut test_context = TestContext::new();
     let runtime_handle = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().unwrap();
 
     let table_status = Arc::new(Mutex::new(None::<TableStatus>));
@@ -93,7 +93,7 @@ async fn test_descending() {
 #[tokio::test]
 async fn test_column_menu_button() {
     let (session_context, table_ref) = prepare_session_context();
-    let test_context = TestContext::new();
+    let mut test_context = TestContext::new();
     let runtime_handle = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().unwrap();
 
     let table_status = Arc::new(Mutex::new(None::<TableStatus>));

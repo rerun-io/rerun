@@ -65,7 +65,7 @@ pub fn test_static_overwrite_original() {
     let view_id = setup_blueprint(&mut test_context, &entity_path, None, None);
 
     run_view_ui_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         view_id,
         "static_overwrite_original",
         SNAPSHOT_SIZE,
@@ -84,7 +84,7 @@ pub fn test_static_overwrite_radius_default() {
     let view_id = setup_blueprint(&mut test_context, &entity_path, Some(&radius_default), None);
 
     run_view_ui_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         view_id,
         "static_overwrite_radius_default",
         SNAPSHOT_SIZE,
@@ -105,7 +105,7 @@ pub fn test_static_overwrite_color_override() {
     let view_id = setup_blueprint(&mut test_context, &entity_path, None, Some(&color_override));
 
     run_view_ui_and_save_snapshot(
-        &test_context,
+        &mut test_context,
         view_id,
         "static_overwrite_color_override",
         SNAPSHOT_SIZE,
@@ -113,7 +113,7 @@ pub fn test_static_overwrite_color_override() {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &TestContext,
+    test_context: &mut TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
