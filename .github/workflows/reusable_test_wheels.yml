@@ -105,6 +105,7 @@ jobs:
 
   test-wheels:
     name: Test Wheels (${{ needs.set-config.outputs.RUNNER }})
+    timeout-minutes: 60
 
     needs: [set-config]
 

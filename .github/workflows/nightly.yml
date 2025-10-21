@@ -53,6 +53,7 @@ jobs:
 
   # Check that a CLEAN container with just `cargo` on it can build rerun:
   clean-build:
+    timeout-minutes: 60
     name: cargo build on clean container
     strategy:
       matrix:
@@ -383,6 +384,7 @@ jobs:
     secrets: inherit
 
   pre-release:
+    timeout-minutes: 60
     name: Pre Release
     concurrency: nightly
     needs:

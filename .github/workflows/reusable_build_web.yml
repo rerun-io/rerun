@@ -45,6 +45,7 @@ permissions:
 jobs:
   rs-build-web-viewer:
     name: Build web viewer
+    timeout-minutes: 60
     runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v4

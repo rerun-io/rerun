@@ -18,6 +18,7 @@ on:
 
 jobs:
   label:
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - name: Check for a "do-not-merge" label
@@ -43,6 +44,7 @@ jobs:
 
   wasm-bindgen-check:
     name: Check wasm-bindgen version
+    timeout-minutes: 60
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     continue-on-error: true
