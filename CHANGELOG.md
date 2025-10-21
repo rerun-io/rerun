@@ -7,6 +7,12 @@
 - Minimum supported Python is now 3.10.
 
 
+## [0.26.1](https://github.com/rerun-io/rerun/compare/0.26.0...0.26.1) - 2025-10-21 - Bug fixes
+
+- Fix `cargo install rerun-cli` requiring `protoc` on `PATH` [#11592](https://github.com/rerun-io/rerun/pull/11592)
+- Switch to newly received recordings even if `SetStoreInfo` message is missing [#11568](https://github.com/rerun-io/rerun/pull/11568)
+
+
 ## [0.26.0](https://github.com/rerun-io/rerun/compare/0.25.1...0.26.0) - 2025-10-13 - Viewer improvements and table filtering upgrades
 
 ### ✨ Overview & highlights
