@@ -10,8 +10,11 @@ use arrow::{
 };
 
 use re_arrow_util::transform::{self, Transform as _};
-use re_chunk::{Chunk, ChunkComponents, ChunkId, ComponentIdentifier, EntityPath};
-use re_log_types::EntityPathFilter;
+use re_chunk::{
+    ArrowArray as _, Chunk, ChunkComponents, ChunkId, ComponentIdentifier, EntityPath, Timeline,
+    TimelineName,
+};
+use re_log_types::{EntityPathFilter, TimeType};
 use re_types::{ComponentDescriptor, SerializedComponentColumn};
 
 use super::{Error, op};
@@ -220,9 +223,9 @@ impl Lens {
                 re_log::warn_once!("Replacing duplicated time column {}", time.timeline_name);
             }
 
-            let mut list_array_result = list_array.clone();
+            let mut list_array_result = column.list_array.clone();
             for op in &time.ops {
-                match op.call(list_array_result) {
+                match op.call(&list_array_result) {
                     Ok(result) => {
                         list_array_result = result;
                     }
