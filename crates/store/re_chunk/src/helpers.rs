@@ -244,9 +244,9 @@ impl UnitChunkShared {
         debug_assert!(self.num_rows() == 1);
         self.components
             .values()
-            .filter(|&(component_desc, _)| component_desc.component == component)
-            .map(|(_desc, list_array)| {
-                let array = list_array.value(0);
+            .filter(|column| column.descriptor.component == component)
+            .map(|column| {
+                let array = column.list_array.value(0);
                 array.nulls().map_or_else(
                     || array.len(),
                     |validity| validity.len() - validity.null_count(),

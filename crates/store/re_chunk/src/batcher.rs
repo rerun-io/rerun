@@ -11,7 +11,7 @@ use nohash_hasher::IntMap;
 use re_arrow_util::arrays_to_list_array_opt;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, Timeline, TimelineName};
-use re_types_core::{ComponentIdentifier, SerializedComponentBatch};
+use re_types_core::{ComponentIdentifier, SerializedComponentBatch, SerializedComponentColumn};
 
 use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn, chunk::ChunkComponents};
 
@@ -852,10 +852,10 @@ impl PendingRow {
             .collect();
 
         let mut per_desc = ChunkComponents::default();
-        for (component, batch) in components {
+        for (_component, batch) in components {
             let list_array = arrays_to_list_array_opt(&[Some(&*batch.array as _)]);
             if let Some(list_array) = list_array {
-                per_desc.insert(component, (batch.descriptor, list_array));
+                per_desc.insert(SerializedComponentColumn::new(list_array, batch.descriptor));
             }
         }
 
@@ -1001,12 +1001,14 @@ impl PendingRow {
                                     .collect(),
                                 {
                                     let mut per_component = ChunkComponents::default();
-                                    for (component, (desc, arrays)) in
+                                    for (_component, (desc, arrays)) in
                                         std::mem::take(&mut components)
                                     {
                                         let list_array = arrays_to_list_array_opt(&arrays);
                                         if let Some(list_array) = list_array {
-                                            per_component.insert(component, (desc, list_array));
+                                            per_component.insert(SerializedComponentColumn::new(
+                                                list_array, desc,
+                                            ));
                                         }
                                     }
                                     per_component
@@ -1048,10 +1050,10 @@ impl PendingRow {
                         .collect(),
                     {
                         let mut per_desc = ChunkComponents::default();
-                        for (component, (desc, arrays)) in components {
+                        for (_component, (desc, arrays)) in components {
                             let list_array = arrays_to_list_array_opt(&arrays);
                             if let Some(list_array) = list_array {
-                                per_desc.insert(component, (desc, list_array));
+                                per_desc.insert(SerializedComponentColumn::new(list_array, desc));
                             }
                         }
                         per_desc

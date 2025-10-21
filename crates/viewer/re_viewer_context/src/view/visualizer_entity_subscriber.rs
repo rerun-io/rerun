@@ -5,6 +5,7 @@ use nohash_hasher::{IntMap, IntSet};
 use re_chunk::{ArchetypeName, ComponentIdentifier};
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPathHash, StoreId};
+use re_types_core::SerializedComponentColumn;
 
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, ViewSystemIdentifier,
@@ -201,11 +202,12 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
             }
 
             #[expect(clippy::iter_over_hash_type)]
-            for (component_descr, list_array) in event.diff.chunk.components().values() {
-                if let Some(index) = self
-                    .required_components_indices
-                    .get(&component_descr.component)
-                {
+            for SerializedComponentColumn {
+                list_array,
+                descriptor,
+            } in event.diff.chunk.components().values()
+            {
+                if let Some(index) = self.required_components_indices.get(&descriptor.component) {
                     // The component might be present, but logged completely empty.
                     // That shouldn't count towards filling "having the required component present"!
                     // (Note: This happens frequently now with `Transform3D`'s component which always get logged, thus tripping of the `AxisLengthDetector`!)` )

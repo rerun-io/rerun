@@ -35,7 +35,9 @@ use re_query::{QueryCache, StorageEngineLike};
 use re_sorbet::{
     ChunkColumnDescriptors, ColumnSelector, RowIdColumnDescriptor, TimeColumnSelector,
 };
-use re_types_core::{Loggable as _, archetypes, arrow_helpers::as_array_ref};
+use re_types_core::{
+    Loggable as _, SerializedComponentColumn, archetypes, arrow_helpers::as_array_ref,
+};
 
 // ---
 
@@ -259,17 +261,17 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         // Only way this could fail is if the number of rows did not match.
                         #[expect(clippy::unwrap_used)]
                         chunk
-                            .add_component(
+                            .add_component(SerializedComponentColumn::new(
+                                re_arrow_util::new_list_array_of_empties(
+                                    &child_datatype,
+                                    chunk.num_rows(),
+                                ),
                                 re_types_core::ComponentDescriptor {
                                     component_type: descr.component_type,
                                     archetype: descr.archetype,
                                     component: descr.component,
                                 },
-                                re_arrow_util::new_list_array_of_empties(
-                                    &child_datatype,
-                                    chunk.num_rows(),
-                                ),
-                            )
+                            ))
                             .unwrap();
 
                         (AtomicU64::new(0), chunk)
@@ -1163,9 +1165,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                         s.chunk
                             .components()
-                            .iter()
+                            .list_arrays()
                             .next()
-                            .map(|(_component, (_desc, list_array))| list_array.slice(s.cursor as usize, 1))
+                            .map(|list_array| list_array.slice(s.cursor as usize, 1))
 
                     }
 

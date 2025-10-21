@@ -72,7 +72,7 @@ pub type ChunkResult<T> = Result<T, ChunkError>;
 // ---
 
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct ChunkComponents(pub IntMap<ComponentIdentifier, (ComponentDescriptor, ArrowListArray)>);
+pub struct ChunkComponents(pub IntMap<ComponentIdentifier, SerializedComponentColumn>);
 
 impl ChunkComponents {
     /// Returns all list arrays for the given component type.
@@ -83,8 +83,8 @@ impl ChunkComponents {
         &self,
         component_type: ComponentType,
     ) -> impl Iterator<Item = &ArrowListArray> {
-        self.0.values().filter_map(move |(desc, array)| {
-            (desc.component_type == Some(component_type)).then_some(array)
+        self.0.values().filter_map(move |column| {
+            (column.descriptor.component_type == Some(component_type)).then_some(&column.list_array)
         })
     }
 
@@ -97,14 +97,14 @@ impl ChunkComponents {
     /// Useful for tests.
     pub fn ensure_similar(left: &Self, right: &Self) -> anyhow::Result<()> {
         anyhow::ensure!(left.len() == right.len());
-        for (component, (left_desc, left_array)) in left.iter() {
-            let Some((right_desc, right_array)) = right.get(*component) else {
+        for (component, left_column) in left.iter() {
+            let Some(right_column) = right.get(*component) else {
                 anyhow::bail!("rhs is missing {component:?}");
             };
-            anyhow::ensure!(left_desc == right_desc);
+            anyhow::ensure!(left_column.descriptor == right_column.descriptor);
 
-            let left_array = widen_binary_arrays(left_array);
-            let right_array = widen_binary_arrays(right_array);
+            let left_array = widen_binary_arrays(&left_column.list_array);
+            let right_array = widen_binary_arrays(&right_column.list_array);
             re_arrow_util::ensure_similar(&left_array.to_data(), &right_array.to_data())
                 .with_context(|| format!("Component {component:?}"))?;
         }
@@ -120,33 +120,53 @@ impl ChunkComponents {
     /// Lists all the component descriptors in this chunk.
     #[inline]
     pub fn component_descriptors(&self) -> impl Iterator<Item = &ComponentDescriptor> + '_ {
-        self.0.values().map(|(desc, _)| desc)
+        self.0.values().map(|column| &column.descriptor)
+    }
+
+    /// Lists all the component list arrays in this chunk.
+    #[inline]
+    pub fn list_arrays(&self) -> impl Iterator<Item = &ArrowListArray> + '_ {
+        self.0.values().map(|column| &column.list_array)
+    }
+
+    /// Lists all the component list arrays in this chunk.
+    #[inline]
+    pub fn list_arrays_mut(&mut self) -> impl Iterator<Item = &mut ArrowListArray> + '_ {
+        self.0.values_mut().map(|column| &mut column.list_array)
     }
 
     /// Returns the array for a given component if any.
     #[inline]
     pub fn get_array(&self, component: ComponentIdentifier) -> Option<&ArrowListArray> {
-        self.0.get(&component).map(|(_, array)| array)
+        self.0.get(&component).map(|column| &column.list_array)
     }
 
     /// Returns the descriptor for a given component if any.
     #[inline]
     pub fn get_descriptor(&self, component: ComponentIdentifier) -> Option<&ComponentDescriptor> {
-        self.0.get(&component).map(|(desc, _)| desc)
+        self.0.get(&component).map(|column| &column.descriptor)
     }
 
     /// Returns the descriptor and array for a given component if any.
     #[inline]
-    pub fn get(
-        &self,
-        component: ComponentIdentifier,
-    ) -> Option<&(ComponentDescriptor, ArrowListArray)> {
+    pub fn get(&self, component: ComponentIdentifier) -> Option<&SerializedComponentColumn> {
         self.0.get(&component)
+    }
+
+    /// Unconditionally inserts a [`SerializedComponentColumn`].
+    ///
+    /// Removes and replaces the column if it already exists.
+    #[inline]
+    pub fn insert(
+        &mut self,
+        column: SerializedComponentColumn,
+    ) -> Option<SerializedComponentColumn> {
+        self.0.insert(column.descriptor.component, column)
     }
 }
 
 impl std::ops::Deref for ChunkComponents {
-    type Target = IntMap<ComponentIdentifier, (ComponentDescriptor, ArrowListArray)>;
+    type Target = IntMap<ComponentIdentifier, SerializedComponentColumn>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -161,13 +181,14 @@ impl std::ops::DerefMut for ChunkComponents {
     }
 }
 
+// TODO(andreas): Remove this variant, we should let users construct `SerializedComponentColumn` directly to sharpen semantics.
 impl FromIterator<(ComponentDescriptor, ArrowListArray)> for ChunkComponents {
     #[inline]
     fn from_iter<T: IntoIterator<Item = (ComponentDescriptor, ArrowListArray)>>(iter: T) -> Self {
         let mut this = Self::default();
         {
             for (component_desc, list_array) in iter {
-                this.insert(component_desc.component, (component_desc, list_array));
+                this.insert(SerializedComponentColumn::new(list_array, component_desc));
             }
         }
         this
@@ -180,10 +201,7 @@ impl FromIterator<SerializedComponentColumn> for ChunkComponents {
         let mut this = Self::default();
         {
             for serialized in iter {
-                this.insert(
-                    serialized.descriptor.component,
-                    (serialized.descriptor, serialized.list_array),
-                );
+                this.insert(serialized);
             }
         }
         this
@@ -453,8 +471,8 @@ impl Chunk {
     pub fn num_events_cumulative(&self) -> u64 {
         // Reminder: component columns are sparse, we must take a look at the validity bitmaps.
         self.components
-            .values()
-            .map(|(_, list_array)| {
+            .list_arrays()
+            .map(|list_array| {
                 list_array.nulls().map_or_else(
                     || list_array.len() as u64,
                     |validity| validity.len() as u64 - validity.null_count() as u64,
@@ -519,7 +537,7 @@ impl Chunk {
         // Raw, potentially duplicated counts (because timestamps aren't necessarily unique).
         let mut counts_raw = vec![0u64; self.num_rows()];
         {
-            self.components.values().for_each(|(_, list_array)| {
+            self.components.list_arrays().for_each(|list_array| {
                 if let Some(validity) = list_array.nulls() {
                     validity
                         .iter()
@@ -568,8 +586,8 @@ impl Chunk {
 
         let result_unordered =
             self.components
-                .values()
-                .fold(HashMap::default(), |acc, (_, list_array)| {
+                .list_arrays()
+                .fold(HashMap::default(), |acc, list_array| {
                     if let Some(validity) = list_array.nulls() {
                         time_column.times().zip(validity.iter()).fold(
                             acc,
@@ -623,17 +641,17 @@ impl Chunk {
         if self.is_sorted() {
             self.components
                 .iter()
-                .filter_map(|(component, (_desc, list_array))| {
+                .filter_map(|(component, column)| {
                     let mut row_id_min = None;
                     let mut row_id_max = None;
 
                     for (i, &row_id) in row_ids.iter().enumerate() {
-                        if list_array.is_valid(i) {
+                        if column.list_array.is_valid(i) {
                             row_id_min = Some(row_id);
                         }
                     }
                     for (i, &row_id) in row_ids.iter().enumerate().rev() {
-                        if list_array.is_valid(i) {
+                        if column.list_array.is_valid(i) {
                             row_id_max = Some(row_id);
                         }
                     }
@@ -644,17 +662,17 @@ impl Chunk {
         } else {
             self.components
                 .iter()
-                .filter_map(|(component, (_desc, list_array))| {
+                .filter_map(|(component, column)| {
                     let mut row_id_min = Some(RowId::MAX);
                     let mut row_id_max = Some(RowId::ZERO);
 
                     for (i, &row_id) in row_ids.iter().enumerate() {
-                        if list_array.is_valid(i) && Some(row_id) > row_id_min {
+                        if column.list_array.is_valid(i) && Some(row_id) > row_id_min {
                             row_id_min = Some(row_id);
                         }
                     }
                     for (i, &row_id) in row_ids.iter().enumerate().rev() {
-                        if list_array.is_valid(i) && Some(row_id) < row_id_max {
+                        if column.list_array.is_valid(i) && Some(row_id) < row_id_max {
                             row_id_max = Some(row_id);
                         }
                     }
@@ -777,9 +795,9 @@ impl Chunk {
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
         let count = components
-            .iter()
+            .list_arrays()
             .next()
-            .map_or(0, |(_, (_desc, list_array))| list_array.len());
+            .map_or(0, |list_array| list_array.len());
 
         let row_ids = std::iter::from_fn({
             let tuid: re_tuid::Tuid = *id;
@@ -830,7 +848,7 @@ impl Chunk {
         }
     }
 
-    /// Unconditionally inserts an [`ArrowListArray`] as a component column.
+    /// Unconditionally inserts a [`SerializedComponentColumn`].
     ///
     /// Removes and replaces the column if it already exists.
     ///
@@ -838,11 +856,9 @@ impl Chunk {
     #[inline]
     pub fn add_component(
         &mut self,
-        component_desc: ComponentDescriptor,
-        list_array: ArrowListArray,
+        component_column: SerializedComponentColumn,
     ) -> ChunkResult<()> {
-        self.components
-            .insert(component_desc.component, (component_desc, list_array));
+        self.components.insert(component_column);
         self.sanity_check()
     }
 
@@ -1335,8 +1351,8 @@ impl TimeColumn {
         let times = self.times_raw();
         components
             .iter()
-            .filter_map(|(component, (_desc, list_array))| {
-                if let Some(validity) = list_array.nulls() {
+            .filter_map(|(component, column)| {
+                if let Some(validity) = column.list_array.nulls() {
                     // Potentially sparse
 
                     if validity.is_empty() {
@@ -1498,11 +1514,16 @@ impl Chunk {
 
         // Components
 
-        for (component, (desc, list_array)) in components.iter() {
-            if desc.component != *component {
+        for (component, column) in components.iter() {
+            let SerializedComponentColumn {
+                list_array,
+                descriptor,
+            } = column;
+
+            if descriptor.component != *component {
                 return Err(ChunkError::Malformed {
                     reason: format!(
-                        "Component key & descriptor mismatch. Descriptor: {desc:?}. Key: {component:?}",
+                        "Component key & descriptor mismatch. Descriptor: {descriptor:?}. Key: {component:?}",
                     ),
                 });
             }

@@ -264,11 +264,11 @@ mod tests {
                     .entry(event.chunk.entity_path().clone())
                     .or_default() += delta_chunks;
 
-                for (component_desc, list_array) in event.chunk.components().values() {
-                    let delta = event.delta() * list_array.iter().flatten().count() as i64;
+                for column in event.chunk.components().values() {
+                    let delta = event.delta() * column.list_array.iter().flatten().count() as i64;
                     *self
                         .component_descrs
-                        .entry(component_desc.clone())
+                        .entry(column.descriptor.clone())
                         .or_default() += delta;
                 }
 

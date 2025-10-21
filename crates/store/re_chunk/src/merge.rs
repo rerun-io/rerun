@@ -5,6 +5,7 @@ use itertools::{Itertools as _, izip};
 use nohash_hasher::IntMap;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_types_core::SerializedComponentColumn;
 
 use crate::{Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn, chunk::ChunkComponents};
 
@@ -87,32 +88,32 @@ impl Chunk {
             re_tracing::profile_scope!("components (r2l)");
             lhs_per_component
                 .values()
-                .filter_map(|(lhs_component_desc, lhs_list_array)| {
-                    re_tracing::profile_scope!(lhs_component_desc.to_string());
-                    if let Some(&(rhs_component_desc, rhs_list_array)) =
-                        rhs_per_component.get(&lhs_component_desc.component)
+                .filter_map(|lhs_column| {
+                    re_tracing::profile_scope!(lhs_column.descriptor.to_string());
+                    if let Some(&rhs_column) =
+                        rhs_per_component.get(&lhs_column.descriptor.component)
                     {
-                        if lhs_component_desc != rhs_component_desc {
-                            re_log::warn_once!("lhs and rhs have different component descriptors for the same component: {lhs_component_desc} != {rhs_component_desc}");
+                        if lhs_column.descriptor != rhs_column.descriptor {
+                            re_log::warn_once!("lhs and rhs have different component descriptors for the same component: {} != {}", lhs_column.descriptor, rhs_column.descriptor);
                         }
 
                         re_tracing::profile_scope!(format!(
                             "concat (lhs={} rhs={})",
-                            re_format::format_uint(lhs_list_array.values().len()),
-                            re_format::format_uint(rhs_list_array.values().len()),
+                            re_format::format_uint(lhs_column.list_array.values().len()),
+                            re_format::format_uint(rhs_column.list_array.values().len()),
                         ));
 
                         let list_array =
-                            re_arrow_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
+                            re_arrow_util::concat_arrays(&[&lhs_column.list_array, &rhs_column.list_array]).ok()?;
                         let list_array = list_array.downcast_array_ref::<ArrowListArray>()?.clone();
 
-                        Some((lhs_component_desc.clone(), list_array))
+                        Some((lhs_column.descriptor.clone(), list_array))
                     } else {
                         re_tracing::profile_scope!("pad");
                         Some((
-                            lhs_component_desc.clone(),
+                            lhs_column.descriptor.clone(),
                             re_arrow_util::pad_list_array_back(
-                                lhs_list_array,
+                                &lhs_column.list_array,
                                 self.num_rows() + rhs.num_rows(),
                             ),
                         ))
@@ -126,42 +127,42 @@ impl Chunk {
             re_tracing::profile_scope!("components (l2r)");
             let rhs = rhs_per_component
                 .values()
-                .filter_map(|(rhs_component_desc, rhs_list_array)| {
-                    if components.contains_key(&rhs_component_desc.component) {
+                .filter_map(|rhs_column| {
+                    if components.contains_key(&rhs_column.descriptor.component) {
                         // Already did that one during the first pass.
                         return None;
                     }
 
-                    re_tracing::profile_scope!(rhs_component_desc.component.to_string());
+                    re_tracing::profile_scope!(rhs_column.descriptor.component.to_string());
 
-                    if let Some(&(lhs_component_desc, lhs_list_array)) =
-                        lhs_per_component.get(&rhs_component_desc.component)
+                    if let Some(&lhs_column) =
+                        lhs_per_component.get(&rhs_column.descriptor.component)
                     {
-                        if lhs_component_desc != rhs_component_desc {
-                            re_log::warn_once!("lhs and rhs have different component descriptors for the same component: {lhs_component_desc} != {rhs_component_desc}");
+                        if lhs_column.descriptor != rhs_column.descriptor {
+                            re_log::warn_once!("lhs and rhs have different component descriptors for the same component: {} != {}", lhs_column.descriptor, rhs_column.descriptor);
                         }
 
                         re_tracing::profile_scope!(format!(
                             "concat (lhs={} rhs={})",
-                            re_format::format_uint(lhs_list_array.values().len()),
-                            re_format::format_uint(rhs_list_array.values().len()),
+                            re_format::format_uint(lhs_column.list_array.values().len()),
+                            re_format::format_uint(rhs_column.list_array.values().len()),
                         ));
 
                         let list_array =
-                            re_arrow_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
+                            re_arrow_util::concat_arrays(&[&lhs_column.list_array, &rhs_column.list_array]).ok()?;
                         let list_array = list_array.downcast_array_ref::<ArrowListArray>()?.clone();
 
-                        Some((rhs_component_desc.component, (rhs_component_desc.clone(), list_array)))
+                        Some((rhs_column.descriptor.component, SerializedComponentColumn::new(list_array, rhs_column.descriptor.clone())))
                     } else {
                         re_tracing::profile_scope!("pad");
                         Some((
-                            rhs_component_desc.component,
-                            (
-                                rhs_component_desc.clone(),
+                            rhs_column.descriptor.component,
+                            SerializedComponentColumn::new(
                                 re_arrow_util::pad_list_array_front(
-                                    rhs_list_array,
+                                    &rhs_column.list_array,
                                     self.num_rows() + rhs.num_rows(),
                                 ),
+                                rhs_column.descriptor.clone(),
                             ),
                         ))
                     }
@@ -236,16 +237,13 @@ impl Chunk {
     /// Ignores potential differences in component descriptors.
     #[inline]
     pub fn same_datatypes(&self, rhs: &Self) -> bool {
-        self.components
-            .values()
-            .all(|(lhs_component_desc, lhs_list_array)| {
-                if let Some(rhs_list_array) = rhs.components.get_array(lhs_component_desc.component)
-                {
-                    lhs_list_array.data_type() == rhs_list_array.data_type()
-                } else {
-                    true
-                }
-            })
+        self.components.values().all(|lhs_column| {
+            if let Some(rhs_column) = rhs.components.get(lhs_column.descriptor.component) {
+                lhs_column.list_array.data_type() == rhs_column.list_array.data_type()
+            } else {
+                true
+            }
+        })
     }
 
     /// Returns true if two chunks are concatenable.

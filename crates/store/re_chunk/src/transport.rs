@@ -4,7 +4,7 @@ use nohash_hasher::IntMap;
 
 use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
 use re_byte_size::SizeBytes as _;
-use re_types_core::{ComponentDescriptor, arrow_helpers::as_array_ref};
+use re_types_core::{ComponentDescriptor, SerializedComponentColumn, arrow_helpers::as_array_ref};
 
 use crate::{Chunk, ChunkError, ChunkResult, TimeColumn, chunk::ChunkComponents};
 
@@ -83,13 +83,16 @@ impl Chunk {
 
             let mut components = components
                 .values()
-                .map(|(desc, list_array)| {
-                    let list_array = ArrowListArray::from(list_array.clone());
-                    let ComponentDescriptor {
-                        archetype,
-                        component,
-                        component_type,
-                    } = *desc;
+                .map(|column| {
+                    let SerializedComponentColumn {
+                        list_array,
+                        descriptor:
+                            ComponentDescriptor {
+                                archetype,
+                                component,
+                                component_type,
+                            },
+                    } = column.clone();
 
                     if let Some(c) = component_type {
                         c.sanity_check();
@@ -207,7 +210,10 @@ impl Chunk {
                 };
 
                 if components
-                    .insert(schema.component, (component_desc, column.clone()))
+                    .insert(SerializedComponentColumn::new(
+                        column.clone(),
+                        component_desc,
+                    ))
                     .is_some()
                 {
                     return Err(ChunkError::Malformed {

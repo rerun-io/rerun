@@ -81,11 +81,11 @@ impl ChunkUi {
         let components = chunk
             .components()
             .iter()
-            .map(|(component, (_desc, list_array))| {
+            .map(|(component, column)| {
                 (
                     component,
                     // TODO(#11071): use re_arrow_ui to format the datatype here
-                    re_arrow_util::format_data_type(list_array.data_type()),
+                    re_arrow_util::format_data_type(column.list_array.data_type()),
                 )
             })
             .collect::<BTreeMap<_, _>>();

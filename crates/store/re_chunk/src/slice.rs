@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_log_types::TimelineName;
-use re_types_core::ComponentIdentifier;
+use re_types_core::{ComponentIdentifier, SerializedComponentColumn};
 
 use crate::{Chunk, RowId, TimeColumn};
 
@@ -86,8 +86,11 @@ impl Chunk {
                 .collect(),
             components: components
                 .values()
-                .map(|(component_desc, list_array)| {
-                    (component_desc.clone(), list_array.clone().slice(index, len))
+                .map(|column| {
+                    SerializedComponentColumn::new(
+                        column.list_array.clone().slice(index, len),
+                        column.descriptor.clone(),
+                    )
                 })
                 .collect(),
         };
@@ -194,7 +197,12 @@ impl Chunk {
             timelines: timelines.clone(),
             components: components
                 .get(component)
-                .map(|(component_desc, list_array)| (component_desc.clone(), list_array.clone()))
+                .map(|column| {
+                    SerializedComponentColumn::new(
+                        column.list_array.clone(),
+                        column.descriptor.clone(),
+                    )
+                })
                 .into_iter()
                 .collect(),
         };
@@ -303,9 +311,10 @@ impl Chunk {
                 .collect(),
             components: components
                 .values()
-                .map(|(component_desc, list_array)| {
-                    let filtered = re_arrow_util::filter_array(list_array, &validity_filter);
-                    let filtered = if component_desc.component == component_pov {
+                .map(|column| {
+                    let filtered =
+                        re_arrow_util::filter_array(&column.list_array, &validity_filter);
+                    let filtered = if column.descriptor.component == component_pov {
                         // Make sure we fully remove the validity bitmap for the densified
                         // component.
                         // This will allow further operations on this densified chunk to take some
@@ -316,7 +325,7 @@ impl Chunk {
                         filtered
                     };
 
-                    (component_desc.clone(), filtered)
+                    SerializedComponentColumn::new(filtered, column.descriptor.clone())
                 })
                 .collect(),
         };
@@ -377,12 +386,15 @@ impl Chunk {
                 .collect(),
             components: components
                 .values()
-                .map(|(component_desc, list_array)| {
-                    let field = match list_array.data_type() {
+                .map(|column| {
+                    let field = match column.list_array.data_type() {
                         arrow::datatypes::DataType::List(field) => field.clone(),
                         _ => unreachable!("This is always s list array"),
                     };
-                    (component_desc.clone(), ArrowListArray::new_null(field, 0))
+                    SerializedComponentColumn::new(
+                        ArrowListArray::new_null(field, 0),
+                        column.descriptor.clone(),
+                    )
                 })
                 .collect(),
         }
@@ -484,9 +496,9 @@ impl Chunk {
             components: self
                 .components
                 .values()
-                .map(|(component_desc, list_array)| {
-                    let filtered = re_arrow_util::take_array(list_array, &indices);
-                    (component_desc.clone(), filtered)
+                .map(|column| {
+                    let filtered = re_arrow_util::take_array(&column.list_array, &indices);
+                    SerializedComponentColumn::new(filtered, column.descriptor.clone())
                 })
                 .collect(),
         };
@@ -555,9 +567,9 @@ impl Chunk {
                 .collect(),
             components: components
                 .values()
-                .map(|(component_desc, list_array)| {
-                    let filtered = re_arrow_util::filter_array(list_array, filter);
-                    (component_desc.clone(), filtered)
+                .map(|column| {
+                    let filtered = re_arrow_util::filter_array(&column.list_array, filter);
+                    SerializedComponentColumn::new(filtered, column.descriptor.clone())
                 })
                 .collect(),
         };
@@ -638,9 +650,9 @@ impl Chunk {
                 .collect(),
             components: components
                 .values()
-                .map(|(component_desc, list_array)| {
-                    let taken = re_arrow_util::take_array(list_array, indices);
-                    (component_desc.clone(), taken)
+                .map(|column| {
+                    let taken = re_arrow_util::take_array(&column.list_array, indices);
+                    SerializedComponentColumn::new(taken, column.descriptor.clone())
                 })
                 .collect(),
         };
