@@ -310,7 +310,7 @@ impl LensBuilder {
     /// component specified via [`Self::for_input_column`].
     ///
     /// The new column will be placed on the same entity path as the input column.
-    pub fn add_output_column(
+    pub fn add_component_column(
         mut self,
         component_descr: ComponentDescriptor,
         ops: impl IntoIterator<Item = Op>,
@@ -329,7 +329,7 @@ impl LensBuilder {
     /// component specified via [`Self::for_input_column`].
     ///
     /// The new column will be placed at `entity_path`.
-    pub fn add_output_column_entity(
+    pub fn add_component_column_entity(
         mut self,
         entity_path: impl Into<EntityPath>,
         component_descr: ComponentDescriptor,
@@ -348,7 +348,7 @@ impl LensBuilder {
     /// Can be used to extract a time column from the component specified via
     /// [`Self::for_input_column`].
     ///
-    /// The output column will be placed on the same entity path as the input column.
+    /// The new column will be placed on the same entity path as the input column.
     pub fn add_time_column(
         mut self,
         timeline_name: impl Into<TimelineName>,
@@ -392,7 +392,7 @@ impl LensBuilder {
     /// The new column will be placed on the same entity path as the input column.
     ///
     /// In most cases, static columns should have a single row only.
-    pub fn add_static_output_column(
+    pub fn add_static_component_column(
         mut self,
         component_descr: ComponentDescriptor,
         ops: impl IntoIterator<Item = Op>,
@@ -413,7 +413,7 @@ impl LensBuilder {
     /// The new column will be placed at `entity_path`.
     ///
     /// In most cases, static columns should have a single row only.
-    pub fn add_static_output_column_entity(
+    pub fn add_static_component_column_entity(
         mut self,
         entity_path: impl Into<EntityPath>,
         component_descr: ComponentDescriptor,
@@ -639,7 +639,7 @@ mod test {
 
         let destructure =
             Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
-                .add_output_column_entity(
+                .add_component_column_entity(
                     "nullability/a",
                     Scalars::descriptor_scalars(),
                     [Op::access_field("a"), Op::cast(DataType::Float64)],
@@ -664,7 +664,7 @@ mod test {
 
         let destructure =
             Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
-                .add_output_column_entity(
+                .add_component_column_entity(
                     "nullability/b",
                     Scalars::descriptor_scalars(),
                     [Op::access_field("b")],
@@ -707,8 +707,8 @@ mod test {
 
         let count =
             Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
-                .add_output_column(ComponentDescriptor::partial("counts"), [Op::func(count_fn)])
-                .add_output_column(
+                .add_component_column(ComponentDescriptor::partial("counts"), [Op::func(count_fn)])
+                .add_component_column(
                     ComponentDescriptor::partial("original"),
                     [], // no operations
                 )
@@ -743,12 +743,12 @@ mod test {
 
         let static_lens =
             Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
-                .add_static_output_column_entity(
+                .add_static_component_column_entity(
                     "nullability/static",
                     ComponentDescriptor::partial("static_metadata_a"),
                     [Op::constant(metadata_builder_a.finish())],
                 )
-                .add_static_output_column_entity(
+                .add_static_component_column_entity(
                     "nullability/static",
                     ComponentDescriptor::partial("static_metadata_b"),
                     [Op::constant(metadata_builder_b.finish())],
@@ -812,7 +812,7 @@ mod test {
             "my_timestamp",
         )
         .add_time_column("my_timeline", TimeType::Sequence, [])
-        .add_output_column(ComponentDescriptor::partial("extracted_time"), [])
+        .add_component_column(ComponentDescriptor::partial("extracted_time"), [])
         .build();
 
         let pipeline = LensRegistry {
