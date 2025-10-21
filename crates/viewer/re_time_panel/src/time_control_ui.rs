@@ -155,7 +155,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
             .on_hover_ui(|ui| UICommand::PlaybackTogglePlayPause.tooltip_ui(ui))
             .clicked()
         {
-            time_commands.push(TimeControlCommand::TogglePlayPause);
+            time_commands.push(TimeControlCommand::SetPlayState(PlayState::Playing));
         }
     }
 
