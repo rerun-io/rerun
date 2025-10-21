@@ -489,7 +489,6 @@ fn handle_ui_interactions(
             &map_response,
             Item::DataResult(query.view_id, instance_path.clone()),
             false,
-            false,
         );
 
         // double click selects the entire entity

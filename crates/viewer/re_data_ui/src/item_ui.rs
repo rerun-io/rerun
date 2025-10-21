@@ -539,7 +539,7 @@ pub fn cursor_interact_with_selectable(
     let is_item_hovered =
         ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-    ctx.handle_select_hover_drag_interactions(&response, item, false, false);
+    ctx.handle_select_hover_drag_interactions(&response, item, false);
     // TODO(andreas): How to deal with shift click for selecting ranges?
 
     if is_item_hovered {
@@ -822,7 +822,8 @@ pub fn entity_db_button_ui(
         }
     }
 
-    ctx.handle_select_hover_drag_interactions(&response, item.clone(), false, true);
+    ctx.handle_select_hover_drag_interactions(&response, item.clone(), false);
+    ctx.handle_select_focus_sync(&response, item.clone());
 }
 
 pub fn table_id_button_ui(
@@ -877,5 +878,5 @@ pub fn table_id_button_ui(
                 table_id.clone().into(),
             ));
     }
-    ctx.handle_select_hover_drag_interactions(&response, item, false, false);
+    ctx.handle_select_hover_drag_interactions(&response, item, false);
 }

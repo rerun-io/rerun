@@ -1078,7 +1078,8 @@ impl TimePanel {
             response,
             SelectionUpdateBehavior::UseSelection,
         );
-        ctx.handle_select_hover_drag_interactions(response, item.clone(), is_draggable, true);
+        ctx.handle_select_hover_drag_interactions(response, item.clone(), is_draggable);
+        ctx.handle_select_focus_sync(response, item.clone());
 
         self.handle_range_selection(ctx, streams_tree_data, entity_db, item.clone(), response);
 

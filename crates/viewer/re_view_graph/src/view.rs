@@ -225,7 +225,7 @@ impl ViewClass for GraphView {
             .response;
 
         if let Some((item, response)) = hover_click_item {
-            ctx.handle_select_hover_drag_interactions(&response, item, false, false);
+            ctx.handle_select_hover_drag_interactions(&response, item, false);
         } else if resp.hovered() {
             ctx.selection_state().set_hovered(Item::View(query.view_id));
         }

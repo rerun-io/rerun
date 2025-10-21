@@ -400,7 +400,7 @@ fn component_ui(
     });
 
     if interactive {
-        ctx.handle_select_hover_drag_interactions(&response, item, false, false);
+        ctx.handle_select_hover_drag_interactions(&response, item, false);
     }
 }
 

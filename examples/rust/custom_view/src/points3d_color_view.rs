@@ -317,19 +317,13 @@ fn color_space_ui(
                 &interact,
                 Item::DataResult(query.view_id, instance),
                 false,
-                false,
             );
         }
     }
 
     // If no point was selected, then select the view.
     if !hovering_any_point {
-        ctx.handle_select_hover_drag_interactions(
-            &response,
-            Item::View(query.view_id),
-            false,
-            false,
-        );
+        ctx.handle_select_hover_drag_interactions(&response, Item::View(query.view_id), false);
     }
 
     response

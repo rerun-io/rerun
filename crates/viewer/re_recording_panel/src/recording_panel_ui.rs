@@ -193,7 +193,8 @@ fn all_sections_ui(
                 .item_response
         };
 
-        ctx.handle_select_hover_drag_interactions(&response, item, false, true);
+        ctx.handle_select_hover_drag_interactions(&response, item.clone(), false);
+        ctx.handle_select_focus_sync(&response, item.clone());
 
         if response.clicked() {
             re_redap_browser::switch_to_welcome_screen(ctx.command_sender());
@@ -271,7 +272,8 @@ fn server_section_ui(
         .item_response
         .on_hover_text(origin.to_string());
 
-    ctx.handle_select_hover_drag_interactions(&item_response, server_data.item(), false, true);
+    ctx.handle_select_hover_drag_interactions(&item_response, server_data.item(), false);
+    ctx.handle_select_focus_sync(&item_response, server_data.item());
 
     if item_response.clicked() {
         ctx.command_sender()
@@ -555,7 +557,9 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
         app_id.data_ui_recording(ctx, ui, UiLayout::Tooltip);
     });
 
-    ctx.handle_select_hover_drag_interactions(&item_response, item, false, true);
+    ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
+    ctx.handle_select_focus_sync(&item_response, item.clone());
+
     if item_response.clicked() {
         //TODO(ab): shouldn't this be done by handle_select_hover_drag_interactions?
         ctx.command_sender()

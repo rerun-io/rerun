@@ -252,14 +252,13 @@ impl ViewerContext<'_> {
     ///   selection is dragged.
     /// - When dragging a selected item, the entire selection is dragged as well.
     ///
-    /// Set `focus_sync` to true if the _this_ is where the user would expect keyboard focus to be
-    /// when the item is selected (e.g. blueprint tree for views, recording panel for recordings).
+    /// You might also want to call [`Self::handle_select_focus_sync`] to keep keyboard focus in
+    /// sync with selection.
     pub fn handle_select_hover_drag_interactions(
         &self,
         response: &egui::Response,
         interacted_items: impl Into<ItemCollection>,
         draggable: bool,
-        focus_sync: bool,
     ) {
         let mut interacted_items = interacted_items
             .into()
@@ -275,19 +274,6 @@ impl ViewerContext<'_> {
         // If we were just selected, scroll into view
         if single_selected && self.selection_state().selection_changed() {
             response.scroll_to_me(None);
-        }
-
-        if focus_sync && single_selected {
-            // If selection changes, and a single item is selected, the selected item should
-            // receive egui focus
-            let selection_changed = self.selection_state().selection_changed();
-
-            // If there is a single selected item and nothing is focused, focus that item.
-            let nothing_focused = response.ctx.memory(|mem| mem.focused().is_none());
-
-            if selection_changed || nothing_focused {
-                response.request_focus();
-            }
         }
 
         if draggable && response.drag_started() {
@@ -404,6 +390,34 @@ impl ViewerContext<'_> {
             // but not when focused using e.g. the tab key.
             self.command_sender()
                 .send_system(SystemCommand::SetSelection(interacted_items));
+        }
+    }
+
+    /// Helper to synchronize item selection with egui focus.
+    ///
+    /// Call if _this_ is where the user would expect keyboard focus to be
+    /// when the item is selected (e.g. blueprint tree for views, recording panel for recordings).
+    pub fn handle_select_focus_sync(
+        &self,
+        response: &egui::Response,
+        interacted_items: impl Into<ItemCollection>,
+    ) {
+        let interacted_items = interacted_items
+            .into()
+            .into_mono_instance_path_items(self.recording(), &self.current_query());
+
+        let single_selected = self.selection().single_item() == interacted_items.single_item();
+        if single_selected {
+            // If selection changes, and a single item is selected, the selected item should
+            // receive egui focus
+            let selection_changed = self.selection_state().selection_changed();
+
+            // If there is a single selected item and nothing is focused, focus that item.
+            let nothing_focused = response.ctx.memory(|mem| mem.focused().is_none());
+
+            if selection_changed || nothing_focused {
+                response.request_focus();
+            }
         }
     }
 

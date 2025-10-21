@@ -654,7 +654,8 @@ impl BlueprintTree {
             SelectionUpdateBehavior::UseSelection,
         );
         self.scroll_to_me_if_needed(ui, item, response);
-        ctx.handle_select_hover_drag_interactions(response, item.clone(), true, true);
+        ctx.handle_select_hover_drag_interactions(response, item.clone(), true);
+        ctx.handle_select_focus_sync(response, item.clone());
 
         self.handle_range_selection(ctx, blueprint_tree_data, item.clone(), response);
     }
