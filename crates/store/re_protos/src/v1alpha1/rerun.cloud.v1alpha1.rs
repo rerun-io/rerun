@@ -59,6 +59,11 @@ pub struct DataSource {
     /// / Defaults to `base` if unspecified.
     #[prost(string, optional, tag = "3")]
     pub layer: ::core::option::Option<::prost::alloc::string::String>,
+    /// / Is this a prefix URL (a directory)?
+    /// / If true, all files of `typ` under this prefix will be
+    /// / considered part of this data source.
+    #[prost(bool, tag = "4")]
+    pub prefix: bool,
     /// What kind of data is it (e.g. rrd, mcap, Lance, etc)?
     #[prost(enumeration = "DataSourceKind", tag = "2")]
     pub typ: i32,

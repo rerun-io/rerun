@@ -9504,6 +9504,7 @@ dependencies = [
  "anyhow",
  "arrow",
  "bincode",
+ "cfg-if",
  "chrono",
  "clap",
  "datafusion",
@@ -10619,6 +10620,7 @@ dependencies = [
  "re_error",
  "re_log",
  "re_memory",
+ "re_server",
  "rerun",
 ]
 
