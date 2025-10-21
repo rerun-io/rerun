@@ -97,6 +97,10 @@ impl Points3DVisualizer {
             let colors =
                 process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
+            // TODO(grtlr): The following is a quick fix to get multiple instance poses to work
+            // with point clouds: We sent the same point cloud multiple times to the GPU (bad
+            // for memory) and render them with multiple draw calls across different batches (bad
+            // for performance).
             for world_from_obj in ent_context
                 .transform_info
                 .target_from_instances(Points3D::name())
