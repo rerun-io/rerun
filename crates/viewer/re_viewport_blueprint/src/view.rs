@@ -148,23 +148,24 @@ impl ViewBlueprint {
         let results = blueprint_db.storage_engine().cache().latest_at(
             query,
             &id.as_entity_path(),
-            blueprint_archetypes::ViewBlueprint::all_components().iter(),
+            blueprint_archetypes::ViewBlueprint::all_component_identifiers(),
         );
 
         // This is a required component. Note that when loading views we crawl the subtree and so
         // cleared empty views paths may exist transiently. The fact that they have an empty class_identifier
         // is the marker that the have been cleared and not an error.
         let class_identifier = results.component_mono::<blueprint_components::ViewClass>(
-            &blueprint_archetypes::ViewBlueprint::descriptor_class_identifier(),
+            blueprint_archetypes::ViewBlueprint::descriptor_class_identifier().component,
         )?;
         let display_name = results.component_mono::<Name>(
-            &blueprint_archetypes::ViewBlueprint::descriptor_display_name(),
+            blueprint_archetypes::ViewBlueprint::descriptor_display_name().component,
         );
         let space_origin = results.component_mono::<ViewOrigin>(
-            &blueprint_archetypes::ViewBlueprint::descriptor_space_origin(),
+            blueprint_archetypes::ViewBlueprint::descriptor_space_origin().component,
         );
-        let visible = results
-            .component_mono::<Visible>(&blueprint_archetypes::ViewBlueprint::descriptor_visible());
+        let visible = results.component_mono::<Visible>(
+            blueprint_archetypes::ViewBlueprint::descriptor_visible().component,
+        );
 
         let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
         let class_identifier: ViewClassIdentifier = class_identifier.0.as_str().into();
@@ -271,18 +272,18 @@ impl ViewBlueprint {
                             .flat_map(|v| v.into_iter())
                             // It's important that we don't include the ViewBlueprint's components
                             // since those will be updated separately and may contain different data.
-                            .filter(|component_descr| {
+                            .filter(|component| {
                                 *path != current_path
-                                    || !blueprint_archetypes::ViewBlueprint::all_components()
-                                        .iter()
-                                        .any(|descr| descr == component_descr)
+                                    || !blueprint_archetypes::ViewBlueprint::all_component_identifiers()
+                                        .contains(component)
                             })
-                            .filter_map(|component_descr| {
+                            .filter_map(|component| {
                                 let array = blueprint_engine
                                     .cache()
-                                    .latest_at(query, path, [&component_descr])
-                                    .component_batch_raw(&component_descr);
-                                array.map(|array| (component_descr, array))
+                                    .latest_at(query, path, [component])
+                                    .component_batch_raw(component)?;
+                                let descriptor = blueprint_engine.store().entity_component_descriptor(path, component)?;
+                                Some((descriptor, array))
                             }),
                     )
                     .build();
@@ -404,7 +405,7 @@ impl ViewBlueprint {
             self.id,
         );
         let ranges = property.component_array::<blueprint_components::VisibleTimeRange>(
-            &blueprint_archetypes::VisibleTimeRanges::descriptor_ranges(),
+            blueprint_archetypes::VisibleTimeRanges::descriptor_ranges().component,
         );
 
         let time_range = ranges.ok().flatten().and_then(|ranges| {
@@ -454,13 +455,13 @@ mod tests {
     use std::{collections::HashMap, sync::Arc};
 
     use ahash::HashSet;
-    use re_chunk::RowId;
+    use re_chunk::{ComponentIdentifier, RowId};
     use re_log_types::{
         StoreKind, TimePoint,
         example_components::{MyLabel, MyPoint, MyPoints},
     };
     use re_test_context::TestContext;
-    use re_types::{ComponentDescriptor, blueprint::archetypes::EntityBehavior};
+    use re_types::blueprint::archetypes::EntityBehavior;
     use re_viewer_context::{
         IndicatedEntities, MaybeVisualizableEntities, OverridePath, PerVisualizer,
         ViewClassPlaceholder, VisualizableEntities,
@@ -525,7 +526,7 @@ mod tests {
 
         struct Scenario {
             blueprint_overrides: Vec<(EntityPath, Box<dyn re_types_core::AsComponents>)>,
-            expected_overrides: HashMap<EntityPath, HashSet<ComponentDescriptor>>,
+            expected_overrides: HashMap<EntityPath, HashSet<ComponentIdentifier>>,
             expected_hidden: HashSet<EntityPath>,
             expected_non_interactive: HashSet<EntityPath>,
         }
@@ -548,7 +549,7 @@ mod tests {
                 )],
                 expected_overrides: HashMap::from([(
                     "parent".into(),
-                    std::iter::once(MyPoints::descriptor_labels()).collect(),
+                    std::iter::once(MyPoints::descriptor_labels().component).collect(),
                 )]),
                 expected_hidden: HashSet::default(),
                 expected_non_interactive: HashSet::default(),
@@ -561,7 +562,7 @@ mod tests {
                 )],
                 expected_overrides: HashMap::from([(
                     "parent".into(),
-                    std::iter::once(EntityBehavior::descriptor_visible()).collect(),
+                    std::iter::once(EntityBehavior::descriptor_visible().component).collect(),
                 )]),
                 expected_hidden: [
                     "parent/skipped/grandchild".into(),
@@ -588,11 +589,11 @@ mod tests {
                 expected_overrides: HashMap::from([
                     (
                         "parent".into(),
-                        std::iter::once(EntityBehavior::descriptor_visible()).collect(),
+                        std::iter::once(EntityBehavior::descriptor_visible().component).collect(),
                     ),
                     (
                         "parent/skipped".into(),
-                        std::iter::once(EntityBehavior::descriptor_visible()).collect(),
+                        std::iter::once(EntityBehavior::descriptor_visible().component).collect(),
                     ),
                 ]),
                 expected_hidden: ["parent".into(), "parent/child".into()]
@@ -608,7 +609,7 @@ mod tests {
                 )],
                 expected_overrides: HashMap::from([(
                     "parent".into(),
-                    HashSet::from_iter([EntityBehavior::descriptor_interactive()]),
+                    HashSet::from_iter([EntityBehavior::descriptor_interactive().component]),
                 )]),
                 expected_hidden: HashSet::default(),
                 expected_non_interactive: [
@@ -635,11 +636,13 @@ mod tests {
                 expected_overrides: HashMap::from([
                     (
                         "parent".into(),
-                        std::iter::once(EntityBehavior::descriptor_interactive()).collect(),
+                        std::iter::once(EntityBehavior::descriptor_interactive().component)
+                            .collect(),
                     ),
                     (
                         "parent/skipped".into(),
-                        std::iter::once(EntityBehavior::descriptor_interactive()).collect(),
+                        std::iter::once(EntityBehavior::descriptor_interactive().component)
+                            .collect(),
                     ),
                 ]),
                 expected_hidden: HashSet::default(),
@@ -708,7 +711,7 @@ mod tests {
                     .cloned()
                     .unwrap_or_default();
 
-                for (component_descr, override_path) in component_overrides {
+                for (component, override_path) in component_overrides {
                     assert_eq!(
                         override_path.store_kind,
                         StoreKind::Blueprint,
@@ -716,8 +719,8 @@ mod tests {
                     );
 
                     assert!(
-                        expected_overrides.remove(component_descr),
-                        "Scenario {i}: expected override for {component_descr} at {override_path:?} but got none"
+                        expected_overrides.remove(component),
+                        "Scenario {i}: expected override for {component} at {override_path:?} but got none"
                     );
 
                     assert_eq!(

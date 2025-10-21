@@ -8549,7 +8549,7 @@ dependencies = [
  "re_chunk_store",
  "re_format",
  "re_log_types",
- "re_types",
+ "re_types_core",
  "re_ui",
  "re_viewer_context",
 ]
@@ -8790,7 +8790,6 @@ dependencies = [
  "parking_lot",
  "re_arrow_util",
  "re_dataframe",
- "re_log_encoding",
  "re_log_types",
  "re_protos",
  "re_redap_client",
@@ -8971,7 +8970,9 @@ dependencies = [
  "re_sdk",
  "re_server",
  "re_uri",
+ "re_view_bar_chart",
  "re_view_text_document",
+ "re_view_text_log",
  "re_viewer",
  "re_viewport_blueprint",
  "tempfile",
@@ -9172,6 +9173,7 @@ dependencies = [
  "tonic",
  "tonic-prost",
  "tower",
+ "tracing",
  "url",
 ]
 
@@ -9329,7 +9331,6 @@ dependencies = [
  "re_arrow_util",
  "re_chunk",
  "re_format_arrow",
- "re_log_encoding",
  "re_log_types",
  "re_protos",
  "re_sdk",
@@ -9502,6 +9503,7 @@ dependencies = [
  "anyhow",
  "arrow",
  "bincode",
+ "cfg-if",
  "chrono",
  "clap",
  "datafusion",
@@ -9676,7 +9678,6 @@ dependencies = [
  "re_test_context",
  "re_tracing",
  "re_types",
- "re_types_core",
  "re_ui",
  "re_viewer_context",
  "re_viewport_blueprint",
@@ -10617,6 +10618,7 @@ dependencies = [
  "re_error",
  "re_log",
  "re_memory",
+ "re_server",
  "rerun",
 ]
 

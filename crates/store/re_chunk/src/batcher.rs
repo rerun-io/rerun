@@ -4,7 +4,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use arrow::array::{Array as ArrowArray, ArrayRef};
 use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use crossbeam::channel::{Receiver, Sender};
 use nohash_hasher::IntMap;
@@ -12,7 +11,7 @@ use nohash_hasher::IntMap;
 use re_arrow_util::arrays_to_list_array_opt;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, Timeline, TimelineName};
-use re_types_core::ComponentDescriptor;
+use re_types_core::{ComponentIdentifier, SerializedComponentBatch, SerializedComponentColumn};
 
 use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn, chunk::ChunkComponents};
 
@@ -784,17 +783,34 @@ pub struct PendingRow {
     /// The component data.
     ///
     /// Each array is a single component, i.e. _not_ a list array.
-    pub components: IntMap<ComponentDescriptor, ArrayRef>,
+    pub components: IntMap<ComponentIdentifier, SerializedComponentBatch>,
 }
 
 impl PendingRow {
     #[inline]
-    pub fn new(timepoint: TimePoint, components: IntMap<ComponentDescriptor, ArrayRef>) -> Self {
+    pub fn new(
+        timepoint: TimePoint,
+        components: IntMap<ComponentIdentifier, SerializedComponentBatch>,
+    ) -> Self {
         Self {
             row_id: RowId::new(),
             timepoint,
             components,
         }
+    }
+
+    #[inline]
+    pub fn from_iter(
+        timepoint: TimePoint,
+        components: impl IntoIterator<Item = SerializedComponentBatch>,
+    ) -> Self {
+        Self::new(
+            timepoint,
+            components
+                .into_iter()
+                .map(|component| (component.descriptor.component, component))
+                .collect(),
+        )
     }
 }
 
@@ -836,10 +852,10 @@ impl PendingRow {
             .collect();
 
         let mut per_desc = ChunkComponents::default();
-        for (component_desc, array) in components {
-            let list_array = arrays_to_list_array_opt(&[Some(&*array as _)]);
+        for (_component, batch) in components {
+            let list_array = arrays_to_list_array_opt(&[Some(&*batch.array as _)]);
             if let Some(list_array) = list_array {
-                per_desc.insert(component_desc, list_array);
+                per_desc.insert(SerializedComponentColumn::new(list_array, batch.descriptor));
             }
         }
 
@@ -925,7 +941,7 @@ impl PendingRow {
                     let mut hasher = ahash::AHasher::default();
                     row.components
                         .values()
-                        .for_each(|array| array.data_type().hash(&mut hasher));
+                        .for_each(|batch| batch.array.data_type().hash(&mut hasher));
                     per_datatype_set
                         .entry(hasher.finish())
                         .or_default()
@@ -943,11 +959,12 @@ impl PendingRow {
 
                 // Create all the logical list arrays that we're going to need, accounting for the
                 // possibility of sparse components in the data.
-                let mut all_components: IntMap<ComponentDescriptor, Vec<Option<&dyn ArrowArray>>> =
-                    IntMap::default();
+                let mut all_components: IntMap<ComponentIdentifier, _> = IntMap::default();
                 for row in &rows {
-                    for component_desc in row.components.keys() {
-                        all_components.entry(component_desc.clone()).or_default();
+                    for (component, batch) in &row.components {
+                        all_components
+                            .entry(*component)
+                            .or_insert_with(|| (batch.descriptor.clone(), Vec::new()));
                     }
                 }
 
@@ -983,15 +1000,18 @@ impl PendingRow {
                                     .map(|(name, time_column)| (name, time_column.finish()))
                                     .collect(),
                                 {
-                                    let mut per_desc = ChunkComponents::default();
-                                    for (component_desc, arrays) in std::mem::take(&mut components)
+                                    let mut per_component = ChunkComponents::default();
+                                    for (_component, (desc, arrays)) in
+                                        std::mem::take(&mut components)
                                     {
                                         let list_array = arrays_to_list_array_opt(&arrays);
                                         if let Some(list_array) = list_array {
-                                            per_desc.insert(component_desc, list_array);
+                                            per_component.insert(SerializedComponentColumn::new(
+                                                list_array, desc,
+                                            ));
                                         }
                                     }
-                                    per_desc
+                                    per_component
                                 },
                             ));
 
@@ -1008,13 +1028,13 @@ impl PendingRow {
                         time_column.push(cell.into());
                     }
 
-                    for (component_desc, arrays) in &mut components {
+                    for (component, (_desc, arrays)) in &mut components {
                         // NOTE: This will push `None` if the row doesn't actually hold a value for this
                         // component -- these are sparse list arrays!
                         arrays.push(
                             row_components
-                                .get(component_desc)
-                                .map(|array| &**array as &dyn ArrowArray),
+                                .get(component)
+                                .map(|batch| &*batch.array as _),
                         );
                     }
                 }
@@ -1030,10 +1050,10 @@ impl PendingRow {
                         .collect(),
                     {
                         let mut per_desc = ChunkComponents::default();
-                        for (component_desc, arrays) in components {
+                        for (_component, (desc, arrays)) in components {
                             let list_array = arrays_to_list_array_opt(&arrays);
                             if let Some(list_array) = list_array {
-                                per_desc.insert(component_desc, list_array);
+                                per_desc.insert(SerializedComponentColumn::new(list_array, desc));
                             }
                         }
                         per_desc
@@ -1109,7 +1129,7 @@ mod tests {
     use crossbeam::channel::TryRecvError;
 
     use re_log_types::example_components::{MyIndex, MyLabel, MyPoint, MyPoint64, MyPoints};
-    use re_types_core::Loggable as _;
+    use re_types_core::{ComponentDescriptor, Loggable as _};
 
     use super::*;
 
@@ -1137,24 +1157,24 @@ mod tests {
         let indices3 = MyIndex::to_arrow([MyIndex(4), MyIndex(5)])?;
 
         let components1 = [
-            (MyPoints::descriptor_points(), points1.clone()),
-            (MyPoints::descriptor_labels(), labels1.clone()),
-            (MyIndex::partial_descriptor(), indices1.clone()),
+            SerializedComponentBatch::new(points1.clone(), MyPoints::descriptor_points()),
+            SerializedComponentBatch::new(labels1.clone(), MyPoints::descriptor_labels()),
+            SerializedComponentBatch::new(indices1.clone(), MyIndex::partial_descriptor()),
         ];
         let components2 = [
-            (MyPoints::descriptor_points(), points2.clone()),
-            (MyPoints::descriptor_labels(), labels2.clone()),
-            (MyIndex::partial_descriptor(), indices2.clone()),
+            SerializedComponentBatch::new(points2.clone(), MyPoints::descriptor_points()),
+            SerializedComponentBatch::new(labels2.clone(), MyPoints::descriptor_labels()),
+            SerializedComponentBatch::new(indices2.clone(), MyIndex::partial_descriptor()),
         ];
         let components3 = [
-            (MyPoints::descriptor_points(), points3.clone()),
-            (MyPoints::descriptor_labels(), labels3.clone()),
-            (MyIndex::partial_descriptor(), indices3.clone()),
+            SerializedComponentBatch::new(points3.clone(), MyPoints::descriptor_points()),
+            SerializedComponentBatch::new(labels3.clone(), MyPoints::descriptor_labels()),
+            SerializedComponentBatch::new(indices3.clone(), MyIndex::partial_descriptor()),
         ];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
+        let row1 = PendingRow::from_iter(timepoint1.clone(), components1);
+        let row2 = PendingRow::from_iter(timepoint2.clone(), components2);
+        let row3 = PendingRow::from_iter(timepoint3.clone(), components3);
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1246,24 +1266,24 @@ mod tests {
         let indices3 = MyIndex::to_arrow([MyIndex(4), MyIndex(5)])?;
 
         let components1 = [
-            (MyIndex::partial_descriptor(), indices1.clone()),
-            (MyPoints::descriptor_points(), points1.clone()),
-            (MyPoints::descriptor_labels(), labels1.clone()),
+            SerializedComponentBatch::new(indices1.clone(), MyIndex::partial_descriptor()),
+            SerializedComponentBatch::new(points1.clone(), MyPoints::descriptor_points()),
+            SerializedComponentBatch::new(labels1.clone(), MyPoints::descriptor_labels()),
         ];
         let components2 = [
-            (MyPoints::descriptor_points(), points2.clone()),
-            (MyPoints::descriptor_labels(), labels2.clone()),
-            (MyIndex::partial_descriptor(), indices2.clone()),
+            SerializedComponentBatch::new(points2.clone(), MyPoints::descriptor_points()),
+            SerializedComponentBatch::new(labels2.clone(), MyPoints::descriptor_labels()),
+            SerializedComponentBatch::new(indices2.clone(), MyIndex::partial_descriptor()),
         ];
         let components3 = [
-            (MyPoints::descriptor_labels(), labels3.clone()),
-            (MyIndex::partial_descriptor(), indices3.clone()),
-            (MyPoints::descriptor_points(), points3.clone()),
+            SerializedComponentBatch::new(labels3.clone(), MyPoints::descriptor_labels()),
+            SerializedComponentBatch::new(indices3.clone(), MyIndex::partial_descriptor()),
+            SerializedComponentBatch::new(points3.clone(), MyPoints::descriptor_points()),
         ];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
+        let row1 = PendingRow::from_iter(timepoint1.clone(), components1);
+        let row2 = PendingRow::from_iter(timepoint2.clone(), components2);
+        let row3 = PendingRow::from_iter(timepoint3.clone(), components3);
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1345,13 +1365,22 @@ mod tests {
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
-        let components2 = [(MyPoints::descriptor_points(), points2.clone())];
-        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
+        let components1 = [SerializedComponentBatch::new(
+            points1.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components2 = [SerializedComponentBatch::new(
+            points2.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components3 = [SerializedComponentBatch::new(
+            points3.clone(),
+            MyPoints::descriptor_points(),
+        )];
 
-        let row1 = PendingRow::new(static_.clone(), components1.into_iter().collect());
-        let row2 = PendingRow::new(static_.clone(), components2.into_iter().collect());
-        let row3 = PendingRow::new(static_.clone(), components3.into_iter().collect());
+        let row1 = PendingRow::from_iter(static_.clone(), components1);
+        let row2 = PendingRow::from_iter(static_.clone(), components2);
+        let row3 = PendingRow::from_iter(static_.clone(), components3);
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1420,13 +1449,22 @@ mod tests {
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
-        let components2 = [(MyPoints::descriptor_points(), points2.clone())];
-        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
+        let components1 = [SerializedComponentBatch::new(
+            points1.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components2 = [SerializedComponentBatch::new(
+            points2.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components3 = [SerializedComponentBatch::new(
+            points3.clone(),
+            MyPoints::descriptor_points(),
+        )];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
+        let row1 = PendingRow::from_iter(timepoint1.clone(), components1);
+        let row2 = PendingRow::from_iter(timepoint2.clone(), components2);
+        let row3 = PendingRow::from_iter(timepoint3.clone(), components3);
 
         let entity_path1: EntityPath = "ent1".into();
         let entity_path2: EntityPath = "ent2".into();
@@ -1528,13 +1566,22 @@ mod tests {
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
-        let components2 = [(MyPoints::descriptor_points(), points2.clone())];
-        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
+        let components1 = [SerializedComponentBatch::new(
+            points1.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components2 = [SerializedComponentBatch::new(
+            points2.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components3 = [SerializedComponentBatch::new(
+            points3.clone(),
+            MyPoints::descriptor_points(),
+        )];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
+        let row1 = PendingRow::from_iter(timepoint1.clone(), components1);
+        let row2 = PendingRow::from_iter(timepoint2.clone(), components2);
+        let row3 = PendingRow::from_iter(timepoint3.clone(), components3);
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1637,13 +1684,22 @@ mod tests {
             MyPoint64::to_arrow([MyPoint64::new(10.0, 20.0), MyPoint64::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
-        let components2 = [(MyPoints::descriptor_points(), points2.clone())]; // same name, different datatype
-        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
+        let components1 = [SerializedComponentBatch::new(
+            points1.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components2 = [SerializedComponentBatch::new(
+            points2.clone(),
+            MyPoints::descriptor_points(),
+        )]; // same name, different datatype
+        let components3 = [SerializedComponentBatch::new(
+            points3.clone(),
+            MyPoints::descriptor_points(),
+        )];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
+        let row1 = PendingRow::from_iter(timepoint1.clone(), components1);
+        let row2 = PendingRow::from_iter(timepoint2.clone(), components2);
+        let row3 = PendingRow::from_iter(timepoint3.clone(), components3);
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1758,15 +1814,27 @@ mod tests {
         let points4 =
             MyPoint::to_arrow([MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)])?;
 
-        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
-        let components2 = [(MyPoints::descriptor_points(), points2.clone())];
-        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
-        let components4 = [(MyPoints::descriptor_points(), points4.clone())];
+        let components1 = [SerializedComponentBatch::new(
+            points1.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components2 = [SerializedComponentBatch::new(
+            points2.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components3 = [SerializedComponentBatch::new(
+            points3.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components4 = [SerializedComponentBatch::new(
+            points4.clone(),
+            MyPoints::descriptor_points(),
+        )];
 
-        let row1 = PendingRow::new(timepoint4.clone(), components1.into_iter().collect());
-        let row2 = PendingRow::new(timepoint1.clone(), components2.into_iter().collect());
-        let row3 = PendingRow::new(timepoint2.clone(), components3.into_iter().collect());
-        let row4 = PendingRow::new(timepoint3.clone(), components4.into_iter().collect());
+        let row1 = PendingRow::from_iter(timepoint4.clone(), components1);
+        let row2 = PendingRow::from_iter(timepoint1.clone(), components2);
+        let row3 = PendingRow::from_iter(timepoint2.clone(), components3);
+        let row4 = PendingRow::from_iter(timepoint3.clone(), components4);
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1865,15 +1933,27 @@ mod tests {
         let points4 =
             MyPoint::to_arrow([MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)])?;
 
-        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
-        let components2 = [(MyPoints::descriptor_points(), points2.clone())];
-        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
-        let components4 = [(MyPoints::descriptor_points(), points4.clone())];
+        let components1 = [SerializedComponentBatch::new(
+            points1.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components2 = [SerializedComponentBatch::new(
+            points2.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components3 = [SerializedComponentBatch::new(
+            points3.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components4 = [SerializedComponentBatch::new(
+            points4.clone(),
+            MyPoints::descriptor_points(),
+        )];
 
-        let row1 = PendingRow::new(timepoint4.clone(), components1.into_iter().collect());
-        let row2 = PendingRow::new(timepoint1.clone(), components2.into_iter().collect());
-        let row3 = PendingRow::new(timepoint2.clone(), components3.into_iter().collect());
-        let row4 = PendingRow::new(timepoint3.clone(), components4.into_iter().collect());
+        let row1 = PendingRow::from_iter(timepoint4.clone(), components1);
+        let row2 = PendingRow::from_iter(timepoint1.clone(), components2);
+        let row3 = PendingRow::from_iter(timepoint2.clone(), components3);
+        let row4 = PendingRow::from_iter(timepoint3.clone(), components4);
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());

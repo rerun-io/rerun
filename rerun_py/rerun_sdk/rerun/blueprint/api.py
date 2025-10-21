@@ -208,6 +208,7 @@ class Container:
         grid_columns: int | None = None,
         active_tab: int | str | None = None,
         name: Utf8Like | None,
+        visible: BoolLike | None = None,
     ) -> None:
         """
         Construct a new container.
@@ -236,6 +237,10 @@ class Container:
             The active tab in the container. This is only applicable to `Tabs` containers.
         name
             The name of the container
+        visible:
+            Whether this container is visible.
+
+            Defaults to true if not specified.
 
         """
 
@@ -254,6 +259,7 @@ class Container:
         self.grid_columns = grid_columns
         self.active_tab = active_tab
         self.name = name
+        self.visible = visible
 
     def blueprint_path(self) -> str:
         """
@@ -289,7 +295,7 @@ class Container:
             contents=[sub.blueprint_path() for sub in self.contents],
             col_shares=self.column_shares,
             row_shares=self.row_shares,
-            visible=True,
+            visible=self.visible,
             grid_columns=self.grid_columns,
             active_tab=active_tab_path,
             display_name=self.name,

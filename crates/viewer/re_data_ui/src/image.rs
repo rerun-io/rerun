@@ -283,7 +283,12 @@ impl ImageUi {
         ctx.store_context
             .caches
             .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
-                c.entry(blob_row_id, blob_component_descriptor, blob, media_type)
+                c.entry(
+                    blob_row_id,
+                    blob_component_descriptor.component,
+                    blob,
+                    media_type,
+                )
             })
             .ok()
             .map(|image| Self::new(ctx, image))
@@ -301,7 +306,7 @@ impl ImageUi {
 
         let blob_row_id = image_buffer_chunk.row_id()?;
         let image_buffer = image_buffer_chunk
-            .component_mono::<components::ImageBuffer>(image_buffer_descr)?
+            .component_mono::<components::ImageBuffer>(image_buffer_descr.component)?
             .ok()?;
 
         let (image_format_descr, image_format_chunk) =
@@ -310,13 +315,13 @@ impl ImageUi {
                     && descr.archetype == image_buffer_descr.archetype
             })?;
         let image_format = image_format_chunk
-            .component_mono::<components::ImageFormat>(image_format_descr)?
+            .component_mono::<components::ImageFormat>(image_format_descr.component)?
             .ok()?;
 
         let kind = ImageKind::from_archetype_name(image_format_descr.archetype);
         let image = ImageInfo::from_stored_blob(
             blob_row_id,
-            image_buffer_descr,
+            image_buffer_descr.component,
             image_buffer.0,
             image_format.0,
             kind,
