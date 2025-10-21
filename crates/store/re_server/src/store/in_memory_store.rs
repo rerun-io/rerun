@@ -4,7 +4,7 @@ use ahash::HashMap;
 use arrow::array::{
     ArrayRef, Int32Array, RecordBatch, RecordBatchOptions, StringArray, TimestampNanosecondArray,
 };
-use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
+use arrow::datatypes::{DataType, Field, Schema, SchemaRef, TimeUnit};
 use datafusion::catalog::MemTable;
 use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
@@ -15,6 +15,7 @@ use re_protos::{
     cloud::v1alpha1::{EntryKind, ext::EntryDetails},
     common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId},
 };
+use re_protos::cloud::v1alpha1::ext::TableEntry;
 use re_tuid::Tuid;
 use re_types_core::{ComponentBatch as _, Loggable as _};
 
@@ -338,6 +339,24 @@ impl InMemoryStore {
 
     pub fn id_by_name(&self, name: &str) -> Option<&EntryId> {
         self.id_by_name.get(name)
+    }
+
+    pub async fn create_table(&mut self, name: &str, path: &str, schema: SchemaRef) -> Result<TableEntry, Error> {
+        re_log::debug!(name, "create_table");
+        if self.id_by_name.contains_key(name) {
+            return Err(Error::DuplicateEntryNameError(name.to_owned()));
+        }
+
+        let entry_id = EntryId::new();
+        self.id_by_name.insert(name.to_owned(), entry_id);
+
+        let table = Table::create_table(entry_id, name, path, schema).await?;
+        let table_entry = table.as_table_entry();
+        
+        self.tables.insert(entry_id, table);
+        self.update_entries_table()?;
+        
+        Ok(table_entry)
     }
 }
 

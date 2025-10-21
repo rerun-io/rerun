@@ -200,4 +200,41 @@ impl Table {
             TableType::DataFusionTable(_) => self.write_table_provider(rb, insert_op).await,
         }
     }
+
+    #[cfg(feature = "lance")]
+    pub async fn create_table(
+        id: EntryId,
+        name: &str,
+        path: &str,
+        schema: SchemaRef,
+    ) -> Result<Self, DataFusionError> {
+        let rb = vec![Ok(RecordBatch::new_empty(Arc::clone(&schema)))];
+        let rb = arrow::record_batch::RecordBatchIterator::new(rb.into_iter(), schema);
+
+        let ds = Arc::new(
+            lance::Dataset::write(rb, path, None)
+                .await
+                .map_err(|err| DataFusionError::External(err.into()))?,
+        );
+        let created_at = Some(jiff::Timestamp::now());
+
+        Ok(Self::new(
+            id,
+            name.to_owned(),
+            TableType::LanceDataset(ds),
+            created_at,
+            None,
+        ))
+    }
+
+    #[cfg(not(feature = "lance"))]
+    #[expect(clippy::unused_async)]
+    pub async fn create_table(
+        _id: EntryId,
+        _name: &str,
+        _path: &str,
+        _schema: SchemaRef,
+    ) -> Result<Self, DataFusionError> {
+        exec_err!("Create table not implemented for bare DataFusion table")
+    }
 }

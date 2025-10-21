@@ -1,3 +1,6 @@
+use std::sync::Arc;
+use arrow::datatypes::Schema;
+use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
     Py, PyAny, PyResult, Python,
@@ -319,6 +322,36 @@ impl PyCatalogClientInternal {
             .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
 
         let table_entry = connection.register_table(py, name, url)?;
+
+        let entry_id = Py::new(py, PyEntryId::from(table_entry.details.id))?;
+
+        let entry = PyEntry {
+            client: self_.clone_ref(py),
+            id: entry_id,
+            details: table_entry.details,
+        };
+
+        let table = PyTableEntry::default();
+
+        Py::new(py, (table, entry))
+    }
+
+    fn create_table(
+        self_: Py<Self>,
+        py: Python<'_>,
+        name: String,
+        url: String,
+        schema: PyArrowType<Schema>,
+    ) -> PyResult<Py<PyTableEntry>> {
+
+        let connection = self_.borrow_mut(py).connection.clone();
+
+        let url = url
+            .parse::<url::Url>()
+            .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
+
+        let schema = Arc::new(schema.0);
+        let table_entry = connection.create_table(py, name, url, schema)?;
 
         let entry_id = Py::new(py, PyEntryId::from(table_entry.details.id))?;
 
