@@ -140,7 +140,7 @@ pub fn test_transform_clamping() {
                     TimePoint::default(),
                     &re_types::archetypes::Points3D::new([(0.0, 5.0, 0.0), (0.1, 5.1, 0.1)])
                         .with_colors([0x0000FFFF, 0xFF0000FF])
-                        .with_radii([-5.]),
+                        .with_radii([-15.]),
                 )
                 .with_archetype(
                     RowId::new(),
