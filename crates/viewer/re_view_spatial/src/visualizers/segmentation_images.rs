@@ -101,7 +101,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                     Some(SegmentationImageComponentData {
                         image: ImageInfo::from_stored_blob(
                             row_id,
-                            &SegmentationImage::descriptor_buffer(),
+                            SegmentationImage::descriptor_buffer().component,
                             buffer.clone().into(),
                             first_copied(formats.as_deref())?.0,
                             ImageKind::Segmentation,

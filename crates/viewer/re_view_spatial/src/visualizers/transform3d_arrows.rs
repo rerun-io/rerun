@@ -134,7 +134,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 None,
                 &latest_at_query,
                 data_result,
-                [&Transform3D::descriptor_axis_length()],
+                [Transform3D::descriptor_axis_length().component],
                 false,
             );
 
@@ -298,7 +298,7 @@ impl VisualizerSystem for AxisLengthDetector {
 
         query_info
             .required
-            .insert(Transform3D::descriptor_axis_length());
+            .insert(Transform3D::descriptor_axis_length().component);
 
         query_info
     }

@@ -606,7 +606,7 @@ impl VideoUi {
                     c.entry(
                         debug_name,
                         blob_row_id,
-                        blob_component_descriptor,
+                        blob_component_descriptor.component,
                         blob,
                         media_type,
                         ctx.app_options().video_decoder_settings(),

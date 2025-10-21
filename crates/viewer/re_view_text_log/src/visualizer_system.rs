@@ -89,7 +89,7 @@ impl TextLogSystem {
             None,
             query,
             data_result,
-            TextLog::all_components().iter(),
+            TextLog::all_component_identifiers(),
         );
 
         let Some(all_text_chunks) = results.get_required_chunks(TextLog::descriptor_text()) else {

@@ -94,7 +94,7 @@ fn collect_draw_order_per_visualizer(
             None,
             &latest_at_query,
             data_result,
-            [draw_order_descriptor],
+            [draw_order_descriptor.component],
             query_shadowed_components,
         )
         .get_mono::<DrawOrder>(draw_order_descriptor)

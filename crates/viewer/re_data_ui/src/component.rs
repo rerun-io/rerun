@@ -37,9 +37,10 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
 
         let engine = db.storage_engine();
 
+        let component = *component;
         let Some(component_descriptor) = engine
             .store()
-            .entity_component_descriptor(entity_path, *component)
+            .entity_component_descriptor(entity_path, component)
         else {
             ui.label(format!(
                 "Entity {entity_path:?} has no component {component:?}"
@@ -49,7 +50,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
 
         let Some(num_instances) = self
             .unit
-            .component_batch_raw(&component_descriptor)
+            .component_batch_raw(component)
             .map(|data| data.len())
         else {
             ui.weak("<pending>");
@@ -76,7 +77,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
             if time.is_static() {
                 let static_message_count = engine
                     .store()
-                    .num_static_events_for_component(entity_path, &component_descriptor);
+                    .num_static_events_for_component(entity_path, component);
                 if static_message_count > 1 {
                     ui.warning_label(format!(
                         "Static component value was overridden {} times.",
@@ -91,10 +92,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
 
                 let temporal_message_count = engine
                     .store()
-                    .num_temporal_events_for_component_on_all_timelines(
-                        entity_path,
-                        &component_descriptor,
-                    );
+                    .num_temporal_events_for_component_on_all_timelines(entity_path, component);
                 if temporal_message_count > 0 {
                     ui.error_label(format!(
                         "Static component has {} event{} logged on timelines.",
@@ -144,7 +142,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
         if num_instances <= 1 {
             // Allow editing recording properties:
             if entity_path.starts_with(&EntityPath::properties())
-                && let Some(array) = self.unit.component_batch_raw(&component_descriptor)
+                && let Some(array) = self.unit.component_batch_raw(component)
                 && ctx.component_ui_registry().try_show_edit_ui(
                     ctx,
                     ui,

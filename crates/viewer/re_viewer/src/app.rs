@@ -1779,7 +1779,7 @@ impl App {
 
             let file_name = if let Some(rec_name) = store
                 .recording_info_property::<re_types::components::Name>(
-                    &re_types::archetypes::RecordingInfo::descriptor_name(),
+                    re_types::archetypes::RecordingInfo::descriptor_name().component,
                 ) {
                 rec_name.to_string()
             } else {
@@ -2379,8 +2379,7 @@ impl App {
             let chunk = &event.diff.chunk;
 
             // For speed, we don't care about the order of the following log statements, so we silence this warning
-            #[expect(clippy::iter_over_hash_type)]
-            for component_descr in chunk.components().keys() {
+            for component_descr in chunk.components().component_descriptors() {
                 if let Some(archetype_name) = component_descr.archetype {
                     if let Some(archetype) = self.reflection.archetypes.get(&archetype_name) {
                         for &view_type in archetype.view_types {
@@ -3324,7 +3323,7 @@ fn save_recording(
 
     let file_name = if let Some(recording_name) = entity_db
         .recording_info_property::<re_types::components::Name>(
-            &re_types::archetypes::RecordingInfo::descriptor_name(),
+            re_types::archetypes::RecordingInfo::descriptor_name().component,
         ) {
         format!("{}.rrd", sanitize_file_name(&recording_name))
     } else {
