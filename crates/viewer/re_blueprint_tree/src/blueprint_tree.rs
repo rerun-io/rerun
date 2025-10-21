@@ -219,11 +219,11 @@ impl BlueprintTree {
                 .with_icon(icon_for_container_kind(&container_data.kind))
                 .subdued(!container_data.visible)
                 .with_buttons(|ui| {
+                    // If this has been hidden in a blueprint we want to be
+                    // able to make it visible again in the viewer.
                     if !container_data.visible {
                         let mut visible_after = container_data.visible;
                         visibility_button_ui(ui, true, &mut visible_after);
-                        // If this has been hidden in a blueprint we want to be
-                        // able to make it visible.
                         if visible_after != container_data.visible {
                             viewport_blueprint.set_content_visibility(
                                 ctx,
