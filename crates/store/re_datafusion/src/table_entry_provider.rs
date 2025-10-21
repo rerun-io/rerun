@@ -374,7 +374,7 @@ impl Stream for RecordBatchGrpcOutputStream {
             Poll::Ready(Some(Ok(batch))) => {
                 // Send to gRPC if we have a sender
                 if let Some(ref grpc_sender) = self.grpc_sender {
-                    match batch.encode() {
+                    match batch.try_into() {
                         Ok(dataframe_part) => {
                             let request = WriteTableRequest {
                                 dataframe_part: Some(dataframe_part),
@@ -411,7 +411,7 @@ impl Stream for RecordBatchGrpcOutputStream {
                     }
                 }
 
-                Poll::Ready(Some(Ok(batch)))
+                Poll::Ready(Some(Ok(RecordBatch::new_empty(Arc::new(Schema::empty())))))
             }
             Poll::Ready(Some(Err(err))) => Poll::Ready(Some(Err(err))),
             Poll::Ready(None) => {

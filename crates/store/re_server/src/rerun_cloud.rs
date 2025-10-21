@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use ahash::HashMap;
 use arrow::array::BinaryArray;
+use arrow::record_batch::RecordBatch;
 use datafusion::logical_expr::dml::InsertOp;
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
@@ -682,7 +683,7 @@ impl RerunCloudService for RerunCloudHandler {
                 .ok_or_else(|| {
                     tonic::Status::invalid_argument("no data frame in WriteTableRequest")
                 })?
-                .decode()
+                .try_into()
                 .map_err(|err| {
                     tonic::Status::internal(format!("Could not decode chunk: {err:#}"))
                 })?;
