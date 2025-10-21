@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use arrow::array::{RecordBatch, RecordBatchIterator, RecordBatchReader};
-use arrow::datatypes::Schema as ArrowSchema;
+use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::{PyErr, PyResult, Python};
@@ -204,6 +204,31 @@ impl ConnectionHandle {
             }
             .in_current_span(),
         )
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn create_table(
+        &self,
+        py: Python<'_>,
+        name: String,
+        url: url::Url,
+        schema: SchemaRef,
+    ) -> PyResult<TableEntry> {
+        let entry_id = wait_for_future(
+            py,
+            async {
+                self
+                    .client()
+                    .await?
+                    .create_table(&name, url, schema)
+                    .await
+                    .map_err(to_py_err)
+
+            }
+            .in_current_span(),
+        )?;
+
+        self.read_table(py, entry_id)
     }
 
     #[tracing::instrument(level = "info", skip_all)]
