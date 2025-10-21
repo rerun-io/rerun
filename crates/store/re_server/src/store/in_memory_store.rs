@@ -5,18 +5,14 @@ use arrow::array::{
     ArrayRef, Int32Array, RecordBatch, RecordBatchOptions, StringArray, TimestampNanosecondArray,
 };
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
-use datafusion::catalog::{MemTable, TableProvider};
+use datafusion::catalog::MemTable;
 use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
-use lance::datafusion::LanceTableProvider;
 
 use re_chunk_store::{Chunk, ChunkStoreConfig};
 use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::{
-    cloud::v1alpha1::{
-        EntryKind, SystemTableKind,
-        ext::{EntryDetails, SystemTable},
-    },
+    cloud::v1alpha1::{EntryKind, ext::EntryDetails},
     common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId},
 };
 use re_tuid::Tuid;
@@ -164,11 +160,14 @@ impl InMemoryStore {
         Ok(())
     }
 
+    #[cfg(feature = "lance")]
     pub async fn load_directory_as_table(
         &mut self,
         named_path: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<(), Error> {
+        use std::sync::Arc;
+
         let directory = named_path.path.canonicalize()?;
         if !directory.is_dir() {
             return Err(std::io::Error::new(
@@ -195,7 +194,11 @@ impl InMemoryStore {
         let table = lance::Dataset::open(path)
             .await
             .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?;
-        let provider = Arc::new(LanceTableProvider::new(Arc::new(table), false, false));
+        let provider = Arc::new(lance::datafusion::LanceTableProvider::new(
+            Arc::new(table),
+            false,
+            false,
+        ));
 
         let entry_id = EntryId::new();
 
@@ -220,11 +223,12 @@ impl InMemoryStore {
         Ok(())
     }
 
+    #[cfg(feature = "lance")] // only used by the `lance` feature
     fn add_table_entry(
         &mut self,
         entry_name: &str,
         entry_id: EntryId,
-        provider: Arc<dyn TableProvider>,
+        provider: std::sync::Arc<dyn datafusion::catalog::TableProvider>,
     ) -> Result<(), Error> {
         self.id_by_name.insert(entry_name.to_owned(), entry_id);
         self.tables.insert(
@@ -241,6 +245,10 @@ impl InMemoryStore {
     /// `Arc<Mutex<_>>` and then have an ac-hoc table generation.
     /// TODO(#11369)
     fn update_entries_table(&mut self) -> Result<(), Error> {
+        use std::sync::Arc;
+
+        use re_protos::cloud::v1alpha1::{SystemTableKind, ext::SystemTable};
+
         let entries_table_id = *self
             .id_by_name
             .entry(ENTRIES_TABLE_NAME.to_owned())
