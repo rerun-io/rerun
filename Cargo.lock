@@ -9635,6 +9635,7 @@ version = "0.27.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "bitflags 2.9.4",
+ "criterion",
  "glam",
  "insta",
  "itertools 0.14.0",

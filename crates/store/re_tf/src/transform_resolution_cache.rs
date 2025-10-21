@@ -1181,6 +1181,7 @@ mod tests {
                 "with_transform",
             )))
             .unwrap();
+        #[cfg(debug_assertions)]
         assert_eq!(transforms.timeline, Some(*timeline.name()));
         assert_eq!(transforms.frame_transforms.len(), 1);
         assert_eq!(transforms.pose_transforms, None);

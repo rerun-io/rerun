@@ -1,0 +1,73 @@
+#![expect(clippy::unwrap_used)] // acceptable in benchmarks
+
+use criterion::{Criterion, criterion_group, criterion_main};
+use itertools::Itertools as _;
+use std::sync::Arc;
+
+use re_chunk_store::Chunk;
+use re_entity_db::EntityDb;
+use re_log_types::{EntityPath, StoreId, TimePoint, Timeline, TimelineName};
+use re_types::{RowId, archetypes};
+
+use re_tf::{TransformFrameIdHash, TransformResolutionCache};
+
+// TODO: these valeus are tiny. Need to handle much bigger!
+const NUM_TIMELINES: usize = 4;
+const NUM_TIMEPOINTS: usize = 100;
+const NUM_TIMEPOINTS_PER_ENTITY: usize = 10;
+const NUM_ENTITIES: usize = 100;
+
+fn transform_resolution_cache_query(c: &mut Criterion) {
+    let mut entity_db = EntityDb::new(StoreId::random(
+        re_log_types::StoreKind::Recording,
+        "test_app",
+    ));
+
+    let timelines = (0..NUM_TIMELINES)
+        .map(|i| Timeline::new(format!("timeline{i}"), re_log_types::TimeType::Sequence))
+        .collect_vec();
+
+    let mut events = Vec::new();
+    for entity_idx in 0..NUM_ENTITIES {
+        for batch in 0..(NUM_TIMEPOINTS / NUM_TIMEPOINTS_PER_ENTITY) {
+            let chunk_base_time = batch * NUM_TIMEPOINTS_PER_ENTITY;
+
+            let mut builder = Chunk::builder(EntityPath::from(format!("entity{entity_idx}")));
+            for t in 0..NUM_TIMEPOINTS_PER_ENTITY {
+                let mut timepoint = TimePoint::default();
+                for timeline in &timelines {
+                    #[expect(clippy::cast_possible_wrap)]
+                    timepoint.insert(*timeline, (chunk_base_time + t) as i64);
+                }
+                builder = builder.with_archetype(
+                    RowId::new(),
+                    timepoint,
+                    &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]).with_scale(2.0),
+                );
+            }
+            let chunk = builder.build().unwrap();
+
+            events.extend(entity_db.add_chunk(&Arc::new(chunk)).unwrap().into_iter());
+        }
+    }
+
+    let queried_timeline = TimelineName::new("timeline2");
+    let queried_frame = TransformFrameIdHash::from_entity_path(&EntityPath::from("entity2"));
+
+    c.bench_function("build_from_entitydb_and_query_single_frame", |b| {
+        b.iter(|| {
+            let mut cache = TransformResolutionCache::default();
+            cache.apply_all_updates(&entity_db, events.iter());
+            cache
+                .transforms_for_timeline(queried_timeline)
+                .frame_transforms(queried_frame)
+                .unwrap()
+                .clone()
+        });
+    });
+}
+
+// TODO(andreas): Additional benchmarks for iterative invalidation would be great!
+
+criterion_group!(benches, transform_resolution_cache_query);
+criterion_main!(benches);
