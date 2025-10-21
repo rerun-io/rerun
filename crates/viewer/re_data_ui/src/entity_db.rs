@@ -47,7 +47,7 @@ impl crate::DataUi for EntityDb {
                 ui.end_row();
             }
 
-            if let Some(store_info) = self.store_info() {
+            if let Some(store_info) = self.store_info() && ui_layout.is_selection_panel() {
                 let re_log_types::StoreInfo {
                     store_id,
                     cloned_from,
@@ -120,7 +120,6 @@ impl crate::DataUi for EntityDb {
 
                 let pretty = printer.duration_to_string(&duration);
 
-
                 ui.grid_left_hand_label("Duration");
                 ui.label(pretty)
                     .on_hover_text("Duration between earliest and latest log_time.");
@@ -139,7 +138,7 @@ impl crate::DataUi for EntityDb {
                 ui.end_row();
             }
 
-            {
+            if ui_layout.is_selection_panel() {
                 let &ChunkStoreConfig {
                     enable_changelog: _,
                     chunk_max_bytes,
@@ -192,7 +191,7 @@ impl crate::DataUi for EntityDb {
                 ui.end_row();
             }
 
-            if let Some(data_source) = &self.data_source {
+            if let Some(data_source) = &self.data_source && ui_layout.is_selection_panel() {
                 ui.grid_left_hand_label("Data source");
                 data_source_button_ui(ctx, ui, data_source);
                 ui.end_row();

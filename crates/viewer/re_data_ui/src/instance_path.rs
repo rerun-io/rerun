@@ -100,6 +100,9 @@ impl DataUi for InstancePath {
             return;
         }
 
+        // Showing more than this takes up too much space
+        const MAX_COMPONENTS_IN_TOOLTIP: usize = 3;
+
         if ui_layout.is_single_line() {
             let archetype_count = components_by_archetype.len();
             let component_count = unordered_components.len();
@@ -113,35 +116,92 @@ impl DataUi for InstancePath {
                     if component_count > 1 { "s" } else { "" }
                 ),
             );
-        } else if ui_layout == UiLayout::Tooltip && unordered_components.len() > 3 {
+        } else if ui_layout == UiLayout::Tooltip
+            && MAX_COMPONENTS_IN_TOOLTIP < unordered_components.len()
+        {
             // Too many to show all in a tooltip.
-            // A nice thing to do would be to look for non-splatted components and only show them
-            // (if they are few, and self.instance != Instance::ALL),
-            // but for now we do something simpler:
 
-            let component_count = unordered_components.len();
-            ui.list_item_label(format!(
-                "{} component{}",
-                component_count,
-                if component_count > 1 { "s" } else { "" }
-            ));
+            let mut show_only_instanced = false;
 
-            let archetype_count = components_by_archetype.len();
-            ui.list_item_label(format!(
-                "{} archetype{}: {}",
-                archetype_count,
-                if archetype_count > 1 { "s" } else { "" },
-                components_by_archetype
-                    .keys()
-                    .map(|archetype| {
-                        if let Some(archetype) = archetype {
-                            archetype.short_name()
+            if !self.is_all() {
+                // Focus on the components that have different values per instance (non-splatted components):
+                let instanced_components_by_archetype: BTreeMap<
+                    Option<ArchetypeName>,
+                    Vec<(ComponentDescriptor, UnitChunkShared)>,
+                > = components_by_archetype
+                    .iter()
+                    .filter_map(|(archetype_name, archetype_components)| {
+                        let instanced_archetype_components = archetype_components
+                            .iter()
+                            .filter(|(descr, unit)| unit.num_instances(descr) > 1)
+                            .cloned()
+                            .collect_vec();
+                        if instanced_archetype_components.is_empty() {
+                            None
                         } else {
-                            "<Without archetype>"
+                            Some((*archetype_name, instanced_archetype_components))
                         }
                     })
-                    .join(", ")
-            ));
+                    .collect();
+
+                let num_instanced_components = instanced_components_by_archetype
+                    .values()
+                    .map(|v| v.len())
+                    .sum::<usize>();
+
+                show_only_instanced = num_instanced_components <= MAX_COMPONENTS_IN_TOOLTIP;
+
+                if show_only_instanced {
+                    component_list_ui(
+                        ctx,
+                        ui,
+                        ui_layout,
+                        query,
+                        db,
+                        entity_path,
+                        instance,
+                        &instanced_components_by_archetype,
+                    );
+
+                    let num_skipped = unordered_components.len() - num_instanced_components;
+                    ui.label(format!(
+                        "…plus {num_skipped} more {}",
+                        if num_skipped == 1 {
+                            "component"
+                        } else {
+                            "components"
+                        }
+                    ));
+                }
+            }
+
+            if !show_only_instanced {
+                // Show just a rough summary:
+
+                let component_count = unordered_components.len();
+                ui.list_item_label(format!(
+                    "{} component{}",
+                    component_count,
+                    if component_count > 1 { "s" } else { "" }
+                ));
+
+                let archetype_count = components_by_archetype.len();
+                ui.list_item_label(format!(
+                    "{} archetype{}: {}",
+                    archetype_count,
+                    if archetype_count > 1 { "s" } else { "" },
+                    components_by_archetype
+                        .keys()
+                        .map(|archetype| {
+                            if let Some(archetype) = archetype {
+                                archetype.short_name()
+                            } else {
+                                "<Without archetype>"
+                            }
+                        })
+                        .join(", ")
+                ));
+            }
         } else {
             // TODO(#7026): Instances today are too poorly defined:
             // For many archetypes it makes sense to slice through all their component arrays with the same index.

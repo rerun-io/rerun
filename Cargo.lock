@@ -9501,8 +9501,11 @@ dependencies = [
 name = "re_server"
 version = "0.27.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "anyhow",
  "arrow",
+ "bincode",
+ "cfg-if",
  "chrono",
  "clap",
  "datafusion",
@@ -9525,6 +9528,8 @@ dependencies = [
  "re_redap_tests",
  "re_tuid",
  "re_types_core",
+ "serde",
+ "sha2",
  "thiserror 2.0.17",
  "tokio",
  "tokio-stream",
@@ -10616,6 +10621,7 @@ dependencies = [
  "re_error",
  "re_log",
  "re_memory",
+ "re_server",
  "rerun",
 ]
 
