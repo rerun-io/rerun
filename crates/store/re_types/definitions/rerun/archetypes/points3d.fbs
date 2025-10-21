@@ -4,7 +4,7 @@ namespace rerun.archetypes;
 
 /// A 3D point cloud with positions and optional colors, radii, labels, etc.
 ///
-/// If there's more instance poses than positions, the entire point cloud will be repeated for the remaining poses.
+/// If there are multiple instance poses, the entire point cloud will be repeated for each of the poses.
 ///
 /// \example archetypes/points3d_simple title="Simple 3D points" image="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png"
 /// \example archetypes/points3d_random !api title="Randomly distributed 3D points with varying color and radius" image="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1200w.png"

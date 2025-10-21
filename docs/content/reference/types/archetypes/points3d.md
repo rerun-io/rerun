@@ -5,7 +5,7 @@ title: "Points3D"
 
 A 3D point cloud with positions and optional colors, radii, labels, etc.
 
-If there's more instance poses than positions, the entire point cloud will be repeated for the remaining poses.
+If there are multiple instance poses, the entire point cloud will be repeated for each of the poses.
 
 ## Fields
 ### Required
