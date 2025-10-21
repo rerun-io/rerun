@@ -10,7 +10,7 @@ dependencies = [
   "anywidget",
   "jupyter-ui-poll",
   # ipykernel 7.0.0 has a bug that prevents it from sending display data from a different thread.
-# TODO(ipython/ipykernel/#1450)
+  # TODO(ipython/ipykernel/#1450)
   "ipykernel<7.0.0",
 ]
 readme = "README.md"
