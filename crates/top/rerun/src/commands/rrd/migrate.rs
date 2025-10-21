@@ -6,7 +6,7 @@ use indicatif::ProgressBar;
 use itertools::Itertools as _;
 use rayon::prelude::*;
 use re_build_info::CrateVersion;
-use re_log_encoding::EncodingOptions;
+use re_log_encoding::rrd::EncodingOptions;
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct MigrateCommand {

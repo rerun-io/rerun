@@ -309,12 +309,12 @@ impl WebHandle {
                 egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
             });
 
-            re_log_encoding::stream_rrd_from_http::web_decode::decode_rrd(
+            re_log_encoding::rrd::stream_from_http::web_decode::decode_rrd(
                 data,
                 Arc::new({
                     move |msg| {
                         ui_waker();
-                        use re_log_encoding::stream_rrd_from_http::HttpMessage;
+                        use re_log_encoding::rrd::stream_from_http::HttpMessage;
                         match msg {
                             HttpMessage::LogMsg(msg) => {
                                 if tx.send(msg.into()).is_ok() {

@@ -62,7 +62,7 @@ pub mod log_msg {
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_log_msg_v1alpha1::*;
         pub mod ext {
-            pub use crate::v1alpha1::rerun_log_msg_v1alpha1::*;
+            pub use crate::v1alpha1::rerun_log_msg_v1alpha1_ext::*;
         }
     }
 }

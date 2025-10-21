@@ -5,7 +5,6 @@ use re_protos::cloud::v1alpha1::{
     FindEntriesRequest, GetTableSchemaRequest, ScanTableRequest, ext::EntryDetails,
     rerun_cloud_service_server::RerunCloudService,
 };
-use re_sdk::external::re_log_encoding::codec::wire::decoder::Decode as _;
 
 use crate::{RecordBatchExt as _, SchemaExt as _};
 
@@ -68,7 +67,7 @@ pub async fn list_entries_table(service: impl RerunCloudService) {
         .map(|resp| {
             resp.dataframe_part
                 .expect("Expected dataframe part")
-                .decode()
+                .try_into()
                 .expect("Failed to decode dataframe")
         })
         .collect_vec();

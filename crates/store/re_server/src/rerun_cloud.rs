@@ -2,14 +2,14 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use ahash::HashMap;
-use arrow::array::BinaryArray;
+use arrow::array::{BinaryArray, RecordBatch};
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
-use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
+use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
@@ -579,9 +579,7 @@ impl RerunCloudService for RerunCloudHandler {
         .map_err(|err| tonic::Status::internal(format!("Failed to create dataframe: {err:#}")))?;
         Ok(tonic::Response::new(
             re_protos::cloud::v1alpha1::RegisterWithDatasetResponse {
-                data: Some(record_batch.encode().map_err(|err| {
-                    tonic::Status::internal(format!("Failed to encode dataframe: {err:#}"))
-                })?),
+                data: Some(record_batch.into()),
             },
         ))
     }
@@ -602,10 +600,10 @@ impl RerunCloudService for RerunCloudHandler {
         while let Some(chunk_msg) = request.next().await {
             let chunk_msg = chunk_msg?;
 
-            let chunk_batch = chunk_msg
+            let chunk_batch: RecordBatch = chunk_msg
                 .chunk
                 .ok_or_else(|| tonic::Status::invalid_argument("no chunk in WriteChunksRequest"))?
-                .decode()
+                .try_into()
                 .map_err(|err| {
                     tonic::Status::internal(format!("Could not decode chunk: {err:#}"))
                 })?;
@@ -710,12 +708,9 @@ impl RerunCloudService for RerunCloudHandler {
         })?;
 
         let stream = futures::stream::once(async move {
-            record_batch
-                .encode()
-                .map(|data| ScanPartitionTableResponse { data: Some(data) })
-                .map_err(|err| {
-                    tonic::Status::internal(format!("failed encoding metadata: {err:#}"))
-                })
+            Ok(ScanPartitionTableResponse {
+                data: Some(record_batch.into()),
+            })
         });
 
         Ok(tonic::Response::new(
@@ -769,12 +764,9 @@ impl RerunCloudService for RerunCloudHandler {
         })?;
 
         let stream = futures::stream::once(async move {
-            record_batch
-                .encode()
-                .map(|data| ScanDatasetManifestResponse { data: Some(data) })
-                .map_err(|err| {
-                    tonic::Status::internal(format!("failed encoding metadata: {err:#}"))
-                })
+            Ok(ScanDatasetManifestResponse {
+                data: Some(record_batch.into()),
+            })
         });
 
         Ok(tonic::Response::new(
@@ -877,11 +869,7 @@ impl RerunCloudService for RerunCloudHandler {
         if chunk_stores.is_empty() {
             let stream = futures::stream::iter([{
                 let batch = QueryDatasetResponse::create_empty_dataframe();
-                let data =
-                    Some(batch.encode().map_err(|err| {
-                        tonic::Status::internal(format!("encoding failed: {err:#}"))
-                    })?);
-
+                let data = Some(batch.into());
                 Ok(QueryDatasetResponse { data })
             }]);
 
@@ -964,10 +952,7 @@ impl RerunCloudService for RerunCloudHandler {
                     tonic::Status::internal(format!("Failed to create dataframe: {err:#}"))
                 })?;
 
-                let data =
-                    Some(batch.encode().map_err(|err| {
-                        tonic::Status::internal(format!("encoding failed: {err:#}"))
-                    })?);
+                let data = Some(batch.into());
 
                 Ok(QueryDatasetResponse { data })
             },
@@ -989,7 +974,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         let mut chunk_keys = vec![];
         for chunk_info_data in request.chunk_infos {
-            let chunk_info_batch = chunk_info_data.decode().map_err(|err| {
+            let chunk_info_batch: RecordBatch = chunk_info_data.try_into().map_err(|err| {
                 tonic::Status::internal(format!("Failed to decode chunk_info: {err:#}"))
             })?;
 
@@ -1035,7 +1020,7 @@ impl RerunCloudService for RerunCloudHandler {
             .await
             .chunks_from_chunk_keys(&chunk_keys)?;
 
-        let compression = re_log_encoding::codec::Compression::Off;
+        let compression = re_log_encoding::Compression::Off;
 
         let encoded_chunks = chunks
             .into_iter()
@@ -1050,12 +1035,9 @@ impl RerunCloudService for RerunCloudHandler {
                     on_release: None,
                 };
 
-                re_log_encoding::protobuf_conversions::arrow_msg_to_proto(
-                    &arrow_msg,
-                    store_id,
-                    compression,
-                )
-                .map_err(|err| tonic::Status::internal(format!("encoding failed: {err:#}")))
+                arrow_msg
+                    .to_transport((store_id, compression))
+                    .map_err(|err| tonic::Status::internal(format!("encoding failed: {err:#}")))
             })
             .collect::<Result<Vec<_>, _>>()?;
 
@@ -1136,13 +1118,10 @@ impl RerunCloudService for RerunCloudHandler {
             .map_err(|err| tonic::Status::from_error(Box::new(err)))?;
 
         let resp_stream = stream.map(|batch| {
-            batch
-                .map_err(|err| tonic::Status::from_error(Box::new(err)))?
-                .encode()
-                .map(|batch| ScanTableResponse {
-                    dataframe_part: Some(batch),
-                })
-                .map_err(|err| tonic::Status::internal(format!("Error encoding chunk: {err:#}")))
+            let batch = batch.map_err(|err| tonic::Status::from_error(Box::new(err)))?;
+            Ok(ScanTableResponse {
+                dataframe_part: Some(batch.into()),
+            })
         });
 
         Ok(tonic::Response::new(
@@ -1188,9 +1167,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         // All tasks finish immediately in the OSS server
         Ok(tonic::Response::new(QueryTasksResponse {
-            data: Some(rb.encode().map_err(|err| {
-                tonic::Status::internal(format!("Failed to encode response: {err:#}"))
-            })?),
+            data: Some(rb.into()),
         }))
     }
 
