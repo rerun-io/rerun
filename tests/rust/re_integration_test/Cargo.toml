@@ -16,6 +16,8 @@ re_redap_client.workspace = true
 re_sdk.workspace = true
 re_server.workspace = true
 re_uri.workspace = true
+re_view_bar_chart.workspace = true
+re_view_text_log.workspace = true
 re_viewer = { workspace = true, features = ["testing"] }
 re_viewport_blueprint.workspace = true
 
