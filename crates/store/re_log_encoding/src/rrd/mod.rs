@@ -1,6 +1,6 @@
 //! Everything needed to encode/decode and serialize/deserialize RRD streams.
 //!
-//! ⚠️Make sure to familiarize yourself with the [crate-level docs] first. ⚠️
+//! ⚠️Make sure to familiarize yourself with the [crate-level docs](crate) first. ⚠️
 //!
 //! RRD streams are used everywhere gRPC isn't: files, standard I/O, HTTP fetches, data-loaders, etc.
 //! This module is completely unrelated to the Rerun Data Protocol (Redap) gRPC API.
@@ -14,8 +14,6 @@
 //! That is all these traits do. They do not perform any kind of IO, they do not keep track of any
 //! sort of state. That's the job of the `Encoder` and `Decoder`: they provide the IO and the
 //! state machines that turn collections of `Encodable`s and `Decodable`s into actual RRD streams.
-//!
-//! [crate-level docs]: [`crate`]
 
 mod errors;
 mod headers;

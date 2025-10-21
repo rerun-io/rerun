@@ -37,7 +37,7 @@ use crate::rrd::Decodable as _;
 
 /// Implemented for top-level types that can kickoff decoding.
 ///
-/// There are only two of them:
+/// There are only two of them in this crate:
 /// * [`re_log_types::LogMsg`]: application-level root message
 /// * [`re_protos::log_msg::v1alpha1::log_msg::Msg`]: transport-level root message
 ///
@@ -45,8 +45,6 @@ use crate::rrd::Decodable as _;
 /// See also:
 /// * [`DecoderTransport`]
 /// * [`DecoderApp`]
-///
-// TODO(cmc): technically this should be a sealed trait, but things are complicated enough as is.
 pub trait DecoderEntrypoint: Sized {
     fn decode(
         data_excluding_headers: bytes::Bytes,

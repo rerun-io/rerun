@@ -6,7 +6,7 @@
 //! happens: Chunk/Sorbet migrations, data patching (app ID injection, version propagation, BW-compat hacks,
 //! etc).
 //!
-//! To go from a from a freshly decoded transport-level type to its application-level equivalent, use [`ToApplication`].
+//! To go from a freshly decoded transport-level type to its application-level equivalent, use [`ToApplication`].
 //! To prepare an application-level type for encoding, use [`ToTransport`].
 
 use re_build_info::CrateVersion;

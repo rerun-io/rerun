@@ -139,7 +139,9 @@ impl Encodable for StreamHeader {
         out.extend_from_slice(fourcc);
         out.extend_from_slice(version);
         {
-            // TODO(cmc): the extra heap-alloc and copy could be easily avoided.
+            // TODO(cmc): the extra heap-alloc and copy could be easily avoided with the
+            // introduction of an InMemoryWriter trait or similar. In practice it makes no
+            // difference and the cognitive overhead of this crate is already through the roof.
             let mut options_out = Vec::new();
             options.to_rrd_bytes(&mut options_out)?;
             out.extend_from_slice(&options_out);

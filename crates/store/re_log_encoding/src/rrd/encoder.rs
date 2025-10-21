@@ -99,12 +99,20 @@ impl Encoder<Vec<u8>> {
 }
 
 impl<W: std::io::Write> Encoder<W> {
+    /// Creates a new [`Encoder`].
+    ///
+    /// This will immediately write the [`StreamHeader`] to the output stream as part of
+    /// initialization (hence `_eager`).
+    ///
+    /// There is no `_lazy` version. Make one if you need one.
     pub fn new_eager(
         version: CrateVersion,
         options: EncodingOptions,
         mut write: W,
     ) -> Result<Self, EncodeError> {
-        // TODO(cmc): the extra heap-alloc and copy could be easily avoided.
+        // TODO(cmc): the extra heap-alloc and copy could be easily avoided with the
+        // introduction of an InMemoryWriter trait or similar. In practice it makes no
+        // difference and the cognitive overhead of this crate is already through the roof.
         let mut out = Vec::new();
         StreamHeader {
             fourcc: crate::rrd::RRD_FOURCC,
@@ -136,7 +144,7 @@ impl<W: std::io::Write> Encoder<W> {
         re_tracing::profile_function!();
 
         let message = message.to_transport(self.compression)?;
-        // Safety: we _are_ the encoder.
+        // Safety: the compression settings of this message are consistent with this stream.
         #[expect(unsafe_code)]
         unsafe {
             self.append_transport(&message)
@@ -194,7 +202,9 @@ impl<W: std::io::Write> Encoder<W> {
 
         match self.serializer {
             Serializer::Protobuf => {
-                // TODO(cmc): the extra heap-alloc and copy could be easily avoided.
+                // TODO(cmc): the extra heap-alloc and copy could be easily avoided with the
+                // introduction of an InMemoryWriter trait or similar. In practice it makes no
+                // difference and the cognitive overhead of this crate is already through the roof.
                 let mut header = Vec::new();
                 MessageHeader {
                     kind: MessageKind::End,
