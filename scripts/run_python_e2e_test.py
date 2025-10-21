@@ -44,9 +44,9 @@ def main() -> None:
 
     examples = [
         # Trivial examples that don't require weird dependencies, or downloading data
-        ("examples/python/minimal_options", []),
-        ("examples/python/multithreading", []),
-        ("examples/python/plots", []),
+        "examples/python/minimal_options",
+        "examples/python/multithreading",
+        "examples/python/plots",
     ]
 
     if not parser.parse_args().no_install:
@@ -54,7 +54,7 @@ def main() -> None:
         print("Installing examples…")
         start_time = time.time()
         args = ["pip", "install", "--quiet"]
-        for example, _ in examples:
+        for example in examples:
             # install in editable mode so `__file__` relative paths work
             args.extend(["-e", example])
         subprocess.run(args, check=True)
@@ -62,11 +62,11 @@ def main() -> None:
         print(f"pip install in {elapsed:.1f} seconds")
         print()
 
-    for example, args in examples:
+    for example in examples:
         print("----------------------------------------------------------")
         print(f"Testing {example}…\n")
         start_time = time.time()
-        run_example(Path(example).name, args)
+        run_example(Path(example).name, [])
         elapsed = time.time() - start_time
         print(f"{example} done in {elapsed:.1f} seconds")
         print()
