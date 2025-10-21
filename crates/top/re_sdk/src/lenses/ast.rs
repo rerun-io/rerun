@@ -765,4 +765,84 @@ mod test {
         let chunk = &res[0];
         insta::assert_snapshot!("single_static", format!("{chunk:-240}"));
     }
+
+    #[test]
+    fn test_time_column_extraction() {
+        // Create a chunk with timestamp data that can be extracted as a time column
+        let mut timestamp_builder = ListBuilder::new(arrow::array::Int64Builder::new());
+        let mut value_builder = ListBuilder::new(Int32Builder::new());
+
+        // Add rows with timestamps and corresponding values
+        for i in 0..5 {
+            timestamp_builder.values().append_value(100 + i * 10);
+            timestamp_builder.append(true);
+
+            value_builder.values().append_value(i as i32);
+            value_builder.append(true);
+        }
+
+        let timestamp_column = timestamp_builder.finish();
+        let value_column = value_builder.finish();
+
+        let components = [
+            (
+                ComponentDescriptor::partial("my_timestamp"),
+                timestamp_column,
+            ),
+            (ComponentDescriptor::partial("value"), value_column),
+        ]
+        .into_iter();
+
+        // Create chunk without the custom timeline initially
+        let time_column = TimeColumn::new_sequence("tick", [0, 1, 2, 3, 4]);
+
+        let original_chunk = Chunk::from_auto_row_ids(
+            ChunkId::new(),
+            "timestamped".into(),
+            std::iter::once((TimelineName::new("tick"), time_column)).collect(),
+            components.collect(),
+        )
+        .unwrap();
+
+        println!("{original_chunk}");
+
+        // Create a lens that extracts the timestamp as a time column and keeps the original timestamp as a component
+        let time_lens = Lens::for_input_column(
+            EntityPathFilter::parse_forgiving("timestamped"),
+            "my_timestamp",
+        )
+        .add_time_column("my_timeline", TimeType::Sequence, [])
+        .add_output_column(ComponentDescriptor::partial("extracted_time"), [])
+        .build();
+
+        let pipeline = LensRegistry {
+            lenses: vec![time_lens],
+        };
+
+        let res = pipeline.apply(&original_chunk);
+        assert_eq!(res.len(), 1);
+
+        let chunk = &res[0];
+        println!("{chunk}");
+
+        // Verify the chunk has both the original timeline and the new custom timeline
+        assert!(chunk.timelines().contains_key(&TimelineName::new("tick")));
+        assert!(
+            chunk
+                .timelines()
+                .contains_key(&TimelineName::new("my_timeline"))
+        );
+
+        // Verify the custom timeline has the correct values
+        let my_timeline = chunk
+            .timelines()
+            .get(&TimelineName::new("my_timeline"))
+            .unwrap();
+        assert_eq!(my_timeline.times_raw().len(), 5);
+        assert_eq!(my_timeline.times_raw()[0], 100);
+        assert_eq!(my_timeline.times_raw()[1], 110);
+        assert_eq!(my_timeline.times_raw()[2], 120);
+        assert_eq!(my_timeline.times_raw()[3], 130);
+        assert_eq!(my_timeline.times_raw()[4], 140);
+    }
 }
