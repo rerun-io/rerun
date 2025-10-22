@@ -34,6 +34,7 @@ class TimeAxis(Archetype):
         *,
         link: blueprint_components.LinkAxisLike | None = None,
         view_range: datatypes.TimeRangeLike | None = None,
+        zoom_lock: datatypes.BoolLike | None = None,
     ) -> None:
         """
         Create a new instance of the TimeAxis archetype.
@@ -46,12 +47,14 @@ class TimeAxis(Archetype):
             Linking with global will ignore all the other options.
         view_range:
             The view range of the horizontal/X/time axis.
+        zoom_lock:
+            If enabled, the X axis range will remain locked to the specified range when zooming.
 
         """
 
         # You can define your own __init__ function as a member of TimeAxisExt in time_axis_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(link=link, view_range=view_range)
+            self.__attrs_init__(link=link, view_range=view_range, zoom_lock=zoom_lock)
             return
         self.__attrs_clear__()
 
@@ -60,6 +63,7 @@ class TimeAxis(Archetype):
         self.__attrs_init__(
             link=None,
             view_range=None,
+            zoom_lock=None,
         )
 
     @classmethod
@@ -76,6 +80,7 @@ class TimeAxis(Archetype):
         clear_unset: bool = False,
         link: blueprint_components.LinkAxisLike | None = None,
         view_range: datatypes.TimeRangeLike | None = None,
+        zoom_lock: datatypes.BoolLike | None = None,
     ) -> TimeAxis:
         """
         Update only some specific fields of a `TimeAxis`.
@@ -90,6 +95,8 @@ class TimeAxis(Archetype):
             Linking with global will ignore all the other options.
         view_range:
             The view range of the horizontal/X/time axis.
+        zoom_lock:
+            If enabled, the X axis range will remain locked to the specified range when zooming.
 
         """
 
@@ -98,6 +105,7 @@ class TimeAxis(Archetype):
             kwargs = {
                 "link": link,
                 "view_range": view_range,
+                "zoom_lock": zoom_lock,
             }
 
             if clear_unset:
@@ -131,6 +139,15 @@ class TimeAxis(Archetype):
         converter=blueprint_components.TimeRangeBatch._converter,  # type: ignore[misc]
     )
     # The view range of the horizontal/X/time axis.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    zoom_lock: blueprint_components.LockRangeDuringZoomBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.LockRangeDuringZoomBatch._converter,  # type: ignore[misc]
+    )
+    # If enabled, the X axis range will remain locked to the specified range when zooming.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
