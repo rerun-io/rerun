@@ -67,8 +67,10 @@ impl SelectionPanel {
                 ..Default::default()
             });
 
-        // Always reset the VH highlight, and let the UI re-set it if needed.
-        ctx.send_time_commands([TimeControlCommand::ClearHighlightedRange]);
+        if ctx.time_ctrl.highlighted_range.is_some() {
+            // Always reset the VH highlight, and let the UI re-set it if needed.
+            ctx.send_time_commands([TimeControlCommand::ClearHighlightedRange]);
+        }
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
             ui.panel_content(|ui| {
