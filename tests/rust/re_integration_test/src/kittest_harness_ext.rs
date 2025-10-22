@@ -1,5 +1,6 @@
 use std::{collections::BTreeSet, sync::Arc};
 
+use egui::accesskit::Role;
 use egui::Modifiers;
 use egui::PointerButton;
 use egui::accesskit::Toggled;
@@ -79,6 +80,9 @@ pub trait HarnessExt {
     // Drag-and-drop functions. You can use `hover` between `drag` and `drop`.
     fn drag_nth_label(&mut self, label: &str, index: usize);
     fn drop_nth_label(&mut self, label: &str, index: usize);
+
+    // Changes the value of a dropdown menu.
+    fn change_dropdown_value(&mut self, dropdown_label: &str, value: &str);
 
     // Takes a snapshot of the current app state with good-enough snapshot options.
     fn snapshot_app(&mut self, snapshot_name: &str);
@@ -327,6 +331,13 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
                 _viewer_context.global_context.display_mode
             );
         });
+    }
+
+    fn change_dropdown_value(&mut self, dropdown_label: &str, value: &str) {
+        let node = self.get_by_role_and_label(Role::ComboBox, dropdown_label);
+        node.click();
+        self.run_ok();
+        self.click_label(value);
     }
 
     fn snapshot_app(&mut self, snapshot_name: &str) {

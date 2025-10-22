@@ -240,12 +240,8 @@ pub async fn test_multi_change_container_type() {
     harness.click_nth_label("Vertical container", 0);
     harness.snapshot_app("change_container_type_1");
 
-    // TODO: click by value instead. https://github.com/emilk/egui/pull/7658
-    harness.click_label("container_kind_dropdown");
+    harness.change_dropdown_value("Container kind", "Horizontal");
     harness.snapshot_app("change_container_type_2");
-
-    harness.click_label("Horizontal");
-    harness.snapshot_app("change_container_type_3");
 }
 
 #[tokio::test(flavor = "multi_thread")]

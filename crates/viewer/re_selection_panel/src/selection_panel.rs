@@ -969,7 +969,7 @@ fn container_kind_selection_ui(ui: &mut egui::Ui, in_out_kind: &mut ContainerKin
             }
         }
     })
-    .widget_info(|| WidgetInfo::labeled(WidgetType::ComboBox, true, "container_kind_dropdown"));
+    .widget_info(|| WidgetInfo::labeled(WidgetType::ComboBox, true, "Container kind"));
 }
 
 // TODO(#4560): this code should be generic and part of re_data_ui
