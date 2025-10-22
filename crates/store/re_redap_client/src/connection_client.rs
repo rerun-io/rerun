@@ -698,7 +698,7 @@ where
         stream: impl Stream<Item = RecordBatch> + Send + 'static,
         table_id: EntryId,
         insert_mode: TableInsertMode,
-    ) -> Result<(), tonic::Status> {
+    ) -> Result<(), ApiError> {
         let insert_mode = re_protos::cloud::v1alpha1::TableInsertMode::from(insert_mode).into();
         let stream = stream
             .map(move |batch| WriteTableRequest {
@@ -706,8 +706,13 @@ where
                 insert_mode,
             })
             .into_streaming_request()
-            .with_entry_id(table_id)?;
+            .with_entry_id(table_id)
+            .map_err(|err| ApiError::tonic(err, "/WriteTable failed"))?;
 
-        self.inner().write_table(stream).await.map(|_| ())
+        self.inner()
+            .write_table(stream)
+            .await
+            .map(|_| ())
+            .map_err(|err| ApiError::tonic(err, "/WriteTable failed"))
     }
 }
