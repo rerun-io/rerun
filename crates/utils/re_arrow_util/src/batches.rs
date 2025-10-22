@@ -13,7 +13,7 @@ use itertools::Itertools as _;
 /// The final schema will be the merge of all the input schemas.
 ///
 /// This will fail if the concatenation requires backfilling null values into non-nullable column.
-/// You probably want to call [`make_batch_nullable`] first.
+/// You probably want to call [`RecordBatchExt::make_nullable`] first.
 pub fn concat_polymorphic_batches(batches: &[RecordBatch]) -> arrow::error::Result<RecordBatch> {
     if batches.is_empty() {
         return Ok(RecordBatch::new_empty(Arc::new(Schema::empty())));
