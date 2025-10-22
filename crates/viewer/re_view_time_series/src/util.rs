@@ -1,9 +1,8 @@
 use re_log_types::AbsoluteTimeRange;
-use re_types::{
-    components::AggregationPolicy,
-    datatypes::{TimeRange, TimeRangeBoundary},
+use re_types::components::AggregationPolicy;
+use re_viewer_context::{
+    ViewContext, ViewQuery, ViewerContext, external::re_entity_db::InstancePath,
 };
-use re_viewer_context::{ViewQuery, ViewerContext, external::re_entity_db::InstancePath};
 
 use crate::{
     PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs,
@@ -27,52 +26,37 @@ pub fn determine_time_per_pixel(
     1.0 / pixels_per_time.max(f64::EPSILON)
 }
 
-pub fn determine_time_range(
-    time_cursor: re_log_types::TimeInt,
-    time_offset: i64,
-    data_result: &re_viewer_context::DataResult,
-    plot_mem: Option<&egui_plot::PlotMemory>,
-) -> AbsoluteTimeRange {
-    let query_range = data_result.query_range();
+pub fn determine_time_range(ctx: &ViewContext<'_>) -> AbsoluteTimeRange {
+    let time_axis = re_viewport_blueprint::ViewProperty::from_archetype::<
+        re_types::blueprint::archetypes::TimeAxis,
+    >(
+        ctx.viewer_ctx.blueprint_db(),
+        ctx.viewer_ctx.blueprint_query,
+        ctx.view_id,
+    );
 
-    // Latest-at doesn't make sense for time series and should also never happen.
-    let visible_time_range = match query_range {
-        re_viewer_context::QueryRange::TimeRange(time_range) => time_range.clone(),
-        re_viewer_context::QueryRange::LatestAt => {
-            re_log::error_once!(
-                "Unexpected LatestAt query for time series data result at path {:?}",
-                data_result.entity_path
-            );
-            TimeRange {
-                start: TimeRangeBoundary::AT_CURSOR,
-                end: TimeRangeBoundary::AT_CURSOR,
-            }
-        }
-    };
-
-    let mut time_range =
-        AbsoluteTimeRange::from_relative_time_range(&visible_time_range, time_cursor);
-
-    let is_auto_bounds = plot_mem.is_some_and(|mem| mem.auto_bounds.x || mem.auto_bounds.y);
-    let plot_bounds = plot_mem.map(|mem| {
-        let bounds = mem.bounds().range_x();
-        let x_min = bounds.start().floor() as i64;
-        let x_max = bounds.end().ceil() as i64;
-        // We offset the time values of the plot so that unix timestamps don't run out of precision.
-        (
-            x_min.saturating_add(time_offset),
-            x_max.saturating_add(time_offset),
+    let view_time_range = time_axis
+        .component_or_empty::<re_types::blueprint::components::TimeRange>(
+            re_types::blueprint::archetypes::TimeAxis::descriptor_view_range().component,
         )
-    });
+        .ok()
+        .flatten();
+    let current_time = ctx
+        .viewer_ctx
+        .time_ctrl
+        .time_int()
+        .unwrap_or(re_log_types::TimeInt::ZERO)
+        .into();
 
-    // If we're not in auto mode, which is the mode where the query drives the bounds of the plot,
-    // then we want the bounds of the plots to drive the query!
-    if !is_auto_bounds && let Some((x_min, x_max)) = plot_bounds {
-        time_range.set_min(i64::max(time_range.min().as_i64(), x_min));
-        time_range.set_max(i64::min(time_range.max().as_i64(), x_max));
-    }
-
-    time_range
+    view_time_range
+        .map(|range| {
+            AbsoluteTimeRange::new(
+                range.start.start_boundary_time(current_time),
+                range.end.end_boundary_time(current_time),
+            )
+        })
+        // If we don't have an overriden time range, we want to show everything.
+        .unwrap_or(AbsoluteTimeRange::EVERYTHING)
 }
 
 // We have a bunch of raw points, and now we need to group them into individual series.
