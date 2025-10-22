@@ -386,14 +386,6 @@ impl ViewerContext<'_> {
                         .send_system(SystemCommand::set_selection(interacted_items));
                 }
             }
-        } else if ListItem::gained_focus_via_arrow_key(&response.ctx, response.id) {
-            // We want the item to be selected if it was selected with arrow keys (in list_item)
-            // but not when focused using e.g. the tab key.
-            self.command_sender()
-                .send_system(SystemCommand::SetSelection(
-                    SetSelection::new(interacted_items)
-                        .with_source(SelectionSource::ListItemNavigation),
-                ));
         }
     }
 
@@ -410,6 +402,18 @@ impl ViewerContext<'_> {
             .into()
             .into_mono_instance_path_items(self.recording(), &self.current_query());
 
+        // Focus -> Selection
+        if ListItem::gained_focus_via_arrow_key(&response.ctx, response.id) {
+            // We want the item to be selected if it was selected with arrow keys (in list_item)
+            // but not when focused using e.g. the tab key.
+            self.command_sender()
+                .send_system(SystemCommand::SetSelection(
+                    SetSelection::new(interacted_items.clone())
+                        .with_source(SelectionSource::ListItemNavigation),
+                ));
+        }
+
+        // Selection -> Focus
         let single_selected = self.selection().single_item() == interacted_items.single_item();
         if single_selected {
             // If selection changes, and a single item is selected, the selected item should
