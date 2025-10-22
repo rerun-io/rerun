@@ -1,10 +1,4 @@
-// &archetypes::Image::from_color_model_and_tensor(
-//                             re_types::datatypes::ColorModel::RGB,
-//                             Array::<u8, _>::zeros((h, w, 3).f()),
-//                         )
-
-use egui::Modifiers;
-
+use egui_kittest::kittest::Queryable;
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
@@ -16,8 +10,8 @@ use re_viewport_blueprint::ViewBlueprint;
 fn make_test_image() -> re_types::archetypes::Image {
     let image = ndarray::Array3::from_shape_fn((256, 256, 3), |(y, x, c)| match c {
         0 => x as u8,
-        1 => (x ^ y) as u8,
-        2 => y as u8,
+        1 => y as u8,
+        2 => 128,
         _ => unreachable!(),
     });
 
@@ -25,12 +19,13 @@ fn make_test_image() -> re_types::archetypes::Image {
         re_types::datatypes::ColorModel::RGB,
         image,
     )
+    .expect("Failed to create image")
 }
 
 fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
     harness.init_recording();
-    harness.set_selection_panel_opened(false);
+    harness.set_selection_panel_opened(true);
 
     // Log some data
     harness.log_entity("/", |builder| {
@@ -39,49 +34,57 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
             TimePoint::default(),
             &re_types::archetypes::Boxes3D::from_centers_and_half_sizes(
                 [(0.0, 0.0, 0.0)],
-                [(1.0, 1.0, 1.0)],
+                [(0.3, 0.3, 0.3)],
             )
-            .with_colors([0xFF0000FF]),
+            .with_colors([0xFF9001FF]),
         )
     });
 
-    harness.log(
-        "/world",
-        re_types::components::ViewCoordinates::RightHandYDown,
-        true,
-    );
+    harness.log_entity("/world", |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::default(),
+            &re_types::archetypes::ViewCoordinates::RIGHT_HAND_Y_DOWN(),
+        )
+    });
 
-    harness.log(
-        "/world/camera",
-        re_types::components::Pinhole::new([10, 10], [4.0, 4.0], [5.0, 5.0]),
-        true,
-    );
-
-    harness.log_entity("world/camera", |builder| {
+    harness.log_entity("/world/camera", |builder| {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
             &re_types::archetypes::Transform3D::from_rotation(
                 re_types::components::RotationAxisAngle::new(
-                    [0.0, 0.0, 1.0],
+                    [-1.0, 0.9, 0.0],
                     std::f32::consts::PI / 2.0,
                 ),
             ),
         )
     });
 
-    harness.log_entity("world/camera/image", |builder| {
-        builder.with_archetype(RowId::new(), TimePoint::default(), &make_test_image())
-    });
-
-    harness.log_entity("world/camera/image/keypoint", |builder| {
+    harness.log_entity("/world/camera/image", |builder| {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::Points2D::from_points_and_radii(
-                [(0.0, 0.0), (1.0, 1.0), (2.0, 2.0)],
-                [0.5, 0.5, 0.5],
-            ),
+            &re_types::archetypes::Pinhole::from_focal_length_and_resolution(
+                [128.0, 128.0],
+                [256.0, 256.0],
+            )
+            .with_principal_point([128.0, 128.0])
+            .with_image_plane_distance(0.2),
+        )
+    });
+
+    harness.log_entity("/world/camera/image", |builder| {
+        builder.with_archetype(RowId::new(), TimePoint::default(), &make_test_image())
+    });
+
+    harness.log_entity("/world/camera/image/keypoint", |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::default(),
+            &re_types::archetypes::Points2D::new([(10.0, 10.0), (128.0, -0.0), (50.0, -50.0)])
+                .with_radii([-10.0, -10.0, -10.0])
+                .with_colors([0xFF9001FF, 0x9001FFFF, 0x90FF01FF]),
         )
     });
 
@@ -100,30 +103,143 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-pub async fn test_foo() {
+pub async fn test_origin_keypoint_3d() {
     let mut harness = make_test_harness();
 
-    harness.snapshot_app("xtemp");
+    harness.right_click_nth_label("3D view", 0);
+    harness.click_label("Expand all");
 
-    //     // Test context menus of view panel title widgets
-    //     harness.right_click_nth_label("3D view", 1);
-    //     harness.hover_label_contains("Move to new container");
-    //     harness.snapshot_app("context_menu_invalid_sub_container_02");
-    //     harness.key_press(egui::Key::Escape);
+    harness.right_click_at(harness.get_by_label("keypoint").rect().left_center());
+    harness.hover_label_contains("Add to new view");
+    harness.click_label("3D");
+    harness.snapshot_app("origin_keypoint_3d");
+}
 
-    //     harness.right_click_nth_label("2D view", 1);
-    //     harness.hover_label_contains("Move to new container");
-    //     harness.snapshot_app("context_menu_invalid_sub_container_03");
-    //     harness.key_press(egui::Key::Escape);
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_origin_keypoint_2d() {
+    let mut harness = make_test_harness();
 
-    //     // Test context menus of view items in the blueprint panel
-    //     harness.right_click_nth_label("3D view", 0);
-    //     harness.hover_label_contains("Move to new container");
-    //     harness.snapshot_app("context_menu_invalid_sub_container_04");
-    //     harness.key_press(egui::Key::Escape);
+    harness.right_click_nth_label("3D view", 0);
+    harness.click_label("Expand all");
 
-    //     harness.right_click_nth_label("2D view", 0);
-    //     harness.hover_label_contains("Move to new container");
-    //     harness.snapshot_app("context_menu_invalid_sub_container_05");
-    //     harness.key_press(egui::Key::Escape);
+    harness.right_click_at(harness.get_by_label("keypoint").rect().left_center());
+    harness.hover_label_contains("Add to new view");
+    harness.click_label("2D");
+    harness.snapshot_app("origin_keypoint_2d");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_origin_image_3d() {
+    let mut harness = make_test_harness();
+
+    harness.right_click_nth_label("3D view", 0);
+    harness.click_label("Expand all");
+
+    // Close the selection panel before clicking on the image entity
+    // because rendering its download button requires the UI to be on
+    // the main thread. We are in a tokio test and it will crash.
+    harness.set_selection_panel_opened(false);
+
+    harness.right_click_nth_label("image", 0);
+    harness.hover_label_contains("Add to new view");
+    harness.click_label("3D");
+    harness.set_selection_panel_opened(true);
+    harness.snapshot_app("origin_image_3d");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_origin_image_2d() {
+    let mut harness = make_test_harness();
+
+    harness.right_click_nth_label("3D view", 0);
+    harness.click_label("Expand all");
+
+    // Close the selection panel before clicking on the image entity
+    // because rendering its download button requires the UI to be on
+    // the main thread. We are in a tokio test and it will crash.
+    harness.set_selection_panel_opened(false);
+
+    harness.right_click_nth_label("image", 0);
+    harness.hover_label_contains("Add to new view");
+    harness.click_label("2D");
+    harness.set_selection_panel_opened(true);
+    harness.snapshot_app("origin_image_2d");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_origin_camera_3d() {
+    let mut harness = make_test_harness();
+
+    harness.right_click_nth_label("3D view", 0);
+    harness.click_label("Expand all");
+
+    harness.right_click_nth_label("camera", 0);
+    harness.hover_label_contains("Add to new view");
+    harness.click_label("3D");
+    harness.snapshot_app("origin_camera_3d");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_origin_camera_2d() {
+    let mut harness = make_test_harness();
+
+    harness.right_click_nth_label("3D view", 0);
+    harness.click_label("Expand all");
+
+    harness.right_click_nth_label("camera", 0);
+    harness.hover_label_contains("Add to new view");
+    harness.click_label("2D");
+    harness.snapshot_app("origin_camera_2d");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_origin_world_3d() {
+    let mut harness = make_test_harness();
+
+    harness.right_click_nth_label("3D view", 0);
+    harness.click_label("Expand all");
+
+    harness.right_click_nth_label("world", 0);
+    harness.hover_label_contains("Add to new view");
+    harness.click_label("3D");
+    harness.snapshot_app("origin_world_3d");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_origin_world_2d() {
+    let mut harness = make_test_harness();
+
+    harness.right_click_nth_label("3D view", 0);
+    harness.click_label("Expand all");
+
+    harness.right_click_nth_label("world", 0);
+    harness.hover_label_contains("Add to new view");
+    harness.click_label("2D");
+    harness.snapshot_app("origin_world_2d");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_origin_root_3d() {
+    let mut harness = make_test_harness();
+
+    harness.right_click_nth_label("3D view", 0);
+    harness.click_label("Expand all");
+
+    harness.right_click_nth_label("/ (root)", 0);
+    harness.hover_label_contains("Add to new view");
+    harness.click_label("3D");
+    harness.snapshot_app("origin_root_3d");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_origin_root_2d() {
+    let mut harness = make_test_harness();
+
+    harness.right_click_nth_label("3D view", 0);
+    harness.click_label("Expand all");
+
+    harness.right_click_nth_label("/ (root)", 0);
+    harness.hover_label_contains("Add to new view");
+    harness.click_label("2D");
+    harness.snapshot_app("origin_root_2d");
 }

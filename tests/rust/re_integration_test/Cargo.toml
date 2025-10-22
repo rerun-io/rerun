@@ -24,6 +24,7 @@ re_viewport_blueprint.workspace = true
 egui_kittest.workspace = true
 egui_tiles.workspace = true
 egui.workspace = true
+ndarray.workspace = true
 parking_lot.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }

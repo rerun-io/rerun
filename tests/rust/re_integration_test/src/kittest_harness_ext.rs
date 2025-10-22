@@ -75,6 +75,9 @@ pub trait HarnessExt {
     fn hover_label_contains(&mut self, label: &str);
     fn hover_nth_label(&mut self, label: &str, index: usize);
 
+    // Clicks on the UI at a given position
+    fn right_click_at(&mut self, pos: egui::Pos2);
+
     // Drag-and-drop functions. You can use `hover` between `drag` and `drop`.
     fn drag_nth_label(&mut self, label: &str, index: usize);
     fn drop_nth_label(&mut self, label: &str, index: usize);
@@ -276,6 +279,22 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
 
     fn click_nth_label_modifiers(&mut self, label: &str, index: usize, modifiers: Modifiers) {
         self.get_nth_label(label, index).click_modifiers(modifiers);
+        self.run_ok();
+    }
+
+    fn right_click_at(&mut self, pos: egui::Pos2) {
+        self.event(egui::Event::PointerButton {
+            pos,
+            button: PointerButton::Secondary,
+            pressed: true,
+            modifiers: Modifiers::NONE,
+        });
+        self.event(egui::Event::PointerButton {
+            pos,
+            button: PointerButton::Secondary,
+            pressed: false,
+            modifiers: Modifiers::NONE,
+        });
         self.run_ok();
     }
 
