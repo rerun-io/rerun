@@ -1,3 +1,5 @@
+use egui_kittest::kittest::NodeT;
+use egui_kittest::kittest::{By, Queryable};
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
@@ -196,10 +198,10 @@ pub async fn test_add_container_from_blueprint_panel_menu() {
     let mut harness = make_multi_view_test_harness();
     add_containers_recursive(&mut harness, None, 1, 4, 0);
 
+    // Blueprint panel "…" icon
     harness.click_label("Open menu with more options");
     harness.snapshot_app("add_container_from_blueprint_panel_menu_1");
 
-    // Blueprint panel "…" icon
     harness.click_label_contains("Add view or container");
     harness.snapshot_app("add_container_from_blueprint_panel_menu_2");
 
@@ -222,6 +224,11 @@ pub async fn test_add_container_from_selection_panel() {
 
     harness.click_label("Vertical");
     harness.snapshot_app("add_container_from_selection_panel_3");
+
+    // TODO: count the labels in the selection panel only
+    // See: https://github.com/rerun-io/rerun/issues/11628
+    let vertical_container_count = harness.query_all_by_label("Vertical container").count();
+    assert_eq!(vertical_container_count, 6);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -233,7 +240,8 @@ pub async fn test_multi_change_container_type() {
     harness.click_nth_label("Vertical container", 0);
     harness.snapshot_app("change_container_type_1");
 
-    harness.click_label("Vertical");
+    // TODO: click by value instead. https://github.com/emilk/egui/pull/7658
+    harness.click_label("container_kind_dropdown");
     harness.snapshot_app("change_container_type_2");
 
     harness.click_label("Horizontal");

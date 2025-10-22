@@ -1,4 +1,4 @@
-use egui::{NumExt as _, TextBuffer};
+use egui::{NumExt as _, TextBuffer, WidgetInfo, WidgetType};
 use egui_tiles::ContainerKind;
 
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
@@ -968,7 +968,8 @@ fn container_kind_selection_ui(ui: &mut egui::Ui, in_out_kind: &mut ContainerKin
                 *in_out_kind = kind;
             }
         }
-    });
+    })
+    .widget_info(|| WidgetInfo::labeled(WidgetType::ComboBox, true, "container_kind_dropdown"));
 }
 
 // TODO(#4560): this code should be generic and part of re_data_ui

@@ -1248,7 +1248,7 @@ pub trait UiExt {
         id_salt: impl std::hash::Hash,
         selected_text: String,
         content: impl FnOnce(&mut egui::Ui),
-    ) {
+    ) -> egui::Response {
         // TODO(emilk): make the button itself a `ListItem2`
         let response = egui::ComboBox::from_id_salt(id_salt)
             .selected_text(selected_text.clone())
@@ -1257,9 +1257,7 @@ pub trait UiExt {
                     content(ui);
                 });
             });
-        response.response.widget_info(move || {
-            WidgetInfo::labeled(WidgetType::ComboBox, true, selected_text.clone())
-        });
+        response.response
     }
 
     /// Use the provided range as full span for the nested content.
