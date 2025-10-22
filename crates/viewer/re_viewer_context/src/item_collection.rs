@@ -210,7 +210,6 @@ impl ItemCollection {
             AppId,
             StoreId,
             EntityPath,
-            Component,
         }
 
         #[expect(clippy::match_same_arms)]
@@ -218,6 +217,8 @@ impl ItemCollection {
             .iter()
             .filter_map(|(item, _)| match item {
                 Item::Container(_) => None,
+                // TODO(gijsd): These are copyable, but we're currently unable to display a meaningful toast.
+                Item::ComponentPath(_) => None,
                 Item::View(_) => None,
                 // TODO(lucasmerlin): Should these be copyable as URLs?
                 Item::RedapServer(_) => None,
@@ -254,10 +255,6 @@ impl ItemCollection {
                     ClipboardTextDesc::EntityPath,
                     instance_path.entity_path.to_string(),
                 )),
-                Item::ComponentPath(component_path) => Some((
-                    ClipboardTextDesc::Component,
-                    component_path.component.to_string(),
-                )),
             })
             .chunk_by(|(desc, _)| *desc);
 
@@ -273,7 +270,6 @@ impl ItemCollection {
                 ClipboardTextDesc::AppId => "app id",
                 ClipboardTextDesc::StoreId => "store id",
                 ClipboardTextDesc::EntityPath => "entity path",
-                ClipboardTextDesc::Component => "component",
             };
             if !content_description.is_empty() {
                 content_description.push_str(", ");
