@@ -13,7 +13,7 @@ use tonic::{Code, Request, Response, Status};
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::TableInsertMode;
+use re_protos::cloud::v1alpha1::ext::TableInsertMode;
 use re_protos::{
     cloud::v1alpha1::{
         DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
@@ -695,13 +695,9 @@ impl RerunCloudService for RerunCloudHandler {
             let insert_op = match TableInsertMode::try_from(write_msg.insert_mode)
                 .map_err(|err| Status::invalid_argument(err.to_string()))?
             {
-                TableInsertMode::Unspecified => Err(Status::invalid_argument(
-                    "table insert mode must be specified",
-                )),
-                TableInsertMode::Append => Ok(InsertOp::Append),
-                TableInsertMode::Replace => Ok(InsertOp::Replace),
-                TableInsertMode::Overwrite => Ok(InsertOp::Overwrite),
-            }?;
+                TableInsertMode::Append => InsertOp::Append,
+                TableInsertMode::Overwrite => InsertOp::Overwrite,
+            };
 
             table.write_table(rb, insert_op).await.map_err(|err| {
                 tonic::Status::internal(format!("error writing to table: {err:#}"))

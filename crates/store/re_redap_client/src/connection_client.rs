@@ -1,11 +1,9 @@
-use arrow::{array::RecordBatch, datatypes::Schema as ArrowSchema};
-use tokio_stream::{Stream, StreamExt as _};
-use tonic::codegen::{Body, StdError};
-
 use crate::ApiError;
+use arrow::{array::RecordBatch, datatypes::Schema as ArrowSchema};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::WriteTableRequest;
+use re_protos::cloud::v1alpha1::ext::TableInsertMode;
 use re_protos::{
     TypeConversionError,
     cloud::v1alpha1::{
@@ -33,6 +31,9 @@ use re_protos::{
     headers::RerunHeadersInjectorExt as _,
     invalid_schema, missing_column, missing_field,
 };
+use tokio_stream::{Stream, StreamExt as _};
+use tonic::IntoStreamingRequest as _;
+use tonic::codegen::{Body, StdError};
 
 pub type FetchChunksResponseStream = std::pin::Pin<
     Box<
@@ -694,8 +695,19 @@ where
 
     pub async fn write_table(
         &mut self,
-        request: impl tonic::IntoStreamingRequest<Message = WriteTableRequest>,
+        stream: impl Stream<Item = RecordBatch> + Send + 'static,
+        table_id: EntryId,
+        insert_mode: TableInsertMode,
     ) -> Result<(), tonic::Status> {
-        self.inner().write_table(request).await.map(|_| ())
+        let insert_mode = re_protos::cloud::v1alpha1::TableInsertMode::from(insert_mode).into();
+        let stream = stream
+            .map(move |batch| WriteTableRequest {
+                dataframe_part: Some(batch.into()),
+                insert_mode,
+            })
+            .into_streaming_request()
+            .with_entry_id(table_id)?;
+
+        self.inner().write_table(stream).await.map(|_| ())
     }
 }

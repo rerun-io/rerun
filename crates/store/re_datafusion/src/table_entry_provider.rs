@@ -7,7 +7,7 @@ use std::task::{Context, Poll};
 
 use arrow::{array::RecordBatch, datatypes::SchemaRef};
 use datafusion::catalog::Session;
-use datafusion::common::exec_err;
+use datafusion::common::{exec_err, not_impl_err};
 use datafusion::execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext};
 use datafusion::logical_expr::dml::InsertOp;
 use datafusion::physical_expr::{EquivalenceProperties, Partitioning};
@@ -19,16 +19,14 @@ use datafusion::{
 };
 use futures::Stream;
 use tokio::runtime::Handle;
-use tonic::IntoStreamingRequest as _;
 use tracing::instrument;
 
 use re_log_types::{EntryId, EntryIdOrName};
-use re_protos::cloud::v1alpha1::ext::EntryDetails;
+use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableInsertMode};
 use re_protos::cloud::v1alpha1::{
-    EntryFilter, EntryKind, FindEntriesRequest, TableInsertMode, WriteTableRequest,
+    EntryFilter, EntryKind, FindEntriesRequest,
 };
 use re_protos::cloud::v1alpha1::{GetTableSchemaRequest, ScanTableRequest, ScanTableResponse};
-use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::ConnectionClient;
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
@@ -187,7 +185,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         let entry_id = self.clone().table_id().await?;
         let insert_op = match insert_op {
             InsertOp::Append => TableInsertMode::Append,
-            InsertOp::Replace => TableInsertMode::Replace,
+            InsertOp::Replace => { return not_impl_err!("Replacement operations are not supported"); },
             InsertOp::Overwrite => TableInsertMode::Overwrite,
         };
         let Some(runtime) = self.runtime.clone() else {
@@ -304,11 +302,10 @@ pub struct RecordBatchGrpcOutputStream {
     thread_status: tokio::sync::oneshot::Receiver<Result<(), tonic::Status>>,
     complete: bool,
     grpc_error: Option<tonic::Status>,
-    insert_op: TableInsertMode,
 }
 
 struct GrpcStreamSender {
-    sender: tokio::sync::mpsc::UnboundedSender<WriteTableRequest>,
+    sender: tokio::sync::mpsc::UnboundedSender<RecordBatch>,
 }
 
 impl RecordBatchStream for RecordBatchGrpcOutputStream {
@@ -332,12 +329,10 @@ impl RecordBatchGrpcOutputStream {
 
         runtime.spawn(async move {
             let shutdown_response = async {
-                let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
-                    .into_streaming_request()
-                    .with_entry_id(table_id)?;
+                let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
                 let mut client = client;
 
-                client.write_table(stream).await
+                client.write_table(stream, table_id, insert_op).await
             }
             .await;
 
@@ -351,7 +346,6 @@ impl RecordBatchGrpcOutputStream {
             thread_status: thread_status_rx,
             complete: false,
             grpc_error: None,
-            insert_op,
         }
     }
 }
@@ -380,13 +374,8 @@ impl Stream for RecordBatchGrpcOutputStream {
             Poll::Ready(Some(Ok(batch))) => {
                 // Send to gRPC if we have a sender
                 if let Some(ref grpc_sender) = self.grpc_sender {
-                    let dataframe_part = batch.into();
-                    let request = WriteTableRequest {
-                        dataframe_part: Some(dataframe_part),
-                        insert_mode: self.insert_op.into(),
-                    };
                     // Check if channel is still open
-                    if grpc_sender.sender.send(request).is_err() {
+                    if grpc_sender.sender.send(batch).is_err() {
                         // Channel closed - the gRPC task may have failed
                         // Check if we have a stored error
                         if let Some(status) = self.grpc_error.take() {
