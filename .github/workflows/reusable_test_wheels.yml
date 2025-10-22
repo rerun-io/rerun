@@ -27,7 +27,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.9"
+  PYTHON_VERSION: "3.10"
 
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
@@ -105,6 +105,7 @@ jobs:
 
   test-wheels:
     name: Test Wheels (${{ needs.set-config.outputs.RUNNER }})
+    timeout-minutes: 60
 
     needs: [set-config]
 

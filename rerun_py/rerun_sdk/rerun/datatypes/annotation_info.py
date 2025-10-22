@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -90,14 +90,11 @@ class AnnotationInfo(AnnotationInfoExt):
 
 
 if TYPE_CHECKING:
-    AnnotationInfoLike = Union[AnnotationInfo, int, tuple[int, str], tuple[int, str, datatypes.Rgba32Like]]
+    AnnotationInfoLike = AnnotationInfo | int | tuple[int, str] | tuple[int, str, datatypes.Rgba32Like]
 else:
     AnnotationInfoLike = Any
 
-AnnotationInfoArrayLike = Union[
-    AnnotationInfo,
-    Sequence[AnnotationInfoLike],
-]
+AnnotationInfoArrayLike = AnnotationInfo | Sequence[AnnotationInfoLike]
 
 
 class AnnotationInfoBatch(BaseBatch[AnnotationInfoArrayLike]):
