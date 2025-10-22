@@ -92,7 +92,7 @@ jobs:
         uses: google-github-actions/upload-cloud-storage@v2
         with:
           path: "rerun_js_package"
-          destination: "rerun-builds/commit/${{ steps.get-commit-sha.outputs.short-sha }}/rerun_js"
+          destination: "rerun-builds/commit/${{ needs.get-commit-sha.outputs.short-sha }}/rerun_js"
           parent: false
           process_gcloudignore: false
           headers: |-
