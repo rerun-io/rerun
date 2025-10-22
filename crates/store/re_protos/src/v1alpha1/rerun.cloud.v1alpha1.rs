@@ -1530,13 +1530,12 @@ impl VectorDistanceMetric {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum TableInsertMode {
+    /// Always reserve unspecified as default value
     Unspecified = 0,
     /// Appends new rows to the existing table without modifying any existing rows.
     Append = 1,
-    /// Replace existing rows that collide with the inserted rows. Replacement is typically based on a unique key or primary key.
-    Replace = 2,
     /// Overwrites all existing rows in the table with the new rows.
-    Overwrite = 3,
+    Overwrite = 2,
 }
 impl TableInsertMode {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -1547,7 +1546,6 @@ impl TableInsertMode {
         match self {
             Self::Unspecified => "TABLE_INSERT_MODE_UNSPECIFIED",
             Self::Append => "TABLE_INSERT_MODE_APPEND",
-            Self::Replace => "TABLE_INSERT_MODE_REPLACE",
             Self::Overwrite => "TABLE_INSERT_MODE_OVERWRITE",
         }
     }
@@ -1556,7 +1554,6 @@ impl TableInsertMode {
         match value {
             "TABLE_INSERT_MODE_UNSPECIFIED" => Some(Self::Unspecified),
             "TABLE_INSERT_MODE_APPEND" => Some(Self::Append),
-            "TABLE_INSERT_MODE_REPLACE" => Some(Self::Replace),
             "TABLE_INSERT_MODE_OVERWRITE" => Some(Self::Overwrite),
             _ => None,
         }

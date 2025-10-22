@@ -593,16 +593,14 @@ message ScanTableResponse {
 }
 
 enum TableInsertMode {
+  // Always reserve unspecified as default value
   TABLE_INSERT_MODE_UNSPECIFIED = 0;
 
   // Appends new rows to the existing table without modifying any existing rows.
   TABLE_INSERT_MODE_APPEND = 1;
 
-  // Replace existing rows that collide with the inserted rows. Replacement is typically based on a unique key or primary key.
-  TABLE_INSERT_MODE_REPLACE = 2;
-
   // Overwrites all existing rows in the table with the new rows.
-  TABLE_INSERT_MODE_OVERWRITE = 3;
+  TABLE_INSERT_MODE_OVERWRITE = 2;
 }
 
 message WriteTableRequest {

@@ -130,7 +130,7 @@ class ServerInstance:
         self.dataset = dataset
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def server_instance(table_filepath: pathlib.Path) -> Generator[ServerInstance, None, None]:
     assert DATASET_FILEPATH.is_dir()
     assert table_filepath.is_dir()
