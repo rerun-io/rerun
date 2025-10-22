@@ -208,6 +208,11 @@ impl ContainerBlueprint {
         // a version of this that can take an Option.
         if let Some(active_tab) = &active_tab {
             arch = arch.with_active_tab(&active_tab.as_entity_path());
+        } else {
+            ctx.clear_blueprint_component(
+                id.as_entity_path(),
+                re_types::blueprint::archetypes::ContainerBlueprint::descriptor_active_tab(),
+            );
         }
 
         if let Some(cols) = grid_columns {
@@ -411,11 +416,7 @@ impl ContainerBlueprint {
         let container = match self.container_kind {
             egui_tiles::ContainerKind::Tabs => {
                 let mut tabs = egui_tiles::Tabs::new(children);
-                tabs.active = self
-                    .active_tab
-                    .as_ref()
-                    .map(|id| id.as_tile_id())
-                    .or_else(|| tabs.children.first().copied());
+                tabs.active = self.active_tab.as_ref().map(|id| id.as_tile_id());
                 egui_tiles::Container::Tabs(tabs)
             }
             egui_tiles::ContainerKind::Horizontal | egui_tiles::ContainerKind::Vertical => {
