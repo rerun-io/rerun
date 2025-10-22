@@ -9524,6 +9524,7 @@ dependencies = [
  "tonic",
  "tonic-web",
  "tower",
+ "tower-http",
  "tower-service",
  "tracing",
  "url",
