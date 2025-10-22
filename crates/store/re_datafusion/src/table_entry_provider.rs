@@ -23,9 +23,7 @@ use tracing::instrument;
 
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableInsertMode};
-use re_protos::cloud::v1alpha1::{
-    EntryFilter, EntryKind, FindEntriesRequest,
-};
+use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest};
 use re_protos::cloud::v1alpha1::{GetTableSchemaRequest, ScanTableRequest, ScanTableResponse};
 use re_redap_client::ConnectionClient;
 
@@ -185,7 +183,9 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         let entry_id = self.clone().table_id().await?;
         let insert_op = match insert_op {
             InsertOp::Append => TableInsertMode::Append,
-            InsertOp::Replace => { return not_impl_err!("Replacement operations are not supported"); },
+            InsertOp::Replace => {
+                return not_impl_err!("Replacement operations are not supported");
+            }
             InsertOp::Overwrite => TableInsertMode::Overwrite,
         };
         let Some(runtime) = self.runtime.clone() else {
