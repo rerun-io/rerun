@@ -23,8 +23,8 @@ impl ContextMenuAction for TrackEntity {
                 let mut show = false;
 
                 if is_3d_view(ctx, view_id)
-                    // we need to check if the focused entity is logged
-                    // because containers doesn't have bounding box or position
+                    // We need to check if the focused entity is logged
+                    // because entities without any data don't have bounding boxes or positions.
                     && ctx
                         .viewer_context
                         .recording()

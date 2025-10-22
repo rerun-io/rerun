@@ -172,22 +172,6 @@ impl SpatialViewState {
                 self.state_3d.set_spin(spin);
             }
         }
-
-        ui.horizontal(|ui| {
-            if let Some(tracked_entity) = self.state_3d.tracked_entity.clone() {
-                ui.label("Tracked entity:");
-                item_ui::entity_path_button(
-                    ctx,
-                    &ctx.blueprint_query,
-                    ctx.recording(),
-                    ui,
-                    Some(view_id),
-                    &tracked_entity,
-                );
-            } else {
-                ui.label("Tracked entity: None");
-            }
-        });
     }
 
     pub fn fallback_opacity_for_image_kind(&self, kind: ImageKind) -> f32 {

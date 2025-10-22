@@ -576,9 +576,8 @@ impl SpatialView3D {
                 &EyeControls3D::descriptor_tracking_entity(),
             )
         {
-            state.state_3d.tracked_entity = Some(re_log_types::EntityPath::from_file_path(
-                std::path::Path::new(entity_path.as_str()),
-            ));
+            state.state_3d.tracked_entity =
+                Some(re_log_types::EntityPath::from(entity_path.as_str()));
         }
 
         // Track focused entity if any.
