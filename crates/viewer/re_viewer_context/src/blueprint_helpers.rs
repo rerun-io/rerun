@@ -242,6 +242,7 @@ pub trait BlueprintContext {
             self.clear_static_blueprint_component(entity_path, component_descr);
         }
     }
+
     /// Clears a component in the blueprint store by logging an empty array if it exists.
     fn clear_blueprint_component(
         &self,
