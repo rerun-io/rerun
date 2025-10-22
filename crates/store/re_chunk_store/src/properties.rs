@@ -25,12 +25,18 @@ pub enum ExtractPropertiesError {
 }
 
 impl ChunkStore {
+    /// Extract a one-row [`RecordBatch`] containing the properties for this chunk store.
+    ///
+    /// The column names are based on the following proposals and are further sanitized to ensure
+    /// compatibility with Lance datasets.
+    ///
+    /// <https://www.notion.so/rerunio/Canonical-column-identifier-for-dataframe-queries-206b24554b1980d98454eb989703ce2b>
+    /// <https://www.notion.so/rerunio/Canonical-column-identifier-for-properties-215b24554b1980029ff1cc6cdfad3f76>
+    // TODO(ab): move these ^ to a better place.
     pub fn extract_properties(&self) -> Result<RecordBatch, ExtractPropertiesError> {
-        // finally we build a single row `RecordBatch` with all the properties
         let mut fields = vec![];
         let mut data = vec![];
 
-        //TODO: move that to a `ChunkStore` function?
         for entity in self
             .all_entities()
             .into_iter()
@@ -74,17 +80,7 @@ impl ChunkStore {
                     // we strip __properties from the entity path, see
                     // <https://www.notion.so/rerunio/Canonical-column-identifier-for-properties-215b24554b1980029ff1cc6cdfad3f76>
                     // NOTE: we need to handle both `/__properties` AND `/__properties/$FOO` here
-                    let name = lance_column_name(
-                        Some(
-                            &entity
-                                .strip_prefix(&EntityPath::properties())
-                                .unwrap_or_else(|| entity.clone()),
-                        ),
-                        Some("/"),
-                        Some(component_desc),
-                        Some("property"),
-                        None,
-                    );
+                    let name = property_column_name(&entity, component_desc);
 
                     let column_descriptor = ComponentColumnDescriptor {
                         component_type: component_desc.component_type,
@@ -106,7 +102,7 @@ impl ChunkStore {
                     let mut new_field =
                         Field::new(name.clone(), list_array.data_type().clone(), nullable);
 
-                    // TODO(#567) it seems we're hitting https://github.com/lancedb/lance/issues/2304. So what happens is that
+                    // TODO(rerun-io/dataplatform#567) it seems we're hitting https://github.com/lancedb/lance/issues/2304. So what happens is that
                     // we store a properties with a FixedSizeList and Lance stores it as nullable = true, regardless of the input
                     // field. If we then try to register another partition with the same property, but with nullable = false, we'll
                     // get a "Cannot change field type for field" error. Hence, we have to make field nullable in case of FixedSizeList
@@ -185,59 +181,59 @@ impl ChunkStore {
     }
 }
 
-//TODO: clean up this mess
-
-/// Returns a Lance column name from provided parts.
-///
-/// Column name is sanitized and safe for using as Lance dataset column name.
-/// Note: if caller doesn't provide any part (i.e. all are `None`), an empty
-/// string is returned.
-///
-/// Note that column naming is based on these 2 proposals:
-/// <https://www.notion.so/rerunio/Canonical-column-identifier-for-dataframe-queries-206b24554b1980d98454eb989703ce2b>
-/// <https://www.notion.so/rerunio/Canonical-column-identifier-for-properties-215b24554b1980029ff1cc6cdfad3f76>
-/// Other use cases are internal column names used for chunk and partition manifests)
-fn lance_column_name(
-    entity_path: Option<&EntityPath>,
-    strip_entity_prefix: Option<&str>,
-    component_desc: Option<&ComponentDescriptor>,
-    prefix: Option<&str>,
-    suffix: Option<&str>,
-) -> String {
+fn property_column_name(entity_path: &EntityPath, component_desc: &ComponentDescriptor) -> String {
     use re_types_core::reflection::ComponentDescriptorExt as _;
-    let full_name = [
-        prefix.map(ToOwned::to_owned),
-        entity_path.map(|p| {
-            let path = p.to_string();
-            // Optionally strip the entity prefix if provided
-            let path = strip_entity_prefix
-                .and_then(|prefix| path.strip_prefix(prefix))
-                .unwrap_or(&path);
-            // Always strip trailing slashes (if present)
+    [
+        Some("property".to_owned()),
+        Some({
+            let path = entity_path
+                .strip_prefix(&EntityPath::properties())
+                .unwrap_or_else(|| entity_path.clone())
+                .to_string();
+            let path = path.strip_prefix("/").unwrap_or(&path);
             path.strip_suffix("/").unwrap_or(path).to_owned()
         }),
         component_desc
-            .and_then(|descr| descr.archetype)
+            .archetype
             .map(|archetype| archetype.short_name().to_owned()),
-        component_desc.map(|descr| descr.archetype_field_name().to_owned()),
-        suffix.map(ToOwned::to_owned),
+        Some(component_desc.archetype_field_name().to_owned()),
     ]
     .into_iter()
     .flatten()
     .filter(|s| !s.is_empty())
     .collect::<Vec<_>>()
-    .join(":");
-
-    let sanitized = sanitize_lance_column_name(&full_name);
-
-    // Remove leading underscore if present
-    sanitized.trim_start_matches('_').to_owned()
+    .join(":")
+    // Lance doesn't allow some of the special characters in the column names.
+    // This function replaces those special characters with `_`.
+    .replace([',', ' ', '-', '.', '\\'], "_")
 }
 
-/// Lance doesn't allow some of the special characters in the column names.
-/// This function replaces those special characters with `_`.
-fn sanitize_lance_column_name(name: &str) -> String {
-    name.replace([',', ' ', '-', '.', '\\'], "_")
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//TODO: add tests
+    #[test]
+    fn test_property_column_name() {
+        let entity: EntityPath = "/my_entity".into();
+        let component_desc = ComponentDescriptor::partial("my_component");
+
+        let name = property_column_name(&entity, &component_desc);
+        assert_eq!(name, "property:my_entity:my_component");
+
+        let entity: EntityPath = "/a/b/c/".into();
+        let component_desc_full = ComponentDescriptor::partial("field_name")
+            .with_component_type("my_component_type".into())
+            .with_archetype("archetype_name".into());
+        let name = property_column_name(&entity, &component_desc_full);
+
+        assert_eq!(name, "property:a/b/c:archetype_name:field_name");
+
+        let entity: EntityPath = "/__properties/a/b/c/".into();
+        let component_desc_full = ComponentDescriptor::partial("field_name")
+            .with_component_type("my_component_type".into())
+            .with_archetype("archetype_name".into());
+        let name = property_column_name(&entity, &component_desc_full);
+
+        assert_eq!(name, "property:a/b/c:archetype_name:field_name");
+    }
+}
