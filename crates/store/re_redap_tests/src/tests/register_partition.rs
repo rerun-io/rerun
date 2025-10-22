@@ -1,10 +1,11 @@
 #![expect(clippy::unwrap_used)]
 
-use arrow::array::RecordBatch;
+use arrow::array::{ListArray, RecordBatch, StringArray, TimestampNanosecondArray};
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
 use url::Url;
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_protos::{
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DataSource, DataSourceKind, ScanDatasetManifestRequest,
@@ -18,14 +19,17 @@ use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt
 use crate::{FieldsExt as _, RecordBatchExt as _, create_simple_recording_in};
 
 pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
-    let data_sources_def = DataSourcesDefinition::new([
-        LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
-        LayerDefinition::simple("my_partition_id2", &["my/entity"]),
-        LayerDefinition::simple(
-            "my_partition_id3",
-            &["my/entity", "another/one", "yet/another/one"],
-        ),
-    ]);
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [
+            LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
+            LayerDefinition::simple("my_partition_id2", &["my/entity"]),
+            LayerDefinition::simple(
+                "my_partition_id3",
+                &["my/entity", "another/one", "yet/another/one"],
+            ),
+        ],
+    );
 
     let dataset_name = "my_dataset1";
     service.create_dataset_entry_with_name(dataset_name).await;
@@ -38,33 +42,36 @@ pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
 }
 
 pub async fn register_and_scan_simple_dataset_with_properties(service: impl RerunCloudService) {
-    let data_sources_def = DataSourcesDefinition::new([
-        LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
-        LayerDefinition::simple("my_partition_id2", &["my/entity"]),
-        LayerDefinition::simple(
-            "my_partition_id3",
-            &["my/entity", "another/one", "yet/another/one"],
-        ),
-        LayerDefinition::properties(
-            "my_partition_id1",
-            [prop(
-                "text_log",
-                re_types::archetypes::TextLog::new("i'm partition 1"),
-            )],
-        )
-        .layer_name("props"),
-        LayerDefinition::properties(
-            "my_partition_id2",
-            [
-                prop(
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [
+            LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
+            LayerDefinition::simple("my_partition_id2", &["my/entity"]),
+            LayerDefinition::simple(
+                "my_partition_id3",
+                &["my/entity", "another/one", "yet/another/one"],
+            ),
+            LayerDefinition::properties(
+                "my_partition_id1",
+                [prop(
                     "text_log",
-                    re_types::archetypes::TextLog::new("i'm partition 2"),
-                ),
-                prop("points", re_types::archetypes::Points2D::new([(0.0, 1.0)])),
-            ],
-        )
-        .layer_name("props"),
-    ]);
+                    re_types::archetypes::TextLog::new("i'm partition 1"),
+                )],
+            )
+            .layer_name("props"),
+            LayerDefinition::properties(
+                "my_partition_id2",
+                [
+                    prop(
+                        "text_log",
+                        re_types::archetypes::TextLog::new("i'm partition 2"),
+                    ),
+                    prop("points", re_types::archetypes::Points2D::new([(0.0, 1.0)])),
+                ],
+            )
+            .layer_name("props"),
+        ],
+    );
 
     let dataset_name = "my_dataset1";
     service.create_dataset_entry_with_name(dataset_name).await;
@@ -76,18 +83,97 @@ pub async fn register_and_scan_simple_dataset_with_properties(service: impl Reru
     scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple_with_properties").await;
 }
 
+/// This test checks that the registration order takes precedence to resolve a partition's
+/// properties.
+///
+/// Note: this is not great. We should probably use the "regular" Rerun way for that (aka row id
+/// timestamp). But this is not how Rerun Cloud is currently working, and consistency is better than
+/// correctness for the OSS server.
+pub async fn register_and_scan_simple_dataset_with_properties_out_of_order(
+    service: impl RerunCloudService,
+) {
+    let first_logged_data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        10, // <- mind this
+        [LayerDefinition::properties(
+            "my_partition_id1",
+            [prop(
+                "text_log",
+                re_types::archetypes::TextLog::new(
+                    "I was logged first, registered last, so I should win",
+                ),
+            )],
+        )
+        .layer_name("prop1")],
+    );
+    let first_logged_data_sources = first_logged_data_sources_def.to_data_sources();
+
+    let last_logged_data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        20, // <- mind this
+        [LayerDefinition::properties(
+            "my_partition_id1",
+            [prop(
+                "text_log",
+                re_types::archetypes::TextLog::new("I was logged last, registered first"),
+            )],
+        )
+        .layer_name("prop2")],
+    );
+    let last_logged_data_sources = last_logged_data_sources_def.to_data_sources();
+
+    let dataset_name = "my_dataset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+    service
+        .register_with_dataset_name(dataset_name, last_logged_data_sources)
+        .await;
+
+    service
+        .register_with_dataset_name(dataset_name, first_logged_data_sources)
+        .await;
+
+    let dataset_manifest =
+        scan_dataset_manifest_and_snapshot(&service, dataset_name, "out_of_order_properties").await;
+    scan_partition_table_and_snapshot(&service, dataset_name, "out_of_order_properties").await;
+
+    // assert test correctness
+    let registration_time_col = dataset_manifest
+        .column_by_name(ScanDatasetManifestResponse::FIELD_REGISTRATION_TIME)
+        .unwrap()
+        .downcast_array_ref::<TimestampNanosecondArray>()
+        .unwrap();
+
+    let prop_col = dataset_manifest
+        .column_by_name("property:text_log:TextLog:text")
+        .unwrap()
+        .downcast_array_ref::<ListArray>()
+        .unwrap();
+
+    assert!(registration_time_col.value(0) < registration_time_col.value(1));
+
+    assert_eq!(
+        prop_col
+            .value(0)
+            .downcast_array_ref::<StringArray>()
+            .unwrap()
+            .value(0),
+        "I was logged last, registered first"
+    );
+}
+
 pub async fn register_and_scan_simple_dataset_with_layers(service: impl RerunCloudService) {
-    let data_sources_def = DataSourcesDefinition::new([
-        LayerDefinition::simple(
-            "partition1",
-            &["my/entity", "another/one", "yet/another/one"],
-        ),
-        LayerDefinition::simple("partition1", &["extra/entity"]).layer_name("extra"),
-        LayerDefinition::simple("partition2", &["another/one", "yet/another/one"])
-            .layer_name("base"),
-        LayerDefinition::simple("partition2", &["extra/entity"]).layer_name("extra"),
-        LayerDefinition::simple("partition3", &["i/am/alone"]),
-    ]);
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [
+            LayerDefinition::simple(
+                "partition1",
+                &["my/entity", "another/one", "yet/another/one"],
+            ),
+            LayerDefinition::simple("partition1", &["extra/entity"]).layer_name("extra"),
+            LayerDefinition::simple("partition2", &["another/one", "yet/another/one"])
+                .layer_name("base"),
+            LayerDefinition::simple("partition2", &["extra/entity"]).layer_name("extra"),
+            LayerDefinition::simple("partition3", &["i/am/alone"]),
+        ],
+    );
 
     let dataset_name = "dataset_with_layers";
     service.create_dataset_entry_with_name(dataset_name).await;
@@ -175,8 +261,8 @@ async fn scan_partition_table_and_snapshot(
     service: &impl RerunCloudService,
     dataset_name: &str,
     snapshot_name: &str,
-) {
-    let resps: Vec<_> = service
+) -> RecordBatch {
+    let responses: Vec<_> = service
         .scan_partition_table(
             tonic::Request::new(ScanPartitionTableRequest {
                 columns: vec![], // all of them
@@ -191,7 +277,7 @@ async fn scan_partition_table_and_snapshot(
         .await
         .unwrap();
 
-    let batches: Vec<RecordBatch> = resps
+    let batches: Vec<RecordBatch> = responses
         .into_iter()
         .map(|resp| resp.data.unwrap().try_into().unwrap())
         .collect_vec();
@@ -230,14 +316,16 @@ async fn scan_partition_table_and_snapshot(
         format!("{snapshot_name}_partitions_data"),
         filtered_batch.format_snapshot(false)
     );
+
+    batch
 }
 
 async fn scan_dataset_manifest_and_snapshot(
     service: &impl RerunCloudService,
     dataset_name: &str,
     snapshot_name: &str,
-) {
-    let resps: Vec<_> = service
+) -> RecordBatch {
+    let responses: Vec<_> = service
         .scan_dataset_manifest(
             tonic::Request::new(ScanDatasetManifestRequest {
                 columns: vec![], // all of them
@@ -252,7 +340,7 @@ async fn scan_dataset_manifest_and_snapshot(
         .await
         .unwrap();
 
-    let batches: Vec<RecordBatch> = resps
+    let batches: Vec<RecordBatch> = responses
         .into_iter()
         .map(|resp| resp.data.unwrap().try_into().unwrap())
         .collect_vec();
@@ -294,4 +382,6 @@ async fn scan_dataset_manifest_and_snapshot(
         format!("{snapshot_name}_manifest_data"),
         filtered_batch.format_snapshot(false)
     );
+
+    batch
 }

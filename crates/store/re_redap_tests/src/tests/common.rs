@@ -254,17 +254,29 @@ pub struct DataSourcesDefinition {
 }
 
 impl DataSourcesDefinition {
-    pub fn new(layers: impl IntoIterator<Item = LayerDefinition>) -> Self {
+    /// Create layers with the provided definitions.
+    ///
+    /// The provided `tuid_prefix` is used for the first layer and then incremented.
+    ///
+    /// Note: we require an explicit prefix, otherwise using two `DataSourcesDefinition`s in the
+    /// same test will cause a chunk id conflict, which is UB :true-story:
+    pub fn new_with_tuid_prefix(
+        tuid_prefix: TuidPrefix,
+        layers: impl IntoIterator<Item = LayerDefinition>,
+    ) -> Self {
         Self {
             layers: layers
                 .into_iter()
                 .enumerate()
-                .map(|(tuid_prefix, layer)| {
+                .map(|(tuid_prefix_increment, layer)| {
                     (
                         layer.layer_name.map(|s| s.to_owned()),
                         layer
                             .layer_type
-                            .into_recording(tuid_prefix.saturating_add(1) as _, layer.partition_id)
+                            .into_recording(
+                                tuid_prefix.saturating_add(tuid_prefix_increment as _),
+                                layer.partition_id,
+                            )
                             .unwrap(),
                     )
                 })
