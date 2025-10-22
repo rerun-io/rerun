@@ -209,8 +209,9 @@ fn max_blueprint_time(blueprint_db: &EntityDb) -> TimeInt {
 
 fn is_interacting(egui_ctx: &egui::Context) -> bool {
     egui_ctx.input(|i| {
-        let is_scrolling =
-            i.smooth_scroll_delta != egui::Vec2::ZERO || i.time_since_last_scroll() < 0.1;
+        let is_scrolling = i.smooth_scroll_delta != egui::Vec2::ZERO
+                // TODO(RR-2730): If egui properly tracked when we're scrolling we wouldn't have to do this time check.
+                || i.time_since_last_scroll() < 0.1;
         let is_zooming = i.zoom_delta_2d() != egui::Vec2::splat(1.0);
         i.pointer.any_down()
             || i.any_touches()
