@@ -20,7 +20,7 @@ use crate::{
         all_scalars_indices, allocate_plot_points, collect_colors, collect_radius_ui,
         collect_scalars, collect_series_name, collect_series_visibility, determine_num_series,
     },
-    util::{determine_time_per_pixel, determine_time_range, points_to_series},
+    util,
     view_class::TimeSeriesViewState,
 };
 
@@ -121,7 +121,7 @@ impl SeriesPointsSystem {
 
         let plot_mem =
             egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx(), crate::plot_id(query.view_id));
-        let time_per_pixel = determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
+        let time_per_pixel = util::determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
 
         let data_results = query.iter_visible_data_results(Self::identifier());
 
@@ -134,14 +134,7 @@ impl SeriesPointsSystem {
                 .par_iter()
                 .map(|data_result| -> Vec<PlotSeries> {
                     let mut series = vec![];
-                    self.load_series(
-                        ctx,
-                        query,
-                        plot_mem.as_ref(),
-                        time_per_pixel,
-                        data_result,
-                        &mut series,
-                    );
+                    self.load_series(ctx, query, time_per_pixel, data_result, &mut series);
                     series
                 })
                 .collect::<Vec<_>>()
@@ -151,14 +144,7 @@ impl SeriesPointsSystem {
         } else {
             let mut series = vec![];
             for data_result in data_results {
-                self.load_series(
-                    ctx,
-                    query,
-                    plot_mem.as_ref(),
-                    time_per_pixel,
-                    data_result,
-                    &mut series,
-                );
+                self.load_series(ctx, query, time_per_pixel, data_result, &mut series);
             }
             self.all_series = series;
         }
@@ -168,7 +154,6 @@ impl SeriesPointsSystem {
         &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
-        plot_mem: Option<&egui_plot::PlotMemory>,
         time_per_pixel: f64,
         data_result: &re_viewer_context::DataResult,
         all_series: &mut Vec<PlotSeries>,
@@ -180,12 +165,7 @@ impl SeriesPointsSystem {
 
         let fallback_shape = MarkerShape::default();
 
-        let time_offset = ctx
-            .view_state
-            .downcast_ref::<TimeSeriesViewState>()
-            .map_or(0, |state| state.time_offset);
-        let time_range =
-            determine_time_range(view_query.latest_at, time_offset, data_result, plot_mem);
+        let time_range = util::determine_time_range(ctx);
 
         {
             use re_view::RangeResultsExt as _;
@@ -403,7 +383,7 @@ impl SeriesPointsSystem {
                     InstancePath::instance(data_result.entity_path.clone(), instance as u64)
                 };
 
-                points_to_series(
+                util::points_to_series(
                     instance_path,
                     time_per_pixel,
                     visible,
