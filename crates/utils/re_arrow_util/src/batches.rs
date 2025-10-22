@@ -8,26 +8,6 @@ use itertools::Itertools as _;
 
 // ---
 
-/// Returns a new [`RecordBatch`] where all *top-level* fields are nullable.
-///
-/// ⚠️ This is *not* recursive! E.g. for a `StructArray` containing 2 fields, only the field
-/// corresponding to the `StructArray` itself will be made nullable.
-//TODO: extension trait
-pub fn make_batch_nullable(batch: &RecordBatch) -> RecordBatch {
-    let schema = Schema::new_with_metadata(
-        batch
-            .schema()
-            .fields
-            .iter()
-            .map(|field| (**field).clone().with_nullable(true))
-            .collect_vec(),
-        batch.schema().metadata.clone(),
-    );
-
-    #[expect(clippy::unwrap_used)] // cannot fail, we just made things more permissible
-    batch.clone().with_schema(Arc::new(schema)).unwrap()
-}
-
 /// Concatenates the given [`RecordBatch`]es, regardless of their respective schema.
 ///
 /// The final schema will be the merge of all the input schemas.
@@ -83,67 +63,103 @@ pub fn concat_polymorphic_batches(batches: &[RecordBatch]) -> arrow::error::Resu
     arrow::compute::concat_batches(&schema_merged, &batches_patched)
 }
 
-/// Concatenate the give [`RecordBatch`]es horizontally.
-///
-/// Both batches must have the same number of rows, and a non-overlapping schema.
-//TODO: extension trait
-pub fn concat_record_batches_horizontally(
-    left_batch: &RecordBatch,
-    right_batch: &RecordBatch,
-) -> arrow::error::Result<RecordBatch> {
-    if left_batch.num_rows() != right_batch.num_rows() {
-        return Err(arrow::error::ArrowError::InvalidArgumentError(
-            "RecordBatches must have the same number of rows".to_owned(),
-        ));
-    }
+pub trait RecordBatchExt {
+    /// Returns a new [`RecordBatch`] where all *top-level* fields are nullable.
+    ///
+    /// ⚠️ This is *not* recursive! E.g. for a `StructArray` containing 2 fields, only the field
+    /// corresponding to the `StructArray` itself will be made nullable.
+    fn make_nullable(&self) -> RecordBatch;
 
-    let merged_schema = Schema::try_merge([
-        Arc::unwrap_or_clone(left_batch.schema()),
-        Arc::unwrap_or_clone(right_batch.schema()),
-    ])?;
+    /// Concatenate the give [`RecordBatch`]es horizontally.
+    ///
+    /// Both batches must have the same number of rows, and a non-overlapping schema.
+    fn concat_horizontally_with(
+        &self,
+        right_batch: &RecordBatch,
+    ) -> arrow::error::Result<RecordBatch>;
 
-    if merged_schema.fields().len()
-        != left_batch.schema().fields().len() + right_batch.schema().fields().len()
-    {
-        return Err(arrow::error::ArrowError::InvalidArgumentError(
-            "RecordBatches must have a non-overlapping schema".to_owned(),
-        ));
-    }
-
-    let mut columns: Vec<ArrayRef> = Vec::new();
-    columns.extend_from_slice(left_batch.columns());
-    columns.extend_from_slice(right_batch.columns());
-
-    RecordBatch::try_new_with_options(
-        Arc::new(merged_schema),
-        columns,
-        &RecordBatchOptions::default().with_row_count(Some(left_batch.num_rows())),
-    )
+    /// Reorders the columns of a [`RecordBatch`] based on a comparison function.
+    fn sort_columns_by(
+        self,
+        cmp_fn: impl Fn(&Field, &Field) -> std::cmp::Ordering,
+    ) -> arrow::error::Result<RecordBatch>;
 }
 
-/// Reorders the columns of a [`RecordBatch`] based on a comparison function.
-//TODO: extension trait
-pub fn sort_columns_by(
-    batch: RecordBatch,
-    cmp_fn: impl Fn(&Field, &Field) -> std::cmp::Ordering,
-) -> arrow::error::Result<RecordBatch> {
-    let (schema_ref, columns, row_count) = batch.into_parts();
-    let Schema { fields, metadata } = Arc::unwrap_or_clone(schema_ref);
+impl RecordBatchExt for RecordBatch {
+    fn make_nullable(&self) -> RecordBatch {
+        let schema = Schema::new_with_metadata(
+            self.schema()
+                .fields
+                .iter()
+                .map(|field| (**field).clone().with_nullable(true))
+                .collect_vec(),
+            self.schema().metadata.clone(),
+        );
 
-    let (fields, columns): (Vec<_>, Vec<_>) = fields
-        .iter()
-        .map(Arc::clone)
-        .zip(columns)
-        .sorted_by(|(left_field, _), (right_field, _)| {
-            cmp_fn(left_field.as_ref(), right_field.as_ref())
-        })
-        .unzip();
+        #[expect(clippy::unwrap_used)] // cannot fail, we just made things more permissible
+        self.clone().with_schema(Arc::new(schema)).unwrap()
+    }
 
-    RecordBatch::try_new_with_options(
-        Arc::new(Schema::new_with_metadata(fields, metadata)),
-        columns,
-        &RecordBatchOptions::default().with_row_count(Some(row_count)),
-    )
+    /// Concatenate the given [`RecordBatch`]es horizontally.
+    ///
+    /// `other_batch` is added to the right of `self`. Both batches must have the same number of
+    /// rows, and a non-overlapping schema.
+    fn concat_horizontally_with(
+        &self,
+        other_batch: &RecordBatch,
+    ) -> arrow::error::Result<RecordBatch> {
+        if self.num_rows() != other_batch.num_rows() {
+            return Err(arrow::error::ArrowError::InvalidArgumentError(
+                "RecordBatches must have the same number of rows".to_owned(),
+            ));
+        }
+
+        let merged_schema = Schema::try_merge([
+            Arc::unwrap_or_clone(self.schema()),
+            Arc::unwrap_or_clone(other_batch.schema()),
+        ])?;
+
+        if merged_schema.fields().len()
+            != self.schema().fields().len() + other_batch.schema().fields().len()
+        {
+            return Err(arrow::error::ArrowError::InvalidArgumentError(
+                "RecordBatches must have a non-overlapping schema".to_owned(),
+            ));
+        }
+
+        let mut columns: Vec<ArrayRef> = Vec::new();
+        columns.extend_from_slice(self.columns());
+        columns.extend_from_slice(other_batch.columns());
+
+        Self::try_new_with_options(
+            Arc::new(merged_schema),
+            columns,
+            &RecordBatchOptions::default().with_row_count(Some(self.num_rows())),
+        )
+    }
+
+    fn sort_columns_by(
+        self,
+        cmp_fn: impl Fn(&Field, &Field) -> std::cmp::Ordering,
+    ) -> arrow::error::Result<RecordBatch> {
+        let (schema_ref, columns, row_count) = self.into_parts();
+        let Schema { fields, metadata } = Arc::unwrap_or_clone(schema_ref);
+
+        let (fields, columns): (Vec<_>, Vec<_>) = fields
+            .iter()
+            .map(Arc::clone)
+            .zip(columns)
+            .sorted_by(|(left_field, _), (right_field, _)| {
+                cmp_fn(left_field.as_ref(), right_field.as_ref())
+            })
+            .unzip();
+
+        Self::try_new_with_options(
+            Arc::new(Schema::new_with_metadata(fields, metadata)),
+            columns,
+            &RecordBatchOptions::default().with_row_count(Some(row_count)),
+        )
+    }
 }
 
 #[cfg(test)]
@@ -163,7 +179,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn make_batch_nullable_basics() {
+    fn make_nullable_basics() {
         let col1_schema = Field::new("col1", DataType::Int32, true);
         let col2_schema = Field::new("col2", DataType::Utf8, false);
         let col3_1_schema = Field::new("col3", DataType::Boolean, false);
@@ -206,7 +222,7 @@ mod tests {
         ]);
         assert_eq!(expected, *batch.schema());
 
-        let batch_patched = make_batch_nullable(&batch);
+        let batch_patched = batch.make_nullable();
 
         let expected = {
             let col1_schema = Field::new("col1", DataType::Int32, true);
@@ -282,9 +298,9 @@ mod tests {
         assert!(concat_polymorphic_batches(batches).is_err());
 
         let batches = &[
-            make_batch_nullable(&batch1),
-            make_batch_nullable(&batch2),
-            make_batch_nullable(&batch3),
+            batch1.make_nullable(),
+            batch2.make_nullable(),
+            batch3.make_nullable(),
         ];
         let batch_concat = concat_polymorphic_batches(batches).unwrap();
 
@@ -389,7 +405,7 @@ mod tests {
         .unwrap();
 
         // Concatenate
-        let result = concat_record_batches_horizontally(&batch1, &batch2).unwrap();
+        let result = batch1.concat_horizontally_with(&batch2).unwrap();
 
         // Verify schema
         assert_eq!(result.num_columns(), 4);
@@ -432,7 +448,7 @@ mod tests {
         )
         .unwrap();
 
-        let result = concat_record_batches_horizontally(&batch1, &batch2);
+        let result = batch1.concat_horizontally_with(&batch2);
         assert!(result.is_err());
         assert!(
             result
@@ -456,7 +472,7 @@ mod tests {
         )
         .unwrap();
 
-        let result = concat_record_batches_horizontally(&batch1, &batch2).unwrap();
+        let result = batch1.concat_horizontally_with(&batch2).unwrap();
         assert_eq!(result.num_rows(), 0);
         assert_eq!(result.num_columns(), 2);
     }
@@ -489,7 +505,7 @@ mod tests {
         )
         .unwrap();
 
-        let result = concat_record_batches_horizontally(&batch1, &batch2).unwrap();
+        let result = batch1.concat_horizontally_with(&batch2).unwrap();
 
         // Verify columns appear in order: col1, col2, col3, col4
         assert_eq!(result.schema().field(0).name(), "col1");
@@ -528,7 +544,7 @@ mod tests {
         )
         .unwrap();
 
-        let result = concat_record_batches_horizontally(&batch1, &batch2);
+        let result = batch1.concat_horizontally_with(&batch2);
         assert!(result.is_err());
         assert!(
             result
@@ -584,7 +600,7 @@ mod tests {
             RecordBatch::try_new(schema2, vec![Arc::new(Float64Array::from(vec![1.5, 2.5]))])
                 .unwrap();
 
-        let result = concat_record_batches_horizontally(&batch1, &batch2).unwrap();
+        let result = batch1.concat_horizontally_with(&batch2).unwrap();
 
         // Verify schema-level metadata is merged
         let result_metadata = result.schema_ref().metadata();
@@ -641,7 +657,7 @@ mod tests {
             RecordBatch::try_new(schema2, vec![Arc::new(Int32Array::from(vec![3, 4]))]).unwrap();
 
         // This should fail due to conflicting metadata
-        let result = concat_record_batches_horizontally(&batch1, &batch2);
+        let result = batch1.concat_horizontally_with(&batch2);
         assert!(result.is_err());
         assert!(
             result
@@ -669,7 +685,9 @@ mod tests {
         )
         .unwrap();
 
-        let sorted = sort_columns_by(batch, |a, b| a.name().cmp(b.name())).unwrap();
+        let sorted = batch
+            .sort_columns_by(|a, b| a.name().cmp(b.name()))
+            .unwrap();
 
         let names: Vec<_> = sorted
             .schema_ref()
@@ -717,7 +735,9 @@ mod tests {
         )
         .unwrap();
 
-        let sorted = sort_columns_by(batch, |a, b| a.name().cmp(b.name())).unwrap();
+        let sorted = batch
+            .sort_columns_by(|a, b| a.name().cmp(b.name()))
+            .unwrap();
 
         assert_eq!(sorted.schema_ref().metadata(), &metadata);
     }
@@ -731,7 +751,9 @@ mod tests {
         )
         .unwrap();
 
-        let sorted = sort_columns_by(batch, |a, b| a.name().cmp(b.name())).unwrap();
+        let sorted = batch
+            .sort_columns_by(|a, b| a.name().cmp(b.name()))
+            .unwrap();
 
         assert_eq!(sorted.num_rows(), 0);
         assert_eq!(sorted.num_columns(), 1);

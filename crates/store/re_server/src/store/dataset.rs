@@ -5,7 +5,7 @@ use std::sync::Arc;
 use arrow::array::{RecordBatch, RecordBatchOptions};
 use arrow::datatypes::{Fields, Schema};
 use itertools::Either;
-
+use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_log_types::{EntryId, StoreKind};
 use re_protos::{
@@ -200,11 +200,9 @@ impl Dataset {
         )
         .map_err(Error::failed_to_extract_properties)?;
 
-        re_arrow_util::concat_record_batches_horizontally(
-            &base_record_batch,
-            &properties_record_batch,
-        )
-        .map_err(Error::failed_to_extract_properties)
+        base_record_batch
+            .concat_horizontally_with(&properties_record_batch)
+            .map_err(Error::failed_to_extract_properties)
     }
 
     pub fn dataset_manifest(&self) -> Result<RecordBatch, Error> {
@@ -269,11 +267,9 @@ impl Dataset {
             re_arrow_util::concat_polymorphic_batches(properties.as_slice())
                 .map_err(Error::failed_to_extract_properties)?;
 
-        re_arrow_util::concat_record_batches_horizontally(
-            &base_record_batch,
-            &properties_record_batch,
-        )
-        .map_err(Error::failed_to_extract_properties)
+        base_record_batch
+            .concat_horizontally_with(&properties_record_batch)
+            .map_err(Error::failed_to_extract_properties)
     }
 
     pub fn layer_store_handle(

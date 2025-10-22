@@ -12,7 +12,7 @@ use datafusion::{
 };
 use itertools::Itertools as _;
 
-use re_arrow_util::{ArrowArrayDowncastRef as _, sort_columns_by};
+use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
 use re_chunk::ArrowArray as _;
 
 // --
@@ -102,19 +102,21 @@ impl RecordBatchExt for arrow::array::RecordBatch {
     }
 
     fn horizontally_sorted(&self) -> Self {
-        sort_columns_by(self.clone(), |f1, f2| f1.name().cmp(f2.name()))
+        self.clone()
+            .sort_columns_by(|f1, f2| f1.name().cmp(f2.name()))
             .expect("should be able to sort")
     }
 
     fn sort_property_columns(&self) -> Self {
-        sort_columns_by(self.clone(), |f1, f2| {
-            if f1.name().starts_with("property:") && f2.name().starts_with("property:") {
-                f1.name().cmp(f2.name())
-            } else {
-                std::cmp::Ordering::Equal
-            }
-        })
-        .expect("should be able to sort")
+        self.clone()
+            .sort_columns_by(|f1, f2| {
+                if f1.name().starts_with("property:") && f2.name().starts_with("property:") {
+                    f1.name().cmp(f2.name())
+                } else {
+                    std::cmp::Ordering::Equal
+                }
+            })
+            .expect("should be able to sort")
     }
 
     fn sort_rows_by(&self, columns: &[&str]) -> Result<Self, DataFusionError> {
