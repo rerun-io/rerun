@@ -403,9 +403,10 @@ impl ViewerContext<'_> {
             .into_mono_instance_path_items(self.recording(), &self.current_query());
 
         // Focus -> Selection
+
+        // We want the item to be selected if it was selected with arrow keys (in list_item)
+        // but not when focused using e.g. the tab key.
         if ListItem::gained_focus_via_arrow_key(&response.ctx, response.id) {
-            // We want the item to be selected if it was selected with arrow keys (in list_item)
-            // but not when focused using e.g. the tab key.
             self.command_sender()
                 .send_system(SystemCommand::SetSelection(
                     SetSelection::new(interacted_items.clone())
@@ -414,11 +415,12 @@ impl ViewerContext<'_> {
         }
 
         // Selection -> Focus
+
         let single_selected = self.selection().single_item() == interacted_items.single_item();
         if single_selected {
             // If selection changes, and a single item is selected, the selected item should
             // receive egui focus.
-            // We avoid doing this if selection happened due to list item navigation to avoid
+            // We don't do this if selection happened due to list item navigation to avoid
             // a feedback loop.
             let selection_changed = self
                 .selection_state()
