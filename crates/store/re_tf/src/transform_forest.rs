@@ -681,7 +681,7 @@ fn transforms_at<'a>(
         .map_or(glam::Affine3A::IDENTITY, |source_to_target| {
             source_to_target.transform
         });
-    let entity_from_instance_poses = entity_transforms.latest_at_instance_poses_all(query);
+    let entity_from_instance_poses = entity_transforms.latest_at_instance_poses(query);
     let pinhole_projection = entity_transforms.latest_at_pinhole(query);
 
     TransformsAtEntity {
