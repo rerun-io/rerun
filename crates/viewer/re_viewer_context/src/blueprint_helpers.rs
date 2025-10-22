@@ -235,7 +235,7 @@ pub trait BlueprintContext {
         component_descr: ComponentDescriptor,
     ) {
         if let Some(default_value) =
-            self.raw_latest_at_in_default_blueprint(&entity_path, &component_descr)
+            self.raw_latest_at_in_default_blueprint(&entity_path, component_descr.component)
         {
             self.save_static_blueprint_array(entity_path, component_descr, default_value);
         } else {
