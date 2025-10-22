@@ -564,7 +564,11 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
     });
 
     ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
-    ctx.handle_select_focus_sync(&item_response, item.clone());
+    ctx.handle_select_focus_sync(&item_response, item);
+    if list_item::ListItem::gained_focus_via_arrow_key(ui.ctx(), item_response.id) {
+        ctx.command_sender()
+            .send_system(SystemCommand::ActivateApp(app_id.clone()));
+    }
 
     if item_response.clicked() {
         //TODO(ab): shouldn't this be done by handle_select_hover_drag_interactions?

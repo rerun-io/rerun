@@ -51,14 +51,20 @@ impl ListItemNavigation {
         });
     }
 
-    /// Did we gain focus via arrow key navigation?
+    /// Did we gain focus via arrow key navigation last pass?
     ///
     /// (As opposed to e.g. mouse click or tab key)
     pub fn gained_focus_via_arrow_key(ctx: &Context, list_item_id: Id) -> bool {
+        let pass = ctx.cumulative_pass_nr();
         ctx.memory_mut(|mem| {
             if mem.focused() == Some(list_item_id) {
-                let gained_via_arrow = mem.data.remove_temp(Id::NULL);
-                gained_via_arrow.is_some_and(|GainedFocusViaArrowKey(id)| id == list_item_id)
+                let gained_via_arrow = mem.data.get_temp(Id::NULL);
+                gained_via_arrow.is_some_and(
+                    |GainedFocusViaArrowKey {
+                         widget_id: id,
+                         focused_on_pass,
+                     }| { id == list_item_id && focused_on_pass == pass - 1 },
+                )
             } else {
                 false
             }
@@ -114,8 +120,17 @@ impl ListItemNavigation {
                 });
 
                 if let Some(next_focus) = focus_item {
+                    let pass = ctx.cumulative_pass_nr();
                     ctx.memory_mut(|mem| mem.request_focus(next_focus));
-                    ctx.data_mut(|d| d.insert_temp(Id::NULL, GainedFocusViaArrowKey(next_focus)));
+                    ctx.data_mut(|d| {
+                        d.insert_temp(
+                            Id::NULL,
+                            GainedFocusViaArrowKey {
+                                widget_id: next_focus,
+                                focused_on_pass: pass,
+                            },
+                        )
+                    });
                     if let Some(response) = ctx.read_response(next_focus) {
                         response.scroll_to_me(None);
                     }
@@ -138,11 +153,17 @@ impl ListItemNavigation {
 
 /// Utility to check if focus was gained via arrow key navigation.
 #[derive(Debug, Clone)]
-struct GainedFocusViaArrowKey(Id);
+struct GainedFocusViaArrowKey {
+    widget_id: Id,
+    focused_on_pass: u64,
+}
 
 // We need a default impl for remove_temp
 impl Default for GainedFocusViaArrowKey {
     fn default() -> Self {
-        Self(Id::NULL)
+        Self {
+            widget_id: Id::NULL,
+            focused_on_pass: 0,
+        }
     }
 }

@@ -303,7 +303,7 @@ impl ListItem {
         self
     }
 
-    /// Did we gain focus via arrow key navigation?
+    /// Did we gain focus via arrow key navigation last pass?
     ///
     /// Useful if you want to select items when they gain focus via arrow keys, but not via
     /// tab.
