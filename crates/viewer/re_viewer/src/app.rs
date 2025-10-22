@@ -334,6 +334,38 @@ impl App {
             }),
         );
 
+        {
+            // TODO(emilk/egui#7659): This is a workaround consuming the Space key so we can use it
+            // as the play/pause shortcut. Eguis build in behaviour is to trigger clicks on the
+            // focused item, and we don't want that. Users can use `Enter` instead.
+            // But of course text edits should still get it so we use this ugly hack to check if
+            // a text edit is focused.
+            let command_sender = command_sender.clone();
+            creation_context.egui_ctx.on_begin_pass(
+                "filter space key",
+                Arc::new(move |ctx| {
+                    if let Some(focused) = ctx.memory(|mem| mem.focused()) {
+                        let is_text_edit_focused =
+                            egui::text_edit::TextEditState::load(ctx, focused).is_some();
+
+                        if !is_text_edit_focused {
+                            let shortcut = UICommand::PlaybackTogglePlayPause
+                                .primary_kb_shortcut(ctx.os())
+                                .expect("Play / pause should have a keyboard shortcut");
+                            debug_assert_eq!(
+                                shortcut.logical_key,
+                                egui::Key::Space,
+                                "Expected space key shortcut"
+                            );
+                            if ctx.input_mut(|i| i.consume_shortcut(&shortcut)) {
+                                command_sender.send_ui(UICommand::PlaybackTogglePlayPause);
+                            }
+                        }
+                    }
+                }),
+            );
+        }
+
         Self {
             main_thread_token,
             build_info,
