@@ -51,7 +51,7 @@ webbrowser = { workspace = true, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 base64.workspace = true
-rand.workspace = true
+rand = { workspace = true, features = ["std", "std_rng", "os_rng"] }
 serde.workspace = true
 ehttp = { workspace = true, optional = true, features = ["json", "native-async"] }
 directories = { workspace = true, optional = true }
