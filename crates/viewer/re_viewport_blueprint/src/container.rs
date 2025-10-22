@@ -209,6 +209,8 @@ impl ContainerBlueprint {
         if let Some(active_tab) = &active_tab {
             arch = arch.with_active_tab(&active_tab.as_entity_path());
         } else {
+            // We have to clear the component if it's none, otherwise the query
+            // will still pick up older `active_tab` values.
             ctx.clear_blueprint_component(
                 id.as_entity_path(),
                 re_types::blueprint::archetypes::ContainerBlueprint::descriptor_active_tab(),
