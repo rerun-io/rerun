@@ -4,7 +4,6 @@
 use std::net::SocketAddr;
 use std::net::ToSocketAddrs as _;
 
-use http::Method;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
