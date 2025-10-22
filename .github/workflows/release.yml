@@ -219,7 +219,6 @@ jobs:
                 - Click `Publish release`
                 - Once published, the release assets will sync to it automatically.
               - [ ] Update the [google colab notebooks](https://colab.research.google.com/drive/1R9I7s4o6wydQC_zkybqaSRFTtlEaked_) to install this version and re-execute the notebook.
-              - [ ] Update landing's version of the web viewer (@jprochazk)
               - [ ] Release a new version of gradio (@oxkitsune, @jprochazk)
               - [ ] Merge the Release PR
 
