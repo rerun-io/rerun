@@ -1,8 +1,8 @@
 use std::{collections::BTreeSet, sync::Arc};
 
-use egui::accesskit::Role;
 use egui::Modifiers;
 use egui::PointerButton;
+use egui::accesskit::Role;
 use egui::accesskit::Toggled;
 use egui_kittest::kittest::NodeT as _;
 use egui_kittest::kittest::Queryable as _;
@@ -67,6 +67,9 @@ pub trait HarnessExt {
     // Finds the nth node with a given label
     fn get_nth_label<'a>(&'a mut self, label: &'a str, index: usize) -> egui_kittest::Node<'a>;
 
+    // Get the position of a node in the UI by its label.
+    fn get_panel_position(&mut self, label: &str) -> egui::Rect;
+
     // Clicks a node in the UI by its label.
     fn click_label(&mut self, label: &str);
     fn right_click_label(&mut self, label: &str);
@@ -80,6 +83,10 @@ pub trait HarnessExt {
     // Drag-and-drop functions. You can use `hover` between `drag` and `drop`.
     fn drag_nth_label(&mut self, label: &str, index: usize);
     fn drop_nth_label(&mut self, label: &str, index: usize);
+
+    fn drag_at(&mut self, pos: egui::Pos2);
+    fn hover_at(&mut self, pos: egui::Pos2);
+    fn drop_at(&mut self, pos: egui::Pos2);
 
     // Changes the value of a dropdown menu.
     fn change_dropdown_value(&mut self, dropdown_label: &str, value: &str);
@@ -265,6 +272,10 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         nodes.swap_remove(index)
     }
 
+    fn get_panel_position(&mut self, label: &str) -> egui::Rect {
+        self.get_by_role_and_label(Role::Pane, label).rect()
+    }
+
     fn click_nth_label(&mut self, label: &str, index: usize) {
         self.click_nth_label_modifiers(label, index, Modifiers::NONE);
     }
@@ -310,6 +321,32 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         };
         self.event(event);
         self.remove_cursor();
+    }
+
+    fn drag_at(&mut self, pos: egui::Pos2) {
+        self.event(egui::Event::PointerButton {
+            pos,
+            button: PointerButton::Primary,
+            pressed: true,
+            modifiers: Modifiers::NONE,
+        });
+        self.run_ok();
+    }
+
+    fn hover_at(&mut self, pos: egui::Pos2) {
+        self.event(egui::Event::PointerMoved(pos));
+        self.run_ok();
+    }
+
+    fn drop_at(&mut self, pos: egui::Pos2) {
+        self.event(egui::Event::PointerButton {
+            pos,
+            button: PointerButton::Primary,
+            pressed: false,
+            modifiers: Modifiers::NONE,
+        });
+        self.remove_cursor();
+        self.run_ok();
     }
 
     fn debug_viewer_state(&mut self) {

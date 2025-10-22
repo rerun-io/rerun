@@ -1,5 +1,5 @@
-use egui_kittest::kittest::NodeT;
-use egui_kittest::kittest::{By, Queryable};
+use egui::vec2;
+use egui_kittest::kittest::Queryable as _;
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
@@ -285,4 +285,115 @@ pub async fn test_simplify_root_hierarchy() {
     harness.set_selection_panel_opened(true);
     harness.click_label("Simplify hierarchy");
     harness.snapshot_app("simplify_root_hierarchy_3");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_drag_view_to_other_view_right() {
+    let mut harness = make_multi_view_test_harness();
+    add_containers_recursive(&mut harness, None, 1, 4, 0);
+
+    let target_pos = harness.get_panel_position("2D view 1").right_center() + vec2(-50.0, 0.0);
+
+    harness.drag_nth_label("3D view 4", 1);
+    harness.hover_at(target_pos);
+    harness.snapshot_app("drag_view_to_other_view_right_1");
+
+    harness.drop_at(target_pos);
+    harness.snapshot_app("drag_view_to_other_view_right_2");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_drag_view_to_other_view_left() {
+    let mut harness = make_multi_view_test_harness();
+    add_containers_recursive(&mut harness, None, 1, 4, 0);
+
+    let target_pos = harness.get_panel_position("2D view 1").left_center() + vec2(50.0, 0.0);
+
+    harness.drag_nth_label("3D view 4", 1);
+    harness.hover_at(target_pos);
+    harness.snapshot_app("drag_view_to_other_view_left_1");
+
+    harness.drop_at(target_pos);
+    harness.snapshot_app("drag_view_to_other_view_left_2");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_drag_view_to_other_view_center() {
+    let mut harness = make_multi_view_test_harness();
+    add_containers_recursive(&mut harness, None, 1, 4, 0);
+
+    let target_pos = harness.get_panel_position("2D view 1").center();
+
+    harness.drag_nth_label("3D view 4", 1);
+    harness.hover_at(target_pos);
+    harness.snapshot_app("drag_view_to_other_view_center_1");
+
+    harness.drop_at(target_pos);
+    harness.snapshot_app("drag_view_to_other_view_center_2");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_drag_view_to_other_view_top() {
+    let mut harness = make_multi_view_test_harness();
+    add_containers_recursive(&mut harness, None, 1, 4, 0);
+
+    let target_pos = harness.get_panel_position("2D view 1").center_top() + vec2(0.0, 50.0);
+
+    harness.drag_nth_label("3D view 4", 1);
+    harness.hover_at(target_pos);
+    harness.snapshot_app("drag_view_to_other_view_top_1");
+
+    harness.drop_at(target_pos);
+    harness.snapshot_app("drag_view_to_other_view_top_2");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_drag_view_to_other_view_bottom() {
+    let mut harness = make_multi_view_test_harness();
+    add_containers_recursive(&mut harness, None, 1, 4, 0);
+
+    let target_pos = harness.get_panel_position("2D view 1").center_bottom() + vec2(0.0, -50.0);
+
+    harness.drag_nth_label("3D view 4", 1);
+    harness.hover_at(target_pos);
+    harness.snapshot_app("drag_view_to_other_view_bottom_1");
+
+    harness.drop_at(target_pos);
+    harness.snapshot_app("drag_view_to_other_view_bottom_2");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_resize_view_vertical() {
+    let mut harness = make_multi_view_test_harness();
+    add_containers_recursive(&mut harness, None, 1, 4, 0);
+
+    let centerline = harness.get_panel_position("3D view 4").left_center();
+    let target_pos = centerline + vec2(100.0, 0.0);
+
+    harness.drag_at(centerline);
+    harness.snapshot_app("resize_view_vertical_1");
+
+    harness.hover_at(target_pos);
+    harness.snapshot_app("resize_view_vertical_2");
+
+    harness.drop_at(target_pos);
+    harness.snapshot_app("resize_view_vertical_3");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_resize_view_horizontal() {
+    let mut harness = make_multi_view_test_harness();
+    add_containers_recursive(&mut harness, None, 1, 4, 0);
+
+    let centerline = harness.get_panel_position("3D view 4").center_bottom();
+    let target_pos = centerline + vec2(0.0, 100.0);
+
+    harness.drag_at(centerline);
+    harness.snapshot_app("resize_view_horizontal_1");
+
+    harness.hover_at(target_pos);
+    harness.snapshot_app("resize_view_horizontal_2");
+
+    harness.drop_at(target_pos);
+    harness.snapshot_app("resize_view_horizontal_3");
 }

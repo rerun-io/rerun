@@ -2,7 +2,6 @@ use std::hash::Hash;
 
 use egui::{
     CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Widget as _, WidgetInfo, WidgetText,
-    WidgetType,
     emath::{GuiRounding as _, Rot2},
     pos2,
 };

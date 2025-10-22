@@ -407,7 +407,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         let class = view_blueprint.class(self.ctx.view_class_registry());
         let view_state = self.view_states.get_mut_or_create(*view_id, class);
 
-        ui.scope(|ui| {
+        let response = ui.scope(|ui| {
             class
                 .ui(self.ctx, ui, view_state, &query, system_output)
                 .unwrap_or_else(|err| {
@@ -429,6 +429,11 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                         },
                     );
             });
+        });
+        response.response.widget_info(|| {
+            let mut info = egui::WidgetInfo::new(egui::WidgetType::Panel);
+            info.label = Some(view_blueprint.display_name_or_default().as_ref().to_owned());
+            info
         });
 
         Default::default()
