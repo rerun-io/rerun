@@ -70,7 +70,7 @@ pub trait RecordBatchExt {
     /// corresponding to the `StructArray` itself will be made nullable.
     fn make_nullable(&self) -> RecordBatch;
 
-    /// Concatenate the give [`RecordBatch`]es horizontally.
+    /// Concatenate the given [`RecordBatch`]es horizontally.
     ///
     /// Both batches must have the same number of rows, and a non-overlapping schema.
     fn concat_horizontally_with(
