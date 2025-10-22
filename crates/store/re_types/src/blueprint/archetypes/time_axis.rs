@@ -33,6 +33,9 @@ pub struct TimeAxis {
 
     /// The view range of the horizontal/X/time axis.
     pub view_range: Option<SerializedComponentBatch>,
+
+    /// If enabled, the X axis range will remain locked to the specified range when zooming.
+    pub zoom_lock: Option<SerializedComponentBatch>,
 }
 
 impl TimeAxis {
@@ -59,6 +62,18 @@ impl TimeAxis {
             component_type: Some("rerun.blueprint.components.TimeRange".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::zoom_lock`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::LockRangeDuringZoom`].
+    #[inline]
+    pub fn descriptor_zoom_lock() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
+            component: "TimeAxis:zoom_lock".into(),
+            component_type: Some("rerun.blueprint.components.LockRangeDuringZoom".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
@@ -67,25 +82,27 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
     std::sync::LazyLock::new(|| {
         [
             TimeAxis::descriptor_link(),
             TimeAxis::descriptor_view_range(),
+            TimeAxis::descriptor_zoom_lock(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
     std::sync::LazyLock::new(|| {
         [
             TimeAxis::descriptor_link(),
             TimeAxis::descriptor_view_range(),
+            TimeAxis::descriptor_zoom_lock(),
         ]
     });
 
 impl TimeAxis {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 impl ::re_types_core::Archetype for TimeAxis {
@@ -134,7 +151,16 @@ impl ::re_types_core::Archetype for TimeAxis {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_view_range())
             });
-        Ok(Self { link, view_range })
+        let zoom_lock = arrays_by_descr
+            .get(&Self::descriptor_zoom_lock())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_zoom_lock())
+            });
+        Ok(Self {
+            link,
+            view_range,
+            zoom_lock,
+        })
     }
 }
 
@@ -142,10 +168,14 @@ impl ::re_types_core::AsComponents for TimeAxis {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [self.link.clone(), self.view_range.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        [
+            self.link.clone(),
+            self.view_range.clone(),
+            self.zoom_lock.clone(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
     }
 }
 
@@ -158,6 +188,7 @@ impl TimeAxis {
         Self {
             link: None,
             view_range: None,
+            zoom_lock: None,
         }
     }
 
@@ -180,6 +211,10 @@ impl TimeAxis {
                 crate::blueprint::components::TimeRange::arrow_empty(),
                 Self::descriptor_view_range(),
             )),
+            zoom_lock: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::LockRangeDuringZoom::arrow_empty(),
+                Self::descriptor_zoom_lock(),
+            )),
         }
     }
 
@@ -201,11 +236,23 @@ impl TimeAxis {
         self.view_range = try_serialize_field(Self::descriptor_view_range(), [view_range]);
         self
     }
+
+    /// If enabled, the X axis range will remain locked to the specified range when zooming.
+    #[inline]
+    pub fn with_zoom_lock(
+        mut self,
+        zoom_lock: impl Into<crate::blueprint::components::LockRangeDuringZoom>,
+    ) -> Self {
+        self.zoom_lock = try_serialize_field(Self::descriptor_zoom_lock(), [zoom_lock]);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for TimeAxis {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.link.heap_size_bytes() + self.view_range.heap_size_bytes()
+        self.link.heap_size_bytes()
+            + self.view_range.heap_size_bytes()
+            + self.zoom_lock.heap_size_bytes()
     }
 }

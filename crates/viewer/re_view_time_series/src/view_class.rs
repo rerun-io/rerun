@@ -523,6 +523,10 @@ impl ViewClass for TimeSeriesView {
             ViewProperty::from_archetype::<TimeAxis>(blueprint_db, ctx.blueprint_query, view_id);
         let link_x_axis = time_axis
             .component_or_fallback::<LinkAxis>(&view_ctx, TimeAxis::descriptor_link().component)?;
+        let x_zoom_lock = **time_axis.component_or_fallback::<LockRangeDuringZoom>(
+            &view_ctx,
+            TimeAxis::descriptor_zoom_lock().component,
+        )?;
 
         let view_current_time =
             re_types::datatypes::TimeInt(current_time.unwrap_or_default().at_least(timeline_start));
@@ -556,11 +560,10 @@ impl ViewClass for TimeSeriesView {
         )?;
         let y_range = make_range_sane(y_range);
 
-        let y_zoom_lock = scalar_axis.component_or_fallback::<LockRangeDuringZoom>(
+        let y_zoom_lock = **scalar_axis.component_or_fallback::<LockRangeDuringZoom>(
             &view_ctx,
             ScalarAxis::descriptor_zoom_lock().component,
         )?;
-        let y_zoom_lock = y_zoom_lock.0.0;
 
         // TODO(jleibs): If this is allowed to be different, need to track it per line.
         let aggregation_factor = all_plot_series
@@ -583,8 +586,6 @@ impl ViewClass for TimeSeriesView {
             }
         };
         state.time_offset = time_offset;
-
-        let lock_y_during_zoom = y_zoom_lock;
 
         // TODO(#5075): Boxed-zoom should be fixed to accommodate the locked range.
         let timestamp_format = ctx.app_options().timestamp_format;
@@ -805,8 +806,11 @@ impl ViewClass for TimeSeriesView {
                 let (scroll_delta, mut zoom_delta) =
                     ui.input(|i| (i.smooth_scroll_delta, i.zoom_delta_2d()));
 
-                if lock_y_during_zoom {
+                if y_zoom_lock {
                     zoom_delta.y = 1.0;
+                }
+                if x_zoom_lock {
+                    zoom_delta.x = 1.0;
                 }
 
                 let move_delta = drag_delta + scroll_delta;

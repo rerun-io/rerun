@@ -13,6 +13,7 @@ Configures the horizontal axis of the plot.
 
 * `link`: How should the horizontal/X/time axis be linked across multiple plots?
 * `view_range`: The view range of the horizontal/X/time axis.
+* `zoom_lock`: If enabled, the X axis range will remain locked to the specified range when zooming.
 ### `axis_y`
 Configures the vertical axis of the plot.
 
