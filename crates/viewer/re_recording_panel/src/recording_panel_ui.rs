@@ -379,12 +379,16 @@ fn dataset_entry_ui(
 
                         PartitionData::Loaded { entity_db } => {
                             let include_app_id = false; // we already show it in the parent item
-                            entity_db_button_ui(
+                            let response = entity_db_button_ui(
                                 ctx,
                                 ui,
                                 entity_db,
                                 UiLayout::SelectionPanel,
                                 include_app_id,
+                            );
+                            ctx.handle_select_focus_sync(
+                                &response,
+                                Item::StoreId(entity_db.store_id().clone()),
                             );
                         }
                     }
@@ -545,12 +549,16 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
             .show_hierarchical_with_children(ui, id, true, list_item_content, |ui| {
                 for recording_data in loaded_recordings {
                     let include_app_id = false; // we already show it in the parent item
-                    entity_db_button_ui(
+                    let response = entity_db_button_ui(
                         ctx,
                         ui,
                         recording_data.entity_db,
                         UiLayout::SelectionPanel,
                         include_app_id,
+                    );
+                    ctx.handle_select_focus_sync(
+                        &response,
+                        Item::StoreId(recording_data.entity_db.store_id().clone()),
                     );
                 }
             })

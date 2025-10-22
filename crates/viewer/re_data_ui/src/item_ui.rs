@@ -678,7 +678,7 @@ pub fn entity_db_button_ui(
     entity_db: &re_entity_db::EntityDb,
     ui_layout: UiLayout,
     include_app_id: bool,
-) {
+) -> egui::Response {
     use re_byte_size::SizeBytes as _;
     use re_viewer_context::{SystemCommand, SystemCommandSender as _};
 
@@ -823,7 +823,7 @@ pub fn entity_db_button_ui(
     }
 
     ctx.handle_select_hover_drag_interactions(&response, item.clone(), false);
-    ctx.handle_select_focus_sync(&response, item.clone());
+    response
 }
 
 pub fn table_id_button_ui(
