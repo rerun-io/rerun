@@ -95,7 +95,7 @@ impl ApplicationSelectionState {
 
         if start_len != self.selection.len() {
             self.selection_changed = Some(SelectionSource::Other);
-        };
+        }
 
         // Set to fallback if empty.
         if self.selection.is_empty()

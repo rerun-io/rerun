@@ -156,7 +156,7 @@ pub struct SetSelection {
 }
 
 impl SetSelection {
-    pub fn new(selection: impl Into<crate::ItemCollection>) -> SetSelection {
+    pub fn new(selection: impl Into<crate::ItemCollection>) -> Self {
         Self {
             selection: selection.into(),
             source: SelectionSource::Other,

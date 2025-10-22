@@ -578,7 +578,6 @@ impl ListItem {
             && interactive
             && !drag_target
             && !egui::DragAndDrop::has_any_payload(ui.ctx());
-        let focused = style_response.has_focus();
         let visuals = ListVisuals {
             theme: ui.theme(),
             hovered,
