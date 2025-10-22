@@ -694,14 +694,14 @@ pub fn entity_db_button_ui(
     // - Lacking anything better, the start time is better than a random id and caters to the local
     //   workflow where the same logging process is run repeatedly.
     let recording_name = if let Some(recording_name) =
-        entity_db.recording_info_property::<Name>(&RecordingInfo::descriptor_name())
+        entity_db.recording_info_property::<Name>(RecordingInfo::descriptor_name().component)
     {
         Some(recording_name.to_string())
     } else if let EntityDbClass::DatasetPartition(url) = entity_db.store_class() {
         Some(url.partition_id.clone())
     } else {
         entity_db
-            .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
+            .recording_info_property::<Timestamp>(RecordingInfo::descriptor_start_time().component)
             .map(|started| {
                 re_log_types::Timestamp::from(started.0)
                     .to_jiff_zoned(ctx.app_options().timestamp_format)

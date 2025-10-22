@@ -12,7 +12,7 @@ use re_log_types::{
     example_components::{MyColor, MyIndex, MyPoint, MyPoints},
 };
 use re_types::{
-    ComponentDescriptor, ComponentDescriptorSet,
+    ComponentDescriptor, ComponentSet,
     testing::{build_some_large_structs, large_struct_descriptor},
 };
 
@@ -27,15 +27,17 @@ fn query_latest_array(
     re_tracing::profile_function!();
 
     let ((data_time, row_id), unit) = store
-        .latest_at_relevant_chunks(query, entity_path, component_descr)
+        .latest_at_relevant_chunks(query, entity_path, component_descr.component)
         .into_iter()
         .filter_map(|chunk| {
-            let chunk = chunk.latest_at(query, component_descr).into_unit()?;
+            let chunk = chunk
+                .latest_at(query, component_descr.component)
+                .into_unit()?;
             chunk.index(&query.timeline()).map(|index| (index, chunk))
         })
         .max_by_key(|(index, _chunk)| *index)?;
 
-    unit.component_batch_raw(component_descr)
+    unit.component_batch_raw(component_descr.component)
         .map(|array| (data_time, row_id, array))
 }
 
@@ -57,7 +59,7 @@ fn all_components() -> anyhow::Result<()> {
             let components = store.all_components_on_timeline_sorted(&timeline, entity_path);
 
             let expected_components = expected.map(|expected| {
-                let expected: ComponentDescriptorSet = expected.iter().cloned().collect();
+                let expected: ComponentSet = expected.iter().map(|descr| descr.component).collect();
                 expected
             });
 
@@ -852,12 +854,13 @@ fn range() -> anyhow::Result<()> {
             let timeline_frame_nr = TimelineName::new("frame_nr");
 
             let query = RangeQuery::new(timeline_frame_nr, time_range);
-            let results = store.range_relevant_chunks(&query, &entity_path, &component_descr);
+            let results =
+                store.range_relevant_chunks(&query, &entity_path, component_descr.component);
 
             eprintln!("================= {component_descr} @ {query:?} ===============");
             let mut results_processed = 0usize;
             for chunk in results {
-                let chunk = chunk.range(&query, &component_descr);
+                let chunk = chunk.range(&query, component_descr.component);
                 eprintln!("{chunk}");
                 for (data_time, row_id) in chunk.iter_indices(&timeline_frame_nr) {
                     let (expected_data_time, expected_row_id) = row_ids_at_times[results_processed];

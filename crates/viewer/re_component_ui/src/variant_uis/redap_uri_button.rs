@@ -2,7 +2,7 @@ use std::error::Error;
 use std::str::FromStr as _;
 
 use egui::{Align, Layout, Link, Ui, UiBuilder};
-use re_types_core::{ComponentDescriptor, RowId};
+use re_types_core::{ComponentIdentifier, RowId};
 use re_ui::UiExt as _;
 use re_uri::RedapUri;
 use re_viewer_context::{
@@ -15,7 +15,7 @@ use re_viewer_context::{
 pub fn redap_uri_button(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _component_descriptor: &ComponentDescriptor,
+    _component: ComponentIdentifier,
     _row_id: Option<RowId>,
     array: &dyn arrow::array::Array,
 ) -> Result<(), Box<dyn Error>> {

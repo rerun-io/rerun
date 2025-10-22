@@ -9,7 +9,7 @@ namespace rerun.components;
 /// Unless otherwise specified, the default value is 1.
 struct Opacity (
   "attr.python.aliases": "float",
-  "attr.python.array_aliases": "float, npt.ArrayLike",
+  "attr.python.array_aliases": "float | npt.ArrayLike",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {

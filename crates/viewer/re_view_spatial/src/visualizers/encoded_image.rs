@@ -140,7 +140,7 @@ impl EncodedImageVisualizer {
             let image = ctx.store_ctx().caches.entry(|c: &mut ImageDecodeCache| {
                 c.entry(
                     tensor_data_row_id,
-                    &EncodedImage::descriptor_blob(),
+                    EncodedImage::descriptor_blob().component,
                     blob,
                     media_type.as_ref(),
                 )

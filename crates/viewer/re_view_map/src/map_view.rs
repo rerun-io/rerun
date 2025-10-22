@@ -255,7 +255,7 @@ impl ViewClass for MapView {
         let default_center_position = state.last_center_position;
 
         let blueprint_zoom_level = map_zoom
-            .component_or_empty::<ZoomLevel>(&MapZoom::descriptor_zoom())?
+            .component_or_empty::<ZoomLevel>(MapZoom::descriptor_zoom().component)?
             .map(|zoom| **zoom);
         let default_zoom_level = span.and_then(|span| {
             span.zoom_for_screen_size(

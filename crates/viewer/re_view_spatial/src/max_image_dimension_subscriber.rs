@@ -5,8 +5,8 @@ use nohash_hasher::IntMap;
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber};
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_types::{
-    Archetype as _, ArchetypeName, Component as _, Loggable as _, archetypes, components,
-    external::image,
+    Archetype as _, ArchetypeName, Component as _, Loggable as _, SerializedComponentColumn,
+    archetypes, components, external::image,
 };
 
 bitflags::bitflags! {
@@ -85,9 +85,9 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
             let entity_path = chunk.entity_path();
 
             // Handle new video codecs first since we do a lookup on this later.
-            if components.contains_key(&archetypes::VideoStream::descriptor_codec()) {
+            if components.contains_key(&archetypes::VideoStream::descriptor_codec().component) {
                 for codec in chunk.iter_component::<components::VideoCodec>(
-                    &archetypes::VideoStream::descriptor_codec(),
+                    archetypes::VideoStream::descriptor_codec().component,
                 ) {
                     let Some(codec) = codec.first() else {
                         continue;
@@ -107,8 +107,12 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
             }
 
             #[expect(clippy::iter_over_hash_type)] // order doesn't matter - we're taking a max
-            for (descr, list_array) in components.iter() {
-                let Some(archetype_name) = descr.archetype else {
+            for SerializedComponentColumn {
+                list_array,
+                descriptor,
+            } in components.values()
+            {
+                let Some(archetype_name) = descriptor.archetype else {
                     // Don't care about non-builtin types, therefore archetype name should be present.
                     continue;
                 };
@@ -138,7 +142,7 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                 max_dim.image_types.insert(image_type);
 
                 // Size detection for various types of components.
-                if descr.component_type == Some(components::ImageFormat::name()) {
+                if descriptor.component_type == Some(components::ImageFormat::name()) {
                     for new_dim in list_array.iter().filter_map(|array| {
                         let array = arrow::array::ArrayRef::from(array?);
                         components::ImageFormat::from_arrow(&array)
@@ -149,17 +153,21 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                         max_dim.width = max_dim.width.max(new_dim.width);
                         max_dim.height = max_dim.height.max(new_dim.height);
                     }
-                } else if descr.component_type == Some(components::Blob::name()) {
-                    let blobs = chunk.iter_slices::<&[u8]>(descr.clone());
+                } else if descriptor.component_type == Some(components::Blob::name()) {
+                    let blobs = chunk.iter_slices::<&[u8]>(descriptor.component);
 
                     // Is there a media type paired up with this blob?
-                    let media_type_descr = components.keys().find(|desc| {
-                        desc.component_type == Some(components::MediaType::name())
-                            && desc.archetype == descr.archetype
-                    });
+                    let media_type_descr =
+                        components
+                            .component_descriptors()
+                            .find(|maybe_media_type_descr| {
+                                maybe_media_type_descr.component_type
+                                    == Some(components::MediaType::name())
+                                    && maybe_media_type_descr.archetype == descriptor.archetype
+                            });
                     let media_types = media_type_descr.map_or(Vec::new(), |media_type_descr| {
                         chunk
-                            .iter_slices::<String>(media_type_descr.clone())
+                            .iter_slices::<String>(media_type_descr.component)
                             .collect()
                     });
                     for (blob, media_type) in itertools::izip!(
@@ -186,14 +194,14 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                             max_dim.height = max_dim.height.max(height);
                         }
                     }
-                } else if descr.component_type == Some(components::VideoSample::name()) {
+                } else if descriptor.component_type == Some(components::VideoSample::name()) {
                     let Some(video_codec) = self.video_codecs.get(&entity_path.hash()).copied()
                     else {
                         // Codec is typically logged earlier.
                         continue;
                     };
 
-                    for sample in chunk.iter_slices::<&[u8]>(descr.clone()) {
+                    for sample in chunk.iter_slices::<&[u8]>(descriptor.component) {
                         let Some(sample) = sample.first() else {
                             continue;
                         };

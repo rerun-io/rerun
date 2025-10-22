@@ -178,7 +178,7 @@ impl SelectionPanel {
 
                 let is_static = engine
                     .store()
-                    .entity_has_static_component(entity_path, &component_descriptor);
+                    .entity_has_static_component(entity_path, component_descriptor.component);
 
                 ui.list_item_flat_noninteractive(PropertyContent::new("Parent entity").value_fn(
                     |ui, _| {

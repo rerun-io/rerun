@@ -795,7 +795,7 @@ impl TestContext {
         };
         let messages = recording_entity_db.to_messages(None);
 
-        let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
+        let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
         re_log_encoding::Encoder::encode_into(
             re_build_info::CrateVersion::LOCAL,
             encoding_options,
@@ -816,7 +816,7 @@ impl TestContext {
         };
         let messages = blueprint_entity_db.to_messages(None);
 
-        let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
+        let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
         re_log_encoding::Encoder::encode_into(
             re_build_info::CrateVersion::LOCAL,
             encoding_options,

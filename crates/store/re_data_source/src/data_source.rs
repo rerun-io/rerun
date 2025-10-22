@@ -152,7 +152,7 @@ impl LogDataSource {
 
         match self {
             Self::RrdHttpUrl { url, follow } => Ok(
-                re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
+                re_log_encoding::rrd::stream_from_http::stream_from_http_to_channel(
                     url.to_string(),
                     follow,
                     on_msg,

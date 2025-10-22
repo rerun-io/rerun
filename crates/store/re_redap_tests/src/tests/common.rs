@@ -6,7 +6,6 @@ use itertools::Itertools as _;
 use tonic::async_trait;
 use url::Url;
 
-use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::{
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DataSource, DataSourceKind, QueryTasksOnCompletionRequest,
@@ -68,14 +67,14 @@ async fn register_with_dataset(
     service: &impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
     request: tonic::Request<RegisterWithDatasetRequest>,
 ) {
-    let resp = service
+    let resp: RecordBatch = service
         .register_with_dataset(request)
         .await
         .expect("register_with_dataset should succeed")
         .into_inner()
         .data
         .expect("data expected")
-        .decode()
+        .try_into()
         .expect("record batch expected");
 
     // extract task ids from the response record batch
@@ -108,10 +107,10 @@ async fn register_with_dataset(
         .into_iter()
         .map(|resp| {
             let resp = resp.expect("Failed to get task completion response");
-            let decoded = resp
+            let decoded: RecordBatch = resp
                 .data
                 .expect("Expected response data")
-                .decode()
+                .try_into()
                 .expect("Failed to decode response data");
             let task_id = decoded
                 .column_by_name("task_id")
@@ -250,6 +249,7 @@ impl DataSourcesDefinition {
             .map(|(layer_name, path)| DataSource {
                 storage_url: Some(Url::from_file_path(path.as_path()).unwrap().to_string()),
                 layer: layer_name.clone(),
+                prefix: false,
                 typ: DataSourceKind::Rrd as i32,
             })
             .collect()

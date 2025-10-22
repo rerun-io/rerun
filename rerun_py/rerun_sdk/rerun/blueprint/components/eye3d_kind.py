@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -67,8 +67,10 @@ class Eye3DKind(Enum):
         return self.name
 
 
-Eye3DKindLike = Union[Eye3DKind, Literal["FirstPerson", "Orbital", "firstperson", "orbital"], int]
-Eye3DKindArrayLike = Union[Eye3DKindLike, Sequence[Eye3DKindLike]]
+Eye3DKindLike = Eye3DKind | Literal["FirstPerson", "Orbital", "firstperson", "orbital"] | int
+Eye3DKindArrayLike = (
+    Eye3DKind | Literal["FirstPerson", "Orbital", "firstperson", "orbital"] | int | Sequence[Eye3DKindLike]
+)
 
 
 class Eye3DKindBatch(BaseBatch[Eye3DKindArrayLike], ComponentBatchMixin):

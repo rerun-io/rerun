@@ -7,7 +7,7 @@ import os
 import pathlib
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import uuid4
 
 import anywidget
@@ -16,7 +16,7 @@ import traitlets
 from ipywidgets import HTML
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping
 
 try:
     __version__ = importlib.metadata.version("rerun_notebook")

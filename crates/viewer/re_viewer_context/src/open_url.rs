@@ -674,7 +674,7 @@ fn handle_web_event_listener(_egui_ctx: &egui::Context, _command_sender: &Comman
 #[cfg(target_arch = "wasm32")]
 fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandSender) {
     use re_log::ResultExt as _;
-    use re_log_encoding::stream_rrd_from_http::HttpMessage;
+    use re_log_encoding::rrd::stream_from_http::HttpMessage;
     use std::{ops::ControlFlow, sync::Arc};
 
     // Process an rrd when it's posted via `window.postMessage`
@@ -683,7 +683,7 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandS
         re_smart_channel::SmartChannelSource::RrdWebEventListener,
     );
     let egui_ctx = egui_ctx.clone();
-    re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(Arc::new({
+    re_log_encoding::rrd::stream_from_http::stream_rrd_from_event_listener(Arc::new({
         move |msg| {
             egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
 

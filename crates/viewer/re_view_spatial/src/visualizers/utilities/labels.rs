@@ -122,6 +122,10 @@ pub fn show_labels_fallback(
 ) -> ShowLabels {
     debug_assert!(text_component.component_type == Some(Text::name()));
 
+    // TODO(#10460): Should take identifier directly.
+    let instance_count_component = instance_count_component.component;
+    let text_component = text_component.component;
+
     let results = ctx.recording().latest_at(
         ctx.query,
         ctx.target_entity_path,

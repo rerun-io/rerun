@@ -4,11 +4,20 @@
 //! we should not leak these elements into the public API. This allows us to
 //! evolve the definition of lenses over time, if requirements change.
 
-use arrow::{array::ListArray, datatypes::DataType};
+use std::collections::HashMap;
 
-use re_chunk::{Chunk, ChunkComponents, ChunkId, ComponentIdentifier, EntityPath};
-use re_log_types::EntityPathFilter;
-use re_types::ComponentDescriptor;
+use arrow::{
+    array::{Int64Array, ListArray},
+    datatypes::DataType,
+};
+
+use re_arrow_util::transform::{self, Transform as _};
+use re_chunk::{
+    ArrowArray as _, Chunk, ChunkComponents, ChunkId, ComponentIdentifier, EntityPath, Timeline,
+    TimelineName,
+};
+use re_log_types::{EntityPathFilter, TimeType};
+use re_types::{ComponentDescriptor, SerializedComponentColumn};
 
 use super::{Error, op};
 
@@ -17,7 +26,7 @@ pub struct InputColumn {
     pub component: ComponentIdentifier,
 }
 
-pub struct OutputColumn {
+pub struct ComponentColumn {
     /// The target entity path for this column.
     ///
     /// If `None`, the entity path of the output column will be set to the matched entity path of the input column.
@@ -27,6 +36,18 @@ pub struct OutputColumn {
     // TODO(grtlr): It would be much nicer if static could be inferred from the output of the operations?
     pub is_static: bool,
 }
+
+pub struct TimeColumn {
+    /// The target entity path for this column.
+    ///
+    /// If `None`, the entity path of the output column will be set to the matched entity path of the input column.
+    pub new_entity_path: Option<EntityPath>,
+    pub timeline_name: TimelineName,
+    pub timeline_type: TimeType,
+    pub ops: Vec<Op>,
+}
+
+type CustomFn = Box<dyn Fn(&ListArray) -> Result<ListArray, Error> + Sync + Send>;
 
 /// Provides commonly used transformations of component columns.
 ///
@@ -38,8 +59,17 @@ pub enum Op {
     /// Efficiently casts a component to a new `DataType`.
     Cast(op::Cast),
 
+    /// Flattens a list array inside a component.
+    ///
+    /// Takes `List<List<T>>` and flattens it to `List<T>` by concatenating all inner lists
+    /// within each outer list row.
+    /// Inner nulls are preserved, outer nulls are skipped.
+    ///
+    /// Example: `[[1, 2, 3], [4, null, 5], null, [6]]` becomes `[1, 2, 3, 4, null, 5, 6]`.
+    Flatten,
+
     /// A user-defined arbitrary function to convert a component column.
-    Func(Box<dyn Fn(ListArray) -> Result<ListArray, Error> + Sync + Send>),
+    Func(CustomFn),
 }
 
 impl std::fmt::Debug for Op {
@@ -47,6 +77,7 @@ impl std::fmt::Debug for Op {
         match self {
             Self::AccessField(inner) => f.debug_tuple("AccessField").field(inner).finish(),
             Self::Cast(inner) => f.debug_tuple("Cast").field(inner).finish(),
+            Self::Flatten => f.debug_tuple("Flatten").finish(),
             Self::Func(_) => f.debug_tuple("Func").field(&"<function>").finish(),
         }
     }
@@ -69,26 +100,40 @@ impl Op {
 
     /// Ignores any input and returns a constant `ListArray`.
     ///
-    /// Commonly used with [`LensBuilder::add_static_output_column_entity`].
+    /// Commonly used with [`LensBuilder::add_static_component_column_entity`].
     /// When used in non-static columns this function will _not_ guarantee the correct amount of rows.
     pub fn constant(value: ListArray) -> Self {
         Self::func(move |_| Ok(value.clone()))
     }
 
+    /// Flattens a list array inside a component.
+    ///
+    /// Takes `List<List<T>>` and flattens it to `List<T>` by concatenating all inner lists
+    /// within each outer list row.
+    /// Inner nulls are preserved, outer nulls are skipped.
+    ///
+    /// Example: `[[1, 2, 3], [4, null, 5], null, [6]]` becomes `[1, 2, 3, 4, null, 5, 6]`.
+    pub fn flatten() -> Self {
+        Self::Flatten
+    }
+
     /// A user-defined arbitrary function to convert a component column.
     pub fn func<F>(func: F) -> Self
     where
-        F: Fn(ListArray) -> Result<ListArray, Error> + Send + Sync + 'static,
+        F: for<'a> Fn(&'a ListArray) -> Result<ListArray, Error> + Send + Sync + 'static,
     {
         Self::Func(Box::new(func))
     }
 }
 
 impl Op {
-    fn call(&self, list_array: ListArray) -> Result<ListArray, Error> {
+    fn call(&self, list_array: &ListArray) -> Result<ListArray, Error> {
         match self {
             Self::Cast(op) => op.call(list_array),
             Self::AccessField(op) => op.call(list_array),
+            Self::Flatten => transform::Flatten::new()
+                .transform(list_array)
+                .map_err(Into::into),
             Self::Func(func) => func(list_array),
         }
     }
@@ -107,7 +152,8 @@ impl Op {
 /// made for values across rows.
 pub struct Lens {
     input: InputColumn,
-    outputs: Vec<OutputColumn>,
+    component_columns: Vec<ComponentColumn>,
+    time_columns: Vec<TimeColumn>,
 }
 
 impl Lens {
@@ -123,18 +169,15 @@ impl Lens {
 impl Lens {
     /// Applies this lens and crates one or more chunks.
     fn apply(&self, chunk: &Chunk) -> Vec<Chunk> {
-        let found = chunk
-            .components()
-            .iter()
-            .find(|(descr, _array)| descr.component == self.input.component);
+        let found = chunk.components().get(self.input.component);
 
         // This means we drop chunks that belong to the same entity but don't have the component.
-        let Some((_component_descr, list_array)) = found else {
+        let Some(column) = found else {
             return Default::default();
         };
 
         let mut builders = ahash::HashMap::default();
-        for output in &self.outputs {
+        for output in &self.component_columns {
             let entity_path = output
                 .new_entity_path
                 .as_ref()
@@ -144,29 +187,79 @@ impl Lens {
                 .entry((entity_path.clone(), output.is_static))
                 .or_insert_with(ChunkComponents::default);
 
-            if components.contains_component(&output.component_descr) {
+            if components.contains_key(&output.component_descr.component) {
                 re_log::warn_once!("Replacing duplicated component {}", output.component_descr);
             }
 
-            let mut list_array_result = list_array.clone();
+            let mut list_array_result = column.list_array.clone();
             for op in &output.ops {
-                match op.call(list_array_result) {
+                match op.call(&list_array_result) {
                     Ok(result) => {
                         list_array_result = result;
                     }
                     Err(err) => {
                         re_log::error!(
-                            "Lens operation '{:?}' failed for output column '{}' on entity '{}': {err}",
-                            op,
-                            entity_path,
-                            output.component_descr.component
+                            "Lens operation '{op:?}' failed for output column '{}' on entity '{entity_path}': {err}",
+                            output.component_descr.component,
                         );
                         return vec![];
                     }
                 }
             }
 
-            components.insert(output.component_descr.clone(), list_array_result);
+            components.insert(SerializedComponentColumn::new(
+                list_array_result,
+                output.component_descr.clone(),
+            ));
+        }
+
+        let mut time_builders: ahash::HashMap<
+            &EntityPath,
+            HashMap<TimelineName, re_chunk::TimeColumn>,
+        > = ahash::HashMap::default();
+        for time in &self.time_columns {
+            let entity_path = time.new_entity_path.as_ref().unwrap_or(chunk.entity_path());
+
+            let time_entry = time_builders.entry(entity_path).or_default();
+
+            if time_entry.contains_key(&time.timeline_name) {
+                re_log::warn_once!("Replacing duplicated time column {}", time.timeline_name);
+            }
+
+            let mut list_array_result = column.list_array.clone();
+            for op in &time.ops {
+                match op.call(&list_array_result) {
+                    Ok(result) => {
+                        list_array_result = result;
+                    }
+                    Err(err) => {
+                        re_log::error!(
+                            "Lens operation '{op:?}' failed for time column '{}' on entity '{entity_path}': {err}",
+                            time.timeline_name,
+                        );
+                        return vec![];
+                    }
+                }
+            }
+
+            if let Some(values) = list_array_result
+                .values()
+                .as_any()
+                .downcast_ref::<Int64Array>()
+            {
+                let time_column = re_chunk::TimeColumn::new(
+                    None,
+                    Timeline::new(time.timeline_name, time.timeline_type),
+                    values.values().clone(),
+                );
+                time_entry.insert(time.timeline_name, time_column);
+            } else {
+                re_log::error_once!(
+                    "invalid data type for time column '{}': '{}'",
+                    time.timeline_name,
+                    list_array_result.data_type()
+                );
+            }
         }
 
         builders
@@ -175,7 +268,11 @@ impl Lens {
                 let timelines = if is_static {
                     Default::default()
                 } else {
-                    chunk.timelines().clone()
+                    let mut existing = chunk.timelines().clone();
+                    if let Some(columns) = time_builders.get_mut(&entity_path) {
+                        existing.extend(columns.clone());
+                    }
+                    existing
                 };
 
                 // TODO(grtlr): In case of static, should we use sparse rows instead?
@@ -207,70 +304,131 @@ impl LensBuilder {
                 entity_path_filter,
                 component: component.into(),
             },
-            outputs: vec![],
+            component_columns: vec![],
+            time_columns: vec![],
         })
     }
 
     /// Can be used to define one or more output columns that are derived from the
     /// component specified via [`Self::for_input_column`].
     ///
-    /// The output column will live on the same entity path as the input column.
-    pub fn add_output_column(
+    /// The new column will be placed on the same entity path as the input column.
+    pub fn add_component_column(
         mut self,
         component_descr: ComponentDescriptor,
         ops: impl IntoIterator<Item = Op>,
     ) -> Self {
-        let column = OutputColumn {
+        let column = ComponentColumn {
             new_entity_path: None,
             component_descr,
             ops: ops.into_iter().collect(),
             is_static: false,
         };
-        self.0.outputs.push(column);
+        self.0.component_columns.push(column);
         self
     }
 
     /// Can be used to define one or more output columns that are derived from the
     /// component specified via [`Self::for_input_column`].
     ///
-    /// The output column will live on the same entity path as the input column.
-    pub fn add_output_column_entity(
+    /// The new column will be placed at `entity_path`.
+    pub fn add_component_column_entity(
         mut self,
         entity_path: impl Into<EntityPath>,
         component_descr: ComponentDescriptor,
         ops: impl IntoIterator<Item = Op>,
     ) -> Self {
-        let column = OutputColumn {
+        let column = ComponentColumn {
             new_entity_path: Some(entity_path.into()),
             component_descr,
             ops: ops.into_iter().collect(),
             is_static: false,
         };
-        self.0.outputs.push(column);
+        self.0.component_columns.push(column);
+        self
+    }
+
+    /// Can be used to extract a time column from the component specified via
+    /// [`Self::for_input_column`].
+    ///
+    /// The new column will be placed on the same entity path as the input column.
+    pub fn add_time_column(
+        mut self,
+        timeline_name: impl Into<TimelineName>,
+        timeline_type: TimeType,
+        ops: impl IntoIterator<Item = Op>,
+    ) -> Self {
+        let column = TimeColumn {
+            new_entity_path: None,
+            timeline_name: timeline_name.into(),
+            timeline_type,
+            ops: ops.into_iter().collect(),
+        };
+        self.0.time_columns.push(column);
+        self
+    }
+
+    /// Can be used to extract a time column from the component specified via
+    /// [`Self::for_input_column`].
+    ///
+    /// The new column will be placed at `entity_path`.
+    pub fn add_time_column_entity(
+        mut self,
+        entity_path: impl Into<EntityPath>,
+        timeline_name: impl Into<TimelineName>,
+        timeline_type: TimeType,
+        ops: impl IntoIterator<Item = Op>,
+    ) -> Self {
+        let column = TimeColumn {
+            new_entity_path: Some(entity_path.into()),
+            timeline_name: timeline_name.into(),
+            timeline_type,
+            ops: ops.into_iter().collect(),
+        };
+        self.0.time_columns.push(column);
         self
     }
 
     /// Can be used to define one or more static output columns that are derived from the
     /// component specified via [`Self::for_input_column`].
     ///
-    /// The output column will live on the same entity path as the input column.
+    /// The new column will be placed on the same entity path as the input column.
     ///
     /// In most cases, static columns should have a single row only.
-    // TODO(grtlr): We don't provide a non-entity version of this method, because it is
-    //              likely to change again anyway.
-    pub fn add_static_output_column_entity(
+    pub fn add_static_component_column(
+        mut self,
+        component_descr: ComponentDescriptor,
+        ops: impl IntoIterator<Item = Op>,
+    ) -> Self {
+        let column = ComponentColumn {
+            new_entity_path: None,
+            component_descr,
+            ops: ops.into_iter().collect(),
+            is_static: true,
+        };
+        self.0.component_columns.push(column);
+        self
+    }
+
+    /// Can be used to define one or more static output columns that are derived from the
+    /// component specified via [`Self::for_input_column`].
+    ///
+    /// The new column will be placed at `entity_path`.
+    ///
+    /// In most cases, static columns should have a single row only.
+    pub fn add_static_component_column_entity(
         mut self,
         entity_path: impl Into<EntityPath>,
         component_descr: ComponentDescriptor,
         ops: impl IntoIterator<Item = Op>,
     ) -> Self {
-        let column = OutputColumn {
+        let column = ComponentColumn {
             new_entity_path: Some(entity_path.into()),
             component_descr,
             ops: ops.into_iter().collect(),
             is_static: true,
         };
-        self.0.outputs.push(column);
+        self.0.component_columns.push(column);
         self
     }
 
@@ -484,7 +642,7 @@ mod test {
 
         let destructure =
             Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
-                .add_output_column_entity(
+                .add_component_column_entity(
                     "nullability/a",
                     Scalars::descriptor_scalars(),
                     [Op::access_field("a"), Op::cast(DataType::Float64)],
@@ -509,7 +667,7 @@ mod test {
 
         let destructure =
             Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
-                .add_output_column_entity(
+                .add_component_column_entity(
                     "nullability/b",
                     Scalars::descriptor_scalars(),
                     [Op::access_field("b")],
@@ -532,7 +690,7 @@ mod test {
         let original_chunk = nullability_chunk();
         println!("{original_chunk}");
 
-        let count_fn = |list_array: ListArray| {
+        let count_fn = |list_array: &ListArray| {
             let mut builder = ListBuilder::new(Int32Builder::new());
 
             for maybe_array in list_array.iter() {
@@ -552,8 +710,8 @@ mod test {
 
         let count =
             Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
-                .add_output_column(ComponentDescriptor::partial("counts"), [Op::func(count_fn)])
-                .add_output_column(
+                .add_component_column(ComponentDescriptor::partial("counts"), [Op::func(count_fn)])
+                .add_component_column(
                     ComponentDescriptor::partial("original"),
                     [], // no operations
                 )
@@ -588,12 +746,12 @@ mod test {
 
         let static_lens =
             Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
-                .add_static_output_column_entity(
+                .add_static_component_column_entity(
                     "nullability/static",
                     ComponentDescriptor::partial("static_metadata_a"),
                     [Op::constant(metadata_builder_a.finish())],
                 )
-                .add_static_output_column_entity(
+                .add_static_component_column_entity(
                     "nullability/static",
                     ComponentDescriptor::partial("static_metadata_b"),
                     [Op::constant(metadata_builder_b.finish())],
@@ -609,5 +767,85 @@ mod test {
 
         let chunk = &res[0];
         insta::assert_snapshot!("single_static", format!("{chunk:-240}"));
+    }
+
+    #[test]
+    fn test_time_column_extraction() {
+        // Create a chunk with timestamp data that can be extracted as a time column
+        let mut timestamp_builder = ListBuilder::new(arrow::array::Int64Builder::new());
+        let mut value_builder = ListBuilder::new(Int32Builder::new());
+
+        // Add rows with timestamps and corresponding values
+        for i in 0..5 {
+            timestamp_builder.values().append_value(100 + i * 10);
+            timestamp_builder.append(true);
+
+            value_builder.values().append_value(i as i32);
+            value_builder.append(true);
+        }
+
+        let timestamp_column = timestamp_builder.finish();
+        let value_column = value_builder.finish();
+
+        let components = [
+            (
+                ComponentDescriptor::partial("my_timestamp"),
+                timestamp_column,
+            ),
+            (ComponentDescriptor::partial("value"), value_column),
+        ]
+        .into_iter();
+
+        // Create chunk without the custom timeline initially
+        let time_column = TimeColumn::new_sequence("tick", [0, 1, 2, 3, 4]);
+
+        let original_chunk = Chunk::from_auto_row_ids(
+            ChunkId::new(),
+            "timestamped".into(),
+            std::iter::once((TimelineName::new("tick"), time_column)).collect(),
+            components.collect(),
+        )
+        .unwrap();
+
+        println!("{original_chunk}");
+
+        // Create a lens that extracts the timestamp as a time column and keeps the original timestamp as a component
+        let time_lens = Lens::for_input_column(
+            EntityPathFilter::parse_forgiving("timestamped"),
+            "my_timestamp",
+        )
+        .add_time_column("my_timeline", TimeType::Sequence, [])
+        .add_component_column(ComponentDescriptor::partial("extracted_time"), [])
+        .build();
+
+        let pipeline = LensRegistry {
+            lenses: vec![time_lens],
+        };
+
+        let res = pipeline.apply(&original_chunk);
+        assert_eq!(res.len(), 1);
+
+        let chunk = &res[0];
+        println!("{chunk}");
+
+        // Verify the chunk has both the original timeline and the new custom timeline
+        assert!(chunk.timelines().contains_key(&TimelineName::new("tick")));
+        assert!(
+            chunk
+                .timelines()
+                .contains_key(&TimelineName::new("my_timeline"))
+        );
+
+        // Verify the custom timeline has the correct values
+        let my_timeline = chunk
+            .timelines()
+            .get(&TimelineName::new("my_timeline"))
+            .unwrap();
+        assert_eq!(my_timeline.times_raw().len(), 5);
+        assert_eq!(my_timeline.times_raw()[0], 100);
+        assert_eq!(my_timeline.times_raw()[1], 110);
+        assert_eq!(my_timeline.times_raw()[2], 120);
+        assert_eq!(my_timeline.times_raw()[3], 130);
+        assert_eq!(my_timeline.times_raw()[4], 140);
     }
 }

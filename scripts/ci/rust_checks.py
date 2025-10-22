@@ -30,7 +30,10 @@ import sys
 import time
 from functools import partial
 from glob import glob
-from typing import Callable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class Result:
@@ -351,7 +354,7 @@ test_failure_message = 'See the "Upload test results" step for a link to the sna
 
 def tests(results: list[Result]) -> None:
     # We first use `--no-run` to measure the time of compiling vs actually running
-    results.append(run_cargo("test", "--all-targets --all-features --no-run", deny_warnings=False))
+    results.append(run_cargo("nextest", "run --all-targets --all-features --no-run", deny_warnings=False))
     results.append(run_cargo("nextest", "run --all-targets --all-features", deny_warnings=False))
 
     if not results[-1].success:

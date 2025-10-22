@@ -5,7 +5,8 @@ import functools
 import inspect
 import math
 import uuid
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, TypeVar, overload
 
 from rerun_bindings import ChunkBatcherConfig  # noqa: TC002
 from typing_extensions import deprecated
@@ -693,8 +694,9 @@ class RecordingStream:
         You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
         Once reached, the earliest logged data will be dropped. Static data is never dropped.
 
-        It is highly recommended that you set the memory limit to `0B` if both the server and client are running
-        on the same machine, otherwise you're potentially doubling your memory usage!
+        If server & client are running on the same machine and all clients are expected to connect before
+        any data is sent, it is highly recommended that you set the memory limit to `0B`,
+        otherwise you're potentially doubling your memory usage!
 
         Returns the URI of the server so you can connect the viewer to it.
 

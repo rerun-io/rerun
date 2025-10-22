@@ -12,9 +12,9 @@ use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{
     AbsoluteTimeRange, ApplicationId, ComponentPath, EntityPath, TimeInt, TimeReal,
 };
+use re_types::ComponentIdentifier;
 use re_types::blueprint::components::PanelState;
 use re_types::reflection::ComponentDescriptorExt as _;
-use re_types_core::ComponentDescriptor;
 use re_ui::{ContextExt as _, DesignTokens, Help, UiExt as _, filter_widget, icons, list_item};
 use re_ui::{IconText, filter_widget::format_matching_text};
 use re_viewer_context::open_url::ViewerOpenUrl;
@@ -37,28 +37,25 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct TimePanelItem {
     pub entity_path: EntityPath,
-    pub component_descr: Option<ComponentDescriptor>,
+    pub component: Option<ComponentIdentifier>,
 }
 
 impl TimePanelItem {
     pub fn entity_path(entity_path: EntityPath) -> Self {
         Self {
             entity_path,
-            component_descr: None,
+            component: None,
         }
     }
 
     pub fn to_item(&self) -> Item {
         let Self {
             entity_path,
-            component_descr,
+            component,
         } = self;
 
-        if let Some(component_descr) = component_descr.as_ref() {
-            Item::ComponentPath(ComponentPath::new(
-                entity_path.clone(),
-                component_descr.component,
-            ))
+        if let Some(component) = *component {
+            Item::ComponentPath(ComponentPath::new(entity_path.clone(), component))
         } else {
             Item::InstancePath(InstancePath::entity_all(entity_path.clone()))
         }
@@ -893,13 +890,13 @@ impl TimePanel {
             }
 
             for component_descr in components {
-                let is_static = store.entity_has_static_component(entity_path, &component_descr);
+                let component = component_descr.component;
+                let is_static = store.entity_has_static_component(entity_path, component);
 
-                let component_path =
-                    ComponentPath::new(entity_path.clone(), component_descr.component);
+                let component_path = ComponentPath::new(entity_path.clone(), component);
                 let item = TimePanelItem {
                     entity_path: entity_path.clone(),
-                    component_descr: Some(component_descr.clone()),
+                    component: Some(component),
                 };
                 let timeline = time_ctrl.timeline();
 
@@ -937,12 +934,12 @@ impl TimePanel {
 
                 response.on_hover_ui(|ui| {
                     let num_static_messages =
-                        store.num_static_events_for_component(entity_path, &component_descr);
+                        store.num_static_events_for_component(entity_path, component);
                     let num_temporal_messages = store
                         .num_temporal_events_for_component_on_timeline(
                             time_ctrl.timeline().name(),
                             entity_path,
-                            &component_descr,
+                            component,
                         );
                     let total_num_messages = num_static_messages + num_temporal_messages;
 
@@ -973,7 +970,7 @@ impl TimePanel {
                                 .show_flat(
                                     ui,
                                     list_item::LabelContent::new(format!(
-                                        "{kind} {component_descr} component, logged {num_messages}",
+                                        "{kind} {component} component, logged {num_messages}",
                                     ))
                                     .truncate(false)
                                     .with_icon(if is_static {
@@ -1014,7 +1011,7 @@ impl TimePanel {
                         .entity_has_component_on_timeline(
                             time_ctrl.timeline().name(),
                             entity_path,
-                            &component_descr,
+                            component,
                         );
 
                     if component_has_data_in_current_timeline {

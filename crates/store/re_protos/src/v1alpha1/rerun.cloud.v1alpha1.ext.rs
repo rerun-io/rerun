@@ -1689,6 +1689,7 @@ fn datasourcekind_roundtrip() {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DataSource {
     pub storage_url: url::Url,
+    pub is_prefix: bool,
     pub layer: String,
     pub kind: DataSourceKind,
 }
@@ -1699,6 +1700,16 @@ impl DataSource {
     pub fn new_rrd(storage_url: impl AsRef<str>) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
+            is_prefix: false,
+            layer: Self::DEFAULT_LAYER.to_owned(),
+            kind: DataSourceKind::Rrd,
+        })
+    }
+
+    pub fn new_rrd_prefix(storage_url: impl AsRef<str>) -> Result<Self, url::ParseError> {
+        Ok(Self {
+            storage_url: storage_url.as_ref().parse()?,
+            is_prefix: true,
             layer: Self::DEFAULT_LAYER.to_owned(),
             kind: DataSourceKind::Rrd,
         })
@@ -1710,6 +1721,19 @@ impl DataSource {
     ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
+            is_prefix: false,
+            layer: layer.as_ref().into(),
+            kind: DataSourceKind::Rrd,
+        })
+    }
+
+    pub fn new_rrd_layer_prefix(
+        layer: impl AsRef<str>,
+        storage_url: impl AsRef<str>,
+    ) -> Result<Self, url::ParseError> {
+        Ok(Self {
+            storage_url: storage_url.as_ref().parse()?,
+            is_prefix: true,
             layer: layer.as_ref().into(),
             kind: DataSourceKind::Rrd,
         })
@@ -1720,6 +1744,7 @@ impl From<DataSource> for crate::cloud::v1alpha1::DataSource {
     fn from(value: DataSource) -> Self {
         crate::cloud::v1alpha1::DataSource {
             storage_url: Some(value.storage_url.to_string()),
+            prefix: value.is_prefix,
             layer: Some(value.layer),
             typ: value.kind as i32,
         }
@@ -1741,8 +1766,11 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
 
         let kind = DataSourceKind::try_from(data_source.typ)?;
 
+        let prefix = data_source.prefix;
+
         Ok(Self {
             storage_url,
+            is_prefix: prefix,
             layer,
             kind,
         })
