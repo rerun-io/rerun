@@ -204,18 +204,12 @@ impl ContainerBlueprint {
             arch = arch.with_display_name(display_name.clone());
         }
 
-        // TODO(jleibs): The need for this pattern is annoying. Should codegen
-        // a version of this that can take an Option.
-        if let Some(active_tab) = &active_tab {
-            arch = arch.with_active_tab(&active_tab.as_entity_path());
-        } else {
-            // We have to clear the component if it's none, otherwise the query
-            // will still pick up older `active_tab` values.
-            ctx.clear_blueprint_component(
-                id.as_entity_path(),
-                re_types::blueprint::archetypes::ContainerBlueprint::descriptor_active_tab(),
-            );
-        }
+        // We want to write an empty array if `active_tab` is none. So can't use `arch.with_active_tab`
+        // here.
+        arch.active_tab = re_types::try_serialize_field::<re_types::blueprint::components::ActiveTab>(
+            re_types::blueprint::archetypes::ContainerBlueprint::descriptor_active_tab(),
+            active_tab.map(|c| c.as_entity_path()).as_ref(),
+        );
 
         if let Some(cols) = grid_columns {
             arch = arch.with_grid_columns(*cols);
