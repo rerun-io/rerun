@@ -103,7 +103,7 @@
     },
     "focus_halo_stroke": {
       "color": "{Blue.350}",
-      "alpha": 20,
+      "alpha": 75,
       "width": 2
     },
 

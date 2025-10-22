@@ -1,5 +1,6 @@
 #![cfg(feature = "testing")]
 
+use egui_kittest::kittest::Queryable;
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, icons, list_item};
 
@@ -24,6 +25,9 @@ pub fn test_list_items_should_match_snapshot() {
         ui.list_item()
             .force_hovered(true)
             .show_hierarchical(ui, list_item::LabelContent::new("Perma-hovered item"));
+
+        ui.list_item()
+            .show_hierarchical(ui, list_item::LabelContent::new("Focused item"));
 
         ui.list_item().show_hierarchical_with_children(
             ui,
@@ -230,6 +234,8 @@ pub fn test_list_items_should_match_snapshot() {
                 list_item::list_item_scope(ui, "list_item_scope", &mut test_code);
             });
         });
+
+    harness.get_by_label("Focused item").focus();
 
     harness.run();
     harness.snapshot("list_items");

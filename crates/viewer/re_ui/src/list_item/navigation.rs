@@ -129,7 +129,7 @@ impl ListItemNavigation {
                                 widget_id: next_focus,
                                 focused_on_pass: pass,
                             },
-                        )
+                        );
                     });
                     if let Some(response) = ctx.read_response(next_focus) {
                         response.scroll_to_me(None);
