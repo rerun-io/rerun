@@ -225,7 +225,7 @@ pub async fn test_add_container_from_selection_panel() {
     harness.click_label("Vertical");
     harness.snapshot_app("add_container_from_selection_panel_3");
 
-    // TODO: count the labels in the selection panel only
+    // TODO(aedm): count the labels in the selection panel only
     // See: https://github.com/rerun-io/rerun/issues/11628
     let vertical_container_count = harness.query_all_by_label("Vertical container").count();
     assert_eq!(vertical_container_count, 6);
