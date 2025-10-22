@@ -55,7 +55,7 @@ pub fn determine_time_range(ctx: &ViewContext<'_>) -> AbsoluteTimeRange {
                 range.end.end_boundary_time(current_time),
             )
         })
-        // If we don't have an overriden time range, we want to show everything.
+        // If we don't have an overridden time range, we want to show everything.
         .unwrap_or(AbsoluteTimeRange::EVERYTHING)
 }
 
