@@ -97,6 +97,15 @@
     "selection_stroke_color": {
       "color": "{Blue.900}"
     },
+    "focus_outline_stroke": {
+      "color": "{Blue.400}",
+      "width": 1
+    },
+    "focus_halo_stroke": {
+      "color": "{Blue.350}",
+      "alpha": 20,
+      "width": 2
+    },
 
     "panel_bg_color": {
       "color": "{Gray.975}"

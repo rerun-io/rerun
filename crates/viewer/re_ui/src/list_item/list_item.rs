@@ -581,7 +581,7 @@ impl ListItem {
         let focused = style_response.has_focus();
         let visuals = ListVisuals {
             theme: ui.theme(),
-            hovered: hovered || focused,
+            hovered,
             selected,
             active,
             interactive,
@@ -658,6 +658,10 @@ impl ListItem {
                     background_frame,
                     Shape::rect_filled(bg_rect_to_paint, 0.0, bg_fill),
                 );
+            }
+
+            if response.has_focus() && !selected {
+                ui.draw_focus_outline(rect.expand2(egui::vec2(tokens.text_to_icon_padding(), 0.0)));
             }
         }
 
