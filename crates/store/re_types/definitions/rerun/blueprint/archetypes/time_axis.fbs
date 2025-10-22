@@ -16,4 +16,8 @@ table TimeAxis (
 
     /// The view range of the horizontal/X/time axis.
     view_range: rerun.blueprint.components.TimeRange ("attr.rerun.component_optional", nullable, order: 2400);
+
+
+    /// If enabled, the X axis range will remain locked to the specified range when zooming.
+    zoom_lock: rerun.blueprint.components.LockRangeDuringZoom ("attr.rerun.component_optional", nullable, order: 2500);
 }

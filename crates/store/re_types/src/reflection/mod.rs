@@ -3939,6 +3939,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         docstring_md: "The view range of the horizontal/X/time axis.",
                         is_required: false,
                     },
+                    ArchetypeFieldReflection {
+                        name: "zoom_lock",
+                        display_name: "Zoom lock",
+                        component_type: "rerun.blueprint.components.LockRangeDuringZoom".into(),
+                        docstring_md: "If enabled, the X axis range will remain locked to the specified range when zooming.",
+                        is_required: false,
+                    },
                 ],
             },
         ),

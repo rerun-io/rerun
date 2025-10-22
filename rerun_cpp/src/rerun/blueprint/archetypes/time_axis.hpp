@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../../blueprint/components/link_axis.hpp"
+#include "../../blueprint/components/lock_range_during_zoom.hpp"
 #include "../../blueprint/components/time_range.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
@@ -29,6 +30,9 @@ namespace rerun::blueprint::archetypes {
         /// The view range of the horizontal/X/time axis.
         std::optional<ComponentBatch> view_range;
 
+        /// If enabled, the X axis range will remain locked to the specified range when zooming.
+        std::optional<ComponentBatch> zoom_lock;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.TimeAxis";
@@ -42,6 +46,11 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_view_range = ComponentDescriptor(
             ArchetypeName, "TimeAxis:view_range",
             Loggable<rerun::blueprint::components::TimeRange>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `zoom_lock` field.
+        static constexpr auto Descriptor_zoom_lock = ComponentDescriptor(
+            ArchetypeName, "TimeAxis:zoom_lock",
+            Loggable<rerun::blueprint::components::LockRangeDuringZoom>::ComponentType
         );
 
       public:
@@ -71,6 +80,14 @@ namespace rerun::blueprint::archetypes {
         TimeAxis with_view_range(const rerun::blueprint::components::TimeRange& _view_range) && {
             view_range =
                 ComponentBatch::from_loggable(_view_range, Descriptor_view_range).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// If enabled, the X axis range will remain locked to the specified range when zooming.
+        TimeAxis with_zoom_lock(const rerun::blueprint::components::LockRangeDuringZoom& _zoom_lock
+        ) && {
+            zoom_lock =
+                ComponentBatch::from_loggable(_zoom_lock, Descriptor_zoom_lock).value_or_throw();
             return std::move(*this);
         }
 

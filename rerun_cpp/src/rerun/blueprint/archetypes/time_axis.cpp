@@ -14,17 +14,25 @@ namespace rerun::blueprint::archetypes {
         archetype.view_range =
             ComponentBatch::empty<rerun::blueprint::components::TimeRange>(Descriptor_view_range)
                 .value_or_throw();
+        archetype.zoom_lock =
+            ComponentBatch::empty<rerun::blueprint::components::LockRangeDuringZoom>(
+                Descriptor_zoom_lock
+            )
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> TimeAxis::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(2);
+        columns.reserve(3);
         if (link.has_value()) {
             columns.push_back(link.value().partitioned(lengths_).value_or_throw());
         }
         if (view_range.has_value()) {
             columns.push_back(view_range.value().partitioned(lengths_).value_or_throw());
+        }
+        if (zoom_lock.has_value()) {
+            columns.push_back(zoom_lock.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -35,6 +43,9 @@ namespace rerun::blueprint::archetypes {
         }
         if (view_range.has_value()) {
             return columns(std::vector<uint32_t>(view_range.value().length(), 1));
+        }
+        if (zoom_lock.has_value()) {
+            return columns(std::vector<uint32_t>(zoom_lock.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -47,13 +58,16 @@ namespace rerun {
     ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(2);
+        cells.reserve(3);
 
         if (archetype.link.has_value()) {
             cells.push_back(archetype.link.value());
         }
         if (archetype.view_range.has_value()) {
             cells.push_back(archetype.view_range.value());
+        }
+        if (archetype.zoom_lock.has_value()) {
+            cells.push_back(archetype.zoom_lock.value());
         }
 
         return rerun::take_ownership(std::move(cells));
