@@ -598,8 +598,8 @@ def lint_workspace_lints(cargo_file_content: str) -> str | None:
 # -----------------------------------------------------------------------------
 
 
-def lint_pyclass_eq(lines_in: list[str]) -> tuple[list[str], list[int]]:
-    """Only for Rust files. Check that #[pyclass(...)] declarations include 'eq'."""
+def lint_pyclass_requirements(lines_in: list[str]) -> tuple[list[str], list[int]]:
+    """Only for Rust files. Check that #[pyclass(...)] declarations include 'eq' and the correct module."""
 
     errors: list[str] = []
     error_linenumbers: list[int] = []
@@ -633,6 +633,14 @@ def lint_pyclass_eq(lines_in: list[str]) -> tuple[list[str], list[int]]:
                 )
                 error_linenumbers.append(original_line_nr)
 
+            # Check if the correct module is specified
+            expected_module = 'module = "rerun_bindings.rerun_bindings"'
+            if expected_module not in pyclass_content:
+                errors.append(
+                    f"{original_line_nr}: #[pyclass(...)] should include 'module = \"rerun_bindings.rerun_bindings\"' parameter"
+                )
+                error_linenumbers.append(original_line_nr)
+
             # Move the index to after the pyclass declaration
             i = j
         else:
@@ -641,21 +649,21 @@ def lint_pyclass_eq(lines_in: list[str]) -> tuple[list[str], list[int]]:
     return errors, error_linenumbers
 
 
-def test_lint_pyclass_eq() -> None:
-    """Test the lint_pyclass_eq function with various pyclass declarations."""
+def test_lint_pyclass_requirements() -> None:
+    """Test the lint_pyclass_requirements function with various pyclass declarations."""
 
     should_pass = [
-        # Simple pyclass with eq
-        "#[pyclass(eq)]",
-        # Multiple parameters including eq
-        "#[pyclass(frozen, eq, hash)]",
+        # Simple pyclass with eq and module
+        '#[pyclass(eq, module = "rerun_bindings.rerun_bindings")]',
+        # Multiple parameters including eq and module
+        '#[pyclass(frozen, eq, hash, module = "rerun_bindings.rerun_bindings")]',
         # eq in different position
-        "#[pyclass(eq, frozen)]",
-        # Multi-line pyclass with eq
-        "#[pyclass(\n    frozen,\n    eq,\n    hash\n)]",
+        '#[pyclass(eq, frozen, module = "rerun_bindings.rerun_bindings")]',
+        # Multi-line pyclass with eq and module
+        '#[pyclass(\n    frozen,\n    eq,\n    hash,\n    module = "rerun_bindings.rerun_bindings"\n)]',
         # eq at the end
-        "#[pyclass(frozen, hash, eq)]",
-        # With module specification
+        '#[pyclass(frozen, hash, eq, module = "rerun_bindings.rerun_bindings")]',
+        # With module specification and eq
         '#[pyclass(eq, module = "rerun_bindings.rerun_bindings")]',
         # Complex real-world example
         """#[pyclass(
@@ -665,17 +673,25 @@ def test_lint_pyclass_eq() -> None:
             name = "IndexColumnDescriptor",
             module = "rerun_bindings.rerun_bindings"
         )]""",
+        # With name parameter
+        '#[pyclass(eq, name = "MyClass", module = "rerun_bindings.rerun_bindings")]',
     ]
 
     should_error = [
         # Missing eq parameter
-        "#[pyclass(frozen)]",
+        '#[pyclass(frozen, module = "rerun_bindings.rerun_bindings")]',
         # Multiple parameters but no eq
-        "#[pyclass(frozen, hash)]",
+        '#[pyclass(frozen, hash, module = "rerun_bindings.rerun_bindings")]',
         # With module but no eq
         '#[pyclass(module = "rerun_bindings.rerun_bindings")]',
+        # With eq but no module
+        "#[pyclass(eq, frozen)]",
+        # Missing both eq and module
+        "#[pyclass(frozen)]",
         # Multi-line without eq
-        "#[pyclass(\n    frozen,\n    hash\n)]",
+        '#[pyclass(\n    frozen,\n    hash,\n    module = "rerun_bindings.rerun_bindings"\n)]',
+        # Multi-line without module
+        "#[pyclass(\n    frozen,\n    eq,\n    hash\n)]",
         # Complex example without eq
         """#[pyclass(
             frozen,
@@ -683,18 +699,27 @@ def test_lint_pyclass_eq() -> None:
             name = "IndexColumnDescriptor",
             module = "rerun_bindings.rerun_bindings"
         )]""",
+        # Complex example without module
+        """#[pyclass(
+            frozen,
+            eq,
+            hash,
+            name = "IndexColumnDescriptor"
+        )]""",
+        # Wrong module name
+        '#[pyclass(eq, module = "wrong_module")]',
     ]
 
     # Test cases that should pass (no errors)
     for test_case in should_pass:
         lines = test_case.split("\n")
-        errors, _ = lint_pyclass_eq(lines)
+        errors, _ = lint_pyclass_requirements(lines)
         assert len(errors) == 0, f'expected "{test_case}" to pass, but got errors: {errors}'
 
     # Test cases that should fail (produce errors)
     for test_case in should_error:
         lines = test_case.split("\n")
-        errors, _ = lint_pyclass_eq(lines)
+        errors, _ = lint_pyclass_requirements(lines)
         assert len(errors) > 0, f'expected "{test_case}" to fail, but got no errors'
 
 
@@ -1102,9 +1127,9 @@ def lint_file(filepath: str, args: Any) -> int:
             print(source.error(error))
         num_errors += len(errors)
 
-        # Check for pyclass eq parameter in rerun_py Rust files
+        # Check for pyclass requirements (eq and module) in rerun_py Rust files
         if filepath.startswith("./rerun_py/") and filepath.endswith(".rs"):
-            pyclass_errors, error_lines = lint_pyclass_eq(source.lines)
+            pyclass_errors, error_lines = lint_pyclass_requirements(source.lines)
             valid_errors = 0
             for error, line_number in zip(pyclass_errors, error_lines, strict=False):
                 if not source.should_ignore(line_number):
@@ -1183,7 +1208,7 @@ def main() -> None:
     test_split_words()
     test_lint_line()
     test_lint_vertical_spacing()
-    test_lint_pyclass_eq()
+    test_lint_pyclass_requirements()
     test_is_emoji()
 
     parser = argparse.ArgumentParser(description="Lint code with custom linter.")
