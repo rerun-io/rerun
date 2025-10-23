@@ -289,24 +289,10 @@ impl ::prost::Name for GetDatasetSchemaResponse {
         "/rerun.cloud.v1alpha1.GetDatasetSchemaResponse".into()
     }
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CreateIndexRequest {
-    /// List of specific partitions that will be indexed (all if left empty).
-    #[prost(message, repeated, tag = "2")]
-    pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
-    /// List of specific partition layers that will be indexed (all if left empty).
-    ///
-    /// If non-empty, this must match the length of `partition_ids`.
-    #[prost(string, repeated, tag = "5")]
-    pub partition_layers: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     #[prost(message, optional, tag = "3")]
     pub config: ::core::option::Option<IndexConfig>,
-    /// Specify behavior when index for a partition was already created.
-    #[prost(
-        enumeration = "super::super::common::v1alpha1::IfDuplicateBehavior",
-        tag = "4"
-    )]
-    pub on_duplicate: i32,
 }
 impl ::prost::Name for CreateIndexRequest {
     const NAME: &'static str = "CreateIndexRequest";
