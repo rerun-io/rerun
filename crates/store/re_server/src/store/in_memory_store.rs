@@ -166,7 +166,7 @@ impl InMemoryStore {
         &mut self,
         named_path: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
-    ) -> Result<(), Error> {
+    ) -> Result<EntryId, Error> {
         use std::sync::Arc;
 
         let directory = named_path.path.canonicalize()?;
@@ -218,7 +218,7 @@ impl InMemoryStore {
             },
         }
 
-        Ok(())
+        Ok(entry_id)
     }
 
     #[cfg(feature = "lance")] // only used by the `lance` feature
@@ -334,6 +334,10 @@ impl InMemoryStore {
 
     pub fn iter_tables(&self) -> impl Iterator<Item = &Table> {
         self.tables.values()
+    }
+
+    pub fn id_by_name(&self, name: &str) -> Option<&EntryId> {
+        self.id_by_name.get(name)
     }
 }
 

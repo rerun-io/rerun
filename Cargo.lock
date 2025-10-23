@@ -9316,6 +9316,7 @@ dependencies = [
  "futures",
  "insta",
  "itertools 0.14.0",
+ "lance",
  "prost-types 0.14.1",
  "re_arrow_util",
  "re_chunk",

@@ -13,7 +13,7 @@ use tonic::{Code, Request, Response, Status};
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::ext::TableInsertMode;
+use re_protos::cloud::v1alpha1::ext::{LanceTable, ProviderDetails as _, TableInsertMode};
 use re_protos::{
     cloud::v1alpha1::{
         DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
@@ -1111,11 +1111,45 @@ impl RerunCloudService for RerunCloudHandler {
 
     async fn register_table(
         &self,
-        _request: tonic::Request<RegisterTableRequest>,
+        request: tonic::Request<RegisterTableRequest>,
     ) -> Result<tonic::Response<RegisterTableResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented(
-            "register_table not implemented",
-        ))
+        #[cfg_attr(not(feature = "lance"), expect(unused_mut))]
+        let mut store = self.store.write().await;
+        let request = request.into_inner();
+        let Some(provider_details) = request.provider_details else {
+            return Err(tonic::Status::invalid_argument("Missing provider details"));
+        };
+        #[cfg_attr(not(feature = "lance"), expect(unused_variables))]
+        let lance_table = LanceTable::try_from_any(&provider_details)?
+            .table_url
+            .to_file_path()
+            .map_err(|()| tonic::Status::invalid_argument("Invalid lance table path"))?;
+
+        #[cfg(feature = "lance")]
+        let entry_id = {
+            let named_path = NamedPath {
+                name: Some(request.name.clone()),
+                path: lance_table,
+            };
+
+            store
+                .load_directory_as_table(&named_path, IfDuplicateBehavior::Error)
+                .await?
+        };
+
+        #[cfg(not(feature = "lance"))]
+        let entry_id = EntryId::new();
+
+        let table_entry = store
+            .table(entry_id)
+            .ok_or(Status::internal("table missing that was just registered"))?
+            .as_table_entry();
+
+        let response = RegisterTableResponse {
+            table_entry: Some(table_entry.into()),
+        };
+
+        Ok(response.into())
     }
 
     async fn get_table_schema(

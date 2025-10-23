@@ -4,6 +4,7 @@ mod entries_table;
 mod fetch_chunks;
 mod query_dataset;
 mod register_partition;
+mod write_table;
 
 macro_rules! define_redap_tests {
     (
@@ -59,4 +60,5 @@ define_redap_tests! {
     register_partition::register_and_scan_simple_dataset_with_properties,
     register_partition::register_and_scan_simple_dataset_with_properties_out_of_order,
     register_partition::register_with_prefix,
+    write_table::write_table
 }

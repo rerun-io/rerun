@@ -1,5 +1,5 @@
-use arrow::datatypes::{Schema, SchemaRef};
-use arrow::record_batch::{RecordBatch, RecordBatchIterator};
+use arrow::datatypes::SchemaRef;
+use arrow::record_batch::RecordBatch;
 use datafusion::catalog::TableProvider;
 use datafusion::common::exec_err;
 use datafusion::datasource::memory::MemorySourceConfig;
@@ -98,7 +98,9 @@ impl Table {
         match &self.table {
             TableType::DataFusionTable(t) => t.schema(),
             #[cfg(feature = "lance")]
-            TableType::LanceDataset(dataset) => Arc::new(Schema::from(dataset.schema())),
+            TableType::LanceDataset(dataset) => {
+                Arc::new(arrow::datatypes::Schema::from(dataset.schema()))
+            }
         }
     }
 
@@ -120,6 +122,8 @@ impl Table {
         insert_op: InsertOp,
     ) -> Result<(), DataFusionError> {
         let schema = rb.schema();
+
+        #[cfg_attr(not(feature = "lance"), expect(irrefutable_let_patterns))]
         let TableType::DataFusionTable(provider) = &self.table else {
             return exec_err!("Expected DataFusion Table Provider");
         };
@@ -148,7 +152,7 @@ impl Table {
             return exec_err!("Expected Lance Dataset");
         };
 
-        let reader = RecordBatchIterator::new(vec![Ok(rb)], schema);
+        let reader = arrow::record_batch::RecordBatchIterator::new(vec![Ok(rb)], schema);
 
         match insert_op {
             InsertOp::Append => {
@@ -184,6 +188,7 @@ impl Table {
         Ok(())
     }
 
+    #[cfg_attr(not(feature = "lance"), expect(clippy::needless_pass_by_ref_mut))]
     pub async fn write_table(
         &mut self,
         rb: RecordBatch,

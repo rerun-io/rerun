@@ -299,7 +299,7 @@ impl ExecutionPlan for TableEntryWriterExec {
 pub struct RecordBatchGrpcOutputStream {
     input_stream: SendableRecordBatchStream,
     grpc_sender: Option<GrpcStreamSender>,
-    thread_status: tokio::sync::oneshot::Receiver<Result<(), tonic::Status>>,
+    thread_status: tokio::sync::oneshot::Receiver<Result<(), re_redap_client::ApiError>>,
     complete: bool,
     grpc_error: Option<tonic::Status>,
 }
@@ -359,7 +359,8 @@ impl Stream for RecordBatchGrpcOutputStream {
             match Pin::new(&mut self.thread_status).poll(cx) {
                 Poll::Ready(Ok(Err(status))) => {
                     // Store the error for potential future use
-                    self.grpc_error = Some(status.clone());
+                    // Not ideal to throw out the ApiError, but it doesn't impl Clone
+                    self.grpc_error = Some(tonic::Status::internal(status.to_string()));
                     // Return the error immediately
                     return Poll::Ready(Some(Err(DataFusionError::External(Box::new(status)))));
                 }
