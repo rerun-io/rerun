@@ -15,6 +15,7 @@ use re_sdk::{
     },
     log::Chunk,
 };
+use re_viewer::external::re_ui::ContextExt;
 use re_viewer::{
     SystemCommand, SystemCommandSender as _,
     external::{
@@ -290,8 +291,13 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
             modifiers: Modifiers::NONE,
         });
 
-        // It takes a few frames for egui to register this as a "drag".
-        self.run_steps(4);
+        // Step until the time has passed `max_click_duration` so this gets
+        // registered as a drag.
+        let wait_time = self.ctx.options(|o| o.input_options.max_click_duration);
+        let end_time = self.ctx.input(|i| i.time + wait_time);
+        while self.ctx.time() < end_time {
+            self.step();
+        }
     }
 
     fn drop_nth_label(&mut self, label: &str, index: usize) {
