@@ -1,8 +1,10 @@
-use crate::data::RecordingPanelData;
 use egui::Id;
-use itertools::Itertools;
+use itertools::Itertools as _;
+
 use re_redap_browser::RedapServers;
-use re_viewer_context::{DisplayMode, SystemCommand, SystemCommandSender, ViewerContext};
+use re_viewer_context::{DisplayMode, SystemCommand, SystemCommandSender as _, ViewerContext};
+
+use crate::data::RecordingPanelData;
 
 /// Commands that need to be handled in the context of the recording panel UI.
 ///
@@ -29,9 +31,9 @@ impl RecordingPanelCommand {
     /// Since the recording panel has no state, commands are stored in egui context.
     pub fn send(self, ctx: &egui::Context) {
         ctx.data_mut(|d| {
-            let mut commands: &mut Vec<Self> = d.get_temp_mut_or_default(Id::NULL);
+            let commands: &mut Vec<Self> = d.get_temp_mut_or_default(Id::NULL);
             commands.push(self);
-        })
+        });
     }
 
     /// Read and clear all pending commands.
@@ -41,16 +43,16 @@ impl RecordingPanelCommand {
 
     /// Handle any pending recording panel commands.
     pub fn handle_recording_panel_commands(ctx: &ViewerContext<'_>, servers: &'_ RedapServers) {
-        let commands = RecordingPanelCommand::read(ctx.egui_ctx());
+        let commands = Self::read(ctx.egui_ctx());
 
         let server_data = RecordingPanelData::new(ctx, servers, false);
 
         for command in commands {
             match command {
-                RecordingPanelCommand::SelectNextRecording => {
+                Self::SelectNextRecording => {
                     Self::shift_through_recordings(ctx, &server_data, 1);
                 }
-                RecordingPanelCommand::SelectPreviousRecording => {
+                Self::SelectPreviousRecording => {
                     Self::shift_through_recordings(ctx, &server_data, -1);
                 }
             }

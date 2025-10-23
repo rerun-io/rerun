@@ -28,22 +28,20 @@ pub enum DisplayMode {
 impl DisplayMode {
     pub fn item(&self) -> Option<Item> {
         match self {
-            DisplayMode::LocalRecordings(store_id) => Some(Item::StoreId(store_id.clone())),
-            DisplayMode::LocalTable(table_id) => Some(Item::TableId(table_id.clone())),
-            DisplayMode::RedapEntry(entry_uri) => Some(Item::RedapEntry(entry_uri.clone())),
-            DisplayMode::RedapServer(origin) => Some(Item::RedapServer(origin.clone())),
-            DisplayMode::Settings | DisplayMode::Loading(_) | DisplayMode::ChunkStoreBrowser => {
-                None
-            }
+            Self::LocalRecordings(store_id) => Some(Item::StoreId(store_id.clone())),
+            Self::LocalTable(table_id) => Some(Item::TableId(table_id.clone())),
+            Self::RedapEntry(entry_uri) => Some(Item::RedapEntry(entry_uri.clone())),
+            Self::RedapServer(origin) => Some(Item::RedapServer(origin.clone())),
+            Self::Settings | Self::Loading(_) | Self::ChunkStoreBrowser => None,
         }
     }
 
     pub fn from_item(item: &crate::Item) -> Option<Self> {
         match item {
-            Item::StoreId(store_id) => Some(DisplayMode::LocalRecordings(store_id.clone())),
-            Item::TableId(table_id) => Some(DisplayMode::LocalTable(table_id.clone())),
-            Item::RedapEntry(entry_uri) => Some(DisplayMode::RedapEntry(entry_uri.clone())),
-            Item::RedapServer(origin) => Some(DisplayMode::RedapServer(origin.clone())),
+            Item::StoreId(store_id) => Some(Self::LocalRecordings(store_id.clone())),
+            Item::TableId(table_id) => Some(Self::LocalTable(table_id.clone())),
+            Item::RedapEntry(entry_uri) => Some(Self::RedapEntry(entry_uri.clone())),
+            Item::RedapServer(origin) => Some(Self::RedapServer(origin.clone())),
 
             Item::AppId(_)
             | Item::DataSource(_)

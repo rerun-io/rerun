@@ -158,8 +158,8 @@ impl UICommand {
                 "Close all open current recording (unsaved data will be lost)",
             ),
 
-            UICommand::NextRecording => ("Next recording", "Switch to the next open recording"),
-            UICommand::PreviousRecording => (
+            Self::NextRecording => ("Next recording", "Switch to the next open recording"),
+            Self::PreviousRecording => (
                 "Previous recording",
                 "Switch to the previous open recording",
             ),
