@@ -10,7 +10,6 @@ use arrow::{
     datatypes::{DataType, Field, Schema, TimeUnit},
     error::ArrowError,
 };
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
 use re_log_types::external::re_types_core::ComponentBatch as _;
@@ -711,6 +710,28 @@ impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEnt
             name: Some(value.name),
             schema: Some((&value.schema).try_into()?),
             id: None,
+            uri: value.uri,
+        })
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEntryRequest {
+    type Error = TypeConversionError;
+    fn try_from(
+        value: crate::cloud::v1alpha1::CreateTableEntryRequest,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            name: value.name.ok_or(missing_field!(
+                crate::cloud::v1alpha1::CreateTableEntryRequest,
+                "name"
+            ))?,
+            schema: value
+                .schema
+                .ok_or(missing_field!(
+                    crate::cloud::v1alpha1::CreateTableEntryRequest,
+                    "schema"
+                ))?
+                .try_into()?,
             uri: value.uri,
         })
     }
