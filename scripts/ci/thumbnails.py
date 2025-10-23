@@ -110,7 +110,8 @@ def check() -> None:
     ignored = load_ignored_examples()
     missing_frontmatter = []
     missing_thumbnails = []
-    bad_dimensions = []
+    missing_dimensions = []
+    incorrect_dimensions = []
 
     # NOTE: This language priority must match the logic in the rerun-io/landing repo:
     # Priority order: Python > C++ > Rust > C.
@@ -151,12 +152,12 @@ def check() -> None:
 
             # If there's a thumbnail, check dimensions
             if not example.fm.get("thumbnail_dimensions"):
-                bad_dimensions.append((example.path, None, None))
+                missing_dimensions.append(example.path)
             else:
                 current = tuple(example.fm["thumbnail_dimensions"])
                 actual = get_thumbnail_dimensions(example.fm["thumbnail"])
                 if current != actual:
-                    bad_dimensions.append((example.path, current, actual))
+                    incorrect_dimensions.append((example.path, current, actual))
                 else:
                     print(f"✔ {example.path}")
 
@@ -176,12 +177,14 @@ def check() -> None:
             print(f"{path} is missing `thumbnail`")
         print()
 
-    if bad_dimensions:
-        for path, current, actual in sorted(bad_dimensions):
-            if current is None:
-                print(f"{path} is missing `thumbnail_dimensions`")
-            else:
-                print(f"{path} `thumbnail_dimensions` are incorrect (current: {current}, actual: {actual})")
+    if missing_dimensions:
+        for path in sorted(missing_dimensions):
+            print(f"{path} is missing `thumbnail_dimensions`")
+        print()
+
+    if incorrect_dimensions:
+        for path, current, actual in sorted(incorrect_dimensions):
+            print(f"{path} `thumbnail_dimensions` are incorrect (current: {current}, actual: {actual})")
         print()
 
     if missing_frontmatter or missing_thumbnails:
@@ -190,11 +193,11 @@ def check() -> None:
         )
         print()
 
-    if bad_dimensions:
+    if missing_dimensions or incorrect_dimensions:
         print("Incorrect thumbnail dimensions may be fixed automatically by running `scripts/ci/thumbnails.py update`.")
         print()
 
-    if missing_frontmatter or missing_thumbnails or bad_dimensions:
+    if missing_frontmatter or missing_thumbnails or missing_dimensions or incorrect_dimensions:
         sys.exit(1)
 
 
