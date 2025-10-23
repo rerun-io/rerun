@@ -759,9 +759,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         let dataset = store.dataset(entry_id)?;
 
-        let record_batch = dataset.dataset_manifest().map_err(|err| {
-            tonic::Status::internal(format!("Unable to read partition table: {err:#}"))
-        })?;
+        let record_batch = dataset.dataset_manifest()?;
 
         let stream = futures::stream::once(async move {
             Ok(ScanDatasetManifestResponse {
