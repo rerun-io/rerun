@@ -281,13 +281,22 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
 
     fn drag_nth_label(&mut self, label: &str, index: usize) {
         let node = self.get_nth_label(label, index);
-        let event = egui::Event::PointerButton {
-            pos: node.rect().center(),
+
+        let center = node.rect().center();
+        self.event(egui::Event::PointerButton {
+            pos: center,
             button: PointerButton::Primary,
             pressed: true,
             modifiers: Modifiers::NONE,
-        };
-        self.event(event);
+        });
+
+        // Step until the time has passed `max_click_duration` so this gets
+        // registered as a drag.
+        let wait_time = self.ctx.options(|o| o.input_options.max_click_duration);
+        let end_time = self.ctx.input(|i| i.time + wait_time);
+        while self.ctx.input(|i| i.time) < end_time {
+            self.step();
+        }
     }
 
     fn drop_nth_label(&mut self, label: &str, index: usize) {
