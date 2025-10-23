@@ -2,6 +2,8 @@
 title = "Animated URDF"
 tags = ["3D", "Mesh", "URDF", "Animation"]
 channel = "main"
+thumbnail = "https://static.rerun.io/animated_urdf/ebdefa158ab6f26f9dc1cb1924fce4b846fe8db2/480w.png"
+thumbnail_dimensions = [480, 303]
 -->
 
 <picture>
