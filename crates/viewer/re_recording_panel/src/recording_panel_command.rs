@@ -61,7 +61,7 @@ impl RecordingPanelCommand {
 
     fn shift_through_recordings(
         ctx: &ViewerContext<'_>,
-        server_data: &RecordingPanelData,
+        server_data: &RecordingPanelData<'_>,
         direction: isize,
     ) {
         let recordings = server_data
@@ -73,6 +73,7 @@ impl RecordingPanelCommand {
         if let Some(displayed_item) = displayed_item {
             let current_index = recordings.iter().position(|item| item == &displayed_item);
 
+            #[expect(clippy::cast_possible_wrap)]
             let previous_index = match current_index {
                 Some(idx) => {
                     let len = recordings.len() as isize;
