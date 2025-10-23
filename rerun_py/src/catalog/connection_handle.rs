@@ -211,19 +211,17 @@ impl ConnectionHandle {
         &self,
         py: Python<'_>,
         name: String,
-        url: url::Url,
+        url: &url::Url,
         schema: SchemaRef,
     ) -> PyResult<TableEntry> {
         let entry_id = wait_for_future(
             py,
             async {
-                self
-                    .client()
+                self.client()
                     .await?
                     .create_table(&name, url, schema)
                     .await
                     .map_err(to_py_err)
-
             }
             .in_current_span(),
         )?;

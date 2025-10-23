@@ -1,9 +1,10 @@
 use crate::ApiError;
+use arrow::datatypes::SchemaRef;
 use arrow::{array::RecordBatch, datatypes::Schema as ArrowSchema};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::WriteTableRequest;
-use re_protos::cloud::v1alpha1::ext::TableInsertMode;
+use re_protos::cloud::v1alpha1::ext::{CreateTableEntryRequest, TableInsertMode};
 use re_protos::{
     TypeConversionError,
     cloud::v1alpha1::{
@@ -32,8 +33,9 @@ use re_protos::{
     invalid_schema, missing_column, missing_field,
 };
 use tokio_stream::{Stream, StreamExt as _};
-use tonic::IntoStreamingRequest as _;
 use tonic::codegen::{Body, StdError};
+use tonic::{IntoStreamingRequest as _, Status};
+use url::Url;
 
 pub type FetchChunksResponseStream = std::pin::Pin<
     Box<
@@ -719,33 +721,34 @@ where
     pub async fn create_table(
         &mut self,
         name: &str,
-        url: Url,
+        uri: &Url,
         schema: SchemaRef,
     ) -> Result<EntryId, ApiError> {
-        let schema = schema
-            .as_ref()
-            .try_into()
-            .map_err(|err| ApiError::internal(err, "Unable to convert schema"))?;
-
         let request = CreateTableEntryRequest {
-            name: Some(name.into()),
-            id: None,
-            schema: Some(schema),
-            uri: url.to_string(),
+            name: name.to_owned(),
+            schema: schema.as_ref().clone(),
+            uri: uri.to_string(),
         };
 
         let resp = self
             .inner()
-            .create_table_entry(tonic::Request::new(request))
+            .create_table_entry(tonic::Request::new(
+                request
+                    .try_into()
+                    .map_err(|err| ApiError::internal(err, "/CreateTableEntry failed"))?,
+            ))
             .await
             .map_err(|err| ApiError::tonic(err, "failed to create table"))?
             .into_inner();
 
-        resp
-            .table
+        resp.table
             .and_then(|t| t.details)
             .and_then(|d| d.id)
-            .ok_or(ApiError::tonic(Status::invalid_argument("entry ID not set in response"), "/CreateTable failed"))?
-            .try_into().map_err(|err| ApiError::internal(err, "/CreateTable failed"))
+            .ok_or(ApiError::tonic(
+                Status::invalid_argument("entry ID not set in response"),
+                "/CreateTable failed",
+            ))?
+            .try_into()
+            .map_err(|err| ApiError::internal(err, "/CreateTable failed"))
     }
 }

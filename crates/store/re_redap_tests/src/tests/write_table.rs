@@ -11,7 +11,7 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::headers::RerunHeadersInjectorExt as _;
 
-async fn get_table_batches(
+pub(crate) async fn get_table_batches(
     service: &impl RerunCloudService,
     entry: &EntryDetails,
 ) -> Vec<RecordBatch> {

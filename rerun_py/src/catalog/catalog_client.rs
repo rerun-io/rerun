@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use arrow::datatypes::Schema;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
@@ -10,6 +9,7 @@ use pyo3::{
 };
 use re_datafusion::{DEFAULT_CATALOG_NAME, get_all_catalog_names};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
+use std::sync::Arc;
 
 use crate::catalog::datafusion_catalog::PyDataFusionCatalogProvider;
 use crate::catalog::{
@@ -343,7 +343,6 @@ impl PyCatalogClientInternal {
         url: String,
         schema: PyArrowType<Schema>,
     ) -> PyResult<Py<PyTableEntry>> {
-
         let connection = self_.borrow_mut(py).connection.clone();
 
         let url = url
@@ -351,7 +350,7 @@ impl PyCatalogClientInternal {
             .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
 
         let schema = Arc::new(schema.0);
-        let table_entry = connection.create_table(py, name, url, schema)?;
+        let table_entry = connection.create_table(py, name, &url, schema)?;
 
         let entry_id = Py::new(py, PyEntryId::from(table_entry.details.id))?;
 
