@@ -563,7 +563,18 @@ impl TimeControl {
 
                     if more_data_is_coming {
                         // then let's wait for it without pausing!
-                        return TimeControlResponse::no_repaint(); // ui will wake up when more data arrives
+                        let mut response = TimeControlResponse::no_repaint(); // ui will wake up when more data arrives
+
+                        let should_diff_state = should_diff_state
+                            && times_per_timeline
+                                .get(self.timeline.name())
+                                .is_some_and(|stats| !stats.per_time.is_empty());
+
+                        if should_diff_state {
+                            self.diff_with(&mut response, old_timeline, old_playing, old_state);
+                        }
+
+                        return response;
                     } else {
                         self.pause();
                         return TimeControlResponse::no_repaint();
