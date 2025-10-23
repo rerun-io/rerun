@@ -4,7 +4,17 @@ mod entries_table;
 mod fetch_chunks;
 mod query_dataset;
 mod register_partition;
+#[cfg(feature = "lance")]
 mod write_table;
+#[cfg(not(feature = "lance"))]
+mod write_table {
+    // This is a stub test so that we do not have issues with setting
+    // --no-default-options when running tests
+    pub async fn write_table(
+        _service: impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
+    ) {
+    }
+}
 
 macro_rules! define_redap_tests {
     (

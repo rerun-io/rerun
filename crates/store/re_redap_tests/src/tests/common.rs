@@ -2,11 +2,11 @@ use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
 use std::collections::BTreeMap;
-use std::path::Path;
 use tonic::async_trait;
 use url::Url;
 
-use re_protos::cloud::v1alpha1::ext::{LanceTable, ProviderDetails as _, RegisterTableRequest};
+#[cfg(feature = "lance")]
+use re_protos::cloud::v1alpha1::ext::ProviderDetails as _;
 use re_protos::{
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DataSource, DataSourceKind, QueryTasksOnCompletionRequest,
@@ -34,7 +34,8 @@ pub trait RerunCloudServiceExt: RerunCloudService {
         data_sources: Vec<re_protos::cloud::v1alpha1::DataSource>,
     );
 
-    async fn register_table_with_name(&self, table_name: &str, path: &Path);
+    #[cfg(feature = "lance")]
+    async fn register_table_with_name(&self, table_name: &str, path: &std::path::Path);
 }
 
 #[async_trait]
@@ -63,12 +64,13 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
         register_with_dataset(self, request).await;
     }
 
-    async fn register_table_with_name(&self, table_name: &str, path: &Path) {
+    #[cfg(feature = "lance")]
+    async fn register_table_with_name(&self, table_name: &str, path: &std::path::Path) {
         let table_url =
             Url::from_directory_path(path).expect("Unable to create URL from directory path");
-        let request = RegisterTableRequest {
+        let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
             name: table_name.to_owned(),
-            provider_details: LanceTable { table_url }
+            provider_details: re_protos::cloud::v1alpha1::ext::LanceTable { table_url }
                 .try_as_any()
                 .expect("Unable to create LanceTable as provider details"),
         };
