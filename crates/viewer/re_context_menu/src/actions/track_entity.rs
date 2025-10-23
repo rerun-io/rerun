@@ -38,7 +38,7 @@ impl ContextMenuAction for TrackEntity {
     }
 
     fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
-        "Track this".to_owned()
+        "Set as eye tracked".to_owned()
     }
 
     fn process_data_result(
