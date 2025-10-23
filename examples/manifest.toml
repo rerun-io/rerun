@@ -181,6 +181,7 @@ examples = [
   "external_data_loader",
   "graph_lattice",
   "incremental_logging",
+  "lenses",
   "minimal_serve",
   "shared_recording",
   "spawn_viewer",
