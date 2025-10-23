@@ -8549,7 +8549,6 @@ version = "0.27.0-alpha.1+dev"
 dependencies = [
  "egui",
  "insta",
- "re_chunk_store",
  "re_log_types",
  "re_test_context",
  "re_types",

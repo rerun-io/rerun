@@ -1,4 +1,4 @@
-use re_types::{Component as _, archetypes, components, datatypes};
+use re_types::{archetypes, components, datatypes};
 use re_viewer_context::{
     ColormapWithRange, FallbackProviderRegistry, ImageInfo, ImageStatsCache, QueryContext,
     TensorStats, TensorStatsCache, auto_color_for_entity_path,
@@ -26,293 +26,341 @@ pub fn type_fallbacks(registry: &mut FallbackProviderRegistry) {
 
 pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
     // BarChart
-    registry.register_fallback_provider(&archetypes::BarChart::descriptor_abscissa(), |ctx| {
-        // This fallback is for abscissa - generate a sequence from 0 to n-1
-        // where n is the length of the values tensor
+    registry.register_component_fallback_provider(
+        archetypes::BarChart::descriptor_abscissa().component,
+        |ctx| {
+            // This fallback is for abscissa - generate a sequence from 0 to n-1
+            // where n is the length of the values tensor
 
-        // Try to get the values tensor to determine the length
-        if let Some(((_time, _row_id), tensor)) = ctx
-            .recording()
-            .latest_at_component::<components::TensorData>(
-                ctx.target_entity_path,
-                ctx.query,
-                archetypes::BarChart::descriptor_values().component,
-            )
-            && tensor.is_vector()
-        {
-            let shape = tensor.shape();
-            if let Some(&length) = shape.first() {
-                // Create a sequence from 0 to length-1
-                #[expect(clippy::cast_possible_wrap)]
-                let indices: Vec<i64> = (0..length as i64).collect();
-                let tensor_data = datatypes::TensorData::new(
-                    vec![length],
-                    datatypes::TensorBuffer::I64(indices.into()),
-                );
-                return components::TensorData(tensor_data);
+            // Try to get the values tensor to determine the length
+            if let Some(((_time, _row_id), tensor)) = ctx
+                .recording()
+                .latest_at_component::<components::TensorData>(
+                    ctx.target_entity_path,
+                    ctx.query,
+                    archetypes::BarChart::descriptor_values().component,
+                )
+                && tensor.is_vector()
+            {
+                let shape = tensor.shape();
+                if let Some(&length) = shape.first() {
+                    // Create a sequence from 0 to length-1
+                    #[expect(clippy::cast_possible_wrap)]
+                    let indices: Vec<i64> = (0..length as i64).collect();
+                    let tensor_data = datatypes::TensorData::new(
+                        vec![length],
+                        datatypes::TensorBuffer::I64(indices.into()),
+                    );
+                    return components::TensorData(tensor_data);
+                }
             }
-        }
 
-        // Fallback to empty tensor if we can't determine the values length
-        let tensor_data =
-            datatypes::TensorData::new(vec![0u64], datatypes::TensorBuffer::I64(vec![].into()));
-        components::TensorData(tensor_data)
-    });
+            // Fallback to empty tensor if we can't determine the values length
+            let tensor_data =
+                datatypes::TensorData::new(vec![0u64], datatypes::TensorBuffer::I64(vec![].into()));
+            components::TensorData(tensor_data)
+        },
+    );
 
     // GraphNodes
-    registry.register_fallback_provider(&archetypes::GraphNodes::descriptor_show_labels(), |_| {
-        components::ShowLabels::from(true)
-    });
-    registry.register_fallback_provider(&archetypes::GraphNodes::descriptor_radii(), |_| {
-        components::Radius::from(4.0)
-    });
+    registry.register_component_fallback_provider(
+        archetypes::GraphNodes::descriptor_show_labels().component,
+        |_| components::ShowLabels::from(true),
+    );
+    registry.register_component_fallback_provider(
+        archetypes::GraphNodes::descriptor_radii().component,
+        |_| components::Radius::from(4.0),
+    );
 
     // GeoLineStrings
-    registry.register_fallback_provider(&archetypes::GeoLineStrings::descriptor_radii(), |_| {
-        components::Radius::new_ui_points(2.0)
-    });
+    registry.register_component_fallback_provider(
+        archetypes::GeoLineStrings::descriptor_radii().component,
+        |_| components::Radius::new_ui_points(2.0),
+    );
 
     // GeoPoints
-    registry.register_fallback_provider(&archetypes::GeoPoints::descriptor_radii(), |_| {
-        components::Radius::new_ui_points(5.0)
-    });
+    registry.register_component_fallback_provider(
+        archetypes::GeoPoints::descriptor_radii().component,
+        |_| components::Radius::new_ui_points(5.0),
+    );
 
     // Arrows2D
-    registry.register_fallback_provider(&archetypes::Arrows2D::descriptor_draw_order(), |_| {
-        components::DrawOrder::DEFAULT_LINES2D
-    });
-    registry.register_fallback_provider(&archetypes::Arrows2D::descriptor_show_labels(), |ctx| {
-        show_labels_fallback(
-            ctx,
-            &archetypes::Arrows2D::descriptor_vectors(),
-            &archetypes::Arrows2D::descriptor_labels(),
-        )
-    });
-
-    // LineStrips2D
-    registry.register_fallback_provider(&archetypes::LineStrips2D::descriptor_draw_order(), |_| {
-        components::DrawOrder::DEFAULT_LINES2D
-    });
-    registry.register_fallback_provider(
-        &archetypes::LineStrips2D::descriptor_show_labels(),
+    registry.register_component_fallback_provider(
+        archetypes::Arrows2D::descriptor_draw_order().component,
+        |_| components::DrawOrder::DEFAULT_LINES2D,
+    );
+    registry.register_component_fallback_provider(
+        archetypes::Arrows2D::descriptor_show_labels().component,
         |ctx| {
             show_labels_fallback(
                 ctx,
-                &archetypes::LineStrips2D::descriptor_strips(),
-                &archetypes::LineStrips2D::descriptor_labels(),
+                archetypes::Arrows2D::descriptor_vectors().component,
+                archetypes::Arrows2D::descriptor_labels().component,
+            )
+        },
+    );
+
+    // LineStrips2D
+    registry.register_component_fallback_provider(
+        archetypes::LineStrips2D::descriptor_draw_order().component,
+        |_| components::DrawOrder::DEFAULT_LINES2D,
+    );
+    registry.register_component_fallback_provider(
+        archetypes::LineStrips2D::descriptor_show_labels().component,
+        |ctx| {
+            show_labels_fallback(
+                ctx,
+                archetypes::LineStrips2D::descriptor_strips().component,
+                archetypes::LineStrips2D::descriptor_labels().component,
             )
         },
     );
 
     // Points2D
-    registry.register_fallback_provider(&archetypes::Points2D::descriptor_draw_order(), |_| {
-        components::DrawOrder::DEFAULT_LINES2D
-    });
-    registry.register_fallback_provider(&archetypes::Points2D::descriptor_show_labels(), |ctx| {
-        show_labels_fallback(
-            ctx,
-            &archetypes::Points2D::descriptor_positions(),
-            &archetypes::Points2D::descriptor_labels(),
-        )
-    });
-
-    // Arrows3D
-    registry.register_fallback_provider(&archetypes::Arrows3D::descriptor_show_labels(), |ctx| {
-        show_labels_fallback(
-            ctx,
-            &archetypes::Arrows3D::descriptor_vectors(),
-            &archetypes::Arrows3D::descriptor_labels(),
-        )
-    });
-
-    // LineStrips3D
-    registry.register_fallback_provider(
-        &archetypes::LineStrips3D::descriptor_show_labels(),
+    registry.register_component_fallback_provider(
+        archetypes::Points2D::descriptor_draw_order().component,
+        |_| components::DrawOrder::DEFAULT_LINES2D,
+    );
+    registry.register_component_fallback_provider(
+        archetypes::Points2D::descriptor_show_labels().component,
         |ctx| {
             show_labels_fallback(
                 ctx,
-                &archetypes::LineStrips3D::descriptor_strips(),
-                &archetypes::LineStrips3D::descriptor_labels(),
+                archetypes::Points2D::descriptor_positions().component,
+                archetypes::Points2D::descriptor_labels().component,
+            )
+        },
+    );
+
+    // Arrows3D
+    registry.register_component_fallback_provider(
+        archetypes::Arrows3D::descriptor_show_labels().component,
+        |ctx| {
+            show_labels_fallback(
+                ctx,
+                archetypes::Arrows3D::descriptor_vectors().component,
+                archetypes::Arrows3D::descriptor_labels().component,
+            )
+        },
+    );
+
+    // LineStrips3D
+    registry.register_component_fallback_provider(
+        archetypes::LineStrips3D::descriptor_show_labels().component,
+        |ctx| {
+            show_labels_fallback(
+                ctx,
+                archetypes::LineStrips3D::descriptor_strips().component,
+                archetypes::LineStrips3D::descriptor_labels().component,
             )
         },
     );
 
     // Points3D
-    registry.register_fallback_provider(&archetypes::Points3D::descriptor_show_labels(), |ctx| {
-        show_labels_fallback(
-            ctx,
-            &archetypes::Points3D::descriptor_positions(),
-            &archetypes::Points3D::descriptor_labels(),
-        )
-    });
-
-    // Boxes2D
-    registry.register_fallback_provider(&archetypes::Boxes2D::descriptor_draw_order(), |_| {
-        components::DrawOrder::DEFAULT_BOX2D
-    });
-    registry.register_fallback_provider(&archetypes::Boxes2D::descriptor_show_labels(), |ctx| {
-        show_labels_fallback(
-            ctx,
-            &archetypes::Boxes2D::descriptor_half_sizes(),
-            &archetypes::Boxes2D::descriptor_labels(),
-        )
-    });
-
-    // Boxes3D
-    registry.register_fallback_provider(&archetypes::Boxes3D::descriptor_show_labels(), |ctx| {
-        show_labels_fallback(
-            ctx,
-            &archetypes::Boxes3D::descriptor_half_sizes(),
-            &archetypes::Boxes3D::descriptor_labels(),
-        )
-    });
-
-    // Capsules3D
-    registry.register_fallback_provider(&archetypes::Capsules3D::descriptor_show_labels(), |ctx| {
-        show_labels_fallback(
-            ctx,
-            &archetypes::Capsules3D::descriptor_radii(),
-            &archetypes::Capsules3D::descriptor_labels(),
-        )
-    });
-
-    // Cylinders3D
-    registry.register_fallback_provider(
-        &archetypes::Cylinders3D::descriptor_show_labels(),
+    registry.register_component_fallback_provider(
+        archetypes::Points3D::descriptor_show_labels().component,
         |ctx| {
             show_labels_fallback(
                 ctx,
-                &archetypes::Cylinders3D::descriptor_radii(),
-                &archetypes::Cylinders3D::descriptor_labels(),
+                archetypes::Points3D::descriptor_positions().component,
+                archetypes::Points3D::descriptor_labels().component,
+            )
+        },
+    );
+
+    // Boxes2D
+    registry.register_component_fallback_provider(
+        archetypes::Boxes2D::descriptor_draw_order().component,
+        |_| components::DrawOrder::DEFAULT_BOX2D,
+    );
+    registry.register_component_fallback_provider(
+        archetypes::Boxes2D::descriptor_show_labels().component,
+        |ctx| {
+            show_labels_fallback(
+                ctx,
+                archetypes::Boxes2D::descriptor_half_sizes().component,
+                archetypes::Boxes2D::descriptor_labels().component,
+            )
+        },
+    );
+
+    // Boxes3D
+    registry.register_component_fallback_provider(
+        archetypes::Boxes3D::descriptor_show_labels().component,
+        |ctx| {
+            show_labels_fallback(
+                ctx,
+                archetypes::Boxes3D::descriptor_half_sizes().component,
+                archetypes::Boxes3D::descriptor_labels().component,
+            )
+        },
+    );
+
+    // Capsules3D
+    registry.register_component_fallback_provider(
+        archetypes::Capsules3D::descriptor_show_labels().component,
+        |ctx| {
+            show_labels_fallback(
+                ctx,
+                archetypes::Capsules3D::descriptor_radii().component,
+                archetypes::Capsules3D::descriptor_labels().component,
+            )
+        },
+    );
+
+    // Cylinders3D
+    registry.register_component_fallback_provider(
+        archetypes::Cylinders3D::descriptor_show_labels().component,
+        |ctx| {
+            show_labels_fallback(
+                ctx,
+                archetypes::Cylinders3D::descriptor_radii().component,
+                archetypes::Cylinders3D::descriptor_labels().component,
             )
         },
     );
 
     // Ellipsoids3D
-    registry.register_fallback_provider(
-        &archetypes::Ellipsoids3D::descriptor_show_labels(),
+    registry.register_component_fallback_provider(
+        archetypes::Ellipsoids3D::descriptor_show_labels().component,
         |ctx| {
             show_labels_fallback(
                 ctx,
-                &archetypes::Ellipsoids3D::descriptor_half_sizes(),
-                &archetypes::Ellipsoids3D::descriptor_labels(),
+                archetypes::Ellipsoids3D::descriptor_half_sizes().component,
+                archetypes::Ellipsoids3D::descriptor_labels().component,
             )
         },
     );
 
     // DepthImage
-    registry.register_fallback_provider(&archetypes::DepthImage::descriptor_draw_order(), |_| {
-        components::DrawOrder::DEFAULT_DEPTH_IMAGE
-    });
-    registry.register_fallback_provider(&archetypes::DepthImage::descriptor_colormap(), |_| {
-        ColormapWithRange::DEFAULT_DEPTH_COLORMAP
-    });
-    registry.register_fallback_provider(&archetypes::DepthImage::descriptor_meter(), |ctx| {
-        let is_float_image = ctx
-            .recording()
-            .latest_at_component::<components::ImageFormat>(
-                ctx.target_entity_path,
-                ctx.query,
-                archetypes::DepthImage::descriptor_format().component,
-            )
-            .is_some_and(|(_index, format)| format.is_float());
-
-        components::DepthMeter::from(if is_float_image { 1.0 } else { 1000.0 })
-    });
-    registry.register_fallback_provider(&archetypes::DepthImage::descriptor_depth_range(), |ctx| {
-        if let Some(((_time, buffer_row_id), image_buffer)) = ctx
-            .recording()
-            .latest_at_component::<components::ImageBuffer>(
-                ctx.target_entity_path,
-                ctx.query,
-                archetypes::DepthImage::descriptor_buffer().component,
-            )
-        {
-            // TODO(andreas): What about overrides on the image format?
-            if let Some((_, format)) = ctx
+    registry.register_component_fallback_provider(
+        archetypes::DepthImage::descriptor_draw_order().component,
+        |_| components::DrawOrder::DEFAULT_DEPTH_IMAGE,
+    );
+    registry.register_component_fallback_provider(
+        archetypes::DepthImage::descriptor_colormap().component,
+        |_| ColormapWithRange::DEFAULT_DEPTH_COLORMAP,
+    );
+    registry.register_component_fallback_provider(
+        archetypes::DepthImage::descriptor_meter().component,
+        |ctx| {
+            let is_float_image = ctx
                 .recording()
                 .latest_at_component::<components::ImageFormat>(
                     ctx.target_entity_path,
                     ctx.query,
                     archetypes::DepthImage::descriptor_format().component,
                 )
-            {
-                let image = ImageInfo::from_stored_blob(
-                    buffer_row_id,
-                    archetypes::DepthImage::descriptor_buffer().component,
-                    image_buffer.0,
-                    format.0,
-                    re_types::image::ImageKind::Depth,
-                );
-                let cache = ctx.store_ctx().caches;
-                let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
-                let default_range = ColormapWithRange::default_range_for_depth_images(&image_stats);
-                return [default_range[0] as f64, default_range[1] as f64].into();
-            }
-        }
+                .is_some_and(|(_index, format)| format.is_float());
 
-        components::ValueRange::from([0.0, f64::MAX])
-    });
+            components::DepthMeter::from(if is_float_image { 1.0 } else { 1000.0 })
+        },
+    );
+    registry.register_component_fallback_provider(
+        archetypes::DepthImage::descriptor_depth_range().component,
+        |ctx| {
+            if let Some(((_time, buffer_row_id), image_buffer)) = ctx
+                .recording()
+                .latest_at_component::<components::ImageBuffer>(
+                ctx.target_entity_path,
+                ctx.query,
+                archetypes::DepthImage::descriptor_buffer().component,
+            ) {
+                // TODO(andreas): What about overrides on the image format?
+                if let Some((_, format)) = ctx
+                    .recording()
+                    .latest_at_component::<components::ImageFormat>(
+                        ctx.target_entity_path,
+                        ctx.query,
+                        archetypes::DepthImage::descriptor_format().component,
+                    )
+                {
+                    let image = ImageInfo::from_stored_blob(
+                        buffer_row_id,
+                        archetypes::DepthImage::descriptor_buffer().component,
+                        image_buffer.0,
+                        format.0,
+                        re_types::image::ImageKind::Depth,
+                    );
+                    let cache = ctx.store_ctx().caches;
+                    let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
+                    let default_range =
+                        ColormapWithRange::default_range_for_depth_images(&image_stats);
+                    return [default_range[0] as f64, default_range[1] as f64].into();
+                }
+            }
+
+            components::ValueRange::from([0.0, f64::MAX])
+        },
+    );
 
     // EncodedImage
-    registry.register_fallback_provider(&archetypes::EncodedImage::descriptor_draw_order(), |_| {
-        components::DrawOrder::DEFAULT_IMAGE
-    });
+    registry.register_component_fallback_provider(
+        archetypes::EncodedImage::descriptor_draw_order().component,
+        |_| components::DrawOrder::DEFAULT_IMAGE,
+    );
 
     // Image
-    registry.register_fallback_provider(&archetypes::Image::descriptor_draw_order(), |_| {
-        components::DrawOrder::DEFAULT_IMAGE
-    });
+    registry.register_component_fallback_provider(
+        archetypes::Image::descriptor_draw_order().component,
+        |_| components::DrawOrder::DEFAULT_IMAGE,
+    );
 
     // SegmentationImage
-    registry.register_fallback_provider(
-        &archetypes::SegmentationImage::descriptor_draw_order(),
+    registry.register_component_fallback_provider(
+        archetypes::SegmentationImage::descriptor_draw_order().component,
         |_| components::DrawOrder::DEFAULT_SEGMENTATION_IMAGE,
     );
 
     // VideoFrameReference
-    registry.register_fallback_provider(
-        &archetypes::VideoFrameReference::descriptor_draw_order(),
+    registry.register_component_fallback_provider(
+        archetypes::VideoFrameReference::descriptor_draw_order().component,
         |_| components::DrawOrder::DEFAULT_VIDEO,
     );
 
     // VideoStream
-    registry.register_fallback_provider(&archetypes::VideoStream::descriptor_draw_order(), |_| {
-        components::DrawOrder::DEFAULT_VIDEO
-    });
+    registry.register_component_fallback_provider(
+        archetypes::VideoStream::descriptor_draw_order().component,
+        |_| components::DrawOrder::DEFAULT_VIDEO,
+    );
 
     // Tensor
-    registry.register_fallback_provider(&archetypes::Tensor::descriptor_value_range(), |ctx| {
-        if let Some(((_time, row_id), tensor)) = ctx
-            .recording()
-            .latest_at_component::<components::TensorData>(
-                ctx.target_entity_path,
-                ctx.query,
-                archetypes::Tensor::descriptor_data().component,
-            )
-        {
-            let tensor_stats = ctx.store_ctx().caches.entry(|c: &mut TensorStatsCache| {
-                c.entry(re_log_types::hash::Hash64::hash(row_id), &tensor)
-            });
-            tensor_data_range_heuristic(&tensor_stats, tensor.dtype())
-        } else {
-            components::ValueRange::new(0.0, 1.0)
-        }
-    });
+    registry.register_component_fallback_provider(
+        archetypes::Tensor::descriptor_value_range().component,
+        |ctx| {
+            if let Some(((_time, row_id), tensor)) = ctx
+                .recording()
+                .latest_at_component::<components::TensorData>(
+                    ctx.target_entity_path,
+                    ctx.query,
+                    archetypes::Tensor::descriptor_data().component,
+                )
+            {
+                let tensor_stats = ctx.store_ctx().caches.entry(|c: &mut TensorStatsCache| {
+                    c.entry(re_log_types::hash::Hash64::hash(row_id), &tensor)
+                });
+                tensor_data_range_heuristic(&tensor_stats, tensor.dtype())
+            } else {
+                components::ValueRange::new(0.0, 1.0)
+            }
+        },
+    );
 
     // TextDocument
-    registry.register_fallback_provider(&archetypes::TextDocument::descriptor_media_type(), |_| {
-        components::MediaType::plain_text()
-    });
+    registry.register_component_fallback_provider(
+        archetypes::TextDocument::descriptor_media_type().component,
+        |_| components::MediaType::plain_text(),
+    );
 
     // SeriesLines
-    registry.register_fallback_provider(&archetypes::SeriesLines::descriptor_widths(), |_| {
-        components::StrokeWidth::from(0.75)
-    });
+    registry.register_component_fallback_provider(
+        archetypes::SeriesLines::descriptor_widths().component,
+        |_| components::StrokeWidth::from(0.75),
+    );
 
     // SeriesPoints
-    registry.register_fallback_provider(
-        &archetypes::SeriesPoints::descriptor_marker_sizes(),
+    registry.register_component_fallback_provider(
+        archetypes::SeriesPoints::descriptor_marker_sizes().component,
         |_| {
             // We use a larger default stroke width for scatter plots so the marker is
             // visible.
@@ -337,21 +385,19 @@ const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
 // possibly incorrectly.
 fn show_labels_fallback(
     ctx: &QueryContext<'_>,
-    instance_count_component: &re_types::ComponentDescriptor,
-    text_component: &re_types::ComponentDescriptor,
+    instance_count_component: re_types::ComponentIdentifier,
+    text_component: re_types::ComponentIdentifier,
 ) -> components::ShowLabels {
-    debug_assert!(text_component.component_type == Some(components::Text::name()));
-
     let results = ctx.recording().latest_at(
         ctx.query,
         ctx.target_entity_path,
-        [instance_count_component.component, text_component.component],
+        [instance_count_component, text_component],
     );
     let num_instances = results
-        .component_batch_raw(instance_count_component.component)
+        .component_batch_raw(instance_count_component)
         .map_or(0, |array| array.len());
     let num_labels = results
-        .component_batch_raw(text_component.component)
+        .component_batch_raw(text_component)
         .map_or(0, |array| array.len());
 
     components::ShowLabels::from(num_labels == 1 || num_instances < MAX_NUM_LABELS_PER_ENTITY)

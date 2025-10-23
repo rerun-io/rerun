@@ -468,11 +468,14 @@ impl SpatialView3D {
 
         let speed = **eye_property.component_or_fallback::<LinearSpeed>(
             &view_context,
-            &EyeControls3D::descriptor_speed(),
+            EyeControls3D::descriptor_speed().component,
         )?; // Should never fail.
 
         let kind = eye_property
-            .component_or_fallback::<Eye3DKind>(&view_context, &EyeControls3D::descriptor_kind())
+            .component_or_fallback::<Eye3DKind>(
+                &view_context,
+                EyeControls3D::descriptor_kind().component,
+            )
             .unwrap_debug_or_log_error(); // Should never fail.
 
         let blueprint_properties = EyeBlueprintProperties { speed, kind };
@@ -795,25 +798,27 @@ impl SpatialView3D {
         grid_config: &ViewProperty,
     ) -> Result<Option<re_renderer::renderer::WorldGridDrawData>, ViewSystemExecutionError> {
         if !**grid_config
-            .component_or_fallback::<Visible>(ctx, &LineGrid3D::descriptor_visible())?
+            .component_or_fallback::<Visible>(ctx, LineGrid3D::descriptor_visible().component)?
         {
             return Ok(None);
         }
 
-        let spacing = **grid_config
-            .component_or_fallback::<GridSpacing>(ctx, &LineGrid3D::descriptor_spacing())?;
+        let spacing = **grid_config.component_or_fallback::<GridSpacing>(
+            ctx,
+            LineGrid3D::descriptor_spacing().component,
+        )?;
         let thickness_ui = **grid_config
             .component_or_fallback::<re_types::components::StrokeWidth>(
                 ctx,
-                &LineGrid3D::descriptor_stroke_width(),
+                LineGrid3D::descriptor_stroke_width().component,
             )?;
         let color = grid_config.component_or_fallback::<re_types::components::Color>(
             ctx,
-            &LineGrid3D::descriptor_color(),
+            LineGrid3D::descriptor_color().component,
         )?;
         let plane = grid_config.component_or_fallback::<re_types::components::Plane3D>(
             ctx,
-            &LineGrid3D::descriptor_plane(),
+            LineGrid3D::descriptor_plane().component,
         )?;
 
         Ok(Some(re_renderer::renderer::WorldGridDrawData::new(

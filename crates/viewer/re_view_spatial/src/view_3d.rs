@@ -21,9 +21,6 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::visualizers::{
-    self, AxisLengthDetector, CamerasVisualizer, Transform3DArrowsVisualizer,
-};
 use crate::{
     contexts::register_spatial_contexts,
     heuristics::default_visualized_entities_for_visualizer_kind,
@@ -31,6 +28,10 @@ use crate::{
     ui::{SpatialViewState, format_vector},
     view_kind::SpatialViewKind,
     visualizers::register_3d_spatial_visualizers,
+};
+use crate::{
+    shared_fallbacks,
+    visualizers::{AxisLengthDetector, CamerasVisualizer, Transform3DArrowsVisualizer},
 };
 
 #[derive(Default)]
@@ -76,38 +77,45 @@ impl ViewClass for SpatialView3D {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        system_registry.register_fallback_provider(&LineGrid3D::descriptor_color(), |_| {
-            re_types::components::Color::from_unmultiplied_rgba(128, 128, 128, 60)
-        });
-
-        system_registry.register_fallback_provider(&LineGrid3D::descriptor_plane(), |ctx| {
-            const DEFAULT_PLANE: Plane3D = Plane3D::XY;
-
-            let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
-                return DEFAULT_PLANE;
-            };
-
-            view_state
-                .state_3d
-                .scene_view_coordinates
-                .and_then(|view_coordinates| view_coordinates.up())
-                .map_or(DEFAULT_PLANE, |up| Plane3D::new(up.as_vec3(), 0.0))
-        });
-
-        system_registry.register_fallback_provider(&LineGrid3D::descriptor_stroke_width(), |_| {
-            re_types::components::StrokeWidth::from(1.0)
-        });
-
-        system_registry.register_fallback_provider(&Background::descriptor_kind(), |ctx| match ctx
-            .egui_ctx()
-            .theme()
-        {
-            egui::Theme::Dark => re_types::blueprint::components::BackgroundKind::GradientDark,
-            egui::Theme::Light => re_types::blueprint::components::BackgroundKind::GradientBright,
-        });
+        system_registry
+            .register_fallback_provider(LineGrid3D::descriptor_color().component, |_| {
+                re_types::components::Color::from_unmultiplied_rgba(128, 128, 128, 60)
+            });
 
         system_registry.register_fallback_provider(
-            &re_types::blueprint::archetypes::EyeControls3D::descriptor_speed(),
+            LineGrid3D::descriptor_plane().component,
+            |ctx| {
+                const DEFAULT_PLANE: Plane3D = Plane3D::XY;
+
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    return DEFAULT_PLANE;
+                };
+
+                view_state
+                    .state_3d
+                    .scene_view_coordinates
+                    .and_then(|view_coordinates| view_coordinates.up())
+                    .map_or(DEFAULT_PLANE, |up| Plane3D::new(up.as_vec3(), 0.0))
+            },
+        );
+
+        system_registry
+            .register_fallback_provider(LineGrid3D::descriptor_stroke_width().component, |_| {
+                re_types::components::StrokeWidth::from(1.0)
+            });
+
+        system_registry.register_fallback_provider(
+            Background::descriptor_kind().component,
+            |ctx| match ctx.egui_ctx().theme() {
+                egui::Theme::Dark => re_types::blueprint::components::BackgroundKind::GradientDark,
+                egui::Theme::Light => {
+                    re_types::blueprint::components::BackgroundKind::GradientBright
+                }
+            },
+        );
+
+        system_registry.register_fallback_provider(
+            re_types::blueprint::archetypes::EyeControls3D::descriptor_speed().component,
             |ctx| {
                 let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
                     re_log::error_once!(
@@ -124,10 +132,7 @@ impl ViewClass for SpatialView3D {
             },
         );
 
-        system_registry.register_fallback_provider(
-            &archetypes::Pinhole::descriptor_image_plane_distance(),
-            visualizers::utilities::image_plane_distance_fallback,
-        );
+        shared_fallbacks::register_fallbacks(system_registry);
 
         // Ensure spatial topology is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
@@ -541,7 +546,7 @@ fn view_property_ui_grid3d(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                         let Ok(color) = property
                             .component_or_fallback::<re_types::components::Color>(
                                 ctx,
-                                &LineGrid3D::descriptor_color(),
+                                LineGrid3D::descriptor_color().component,
                             )
                         else {
                             ui.error_label("Failed to query color component");

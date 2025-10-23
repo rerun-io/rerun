@@ -15,6 +15,7 @@ mod picking_ui_pixel;
 mod pinhole;
 mod proc_mesh;
 mod scene_bounding_boxes;
+mod shared_fallbacks;
 mod space_camera_3d;
 mod spatial_topology;
 mod ui;
@@ -60,7 +61,7 @@ pub fn configure_background(
     use re_renderer::renderer;
 
     let kind: BackgroundKind =
-        background.component_or_fallback(ctx, &Background::descriptor_kind())?;
+        background.component_or_fallback(ctx, Background::descriptor_kind().component)?;
 
     match kind {
         BackgroundKind::GradientDark => Ok((
@@ -87,7 +88,7 @@ pub fn configure_background(
 
         BackgroundKind::SolidColor => {
             let color: Color =
-                background.component_or_fallback(ctx, &Background::descriptor_color())?;
+                background.component_or_fallback(ctx, Background::descriptor_color().component)?;
             Ok((None, color.into()))
         }
     }

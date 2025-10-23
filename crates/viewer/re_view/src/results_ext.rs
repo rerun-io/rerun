@@ -71,7 +71,11 @@ impl HybridLatestAtResults<'_> {
                     &query_context
                         .viewer_ctx()
                         .component_fallback_registry
-                        .fallback_for(component_descr, &query_context),
+                        .fallback_for(
+                            component_descr.component,
+                            component_descr.component_type,
+                            &query_context,
+                        ),
                 )
                 .ok()?
                 .into_iter()

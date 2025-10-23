@@ -71,12 +71,14 @@ impl DepthImageVisualizer {
                 value_range,
             } = data;
 
-            let depth_meter = depth_meter
-                .unwrap_or_else(|| typed_fallback_for(ctx, &DepthImage::descriptor_meter()));
+            let depth_meter = depth_meter.unwrap_or_else(|| {
+                typed_fallback_for(ctx, DepthImage::descriptor_meter().component)
+            });
 
             // All depth images must have a colormap:
-            let colormap = colormap
-                .unwrap_or_else(|| typed_fallback_for(ctx, &DepthImage::descriptor_colormap()));
+            let colormap = colormap.unwrap_or_else(|| {
+                typed_fallback_for(ctx, DepthImage::descriptor_colormap().component)
+            });
             let value_range = value_range
                 .map(|r| [r[0] as f32, r[1] as f32])
                 .unwrap_or_else(|| {

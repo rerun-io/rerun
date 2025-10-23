@@ -2,17 +2,5 @@
 source: crates/viewer/re_component_fallbacks/tests/all_component_fallbacks.rs
 expression: arch_display
 ---
-[
-    (
-        "kind",
-        [
-            "2",
-        ],
-    ),
-    (
-        "speed",
-        [
-            "0.0",
-        ],
-    ),
-]
+kind: [2]
+speed: [0.0]

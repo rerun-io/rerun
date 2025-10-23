@@ -28,14 +28,16 @@ fn test_all_component_fallbacks() {
                 archetype_name: Some(*arch_name),
                 query: &test_context.blueprint_query,
             };
-            let mut arch_display = Vec::new();
+            let mut arch_display = String::new();
 
             for field in &arch.fields {
                 let descr = field.component_descriptor(*arch_name);
 
-                let res = test_context
-                    .component_fallback_registry
-                    .fallback_for(&descr, &ctx);
+                let res = test_context.component_fallback_registry.fallback_for(
+                    descr.component,
+                    descr.component_type,
+                    &ctx,
+                );
 
                 let formatter =
                     ArrayFormatter::try_new(&res, &FormatOptions::default().with_null("null"))
@@ -43,13 +45,14 @@ fn test_all_component_fallbacks() {
 
                 let values = (0..res.len())
                     .map(|i| formatter.value(i).to_string())
-                    .collect::<Vec<_>>();
+                    .collect::<Vec<_>>()
+                    .join(", ");
 
-                arch_display.push((field.name, values));
+                arch_display.push_str(&format!("{}: [{values}]\n", field.name));
             }
 
             let name = format!("arch_fallback_{arch_name}");
-            insta::assert_debug_snapshot!(name, arch_display);
+            insta::assert_snapshot!(name, arch_display);
         }
     });
 }

@@ -2,17 +2,5 @@
 source: crates/viewer/re_component_fallbacks/tests/all_component_fallbacks.rs
 expression: arch_display
 ---
-[
-    (
-        "edges",
-        [
-            "{first: , second: }",
-        ],
-    ),
-    (
-        "graph_type",
-        [
-            "1",
-        ],
-    ),
-]
+edges: [{first: , second: }]
+graph_type: [1]

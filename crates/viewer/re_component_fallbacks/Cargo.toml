@@ -19,12 +19,11 @@ workspace = true
 all-features = true
 
 [dependencies]
-re_chunk_store.workspace = true
 re_log_types.workspace = true
 re_types.workspace = true
 re_viewer_context.workspace = true
 
-egui.workspace = true  # Needed to retrieve properties (colors, strokes etc.) from egui style.
+egui.workspace = true # Needed to retrieve properties (colors, strokes etc.) from egui style.
 
 [dev-dependencies]
 re_test_context.workspace = true

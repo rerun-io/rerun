@@ -3,7 +3,7 @@ use re_log_types::Instance;
 use re_renderer::renderer::{GpuMeshInstance, LineStripFlags};
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, RenderContext};
 use re_types::components::{self, FillMode};
-use re_types::{ArchetypeName, ComponentDescriptor};
+use re_types::{ArchetypeName, ComponentIdentifier};
 use re_view::{clamped_or_nothing, process_annotation_slices, process_color_slice};
 use re_viewer_context::{QueryContext, ViewQuery, ViewSystemExecutionError, typed_fallback_for};
 
@@ -86,8 +86,8 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
         query_context: &QueryContext<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
         archetype_name: ArchetypeName,
-        color_component_descr: &ComponentDescriptor,
-        show_labels_component_descr: &ComponentDescriptor,
+        color_component: ComponentIdentifier,
+        show_labels_component: ComponentIdentifier,
         constant_instance_transform: glam::Affine3A,
         batch: ProcMeshBatch<'_, impl Iterator<Item = ProcMeshKey>, impl Iterator<Item = FillMode>>,
     ) -> Result<(), ViewSystemExecutionError> {
@@ -127,7 +127,7 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
         );
         let colors = process_color_slice(
             query_context,
-            color_component_descr,
+            color_component,
             num_instances,
             &annotation_infos,
             batch.colors,
@@ -247,9 +247,9 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
                     .map(|t| t.translation.into()),
                 labels: batch.labels,
                 colors: &colors,
-                show_labels: batch.show_labels.unwrap_or_else(|| {
-                    typed_fallback_for(query_context, show_labels_component_descr)
-                }),
+                show_labels: batch
+                    .show_labels
+                    .unwrap_or_else(|| typed_fallback_for(query_context, show_labels_component)),
                 annotation_infos: &annotation_infos,
             },
             glam::Affine3A::IDENTITY,

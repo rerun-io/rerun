@@ -8,25 +8,25 @@ pub fn type_fallbacks(registry: &mut FallbackProviderRegistry) {
 
 pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
     // Background
-    registry.register_fallback_provider(
-        &blueprint::archetypes::Background::descriptor_color(),
+    registry.register_component_fallback_provider(
+        blueprint::archetypes::Background::descriptor_color().component,
         |ctx| components::Color::from(ctx.viewer_ctx().tokens().viewport_background),
     );
 
     // PlotBackground
-    registry.register_fallback_provider(
-        &blueprint::archetypes::PlotBackground::descriptor_color(),
+    registry.register_component_fallback_provider(
+        blueprint::archetypes::PlotBackground::descriptor_color().component,
         |ctx| components::Color::from(ctx.viewer_ctx().tokens().viewport_background),
     );
 
-    registry.register_fallback_provider(
-        &blueprint::archetypes::PlotBackground::descriptor_show_grid(),
+    registry.register_component_fallback_provider(
+        blueprint::archetypes::PlotBackground::descriptor_show_grid().component,
         |_| blueprint::components::Enabled::from(true),
     );
 
     // GraphBackground
-    registry.register_fallback_provider(
-        &blueprint::archetypes::GraphBackground::descriptor_color(),
+    registry.register_component_fallback_provider(
+        blueprint::archetypes::GraphBackground::descriptor_color().component,
         |ctx| components::Color::from(ctx.viewer_ctx().tokens().viewport_background),
     );
 }

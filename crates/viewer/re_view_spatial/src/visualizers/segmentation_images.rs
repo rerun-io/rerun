@@ -16,7 +16,7 @@ use crate::{
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
 };
 
-use super::{SpatialViewVisualizerData, utilities};
+use super::SpatialViewVisualizerData;
 
 pub struct SegmentationImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -53,13 +53,6 @@ impl VisualizerSystem for SegmentationImageVisualizer {
     ) -> VisualizableEntities {
         re_tracing::profile_function!();
         filter_visualizable_2d_entities(entities, context)
-    }
-
-    fn on_register(&self, mut fallbacks: re_viewer_context::ViewClassFallbackRegistry<'_>) {
-        fallbacks.register_fallback_provider(
-            &SegmentationImage::descriptor_opacity(),
-            utilities::opacity_fallback(re_types::image::ImageKind::Segmentation),
-        );
     }
 
     fn execute(
@@ -119,7 +112,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                     let SegmentationImageComponentData { image, opacity } = data;
 
                     let opacity = opacity.unwrap_or_else(|| {
-                        typed_fallback_for(ctx, &SegmentationImage::descriptor_opacity())
+                        typed_fallback_for(ctx, SegmentationImage::descriptor_opacity().component)
                     });
                     #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
                     let multiplicative_tint =

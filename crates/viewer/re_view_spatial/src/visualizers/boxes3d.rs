@@ -53,8 +53,8 @@ impl Boxes3DVisualizer {
                 query_context,
                 ent_context,
                 Boxes3D::name(),
-                &Boxes3D::descriptor_colors(),
-                &Boxes3D::descriptor_show_labels(),
+                Boxes3D::descriptor_colors().component,
+                Boxes3D::descriptor_show_labels().component,
                 constant_instance_transform,
                 ProcMeshBatch {
                     half_sizes: batch.half_sizes,

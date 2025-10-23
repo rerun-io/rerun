@@ -2,29 +2,7 @@
 source: crates/viewer/re_component_fallbacks/tests/all_component_fallbacks.rs
 expression: arch_display
 ---
-[
-    (
-        "width",
-        [
-            "{dimension: 0, invert: false}",
-        ],
-    ),
-    (
-        "height",
-        [
-            "{dimension: 0, invert: false}",
-        ],
-    ),
-    (
-        "indices",
-        [
-            "{dimension: 0, index: 0}",
-        ],
-    ),
-    (
-        "slider",
-        [
-            "{dimension: 0}",
-        ],
-    ),
-]
+width: [{dimension: 0, invert: false}]
+height: [{dimension: 0, invert: false}]
+indices: [{dimension: 0, index: 0}]
+slider: [{dimension: 0}]

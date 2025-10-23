@@ -18,7 +18,7 @@ use crate::{
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
 };
 
-use super::{SpatialViewVisualizerData, entity_iterator::process_archetype, utilities};
+use super::{SpatialViewVisualizerData, entity_iterator::process_archetype};
 
 pub struct ImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -55,13 +55,6 @@ impl VisualizerSystem for ImageVisualizer {
     ) -> VisualizableEntities {
         re_tracing::profile_function!();
         filter_visualizable_2d_entities(entities, context)
-    }
-
-    fn on_register(&self, mut fallbacks: re_viewer_context::ViewClassFallbackRegistry<'_>) {
-        fallbacks.register_fallback_provider(
-            &Image::descriptor_opacity(),
-            utilities::opacity_fallback(ImageKind::Color),
-        );
     }
 
     fn execute(
@@ -156,8 +149,8 @@ impl ImageVisualizer {
         });
 
         for ImageComponentData { image, opacity } in data {
-            let opacity =
-                opacity.unwrap_or_else(|| typed_fallback_for(ctx, &Image::descriptor_opacity()));
+            let opacity = opacity
+                .unwrap_or_else(|| typed_fallback_for(ctx, Image::descriptor_opacity().component));
             #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
             let multiplicative_tint =
                 re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));

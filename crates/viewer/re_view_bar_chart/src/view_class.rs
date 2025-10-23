@@ -92,10 +92,10 @@ impl ViewClass for BarChartView {
     ) -> Result<(), ViewClassRegistryError> {
         system_registry.register_visualizer::<BarChartVisualizerSystem>()?;
 
-        system_registry
-            .register_fallback_provider::<Corner2D>(&PlotLegend::descriptor_corner(), |_| {
-                Corner2D::RightTop
-            });
+        system_registry.register_fallback_provider::<Corner2D>(
+            PlotLegend::descriptor_corner().component,
+            |_| Corner2D::RightTop,
+        );
 
         Ok(())
     }
@@ -183,10 +183,12 @@ impl ViewClass for BarChartView {
             ctx.blueprint_query(),
             view_id,
         );
-        let background_color =
-            background.component_or_fallback::<Color>(&ctx, &PlotBackground::descriptor_color())?;
-        let show_grid = background
-            .component_or_fallback::<Enabled>(&ctx, &PlotBackground::descriptor_show_grid())?;
+        let background_color = background
+            .component_or_fallback::<Color>(&ctx, PlotBackground::descriptor_color().component)?;
+        let show_grid = background.component_or_fallback::<Enabled>(
+            &ctx,
+            PlotBackground::descriptor_show_grid().component,
+        )?;
 
         let plot_legend = ViewProperty::from_archetype::<PlotLegend>(
             blueprint_db,
@@ -194,9 +196,9 @@ impl ViewClass for BarChartView {
             view_id,
         );
         let legend_visible: Visible =
-            plot_legend.component_or_fallback(&ctx, &PlotLegend::descriptor_visible())?;
+            plot_legend.component_or_fallback(&ctx, PlotLegend::descriptor_visible().component)?;
         let legend_corner: Corner2D =
-            plot_legend.component_or_fallback(&ctx, &PlotLegend::descriptor_corner())?;
+            plot_legend.component_or_fallback(&ctx, PlotLegend::descriptor_corner().component)?;
 
         ui.scope(|ui| {
             let background_color = background_color.into();

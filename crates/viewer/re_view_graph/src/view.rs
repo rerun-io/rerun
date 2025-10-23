@@ -67,50 +67,53 @@ impl ViewClass for GraphView {
             rect.is_finite() && rect.is_positive()
         }
 
-        system_registry.register_fallback_provider(&VisualBounds2D::descriptor_range(), |ctx| {
-            let Ok(state) = ctx.view_state().downcast_ref::<GraphViewState>() else {
-                return re_types::blueprint::components::VisualBounds2D::default();
-            };
+        system_registry.register_fallback_provider(
+            VisualBounds2D::descriptor_range().component,
+            |ctx| {
+                let Ok(state) = ctx.view_state().downcast_ref::<GraphViewState>() else {
+                    return re_types::blueprint::components::VisualBounds2D::default();
+                };
 
-            match state.layout_state.bounding_rect() {
-                Some(rect) if valid_bound(&rect) => rect.into(),
-                _ => re_types::blueprint::components::VisualBounds2D::default(),
-            }
-        });
+                match state.layout_state.bounding_rect() {
+                    Some(rect) if valid_bound(&rect) => rect.into(),
+                    _ => re_types::blueprint::components::VisualBounds2D::default(),
+                }
+            },
+        );
 
         // ForceManyBody
         system_registry.register_fallback_provider(
-            &blueprint::archetypes::ForceManyBody::descriptor_strength(),
+            blueprint::archetypes::ForceManyBody::descriptor_strength().component,
             |_| blueprint::components::ForceStrength::from(-60.),
         );
         system_registry.register_fallback_provider(
-            &blueprint::archetypes::ForceManyBody::descriptor_enabled(),
+            blueprint::archetypes::ForceManyBody::descriptor_enabled().component,
             |_| blueprint::components::Enabled::from(true),
         );
 
         // ForcePosition
         system_registry.register_fallback_provider(
-            &blueprint::archetypes::ForcePosition::descriptor_strength(),
+            blueprint::archetypes::ForcePosition::descriptor_strength().component,
             |_| blueprint::components::ForceStrength::from(0.01),
         );
         system_registry.register_fallback_provider(
-            &blueprint::archetypes::ForcePosition::descriptor_enabled(),
+            blueprint::archetypes::ForcePosition::descriptor_enabled().component,
             |_| blueprint::components::Enabled::from(true),
         );
 
         // ForceLink
         system_registry.register_fallback_provider(
-            &blueprint::archetypes::ForceLink::descriptor_enabled(),
+            blueprint::archetypes::ForceLink::descriptor_enabled().component,
             |_| blueprint::components::Enabled::from(true),
         );
         system_registry.register_fallback_provider(
-            &blueprint::archetypes::ForceLink::descriptor_iterations(),
+            blueprint::archetypes::ForceLink::descriptor_iterations().component,
             |_| blueprint::components::ForceIterations::from(3),
         );
 
         // ForceCollisionRadius
         system_registry.register_fallback_provider(
-            &blueprint::archetypes::ForceCollisionRadius::descriptor_iterations(),
+            blueprint::archetypes::ForceCollisionRadius::descriptor_iterations().component,
             |_| blueprint::components::ForceIterations::from(1),
         );
 
@@ -227,8 +230,10 @@ impl ViewClass for GraphView {
             ctx.blueprint_query,
             query.view_id,
         );
-        let background_color = background
-            .component_or_fallback::<Color>(&view_ctx, &GraphBackground::descriptor_color())?;
+        let background_color = background.component_or_fallback::<Color>(
+            &view_ctx,
+            GraphBackground::descriptor_color().component,
+        )?;
 
         let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
             ctx.blueprint_db(),
@@ -236,7 +241,7 @@ impl ViewClass for GraphView {
             query.view_id,
         );
         let rect_in_scene: blueprint::components::VisualBounds2D = bounds_property
-            .component_or_fallback(&view_ctx, &VisualBounds2D::descriptor_range())?;
+            .component_or_fallback(&view_ctx, VisualBounds2D::descriptor_range().component)?;
 
         // Perform all layout-related tasks.
         let request = LayoutRequest::from_graphs(graphs.iter());

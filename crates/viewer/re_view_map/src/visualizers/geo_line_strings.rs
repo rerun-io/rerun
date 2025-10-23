@@ -59,11 +59,11 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
             // fallback component values
             let fallback_color: Color = typed_fallback_for(
                 &ctx.query_context(data_result, &view_query.latest_at_query()),
-                &GeoLineStrings::descriptor_colors(),
+                GeoLineStrings::descriptor_colors().component,
             );
             let fallback_radius: Radius = typed_fallback_for(
                 &ctx.query_context(data_result, &view_query.latest_at_query()),
-                &GeoLineStrings::descriptor_radii(),
+                GeoLineStrings::descriptor_radii().component,
             );
 
             // iterate over each chunk and find all relevant component slices

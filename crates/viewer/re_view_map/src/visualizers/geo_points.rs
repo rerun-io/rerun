@@ -61,7 +61,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
             let query_context = ctx.query_context(data_result, &latest_at_query);
             let fallback_radius: Radius = typed_fallback_for(
                 &ctx.query_context(data_result, &latest_at_query),
-                &GeoPoints::descriptor_radii(),
+                GeoPoints::descriptor_radii().component,
             );
 
             // iterate over each chunk and find all relevant component slices
@@ -85,7 +85,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 // optional components
                 let colors = process_color_slice(
                     &query_context,
-                    &GeoPoints::descriptor_colors(),
+                    GeoPoints::descriptor_colors().component,
                     num_instances,
                     &annotation_infos,
                     colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),

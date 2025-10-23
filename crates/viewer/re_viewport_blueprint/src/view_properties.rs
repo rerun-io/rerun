@@ -1,5 +1,5 @@
 use arrow::array::ArrayRef;
-use re_chunk::ComponentIdentifier;
+use re_chunk::{ComponentIdentifier, ComponentType};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, external::re_query::LatestAtResults};
 use re_log_types::EntityPath;
@@ -94,9 +94,9 @@ impl ViewProperty {
     pub fn component_or_fallback<C: re_types::Component>(
         &self,
         ctx: &ViewContext<'_>,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Result<C, ViewPropertyQueryError> {
-        self.component_array_or_fallback::<C>(ctx, component_descr)?
+        self.component_array_or_fallback::<C>(ctx, component)?
             .into_iter()
             .next()
             .ok_or(ComponentFallbackError::UnexpectedEmptyFallback.into())
@@ -106,10 +106,10 @@ impl ViewProperty {
     pub fn component_array_or_fallback<C: re_types::Component>(
         &self,
         ctx: &ViewContext<'_>,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Result<Vec<C>, ViewPropertyQueryError> {
         C::from_arrow(
-            self.component_or_fallback_raw(ctx, component_descr)
+            self.component_or_fallback_raw(ctx, component, Some(C::name()))
                 .as_ref(),
         )
         .map_err(|err| err.into())
@@ -157,17 +157,20 @@ impl ViewProperty {
     fn component_or_fallback_raw(
         &self,
         ctx: &ViewContext<'_>,
-        component_descr: &ComponentDescriptor,
+        component_identifier: ComponentIdentifier,
+        component_type: Option<ComponentType>,
     ) -> ArrayRef {
-        if let Some(value) = self.component_raw(component_descr.component)
+        if let Some(value) = self.component_raw(component_identifier)
             && !value.is_empty()
         {
             return value;
         }
 
-        ctx.viewer_ctx
-            .component_fallback_registry
-            .fallback_for(component_descr, &self.query_context(ctx))
+        ctx.viewer_ctx.component_fallback_registry.fallback_for(
+            component_identifier,
+            component_type,
+            &self.query_context(ctx),
+        )
     }
 
     /// Save change to a blueprint component.

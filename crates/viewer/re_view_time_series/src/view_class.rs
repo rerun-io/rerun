@@ -172,12 +172,12 @@ impl ViewClass for TimeSeriesView {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        for descr in &[
-            SeriesLines::descriptor_names(),
-            SeriesPoints::descriptor_names(),
+        for component in [
+            SeriesLines::descriptor_names().component,
+            SeriesPoints::descriptor_names().component,
         ] {
             system_registry.register_fallback_provider::<re_types::components::Name>(
-                descr,
+                component,
                 |ctx| {
                     let state = ctx.view_state().downcast_ref::<TimeSeriesViewState>();
 
@@ -198,13 +198,16 @@ impl ViewClass for TimeSeriesView {
                 },
             );
         }
-        system_registry.register_fallback_provider(&ScalarAxis::descriptor_range(), |ctx| {
-            ctx.view_state()
-                .as_any()
-                .downcast_ref::<TimeSeriesViewState>()
-                .map(|s| make_range_sane(s.scalar_range))
-                .unwrap_or_default()
-        });
+        system_registry.register_fallback_provider(
+            ScalarAxis::descriptor_range().component,
+            |ctx| {
+                ctx.view_state()
+                    .as_any()
+                    .downcast_ref::<TimeSeriesViewState>()
+                    .map(|s| make_range_sane(s.scalar_range))
+                    .unwrap_or_default()
+            },
+        );
 
         system_registry.register_visualizer::<SeriesLinesSystem>()?;
         system_registry.register_visualizer::<SeriesPointsSystem>()?;
@@ -396,32 +399,42 @@ impl ViewClass for TimeSeriesView {
             ctx.blueprint_query,
             view_id,
         );
-        let background_color = background
-            .component_or_fallback::<Color>(&view_ctx, &PlotBackground::descriptor_color())?;
-        let show_grid = background
-            .component_or_fallback::<Enabled>(&view_ctx, &PlotBackground::descriptor_show_grid())?;
+        let background_color = background.component_or_fallback::<Color>(
+            &view_ctx,
+            PlotBackground::descriptor_color().component,
+        )?;
+        let show_grid = background.component_or_fallback::<Enabled>(
+            &view_ctx,
+            PlotBackground::descriptor_show_grid().component,
+        )?;
 
         let plot_legend =
             ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
-        let legend_visible = plot_legend
-            .component_or_fallback::<Visible>(&view_ctx, &PlotLegend::descriptor_visible())?;
-        let legend_corner = plot_legend
-            .component_or_fallback::<Corner2D>(&view_ctx, &PlotLegend::descriptor_corner())?;
+        let legend_visible = plot_legend.component_or_fallback::<Visible>(
+            &view_ctx,
+            PlotLegend::descriptor_visible().component,
+        )?;
+        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(
+            &view_ctx,
+            PlotLegend::descriptor_corner().component,
+        )?;
 
         let time_axis =
             ViewProperty::from_archetype::<TimeAxis>(blueprint_db, ctx.blueprint_query, view_id);
-        let link_x_axis =
-            time_axis.component_or_fallback::<LinkAxis>(&view_ctx, &TimeAxis::descriptor_link())?;
+        let link_x_axis = time_axis
+            .component_or_fallback::<LinkAxis>(&view_ctx, TimeAxis::descriptor_link().component)?;
 
         let scalar_axis =
             ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
-        let y_range = scalar_axis
-            .component_or_fallback::<Range1D>(&view_ctx, &ScalarAxis::descriptor_range())?;
+        let y_range = scalar_axis.component_or_fallback::<Range1D>(
+            &view_ctx,
+            ScalarAxis::descriptor_range().component,
+        )?;
         let y_range = make_range_sane(y_range);
 
         let y_zoom_lock = scalar_axis.component_or_fallback::<LockRangeDuringZoom>(
             &view_ctx,
-            &ScalarAxis::descriptor_zoom_lock(),
+            ScalarAxis::descriptor_zoom_lock().component,
         )?;
         let y_zoom_lock = y_zoom_lock.0.0;
 

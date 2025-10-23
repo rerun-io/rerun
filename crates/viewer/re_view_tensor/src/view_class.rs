@@ -80,10 +80,10 @@ Set the displayed dimensions in a selection panel.",
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        system_registry
-            .register_fallback_provider(&TensorScalarMapping::descriptor_colormap(), |_| {
-                Colormap::Viridis
-            });
+        system_registry.register_fallback_provider(
+            TensorScalarMapping::descriptor_colormap().component,
+            |_| Colormap::Viridis,
+        );
 
         system_registry.register_visualizer::<TensorSystem>()
     }
@@ -374,11 +374,11 @@ impl TensorView {
             ctx.view_id,
         );
         let colormap: Colormap = scalar_mapping
-            .component_or_fallback(ctx, &TensorScalarMapping::descriptor_colormap())?;
-        let gamma: GammaCorrection =
-            scalar_mapping.component_or_fallback(ctx, &TensorScalarMapping::descriptor_gamma())?;
+            .component_or_fallback(ctx, TensorScalarMapping::descriptor_colormap().component)?;
+        let gamma: GammaCorrection = scalar_mapping
+            .component_or_fallback(ctx, TensorScalarMapping::descriptor_gamma().component)?;
         let mag_filter: MagnificationFilter = scalar_mapping
-            .component_or_fallback(ctx, &TensorScalarMapping::descriptor_mag_filter())?;
+            .component_or_fallback(ctx, TensorScalarMapping::descriptor_mag_filter().component)?;
 
         let colormap = ColormapWithRange {
             colormap,
@@ -399,7 +399,7 @@ impl TensorView {
             ctx.blueprint_query(),
             ctx.view_id,
         )
-        .component_or_fallback(ctx, &TensorViewFit::descriptor_scaling())?;
+        .component_or_fallback(ctx, TensorViewFit::descriptor_scaling().component)?;
 
         let img_size = egui::vec2(width as _, height as _);
         let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry

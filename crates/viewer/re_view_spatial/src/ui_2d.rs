@@ -35,7 +35,7 @@ fn ui_from_scene(
     bounds_property: &ViewProperty,
 ) -> RectTransform {
     let bounds: blueprint_components::VisualBounds2D = bounds_property
-        .component_or_fallback(ctx, &VisualBounds2D::descriptor_range())
+        .component_or_fallback(ctx, VisualBounds2D::descriptor_range().component)
         .ok_or_log_error()
         .unwrap_or_default();
     view_state.visual_bounds_2d = Some(bounds);
@@ -191,7 +191,10 @@ impl SpatialView2D {
 
         let view_ctx = self.view_context(ctx, query.view_id, state);
         let near_clip_plane: blueprint_components::NearClipPlane = clip_property
-            .component_or_fallback(&view_ctx, &NearClipPlane::descriptor_near_clip_plane())
+            .component_or_fallback(
+                &view_ctx,
+                NearClipPlane::descriptor_near_clip_plane().component,
+            )
             .ok_or_log_error()
             .unwrap_or_default();
 

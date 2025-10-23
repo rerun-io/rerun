@@ -69,7 +69,7 @@ impl Boxes2DVisualizer {
                 process_radius_slice(entity_path, num_instances, data.radii, Radius::default());
             let colors = process_color_slice(
                 ctx,
-                &Boxes2D::descriptor_colors(),
+                Boxes2D::descriptor_colors().component,
                 num_instances,
                 &annotation_infos,
                 data.colors,
@@ -142,7 +142,7 @@ impl Boxes2DVisualizer {
                     labels: &data.labels,
                     colors: &colors,
                     show_labels: data.show_labels.unwrap_or_else(|| {
-                        typed_fallback_for(ctx, &Boxes2D::descriptor_show_labels())
+                        typed_fallback_for(ctx, Boxes2D::descriptor_show_labels().component)
                     }),
                     annotation_infos: &annotation_infos,
                 },

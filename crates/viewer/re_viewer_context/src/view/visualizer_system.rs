@@ -5,10 +5,9 @@ use re_chunk::ArchetypeName;
 use re_types::{Archetype, ComponentDescriptor, ComponentIdentifier, ComponentSet};
 
 use crate::{
-    DataBasedVisualizabilityFilter, IdentifiedViewSystem, MaybeVisualizableEntities,
-    ViewClassFallbackRegistry, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, ViewSystemIdentifier, VisualizableEntities,
-    VisualizableFilterContext,
+    DataBasedVisualizabilityFilter, IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
+    VisualizableEntities, VisualizableFilterContext,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -113,13 +112,6 @@ pub trait VisualizerSystem: Send + Sync + 'static {
     fn data_based_visualizability_filter(&self) -> Option<Box<dyn DataBasedVisualizabilityFilter>> {
         None
     }
-
-    /// Called just as this visualizer is registered.
-    ///
-    /// This can be useful to register additional component fallbacks that are specific to this visualizer's
-    /// archetype.
-    #[expect(unused)]
-    fn on_register(&self, fallbacks: ViewClassFallbackRegistry<'_>) {}
 
     /// Queries the chunk store and performs data conversions to make it ready for display.
     ///

@@ -140,7 +140,7 @@ impl MyPoint {
 
     #[inline]
     pub fn partial_descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::partial("my_point").with_component_type(Self::name())
+        ComponentDescriptor::partial("my_point")
     }
 }
 

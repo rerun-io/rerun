@@ -2,8 +2,9 @@ use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
 
 use nohash_hasher::IntMap;
+use re_chunk::ComponentIdentifier;
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle};
-use re_types::{ComponentDescriptor, ViewClassIdentifier};
+use re_types::ViewClassIdentifier;
 
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
@@ -31,28 +32,6 @@ pub enum ViewClassRegistryError {
 
     #[error("View with class identifier {0:?} was not registered.")]
     UnknownClassIdentifier(ViewClassIdentifier),
-}
-
-/// Utility which is passed to visualizer's `on_register`, to register fallbacks.
-pub struct ViewClassFallbackRegistry<'a> {
-    identifier: ViewClassIdentifier,
-    fallback_registry: &'a mut FallbackProviderRegistry,
-}
-
-impl ViewClassFallbackRegistry<'_> {
-    /// Register a fallback provider specific to the current view
-    /// and given component.
-    pub fn register_fallback_provider<C: re_types::Component>(
-        &mut self,
-        descriptor: &ComponentDescriptor,
-        provider: impl Fn(&QueryContext<'_>) -> C + Send + Sync + 'static,
-    ) {
-        self.fallback_registry.register_view_fallback_provider(
-            self.identifier,
-            descriptor,
-            provider,
-        );
-    }
 }
 
 /// Utility for registering view systems, passed on to [`crate::ViewClass::on_register`].
@@ -125,10 +104,6 @@ impl ViewSystemRegistrator<'_> {
                 .entry(T::identifier())
                 .or_insert_with(|| {
                     let visualizer = T::default();
-                    visualizer.on_register(ViewClassFallbackRegistry {
-                        identifier: self.identifier,
-                        fallback_registry: self.fallback_registry,
-                    });
                     let entity_subscriber_handle = ChunkStore::register_subscriber(Box::new(
                         VisualizerEntitySubscriber::new(&visualizer),
                     ));
@@ -154,12 +129,12 @@ impl ViewSystemRegistrator<'_> {
     /// and given component.
     pub fn register_fallback_provider<C: re_types::Component>(
         &mut self,
-        descriptor: &ComponentDescriptor,
+        component: ComponentIdentifier,
         provider: impl Fn(&QueryContext<'_>) -> C + Send + Sync + 'static,
     ) {
         self.fallback_registry.register_view_fallback_provider(
             self.identifier,
-            descriptor,
+            component,
             provider,
         );
     }

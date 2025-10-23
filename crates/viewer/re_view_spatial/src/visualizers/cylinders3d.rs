@@ -76,8 +76,8 @@ impl Cylinders3DVisualizer {
                 query_context,
                 ent_context,
                 Cylinders3D::name(),
-                &Cylinders3D::descriptor_colors(),
-                &Cylinders3D::descriptor_show_labels(),
+                Cylinders3D::descriptor_colors().component,
+                Cylinders3D::descriptor_show_labels().component,
                 glam::Affine3A::IDENTITY,
                 ProcMeshBatch {
                     half_sizes: &half_sizes,

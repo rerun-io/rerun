@@ -220,7 +220,7 @@ impl ViewClass for MapView {
 
         let view_ctx = self.view_context(ctx, query.view_id, state);
         let map_provider = map_background
-            .component_or_fallback(&view_ctx, &MapBackground::descriptor_provider())?;
+            .component_or_fallback(&view_ctx, MapBackground::descriptor_provider().component)?;
         if state.selected_provider != map_provider {
             state.tiles = None;
             state.selected_provider = map_provider;

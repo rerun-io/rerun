@@ -162,11 +162,13 @@ impl SeriesPointsSystem {
             };
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default values.
-            let fallback_color: Color =
-                typed_fallback_for(&query_ctx, &archetypes::SeriesPoints::descriptor_colors());
+            let fallback_color: Color = typed_fallback_for(
+                &query_ctx,
+                archetypes::SeriesPoints::descriptor_colors().component,
+            );
             let fallback_size: MarkerSize = typed_fallback_for(
                 &query_ctx,
-                &archetypes::SeriesPoints::descriptor_marker_sizes(),
+                archetypes::SeriesPoints::descriptor_marker_sizes().component,
             );
             let default_point = PlotPoint {
                 time: 0,

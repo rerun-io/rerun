@@ -162,10 +162,14 @@ impl SeriesLinesSystem {
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default values.
             // TODO(andreas): Fallback should produce several colors. Instead, we generate additional ones on the fly if necessary right now.
-            let fallback_color: Color =
-                typed_fallback_for(&query_ctx, &archetypes::SeriesLines::descriptor_colors());
-            let fallback_stroke_width: StrokeWidth =
-                typed_fallback_for(&query_ctx, &archetypes::SeriesLines::descriptor_widths());
+            let fallback_color: Color = typed_fallback_for(
+                &query_ctx,
+                archetypes::SeriesLines::descriptor_colors().component,
+            );
+            let fallback_stroke_width: StrokeWidth = typed_fallback_for(
+                &query_ctx,
+                archetypes::SeriesLines::descriptor_widths().component,
+            );
             let default_point = PlotPoint {
                 time: 0,
                 value: 0.0,

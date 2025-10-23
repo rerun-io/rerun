@@ -74,9 +74,10 @@ impl ViewClass for TestView {
     ) -> Result<(), re_viewer_context::ViewClassRegistryError> {
         system_registry.register_visualizer::<TestSystem>()?;
 
-        system_registry.register_fallback_provider(&MyPoint::partial_descriptor(), |_ctx| {
-            MyPoint::new(0.0, 0.0)
-        });
+        system_registry
+            .register_fallback_provider(MyPoint::partial_descriptor().component, |_ctx| {
+                MyPoint::new(0.0, 0.0)
+            });
 
         Ok(())
     }

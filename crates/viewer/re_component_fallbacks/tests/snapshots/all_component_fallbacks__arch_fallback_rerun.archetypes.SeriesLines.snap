@@ -2,35 +2,8 @@
 source: crates/viewer/re_component_fallbacks/tests/all_component_fallbacks.rs
 expression: arch_display
 ---
-[
-    (
-        "colors",
-        [
-            "2428259839",
-        ],
-    ),
-    (
-        "widths",
-        [
-            "0.75",
-        ],
-    ),
-    (
-        "names",
-        [
-            "<name>",
-        ],
-    ),
-    (
-        "visible_series",
-        [
-            "true",
-        ],
-    ),
-    (
-        "aggregation_policy",
-        [
-            "5",
-        ],
-    ),
-]
+colors: [2428259839]
+widths: [0.75]
+names: [<name>]
+visible_series: [false]
+aggregation_policy: [5]

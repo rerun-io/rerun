@@ -21,7 +21,7 @@ use crate::{
     visualizers::{
         SpatialViewVisualizerData,
         entity_iterator::{self, process_archetype},
-        filter_visualizable_2d_entities, utilities,
+        filter_visualizable_2d_entities,
         video::{
             VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
             visualize_video_frame_texture,
@@ -59,13 +59,6 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
     ) -> VisualizableEntities {
         re_tracing::profile_function!();
         filter_visualizable_2d_entities(entities, context)
-    }
-
-    fn on_register(&self, mut fallbacks: re_viewer_context::ViewClassFallbackRegistry<'_>) {
-        fallbacks.register_fallback_provider(
-            &VideoFrameReference::descriptor_opacity(),
-            utilities::opacity_fallback(re_types::image::ImageKind::Color),
-        );
     }
 
     fn execute(
@@ -118,7 +111,10 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                             .copied()
                             .map(Opacity::from)
                             .unwrap_or_else(|| {
-                                typed_fallback_for(ctx, &VideoFrameReference::descriptor_opacity())
+                                typed_fallback_for(
+                                    ctx,
+                                    VideoFrameReference::descriptor_opacity().component,
+                                )
                             }),
                         entity_path,
                         view_query.view_id,

@@ -1,21 +1,17 @@
 use nohash_hasher::IntSet;
 
 use re_log_types::{EntityPath, Instance};
-use re_types::{
-    Archetype as _, ComponentType,
-    archetypes::{Pinhole, Transform3D},
-    components::{AxisLength, ImagePlaneDistance},
-};
-use re_view::{DataResultQuery as _, latest_at_with_blueprint_resolved_data};
+use re_types::{Archetype as _, ComponentType, archetypes::Transform3D, components::AxisLength};
+use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, ViewClassFallbackRegistry, ViewContext,
-    ViewContextCollection, ViewQuery, ViewStateExt as _, ViewSystemExecutionError,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
-use crate::{contexts::TransformTreeContext, ui::SpatialViewState, view_kind::SpatialViewKind};
+use crate::{contexts::TransformTreeContext, view_kind::SpatialViewKind};
 
-use super::{CamerasVisualizer, SpatialViewVisualizerData, filter_visualizable_3d_entities};
+use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 
 pub struct Transform3DArrowsVisualizer(SpatialViewVisualizerData);
 
@@ -78,56 +74,6 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         filter_visualizable_3d_entities(entities, context)
-    }
-
-    fn on_register(&self, mut fallbacks: ViewClassFallbackRegistry<'_>) {
-        fallbacks.register_fallback_provider(&Transform3D::descriptor_axis_length(), |ctx| {
-            let query_result = ctx.viewer_ctx().lookup_query_result(ctx.view_ctx.view_id);
-
-            // If there is a camera in the scene and it has a pinhole, use the image plane distance to determine the axis length.
-            if let Some(length) = query_result
-                .tree
-                .lookup_result_by_path(ctx.target_entity_path.hash())
-                .cloned()
-                .and_then(|data_result| {
-                    if data_result
-                        .visualizers
-                        .contains(&CamerasVisualizer::identifier())
-                    {
-                        let results = data_result
-                            .latest_at_with_blueprint_resolved_data::<Pinhole>(
-                                ctx.view_ctx,
-                                ctx.query,
-                            );
-
-                        Some(results.get_mono_with_fallback::<ImagePlaneDistance>(
-                            &Pinhole::descriptor_image_plane_distance(),
-                        ))
-                    } else {
-                        None
-                    }
-                })
-            {
-                let length: f32 = length.into();
-                return (length * 0.5).into();
-            }
-
-            // If there is a finite bounding box, use the scene size to determine the axis length.
-            if let Ok(state) = ctx.view_state().downcast_ref::<SpatialViewState>() {
-                let scene_size = state.bounding_boxes.smoothed.size().length();
-
-                if scene_size.is_finite() && scene_size > 0.0 {
-                    return (scene_size * 0.05).into();
-                }
-            }
-
-            // Otherwise 0.3 is a reasonable default.
-
-            // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
-            // the heuristic will change it or it will be user edited. In the case of non-defined bounds
-            // this value works better with the default camera setup.
-            AxisLength::from(0.3)
-        });
     }
 
     fn execute(

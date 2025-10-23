@@ -5,9 +5,7 @@ use arrow::array::{ArrayRef, NullArray};
 
 use nohash_hasher::IntMap;
 use re_chunk::ComponentIdentifier;
-use re_types::{
-    Component, ComponentDescriptor, ComponentType, SerializationError, ViewClassIdentifier,
-};
+use re_types::{Component, ComponentType, SerializationError, ViewClassIdentifier};
 
 use crate::{QueryContext, ViewerContext};
 
@@ -20,24 +18,18 @@ use crate::{QueryContext, ViewerContext};
 /// Therefore, if it can be avoided, this should not be called in hot code paths.
 pub fn typed_fallback_for<C: Component>(
     query_context: &QueryContext<'_>,
-    component_descr: &ComponentDescriptor,
+    component: ComponentIdentifier,
 ) -> C {
-    debug_assert_eq!(
-        Some(C::name()),
-        component_descr.component_type,
-        "Passed component descriptor doesn't match generic arg `C`"
-    );
-
     let array = query_context
         .viewer_ctx()
         .component_fallback_registry
-        .fallback_for(component_descr, query_context);
+        .fallback_for(component, Some(C::name()), query_context);
 
     let Some(v) = C::from_arrow(&array)
         .ok()
         .and_then(|v| v.into_iter().next())
     else {
-        panic!("Invalid fallback provider for `{component_descr}`, failed deserializing result.",);
+        panic!("Invalid fallback provider for `{component}`, failed deserializing result.",);
     };
 
     v
@@ -118,32 +110,30 @@ impl FallbackProviderRegistry {
     }
 
     /// Registers a fallback provider function for a given component identifier.
-    pub fn register_dyn_fallback_provider(
+    pub fn register_dyn_component_fallback_provider(
         &mut self,
-        identifier: ComponentIdentifier,
+        component: ComponentIdentifier,
         provider: ComponentFallbackProviderFn,
     ) {
         if self
             .component_fallback_providers
-            .insert(identifier, provider)
+            .insert(component, provider)
             .is_some()
         {
             re_log::warn!(
-                "There was already a component fallback provider registered for {identifier}"
+                "There was already a component fallback provider registered for {component}"
             );
         }
     }
 
     /// Registers a fallback provider function for a given component identifier.
-    pub fn register_fallback_provider<C: re_types::Component>(
+    pub fn register_component_fallback_provider<C: re_types::Component>(
         &mut self,
-        descriptor: &ComponentDescriptor,
+        component: ComponentIdentifier,
         provider: impl Fn(&QueryContext<'_>) -> C + Send + Sync + 'static,
     ) {
-        debug_assert_eq!(descriptor.component_type, Some(C::name()));
-
-        self.register_dyn_fallback_provider(
-            descriptor.component,
+        self.register_dyn_component_fallback_provider(
+            component,
             Box::new(move |query_context| {
                 let value = provider(query_context);
 
@@ -176,14 +166,12 @@ impl FallbackProviderRegistry {
     pub fn register_view_fallback_provider<C: re_types::Component>(
         &mut self,
         view: ViewClassIdentifier,
-        descriptor: &ComponentDescriptor,
+        component: ComponentIdentifier,
         provider: impl Fn(&QueryContext<'_>) -> C + Send + Sync + 'static,
     ) {
-        debug_assert_eq!(descriptor.component_type, Some(C::name()));
-
         self.register_dyn_view_fallback_provider(
             view,
-            descriptor.component,
+            component,
             Box::new(move |query_context| {
                 let value = provider(query_context);
 
@@ -194,24 +182,25 @@ impl FallbackProviderRegistry {
 
     fn get_fallback_function<'a>(
         &'a self,
-        descriptor: &ComponentDescriptor,
+        component: ComponentIdentifier,
+        component_type: Option<ComponentType>,
         ctx: &QueryContext<'_>,
     ) -> Option<&'a ComponentFallbackProviderFn> {
         // First try view specific fallbacks.
         if let Some(f) = self
             .view_component_fallback_providers
-            .get(&(ctx.view_ctx.view_class_identifier, descriptor.component))
+            .get(&(ctx.view_ctx.view_class_identifier, component))
         {
             return Some(f);
         }
 
         // Then archetype component field specific.
-        if let Some(f) = self.component_fallback_providers.get(&descriptor.component) {
+        if let Some(f) = self.component_fallback_providers.get(&component) {
             return Some(f);
         }
 
         // And finally try component type.
-        if let Some(ty) = descriptor.component_type
+        if let Some(ty) = component_type
             && let Some(f) = self.type_fallback_providers.get(&ty)
         {
             return Some(f);
@@ -224,10 +213,13 @@ impl FallbackProviderRegistry {
     /// then falling back to the placeholder value registered in the viewer context.
     pub fn fallback_for(
         &self,
-        descriptor: &ComponentDescriptor,
+        component: ComponentIdentifier,
+        component_type: Option<ComponentType>,
         ctx: &QueryContext<'_>,
     ) -> ArrayRef {
-        let res = self.get_fallback_function(descriptor, ctx).map(|f| f(ctx));
+        let res = self
+            .get_fallback_function(component, component_type, ctx)
+            .map(|f| f(ctx));
 
         match res {
             // Fallback succeeded.
@@ -239,18 +231,18 @@ impl FallbackProviderRegistry {
                 // Giving out _both_ the error and the fallback value gets messy,
                 // so given that this should be a rare bug, we log it and return the fallback value as success.
                 re_log::error_once!(
-                    "Arrow serialization failed trying to provide a fallback for {descriptor}. Using base fallback instead: {err}"
+                    "Arrow serialization failed trying to provide a fallback for {component}. Using base fallback instead: {err}"
                 );
             }
             // No specific fallback registered, use placeholder value.
             None => {}
         }
 
-        if let Some(ty) = descriptor.component_type {
+        if let Some(ty) = component_type {
             placeholder_for(ctx.viewer_ctx(), ty)
         } else {
             re_log::warn_once!(
-                "Requested fallback for component descr {descriptor} without component type"
+                "Requested fallback for component {component} without component type"
             );
             std::sync::Arc::new(NullArray::new(0))
         }

@@ -252,7 +252,8 @@ pub fn collect_series_name(
 
     if series_names.len() < num_series {
         let fallback_name: String =
-            typed_fallback_for::<components::Name>(query_ctx, name_descriptor).to_string();
+            typed_fallback_for::<components::Name>(query_ctx, name_descriptor.component)
+                .to_string();
         if num_series == 1 {
             series_names.push(fallback_name);
         } else {
