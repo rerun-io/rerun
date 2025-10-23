@@ -36,10 +36,10 @@ pub struct ViewerContext<'a> {
     /// TODO(andreas): This should have a generation id, allowing to update heuristics(?)/visualizable entities etc.
     pub maybe_visualizable_entities_per_visualizer: &'a PerVisualizer<MaybeVisualizableEntities>,
 
-    /// For each visualizer, the set of entities that have at least one matching indicator component.
+    /// For each visualizer, the set of entities with relevant archetypes.
     ///
     /// TODO(andreas): Should we always do the intersection with `maybe_visualizable_entities_per_visualizer`
-    ///                 or are we ever interested in a (definitely-)non-visualizable but indicator-matching entity?
+    ///                 or are we ever interested in a (definitely-)non-visualizable but archetype-matching entity?
     pub indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
 
     /// All the query results for this frame.
