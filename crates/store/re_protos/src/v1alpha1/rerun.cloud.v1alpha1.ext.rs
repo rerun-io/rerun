@@ -695,6 +695,60 @@ impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryResponse> for CreateDatas
     }
 }
 
+// --- CreateTableEntryRequest ---
+
+#[derive(Debug, Clone)]
+pub struct CreateTableEntryRequest {
+    pub name: String,
+    pub schema: Schema,
+    pub uri: String,
+}
+
+impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEntryRequest {
+    type Error = TypeConversionError;
+    fn try_from(value: CreateTableEntryRequest) -> Result<Self, Self::Error> {
+        Ok(Self {
+            name: Some(value.name),
+            schema: Some((&value.schema).try_into()?),
+            id: None,
+            uri: value.uri,
+        })
+    }
+}
+
+// --- CreateTableEntryResponse ---
+
+#[derive(Debug, Clone)]
+pub struct CreateTableEntryResponse {
+    pub table: TableEntry,
+}
+
+impl From<CreateTableEntryResponse> for crate::cloud::v1alpha1::CreateTableEntryResponse {
+    fn from(value: CreateTableEntryResponse) -> Self {
+        Self {
+            table: Some(value.table.into()),
+        }
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::CreateTableEntryResponse> for CreateTableEntryResponse {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::cloud::v1alpha1::CreateTableEntryResponse,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            table: value
+                .table
+                .ok_or(missing_field!(
+                    crate::cloud::v1alpha1::CreateTableEntryResponse,
+                    "table"
+                ))?
+                .try_into()?,
+        })
+    }
+}
+
 // --- ReadDatasetEntryResponse ---
 
 #[derive(Debug, Clone)]
