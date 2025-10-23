@@ -669,13 +669,17 @@ impl RerunCloudService for RerunCloudHandler {
     > {
         let store = self.store.read().await;
 
-        // check that the dataset exists before returning
-        _ = get_entry_id_from_headers(&store, &request)?;
+        let entry_id = get_entry_id_from_headers(&store, &request)?;
+        let dataset = store.dataset(entry_id)?;
+        let record_batch = dataset.partition_table().map_err(|err| {
+            tonic::Status::internal(format!("Unable to read partition table: {err:#}"))
+        })?;
 
-        //TODO(RR-2604): add support for property columns
         Ok(tonic::Response::new(GetPartitionTableSchemaResponse {
             schema: Some(
-                (&ScanPartitionTableResponse::schema())
+                record_batch
+                    .schema_ref()
+                    .as_ref()
                     .try_into()
                     .map_err(|err| {
                         tonic::Status::internal(format!(
@@ -724,13 +728,15 @@ impl RerunCloudService for RerunCloudHandler {
     ) -> Result<Response<GetDatasetManifestSchemaResponse>, Status> {
         let store = self.store.read().await;
 
-        // check that the dataset exists before returning
-        _ = get_entry_id_from_headers(&store, &request)?;
+        let entry_id = get_entry_id_from_headers(&store, &request)?;
+        let dataset = store.dataset(entry_id)?;
+        let record_batch = dataset.dataset_manifest()?;
 
-        //TODO(RR-2604): add support for property columns
         Ok(tonic::Response::new(GetDatasetManifestSchemaResponse {
             schema: Some(
-                (&ScanDatasetManifestResponse::schema())
+                record_batch
+                    .schema_ref()
+                    .as_ref()
                     .try_into()
                     .map_err(|err| {
                         tonic::Status::internal(format!(
