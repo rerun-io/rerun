@@ -144,6 +144,9 @@ impl SystemCommand {
     }
 }
 
+/// What triggered this item to be selected?
+///
+/// See [`handle_select_focus_sync`] why this is useful.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SelectionSource {
     ListItemNavigation,

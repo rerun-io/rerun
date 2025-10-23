@@ -74,84 +74,90 @@ impl ListItemNavigation {
     /// Call this _only_ if [`Self::init_if_root`] returned true.
     pub fn end_if_root(ctx: &Context) {
         let navigation = ctx.data_mut(|d| d.remove_temp::<Self>(Id::NULL));
-
         debug_assert!(navigation.is_some(), "Expected to find ListItemNavigation");
 
-        if let Some(navigation) = navigation {
-            if let Some(current_focused) = navigation.current_focused {
-                let mut focus_item = None;
-                let mut collapse_item = None;
-                let mut expand_item = None;
-                ctx.input_mut(|i| {
-                    if i.consume_key(Modifiers::COMMAND, egui::Key::ArrowUp) {
-                        match (navigation.focused_collapsed, navigation.focused_parent) {
-                            (Some(false), _) => {
-                                collapse_item = Some(current_focused);
-                            }
-                            (Some(true) | None, Some(parent)) => {
-                                focus_item = Some(parent);
-                            }
-                            (Some(true) | None, None) => {
-                                // Focused item is collapsed and has no parent, do nothing.
-                            }
-                        }
-                    }
+        let Some(navigation) = navigation else {
+            return;
+        };
+        let Some(current_focused) = navigation.current_focused else {
+            return;
+        };
 
-                    if i.consume_key(Modifiers::COMMAND, egui::Key::ArrowDown) {
-                        if navigation.focused_collapsed == Some(true) {
-                            expand_item = Some(current_focused);
-                        } else {
-                            // If it's expanded or not collapsible, focus the next item.
-                            focus_item = navigation.next_item;
-                        }
+        let mut focus_item = None;
+        let mut collapse_item = None;
+        let mut expand_item = None;
+        ctx.input_mut(|i| {
+            if i.consume_key(Modifiers::COMMAND, egui::Key::ArrowUp) {
+                match (navigation.focused_collapsed, navigation.focused_parent) {
+                    // The current item is expanded, so collapse it.
+                    (Some(false), _) => {
+                        collapse_item = Some(current_focused);
                     }
-
-                    if let Some(previous) = navigation.previous_item {
-                        if i.consume_key(Modifiers::NONE, egui::Key::ArrowUp) {
-                            focus_item = Some(previous);
-                        }
+                    // The current item is collapsed or not collapsible, so focus its parent.
+                    (Some(true) | None, Some(parent)) => {
+                        focus_item = Some(parent);
                     }
-
-                    if let Some(next) = navigation.next_item {
-                        if i.consume_key(Modifiers::NONE, egui::Key::ArrowDown) {
-                            focus_item = Some(next);
-                        }
-                    }
-                });
-
-                if let Some(next_focus) = focus_item {
-                    let pass = ctx.cumulative_pass_nr();
-                    ctx.memory_mut(|mem| mem.request_focus(next_focus));
-                    ctx.data_mut(|d| {
-                        d.insert_temp(
-                            Id::NULL,
-                            GainedFocusViaArrowKey {
-                                widget_id: next_focus,
-                                focused_on_pass: pass,
-                            },
-                        );
-                    });
-                    if let Some(response) = ctx.read_response(next_focus) {
-                        response.scroll_to_me(None);
-                    }
+                    // Focused item is collapsed and has no parent, do nothing.
+                    (Some(true) | None, None) => {}
                 }
-                if let Some(collapse_item) = collapse_item {
-                    if let Some(mut state) = CollapsingState::load(ctx, collapse_item) {
-                        state.set_open(false);
-                        state.store(ctx);
-                    }
-                } else if let Some(expand_item) = expand_item {
-                    if let Some(mut state) = CollapsingState::load(ctx, expand_item) {
-                        state.set_open(true);
-                        state.store(ctx);
-                    }
+            }
+
+            if i.consume_key(Modifiers::COMMAND, egui::Key::ArrowDown) {
+                if navigation.focused_collapsed == Some(true) {
+                    expand_item = Some(current_focused);
+                } else {
+                    // If it's expanded or not collapsible, focus the next item.
+                    focus_item = navigation.next_item;
                 }
+            }
+
+            if let Some(previous) = navigation.previous_item {
+                if i.consume_key(Modifiers::NONE, egui::Key::ArrowUp) {
+                    focus_item = Some(previous);
+                }
+            }
+
+            if let Some(next) = navigation.next_item {
+                if i.consume_key(Modifiers::NONE, egui::Key::ArrowDown) {
+                    focus_item = Some(next);
+                }
+            }
+        });
+
+        if let Some(next_focus) = focus_item {
+            let pass = ctx.cumulative_pass_nr();
+            ctx.memory_mut(|mem| mem.request_focus(next_focus));
+            ctx.data_mut(|d| {
+                d.insert_temp(
+                    Id::NULL,
+                    GainedFocusViaArrowKey {
+                        widget_id: next_focus,
+                        focused_on_pass: pass,
+                    },
+                );
+            });
+            if let Some(response) = ctx.read_response(next_focus) {
+                response.scroll_to_me(None);
+            }
+        }
+        if let Some(collapse_item) = collapse_item {
+            if let Some(mut state) = CollapsingState::load(ctx, collapse_item) {
+                state.set_open(false);
+                state.store(ctx);
+            }
+        } else if let Some(expand_item) = expand_item {
+            if let Some(mut state) = CollapsingState::load(ctx, expand_item) {
+                state.set_open(true);
+                state.store(ctx);
             }
         }
     }
 }
 
 /// Utility to check if focus was gained via arrow key navigation.
+///
+/// We need this because some UI parts (e.g. blueprint tree) will want to auto-select focused item
+/// _only_ if they were focused with arrows, not if they were focused e.g. with tab.
 #[derive(Debug, Clone)]
 struct GainedFocusViaArrowKey {
     widget_id: Id,
