@@ -59,14 +59,13 @@ def load_ignored_examples() -> set[str]:
     return set(manifest.get("ignored", {}).get("examples", []))
 
 
-def examples_with_thumbnails() -> Generator[Example, None, None]:
+def all_examples() -> Generator[Example, None, None]:
     def single_language(lang: str) -> Generator[Example, None, None]:
         for path in Path(f"examples/{lang}").iterdir():
             if (path / "README.md").exists():
                 readme = (path / "README.md").read_text(encoding="utf-8")
                 fm = load_frontmatter(readme)
-                if fm is not None and fm.get("thumbnail"):
-                    yield Example(path, readme, fm)
+                yield Example(path, readme, fm if fm is not None else {})
 
     yield from single_language("c")
     yield from single_language("cpp")
@@ -100,71 +99,102 @@ def update() -> None:
 
             print(f"✔ {example.path}")
 
-        futures = [ex.submit(work, example) for example in examples_with_thumbnails()]
+        examples_with_thumbnails = [ex for ex in all_examples() if ex.fm.get("thumbnail")]
+        futures = [ex.submit(work, example) for example in examples_with_thumbnails]
         ex.shutdown()
         for future in futures:
             future.result()
 
 
 def check() -> None:
-    bad = False
     ignored = load_ignored_examples()
+    missing_frontmatter = []
+    missing_thumbnails = []
+    bad_dimensions = []
 
-    # Check that non-ignored examples have thumbnails (only check default language: python > cpp > rust)
     # NOTE: This language priority must match the logic in the rerun-io/landing repo:
-    # https://github.com/rerun-io/landing/blob/main/src/lib/lang.ts
-    example_names = set()
-    for lang in ["python", "rust", "cpp", "c"]:
+    # Priority order: Python > C++ > Rust > C.
+    # See: https://github.com/rerun-io/landing/blob/main/src/lib/lang.ts
+
+    # Build a map of example names to their default language version
+    example_defaults = {}
+    for lang in ["python", "cpp", "rust", "c"]:
         lang_dir = Path(f"examples/{lang}")
         if lang_dir.exists():
             for path in lang_dir.iterdir():
                 if path.is_dir() and (path / "README.md").exists():
-                    example_names.add(path.name)
+                    # Only set if we haven't seen this example before (priority order)
+                    if path.name not in example_defaults and lang in ["python", "cpp", "rust", "c"]:
+                        example_defaults[path.name] = path
 
-    for name in sorted(example_names):
-        if name in ignored:
-            continue
-
-        # Find default language version (python > cpp > rust)
-        default_path = None
-        for lang in ["python", "cpp", "rust"]:
-            path = Path(f"examples/{lang}/{name}")
-            if (path / "README.md").exists():
-                default_path = path
-                break
-
-        if default_path:
-            readme = (default_path / "README.md").read_text(encoding="utf-8")
-            fm = load_frontmatter(readme)
-            if fm is None or not fm.get("thumbnail") or not fm.get("thumbnail_dimensions"):
-                print(f"{default_path} is missing `thumbnail` and/or `thumbnail_dimensions`")
-                bad = True
-
-    # Check that existing thumbnail dimensions are correct (all languages)
+    # Check all examples in a single pass
     with ThreadPoolExecutor() as ex:
 
         def work(example: Example) -> None:
-            nonlocal bad
-            if not example.fm.get("thumbnail_dimensions"):
-                print(f"{example.path} has no `thumbnail_dimensions`")
-                bad = True
+            # Skip ignored examples
+            if example.path.name in ignored:
                 return
 
-            current = tuple(example.fm["thumbnail_dimensions"])
-            actual = get_thumbnail_dimensions(example.fm["thumbnail"])
-            if current != actual:
-                print(f"{example.path} `thumbnail_dimensions` are incorrect (current: {current}, actual: {actual})")
-                bad = True
-            else:
-                print(f"✔ {example.path}")
+            # Only check default language versions for missing frontmatter/thumbnails
+            is_default = example_defaults.get(example.path.name) == example.path
 
-        futures = [ex.submit(work, example) for example in examples_with_thumbnails()]
+            # Check if frontmatter is missing
+            if not example.fm:
+                if is_default:
+                    missing_frontmatter.append(example.path)
+                return
+
+            if not example.fm.get("thumbnail"):
+                if is_default:
+                    missing_thumbnails.append(example.path)
+                return
+
+            # If there's a thumbnail, check dimensions
+            if not example.fm.get("thumbnail_dimensions"):
+                bad_dimensions.append((example.path, None, None))
+            else:
+                current = tuple(example.fm["thumbnail_dimensions"])
+                actual = get_thumbnail_dimensions(example.fm["thumbnail"])
+                if current != actual:
+                    bad_dimensions.append((example.path, current, actual))
+                else:
+                    print(f"✔ {example.path}")
+
+        futures = [ex.submit(work, example) for example in all_examples()]
         ex.shutdown()
         for future in futures:
             future.result()
 
-    if bad:
-        print("Please run `scripts/ci/thumbnails.py update`.")
+    # Report errors
+    if missing_frontmatter:
+        for path in sorted(missing_frontmatter):
+            print(f"{path} is missing frontmatter")
+        print()
+
+    if missing_thumbnails:
+        for path in sorted(missing_thumbnails):
+            print(f"{path} is missing `thumbnail`")
+        print()
+
+    if bad_dimensions:
+        for path, current, actual in sorted(bad_dimensions):
+            if current is None:
+                print(f"{path} is missing `thumbnail_dimensions`")
+            else:
+                print(f"{path} `thumbnail_dimensions` are incorrect (current: {current}, actual: {actual})")
+        print()
+
+    if missing_frontmatter or missing_thumbnails:
+        print(
+            "Some examples are missing frontmatter or thumbnails. Either add those, or add those examples to the `ignored` list in `examples/manifest.toml`."
+        )
+        print()
+
+    if bad_dimensions:
+        print("Incorrect thumbnail dimensions may be fixed automatically by running `scripts/ci/thumbnails.py update`.")
+        print()
+
+    if missing_frontmatter or missing_thumbnails or bad_dimensions:
         sys.exit(1)
 
 
