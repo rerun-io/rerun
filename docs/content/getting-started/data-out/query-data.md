@@ -7,7 +7,7 @@ The Rerun Cloud offering builds upon the open source core.
 Towards that end the Open Source Server provides the capability for small scale local analysis using a similar API surface.
 This supports a workflow to develop or debug locally on a single recording then scale up that same workflow on the cloud for production use.
 
-# Open Source Server
+# Open source server
 
 The open source server is still in development to reach API parity with the cloud offering and evolve with the cloud offering.
 
@@ -60,7 +60,7 @@ client = rr.catalog.CatalogClient(CATALOG_URL)
 
 Everything below assumes that the server has been launched and a client has been generate based on instructions above.
 
-### Datasets Overview
+### Datasets overview
 
 A dataset is a collection of recordings that can be queried against.
 If we have already created a dataset we can retrieve it, otherwise we can create it.
@@ -90,7 +90,7 @@ tasks.wait(100)
 
 Ultimately, we will end up rendering the data as a [DataFrame](https://datafusion.apache.org/python/user-guide/dataframe/index.html)
 However, there is an intermediate step that allows for some optimization.
-This generates a DataFrameQueryView. <!-- TODO Nick add link to doc -->
+This generates a DataFrameQueryView. <!-- TODO(nick) add link to doc -->
 The DataFrameQueryView allows selection of the subset of interest for the dataset (index column, and content columns), filtering to specific time ranges, and managing the sparsity of the data (fill_latest_at).
 All of these operations occur on the server prior to evaluating future queries so avoid unnecessary computation.
 
