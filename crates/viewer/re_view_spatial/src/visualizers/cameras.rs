@@ -10,15 +10,13 @@ use re_types::{
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     DataResult, IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext,
-    ViewContextCollection, ViewOutlineMasks, ViewQuery, ViewStateExt as _,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
-    VisualizerFallbackRegistry, VisualizerQueryInfo, VisualizerSystem,
+    ViewContextCollection, ViewOutlineMasks, ViewQuery, ViewSystemExecutionError,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 use crate::{
-    contexts::TransformTreeContext, space_camera_3d::SpaceCamera3D, ui::SpatialViewState,
-    visualizers::process_radius,
+    contexts::TransformTreeContext, space_camera_3d::SpaceCamera3D, visualizers::process_radius,
 };
 
 pub struct CamerasVisualizer {
@@ -215,28 +213,6 @@ impl VisualizerSystem for CamerasVisualizer {
     ) -> VisualizableEntities {
         re_tracing::profile_function!();
         filter_visualizable_3d_entities(entities, context)
-    }
-
-    fn on_register(&self, mut fallbacks: VisualizerFallbackRegistry<'_>) {
-        fallbacks.register_fallback_provider(&Pinhole::descriptor_image_plane_distance(), |ctx| {
-            let Ok(state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
-                return Default::default();
-            };
-
-            let scene_size = state.bounding_boxes.smoothed.size().length();
-
-            let d = if scene_size.is_finite() && scene_size > 0.0 {
-                // Works pretty well for `examples/python/open_photogrammetry_format/open_photogrammetry_format.py --no-frames`
-                scene_size * 0.02
-            } else {
-                // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
-                // the heuristic will change it or it will be user edited. In the case of non-defined bounds
-                // this value works better with the default camera setup.
-                0.3
-            };
-
-            components::ImagePlaneDistance::from(d)
-        });
     }
 
     fn execute(

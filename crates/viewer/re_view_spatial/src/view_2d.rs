@@ -3,17 +3,15 @@ use nohash_hasher::{IntMap, IntSet};
 use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::EntityPath;
 use re_types::{
-    View as _, ViewClassIdentifier,
-    archetypes::{EncodedImage, Image, SegmentationImage, VideoFrameReference, VideoStream},
+    View as _, ViewClassIdentifier, archetypes,
     blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D},
-    image::ImageKind,
 };
 use re_ui::{Help, UiExt as _};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    QueryContext, RecommendedView, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId,
-    ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewerContext, VisualizableFilterContext,
+    RecommendedView, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    VisualizableFilterContext,
 };
 
 use crate::{
@@ -23,7 +21,7 @@ use crate::{
     spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
-    visualizers::register_2d_spatial_visualizers,
+    visualizers::{self, register_2d_spatial_visualizers},
 };
 
 #[derive(Default)]
@@ -101,40 +99,9 @@ impl ViewClass for SpatialView2D {
             }
         });
 
-        fn opacity_fallback(
-            image_kind: ImageKind,
-        ) -> impl Fn(&QueryContext<'_>) -> re_types::components::Opacity {
-            move |ctx| {
-                // Color images should be transparent whenever they're on top of other images,
-                // But fully opaque if there are no other images in the scene.
-                let Some(view_state) = ctx.view_state().as_any().downcast_ref::<SpatialViewState>()
-                else {
-                    return 1.0.into();
-                };
-
-                // Known cosmetic issues with this approach:
-                // * The first frame we have more than one image, the image will be opaque.
-                //      It's too complex to do a full view query just for this here.
-                //      However, we should be able to analyze the `DataQueryResults` instead to check how many entities are fed to the Image/DepthImage visualizers.
-                // * In 3D scenes, images that are on a completely different plane will cause this to become transparent.
-                re_types::components::Opacity::from(
-                    view_state.fallback_opacity_for_image_kind(image_kind),
-                )
-            }
-        }
-
-        for descr in &[
-            EncodedImage::descriptor_opacity(),
-            Image::descriptor_opacity(),
-            VideoStream::descriptor_opacity(),
-            VideoFrameReference::descriptor_opacity(),
-        ] {
-            system_registry.register_fallback_provider(descr, opacity_fallback(ImageKind::Color));
-        }
-
         system_registry.register_fallback_provider(
-            &SegmentationImage::descriptor_opacity(),
-            opacity_fallback(ImageKind::Segmentation),
+            &archetypes::Pinhole::descriptor_image_plane_distance(),
+            visualizers::utilities::image_plane_distance_fallback,
         );
 
         // Ensure spatial topology & max image dimension is registered.

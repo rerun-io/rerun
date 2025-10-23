@@ -49,6 +49,28 @@ pub fn tensor_decode_srgb_gamma_heuristic(
 
 // ----------------------------------------------------------------------------
 
+/// Get a valid, finite range for the gpu to use.
+pub fn data_range_heuristic((min, max): (f64, f64), is_float: bool) -> (f64, f64) {
+    // Apply heuristic for ranges that are typically expected depending on the data type and the finite (!) range.
+    // (we ignore NaN/Inf values heres, since they are usually there by accident!)
+    if is_float && 0.0 <= min && max <= 1.0 {
+        // Float values that are all between 0 and 1, assume that this is the range.
+        (0.0, 1.0)
+    } else if 0.0 <= min && max <= 255.0 {
+        // If all values are between 0 and 255, assume this is the range.
+        // (This is very common, independent of the data type)
+        (0.0, 255.0)
+    } else if min == max {
+        // uniform range. This can explode the colormapping, so let's map all colors to the middle:
+        (min - 1.0, max + 1.0)
+    } else {
+        // Use range as is if nothing matches.
+        (min, max)
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 pub fn viewport_resolution_in_pixels(clip_rect: egui::Rect, pixels_per_point: f32) -> [u32; 2] {
     let min = (clip_rect.min.to_vec2() * pixels_per_point).round();
     let max = (clip_rect.max.to_vec2() * pixels_per_point).round();

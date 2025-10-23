@@ -17,7 +17,7 @@ use crate::{
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
 };
 
-use super::{SpatialViewVisualizerData, entity_iterator::process_archetype};
+use super::{SpatialViewVisualizerData, entity_iterator::process_archetype, utilities};
 
 pub struct EncodedImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -49,6 +49,13 @@ impl VisualizerSystem for EncodedImageVisualizer {
     ) -> VisualizableEntities {
         re_tracing::profile_function!();
         filter_visualizable_2d_entities(entities, context)
+    }
+
+    fn on_register(&self, mut fallbacks: re_viewer_context::ViewClassFallbackRegistry<'_>) {
+        fallbacks.register_fallback_provider(
+            &EncodedImage::descriptor_opacity(),
+            utilities::opacity_fallback(re_types::image::ImageKind::Color),
+        );
     }
 
     fn execute(

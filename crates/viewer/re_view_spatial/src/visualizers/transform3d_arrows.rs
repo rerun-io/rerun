@@ -8,9 +8,9 @@ use re_types::{
 };
 use re_view::{DataResultQuery as _, latest_at_with_blueprint_resolved_data};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext, ViewContextCollection, ViewQuery,
-    ViewStateExt as _, ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
-    VisualizerFallbackRegistry, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, MaybeVisualizableEntities, ViewClassFallbackRegistry, ViewContext,
+    ViewContextCollection, ViewQuery, ViewStateExt as _, ViewSystemExecutionError,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{contexts::TransformTreeContext, ui::SpatialViewState, view_kind::SpatialViewKind};
@@ -80,7 +80,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         filter_visualizable_3d_entities(entities, context)
     }
 
-    fn on_register(&self, mut fallbacks: VisualizerFallbackRegistry<'_>) {
+    fn on_register(&self, mut fallbacks: ViewClassFallbackRegistry<'_>) {
         fallbacks.register_fallback_provider(&Transform3D::descriptor_axis_length(), |ctx| {
             let query_result = ctx.viewer_ctx().lookup_query_result(ctx.view_ctx.view_id);
 

@@ -10,7 +10,7 @@ use re_view::controls::{
 };
 use re_viewer_context::ViewStateExt as _;
 
-use crate::{SpatialViewState, space_camera_3d::SpaceCamera3D, ui_3d::BlueprintProperties};
+use crate::{SpatialViewState, space_camera_3d::SpaceCamera3D, ui_3d::EyeBlueprintProperties};
 
 /// An eye in a 3D view.
 ///
@@ -356,7 +356,7 @@ impl ViewEye {
         &mut self,
         response: &egui::Response,
         drag_threshold: f32,
-        mut blueprint_properties: BlueprintProperties,
+        mut blueprint_properties: EyeBlueprintProperties,
     ) -> bool {
         // Modify speed based on modifiers:
         let os = response.ctx.os();

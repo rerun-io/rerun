@@ -12,6 +12,12 @@ use re_types::{
 use crate::{QueryContext, ViewerContext};
 
 /// Tries to get a fallback for the type `C`.
+///
+/// This function is not as performant as could be, fallbacks are dynamically retrieved
+/// from the [`FallbackProviderRegistry`], which returns an [`ArrayRef`] that has to be
+/// deserialized.
+///
+/// Therefore, if it can be avoided, this should not be called in hot code paths.
 pub fn typed_fallback_for<C: Component>(
     query_context: &QueryContext<'_>,
     component_descr: &ComponentDescriptor,
@@ -31,10 +37,7 @@ pub fn typed_fallback_for<C: Component>(
         .ok()
         .and_then(|v| v.into_iter().next())
     else {
-        panic!(
-            "Missing fallback provider for `{}`",
-            std::any::type_name::<C>()
-        );
+        panic!("Invalid fallback provider for `{component_descr}`, failed deserializing result.",);
     };
 
     v
@@ -54,11 +57,11 @@ type ComponentFallbackProviderFn =
 /// A registry to handle component fallbacks.
 ///
 /// This has 5 layers of fallbacks:
-/// - First try to use a fallback for the view context and [`ComponentIdentifier`].
-/// - Then try to use a fallback for the [`ComponentIdentifier`].
-/// - Then try to use a fallback for the [`ComponentType`].
-/// - Then try to use the default value registered into our reflection.
-/// - And finally we try to give some sensible value based on the arrow type.
+/// 1. First try to use a fallback for the view type (identified via [`ViewClassIdentifier`]) and [`ComponentIdentifier`].
+/// 2. Then try to use a fallback for the [`ComponentIdentifier`].
+/// 3. Then try to use a fallback for the [`ComponentType`].
+/// 4. Then try to use the default value registered into our reflection.
+/// 5. And finally we try to give some sensible value based on the arrow type.
 ///
 /// The first 3 of those fallbacks are registered to this registry.
 ///
@@ -67,14 +70,14 @@ type ComponentFallbackProviderFn =
 /// the views or visualizers `on_register` function.
 #[derive(Default)]
 pub struct FallbackProviderRegistry {
+    /// Step 1, maps a view class + component identifier to a fallback provider.
     view_component_fallback_providers:
         HashMap<(ViewClassIdentifier, ComponentIdentifier), ComponentFallbackProviderFn>,
 
-    /// Maps component identifier to fallback providers.
+    /// Step 2, maps a component identifier to a fallback provider.
     component_fallback_providers: IntMap<ComponentIdentifier, ComponentFallbackProviderFn>,
 
-    /// Maps component types to fallback descriptors, used if there's no matching
-    /// fallback in `exact_fallback_providers`.
+    /// Step 3, maps a component type to a fallback provider.
     type_fallback_providers: IntMap<ComponentType, ComponentFallbackProviderFn>,
 }
 
@@ -150,7 +153,7 @@ impl FallbackProviderRegistry {
     }
 
     /// Registers a fallback provider function for a given component identifier
-    /// in a specific view.
+    /// in a specific view class type.
     pub fn register_dyn_view_fallback_provider(
         &mut self,
         view: ViewClassIdentifier,
@@ -264,7 +267,6 @@ impl FallbackProviderRegistry {
 /// will return a placeholder for a nulltype otherwise, logging an error.
 /// The rationale is that to get into this situation, we need to know of a component type for which
 /// we don't have a datatype, meaning that we can't make any statement about what data this component should represent.
-// TODO(andreas): Are there cases where this is expected and how to handle this?
 fn placeholder_for(viewer_ctx: &ViewerContext<'_>, component: re_chunk::ComponentType) -> ArrayRef {
     let datatype = if let Some(reflection) = viewer_ctx.reflection().components.get(&component) {
         // It's a builtin type with reflection. We either have custom place holder, or can rely on the known datatype.

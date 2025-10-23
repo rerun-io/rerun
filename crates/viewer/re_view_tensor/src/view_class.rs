@@ -80,6 +80,11 @@ Set the displayed dimensions in a selection panel.",
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
+        system_registry
+            .register_fallback_provider(&TensorScalarMapping::descriptor_colormap(), |_| {
+                Colormap::Viridis
+            });
+
         system_registry.register_visualizer::<TensorSystem>()
     }
 

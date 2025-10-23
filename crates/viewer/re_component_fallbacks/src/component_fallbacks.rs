@@ -1,29 +1,26 @@
 use re_types::{Component as _, archetypes, components, datatypes};
 use re_viewer_context::{
-    ColormapWithRange, FallbackProviderRegistry, ImageDecodeCache, ImageInfo, ImageStatsCache,
-    QueryContext, TensorStats, TensorStatsCache, ViewerContext, auto_color_for_entity_path,
+    ColormapWithRange, FallbackProviderRegistry, ImageInfo, ImageStatsCache, QueryContext,
+    TensorStats, TensorStatsCache, auto_color_for_entity_path,
 };
 
 pub fn type_fallbacks(registry: &mut FallbackProviderRegistry) {
     registry.register_type_fallback_provider::<components::Color>(|ctx| {
         auto_color_for_entity_path(ctx.target_entity_path)
     });
-    registry.register_type_fallback_provider(|_| components::Radius::from(0.5));
-    registry.register_type_fallback_provider(|_| components::HalfSize2D::from([0.5; 2]));
-    registry.register_type_fallback_provider(|_| components::HalfSize3D::from([0.5; 3]));
-    registry.register_type_fallback_provider(|_| components::Vector2D::from([1.0, 0.0]));
-    registry.register_type_fallback_provider(|_| components::Vector3D::from([1.0, 0.0, 0.0]));
-    registry.register_type_fallback_provider(|_| components::Timestamp::from(0));
-    registry.register_type_fallback_provider(|_| components::SeriesVisible::from(true));
     registry.register_type_fallback_provider(|_| archetypes::Pinhole::DEFAULT_CAMERA_XYZ);
     registry.register_type_fallback_provider(|ctx| {
         // If the Pinhole has no resolution, use the resolution for the image logged at the same path.
         // See https://github.com/rerun-io/rerun/issues/3852
-        resolution_of_image_at(ctx.viewer_ctx(), ctx.query, ctx.target_entity_path)
-            // Zero will be seen as invalid resolution by the visualizer, making it opt out of visualization.
-            // TODO(andreas): We should display a warning about this somewhere.
-            // Since it's not a required component, logging a warning about this might be too noisy.
-            .unwrap_or(components::Resolution::from([0.0, 0.0]))
+        re_viewer_context::resolution_of_image_at(
+            ctx.viewer_ctx(),
+            ctx.query,
+            ctx.target_entity_path,
+        )
+        // Zero will be seen as invalid resolution by the visualizer, making it opt out of visualization.
+        // TODO(andreas): We should display a warning about this somewhere.
+        // Since it's not a required component, logging a warning about this might be too noisy.
+        .unwrap_or(components::Resolution::from([0.0, 0.0]))
     });
 }
 
@@ -324,73 +321,6 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
     );
 }
 
-fn resolution_of_image_at(
-    ctx: &ViewerContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
-    entity_path: &re_log_types::EntityPath,
-) -> Option<components::Resolution> {
-    let entity_db = ctx.recording();
-    let storage_engine = entity_db.storage_engine();
-
-    // Check what kind of non-encoded images were logged here, if any.
-    // TODO(andreas): can we do this more efficiently?
-    // TODO(andreas): doesn't take blueprint into account!
-    let all_components = storage_engine
-        .store()
-        .all_components_for_entity(entity_path)?;
-    let image_format_descr = all_components
-        .get(&archetypes::Image::descriptor_format().component)
-        .or_else(|| all_components.get(&archetypes::DepthImage::descriptor_format().component))
-        .or_else(|| {
-            all_components.get(&archetypes::SegmentationImage::descriptor_format().component)
-        });
-
-    if let Some((_, image_format)) = image_format_descr.and_then(|component| {
-        entity_db.latest_at_component::<components::ImageFormat>(entity_path, query, *component)
-    }) {
-        // Normal `Image` archetype
-        return Some(components::Resolution::from([
-            image_format.width as f32,
-            image_format.height as f32,
-        ]));
-    }
-
-    // Check for an encoded image.
-    if let Some(((_time, row_id), blob)) = entity_db
-        .latest_at_component::<re_types::components::Blob>(
-            entity_path,
-            query,
-            archetypes::EncodedImage::descriptor_blob().component,
-        )
-    {
-        let media_type = entity_db
-            .latest_at_component::<components::MediaType>(
-                entity_path,
-                query,
-                archetypes::EncodedImage::descriptor_media_type().component,
-            )
-            .map(|(_, c)| c);
-
-        let image = ctx.store_context.caches.entry(|c: &mut ImageDecodeCache| {
-            c.entry(
-                row_id,
-                archetypes::EncodedImage::descriptor_blob().component,
-                &blob,
-                media_type.as_ref(),
-            )
-        });
-
-        if let Ok(image) = image {
-            return Some(components::Resolution::from([
-                image.format.width as f32,
-                image.format.height as f32,
-            ]));
-        }
-    }
-
-    None
-}
-
 /// Maximum number of labels after which we stop displaying labels for that entity all together,
 /// unless overridden by a [`components::ShowLabels`] component.
 const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
@@ -432,23 +362,10 @@ fn tensor_data_range_heuristic(
     tensor_stats: &TensorStats,
     data_type: re_types::tensor_data::TensorDataType,
 ) -> components::ValueRange {
-    let (min, max) = tensor_stats.finite_range;
+    let (min, max) = re_viewer_context::gpu_bridge::data_range_heuristic(
+        tensor_stats.finite_range,
+        data_type.is_float(),
+    );
 
-    // Apply heuristic for ranges that are typically expected depending on the data type and the finite (!) range.
-    // (we ignore NaN/Inf values heres, since they are usually there by accident!)
-    #[expect(clippy::tuple_array_conversions)]
-    components::ValueRange::from(if data_type.is_float() && 0.0 <= min && max <= 1.0 {
-        // Float values that are all between 0 and 1, assume that this is the range.
-        [0.0, 1.0]
-    } else if 0.0 <= min && max <= 255.0 {
-        // If all values are between 0 and 255, assume this is the range.
-        // (This is very common, independent of the data type)
-        [0.0, 255.0]
-    } else if min == max {
-        // uniform range. This can explode the colormapping, so let's map all colors to the middle:
-        [min - 1.0, max + 1.0]
-    } else {
-        // Use range as is if nothing matches.
-        [min, max]
-    })
+    components::ValueRange::new(min, max)
 }

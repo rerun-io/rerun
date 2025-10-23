@@ -90,9 +90,6 @@ impl ViewerContext<'_> {
     }
 
     /// Runtime info about components and archetypes.
-    ///
-    /// ⚠️ In almost all cases you should not use this directly, but instead use
-    /// [`crate::FallbackProviderRegistry::fallback_for`].
     pub fn reflection(&self) -> &re_types_core::reflection::Reflection {
         self.global_context.reflection
     }

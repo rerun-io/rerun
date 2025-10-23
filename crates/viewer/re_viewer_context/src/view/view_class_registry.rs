@@ -34,12 +34,12 @@ pub enum ViewClassRegistryError {
 }
 
 /// Utility which is passed to visualizer's `on_register`, to register fallbacks.
-pub struct VisualizerFallbackRegistry<'a> {
+pub struct ViewClassFallbackRegistry<'a> {
     identifier: ViewClassIdentifier,
     fallback_registry: &'a mut FallbackProviderRegistry,
 }
 
-impl VisualizerFallbackRegistry<'_> {
+impl ViewClassFallbackRegistry<'_> {
     /// Register a fallback provider specific to the current view
     /// and given component.
     pub fn register_fallback_provider<C: re_types::Component>(
@@ -125,7 +125,7 @@ impl ViewSystemRegistrator<'_> {
                 .entry(T::identifier())
                 .or_insert_with(|| {
                     let visualizer = T::default();
-                    visualizer.on_register(VisualizerFallbackRegistry {
+                    visualizer.on_register(ViewClassFallbackRegistry {
                         identifier: self.identifier,
                         fallback_registry: self.fallback_registry,
                     });

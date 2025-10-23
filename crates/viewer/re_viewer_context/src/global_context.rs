@@ -15,9 +15,6 @@ pub struct GlobalContext<'a> {
     pub app_options: &'a AppOptions,
 
     /// Runtime info about components and archetypes.
-    ///
-    /// ⚠️ In almost all cases you should not use this directly, but instead use
-    /// [`crate::FallbackProviderRegistry::fallback_for`].
     pub reflection: &'a re_types_core::reflection::Reflection,
 
     /// The [`egui::Context`].

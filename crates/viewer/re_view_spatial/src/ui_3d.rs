@@ -98,8 +98,11 @@ fn ease_out(t: f32) -> f32 {
     1. - (1. - t) * (1. - t)
 }
 
-/// Properties stored in blueprint.
-pub struct BlueprintProperties {
+/// Eye properties stored in blueprint.
+///
+/// This is used to get around borrow issues with retrieving these properties
+/// when updating the eye.
+pub struct EyeBlueprintProperties {
     pub speed: f64,
     pub kind: Option<Eye3DKind>,
 }
@@ -125,7 +128,7 @@ impl View3DState {
     fn update_eye(
         &mut self,
         response: &egui::Response,
-        blueprint_properties: BlueprintProperties,
+        blueprint_properties: EyeBlueprintProperties,
         bounding_boxes: &SceneBoundingBoxes,
         space_cameras: &[SpaceCamera3D],
         scene_view_coordinates: Option<ViewCoordinates>,
@@ -463,16 +466,16 @@ impl SpatialView3D {
 
         let view_context = self.view_context(ctx, query.view_id, state);
 
-        let speed = **eye_property
-            .component_or_fallback::<LinearSpeed>(&view_context, &EyeControls3D::descriptor_speed())
-            .unwrap_debug_or_log_error() // Should never fail.
-            .unwrap_or(1.0.into());
+        let speed = **eye_property.component_or_fallback::<LinearSpeed>(
+            &view_context,
+            &EyeControls3D::descriptor_speed(),
+        )?; // Should never fail.
 
         let kind = eye_property
             .component_or_fallback::<Eye3DKind>(&view_context, &EyeControls3D::descriptor_kind())
             .unwrap_debug_or_log_error(); // Should never fail.
 
-        let blueprint_properties = BlueprintProperties { speed, kind };
+        let blueprint_properties = EyeBlueprintProperties { speed, kind };
 
         let (interaction, view_eye) = state.state_3d.update_eye(
             &response,

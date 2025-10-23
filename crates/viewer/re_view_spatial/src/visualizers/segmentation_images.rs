@@ -16,7 +16,7 @@ use crate::{
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
 };
 
-use super::SpatialViewVisualizerData;
+use super::{SpatialViewVisualizerData, utilities};
 
 pub struct SegmentationImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -53,6 +53,13 @@ impl VisualizerSystem for SegmentationImageVisualizer {
     ) -> VisualizableEntities {
         re_tracing::profile_function!();
         filter_visualizable_2d_entities(entities, context)
+    }
+
+    fn on_register(&self, mut fallbacks: re_viewer_context::ViewClassFallbackRegistry<'_>) {
+        fallbacks.register_fallback_provider(
+            &SegmentationImage::descriptor_opacity(),
+            utilities::opacity_fallback(re_types::image::ImageKind::Segmentation),
+        );
     }
 
     fn execute(

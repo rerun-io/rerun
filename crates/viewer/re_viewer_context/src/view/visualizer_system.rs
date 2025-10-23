@@ -5,9 +5,10 @@ use re_chunk::ArchetypeName;
 use re_types::{Archetype, ComponentDescriptor, ComponentIdentifier, ComponentSet};
 
 use crate::{
-    DataBasedVisualizabilityFilter, IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
-    VisualizableEntities, VisualizableFilterContext, VisualizerFallbackRegistry,
+    DataBasedVisualizabilityFilter, IdentifiedViewSystem, MaybeVisualizableEntities,
+    ViewClassFallbackRegistry, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, ViewSystemIdentifier, VisualizableEntities,
+    VisualizableFilterContext,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -85,9 +86,6 @@ impl VisualizerQueryInfo {
 /// Element of a scene derived from a single archetype query.
 ///
 /// Is populated after scene contexts and has access to them.
-///
-/// All visualizers are expected to be able to provide a fallback value for any component they're using
-/// by registering fallbacks to the [`crate::FallbackProviderRegistry`] in the `on_register` method.
 pub trait VisualizerSystem: Send + Sync + 'static {
     // TODO(andreas): This should be able to list out the ContextSystems it needs.
 
@@ -117,8 +115,11 @@ pub trait VisualizerSystem: Send + Sync + 'static {
     }
 
     /// Called just as this visualizer is registered.
+    ///
+    /// This can be useful to register additional component fallbacks that are specific to this visualizer's
+    /// archetype.
     #[expect(unused)]
-    fn on_register(&self, fallbacks: VisualizerFallbackRegistry<'_>) {}
+    fn on_register(&self, fallbacks: ViewClassFallbackRegistry<'_>) {}
 
     /// Queries the chunk store and performs data conversions to make it ready for display.
     ///

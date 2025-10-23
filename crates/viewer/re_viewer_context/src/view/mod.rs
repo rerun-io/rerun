@@ -30,7 +30,7 @@ pub use view_class::{
 };
 pub use view_class_placeholder::ViewClassPlaceholder;
 pub use view_class_registry::{
-    ViewClassRegistry, ViewClassRegistryError, ViewSystemRegistrator, VisualizerFallbackRegistry,
+    ViewClassRegistry, ViewClassRegistryError, ViewSystemRegistrator, ViewClassFallbackRegistry,
 };
 pub use view_context::ViewContext;
 pub use view_context_system::{

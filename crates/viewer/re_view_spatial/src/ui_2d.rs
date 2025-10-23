@@ -157,13 +157,11 @@ impl SpatialView2D {
         //
         // TODO(#6743): We don't have a data-result or the other pieces
         // necessary to properly handle overrides, defaults, or fallbacks.
-        state.pinhole_at_origin =
-            crate::pinhole::query_pinhole_and_view_coordinates_from_store_without_blueprint(
-                ctx,
-                &ctx.current_query(),
-                query.space_origin,
-            )
-            .map(|(pinhole, _view_coordinates)| pinhole);
+        state.pinhole_at_origin = crate::pinhole::query_pinhole_from_store_without_blueprint(
+            ctx,
+            &ctx.current_query(),
+            query.space_origin,
+        );
 
         let (response, painter) =
             ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
