@@ -1,11 +1,12 @@
 //! Data structures describing the contents of the recording panel.
 
 use std::collections::BTreeMap;
+use std::iter;
 use std::sync::Arc;
 use std::task::Poll;
 
 use ahash::HashMap;
-use itertools::Itertools as _;
+use itertools::{Either, Itertools as _};
 
 use re_entity_db::EntityDb;
 use re_entity_db::entity_db::EntityDbClass;
@@ -20,6 +21,9 @@ use re_viewer_context::{DisplayMode, Item, ViewerContext};
 #[derive(Debug)]
 #[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct RecordingPanelData<'a> {
+    /// All the configured servers.
+    pub servers: Vec<ServerData<'a>>,
+
     /// All the locally loaded application IDs and the corresponding recordings.
     pub local_apps: Vec<AppIdData<'a>>,
 
@@ -31,9 +35,6 @@ pub struct RecordingPanelData<'a> {
 
     /// Should the example section be displayed at all?
     pub show_example_section: bool,
-
-    /// All the configured servers.
-    pub servers: Vec<ServerData<'a>>,
 
     /// Recordings that are currently being loaded that we cannot attribute yet to a specific
     /// section.
@@ -148,11 +149,11 @@ impl<'a> RecordingPanelData<'a> {
             .collect();
 
         Self {
+            servers,
             local_apps,
             local_tables,
             example_apps,
             show_example_section,
-            servers,
             loading_receivers,
         }
     }
@@ -162,6 +163,57 @@ impl<'a> RecordingPanelData<'a> {
             && self.local_tables.is_empty()
             && self.example_apps.is_empty()
             && self.servers.is_empty()
+    }
+
+    /// Iterate over all items in the order they are displayed in the recording panel.
+    pub fn iter_items_in_display_order(&'a self) -> impl Iterator<Item = Item> + 'a {
+        let servers = self.servers.iter().flat_map(|s| {
+            let server_iter = iter::once(Item::RedapServer(s.origin.clone()));
+
+            let items = match &s.entries_data {
+                ServerEntriesData::Loaded {
+                    dataset_entries,
+                    table_entries,
+                    failed_entries: _,
+                } => {
+                    let dataset = dataset_entries.iter().flat_map(|dataset| {
+                        let entry = iter::once(Item::RedapEntry(dataset.entry_data.entry_uri()));
+                        let partitions =
+                            dataset.displayed_partitions.iter().filter_map(|partition| {
+                                partition
+                                    .entity_db()
+                                    .map(|entity_db| Item::StoreId(entity_db.store_id().clone()))
+                            });
+                        entry.chain(partitions)
+                    });
+                    let tables = table_entries
+                        .iter()
+                        .map(|table| Item::RedapEntry(table.entry_data.entry_uri()));
+                    Either::Left(dataset.chain(tables))
+                }
+                _ => Either::Right(iter::empty()),
+            };
+
+            server_iter.chain(items)
+        });
+
+        let local_apps = self.local_apps.iter().flat_map(|app| {
+            iter::once(app.item()).chain(
+                app.loaded_recordings
+                    .iter()
+                    .map(|rec| Item::StoreId(rec.entity_db.store_id().clone())),
+            )
+        });
+
+        let example_apps = self.example_apps.iter().flat_map(|app| {
+            iter::once(app.item()).chain(
+                app.loaded_recordings
+                    .iter()
+                    .map(|rec| Item::StoreId(rec.entity_db.store_id().clone())),
+            )
+        });
+
+        servers.chain(local_apps).chain(example_apps)
     }
 }
 
