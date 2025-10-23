@@ -281,13 +281,17 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
 
     fn drag_nth_label(&mut self, label: &str, index: usize) {
         let node = self.get_nth_label(label, index);
-        let event = egui::Event::PointerButton {
-            pos: node.rect().center(),
+
+        let center = node.rect().center();
+        self.event(egui::Event::PointerButton {
+            pos: center,
             button: PointerButton::Primary,
             pressed: true,
             modifiers: Modifiers::NONE,
-        };
-        self.event(event);
+        });
+
+        // It takes a few frames for egui to register this as a "drag".
+        self.run_steps(4);
     }
 
     fn drop_nth_label(&mut self, label: &str, index: usize) {
