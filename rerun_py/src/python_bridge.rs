@@ -312,7 +312,11 @@ impl DurationLike {
 }
 
 /// Defines the different batching thresholds used within the RecordingStream.
-#[pyclass(eq, name = "ChunkBatcherConfig")]
+#[pyclass(
+    eq,
+    name = "ChunkBatcherConfig",
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone, PartialEq, Eq)]
 pub struct PyChunkBatcherConfig(ChunkBatcherConfig);
 
@@ -881,7 +885,13 @@ fn spawn(
     re_sdk::spawn(&spawn_opts).map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
-#[pyclass(frozen, eq, hash, name = "GrpcSink")]
+#[pyclass(
+    frozen,
+    eq,
+    hash,
+    name = "GrpcSink",
+    module = "rerun_bindings.rerun_bindings"
+)]
 struct PyGrpcSink {
     uri: re_uri::ProxyUri,
 }
@@ -914,7 +924,13 @@ impl PyGrpcSink {
     }
 }
 
-#[pyclass(frozen, eq, hash, name = "FileSink")]
+#[pyclass(
+    frozen,
+    eq,
+    hash,
+    name = "FileSink",
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(PartialEq, Hash)]
 struct PyFileSink {
     path: PathBuf,

@@ -11,7 +11,7 @@ use re_protos::common::v1alpha1::TaskId;
 use super::{PyCatalogClientInternal, PyDataFusionTable, to_py_err};
 
 /// A handle on a remote task.
-#[pyclass(name = "Task")] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(name = "Task", module = "rerun_bindings.rerun_bindings")] // NOLINT: skip pyclass_eq, non-trivial implementation
 pub struct PyTask {
     pub client: Py<PyCatalogClientInternal>,
 
@@ -48,7 +48,7 @@ impl PyTask {
 
 #[allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)]
 /// A collection of [`Task`].
-#[pyclass(name = "Tasks")] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(name = "Tasks", module = "rerun_bindings.rerun_bindings")] // NOLINT: skip pyclass_eq, non-trivial implementation
 pub struct PyTasks {
     client: Py<PyCatalogClientInternal>,
 

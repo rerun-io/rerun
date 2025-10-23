@@ -399,9 +399,22 @@ SECTION_TABLE: Final[list[Section]] = [
     ),
     Section(
         title="Catalog",
-        show_tables=False,
+        show_tables=True,
         mod_path="rerun.catalog",
         show_submodules=True,
+        class_list=[
+            "AlreadyExistsError",
+            "DataframeQueryView",
+            "DatasetEntry",
+            "CatalogClient",
+            "Entry",
+            "EntryId",
+            "EntryKind",
+            "NotFoundError",
+            "TableEntry",
+            "Task",
+            "VectorDistanceMetric",
+        ],
     ),
     Section(
         title="Utilities",
