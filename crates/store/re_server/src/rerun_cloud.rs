@@ -14,8 +14,10 @@ use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::ext::{LanceTable, ProviderDetails as _, TableInsertMode};
-use re_protos::cloud::v1alpha1::{CreateTableEntryRequest, CreateTableEntryResponse};
+use re_protos::cloud::v1alpha1::ext::{
+    CreateTableEntryRequest, CreateTableEntryResponse, LanceTable, ProviderDetails as _,
+    TableInsertMode,
+};
 use re_protos::{
     cloud::v1alpha1::{
         DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
@@ -1323,30 +1325,18 @@ impl RerunCloudService for RerunCloudHandler {
 
     async fn create_table_entry(
         &self,
-        request: Request<CreateTableEntryRequest>,
-    ) -> Result<Response<CreateTableEntryResponse>, Status> {
+        request: Request<re_protos::cloud::v1alpha1::CreateTableEntryRequest>,
+    ) -> Result<Response<re_protos::cloud::v1alpha1::CreateTableEntryResponse>, Status> {
         let mut store = self.store.write().await;
 
-        let request = request.into_inner();
-        let table_name = request.name();
+        let request: CreateTableEntryRequest = request.into_inner().try_into()?;
+        let table_name = &request.name;
         let path = &request.uri;
-        let Some(schema) = &request.schema else {
-            return Err(Status::invalid_argument(
-                "Schema must be set on CreateTableEntry",
-            ));
-        };
-        let schema = Arc::new(
-            schema
-                .try_into()
-                .map_err(|err| Status::invalid_argument(format!("{err}")))?,
-        );
+        let schema = Arc::new(request.schema);
 
         let table = store.create_table(table_name, path, schema).await?;
 
-        Ok(CreateTableEntryResponse {
-            table: Some(table.into()),
-        }
-        .into())
+        Ok(Response::new(CreateTableEntryResponse { table }.into()))
     }
 }
 
