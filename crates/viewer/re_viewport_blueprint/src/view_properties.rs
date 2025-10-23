@@ -269,9 +269,9 @@ pub fn entity_path_for_view_property(
     // We want to search the subtree for occurrences of the property archetype here.
     // Only if none is found we make up a new (standardized) path.
     // There's some nuances to figure out what happens when we find the archetype several times.
-    // Also, we need to specify what it means to "find" the archetype (likely just matching the indicator?).
+    // Also, we need to specify what it means to "find" the archetype.
     let view_blueprint_path = view_id.as_entity_path();
 
-    // Use short_name instead of full_name since full_name has dots and looks too much like an indicator component.
+    // Use short_name instead of full_name since full_name has dots.
     view_blueprint_path.join(&EntityPath::from_single_string(archetype_name.short_name()))
 }

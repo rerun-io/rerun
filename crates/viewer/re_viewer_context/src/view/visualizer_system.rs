@@ -46,13 +46,11 @@ pub struct VisualizerQueryInfo {
     pub relevant_archetypes: UnorderedArchetypeSet,
 
     /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
-    ///
-    /// This does not include indicator components.
     pub required: ComponentSet,
 
     /// Returns the list of components that the system _queries_.
     ///
-    /// Must include required, usually excludes indicators.
+    /// Must include required components.
     /// Order should reflect order in archetype docs & user code as well as possible.
     ///
     /// Note that we need full descriptors here in order to write overrides from the UI.
