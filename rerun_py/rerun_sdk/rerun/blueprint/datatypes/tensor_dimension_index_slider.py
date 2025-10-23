@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy.typing as npt
 import pyarrow as pa
@@ -65,13 +65,13 @@ class TensorDimensionIndexSlider(TensorDimensionIndexSliderExt):
 
 
 if TYPE_CHECKING:
-    TensorDimensionIndexSliderLike = Union[TensorDimensionIndexSlider, int]
+    TensorDimensionIndexSliderLike = TensorDimensionIndexSlider | int
 else:
     TensorDimensionIndexSliderLike = Any
 
-TensorDimensionIndexSliderArrayLike = Union[
-    TensorDimensionIndexSlider, Sequence[TensorDimensionIndexSliderLike], npt.ArrayLike
-]
+TensorDimensionIndexSliderArrayLike = (
+    TensorDimensionIndexSlider | Sequence[TensorDimensionIndexSliderLike] | npt.ArrayLike
+)
 
 
 class TensorDimensionIndexSliderBatch(BaseBatch[TensorDimensionIndexSliderArrayLike]):

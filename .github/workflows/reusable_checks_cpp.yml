@@ -57,6 +57,7 @@ jobs:
 
   cpp-tests:
     name: C++ build & test - ${{ matrix.name }}
+    timeout-minutes: 60
     needs: matrix_prep
     strategy:
       matrix: ${{ fromJson(needs.matrix_prep.outputs.MATRIX) }}

@@ -44,6 +44,22 @@ pub struct SortBy {
     pub direction: SortDirection,
 }
 
+impl SortBy {
+    pub fn ascending(col_name: impl Into<String>) -> Self {
+        Self {
+            column_physical_name: col_name.into(),
+            direction: SortDirection::Ascending,
+        }
+    }
+
+    pub fn descending(col_name: impl Into<String>) -> Self {
+        Self {
+            column_physical_name: col_name.into(),
+            direction: SortDirection::Descending,
+        }
+    }
+}
+
 /// Information required to generate a partition link column.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PartitionLinksSpec {

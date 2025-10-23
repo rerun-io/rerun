@@ -15,7 +15,7 @@ namespace rerun.components;
 ///                  4
 /// ```
 table LineStrip3D (
-  "attr.python.aliases": "datatypes.Vec3DArrayLike, npt.NDArray[np.float32]",
+  "attr.python.aliases": "datatypes.Vec3DArrayLike | npt.NDArray[np.float32]",
   "attr.python.array_aliases": "npt.NDArray[np.float32]",
   "attr.rust.derive": "Default, PartialEq"
 ) {

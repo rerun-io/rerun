@@ -1,6 +1,6 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_view_spatial::{SpatialView3D, SpatialViewState};
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
@@ -147,7 +147,6 @@ pub fn test_transform_tree_origins() {
             view_id,
             &format!("transform_tree_origins_{}", origin.replace('/', "_")),
             egui::vec2(400.0, 250.0),
-            500,
         );
     }
 }
@@ -181,11 +180,9 @@ fn run_view_ui_and_save_snapshot(
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
-    num_pixels_allowed_to_deviate: usize,
 ) {
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
+        .setup_kittest_for_rendering_3d(size)
         .build_ui(|ui| {
             test_context.run_ui(ui, |ctx, ui| {
                 // Show axis at the origin to help with orientation.
@@ -210,8 +207,5 @@ fn run_view_ui_and_save_snapshot(
             test_context.handle_system_commands(ui.ctx());
         });
 
-    harness.snapshot_options(
-        name,
-        &SnapshotOptions::new().failed_pixel_count_threshold(num_pixels_allowed_to_deviate),
-    );
+    harness.snapshot(name);
 }

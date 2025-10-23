@@ -1,6 +1,8 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use arrow::compute::SortOptions;
+use arrow::datatypes::Fields;
 use arrow::{
     array::{ArrayRef, ListArray, StringArray},
     datatypes::{DataType, Field, Schema},
@@ -23,6 +25,10 @@ pub trait RecordBatchExt {
     fn format_schema_snapshot(&self) -> String;
 
     fn horizontally_sorted(&self) -> Self;
+
+    fn sort_rows_by(&self, columns: &[&str]) -> Result<Self, DataFusionError>
+    where
+        Self: Sized;
 
     /// Sort the rows of the record batch in ascending order based on the column
     /// order in the schema. To make unit tests consistent when there are no
@@ -102,6 +108,24 @@ impl RecordBatchExt for arrow::array::RecordBatch {
             columns.into_iter().cloned().collect_vec(),
         )
         .unwrap()
+    }
+
+    fn sort_rows_by(&self, columns: &[&str]) -> Result<Self, DataFusionError> {
+        let sort_exprs = columns
+            .iter()
+            .map(|column| {
+                Ok(PhysicalSortExpr::new(
+                    col(column, self.schema_ref())?,
+                    SortOptions::default(),
+                ))
+            })
+            .collect::<Result<Vec<_>, DataFusionError>>()?;
+
+        let Some(ordering) = LexOrdering::new(sort_exprs) else {
+            return Ok(self.clone());
+        };
+
+        datafusion::physical_plan::sorts::sort::sort_batch(self, &ordering, None)
     }
 
     fn auto_sort_rows(&self) -> Result<Self, DataFusionError> {
@@ -278,6 +302,7 @@ impl RecordBatchExt for arrow::array::RecordBatch {
         }
     }
 
+    /// Remove the named columns.
     fn unfiltered_columns(&self, columns: &[&str]) -> Self {
         let schema = self.schema();
         let columns = schema
@@ -291,6 +316,7 @@ impl RecordBatchExt for arrow::array::RecordBatch {
         self.filtered_columns(&columns)
     }
 
+    /// Only keep the named columns.
     fn filtered_columns(&self, columns: &[&str]) -> Self {
         let mut fields = Vec::new();
         let mut arrays = Vec::new();
@@ -374,5 +400,26 @@ impl SchemaExt for arrow::datatypes::Schema {
                 }
             })
             .join("\n")
+    }
+}
+
+pub trait FieldsExt {
+    /// Returns true if all the required fields are present, regardless of the order.
+    fn contains_unordered(
+        &self,
+        required_fields: impl IntoIterator<Item = impl AsRef<Field>>,
+    ) -> bool;
+}
+
+impl FieldsExt for Fields {
+    fn contains_unordered(
+        &self,
+        required_fields: impl IntoIterator<Item = impl AsRef<Field>>,
+    ) -> bool {
+        let fields = self.iter().map(|f| f.as_ref()).collect::<HashSet<_>>();
+
+        required_fields
+            .into_iter()
+            .all(|f| fields.contains(f.as_ref()))
     }
 }

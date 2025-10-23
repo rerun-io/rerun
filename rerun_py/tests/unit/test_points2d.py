@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import pytest
@@ -56,12 +56,12 @@ def test_points2d() -> None:
 
         # make Pyright happy as it's apparently not able to track typing info through zip_longest
         positions = cast("Vec2DArrayLike", positions)
-        radii = cast("Optional[Float32ArrayLike]", radii)
-        colors = cast("Optional[Rgba32ArrayLike]", colors)
-        labels = cast("Optional[Utf8ArrayLike]", labels)
-        draw_order = cast("Optional[Float32ArrayLike]", draw_order)
-        class_ids = cast("Optional[ClassIdArrayLike]", class_ids)
-        keypoint_ids = cast("Optional[KeypointIdArrayLike]", keypoint_ids)
+        radii = cast("Float32ArrayLike | None", radii)
+        colors = cast("Rgba32ArrayLike | None", colors)
+        labels = cast("Utf8ArrayLike | None", labels)
+        draw_order = cast("Float32ArrayLike | None", draw_order)
+        class_ids = cast("ClassIdArrayLike | None", class_ids)
+        keypoint_ids = cast("KeypointIdArrayLike | None", keypoint_ids)
 
         print(
             f"rr.Points2D(\n"

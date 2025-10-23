@@ -62,7 +62,7 @@ TODO(#10422): fix above if ticket is outdated.
 ### Export MP4 from RRD (remuxing)
 
 Sample data from [`VideoStream`](../reference/types/archetypes/video_stream.md) can be queried
-and remuxed to mp4 without re-encoding the video as demonstrated in [this sample](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/archetypes/video_stream_query_and_mux.py#speculative-link).
+and remuxed to mp4 without re-encoding the video as demonstrated in [this sample](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/archetypes/video_stream_query_and_mux.py).
 
 Check the [doc page on retrieving data](../howto/dataframe-api.md) to learn more about dataframe queries in general.
 

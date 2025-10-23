@@ -25,8 +25,6 @@ use crate::{
     },
 };
 
-// TODO(#9832): Support opacity for videos
-// TODO(jan): Fallback opacity in the same way as color/depth/segmentation images
 pub struct VideoStreamVisualizer {
     pub data: SpatialViewVisualizerData,
 }
@@ -80,8 +78,8 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 continue;
             };
 
-            let world_from_entity =
-                transform_info.single_entity_transform_required(entity_path, VideoStream::name());
+            let world_from_entity = transform_info
+                .single_transform_required_for_entity(entity_path, VideoStream::name());
             let query_context = ctx.query_context(data_result, &latest_at);
             let highlight = view_query
                 .highlights
@@ -96,7 +94,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
             let opacity_result = data_result.latest_at_with_blueprint_resolved_data_for_component(
                 ctx,
                 &latest_at,
-                &VideoStream::descriptor_opacity(),
+                VideoStream::descriptor_opacity().component,
             );
             let all_opacities =
                 opacity_result.iter_as(view_query.timeline, VideoStream::descriptor_opacity());

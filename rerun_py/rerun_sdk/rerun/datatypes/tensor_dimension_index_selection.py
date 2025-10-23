@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Union
+from typing import Any
 
 import numpy as np
 import pyarrow as pa
@@ -60,10 +60,7 @@ class TensorDimensionIndexSelection:
 
 
 TensorDimensionIndexSelectionLike = TensorDimensionIndexSelection
-TensorDimensionIndexSelectionArrayLike = Union[
-    TensorDimensionIndexSelection,
-    Sequence[TensorDimensionIndexSelectionLike],
-]
+TensorDimensionIndexSelectionArrayLike = TensorDimensionIndexSelection | Sequence[TensorDimensionIndexSelectionLike]
 
 
 class TensorDimensionIndexSelectionBatch(BaseBatch[TensorDimensionIndexSelectionArrayLike]):

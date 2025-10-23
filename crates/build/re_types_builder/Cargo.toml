@@ -47,7 +47,7 @@ rayon.workspace = true
 serde = { workspace = true, features = ["derive"] }
 syn.workspace = true
 tempfile.workspace = true
-toml = { workspace = true, features = ["parse", "preserve_order"] }
+toml = { workspace = true, features = ["parse", "preserve_order", "serde"] }
 unindent.workspace = true
 xshell.workspace = true
 

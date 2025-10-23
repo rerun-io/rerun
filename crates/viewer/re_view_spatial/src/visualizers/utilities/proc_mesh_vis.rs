@@ -106,11 +106,11 @@ where
         // Draw as many boxes as we have max(instances, boxes), all components get repeated over that number.
         // TODO(#7026): We should formalize this kind of hybrid joining better.
 
-        let reference_from_instances = ent_context
+        let target_from_instances = ent_context
             .transform_info
-            .reference_from_instances(archetype_name);
+            .target_from_instances(archetype_name);
 
-        let num_instances = batch.half_sizes.len().max(reference_from_instances.len());
+        let num_instances = batch.half_sizes.len().max(target_from_instances.len());
 
         re_tracing::profile_function_if!(10_000 < num_instances);
 
@@ -148,9 +148,9 @@ where
 
         let mut world_space_bounding_box = macaw::BoundingBox::nothing();
 
-        let world_from_instances = reference_from_instances
+        let world_from_instances = target_from_instances
             .iter()
-            .chain(std::iter::repeat(reference_from_instances.last()))
+            .chain(std::iter::repeat(target_from_instances.last()))
             .copied();
 
         let mut num_instances = 0;
@@ -247,9 +247,9 @@ where
                 entity_path,
                 num_instances,
                 overall_position: world_space_bounding_box.center(),
-                instance_positions: reference_from_instances
+                instance_positions: target_from_instances
                     .iter()
-                    .chain(std::iter::repeat(reference_from_instances.last()))
+                    .chain(std::iter::repeat(target_from_instances.last()))
                     .map(|t| t.translation.into()),
                 labels: batch.labels,
                 colors: &colors,

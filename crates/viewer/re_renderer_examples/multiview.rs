@@ -163,9 +163,9 @@ struct Multiview {
 
 fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
     Hsva {
-        h: rnd.r#gen::<f32>(),
-        s: rnd.r#gen::<f32>() * 0.5 + 0.5,
-        v: rnd.r#gen::<f32>() * 0.5 + 0.5,
+        h: rnd.random::<f32>(),
+        s: rnd.random::<f32>() * 0.5 + 0.5,
+        v: rnd.random::<f32>() * 0.5 + 0.5,
         a: 1.0,
     }
     .into()
@@ -254,14 +254,14 @@ impl Example for Multiview {
         let random_points_positions = (0..point_count)
             .map(|_| {
                 glam::vec3(
-                    rnd.gen_range(random_point_range.clone()),
-                    rnd.gen_range(random_point_range.clone()),
-                    rnd.gen_range(random_point_range.clone()),
+                    rnd.random_range(random_point_range.clone()),
+                    rnd.random_range(random_point_range.clone()),
+                    rnd.random_range(random_point_range.clone()),
                 )
             })
             .collect_vec();
         let random_points_radii = (0..point_count)
-            .map(|_| Size::new_scene_units(rnd.gen_range(0.005..0.05)))
+            .map(|_| Size::new_scene_units(rnd.random_range(0.005..0.05)))
             .collect_vec();
         let random_points_colors = (0..point_count)
             .map(|_| random_color(&mut rnd))
@@ -274,7 +274,7 @@ impl Example for Multiview {
             .iter()
             .flat_map(|p| {
                 model_mesh_instances.iter().map(|_| {
-                    let mut rnd = rand::thread_rng();
+                    let mut rnd = rand::rng();
                     (*p, random_color(&mut rnd))
                 })
             })

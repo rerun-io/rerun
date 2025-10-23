@@ -132,7 +132,7 @@ impl McapChunkDecoder {
             parser.append(ctx, msg)?;
             ctx.add_timepoint(timepoint.clone());
         } else {
-            // TODO(#10867): If we encounter a message that we can't parse at all we should emit a warning.
+            // TODO(#10862): If we encounter a message that we can't parse at all we should emit a warning.
             // Note that this quite easy to achieve when using layers and only selecting a subset.
             // However, to not overwhelm the user this should be reported in a _single_ static chunk,
             // so this is not the right place for this. Maybe we need to introduce something like a "report".

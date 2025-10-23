@@ -216,7 +216,23 @@ impl BlueprintTree {
                     container_data.name.as_ref()
                 ))
                 .label_style(contents_name_style(&container_data.name))
-                .with_icon(icon_for_container_kind(&container_data.kind)),
+                .with_icon(icon_for_container_kind(&container_data.kind))
+                .subdued(!container_data.visible)
+                .with_buttons(|ui| {
+                    // If this has been hidden in a blueprint we want to be
+                    // able to make it visible again in the viewer.
+                    if !container_data.visible {
+                        let mut visible_after = container_data.visible;
+                        visibility_button_ui(ui, true, &mut visible_after);
+                        if visible_after != container_data.visible {
+                            viewport_blueprint.set_content_visibility(
+                                ctx,
+                                &Contents::Container(viewport_blueprint.root_container),
+                                visible_after,
+                            );
+                        }
+                    }
+                }),
             );
 
         for child in &container_data.children {
@@ -226,7 +242,7 @@ impl BlueprintTree {
                 blueprint_tree_data,
                 ui,
                 child,
-                true,
+                container_data.visible,
             );
         }
 
@@ -670,6 +686,10 @@ impl BlueprintTree {
         item: &Item,
     ) {
         if ctx.selection_state().selected_items().single_item() != Some(item) {
+            return;
+        }
+        // Don't do keyboard navigation if something is focused
+        if ctx.egui_ctx().memory(|mem| mem.focused().is_some()) {
             return;
         }
 

@@ -37,7 +37,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     let mut image = Array::<u8, _>::default((3, 3, 3).f());
 ///     let mut rng = rand::rngs::SmallRng::seed_from_u64(42);
-///     image.map_inplace(|x| *x = rng.r#gen());
+///     image.map_inplace(|x| *x = rng.random());
 ///
 ///     rec.log(
 ///         "world/image",

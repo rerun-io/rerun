@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -47,11 +47,11 @@ class Blob(BlobExt):
 
 
 if TYPE_CHECKING:
-    BlobLike = Union[Blob, bytes, npt.NDArray[np.uint8]]
+    BlobLike = Blob | bytes | npt.NDArray[np.uint8]
 else:
     BlobLike = Any
 
-BlobArrayLike = Union[Blob, Sequence[BlobLike], bytes, npt.NDArray[np.uint8]]
+BlobArrayLike = Blob | Sequence[BlobLike] | bytes | npt.NDArray[np.uint8]
 
 
 class BlobBatch(BaseBatch[BlobArrayLike]):

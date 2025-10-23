@@ -74,7 +74,7 @@ pub fn allocate_plot_points(
 
     let points = all_scalar_chunks
         .iter()
-        .flat_map(|chunk| chunk.iter_component_indices(query.timeline()))
+        .flat_map(|chunk| chunk.iter_component_indices(*query.timeline()))
         .map(|(data_time, _)| PlotPoint {
             time: data_time.as_i64(),
             ..default_point.clone()
@@ -158,7 +158,7 @@ pub fn collect_colors(
         re_tracing::profile_scope!("override/default fast path");
 
         if let Some(colors) = all_color_chunks[0]
-            .iter_slices::<u32>(color_descriptor.clone())
+            .iter_slices::<u32>(color_descriptor.component)
             .next()
         {
             for (points, color) in points_per_series
@@ -195,8 +195,8 @@ pub fn collect_colors(
 
         let all_colors = all_color_chunks.iter().flat_map(|chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(query.timeline(), color_descriptor),
-                chunk.iter_slices::<u32>(color_descriptor.clone())
+                chunk.iter_component_indices(*query.timeline(), color_descriptor.component),
+                chunk.iter_slices::<u32>(color_descriptor.component)
             )
         });
 
@@ -243,7 +243,11 @@ pub fn collect_series_name(
         .iter()
         .chain(results.get_optional_chunks(name_descriptor.clone()).iter())
         .find(|chunk| !chunk.is_empty())
-        .and_then(|chunk| chunk.iter_slices::<String>(name_descriptor.clone()).next())
+        .and_then(|chunk| {
+            chunk
+                .iter_slices::<String>(name_descriptor.component)
+                .next()
+        })
         .map(|slice| slice.into_iter().map(|s| s.to_string()).collect())
         .unwrap_or_default();
 
@@ -292,7 +296,7 @@ pub fn collect_radius_ui(
             re_tracing::profile_scope!("override/default fast path");
 
             if let Some(radius) = all_radius_chunks[0]
-                .iter_slices::<f32>(radius_descriptor.clone())
+                .iter_slices::<f32>(radius_descriptor.component)
                 .next()
             {
                 for (points, radius) in points_per_series
@@ -310,8 +314,8 @@ pub fn collect_radius_ui(
 
             let all_radii = all_radius_chunks.iter().flat_map(|chunk| {
                 itertools::izip!(
-                    chunk.iter_component_indices(query.timeline(), radius_descriptor),
-                    chunk.iter_slices::<f32>(radius_descriptor.clone())
+                    chunk.iter_component_indices(*query.timeline(), radius_descriptor.component),
+                    chunk.iter_slices::<f32>(radius_descriptor.component)
                 )
             });
 
@@ -349,7 +353,7 @@ pub fn all_scalars_indices<'a>(
 ) -> impl Iterator<Item = ((TimeInt, RowId), ())> + 'a {
     all_scalar_chunks
         .iter()
-        .flat_map(|chunk| chunk.iter_component_indices(query.timeline()))
+        .flat_map(|chunk| chunk.iter_component_indices(*query.timeline()))
         // That is just so we can satisfy the `range_zip` contract later on.
         .map(|index| (index, ()))
 }

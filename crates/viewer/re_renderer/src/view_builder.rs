@@ -697,24 +697,16 @@ impl ViewBuilder {
 
         // Renderers and render pipelines are locked for the entirety of this method:
         // This means it's *not* possible to add renderers or pipelines while drawing is in progress!
-        //
-        // This is primarily due to the lifetime association render passes have all passed in resources:
-        // For dynamic resources like bind groups/textures/buffers we use handles that *store* an arc
-        // to the wgpu resources to solve this ownership problem.
-        // But for render pipelines, which we want to be able the resource under a handle via reload,
-        // so we always have to do some kind of lookup prior to or during rendering.
-        // Therefore, we just lock the pool for the entirety of the draw which ensures
-        // that the lock outlives the pass.
-        //
         // Renderers can't be added anyways at this point (RendererData add their Renderer on creation),
         // so no point in taking the lock repeatedly.
         //
-        // TODO(gfx-rs/wgpu#1453): Note that this is a limitation that will be lifted in future versions of wgpu.
+        // This used to be due to the lifetime association render passes had all passed in resources,
+        // this restriction has been lifted by now in wgpu.
         // However, having our locking concentrated for the duration of a view draw
         // is also beneficial since it enforces the model of prepare->draw which avoids a lot of repeated
         // locking and unlocking.
         //
-        // TODO(andreas): Above limitation has been lifted by now. We can lift some of the restrictions now!
+        // TODO(andreas): No longer having those lifetime issues with wgpu may still save us some locking though?
 
         let renderers = ctx.read_lock_renderers();
         let pipelines = ctx.gpu_resources.render_pipelines.resources();

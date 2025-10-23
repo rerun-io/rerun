@@ -199,9 +199,8 @@ impl SeriesLinesSystem {
                 None,
                 &query,
                 data_result,
-                archetypes::Scalars::all_components()
-                    .iter()
-                    .chain(archetypes::SeriesLines::all_components().iter()),
+                archetypes::Scalars::all_component_identifiers()
+                    .chain(archetypes::SeriesLines::all_component_identifiers()),
             );
 
             // If we have no scalars, we can't do anything.
@@ -245,7 +244,7 @@ impl SeriesLinesSystem {
                 None,
                 &LatestAtQuery::new(query.timeline, query.range.min()),
                 data_result,
-                archetypes::SeriesLines::all_components().iter(),
+                archetypes::SeriesLines::all_component_identifiers(),
                 query_shadowed_components,
             );
 
@@ -281,7 +280,7 @@ impl SeriesLinesSystem {
                 .find(|chunk| !chunk.is_empty())
                 .and_then(|chunk| {
                     chunk
-                        .component_mono::<AggregationPolicy>(&aggregation_policy_descr, 0)?
+                        .component_mono::<AggregationPolicy>(aggregation_policy_descr.component, 0)?
                         .ok()
                 })
                 // TODO(andreas): Relying on the default==placeholder here instead of going through a fallback provider.
@@ -400,7 +399,7 @@ fn collect_recursive_clears(
         let results = ctx.recording_engine().cache().latest_at(
             &LatestAtQuery::new(query.timeline, query.range.min()),
             &clear_entity_path,
-            [&clear_descriptor],
+            [clear_descriptor.component],
         );
 
         cleared_indices.extend(
@@ -416,10 +415,11 @@ fn collect_recursive_clears(
     }
 
     loop {
-        let results =
-            ctx.recording_engine()
-                .cache()
-                .range(query, &clear_entity_path, [&clear_descriptor]);
+        let results = ctx.recording_engine().cache().range(
+            query,
+            &clear_entity_path,
+            [clear_descriptor.component],
+        );
 
         cleared_indices.extend(
             results

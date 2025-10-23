@@ -5,9 +5,10 @@ use nohash_hasher::IntSet;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_tf::query_view_coordinates;
-use re_types::blueprint::archetypes::{EyeControls3D, LineGrid3D};
-use re_types::components;
-use re_types::{Component as _, View as _, ViewClassIdentifier, blueprint::archetypes::Background};
+use re_types::{
+    Component as _, View as _, ViewClassIdentifier, archetypes,
+    blueprint::archetypes::{Background, EyeControls3D, LineGrid3D},
+};
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
@@ -285,11 +286,12 @@ impl ViewClass for SpatialView3D {
         // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
         let engine = ctx.recording_engine();
         ctx.recording().tree().visit_children_recursively(|path| {
-            // TODO(#2663): Note that the view coordinates component may be logged by different archetypes which is why we do a name query here.
-            if !engine
-                .store()
-                .entity_component_descriptors_with_type(path, components::ViewCoordinates::name())
-                .is_empty()
+            if let Some(components) = engine.store().all_components_for_entity(path)
+                && components.into_iter().any(|component| {
+                    // TODO(#2663): Note that the view coordinates component may be logged by different archetypes.
+                    component == archetypes::Pinhole::descriptor_camera_xyz().component
+                        || component == archetypes::ViewCoordinates::descriptor_xyz().component
+                })
             {
                 indicated_entities.insert(path.clone());
             }

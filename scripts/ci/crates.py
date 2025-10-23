@@ -573,7 +573,7 @@ class Target(Enum):
 
 
 def get_release_version_from_git_branch() -> str:
-    return git.Repo().active_branch.name.removeprefix("release-")
+    return git.Repo().active_branch.name.removeprefix("prepare-release-")
 
 
 def get_version(target: Target | None, skip_prerelease: bool = False) -> VersionInfo:
@@ -583,7 +583,7 @@ def get_version(target: Target | None, skip_prerelease: bool = False) -> Version
             current_version = VersionInfo.parse(branch_name)  # ensures that it is a valid version
         except ValueError:
             print(f"the current branch `{branch_name}` does not specify a valid version.")
-            print("this script expects the format `release-x.y.z-meta.N`")
+            print("this script expects the format `prepare-release-x.y.z-meta.N`")
             sys.exit(1)
     elif target is Target.CratesIo:
         latest_published_version = get_latest_published_version("rerun", skip_prerelease)

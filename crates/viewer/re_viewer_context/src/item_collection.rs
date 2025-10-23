@@ -217,6 +217,8 @@ impl ItemCollection {
             .iter()
             .filter_map(|(item, _)| match item {
                 Item::Container(_) => None,
+                // TODO(gijsd): These are copyable, but we're currently unable to display a meaningful toast.
+                Item::ComponentPath(_) => None,
                 Item::View(_) => None,
                 // TODO(lucasmerlin): Should these be copyable as URLs?
                 Item::RedapServer(_) => None,
@@ -252,10 +254,6 @@ impl ItemCollection {
                 Item::DataResult(_, instance_path) | Item::InstancePath(instance_path) => Some((
                     ClipboardTextDesc::EntityPath,
                     instance_path.entity_path.to_string(),
-                )),
-                Item::ComponentPath(component_path) => Some((
-                    ClipboardTextDesc::EntityPath,
-                    component_path.entity_path.to_string(),
                 )),
             })
             .chunk_by(|(desc, _)| *desc);

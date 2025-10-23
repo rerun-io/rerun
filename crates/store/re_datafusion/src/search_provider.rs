@@ -9,7 +9,6 @@ use datafusion::{
 use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
-use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_protos::{
     cloud::v1alpha1::{SearchDatasetRequest, SearchDatasetResponse},
@@ -76,7 +75,7 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
         let mut client = self.client.clone();
         let dataset_id = self.dataset_id;
 
-        let schema = make_future_send(async move {
+        let rb: RecordBatch = make_future_send(async move {
             Ok::<_, DataFusionError>(
                 client
                     .inner()
@@ -101,11 +100,10 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
         .ok_or(DataFusionError::Execution(
             "Empty data from search results".to_owned(),
         ))?
-        .decode()
-        .map_err(|err| DataFusionError::External(Box::new(err)))?
-        .schema();
+        .try_into()
+        .map_err(|err| DataFusionError::External(Box::new(err)))?;
 
-        Ok(schema)
+        Ok(rb.schema())
     }
 
     #[instrument(skip(self), err)]
@@ -132,7 +130,7 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
             .ok_or(DataFusionError::Execution(
                 "DataFrame missing from SearchDataResponse response".to_owned(),
             ))?
-            .decode()
+            .try_into()
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }
 }

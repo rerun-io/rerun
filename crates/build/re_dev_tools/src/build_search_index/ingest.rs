@@ -89,7 +89,7 @@ impl Context {
         self.metadata
             .packages
             .iter()
-            .find(|pkg| pkg.name == "rerun")
+            .find(|pkg| pkg.name.as_str() == "rerun")
             .unwrap()
     }
 
