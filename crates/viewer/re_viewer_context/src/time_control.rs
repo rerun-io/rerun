@@ -563,18 +563,14 @@ impl TimeControl {
 
                     if more_data_is_coming {
                         // then let's wait for it without pausing!
-                        let mut response = TimeControlResponse::no_repaint(); // ui will wake up when more data arrives
-
-                        let should_diff_state = should_diff_state
-                            && times_per_timeline
-                                .get(self.timeline.name())
-                                .is_some_and(|stats| !stats.per_time.is_empty());
-
-                        if should_diff_state {
-                            self.diff_with(&mut response, old_timeline, old_playing, old_state);
-                        }
-
-                        return response;
+                        return self.apply_state_diff_if_needed(
+                            TimeControlResponse::no_repaint(), // ui will wake up when more data arrives
+                            should_diff_state,
+                            times_per_timeline,
+                            old_timeline,
+                            old_playing,
+                            old_state,
+                        );
                     } else {
                         self.pause();
                         return TimeControlResponse::no_repaint();
@@ -633,14 +629,33 @@ impl TimeControl {
             }
         };
 
-        let mut response = TimeControlResponse::new(needs_repaint);
+        self.apply_state_diff_if_needed(
+            TimeControlResponse::new(needs_repaint),
+            should_diff_state,
+            times_per_timeline,
+            old_timeline,
+            old_playing,
+            old_state,
+        )
+    }
 
-        // Only diff if the caller asked for it, _and_ we have some times on the timeline.
-        let should_diff_state = should_diff_state
+    /// Apply state diff to response if needed.
+    fn apply_state_diff_if_needed(
+        &mut self,
+        response: TimeControlResponse,
+        should_diff_state: bool,
+        times_per_timeline: &TimesPerTimeline,
+        old_timeline: Timeline,
+        old_playing: bool,
+        old_state: Option<TimeState>,
+    ) -> TimeControlResponse {
+        let mut response = response;
+
+        if should_diff_state
             && times_per_timeline
                 .get(self.timeline.name())
-                .is_some_and(|stats| !stats.per_time.is_empty());
-        if should_diff_state {
+                .is_some_and(|stats| !stats.per_time.is_empty())
+        {
             self.diff_with(&mut response, old_timeline, old_playing, old_state);
         }
 
