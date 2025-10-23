@@ -163,13 +163,3 @@ struct GainedFocusViaArrowKey {
     widget_id: Id,
     focused_on_pass: u64,
 }
-
-// We need a default impl for remove_temp
-impl Default for GainedFocusViaArrowKey {
-    fn default() -> Self {
-        Self {
-            widget_id: Id::NULL,
-            focused_on_pass: 0,
-        }
-    }
-}
