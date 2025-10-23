@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import requests
+import tomlkit
 from frontmatter import load_frontmatter
 from PIL import Image
 
@@ -50,6 +51,12 @@ def get_thumbnail_dimensions(thumbnail: str) -> tuple[int, int]:
 
     # This should never be reached due to the raise in the loop
     raise RuntimeError("Unexpected retry loop exit")
+
+
+def load_ignored_examples() -> set[str]:
+    manifest_path = Path("examples/manifest.toml")
+    manifest = tomlkit.loads(manifest_path.read_text(encoding="utf-8"))
+    return set(manifest.get("ignored", {}).get("examples", []))
 
 
 def examples_with_thumbnails() -> Generator[Example, None, None]:
@@ -101,6 +108,39 @@ def update() -> None:
 
 def check() -> None:
     bad = False
+    ignored = load_ignored_examples()
+
+    # Check that non-ignored examples have thumbnails (only check default language: python > cpp > rust)
+    # NOTE: This language priority must match the logic in the rerun-io/landing repo:
+    # https://github.com/rerun-io/landing/blob/main/src/lib/lang.ts
+    example_names = set()
+    for lang in ["python", "rust", "cpp", "c"]:
+        lang_dir = Path(f"examples/{lang}")
+        if lang_dir.exists():
+            for path in lang_dir.iterdir():
+                if path.is_dir() and (path / "README.md").exists():
+                    example_names.add(path.name)
+
+    for name in sorted(example_names):
+        if name in ignored:
+            continue
+
+        # Find default language version (python > cpp > rust)
+        default_path = None
+        for lang in ["python", "cpp", "rust"]:
+            path = Path(f"examples/{lang}/{name}")
+            if (path / "README.md").exists():
+                default_path = path
+                break
+
+        if default_path:
+            readme = (default_path / "README.md").read_text(encoding="utf-8")
+            fm = load_frontmatter(readme)
+            if fm is None or not fm.get("thumbnail") or not fm.get("thumbnail_dimensions"):
+                print(f"{default_path} is missing `thumbnail` and/or `thumbnail_dimensions`")
+                bad = True
+
+    # Check that existing thumbnail dimensions are correct (all languages)
     with ThreadPoolExecutor() as ex:
 
         def work(example: Example) -> None:
