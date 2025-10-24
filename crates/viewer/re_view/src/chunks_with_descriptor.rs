@@ -22,22 +22,22 @@ pub struct ChunksWithComponent<'chunk> {
 
 impl ChunksWithComponent<'_> {
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = ChunkWithDescriptor<'_>> {
-        self.chunks.iter().map(move |chunk| ChunkWithDescriptor {
+    pub fn iter(&self) -> impl Iterator<Item = ChunkWithComponent<'_>> {
+        self.chunks.iter().map(move |chunk| ChunkWithComponent {
             chunk,
             component: self.component,
         })
     }
 }
 
-/// Like [`ChunksWithDescriptor`] but for a single chunk.
+/// Like [`ChunksWithComponent`] but for a single chunk.
 #[derive(Debug, Clone, Copy)]
-pub struct ChunkWithDescriptor<'chunk> {
+pub struct ChunkWithComponent<'chunk> {
     pub chunk: &'chunk Chunk,
     pub component: ComponentIdentifier,
 }
 
-impl<'chunk> ChunkWithDescriptor<'chunk> {
+impl<'chunk> ChunkWithComponent<'chunk> {
     /// See [`Chunk::iter_component_indices`].
     #[inline]
     pub fn iter_component_indices(
