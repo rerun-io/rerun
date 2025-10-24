@@ -383,32 +383,42 @@ pub trait SchemaExt {
 
 impl SchemaExt for arrow::datatypes::Schema {
     fn format_snapshot(&self) -> String {
+        let metadata = (!self.metadata().is_empty()).then(|| {
+            format!(
+                "top-level metadata: [\n    {}\n]",
+                self.metadata()
+                    .iter()
+                    .map(|(k, v)| format!("{k}:{v}"))
+                    .sorted()
+                    .join("\n    ")
+            )
+        });
+
         let mut fields = self.fields.iter().collect_vec();
         fields.sort_by(|a, b| a.name().cmp(b.name()));
-        fields
-            .into_iter()
-            .map(|field| {
-                if field.metadata().is_empty() {
-                    format!(
-                        "{}: {}",
-                        field.name(),
-                        re_arrow_util::format_data_type(field.data_type())
-                    )
-                } else {
-                    format!(
-                        "{}: {} [\n    {}\n]",
-                        field.name(),
-                        re_arrow_util::format_data_type(field.data_type()),
-                        field
-                            .metadata()
-                            .iter()
-                            .map(|(k, v)| format!("{k}:{v}"))
-                            .sorted()
-                            .join("\n    ")
-                    )
-                }
-            })
-            .join("\n")
+        let fields = fields.into_iter().map(|field| {
+            if field.metadata().is_empty() {
+                format!(
+                    "{}: {}",
+                    field.name(),
+                    re_arrow_util::format_data_type(field.data_type())
+                )
+            } else {
+                format!(
+                    "{}: {} [\n    {}\n]",
+                    field.name(),
+                    re_arrow_util::format_data_type(field.data_type()),
+                    field
+                        .metadata()
+                        .iter()
+                        .map(|(k, v)| format!("{k}:{v}"))
+                        .sorted()
+                        .join("\n    ")
+                )
+            }
+        });
+
+        metadata.into_iter().chain(fields).join("\n")
     }
 }
 

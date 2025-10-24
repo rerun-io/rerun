@@ -491,7 +491,7 @@ impl ViewerOpenUrl {
 
         match self {
             Self::IntraRecordingSelection(item) => {
-                command_sender.send_system(SystemCommand::SetSelection(item.into()));
+                command_sender.send_system(SystemCommand::set_selection(item));
             }
             Self::RrdHttpUrl(url) => {
                 command_sender.send_system(SystemCommand::LoadDataSource(
@@ -522,20 +522,18 @@ impl ViewerOpenUrl {
                 command_sender.send_system(SystemCommand::LoadDataSource(
                     LogDataSource::RedapProxy(proxy_uri.clone()),
                 ));
-                command_sender.send_system(SystemCommand::SetSelection(
-                    Item::RedapServer(proxy_uri.origin).into(),
-                ));
+                command_sender.send_system(SystemCommand::set_selection(Item::RedapServer(
+                    proxy_uri.origin,
+                )));
             }
             Self::RedapCatalog(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-                command_sender.send_system(SystemCommand::SetSelection(
-                    Item::RedapServer(uri.origin).into(),
-                ));
+                command_sender
+                    .send_system(SystemCommand::set_selection(Item::RedapServer(uri.origin)));
             }
             Self::RedapEntry(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-                command_sender
-                    .send_system(SystemCommand::SetSelection(Item::RedapEntry(uri).into()));
+                command_sender.send_system(SystemCommand::set_selection(Item::RedapEntry(uri)));
             }
             Self::WebEventListener => {
                 handle_web_event_listener(egui_ctx, command_sender);

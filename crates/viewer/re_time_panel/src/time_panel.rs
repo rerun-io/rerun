@@ -1,4 +1,3 @@
-use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use egui::emath::Rangef;
@@ -1077,116 +1076,13 @@ impl TimePanel {
             SelectionUpdateBehavior::UseSelection,
         );
         ctx.handle_select_hover_drag_interactions(response, item.clone(), is_draggable);
+        ctx.handle_select_focus_sync(response, item.clone());
 
         self.handle_range_selection(ctx, streams_tree_data, entity_db, item.clone(), response);
-
-        self.handle_key_navigation(ctx, streams_tree_data, entity_db, &item);
 
         if Some(item) == self.scroll_to_me_item {
             response.scroll_to_me(None);
             self.scroll_to_me_item = None;
-        }
-    }
-
-    fn handle_key_navigation(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        streams_tree_data: &StreamsTreeData,
-        entity_db: &re_entity_db::EntityDb,
-        item: &Item,
-    ) {
-        if ctx.selection_state().selected_items().single_item() != Some(item) {
-            return;
-        }
-        // Don't do keyboard navigation if something is focused
-        if ctx.egui_ctx().memory(|mem| mem.focused().is_some()) {
-            return;
-        }
-
-        if ctx
-            .egui_ctx()
-            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight))
-            && let Some(collapse_id) = self.collapse_scope().item(item.clone())
-        {
-            collapse_id.set_open(ctx.egui_ctx(), true);
-        }
-
-        if ctx
-            .egui_ctx()
-            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft))
-            && let Some(collapse_id) = self.collapse_scope().item(item.clone())
-        {
-            collapse_id.set_open(ctx.egui_ctx(), false);
-        }
-
-        if ctx
-            .egui_ctx()
-            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
-        {
-            let mut found_current = false;
-
-            let result = streams_tree_data.visit(ctx, entity_db, |entity_or_component| {
-                let tree_item = entity_or_component.item();
-                let is_item_collapsed =
-                    !entity_or_component.is_open(ctx.egui_ctx(), self.collapse_scope());
-
-                if &tree_item == item {
-                    found_current = true;
-
-                    return if is_item_collapsed {
-                        VisitorControlFlow::SkipBranch
-                    } else {
-                        VisitorControlFlow::Continue
-                    };
-                }
-
-                if found_current {
-                    VisitorControlFlow::Break(Some(tree_item))
-                } else if is_item_collapsed {
-                    VisitorControlFlow::SkipBranch
-                } else {
-                    VisitorControlFlow::Continue
-                }
-            });
-
-            if let ControlFlow::Break(Some(item)) = result {
-                ctx.command_sender()
-                    .send_system(SystemCommand::SetSelection(item.clone().into()));
-                self.scroll_to_me_item = Some(item.clone());
-                self.range_selection_anchor_item = Some(item);
-            }
-        }
-
-        if ctx
-            .egui_ctx()
-            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp))
-        {
-            let mut last_item = None;
-
-            let result = streams_tree_data.visit(ctx, entity_db, |entity_or_component| {
-                let tree_item = entity_or_component.item();
-                let is_item_collapsed =
-                    !entity_or_component.is_open(ctx.egui_ctx(), self.collapse_scope());
-
-                if &tree_item == item {
-                    return VisitorControlFlow::Break(last_item.clone());
-                }
-
-                last_item = Some(tree_item);
-
-                if is_item_collapsed {
-                    VisitorControlFlow::SkipBranch
-                } else {
-                    VisitorControlFlow::Continue
-                }
-            });
-
-            if let ControlFlow::Break(Some(item)) = result {
-                ctx.command_sender()
-                    .send_system(SystemCommand::SetSelection(item.clone().into()));
-                self.scroll_to_me_item = Some(item.clone());
-                self.range_selection_anchor_item = Some(item);
-            }
         }
     }
 
@@ -1238,10 +1134,10 @@ impl TimePanel {
                         let mut selection = ctx.selection().clone();
                         selection.extend(items);
                         ctx.command_sender()
-                            .send_system(SystemCommand::SetSelection(selection));
+                            .send_system(SystemCommand::set_selection(selection));
                     } else {
                         ctx.command_sender()
-                            .send_system(SystemCommand::SetSelection(items));
+                            .send_system(SystemCommand::set_selection(items));
                     }
                 }
             }

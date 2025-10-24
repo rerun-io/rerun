@@ -119,7 +119,6 @@ impl Dataset {
         self.partitions.keys().cloned()
     }
 
-    //TODO(RR-2604): add support for property columns
     pub fn partition_table(&self) -> Result<RecordBatch, Error> {
         let row_count = self.partitions.len();
 

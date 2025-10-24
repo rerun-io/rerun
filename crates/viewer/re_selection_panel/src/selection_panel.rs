@@ -1,4 +1,4 @@
-use egui::{NumExt as _, TextBuffer};
+use egui::{NumExt as _, TextBuffer, WidgetInfo, WidgetType};
 use egui_tiles::ContainerKind;
 
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
@@ -67,8 +67,10 @@ impl SelectionPanel {
                 ..Default::default()
             });
 
-        // Always reset the VH highlight, and let the UI re-set it if needed.
-        ctx.send_time_commands([TimeControlCommand::ClearHighlightedRange]);
+        if ctx.time_ctrl.highlighted_range.is_some() {
+            // Always reset the VH highlight, and let the UI re-set it if needed.
+            ctx.send_time_commands([TimeControlCommand::ClearHighlightedRange]);
+        }
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
             ui.panel_content(|ui| {
@@ -575,7 +577,7 @@ fn clone_view_button_ui(
             .on_click(|| {
                 if let Some(new_view_id) = viewport.duplicate_view(&view_id, ctx) {
                     ctx.command_sender()
-                        .send_system(SystemCommand::SetSelection(Item::View(new_view_id).into()));
+                        .send_system(SystemCommand::set_selection(Item::View(new_view_id)));
                     viewport.mark_user_interaction(ctx);
                 }
             })
@@ -968,7 +970,8 @@ fn container_kind_selection_ui(ui: &mut egui::Ui, in_out_kind: &mut ContainerKin
                 *in_out_kind = kind;
             }
         }
-    });
+    })
+    .widget_info(|| WidgetInfo::labeled(WidgetType::ComboBox, true, "Container kind"));
 }
 
 // TODO(#4560): this code should be generic and part of re_data_ui
