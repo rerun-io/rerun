@@ -2,6 +2,7 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use egui::Modifiers;
 use egui::PointerButton;
+use egui::accesskit::Role;
 use egui::accesskit::Toggled;
 use egui_kittest::kittest::NodeT as _;
 use egui_kittest::kittest::Queryable as _;
@@ -66,9 +67,13 @@ pub trait HarnessExt {
     // Finds the nth node with a given label
     fn get_nth_label<'a>(&'a mut self, label: &'a str, index: usize) -> egui_kittest::Node<'a>;
 
+    // Get the position of a node in the UI by its label.
+    fn get_panel_position(&mut self, label: &str) -> egui::Rect;
+
     // Clicks a node in the UI by its label.
     fn click_label(&mut self, label: &str);
     fn right_click_label(&mut self, label: &str);
+    fn click_label_contains(&mut self, label: &str);
     fn click_nth_label(&mut self, label: &str, index: usize);
     fn right_click_nth_label(&mut self, label: &str, index: usize);
     fn click_nth_label_modifiers(&mut self, label: &str, index: usize, modifiers: Modifiers);
@@ -78,6 +83,13 @@ pub trait HarnessExt {
     // Drag-and-drop functions. You can use `hover` between `drag` and `drop`.
     fn drag_nth_label(&mut self, label: &str, index: usize);
     fn drop_nth_label(&mut self, label: &str, index: usize);
+
+    fn drag_at(&mut self, pos: egui::Pos2);
+    fn hover_at(&mut self, pos: egui::Pos2);
+    fn drop_at(&mut self, pos: egui::Pos2);
+
+    // Changes the value of a dropdown menu.
+    fn change_dropdown_value(&mut self, dropdown_label: &str, value: &str);
 
     // Takes a snapshot of the current app state with good-enough snapshot options.
     fn snapshot_app(&mut self, snapshot_name: &str);
@@ -245,6 +257,11 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         self.run_ok();
     }
 
+    fn click_label_contains(&mut self, label: &str) {
+        self.get_by_label_contains(label).click();
+        self.run_ok();
+    }
+
     fn get_nth_label<'a>(&'a mut self, label: &'a str, index: usize) -> egui_kittest::Node<'a> {
         let mut nodes = self.get_all_by_label(label).collect::<Vec<_>>();
         assert!(
@@ -253,6 +270,10 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
             nodes.len()
         );
         nodes.swap_remove(index)
+    }
+
+    fn get_panel_position(&mut self, label: &str) -> egui::Rect {
+        self.get_by_role_and_label(Role::Pane, label).rect()
     }
 
     fn click_nth_label(&mut self, label: &str, index: usize) {
@@ -311,6 +332,32 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         self.remove_cursor();
     }
 
+    fn drag_at(&mut self, pos: egui::Pos2) {
+        self.event(egui::Event::PointerButton {
+            pos,
+            button: PointerButton::Primary,
+            pressed: true,
+            modifiers: Modifiers::NONE,
+        });
+        self.run_ok();
+    }
+
+    fn hover_at(&mut self, pos: egui::Pos2) {
+        self.event(egui::Event::PointerMoved(pos));
+        self.run_ok();
+    }
+
+    fn drop_at(&mut self, pos: egui::Pos2) {
+        self.event(egui::Event::PointerButton {
+            pos,
+            button: PointerButton::Primary,
+            pressed: false,
+            modifiers: Modifiers::NONE,
+        });
+        self.remove_cursor();
+        self.run_ok();
+    }
+
     fn debug_viewer_state(&mut self) {
         println!(
             "Active recording: {:#?}",
@@ -330,6 +377,13 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
                 _viewer_context.global_context.display_mode
             );
         });
+    }
+
+    fn change_dropdown_value(&mut self, dropdown_label: &str, value: &str) {
+        let node = self.get_by_role_and_label(Role::ComboBox, dropdown_label);
+        node.click();
+        self.run_ok();
+        self.click_label(value);
     }
 
     fn snapshot_app(&mut self, snapshot_name: &str) {
