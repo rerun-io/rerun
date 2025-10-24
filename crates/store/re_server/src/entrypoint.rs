@@ -78,6 +78,7 @@ impl Args {
                 )?;
             }
 
+            #[cfg_attr(not(feature = "lance"), expect(clippy::never_loop))]
             for table in &self.tables {
                 cfg_if::cfg_if! {
                     if #[cfg(feature = "lance")] {

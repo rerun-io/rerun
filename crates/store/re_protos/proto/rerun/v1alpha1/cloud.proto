@@ -149,6 +149,14 @@ service RerunCloudService {
 
   rpc ScanTable(ScanTableRequest) returns (stream ScanTableResponse) {}
 
+  // Write record batches to a table.
+  //
+  // This endpoint requires the standard dataset headers.
+  //
+  // TODO(#11645): endpoints with streaming input are not supported by `grpc-web`.
+  // A non-streaming shim will need to be added if/when the viewer uses this endpoint.
+  rpc WriteTable(stream WriteTableRequest) returns (WriteTableResponse) {}
+
   // --- Tasks ---
 
   // Query the status of submitted tasks
@@ -586,6 +594,24 @@ message ScanTableRequest {
 message ScanTableResponse {
   rerun.common.v1alpha1.DataframePart dataframe_part = 1;
 }
+
+enum TableInsertMode {
+  // Always reserve unspecified as default value
+  TABLE_INSERT_MODE_UNSPECIFIED = 0;
+
+  // Appends new rows to the existing table without modifying any existing rows.
+  TABLE_INSERT_MODE_APPEND = 1;
+
+  // Overwrites all existing rows in the table with the new rows.
+  TABLE_INSERT_MODE_OVERWRITE = 2;
+}
+
+message WriteTableRequest {
+  rerun.common.v1alpha1.DataframePart dataframe_part = 1;
+  TableInsertMode insert_mode = 2;
+}
+
+message WriteTableResponse {}
 
 // --- Maintenance ---
 
