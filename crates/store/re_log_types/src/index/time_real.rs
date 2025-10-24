@@ -26,6 +26,12 @@ impl TimeReal {
     pub const ZERO: Self = Self(FixedI128::ZERO);
     pub const MAX: Self = Self(FixedI128::MAX);
 
+    /// Return the integer part
+    #[inline]
+    pub(crate) fn int(&self) -> i64 {
+        self.0.int().lossy_into()
+    }
+
     #[inline]
     pub fn floor(&self) -> TimeInt {
         let int: i64 = self.0.saturating_floor().lossy_into();
@@ -67,6 +73,11 @@ impl TimeReal {
     #[inline]
     pub fn as_secs_f64(self) -> f64 {
         self.as_f64() / 1_000_000_000f64
+    }
+
+    /// Returns the value half-way to `other`.
+    pub fn midpoint(self, other: Self) -> Self {
+        Self((self.0 + other.0) / FixedI128::from_num(2))
     }
 }
 
