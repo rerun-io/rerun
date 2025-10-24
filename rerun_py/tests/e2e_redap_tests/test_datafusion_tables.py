@@ -355,3 +355,8 @@ def test_client_write_table(server_instance: ServerInstance) -> None:
     server_instance.client.write_table(table_name, batch1, TableInsertMode.APPEND)
     final_count = ctx.table(table_name).count()
     assert final_count == original_count + 30
+
+    # Test ovewrite method
+    server_instance.client.write_table(table_name, batch1, TableInsertMode.OVERWRITE)
+    final_count = ctx.table(table_name).count()
+    assert final_count == 3
