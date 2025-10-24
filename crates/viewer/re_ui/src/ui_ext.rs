@@ -1,7 +1,8 @@
 use std::hash::Hash;
 
 use egui::{
-    CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Widget as _, WidgetInfo, WidgetText,
+    CollapsingResponse, Color32, NumExt as _, Rangef, Rect, StrokeKind, Widget as _, WidgetInfo,
+    WidgetText,
     emath::{GuiRounding as _, Rot2},
     pos2,
 };
@@ -621,6 +622,21 @@ pub trait UiExt {
             texture_id: Default::default(),
         };
         self.ui().painter().add(shadow);
+    }
+
+    fn draw_focus_outline(&self, rect: Rect) {
+        self.ui().painter().rect_stroke(
+            rect,
+            4,
+            self.tokens().focus_outline_stroke,
+            StrokeKind::Inside,
+        );
+        self.ui().painter().rect_stroke(
+            rect,
+            4,
+            self.tokens().focus_halo_stroke,
+            StrokeKind::Outside,
+        );
     }
 
     /// Convenience function to create a [`list_item::list_item_scope`].

@@ -334,6 +334,38 @@ impl App {
             }),
         );
 
+        {
+            // TODO(emilk/egui#7659): This is a workaround consuming the Space key so we can use it
+            // as the play/pause shortcut. Egui's built in behavior is to trigger clicks on the
+            // focused item, and we don't want that. Users can use `Enter` instead.
+            // But of course text edits should still get it so we use this ugly hack to check if
+            // a text edit is focused.
+            let command_sender = command_sender.clone();
+            creation_context.egui_ctx.on_begin_pass(
+                "filter space key",
+                Arc::new(move |ctx| {
+                    if let Some(focused) = ctx.memory(|mem| mem.focused()) {
+                        let is_text_edit_focused =
+                            egui::text_edit::TextEditState::load(ctx, focused).is_some();
+
+                        if !is_text_edit_focused {
+                            let shortcut = UICommand::PlaybackTogglePlayPause
+                                .primary_kb_shortcut(ctx.os())
+                                .expect("Play / pause should have a keyboard shortcut");
+                            debug_assert_eq!(
+                                shortcut.logical_key,
+                                egui::Key::Space,
+                                "Expected space key shortcut"
+                            );
+                            if ctx.input_mut(|i| i.consume_shortcut(&shortcut)) {
+                                command_sender.send_ui(UICommand::PlaybackTogglePlayPause);
+                            }
+                        }
+                    }
+                }),
+            );
+        }
+
         Self {
             main_thread_token,
             build_info,
@@ -1047,8 +1079,8 @@ impl App {
                 self.app_options_mut().inspect_blueprint_timeline = show;
             }
 
-            SystemCommand::SetSelection(items) => {
-                if let Some(item) = items.single_item() {
+            SystemCommand::SetSelection(set) => {
+                if let Some(item) = set.selection.single_item() {
                     match item {
                         Item::RedapEntry(entry) => {
                             self.state
@@ -1085,7 +1117,7 @@ impl App {
                     }
                 }
 
-                self.state.selection_state.set_selection(items);
+                self.state.selection_state.set_selection(set);
                 egui_ctx.request_repaint(); // Make sure we actually see the new selection.
             }
 
@@ -1265,7 +1297,7 @@ impl App {
             };
 
             self.command_sender
-                .send_system(SystemCommand::SetSelection(item.clone().into()));
+                .send_system(SystemCommand::set_selection(item.clone()));
         }
 
         if let Some((timeline, timecell)) = when {
@@ -2055,9 +2087,10 @@ impl App {
                     } else {
                         re_log::debug!("Inserted table store with id: `{}`", table.id);
                     }
-                    self.command_sender.send_system(SystemCommand::SetSelection(
-                        re_viewer_context::Item::TableId(table.id.clone()).into(),
-                    ));
+                    self.command_sender
+                        .send_system(SystemCommand::set_selection(
+                            re_viewer_context::Item::TableId(table.id.clone()),
+                        ));
 
                     // If the viewer is in the background, tell the user that it has received something new.
                     egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
@@ -2361,9 +2394,10 @@ impl App {
         store_hub.set_active_recording_id(store_id.clone());
 
         // Also select the new recording:
-        self.command_sender.send_system(SystemCommand::SetSelection(
-            re_viewer_context::Item::StoreId(store_id.clone()).into(),
-        ));
+        self.command_sender
+            .send_system(SystemCommand::set_selection(
+                re_viewer_context::Item::StoreId(store_id.clone()),
+            ));
 
         // If the viewer is in the background, tell the user that it has received something new.
         egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(

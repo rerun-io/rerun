@@ -115,9 +115,8 @@ pub fn redap_uri_button(
             if response.clicked() {
                 // Show it:
                 ctx.command_sender()
-                    .send_system(SystemCommand::SetSelection(
-                        re_viewer_context::Item::StoreId(loaded_recording_info.store_id.clone())
-                            .into(),
+                    .send_system(SystemCommand::set_selection(
+                        re_viewer_context::Item::StoreId(loaded_recording_info.store_id.clone()),
                     ));
             }
         } else if is_loading {

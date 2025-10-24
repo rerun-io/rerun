@@ -709,6 +709,8 @@ impl AppState {
                 .copy_to_clipboard(ui.ctx());
         }
 
+        self.selection_state.on_frame_end();
+
         // Reset the focused item.
         self.focused_item = None;
     }

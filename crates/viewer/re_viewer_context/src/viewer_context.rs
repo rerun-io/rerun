@@ -7,7 +7,9 @@ use re_entity_db::entity_db::EntityDb;
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
 use re_ui::ContextExt as _;
+use re_ui::list_item::ListItem;
 
+use crate::command_sender::{SelectionSource, SetSelection};
 use crate::drag_and_drop::DragAndDropPayload;
 use crate::time_control::TimeControlCommand;
 use crate::{
@@ -250,6 +252,9 @@ impl ViewerContext<'_> {
     /// - …unless cmd/ctrl is held, in which case the item is added to the selection and the entire
     ///   selection is dragged.
     /// - When dragging a selected item, the entire selection is dragged as well.
+    ///
+    /// You might also want to call [`Self::handle_select_focus_sync`] to keep keyboard focus in
+    /// sync with selection.
     pub fn handle_select_hover_drag_interactions(
         &self,
         response: &egui::Response,
@@ -265,6 +270,13 @@ impl ViewerContext<'_> {
             selection_state.set_hovered(interacted_items.clone());
         }
 
+        let single_selected = self.selection().single_item() == interacted_items.single_item();
+
+        // If we were just selected, scroll into view
+        if single_selected && self.selection_state().selection_changed().is_some() {
+            response.scroll_to_me(None);
+        }
+
         if draggable && response.drag_started() {
             let mut selected_items = selection_state.selected_items().clone();
             let is_already_selected = interacted_items
@@ -277,7 +289,7 @@ impl ViewerContext<'_> {
             let dragged_items = if !is_already_selected && is_cmd_held {
                 selected_items.extend(interacted_items);
                 self.command_sender()
-                    .send_system(SystemCommand::SetSelection(selected_items.clone()));
+                    .send_system(SystemCommand::set_selection(selected_items.clone()));
                 selected_items
             } else if !is_already_selected {
                 interacted_items
@@ -368,11 +380,58 @@ impl ViewerContext<'_> {
                     );
 
                     self.command_sender()
-                        .send_system(SystemCommand::SetSelection(new_selection));
+                        .send_system(SystemCommand::set_selection(new_selection));
                 } else {
                     self.command_sender()
-                        .send_system(SystemCommand::SetSelection(interacted_items));
+                        .send_system(SystemCommand::set_selection(interacted_items));
                 }
+            }
+        }
+    }
+
+    /// Helper to synchronize item selection with egui focus.
+    ///
+    /// Call if _this_ is where the user would expect keyboard focus to be
+    /// when the item is selected (e.g. blueprint tree for views, recording panel for recordings).
+    pub fn handle_select_focus_sync(
+        &self,
+        response: &egui::Response,
+        interacted_items: impl Into<ItemCollection>,
+    ) {
+        let interacted_items = interacted_items
+            .into()
+            .into_mono_instance_path_items(self.recording(), &self.current_query());
+
+        // Focus -> Selection
+
+        // We want the item to be selected if it was selected with arrow keys (in list_item)
+        // but not when focused using e.g. the tab key.
+        if ListItem::gained_focus_via_arrow_key(&response.ctx, response.id) {
+            self.command_sender()
+                .send_system(SystemCommand::SetSelection(
+                    SetSelection::new(interacted_items.clone())
+                        .with_source(SelectionSource::ListItemNavigation),
+                ));
+        }
+
+        // Selection -> Focus
+
+        let single_selected = self.selection().single_item() == interacted_items.single_item();
+        if single_selected {
+            // If selection changes, and a single item is selected, the selected item should
+            // receive egui focus.
+            // We don't do this if selection happened due to list item navigation to avoid
+            // a feedback loop.
+            let selection_changed = self
+                .selection_state()
+                .selection_changed()
+                .is_some_and(|source| source != SelectionSource::ListItemNavigation);
+
+            // If there is a single selected item and nothing is focused, focus that item.
+            let nothing_focused = response.ctx.memory(|mem| mem.focused().is_none());
+
+            if selection_changed || nothing_focused {
+                response.request_focus();
             }
         }
     }
@@ -401,8 +460,9 @@ impl ViewerContext<'_> {
                 .lookup_datatype(&component)
                 .or_else(|| self.blueprint_engine().store().lookup_datatype(&component))
                 .unwrap_or_else(|| {
-                         re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
-                                    arrow::datatypes::DataType::Null})
+                    re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
+                    arrow::datatypes::DataType::Null
+                })
         };
 
         // TODO(andreas): Is this operation common enough to cache the result? If so, here or in the reflection data?
