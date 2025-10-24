@@ -21,8 +21,8 @@ pub enum AuthCommands {
 
 #[derive(Debug, Clone, Parser)]
 pub struct LoginCommand {
-    #[clap(long, default_value = "https://rerun.io/login")]
-    login_url: String,
+    #[clap(long)]
+    login_url: Option<String>,
 
     // Double-negative because it's an opt-out flag.
     /// Post a link instead of directly opening in the browser.
@@ -42,7 +42,7 @@ impl AuthCommands {
         match self {
             Self::Login(args) => {
                 let options = re_auth::cli::LoginOptions {
-                    login_page_url: &args.login_url,
+                    login_page_url: args.login_url.as_deref(),
                     open_browser: !args.no_open_browser,
                     force_login: args.force,
                 };
