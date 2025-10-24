@@ -162,6 +162,7 @@ ColormapArrayLike = (
         "Plasma",
         "Spectral",
         "Turbo",
+        "Twilight",
         "Viridis",
         "cyantoyellow",
         "grayscale",
@@ -170,6 +171,7 @@ ColormapArrayLike = (
         "plasma",
         "spectral",
         "turbo",
+        "twilight",
         "viridis",
     ]
     | int
