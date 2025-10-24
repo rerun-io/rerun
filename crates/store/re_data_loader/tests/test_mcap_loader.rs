@@ -1,7 +1,11 @@
 #[cfg(test)]
 mod tests {
-    use re_chunk::{Chunk, ChunkId};
+    use std::sync::Arc;
+
+    use re_chunk::Chunk;
+    use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
     use re_data_loader::{DataLoaderSettings, LoadedData, loader_mcap::load_mcap};
+    use re_log_types::StoreId;
     use re_mcap::layers::SelectedLayers;
 
     // Load an MCAP file into a list of chunks.
@@ -31,22 +35,25 @@ mod tests {
     // MCAP file in snippets.
     #[test]
     fn test_mcap_loader_ros2() {
-        let mut chunks = load_mcap_chunks("tests/assets/supported_ros2_messages.mcap");
+        let chunks = load_mcap_chunks("tests/assets/supported_ros2_messages.mcap");
 
-        // Compare chunks based on their debug representation.
-        // Chunks are sorted by entity path, static-ness, and id (which should make the sorting stable,
-        // because we don't process MCAP message payloads in parallel). Row ids are cleared to make
-        // the actual comparison stable.
-        chunks.sort_by_key(|chunk| (chunk.entity_path().clone(), chunk.is_static(), chunk.id()));
-        let clean_chunks: Vec<Chunk> = chunks
-            .into_iter()
-            .map(|chunk| {
-                chunk
-                    .with_id(ChunkId::from_u128(123_456_789_123_456_789_123_456_789))
-                    .zeroed()
-            })
-            .collect();
+        // Create a ChunkStore and ChunkStoreHandle
+        let store = ChunkStore::new(
+            StoreId::random(re_log_types::StoreKind::Recording, "test_mcap_loader"),
+            ChunkStoreConfig::default(),
+        );
+        let store_handle = ChunkStoreHandle::new(store);
 
-        insta::assert_debug_snapshot!("ros2", clean_chunks);
+        // Insert all chunks into the store
+        {
+            let mut store = store_handle.write();
+            for chunk in chunks {
+                store.insert_chunk(&Arc::new(chunk)).unwrap();
+            }
+        }
+
+        // Extract and snapshot the schema
+        let schema = store_handle.read().schema();
+        insta::assert_debug_snapshot!("ros2", schema);
     }
 }
