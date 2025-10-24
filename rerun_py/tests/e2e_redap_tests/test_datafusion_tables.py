@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 from datafusion import DataFrameWriteOptions, InsertOp, SessionContext, col, functions as f
-from rerun.catalog import EntryKind
+from rerun.catalog import CatalogClient, EntryKind, TableInsertMode
 
 if TYPE_CHECKING:
     from .conftest import ServerInstance
@@ -313,3 +313,55 @@ def test_create_table_from_dataset(server_instance: ServerInstance) -> None:
         for returned_field in returned_schema:
             original_field = original_schema.field(returned_field.name)
             assert returned_field.metadata == original_field.metadata
+
+def test_client_write_table(server_instance: ServerInstance) -> None:
+    table_name = "simple_datatypes"
+    ctx: SessionContext = server_instance.client.ctx
+
+    df_prior = ctx.table(table_name)
+    original_count = df_prior.count()
+
+    schema = pa.schema([
+        ('id', pa.int32()),
+        ('bool_col', pa.bool_()),
+        ('double_col', pa.float64())
+    ])
+
+    batch1 = pa.RecordBatch.from_pydict({
+        'id': [1, 2, 3],
+        'bool_col': [True, False, None],
+        'double_col': [10.5, 20.3, 15.7]
+    }, schema=schema)
+
+    batch2 = pa.RecordBatch.from_pydict({
+        'id': [4, 5, 6],
+        'bool_col': [True, None, False],
+        'double_col': [30.2, 25.8, 18.9]
+    }, schema=schema)
+
+    batch3 = pa.RecordBatch.from_pydict({
+        'id': [7, 8, 9],
+        'bool_col': [True, True, False],
+        'double_col': [22.4, 28.1, 31.5]
+    }, schema=schema)
+
+    # Test with a record batch reader
+    reader = pa.RecordBatchReader.from_batches(schema, [batch1, batch2, batch3])
+    server_instance.client.write_table(table_name, reader, TableInsertMode.APPEND)
+    final_count = ctx.table(table_name).count()
+    assert final_count == original_count + 9
+
+    # Test with a list of list of record batches, like a collect() will give you
+    server_instance.client.write_table(table_name, [[batch1, batch2], [batch3]], TableInsertMode.APPEND)
+    final_count = ctx.table(table_name).count()
+    assert final_count == original_count + 18
+
+    # Test with a list of record batches
+    server_instance.client.write_table(table_name, [batch1, batch2, batch3], TableInsertMode.APPEND)
+    final_count = ctx.table(table_name).count()
+    assert final_count == original_count + 27
+
+    # Test with a single record batch
+    server_instance.client.write_table(table_name, batch1, TableInsertMode.APPEND)
+    final_count = ctx.table(table_name).count()
+    assert final_count == original_count + 30

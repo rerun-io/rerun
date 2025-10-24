@@ -1606,6 +1606,20 @@ class TableEntry(Entry):
     def to_arrow_reader(self) -> pa.RecordBatchReader:
         """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
 
+class EntryKind:
+    """The kinds of entries that can be stored in the catalog."""
+
+    DATASET: EntryKind
+    DATASET_VIEW: EntryKind
+    TABLE: EntryKind
+    TABLE_VIEW: EntryKind
+
+    def __str__(self, /) -> str:
+        """Return str(self)."""
+
+    def __int__(self) -> int:
+        """int(self)"""  # noqa: D400
+
 class DataframeQueryView:
     def filter_partition_id(self, partition_id: str, *args: Iterable[str]) -> Self:
         """Filter by one or more partition ids. All partition ids are included if not specified."""

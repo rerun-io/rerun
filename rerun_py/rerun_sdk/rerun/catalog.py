@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
+
+from pyarrow import RecordBatch, RecordBatchReader
 
 from rerun_bindings import (
     AlreadyExistsError as AlreadyExistsError,
@@ -12,6 +14,7 @@ from rerun_bindings import (
     EntryKind as EntryKind,
     NotFoundError as NotFoundError,
     TableEntry as TableEntry,
+    TableInsertMode as TableInsertMode,
     Task as Task,
     VectorDistanceMetric as VectorDistanceMetric,
 )
@@ -200,6 +203,37 @@ class CatalogClient:
 
         """
         return self._raw_client.create_table_entry(name, schema, url)
+
+    def write_table(
+            self,
+        name: str,
+        batches: RecordBatchReader | RecordBatch | Sequence[RecordBatch] | Sequence[Sequence[RecordBatch]],
+        insert_mode: TableInsertMode
+    ) -> None:
+        if not isinstance(batches, RecordBatchReader):
+            def flatten_batches(batches):
+                if isinstance(batches, RecordBatch):
+                    return [batches]
+
+                if isinstance(batches, Sequence):
+                    result = []
+                    for item in batches:
+                        if isinstance(item, RecordBatch):
+                            result.append(item)
+                        elif isinstance(item, Sequence):
+                            result.extend(item)
+                        else:
+                            raise TypeError(f"Unexpected type: {type(item)}")
+                    return result
+
+                raise TypeError(f"Expected RecordBatch or Sequence, got {type(batches)}")
+            batches = flatten_batches(batches)
+            if len(batches) == 0:
+                return
+            schema = batches[0].schema
+            batches = RecordBatchReader.from_batches(schema, batches)
+
+        return self._raw_client.write_table(name, batches, insert_mode)
 
     def do_global_maintenance(self) -> None:
         """Perform maintenance tasks on the whole system."""

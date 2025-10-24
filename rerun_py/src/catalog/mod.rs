@@ -33,7 +33,7 @@ pub use self::{
     dataset_entry::PyDatasetEntry,
     entry::{PyEntry, PyEntryId, PyEntryKind},
     errors::to_py_err,
-    table_entry::PyTableEntry,
+    table_entry::{PyTableEntry, PyTableInsertMode},
     task::{PyTask, PyTasks},
 };
 
@@ -46,6 +46,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyEntry>()?;
     m.add_class::<PyDatasetEntry>()?;
     m.add_class::<PyTableEntry>()?;
+    m.add_class::<PyTableInsertMode>()?;
     m.add_class::<PyTask>()?;
     m.add_class::<PyTasks>()?;
     m.add_class::<PyDataFusionTable>()?;
