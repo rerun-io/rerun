@@ -97,7 +97,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 VideoStream::descriptor_opacity().component,
             );
             let all_opacities =
-                opacity_result.iter_as(view_query.timeline, VideoStream::descriptor_opacity());
+                opacity_result.iter_as(view_query.timeline, VideoStream::descriptor_opacity().component);
             let opacity = all_opacities
                 .slice::<f32>()
                 .next()

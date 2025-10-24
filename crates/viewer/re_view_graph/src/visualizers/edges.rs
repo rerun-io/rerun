@@ -68,7 +68,7 @@ impl VisualizerSystem for EdgesVisualizer {
                     &timeline_query,
                 );
 
-            let all_edges = results.iter_as(query.timeline, GraphEdges::descriptor_edges());
+            let all_edges = results.iter_as(query.timeline, GraphEdges::descriptor_edges().component);
             let graph_type = results
                 .get_mono::<components::GraphType>(&GraphEdges::descriptor_graph_type())
                 .unwrap_or_default();

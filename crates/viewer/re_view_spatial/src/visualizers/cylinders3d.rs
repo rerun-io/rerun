@@ -156,12 +156,12 @@ impl VisualizerSystem for Cylinders3DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_length_chunks) =
-                    results.get_required_chunks(Cylinders3D::descriptor_lengths())
+                    results.get_required_chunks(Cylinders3D::descriptor_lengths().component)
                 else {
                     return Ok(());
                 };
                 let Some(all_radius_chunks) =
-                    results.get_required_chunks(Cylinders3D::descriptor_radii())
+                    results.get_required_chunks(Cylinders3D::descriptor_radii().component)
                 else {
                     return Ok(());
                 };
@@ -183,14 +183,14 @@ impl VisualizerSystem for Cylinders3DVisualizer {
                 let timeline = ctx.query.timeline();
                 let all_lengths_indexed = iter_slices::<f32>(&all_length_chunks, timeline);
                 let all_radii_indexed = iter_slices::<f32>(&all_radius_chunks, timeline);
-                let all_colors = results.iter_as(timeline, Cylinders3D::descriptor_colors());
-                let all_labels = results.iter_as(timeline, Cylinders3D::descriptor_labels());
-                let all_fill_modes = results.iter_as(timeline, Cylinders3D::descriptor_fill_mode());
+                let all_colors = results.iter_as(timeline, Cylinders3D::descriptor_colors().component);
+                let all_labels = results.iter_as(timeline, Cylinders3D::descriptor_labels().component);
+                let all_fill_modes = results.iter_as(timeline, Cylinders3D::descriptor_fill_mode().component);
                 let all_line_radii =
-                    results.iter_as(timeline, Cylinders3D::descriptor_line_radii());
+                    results.iter_as(timeline, Cylinders3D::descriptor_line_radii().component);
                 let all_show_labels =
-                    results.iter_as(timeline, Cylinders3D::descriptor_show_labels());
-                let all_class_ids = results.iter_as(timeline, Cylinders3D::descriptor_class_ids());
+                    results.iter_as(timeline, Cylinders3D::descriptor_show_labels().component);
+                let all_class_ids = results.iter_as(timeline, Cylinders3D::descriptor_class_ids().component);
 
                 let data = re_query::range_zip_2x6(
                     all_lengths_indexed,

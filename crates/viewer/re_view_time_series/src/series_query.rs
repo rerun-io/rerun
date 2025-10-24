@@ -37,11 +37,11 @@ pub fn collect_series_visibility(
     visibility_descriptor: ComponentDescriptor,
 ) -> Vec<bool> {
     bootstrapped_results
-        .iter_as(*query.timeline(), visibility_descriptor.clone())
+        .iter_as(*query.timeline(), visibility_descriptor.component)
         .slice::<bool>()
         .chain(
             results
-                .iter_as(*query.timeline(), visibility_descriptor)
+                .iter_as(*query.timeline(), visibility_descriptor.component)
                 .slice::<bool>(),
         )
         .next()
@@ -143,12 +143,12 @@ pub fn collect_colors(
     }
 
     let all_color_chunks = bootstrapped_results
-        .get_optional_chunks(color_descriptor.clone())
+        .get_optional_chunks(color_descriptor.component)
         .iter()
         .cloned()
         .chain(
             results
-                .get_optional_chunks(color_descriptor.clone())
+                .get_optional_chunks(color_descriptor.component)
                 .iter()
                 .cloned(),
         )
@@ -239,9 +239,9 @@ pub fn collect_series_name(
     re_tracing::profile_function!();
 
     let mut series_names: Vec<String> = bootstrapped_results
-        .get_optional_chunks(name_descriptor.clone())
+        .get_optional_chunks(name_descriptor.component)
         .iter()
-        .chain(results.get_optional_chunks(name_descriptor.clone()).iter())
+        .chain(results.get_optional_chunks(name_descriptor.component).iter())
         .find(|chunk| !chunk.is_empty())
         .and_then(|chunk| {
             chunk
@@ -281,12 +281,12 @@ pub fn collect_radius_ui(
 
     {
         let all_radius_chunks = bootstrapped_results
-            .get_optional_chunks(radius_descriptor.clone())
+            .get_optional_chunks(radius_descriptor.component)
             .iter()
             .cloned()
             .chain(
                 results
-                    .get_optional_chunks(radius_descriptor.clone())
+                    .get_optional_chunks(radius_descriptor.component)
                     .iter()
                     .cloned(),
             )

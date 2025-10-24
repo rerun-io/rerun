@@ -5,53 +5,46 @@ use re_chunk_store::{
     external::re_chunk::{ChunkComponentIter, ChunkComponentSlicer},
 };
 use re_log_types::{TimeInt, TimePoint, TimelineName};
-use re_types::{Component, ComponentDescriptor, RowId};
+use re_types::{Component, ComponentIdentifier, RowId};
 
-/// A helper struct that bundles a list of chunks with a component descriptor.
+/// A helper struct that bundles a list of chunks with a component identifier.
 ///
-/// This is useful when looking up chunks that contain a specific component descriptor:
+/// This is useful when looking up chunks that contain a specific component:
 /// Since the referenced chunks may contain multiple components,
-/// subsequent lookups for data inside those chunks need the component descriptor again.
-/// By bundling references to chunks and descriptor,
-/// we can avoid having to pass the descriptor around in the code.
-// TODO(andreas): Does this have to be a descriptor? Component identifier is almost certainly enough, which would simplify this a lot.
+/// subsequent lookups for data inside those chunks need the component identifier again.
+/// By bundling references to chunks and component identifier,
+/// we can avoid having to pass the identifier around in the code.
 #[derive(Debug, Clone)]
 pub struct ChunksWithDescriptor<'chunk> {
     pub chunks: Cow<'chunk, [Chunk]>,
-    pub component_descriptor: ComponentDescriptor,
+    pub component: ComponentIdentifier,
 }
 
 impl ChunksWithDescriptor<'_> {
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = ChunkWithDescriptor<'_, '_>> {
+    pub fn iter(&self) -> impl Iterator<Item = ChunkWithDescriptor<'_>> {
         self.chunks.iter().map(move |chunk| ChunkWithDescriptor {
             chunk,
-            descriptor: &self.component_descriptor,
+            component: self.component,
         })
     }
 }
 
 /// Like [`ChunksWithDescriptor`] but for a single chunk.
-///
-/// Note that the descriptor is not owned, but borrowed here since it's typically returned
-/// only by iterating over a [`ChunksWithDescriptor`].
-// TODO(#10460): Chunk descriptor referencing should be made trivial so that it doesn't matter whether we borrow or copy it.
-// TODO(andreas): Does this have to be a descriptor? Component identifier is almost certainly enough, which would simplify this a lot.
-#[derive(Debug, Clone)]
-pub struct ChunkWithDescriptor<'chunk, 'descriptor> {
+#[derive(Debug, Clone, Copy)]
+pub struct ChunkWithDescriptor<'chunk> {
     pub chunk: &'chunk Chunk,
-    pub descriptor: &'descriptor ComponentDescriptor,
+    pub component: ComponentIdentifier,
 }
 
-impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
+impl<'chunk> ChunkWithDescriptor<'chunk> {
     /// See [`Chunk::iter_component_indices`].
     #[inline]
     pub fn iter_component_indices(
         &self,
         timeline: TimelineName,
     ) -> impl Iterator<Item = (TimeInt, RowId)> + 'chunk + use<'chunk> {
-        self.chunk
-            .iter_component_indices(timeline, self.descriptor.component)
+        self.chunk.iter_component_indices(timeline, self.component)
     }
 
     /// See [`Chunk::iter_slices`].
@@ -59,7 +52,7 @@ impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
     pub fn iter_slices<S: ChunkComponentSlicer + 'chunk>(
         &self,
     ) -> impl Iterator<Item = S::Item<'chunk>> + 'chunk + use<'chunk, S> {
-        self.chunk.iter_slices::<S>(self.descriptor.component)
+        self.chunk.iter_slices::<S>(self.component)
     }
 
     /// See [`Chunk::iter_component`].
@@ -67,7 +60,7 @@ impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
     pub fn iter_component<C: Component>(
         &self,
     ) -> ChunkComponentIter<C, impl Iterator<Item = Span<usize>> + 'chunk + use<'chunk, C>> {
-        self.chunk.iter_component::<C>(self.descriptor.component)
+        self.chunk.iter_component::<C>(self.component)
     }
 
     /// See [`Chunk::iter_component_timepoints`].
@@ -75,7 +68,6 @@ impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
     pub fn iter_component_timepoints(
         &self,
     ) -> impl Iterator<Item = TimePoint> + 'chunk + use<'chunk> {
-        self.chunk
-            .iter_component_timepoints(self.descriptor.component)
+        self.chunk.iter_component_timepoints(self.component)
     }
 }

@@ -64,7 +64,7 @@ impl VisualizerSystem for Points3DColorVisualizer {
             // For latest-at queries should be only a single slice`,
             // but if visible history is enabled, there might be several!
             let colors_per_time =
-                results.iter_as(query.timeline, rerun::Points3D::descriptor_colors());
+                results.iter_as(query.timeline, rerun::Points3D::descriptor_colors().component);
             let color_slices_per_time = colors_per_time.slice::<u32>();
 
             // Collect all different kinds of colors that are returned from the cache.
