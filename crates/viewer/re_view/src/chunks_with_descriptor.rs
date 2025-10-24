@@ -15,12 +15,12 @@ use re_types::{Component, ComponentIdentifier, RowId};
 /// By bundling references to chunks and component identifier,
 /// we can avoid having to pass the identifier around in the code.
 #[derive(Debug, Clone)]
-pub struct ChunksWithDescriptor<'chunk> {
+pub struct ChunksWithComponent<'chunk> {
     pub chunks: Cow<'chunk, [Chunk]>,
     pub component: ComponentIdentifier,
 }
 
-impl ChunksWithDescriptor<'_> {
+impl ChunksWithComponent<'_> {
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = ChunkWithDescriptor<'_>> {
         self.chunks.iter().map(move |chunk| ChunkWithDescriptor {

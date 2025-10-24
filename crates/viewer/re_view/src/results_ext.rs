@@ -8,7 +8,7 @@ use re_query::{LatestAtResults, RangeResults};
 use re_types::{ComponentDescriptor, ComponentIdentifier};
 use re_viewer_context::{DataResult, TypedComponentFallbackProvider, ViewContext};
 
-use crate::chunks_with_descriptor::ChunksWithDescriptor;
+use crate::chunks_with_descriptor::ChunksWithComponent;
 
 // ---
 
@@ -203,8 +203,10 @@ pub trait RangeResultsExt {
     /// For results that are aware of the blueprint, only overrides & store results will
     /// be considered.
     /// Defaults have no effect.
-    fn get_required_chunks(&self, component: ComponentIdentifier)
-        -> Option<ChunksWithDescriptor<'_>>;
+    fn get_required_chunks(
+        &self,
+        component: ComponentIdentifier,
+    ) -> Option<ChunksWithComponent<'_>>;
 
     /// Returns component data for the given component or an empty array.
     ///
@@ -233,11 +235,16 @@ pub trait RangeResultsExt {
 
 impl RangeResultsExt for LatestAtResults {
     #[inline]
-    fn get_required_chunks(&self, component: ComponentIdentifier) -> Option<ChunksWithDescriptor<'_>> {
-        self.get(component).cloned().map(|chunk| ChunksWithDescriptor {
-            chunks: Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]),
-            component,
-        })
+    fn get_required_chunks(
+        &self,
+        component: ComponentIdentifier,
+    ) -> Option<ChunksWithComponent<'_>> {
+        self.get(component)
+            .cloned()
+            .map(|chunk| ChunksWithComponent {
+                chunks: Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]),
+                component,
+            })
     }
 
     #[inline]
@@ -251,11 +258,16 @@ impl RangeResultsExt for LatestAtResults {
 
 impl RangeResultsExt for RangeResults {
     #[inline]
-    fn get_required_chunks(&self, component: ComponentIdentifier) -> Option<ChunksWithDescriptor<'_>> {
-        self.get_required(component).ok().map(|chunks| ChunksWithDescriptor {
-            chunks: Cow::Borrowed(chunks),
-            component,
-        })
+    fn get_required_chunks(
+        &self,
+        component: ComponentIdentifier,
+    ) -> Option<ChunksWithComponent<'_>> {
+        self.get_required(component)
+            .ok()
+            .map(|chunks| ChunksWithComponent {
+                chunks: Cow::Borrowed(chunks),
+                component,
+            })
     }
 
     #[inline]
@@ -266,13 +278,16 @@ impl RangeResultsExt for RangeResults {
 
 impl RangeResultsExt for HybridRangeResults<'_> {
     #[inline]
-    fn get_required_chunks(&self, component: ComponentIdentifier) -> Option<ChunksWithDescriptor<'_>> {
+    fn get_required_chunks(
+        &self,
+        component: ComponentIdentifier,
+    ) -> Option<ChunksWithComponent<'_>> {
         if let Some(unit) = self.overrides.get(component) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
                 .zeroed();
-            Some(ChunksWithDescriptor {
+            Some(ChunksWithComponent {
                 chunks: Cow::Owned(vec![chunk]),
                 component,
             })
@@ -319,13 +334,16 @@ impl RangeResultsExt for HybridRangeResults<'_> {
 
 impl RangeResultsExt for HybridLatestAtResults<'_> {
     #[inline]
-    fn get_required_chunks(&self, component: ComponentIdentifier) -> Option<ChunksWithDescriptor<'_>> {
+    fn get_required_chunks(
+        &self,
+        component: ComponentIdentifier,
+    ) -> Option<ChunksWithComponent<'_>> {
         if let Some(unit) = self.overrides.get(component) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
                 .zeroed();
-            Some(ChunksWithDescriptor {
+            Some(ChunksWithComponent {
                 chunks: Cow::Owned(vec![chunk]),
                 component,
             })
@@ -374,7 +392,10 @@ impl RangeResultsExt for HybridLatestAtResults<'_> {
 
 impl RangeResultsExt for HybridResults<'_> {
     #[inline]
-    fn get_required_chunks(&self, component: ComponentIdentifier) -> Option<ChunksWithDescriptor<'_>> {
+    fn get_required_chunks(
+        &self,
+        component: ComponentIdentifier,
+    ) -> Option<ChunksWithComponent<'_>> {
         match self {
             Self::LatestAt(_, results) => results.get_required_chunks(component),
             Self::Range(_, results) => results.get_required_chunks(component),

@@ -6,7 +6,7 @@ use re_chunk_store::RangeQuery;
 use re_log_types::{EntityPath, TimeInt};
 use re_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_types::{ComponentDescriptor, Loggable as _, RowId, components};
-use re_view::{ChunksWithDescriptor, HybridRangeResults, RangeResultsExt as _, clamped_or_nothing};
+use re_view::{ChunksWithComponent, HybridRangeResults, RangeResultsExt as _, clamped_or_nothing};
 use re_viewer_context::{QueryContext, TypedComponentFallbackProvider, auto_color_egui};
 
 use crate::{PlotPoint, PlotSeriesKind};
@@ -14,7 +14,7 @@ use crate::{PlotPoint, PlotSeriesKind};
 type PlotPointsPerSeries = smallvec::SmallVec<[Vec<PlotPoint>; 1]>;
 
 /// Determines how many series there are in the scalar chunks.
-pub fn determine_num_series(all_scalar_chunks: &ChunksWithDescriptor<'_>) -> usize {
+pub fn determine_num_series(all_scalar_chunks: &ChunksWithComponent<'_>) -> usize {
     // TODO(andreas): We should determine this only once and cache the result.
     // As data comes in we can validate that the number of series is consistent.
     // Keep in mind clears here.
@@ -65,7 +65,7 @@ pub fn collect_series_visibility(
 pub fn allocate_plot_points(
     query: &RangeQuery,
     default_point: &PlotPoint,
-    all_scalar_chunks: &ChunksWithDescriptor<'_>,
+    all_scalar_chunks: &ChunksWithComponent<'_>,
     num_series: usize,
 ) -> PlotPointsPerSeries {
     re_tracing::profile_function!();
@@ -86,7 +86,7 @@ pub fn allocate_plot_points(
 
 /// Allocates scalars per series into pre-allocated plot points.
 pub fn collect_scalars(
-    all_scalar_chunks: &ChunksWithDescriptor<'_>,
+    all_scalar_chunks: &ChunksWithComponent<'_>,
     points_per_series: &mut PlotPointsPerSeries,
 ) {
     re_tracing::profile_function!();
@@ -126,7 +126,7 @@ pub fn collect_colors(
     query: &RangeQuery,
     bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
     results: &re_view::HybridRangeResults<'_>,
-    all_scalar_chunks: &ChunksWithDescriptor<'_>,
+    all_scalar_chunks: &ChunksWithComponent<'_>,
     points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
     color_descriptor: &ComponentDescriptor,
 ) {
@@ -270,7 +270,7 @@ pub fn collect_radius_ui(
     query: &RangeQuery,
     bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
     results: &re_view::HybridRangeResults<'_>,
-    all_scalar_chunks: &ChunksWithDescriptor<'_>,
+    all_scalar_chunks: &ChunksWithComponent<'_>,
     points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
     radius_descriptor: &ComponentDescriptor,
     radius_multiplier: f32,
@@ -349,7 +349,7 @@ pub fn collect_radius_ui(
 
 pub fn all_scalars_indices<'a>(
     query: &'a RangeQuery,
-    all_scalar_chunks: &'a ChunksWithDescriptor<'_>,
+    all_scalar_chunks: &'a ChunksWithComponent<'_>,
 ) -> impl Iterator<Item = ((TimeInt, RowId), ())> + 'a {
     all_scalar_chunks
         .iter()
