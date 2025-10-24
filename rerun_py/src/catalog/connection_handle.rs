@@ -285,6 +285,39 @@ impl ConnectionHandle {
         )
     }
 
+    /// Initiate registration of all the recordings within provided object store prefix (aka directory)
+    /// and return the corresponding task descriptors.
+    ///
+    /// A custom layer can be specified via `recordings_layer`:
+    /// * When empty, this defaults to `["base"]`.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn register_with_dataset_prefix(
+        &self,
+        py: Python<'_>,
+        dataset_id: EntryId,
+        recordings_prefix: String,
+        recordings_layer: Option<String>,
+    ) -> PyResult<Vec<RegisterWithDatasetTaskDescriptor>> {
+        let layer = recordings_layer.unwrap_or_else(|| DataSource::DEFAULT_LAYER.to_owned());
+
+        let data_source =
+            DataSource::new_rrd_layer_prefix(layer, recordings_prefix).map_err(to_py_err)?;
+        let data_sources = vec![data_source];
+
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    //TODO(ab): expose `on_duplicate` as a method argument
+                    .register_with_dataset(dataset_id, data_sources, IfDuplicateBehavior::Error)
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
+    }
+
     #[tracing::instrument(level = "info", skip_all)]
     #[expect(clippy::fn_params_excessive_bools, clippy::too_many_arguments)]
     pub fn do_maintenance(
