@@ -237,8 +237,8 @@ impl TypedComponentFallbackProvider<ShowLabels> for Fallback {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
         super::utilities::show_labels_fallback(
             ctx,
-            &Boxes3D::descriptor_half_sizes(),
-            &Boxes3D::descriptor_labels(),
+            Boxes3D::descriptor_half_sizes().component,
+            Boxes3D::descriptor_labels().component,
         )
     }
 }

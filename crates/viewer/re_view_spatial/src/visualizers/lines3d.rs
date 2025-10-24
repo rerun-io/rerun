@@ -283,8 +283,8 @@ impl TypedComponentFallbackProvider<ShowLabels> for Lines3DVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
         super::utilities::show_labels_fallback(
             ctx,
-            &LineStrips3D::descriptor_strips(),
-            &LineStrips3D::descriptor_labels(),
+            LineStrips3D::descriptor_strips().component,
+            LineStrips3D::descriptor_labels().component,
         )
     }
 }

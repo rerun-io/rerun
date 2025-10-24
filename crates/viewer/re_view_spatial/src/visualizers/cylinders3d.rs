@@ -270,8 +270,8 @@ impl TypedComponentFallbackProvider<ShowLabels> for Fallback {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
         super::utilities::show_labels_fallback(
             ctx,
-            &Cylinders3D::descriptor_radii(),
-            &Cylinders3D::descriptor_labels(),
+            Cylinders3D::descriptor_radii().component,
+            Cylinders3D::descriptor_labels().component,
         )
     }
 }

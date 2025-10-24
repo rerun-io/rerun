@@ -293,8 +293,8 @@ impl TypedComponentFallbackProvider<ShowLabels> for Arrows2DVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
         super::utilities::show_labels_fallback(
             ctx,
-            &Arrows2D::descriptor_vectors(),
-            &Arrows2D::descriptor_labels(),
+            Arrows2D::descriptor_vectors().component,
+            Arrows2D::descriptor_labels().component,
         )
     }
 }

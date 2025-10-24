@@ -279,8 +279,8 @@ impl TypedComponentFallbackProvider<ShowLabels> for Lines2DVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
         super::utilities::show_labels_fallback(
             ctx,
-            &LineStrips2D::descriptor_strips(),
-            &LineStrips2D::descriptor_labels(),
+            LineStrips2D::descriptor_strips().component,
+            LineStrips2D::descriptor_labels().component,
         )
     }
 }

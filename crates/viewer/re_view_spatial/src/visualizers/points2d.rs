@@ -323,8 +323,8 @@ impl TypedComponentFallbackProvider<ShowLabels> for Points2DVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
         super::utilities::show_labels_fallback(
             ctx,
-            &Points2D::descriptor_positions(),
-            &Points2D::descriptor_labels(),
+            Points2D::descriptor_positions().component,
+            Points2D::descriptor_labels().component,
         )
     }
 }
