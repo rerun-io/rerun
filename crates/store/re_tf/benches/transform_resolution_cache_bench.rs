@@ -11,10 +11,9 @@ use re_types::{RowId, archetypes};
 
 use re_tf::{TransformFrameIdHash, TransformResolutionCache};
 
-// TODO: these valeus are tiny. Need to handle much bigger!
 const NUM_TIMELINES: usize = 4;
-const NUM_TIMEPOINTS: usize = 100;
-const NUM_TIMEPOINTS_PER_ENTITY: usize = 10;
+const NUM_TIMEPOINTS: usize = 1000;
+const NUM_TIMEPOINTS_PER_ENTITY: usize = 50;
 const NUM_ENTITIES: usize = 100;
 
 fn transform_resolution_cache_query(c: &mut Criterion) {
@@ -51,26 +50,42 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
         }
     }
 
-    let query = re_chunk_store::LatestAtQuery::new(TimelineName::new("timeline2"), 123);
-    let queried_frame = TransformFrameIdHash::from_entity_path(&EntityPath::from("entity2"));
-
-    c.bench_function("build_from_entitydb_and_query_single_frame", |b| {
+    c.bench_function("build_from_entitydb", |b| {
         b.iter(|| {
             let mut cache = TransformResolutionCache::default();
             cache.apply_all_updates(events.iter());
-            let frame_transforms = cache
-                .transforms_for_timeline(query.timeline())
-                .frame_transforms(queried_frame)
-                .unwrap();
-            frame_transforms
-                .latest_at_transform(&entity_db, &query)
-                .unwrap()
-                .clone()
+            cache
         });
     });
-}
 
-// TODO(andreas): Additional benchmarks for iterative invalidation would be great!
+    c.bench_function("query_single_frame", |b| {
+        b.iter_batched(
+            || {
+                let mut cache = TransformResolutionCache::default();
+                cache.apply_all_updates(events.iter());
+
+                let query = re_chunk_store::LatestAtQuery::new(TimelineName::new("timeline2"), 123);
+                let queried_frame =
+                    TransformFrameIdHash::from_entity_path(&EntityPath::from("entity2"));
+
+                (cache, query, queried_frame)
+            },
+            |(mut cache, query, queried_frame)| {
+                let frame_transforms = cache
+                    .transforms_for_timeline(query.timeline())
+                    .frame_transforms(queried_frame)
+                    .unwrap();
+                frame_transforms
+                    .latest_at_transform(&entity_db, &query)
+                    .unwrap()
+                    .clone()
+            },
+            criterion::BatchSize::LargeInput,
+        );
+    });
+
+    // TODO(andreas): Additional benchmarks for iterative invalidation would be great!
+}
 
 criterion_group!(benches, transform_resolution_cache_query);
 criterion_main!(benches);
