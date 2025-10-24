@@ -1,21 +1,17 @@
 use nohash_hasher::IntSet;
 
 use re_log_types::{EntityPath, Instance};
-use re_types::{
-    Archetype as _, ComponentType,
-    archetypes::{Pinhole, Transform3D},
-    components::{AxisLength, ImagePlaneDistance},
-};
-use re_view::{DataResultQuery as _, latest_at_with_blueprint_resolved_data};
+use re_types::{Archetype as _, ComponentType, archetypes::Transform3D, components::AxisLength};
+use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, ViewStateExt as _, ViewSystemExecutionError,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
-use crate::{contexts::TransformTreeContext, ui::SpatialViewState, view_kind::SpatialViewKind};
+use crate::{contexts::TransformTreeContext, view_kind::SpatialViewKind};
 
-use super::{CamerasVisualizer, SpatialViewVisualizerData, filter_visualizable_3d_entities};
+use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 
 pub struct Transform3DArrowsVisualizer(SpatialViewVisualizerData);
 
@@ -139,7 +135,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             );
 
             let axis_length: f32 = results
-                .get_mono_with_fallback::<AxisLength>(&Transform3D::descriptor_axis_length(), self)
+                .get_mono_with_fallback::<AxisLength>(&Transform3D::descriptor_axis_length())
                 .into();
 
             if axis_length == 0.0 {
@@ -175,10 +171,6 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
         self
     }
 }
@@ -228,56 +220,6 @@ pub fn add_axis_arrows(
         .picking_instance_id(picking_instance_id);
 }
 
-impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> AxisLength {
-        let query_result = ctx.viewer_ctx().lookup_query_result(ctx.view_ctx.view_id);
-
-        // If there is a camera in the scene and it has a pinhole, use the image plane distance to determine the axis length.
-        if let Some(length) = query_result
-            .tree
-            .lookup_result_by_path(ctx.target_entity_path.hash())
-            .cloned()
-            .and_then(|data_result| {
-                if data_result
-                    .visualizers
-                    .contains(&CamerasVisualizer::identifier())
-                {
-                    let results = data_result
-                        .latest_at_with_blueprint_resolved_data::<Pinhole>(ctx.view_ctx, ctx.query);
-
-                    Some(results.get_mono_with_fallback::<ImagePlaneDistance>(
-                        &Pinhole::descriptor_image_plane_distance(),
-                        &CamerasVisualizer::default(),
-                    ))
-                } else {
-                    None
-                }
-            })
-        {
-            let length: f32 = length.into();
-            return (length * 0.5).into();
-        }
-
-        // If there is a finite bounding box, use the scene size to determine the axis length.
-        if let Ok(state) = ctx.view_state().downcast_ref::<SpatialViewState>() {
-            let scene_size = state.bounding_boxes.smoothed.size().length();
-
-            if scene_size.is_finite() && scene_size > 0.0 {
-                return (scene_size * 0.05).into();
-            }
-        }
-
-        // Otherwise 0.3 is a reasonable default.
-
-        // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
-        // the heuristic will change it or it will be user edited. In the case of non-defined bounds
-        // this value works better with the default camera setup.
-        0.3.into()
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(Transform3DArrowsVisualizer => [AxisLength]);
-
 /// The `AxisLengthDetector` doesn't actually visualize anything, but it allows us to detect
 /// when a transform has set the [`AxisLength`] component.
 ///
@@ -316,10 +258,6 @@ impl VisualizerSystem for AxisLengthDetector {
         self
     }
 
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
-
     #[inline]
     fn filter_visualizable_entities(
         &self,
@@ -330,5 +268,3 @@ impl VisualizerSystem for AxisLengthDetector {
         Default::default()
     }
 }
-
-re_viewer_context::impl_component_fallback_provider!(AxisLengthDetector => []);

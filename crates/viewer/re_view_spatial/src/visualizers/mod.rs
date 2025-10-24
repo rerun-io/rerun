@@ -19,7 +19,7 @@ mod points2d;
 mod points3d;
 mod segmentation_images;
 mod transform3d_arrows;
-mod utilities;
+pub mod utilities;
 mod video;
 
 pub use cameras::CamerasVisualizer;

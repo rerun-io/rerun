@@ -69,10 +69,6 @@ impl VisualizerSystem for TextLogSystem {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
 
 impl TextLogSystem {
@@ -144,5 +140,3 @@ impl TextLogSystem {
         }
     }
 }
-
-re_viewer_context::impl_component_fallback_provider!(TextLogSystem => []);

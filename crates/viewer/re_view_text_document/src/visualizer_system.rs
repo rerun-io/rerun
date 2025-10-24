@@ -5,8 +5,8 @@ use re_types::{
 };
 use re_view::DataResultQuery as _;
 use re_viewer_context::{
-    IdentifiedViewSystem, TypedComponentFallbackProvider, ViewContext, ViewContextCollection,
-    ViewQuery, ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 // ---
@@ -53,8 +53,7 @@ impl VisualizerSystem for TextDocumentSystem {
             };
             self.text_entries.push(TextDocumentEntry {
                 body: text.clone(),
-                media_type: results
-                    .get_mono_with_fallback(&TextDocument::descriptor_media_type(), self),
+                media_type: results.get_mono_with_fallback(&TextDocument::descriptor_media_type()),
             });
         }
 
@@ -64,16 +63,4 @@ impl VisualizerSystem for TextDocumentSystem {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-impl TypedComponentFallbackProvider<components::MediaType> for TextDocumentSystem {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> components::MediaType {
-        components::MediaType::plain_text()
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(TextDocumentSystem => [components::MediaType]);

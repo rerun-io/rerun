@@ -4,7 +4,7 @@ use rerun::external::{
     re_log_types::{EntityPath, Instance},
     re_renderer,
     re_viewer_context::{
-        self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
+        IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
         ViewSystemExecutionError, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
     },
 };
@@ -95,13 +95,4 @@ impl VisualizerSystem for Points3DColorVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-// Implements a `ComponentFallbackProvider` trait for the `InstanceColorSystem`.
-// It is left empty here but could be used to provides fallback values for optional components in case they're missing.
-use rerun::external::re_types;
-re_viewer_context::impl_component_fallback_provider!(Points3DColorVisualizer => []);

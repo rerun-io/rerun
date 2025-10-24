@@ -1,14 +1,14 @@
 use ahash::HashMap;
 
-use re_types::components::Color;
-use re_viewer_context::{Annotations, QueryContext, ResolvedAnnotationInfos};
+use re_types::{ComponentIdentifier, components::Color};
+use re_viewer_context::{Annotations, QueryContext, ResolvedAnnotationInfos, typed_fallback_for};
 
 use crate::clamped_or_nothing;
 
 /// Process [`Color`] components using annotations and default colors.
 pub fn process_color_slice<'a>(
     ctx: &QueryContext<'_>,
-    fallback_provider: &'a dyn re_viewer_context::TypedComponentFallbackProvider<Color>,
+    component: ComponentIdentifier,
     num_instances: usize,
     annotation_infos: &'a ResolvedAnnotationInfos,
     colors: &'a [Color],
@@ -34,12 +34,12 @@ pub fn process_color_slice<'a>(
                 re_tracing::profile_scope!("no colors, same annotation");
                 let color = annotation_info
                     .color()
-                    .unwrap_or_else(|| fallback_provider.fallback_for(ctx).into());
+                    .unwrap_or_else(|| typed_fallback_for::<Color>(ctx, component).into());
                 vec![color; *count]
             }
             ResolvedAnnotationInfos::Many(annotation_info) => {
                 re_tracing::profile_scope!("no-colors, many annotations");
-                let fallback = fallback_provider.fallback_for(ctx).into();
+                let fallback = typed_fallback_for::<Color>(ctx, component).into();
                 annotation_info
                     .iter()
                     .map(|annotation_info| annotation_info.color().unwrap_or(fallback))

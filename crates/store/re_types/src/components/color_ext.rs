@@ -76,7 +76,7 @@ impl Default for Color {
     fn default() -> Self {
         // Pretty hard to pick a good default value.
         // White is best since multiplicative it does nothing and is visible in more cases than black would be.
-        // Most of the time, a `ComponentFallbackProvider` should provide a better value.
+        // Most of the time, the `FallbackProviderRegistry` should provide a better value.
         Self::WHITE
     }
 }
