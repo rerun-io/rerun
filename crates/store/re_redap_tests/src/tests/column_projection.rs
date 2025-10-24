@@ -1,12 +1,39 @@
-use crate::tests::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt, prop};
 use arrow::array::RecordBatch;
-use futures::TryStreamExt;
-use itertools::Itertools;
-use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
-use re_protos::cloud::v1alpha1::{ScanPartitionTableRequest, ScanPartitionTableResponse};
-use re_protos::headers::RerunHeadersInjectorExt;
+use futures::TryStreamExt as _;
+use itertools::Itertools as _;
 
-pub async fn column_projection_(service: impl RerunCloudService) {
+use re_protos::{
+    cloud::v1alpha1::{
+        ScanDatasetManifestRequest, ScanPartitionTableRequest, ScanPartitionTableResponse,
+        rerun_cloud_service_server::RerunCloudService,
+    },
+    headers::RerunHeadersInjectorExt as _,
+};
+
+use crate::tests::common::{
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, prop,
+};
+
+pub async fn test_partition_table_column_projections(service: impl RerunCloudService) {
+    test_column_projections(service, &projected_partition_table_batch, "partition_table").await;
+}
+
+pub async fn test_dataset_manifest_column_projections(service: impl RerunCloudService) {
+    test_column_projections(
+        service,
+        &projected_dataset_manifest_batch,
+        "dataset_manifest",
+    )
+    .await;
+}
+
+async fn test_column_projections<T>(
+    service: T,
+    project_fn: &impl AsyncFn(&T, Vec<String>, &str) -> Vec<String>,
+    case_name: &'static str,
+) where
+    T: RerunCloudService,
+{
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         1,
         [LayerDefinition::properties(
@@ -34,14 +61,14 @@ pub async fn column_projection_(service: impl RerunCloudService) {
     // check we get all columns when no projection is specified
     //
 
-    let mut all_columns = partition_table_columns(&service, vec![], dataset_name).await;
-    insta::assert_debug_snapshot!("partition_table_all_columns", &all_columns);
+    let all_columns = project_fn(&service, vec![], dataset_name).await;
+    insta::assert_debug_snapshot!(format!("{case_name}_all_columns"), &all_columns);
 
     //
     // we can project a base column
     //
 
-    let partition_id_columns = partition_table_columns(
+    let partition_id_columns = project_fn(
         &service,
         vec![ScanPartitionTableResponse::FIELD_PARTITION_ID.to_owned()],
         dataset_name,
@@ -59,8 +86,7 @@ pub async fn column_projection_(service: impl RerunCloudService) {
     //
 
     let prop_col = "property:points:Points2D:positions".to_owned();
-    let partition_id_columns =
-        partition_table_columns(&service, vec![prop_col.clone()], dataset_name).await;
+    let partition_id_columns = project_fn(&service, vec![prop_col.clone()], dataset_name).await;
 
     assert_eq!(
         partition_id_columns,
@@ -73,7 +99,7 @@ pub async fn column_projection_(service: impl RerunCloudService) {
     //
 
     let prop_col = "property:points:Points2D:positions".to_owned();
-    let ordered_columns = partition_table_columns(
+    let ordered_columns = project_fn(
         &service,
         vec![
             prop_col.clone(),
@@ -146,7 +172,7 @@ pub async fn column_projection_(service: impl RerunCloudService) {
     }
 }
 
-async fn partition_table_columns(
+async fn projected_partition_table_batch(
     service: &impl RerunCloudService,
     column_projection: Vec<String>,
     dataset_name: &str,
@@ -154,6 +180,48 @@ async fn partition_table_columns(
     let responses: Vec<_> = service
         .scan_partition_table(
             tonic::Request::new(ScanPartitionTableRequest {
+                columns: column_projection,
+            })
+            .with_entry_name(dataset_name)
+            .unwrap(),
+        )
+        .await
+        .unwrap()
+        .into_inner()
+        .try_collect()
+        .await
+        .unwrap();
+
+    let batches: Vec<RecordBatch> = responses
+        .into_iter()
+        .map(|resp| resp.data.unwrap().try_into().unwrap())
+        .collect_vec();
+
+    let batch = arrow::compute::concat_batches(
+        batches
+            .first()
+            .expect("there should be at least one batch")
+            .schema_ref(),
+        &batches,
+    )
+    .unwrap();
+
+    batch
+        .schema()
+        .fields()
+        .iter()
+        .map(|f| f.name().to_owned())
+        .collect_vec()
+}
+
+async fn projected_dataset_manifest_batch(
+    service: &impl RerunCloudService,
+    column_projection: Vec<String>,
+    dataset_name: &str,
+) -> Vec<String> {
+    let responses: Vec<_> = service
+        .scan_dataset_manifest(
+            tonic::Request::new(ScanDatasetManifestRequest {
                 columns: column_projection,
             })
             .with_entry_name(dataset_name)
