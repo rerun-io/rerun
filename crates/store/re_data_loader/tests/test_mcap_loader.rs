@@ -34,10 +34,10 @@ mod tests {
         let mut chunks = load_mcap_chunks("tests/assets/supported_ros2_messages.mcap");
 
         // Compare chunks based on their debug representation.
-        // Chunks are sorted by entity path and chunk id (which should make the sorting stable,
+        // Chunks are sorted by entity path, static-ness, and id (which should make the sorting stable,
         // because we don't process MCAP message payloads in parallel). Row ids are cleared to make
         // the actual comparison stable.
-        chunks.sort_by_key(|chunk| (chunk.entity_path().clone(), chunk.id()));
+        chunks.sort_by_key(|chunk| (chunk.entity_path().clone(), chunk.is_static(), chunk.id()));
         let clean_chunks: Vec<Chunk> = chunks
             .into_iter()
             .map(|chunk| {
