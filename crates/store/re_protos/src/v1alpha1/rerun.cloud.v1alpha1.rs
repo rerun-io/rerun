@@ -176,8 +176,8 @@ pub struct ScanPartitionTableRequest {
     /// If not empty, the returned `RecordBatch` are guaranteed to only have the requested column, in the order they were
     /// requested.
     ///
-    /// If a column that doesn't exist is requested, the `ScanPartitionTable` call will fail with an `InvalidArgument`
-    /// error.
+    /// If a projected column does not exist, or is projected more than once, the `ScanPartitionTable` call will fail with
+    /// an `InvalidArgument` error.
     #[prost(string, repeated, tag = "3")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
@@ -243,8 +243,8 @@ pub struct ScanDatasetManifestRequest {
     /// If not empty, the returned `RecordBatch` are guaranteed to only have the requested column, in the order they were
     /// requested.
     ///
-    /// If a column that doesn't exist is requested, the `ScanPartitionTable` call will fail with an `InvalidArgument`
-    /// error.
+    /// If a projected column does not exist, or is projected more than once, the `ScanDatasetManifest` call will fail with
+    /// an `InvalidArgument` error.
     #[prost(string, repeated, tag = "3")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
