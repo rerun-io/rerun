@@ -59,5 +59,7 @@ parquet = { workspace = true, features = ["arrow", "snap"] }
 re_crash_handler.workspace = true
 
 [dev-dependencies]
+re_chunk_store.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
+
 insta = { workspace = true, features = ["glob"] }
