@@ -26,13 +26,18 @@ mod tests {
             .collect()
     }
 
+    // TODO(grtlr): This should be something like a snippet / backwards-compatibility test, but
+    // we don't really have the infrastructure for this yet and we already test a different
+    // MCAP file in snippets.
     #[test]
     fn test_mcap_loader_ros2() {
         let mut chunks = load_mcap_chunks("tests/assets/supported_ros2_messages.mcap");
 
         // Compare chunks based on their debug representation.
-        // Chunks are sorted by entity path and row ids are cleared to make comparison stable.
-        chunks.sort_by_key(|chunk| chunk.entity_path().to_string());
+        // Chunks are sorted by entity path and chunk id (which should make the sorting stable,
+        // because we don't process MCAP message payloads in parallel). Row ids are cleared to make
+        // the actual comparison stable.
+        chunks.sort_by_key(|chunk| (chunk.entity_path().clone(), chunk.id()));
         let clean_chunks: Vec<Chunk> = chunks
             .into_iter()
             .map(|chunk| {
