@@ -25,7 +25,19 @@ pub fn concat_polymorphic_batches(batches: &[RecordBatch]) -> arrow::error::Resu
             for field in &batch.schema().fields {
                 schema_builder.try_merge(field)?;
             }
+
+            let md_merged = schema_builder.metadata_mut();
+            for (k, v) in batch.schema_ref().metadata() {
+                if let Some(previous) = md_merged.insert(k.clone(), v.clone()) {
+                    if previous != *v {
+                        return Err(arrow::error::ArrowError::SchemaError(format!(
+                            "incompatible schemas cannot be merged (conflicting metadata for {k:?})"
+                        )));
+                    }
+                }
+            }
         }
+
         Arc::new(schema_builder.finish())
     };
 
@@ -57,6 +69,7 @@ pub fn concat_polymorphic_batches(batches: &[RecordBatch]) -> arrow::error::Resu
                 )
             })
             .collect();
+
         batches_patched?
     };
 
@@ -253,7 +266,8 @@ mod tests {
 
         let options = RecordBatchOptions::default().with_row_count(Some(1));
         let batch1 = {
-            let schema = Schema::new(vec![col1_schema, col2_schema.clone()]);
+            let schema = Schema::new(vec![col1_schema, col2_schema.clone()])
+                .with_metadata(std::iter::once(("batch1".to_owned(), "yes".to_owned())).collect());
 
             let col1 = Int32Array::from_iter_values([1]);
             let col2 = StringArray::from_iter_values(["col".to_owned()]);
@@ -266,7 +280,8 @@ mod tests {
             .unwrap()
         };
         let batch2 = {
-            let schema = Schema::new(vec![col3_schema, col4_schema.clone()]);
+            let schema = Schema::new(vec![col3_schema, col4_schema.clone()])
+                .with_metadata(std::iter::once(("batch2".to_owned(), "no".to_owned())).collect());
 
             let col3 = BooleanArray::from(vec![true]);
             let col4 = UInt64Array::from_iter_values([42]);
@@ -279,7 +294,15 @@ mod tests {
             .unwrap()
         };
         let batch3 = {
-            let schema = Schema::new(vec![col2_schema, col4_schema]);
+            let schema = Schema::new(vec![col2_schema, col4_schema]).with_metadata(
+                [
+                    ("batch1".to_owned(), "yes".to_owned()),
+                    ("batch2".to_owned(), "no".to_owned()),
+                    ("batch3".to_owned(), "maybe".to_owned()),
+                ]
+                .into_iter()
+                .collect(),
+            );
 
             let col2 = StringArray::from_iter_values(["super-col".to_owned()]);
             let col4 = UInt64Array::from_iter_values([43]);
@@ -302,7 +325,21 @@ mod tests {
             batch2.make_nullable(),
             batch3.make_nullable(),
         ];
-        let batch_concat = concat_polymorphic_batches(batches).unwrap();
+        let mut batch_concat = concat_polymorphic_batches(batches).unwrap();
+
+        // We must compare metadata on its own, because it's a vanilla HashMap: snapshots
+        // have undefined order.
+        assert_eq!(
+            *batch_concat.schema_ref().metadata(),
+            [
+                ("batch1".to_owned(), "yes".to_owned()),
+                ("batch2".to_owned(), "no".to_owned()),
+                ("batch3".to_owned(), "maybe".to_owned()),
+            ]
+            .into_iter()
+            .collect::<std::collections::HashMap<String, String>>(),
+        );
+        batch_concat.schema_metadata_mut().clear();
 
         insta::assert_debug_snapshot!(batch_concat, @r###"
         RecordBatch {
