@@ -4,6 +4,8 @@
 
 - Fix pressing the play button sometimes going to follow mode [#11609](https://github.com/rerun-io/rerun/pull/11609)
 - Fixes hiding all tabs in a tab view spamming an undo warning [#11619](https://github.com/rerun-io/rerun/pull/11619)
+- Fix color picker on default & override disappearing when trying to edit [#11651](https://github.com/rerun-io/rerun/pull/11651)
+- Fix UI glitch when adding multiple visualizers [#11647](https://github.com/rerun-io/rerun/pull/11647)
 
 
 ## [0.26.1](https://github.com/rerun-io/rerun/compare/0.26.0...0.26.1) - 2025-10-21 - Bug fixes
