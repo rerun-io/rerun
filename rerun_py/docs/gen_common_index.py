@@ -591,6 +591,8 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
                     else:
                         show_class = "rerun." + show_class
                         class_name = "rerun." + class_name
+                    if cls.docstring is None:
+                        raise ValueError(f"No docstring for class {class_name}")
                     index_file.write(f"[`{show_class}`][{class_name}] | {cls.docstring.lines[0]}\n")
 
         index_file.write("\n")
