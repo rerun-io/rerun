@@ -668,7 +668,7 @@ impl Transform for Flatten {
 ///
 /// The underlying bytes buffer is reused, making this transformation almost zero-copy.
 #[derive(Clone, Debug, Default)]
-pub struct BinaryToListUInt8<O1: OffsetSizeTrait, O2: OffsetSizeTrait = O1> {
+pub struct BinaryToListUInt8<O1: OffsetSizeTrait = i32, O2: OffsetSizeTrait = O1> {
     _from_offset: PhantomData<O1>,
     _to_offset: PhantomData<O2>,
 }
