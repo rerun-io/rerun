@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+import pyarrow as pa
 from pyarrow import RecordBatch, RecordBatchReader
 from rerun_bindings import (
     AlreadyExistsError as AlreadyExistsError,
@@ -256,6 +257,70 @@ class CatalogClient:
             batches = RecordBatchReader.from_batches(schema, batches)
 
         return self._raw_client.write_table(name, batches, insert_mode)
+
+    def append_to_table(self, table_name: str, **named_params: Any) -> None:
+        """
+        Convert Python objects into columns of data and append them to a table.
+
+        This is a convenience method to quickly turn Python objects into rows
+        of data. You may pass in any parameter name which will be used for the
+        column name. If you need more control over the data written to the
+        server, you can also use [`CatalogClient.write_table`] to write record
+        batches to the server.
+
+        If you wish to send multiple rows at once, then all parameters should
+        be a list of the same length. This function will query the table to
+        determine the schema and attempt to coerce data types as appropriate.
+
+
+        Parameters
+        ----------
+        table_name
+            The name of the table entry to write to. This table must already exist.
+
+        named_params
+            Pairwise combinations of column names and the data to write.
+            For example if you pass `age=3` it will attempt to create a column
+            named `age` and cast the value `3` to the appropriate type.
+
+        """
+        if not named_params:
+            return
+        params = named_params.items()
+        schema = self.get_table(name=table_name).df.schema()
+
+        cast_params = {}
+        expected_len = None
+        for name, value in params:
+            field = schema.field(name)
+            if field is None:
+                raise ValueError(f"Column {name} does not exist in table")
+
+            try:
+                cast_value = pa.array(value, type=field.type)
+            except TypeError:
+                cast_value = pa.array([value], type=field.type)
+
+            cast_params[name] = cast_value
+
+            if expected_len is None:
+                expected_len = len(cast_value)
+            else:
+                if len(cast_value) != expected_len:
+                    raise ValueError("Columns have mismatched number of rows")
+
+        if expected_len is None or expected_len == 0:
+            return
+
+        columns = []
+        for field in schema:
+            if field.name in cast_params:
+                columns.append(cast_params[field.name])
+            else:
+                columns.append(pa.array([None] * expected_len, type=field.type))
+
+        rb = pa.RecordBatch.from_arrays(columns, schema=schema)
+        self.write_table(table_name, rb, TableInsertMode.APPEND)
 
     def do_global_maintenance(self) -> None:
         """Perform maintenance tasks on the whole system."""

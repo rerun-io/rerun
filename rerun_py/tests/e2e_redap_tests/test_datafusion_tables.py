@@ -356,7 +356,22 @@ def test_client_write_table(server_instance: ServerInstance) -> None:
     final_count = ctx.table(table_name).count()
     assert final_count == original_count + 30
 
-    # Test ovewrite method
+    # Test overwrite method
     server_instance.client.write_table(table_name, batch1, TableInsertMode.OVERWRITE)
     final_count = ctx.table(table_name).count()
     assert final_count == 3
+
+
+def test_client_append_to_table(server_instance: ServerInstance) -> None:
+    table_name = "simple_datatypes"
+    ctx: SessionContext = server_instance.client.ctx
+
+    original_rows = ctx.table(table_name).count()
+
+    server_instance.client.append_to_table(table_name, id=3, bool_col=True, double_col=2.0)
+    assert ctx.table(table_name).count() == original_rows + 1
+
+    server_instance.client.append_to_table(
+        table_name, id=[3, 4, 5], bool_col=[False, True, None], double_col=[2.0, None, 1.0]
+    )
+    assert ctx.table(table_name).count() == original_rows + 4
