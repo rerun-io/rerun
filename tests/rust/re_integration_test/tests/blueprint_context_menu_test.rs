@@ -1,3 +1,5 @@
+use egui_kittest::kittest::NodeT as _;
+use re_integration_test::GetSection;
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::external::re_log_types::EntityPathFilter;
@@ -78,4 +80,33 @@ pub async fn test_blueprint_tree_context_menu() {
 
     harness.right_click_nth_label("boxes3d", 1);
     harness.snapshot_app("blueprint_tree_context_menu_10");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_foo() {
+    let mut harness = make_test_harness();
+    setup_single_view_blueprint(&mut harness);
+
+    harness.set_selection_panel_opened(true);
+
+    // println!(
+    //     "1: {}",
+    //     harness
+    //         .blueprint_panel()
+    //         .root()
+    //         .get_all_by_label("Test view")
+    //         .count()
+    // );
+
+    println!("## :{:#?}", harness.root().children().collect::<Vec<_>>());
+
+    harness.blueprint_panel().right_click_label("Test view");
+
+    harness.snapshot_app("xtemp");
+
+    let section = harness.blueprint_panel();
+
+    let node = section.root();
+
+    println!("node: {:#?}", node);
 }

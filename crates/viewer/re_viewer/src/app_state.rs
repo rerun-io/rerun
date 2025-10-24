@@ -527,7 +527,7 @@ impl AppState {
                         ui.ctx().content_rect().width(),
                     ));
 
-                left_panel.show_animated_inside(
+                let left_panel_response = left_panel.show_animated_inside(
                     ui,
                     app_blueprint.blueprint_panel_state().is_expanded(),
                     |ui: &mut egui::Ui| {
@@ -589,6 +589,11 @@ impl AppState {
                         }
                     },
                 );
+                if let Some(left_panel_response) = left_panel_response {
+                    left_panel_response.response.widget_info(|| {
+                        egui::WidgetInfo::labeled(egui::WidgetType::Panel, true, "blueprint_panel")
+                    });
+                }
 
                 //
                 // Viewport

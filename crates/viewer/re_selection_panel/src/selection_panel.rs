@@ -72,7 +72,7 @@ impl SelectionPanel {
             ctx.send_time_commands([TimeControlCommand::ClearHighlightedRange]);
         }
 
-        panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
+        let response = panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
             ui.panel_content(|ui| {
                 let hover = "The selection view contains information and options about \
                     the currently selected object(s)";
@@ -92,6 +92,11 @@ impl SelectionPanel {
                     });
                 });
         });
+        if let Some(response) = response {
+            response.response.widget_info(|| {
+                egui::WidgetInfo::labeled(egui::WidgetType::Panel, true, "selection_panel")
+            });
+        }
 
         // run modals (these are noop if the modals are not active)
         self.view_entity_modal.ui(ui.ctx(), ctx, viewport);

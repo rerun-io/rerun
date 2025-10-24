@@ -345,12 +345,14 @@ pub trait UiExt {
     // TODO(ab): this used to be used for inner margin, after registering full span range in panels.
     // It's highly likely that all these use are now redundant.
     fn panel_content<R>(&mut self, add_contents: impl FnOnce(&mut egui::Ui) -> R) -> R {
-        egui::Frame {
+        let res = egui::Frame {
             inner_margin: self.tokens().panel_margin(),
             ..Default::default()
         }
-        .show(self.ui_mut(), |ui| add_contents(ui))
-        .inner
+        .show(self.ui_mut(), |ui| add_contents(ui));
+        res.response
+            .widget_info(|| WidgetInfo::labeled(egui::WidgetType::Label, true, "foooooo"));
+        res.inner
     }
 
     /// Static title bar used to separate panels into section.
@@ -645,7 +647,7 @@ pub trait UiExt {
         &mut self,
         id_salt: impl std::hash::Hash,
         content: impl FnOnce(&mut egui::Ui) -> R,
-    ) -> R {
+    ) -> egui::InnerResponse<R> {
         list_item::list_item_scope(self.ui_mut(), id_salt, content)
     }
 
@@ -687,7 +689,7 @@ pub trait UiExt {
                 id,
                 default_open,
                 list_item::LabelContent::new(label),
-                |ui| list_item::list_item_scope(ui, id, children_ui),
+                |ui| list_item::list_item_scope(ui, id, children_ui).inner,
             )
             .body_response
             .map(|r| r.inner)

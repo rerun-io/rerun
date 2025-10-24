@@ -1,4 +1,4 @@
-use egui::{Response, Ui};
+use egui::{Response, Ui, WidgetInfo, WidgetType};
 use smallvec::SmallVec;
 
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
@@ -86,7 +86,7 @@ impl BlueprintTree {
         }
 
         ui.panel_content(|ui| {
-            ui.list_item_scope("blueprint_section_title", |ui| {
+            let response = ui.list_item_scope("blueprint_section_title", |ui| {
                 ui.list_item().interactive(false).show_flat(
                     ui,
                     list_item::CustomContent::new(|ui, _| {
@@ -110,6 +110,9 @@ impl BlueprintTree {
                         },
                     ),
                 );
+            });
+            response.response.widget_info(|| {
+                WidgetInfo::labeled(WidgetType::Panel, true, "blueprint_section_title")
             });
         });
 
