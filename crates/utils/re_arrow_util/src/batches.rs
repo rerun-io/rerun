@@ -412,6 +412,29 @@ mod tests {
     }
 
     #[test]
+    fn concat_polymorphic_batches_incompatible() {
+        let options = RecordBatchOptions::default().with_row_count(Some(1));
+        let batch1 = {
+            let schema = Schema::empty()
+                .with_metadata(std::iter::once(("is_true".to_owned(), "yes".to_owned())).collect());
+            RecordBatch::try_new_with_options(Arc::new(schema), vec![], &options).unwrap()
+        };
+        let mut batch2 = {
+            let schema = Schema::empty()
+                .with_metadata(std::iter::once(("is_true".to_owned(), "no".to_owned())).collect());
+            RecordBatch::try_new_with_options(Arc::new(schema), vec![], &options).unwrap()
+        };
+
+        let err = concat_polymorphic_batches(&[batch1.clone(), batch2.clone()]).unwrap_err();
+        assert!(matches!(err, arrow::error::ArrowError::SchemaError(_)));
+
+        batch2
+            .schema_metadata_mut()
+            .insert("is_true".to_owned(), "yes".to_owned());
+        assert!(concat_polymorphic_batches(&[batch1, batch2]).is_ok());
+    }
+
+    #[test]
     fn test_concat_horizontally_basic() {
         // Create first batch with two columns
         let schema1 = Arc::new(Schema::new(vec![
