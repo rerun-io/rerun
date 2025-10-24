@@ -1,9 +1,16 @@
 # Rerun changelog
 
+## [0.26.2](https://github.com/rerun-io/rerun/compare/0.26.1...0.26.2) - 2025-10-XX - More bug fixes
+
+- Fix pressing the play button sometimes going to follow mode [#11609](https://github.com/rerun-io/rerun/pull/11609)
+- Fixes hiding all tabs in a tab view spamming an undo warning [#11619](https://github.com/rerun-io/rerun/pull/11619)
+
+
 ## [0.26.1](https://github.com/rerun-io/rerun/compare/0.26.0...0.26.1) - 2025-10-21 - Bug fixes
 
 - Fix `cargo install rerun-cli` requiring `protoc` on `PATH` [#11592](https://github.com/rerun-io/rerun/pull/11592)
 - Switch to newly received recordings even if `SetStoreInfo` message is missing [#11568](https://github.com/rerun-io/rerun/pull/11568)
+
 
 ## [0.26.0](https://github.com/rerun-io/rerun/compare/0.25.1...0.26.0) - 2025-10-13 - Viewer improvements and table filtering upgrades
 
