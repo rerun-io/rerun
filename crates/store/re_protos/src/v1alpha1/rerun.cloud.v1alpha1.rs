@@ -2228,6 +2228,9 @@ pub mod rerun_cloud_service_client {
         /// Write record batches to a table.
         ///
         /// This endpoint requires the standard dataset headers.
+        ///
+        /// TODO(#11645): endpoints with streaming input are not supported by `grpc-web`.
+        /// A non-streaming shim will need to be added if/when the viewer uses this endpoint.
         pub async fn write_table(
             &mut self,
             request: impl tonic::IntoStreamingRequest<Message = super::WriteTableRequest>,
@@ -2543,6 +2546,9 @@ pub mod rerun_cloud_service_server {
         /// Write record batches to a table.
         ///
         /// This endpoint requires the standard dataset headers.
+        ///
+        /// TODO(#11645): endpoints with streaming input are not supported by `grpc-web`.
+        /// A non-streaming shim will need to be added if/when the viewer uses this endpoint.
         async fn write_table(
             &self,
             request: tonic::Request<tonic::Streaming<super::WriteTableRequest>>,

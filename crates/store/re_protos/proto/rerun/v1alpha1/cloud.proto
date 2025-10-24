@@ -152,6 +152,9 @@ service RerunCloudService {
   // Write record batches to a table.
   //
   // This endpoint requires the standard dataset headers.
+  //
+  // TODO(#11645): endpoints with streaming input are not supported by `grpc-web`.
+  // A non-streaming shim will need to be added if/when the viewer uses this endpoint.
   rpc WriteTable(stream WriteTableRequest) returns (WriteTableResponse) {}
 
   // --- Tasks ---
