@@ -70,15 +70,15 @@ pub trait RecordBatchExt {
     /// Returns a copy of `self` with only the specified columns, in the specified order.
     ///
     /// Missing columns are ignored.
-    fn filtered_columns(&self, columns: &[&str]) -> Self;
+    fn project_columns(&self, columns: &[&str]) -> Self;
 
-    /// Returns copy of self with only the columns that start with the specified prefix
-    fn filtered_columns_by_prefix(&self, prefix: &str) -> Self;
+    /// Returns a copy of `self` with only the columns that start with the specified prefix
+    fn filter_columns_by_prefix(&self, prefix: &str) -> Self;
 
     /// Returns a copy of `self` with the specified columns removed.
     ///
     /// Missing columns are ignored.
-    fn unfiltered_columns(&self, columns: &[&str]) -> Self;
+    fn remove_columns(&self, columns: &[&str]) -> Self;
 }
 
 impl RecordBatchExt for arrow::array::RecordBatch {
@@ -312,16 +312,14 @@ impl RecordBatchExt for arrow::array::RecordBatch {
     }
 
     /// Remove the named columns.
-    //TODO: rename
-    fn unfiltered_columns(&self, columns: &[&str]) -> Self {
+    fn remove_columns(&self, columns: &[&str]) -> Self {
         self.clone()
             .filter_columns_by(|field| !columns.contains(&field.name().as_str()))
             .expect("should be able to filter")
     }
 
     /// Only keep the named columns.
-    //TODO: rename
-    fn filtered_columns(&self, columns: &[&str]) -> Self {
+    fn project_columns(&self, columns: &[&str]) -> Self {
         let col_idx = |field: &Field| columns.iter().position(|c| c == field.name());
 
         self.clone()
@@ -331,8 +329,7 @@ impl RecordBatchExt for arrow::array::RecordBatch {
             .expect("should be able to sort")
     }
 
-    //TODO: rename
-    fn filtered_columns_by_prefix(&self, prefix: &str) -> Self {
+    fn filter_columns_by_prefix(&self, prefix: &str) -> Self {
         self.clone()
             .filter_columns_by(|field| field.name().starts_with(prefix))
             .expect("should be able to filter")
