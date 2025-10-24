@@ -240,8 +240,8 @@ mod tests {
     fn test_format_parse() {
         let cases = [
             (TimeInt::STATIC, "<static>"),
-            (TimeInt::MIN, "−∞"),
-            (TimeInt::MAX, "+∞"),
+            (TimeInt::MIN, "beginning"),
+            (TimeInt::MAX, "end"),
             (TimeInt::new_temporal(-42), "#−42"),
             (TimeInt::new_temporal(12345), "#12 345"),
         ];
