@@ -312,67 +312,30 @@ impl RecordBatchExt for arrow::array::RecordBatch {
     }
 
     /// Remove the named columns.
+    //TODO: rename
     fn unfiltered_columns(&self, columns: &[&str]) -> Self {
-        let schema = self.schema();
-        let columns = schema
-            .fields()
-            .iter()
-            .filter_map(|field| {
-                let name = field.name().as_str();
-                (!columns.contains(&name)).then_some(name)
-            })
-            .collect_vec();
-        self.filtered_columns(&columns)
+        self.clone()
+            .filter_columns_by(|field| !columns.contains(&field.name().as_str()))
+            .expect("should be able to filter")
     }
 
     /// Only keep the named columns.
+    //TODO: rename
     fn filtered_columns(&self, columns: &[&str]) -> Self {
-        let mut fields = Vec::new();
-        let mut arrays = Vec::new();
+        let col_idx = |field: &Field| columns.iter().position(|c| c == field.name());
 
-        let schema = self.schema();
-        for column in columns {
-            let Some((_, field)) = schema.column_with_name(column) else {
-                continue;
-            };
-            fields.push(field.clone());
-
-            let Some(array) = self.column_by_name(column) else {
-                continue;
-            };
-            arrays.push(array.clone());
-        }
-
-        let schema = arrow::datatypes::Schema::new_with_metadata(fields, schema.metadata().clone());
-        if schema.fields().is_empty() {
-            Self::new_empty(Arc::new(schema))
-        } else {
-            Self::try_new(Arc::new(schema), arrays).expect("creation should succeed")
-        }
+        self.clone()
+            .filter_columns_by(|field| columns.contains(&field.name().as_str()))
+            .expect("should be able to filter")
+            .sort_columns_by(|f1, f2| col_idx(f1).cmp(&col_idx(f2)))
+            .expect("should be able to sort")
     }
 
+    //TODO: rename
     fn filtered_columns_by_prefix(&self, prefix: &str) -> Self {
-        let mut fields = Vec::new();
-        let mut arrays = Vec::new();
-
-        let schema = self.schema();
-        for column in schema.fields() {
-            if column.name().starts_with(prefix) {
-                fields.push(column.clone());
-
-                let Some(array) = self.column_by_name(column.name()) else {
-                    continue;
-                };
-                arrays.push(array.clone());
-            }
-        }
-
-        let schema = arrow::datatypes::Schema::new_with_metadata(fields, schema.metadata().clone());
-        if schema.fields().is_empty() {
-            Self::new_empty(Arc::new(schema))
-        } else {
-            Self::try_new(Arc::new(schema), arrays).expect("creation should succeed")
-        }
+        self.clone()
+            .filter_columns_by(|field| field.name().starts_with(prefix))
+            .expect("should be able to filter")
     }
 }
 

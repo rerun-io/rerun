@@ -10,6 +10,7 @@ use nohash_hasher::IntSet;
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
+use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
@@ -751,16 +752,20 @@ impl RerunCloudService for RerunCloudHandler {
         let entry_id = get_entry_id_from_headers(&store, &request)?;
 
         let request = request.into_inner();
-        if !request.columns.is_empty() {
-            return Err(tonic::Status::unimplemented(
-                "scan_partition_table: column projection not implemented",
-            ));
-        }
 
         let dataset = store.dataset(entry_id)?;
-        let record_batch = dataset.partition_table().map_err(|err| {
+        let mut record_batch = dataset.partition_table().map_err(|err| {
             tonic::Status::internal(format!("Unable to read partition table: {err:#}"))
         })?;
+
+        // project columns
+        if !request.columns.is_empty() {
+            record_batch = record_batch
+                .filter_columns_by(|field| request.columns.contains(field.name()))
+                .map_err(|err| {
+                    tonic::Status::internal(format!("Unable to filter columns: {err:#}"))
+                })?;
+        }
 
         let stream = futures::stream::once(async move {
             Ok(ScanPartitionTableResponse {
@@ -808,15 +813,18 @@ impl RerunCloudService for RerunCloudHandler {
         let entry_id = get_entry_id_from_headers(&store, &request)?;
 
         let request = request.into_inner();
-        if !request.columns.is_empty() {
-            return Err(tonic::Status::unimplemented(
-                "scan_partition_table: column projection not implemented",
-            ));
-        }
 
         let dataset = store.dataset(entry_id)?;
+        let mut record_batch = dataset.dataset_manifest()?;
 
-        let record_batch = dataset.dataset_manifest()?;
+        // project columns
+        if !request.columns.is_empty() {
+            record_batch = record_batch
+                .filter_columns_by(|field| request.columns.contains(field.name()))
+                .map_err(|err| {
+                    tonic::Status::internal(format!("Unable to filter columns: {err:#}"))
+                })?;
+        }
 
         let stream = futures::stream::once(async move {
             Ok(ScanDatasetManifestResponse {

@@ -96,6 +96,12 @@ pub trait RecordBatchExt {
         self,
         cmp_fn: impl Fn(&Field, &Field) -> std::cmp::Ordering,
     ) -> arrow::error::Result<RecordBatch>;
+
+    /// Retain columns based on the provided predicate.
+    fn filter_columns_by(
+        self,
+        predicate: impl Fn(&Field) -> bool,
+    ) -> arrow::error::Result<RecordBatch>;
 }
 
 impl RecordBatchExt for RecordBatch {
@@ -170,6 +176,28 @@ impl RecordBatchExt for RecordBatch {
         Self::try_new_with_options(
             Arc::new(Schema::new_with_metadata(fields, metadata)),
             columns,
+            &RecordBatchOptions::default().with_row_count(Some(row_count)),
+        )
+    }
+
+    /// Retain columns based on the provided predicate.
+    fn filter_columns_by(
+        self,
+        predicate: impl Fn(&Field) -> bool,
+    ) -> arrow::error::Result<RecordBatch> {
+        let (schema_ref, columns, row_count) = self.into_parts();
+        let Schema { fields, metadata } = Arc::unwrap_or_clone(schema_ref);
+
+        let (new_fields, new_columns): (Vec<_>, Vec<_>) = fields
+            .iter()
+            .map(Arc::clone)
+            .zip(columns)
+            .filter(|(field, _)| predicate(field))
+            .unzip();
+
+        Self::try_new_with_options(
+            Arc::new(Schema::new_with_metadata(new_fields, metadata)),
+            new_columns,
             &RecordBatchOptions::default().with_row_count(Some(row_count)),
         )
     }
@@ -817,5 +845,83 @@ mod tests {
 
         assert_eq!(sorted.num_rows(), 0);
         assert_eq!(sorted.num_columns(), 1);
+    }
+
+    #[test]
+    fn test_filter_columns_basic() {
+        let schema = Arc::new(Schema::new(vec![
+            Field::new("id", DataType::Int32, false),
+            Field::new("name", DataType::Utf8, false),
+            Field::new("age", DataType::Int32, false),
+        ]));
+
+        let batch = RecordBatch::try_new(
+            schema,
+            vec![
+                Arc::new(Int32Array::from(vec![1, 2, 3])),
+                Arc::new(StringArray::from(vec!["a", "b", "c"])),
+                Arc::new(Int32Array::from(vec![10, 20, 30])),
+            ],
+        )
+        .unwrap();
+
+        // Keep only Int32 columns
+        let filtered = batch
+            .filter_columns_by(|f| matches!(f.data_type(), DataType::Int32))
+            .unwrap();
+
+        assert_eq!(filtered.num_columns(), 2);
+        assert_eq!(filtered.schema_ref().field(0).name(), "id");
+        assert_eq!(filtered.schema_ref().field(1).name(), "age");
+        assert_eq!(filtered.num_rows(), 3);
+    }
+
+    #[test]
+    fn test_filter_columns_preserves_metadata() {
+        let mut metadata = std::collections::HashMap::default();
+        metadata.insert("key".to_owned(), "value".to_owned());
+
+        let schema = Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new("a", DataType::Int32, false),
+                Field::new("b", DataType::Utf8, false),
+            ],
+            metadata.clone(),
+        ));
+
+        let batch = RecordBatch::try_new(
+            schema,
+            vec![
+                Arc::new(Int32Array::from(vec![1])),
+                Arc::new(StringArray::from(vec!["x"])),
+            ],
+        )
+        .unwrap();
+
+        let filtered = batch
+            .filter_columns_by(|f| matches!(f.data_type(), DataType::Int32))
+            .unwrap();
+
+        assert_eq!(filtered.schema_ref().metadata(), &metadata);
+    }
+
+    #[test]
+    fn test_filter_columns_empty_schema() {
+        let schema = Arc::new(Schema::empty());
+
+        let batch = RecordBatch::try_new_with_options(
+            schema,
+            vec![],
+            &RecordBatchOptions::default().with_row_count(Some(3)),
+        )
+        .unwrap();
+
+        assert_eq!(batch.num_columns(), 0);
+        assert_eq!(batch.num_rows(), 3);
+
+        let filtered = batch.filter_columns_by(|_| true).unwrap();
+
+        assert_eq!(filtered.num_columns(), 0);
+        assert_eq!(filtered.num_rows(), 3);
     }
 }
