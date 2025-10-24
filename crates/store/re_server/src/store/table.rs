@@ -205,14 +205,14 @@ impl Table {
     pub async fn create_table(
         id: EntryId,
         name: &str,
-        path: &str,
+        url: &url::Url,
         schema: SchemaRef,
     ) -> Result<Self, DataFusionError> {
         let rb = vec![Ok(RecordBatch::new_empty(Arc::clone(&schema)))];
         let rb = arrow::record_batch::RecordBatchIterator::new(rb.into_iter(), schema);
 
         let ds = Arc::new(
-            lance::Dataset::write(rb, path, None)
+            lance::Dataset::write(rb, url.as_str(), None)
                 .await
                 .map_err(|err| DataFusionError::External(err.into()))?,
         );
@@ -232,7 +232,7 @@ impl Table {
     pub async fn create_table(
         _id: EntryId,
         _name: &str,
-        _path: &str,
+        _url: &url::Url,
         _schema: SchemaRef,
     ) -> Result<Self, DataFusionError> {
         exec_err!("Create table not implemented for bare DataFusion table")

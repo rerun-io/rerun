@@ -344,7 +344,7 @@ impl InMemoryStore {
     pub async fn create_table(
         &mut self,
         name: &str,
-        path: &str,
+        url: &url::Url,
         schema: SchemaRef,
     ) -> Result<TableEntry, Error> {
         re_log::debug!(name, "create_table");
@@ -355,7 +355,7 @@ impl InMemoryStore {
         let entry_id = EntryId::new();
         self.id_by_name.insert(name.to_owned(), entry_id);
 
-        let table = Table::create_table(entry_id, name, path, schema).await?;
+        let table = Table::create_table(entry_id, name, url, schema).await?;
         let table_entry = table.as_table_entry();
 
         self.tables.insert(entry_id, table);
