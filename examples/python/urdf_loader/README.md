@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "URDF loader"
 source = "https://github.com/rerun-io/rerun-loader-python-example-urdf"
-tags = ["3D", "Mesh", "Loader"]
+tags = ["3D", "URDF", "Mesh", "Loader"]
 thumbnail = "https://static.rerun.io/urdf_loader/9c04fbb376cd4f7498628a98593035c6da0f17fb/480w.png"
 thumbnail_dimensions = [480, 480]
 -->

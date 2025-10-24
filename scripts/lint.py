@@ -92,6 +92,7 @@ def lint_url(url: str) -> str | None:
     ALLOW_LIST_URLS = {
         "https://github.com/lycheeverse/lychee/blob/master/lychee.example.toml",
         "https://github.com/rerun-io/documentation/blob/main/src/utils/tokens.ts",
+        "https://github.com/rerun-io/landing/blob/main/src/lib/lang.ts",  # if this file moves we should check the linked code.
         "https://github.com/rerun-io/rerun/blob/main/ARCHITECTURE.md",
         "https://github.com/rerun-io/rerun/blob/main/CODE_OF_CONDUCT.md",
         "https://github.com/rerun-io/rerun/blob/main/CONTRIBUTING.md",
