@@ -1,6 +1,7 @@
 #![expect(clippy::unwrap_used)]
 
 use arrow::array::{ListArray, RecordBatch, StringArray, TimestampNanosecondArray};
+use arrow::datatypes::Schema;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
 use url::Url;
@@ -8,15 +9,16 @@ use url::Url;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_protos::{
     cloud::v1alpha1::{
-        CreateDatasetEntryRequest, DataSource, DataSourceKind, ScanDatasetManifestRequest,
-        ScanDatasetManifestResponse, ScanPartitionTableRequest, ScanPartitionTableResponse,
+        CreateDatasetEntryRequest, DataSource, DataSourceKind, GetDatasetManifestSchemaRequest,
+        GetPartitionTableSchemaRequest, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
+        ScanPartitionTableRequest, ScanPartitionTableResponse,
         rerun_cloud_service_server::RerunCloudService,
     },
     headers::RerunHeadersInjectorExt as _,
 };
 
 use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, prop};
-use crate::{FieldsExt as _, RecordBatchExt as _, create_simple_recording_in};
+use crate::{FieldsExt as _, RecordBatchExt as _, SchemaExt as _, create_simple_recording_in};
 
 pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
@@ -291,6 +293,32 @@ async fn scan_partition_table_and_snapshot(
     )
     .unwrap();
 
+    // check that the _advertised_ schema is consistent with the actual data.
+    let alleged_schema: Schema = service
+        .get_partition_table_schema(
+            tonic::Request::new(GetPartitionTableSchemaRequest {})
+                .with_entry_name(dataset_name)
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+        .into_inner()
+        .schema
+        .unwrap()
+        .try_into()
+        .unwrap();
+
+    // Note: we check fields only because some schema-level sorbet metadata is injected in one of
+    // the paths and not the other. Anyway, that's what matters.
+    assert_eq!(
+        alleged_schema.fields(),
+        batch.schema_ref().fields(),
+        "The actual schema is not consistent with the schema advertised by \
+        `get_partition_table_schema`.\n\nActual:\n{}\n\nAlleged:\n{}\n",
+        batch.schema().format_snapshot(),
+        alleged_schema.format_snapshot(),
+    );
+
     let required_fields = ScanPartitionTableResponse::fields();
     assert!(
         batch.schema().fields().contains_unordered(&required_fields),
@@ -353,6 +381,32 @@ async fn scan_dataset_manifest_and_snapshot(
         &batches,
     )
     .unwrap();
+
+    // check that the _advertised_ schema is consistent with the actual data.
+    let alleged_schema: Schema = service
+        .get_dataset_manifest_schema(
+            tonic::Request::new(GetDatasetManifestSchemaRequest {})
+                .with_entry_name(dataset_name)
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+        .into_inner()
+        .schema
+        .unwrap()
+        .try_into()
+        .unwrap();
+
+    // Note: we check fields only because some schema-level sorbet metadata is injected in one of
+    // the paths and not the other. Anyway, that's what matters.
+    assert_eq!(
+        alleged_schema.fields(),
+        batch.schema_ref().fields(),
+        "The actual schema is not consistent with the schema advertised by \
+        `get_dataset_manifest_schema`.\n\nActual:\n{}\n\nAlleged:\n{}\n",
+        batch.schema().format_snapshot(),
+        alleged_schema.format_snapshot(),
+    );
 
     let required_fields = ScanDatasetManifestResponse::fields();
     assert!(
