@@ -2,22 +2,22 @@ namespace rerun.blueprint.components;
 
 // ---
 
-/// Tri-state for panel controls.
-enum PanelState: ubyte (
+/// The current play state.
+enum PlayState: ubyte (
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "Copy, PartialEq, Eq",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
   /// Invalid value. Won't show up in generated types.
-  Invalid = 0,
+	Invalid = 0,
 
-  /// Completely hidden.
-  Hidden,
+	/// Time doesn't move.
+	Paused,
 
-  /// Visible, but as small as possible on its shorter axis.
-  Collapsed,
+	/// Time move steadily.
+	Playing (default),
 
-  /// Fully expanded.
-  Expanded (default),
+	/// Follow the latest available data.
+	Following,
 }

@@ -24,12 +24,23 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         archetype.fps = ComponentBatch::empty<rerun::blueprint::components::Fps>(Descriptor_fps)
                             .value_or_throw();
+        archetype.play_state =
+            ComponentBatch::empty<rerun::blueprint::components::PlayState>(Descriptor_play_state)
+                .value_or_throw();
+        archetype.loop_mode =
+            ComponentBatch::empty<rerun::blueprint::components::LoopMode>(Descriptor_loop_mode)
+                .value_or_throw();
+        archetype.time_selection =
+            ComponentBatch::empty<rerun::blueprint::components::AbsoluteTimeRange>(
+                Descriptor_time_selection
+            )
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> TimePanelBlueprint::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(5);
+        columns.reserve(8);
         if (state.has_value()) {
             columns.push_back(state.value().partitioned(lengths_).value_or_throw());
         }
@@ -44,6 +55,15 @@ namespace rerun::blueprint::archetypes {
         }
         if (fps.has_value()) {
             columns.push_back(fps.value().partitioned(lengths_).value_or_throw());
+        }
+        if (play_state.has_value()) {
+            columns.push_back(play_state.value().partitioned(lengths_).value_or_throw());
+        }
+        if (loop_mode.has_value()) {
+            columns.push_back(loop_mode.value().partitioned(lengths_).value_or_throw());
+        }
+        if (time_selection.has_value()) {
+            columns.push_back(time_selection.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -64,6 +84,15 @@ namespace rerun::blueprint::archetypes {
         if (fps.has_value()) {
             return columns(std::vector<uint32_t>(fps.value().length(), 1));
         }
+        if (play_state.has_value()) {
+            return columns(std::vector<uint32_t>(play_state.value().length(), 1));
+        }
+        if (loop_mode.has_value()) {
+            return columns(std::vector<uint32_t>(loop_mode.value().length(), 1));
+        }
+        if (time_selection.has_value()) {
+            return columns(std::vector<uint32_t>(time_selection.value().length(), 1));
+        }
         return Collection<ComponentColumn>();
     }
 } // namespace rerun::blueprint::archetypes
@@ -76,7 +105,7 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(5);
+        cells.reserve(8);
 
         if (archetype.state.has_value()) {
             cells.push_back(archetype.state.value());
@@ -92,6 +121,15 @@ namespace rerun {
         }
         if (archetype.fps.has_value()) {
             cells.push_back(archetype.fps.value());
+        }
+        if (archetype.play_state.has_value()) {
+            cells.push_back(archetype.play_state.value());
+        }
+        if (archetype.loop_mode.has_value()) {
+            cells.push_back(archetype.loop_mode.value());
+        }
+        if (archetype.time_selection.has_value()) {
+            cells.push_back(archetype.time_selection.value());
         }
 
         return rerun::take_ownership(std::move(cells));
