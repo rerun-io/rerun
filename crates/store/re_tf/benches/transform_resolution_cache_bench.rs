@@ -41,7 +41,10 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
                 builder = builder.with_archetype(
                     RowId::new(),
                     timepoint,
-                    &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]).with_scale(2.0),
+                    &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0])
+                        .with_scale(2.0)
+                        .with_quaternion(glam::Quat::from_xyzw(0.0, 2.0, 3.0, 1.0))
+                        .with_mat3x3(glam::Mat3::IDENTITY),
                 );
             }
             let chunk = builder.build().unwrap();
@@ -58,30 +61,47 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
         });
     });
 
-    c.bench_function("query_single_frame", |b| {
+    let query = re_chunk_store::LatestAtQuery::new(TimelineName::new("timeline2"), 123);
+    let queried_frame = TransformFrameIdHash::from_entity_path(&EntityPath::from("entity2"));
+
+    c.bench_function("query_uncached_frame", |b| {
         b.iter_batched(
             || {
                 let mut cache = TransformResolutionCache::default();
                 cache.apply_all_updates(events.iter());
-
-                let query = re_chunk_store::LatestAtQuery::new(TimelineName::new("timeline2"), 123);
-                let queried_frame =
-                    TransformFrameIdHash::from_entity_path(&EntityPath::from("entity2"));
-
-                (cache, query, queried_frame)
+                cache
             },
-            |(mut cache, query, queried_frame)| {
-                let frame_transforms = cache
+            |mut cold_cache| {
+                let frame_transforms = cold_cache
                     .transforms_for_timeline(query.timeline())
                     .frame_transforms(queried_frame)
                     .unwrap();
                 frame_transforms
                     .latest_at_transform(&entity_db, &query)
                     .unwrap()
-                    .clone()
             },
-            criterion::BatchSize::LargeInput,
+            criterion::BatchSize::PerIteration,
         );
+    });
+
+    let mut warm_cache = TransformResolutionCache::default();
+    warm_cache.apply_all_updates(events.iter());
+    warm_cache
+        .transforms_for_timeline(query.timeline())
+        .frame_transforms(queried_frame)
+        .unwrap()
+        .latest_at_transform(&entity_db, &query);
+
+    c.bench_function("query_cached_frame", |b| {
+        b.iter(|| {
+            let frame_transforms = warm_cache
+                .transforms_for_timeline(query.timeline())
+                .frame_transforms(queried_frame)
+                .unwrap();
+            frame_transforms
+                .latest_at_transform(&entity_db, &query)
+                .unwrap()
+        });
     });
 
     // TODO(andreas): Additional benchmarks for iterative invalidation would be great!
