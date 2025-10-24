@@ -1,7 +1,9 @@
 use crate::SchemaExt as _;
 use arrow::datatypes::{DataType, Field, Schema};
 use re_protos::cloud::v1alpha1::GetTableSchemaRequest;
-use re_protos::cloud::v1alpha1::ext::{CreateTableEntryRequest, EntryDetails};
+use re_protos::cloud::v1alpha1::ext::{
+    CreateTableEntryRequest, EntryDetails, LanceTable, ProviderDetails,
+};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use std::collections::HashMap;
 
@@ -17,15 +19,16 @@ pub async fn create_table(service: impl RerunCloudService) {
         Field::new("column_d", DataType::Boolean, true),
     ]);
 
-    let uri = tmp_dir
-        .path()
-        .to_str()
-        .expect("convert path to str")
-        .to_owned();
+    let table_url =
+        url::Url::from_directory_path(tmp_dir.path()).expect("create url from tmp directory");
+    let provider_details = LanceTable { table_url }
+        .try_as_any()
+        .expect("convert provider details to any");
+
     let create_table_request = CreateTableEntryRequest {
         name: table_name.to_owned(),
         schema: schema.clone(),
-        uri,
+        provider_details,
     }
     .try_into()
     .expect("Unable to create table request");

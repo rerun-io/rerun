@@ -10,6 +10,7 @@ use arrow::{
     datatypes::{DataType, Field, Schema, TimeUnit},
     error::ArrowError,
 };
+use prost_types::Any;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
 use re_log_types::external::re_types_core::ComponentBatch as _;
@@ -700,17 +701,16 @@ impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryResponse> for CreateDatas
 pub struct CreateTableEntryRequest {
     pub name: String,
     pub schema: Schema,
-    pub uri: String,
+    pub provider_details: Any,
 }
 
 impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEntryRequest {
     type Error = TypeConversionError;
     fn try_from(value: CreateTableEntryRequest) -> Result<Self, Self::Error> {
         Ok(Self {
-            name: Some(value.name),
+            name: value.name,
             schema: Some((&value.schema).try_into()?),
-            id: None,
-            uri: value.uri,
+            provider_details: Some(value.provider_details),
         })
     }
 }
@@ -721,10 +721,7 @@ impl TryFrom<crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEnt
         value: crate::cloud::v1alpha1::CreateTableEntryRequest,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
-            name: value.name.ok_or(missing_field!(
-                crate::cloud::v1alpha1::CreateTableEntryRequest,
-                "name"
-            ))?,
+            name: value.name,
             schema: value
                 .schema
                 .ok_or(missing_field!(
@@ -732,7 +729,10 @@ impl TryFrom<crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEnt
                     "schema"
                 ))?
                 .try_into()?,
-            uri: value.uri,
+            provider_details: value.provider_details.ok_or(missing_field!(
+                crate::cloud::v1alpha1::CreateTableEntryRequest,
+                "provider_details"
+            ))?,
         })
     }
 }
@@ -1040,7 +1040,7 @@ impl TryFrom<crate::cloud::v1alpha1::ReadTableEntryResponse> for ReadTableEntryR
 #[derive(Debug, Clone)]
 pub struct RegisterTableRequest {
     pub name: String,
-    pub provider_details: prost_types::Any,
+    pub provider_details: Any,
 }
 
 impl From<RegisterTableRequest> for crate::cloud::v1alpha1::RegisterTableRequest {

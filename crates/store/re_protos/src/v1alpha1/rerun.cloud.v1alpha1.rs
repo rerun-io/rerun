@@ -1167,15 +1167,17 @@ pub struct CreateTableEntryRequest {
     ///
     /// The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
     /// with the same name already exists, the request will fail. Entry names ending with `__manifest` are reserved.
-    #[prost(string, optional, tag = "1")]
-    pub name: ::core::option::Option<::prost::alloc::string::String>,
-    /// If specified, create the entry using this specific ID. Use at your own risk.
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// Information about the table to register.
+    ///
+    /// This must be encoded message of one one of the following supported types:
+    /// - LanceTable
     #[prost(message, optional, tag = "2")]
-    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    pub provider_details: ::core::option::Option<::prost_types::Any>,
+    /// Schema of the table to create
     #[prost(message, optional, tag = "3")]
     pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
-    #[prost(string, tag = "4")]
-    pub uri: ::prost::alloc::string::String,
 }
 impl ::prost::Name for CreateTableEntryRequest {
     const NAME: &'static str = "CreateTableEntryRequest";

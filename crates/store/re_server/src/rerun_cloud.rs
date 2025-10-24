@@ -1331,10 +1331,12 @@ impl RerunCloudService for RerunCloudHandler {
 
         let request: CreateTableEntryRequest = request.into_inner().try_into()?;
         let table_name = &request.name;
-        let path = &request.uri;
+        let provider_details = LanceTable::try_from_any(&request.provider_details)?;
         let schema = Arc::new(request.schema);
 
-        let table = store.create_table(table_name, path, schema).await?;
+        let table = store
+            .create_table(table_name, &provider_details.table_url, schema)
+            .await?;
 
         Ok(Response::new(CreateTableEntryResponse { table }.into()))
     }
