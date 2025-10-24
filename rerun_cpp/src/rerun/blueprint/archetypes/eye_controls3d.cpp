@@ -13,17 +13,23 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         archetype.speed = ComponentBatch::empty<rerun::components::LinearSpeed>(Descriptor_speed)
                               .value_or_throw();
+        archetype.tracking_entity =
+            ComponentBatch::empty<rerun::components::EntityPath>(Descriptor_tracking_entity)
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> EyeControls3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(2);
+        columns.reserve(3);
         if (kind.has_value()) {
             columns.push_back(kind.value().partitioned(lengths_).value_or_throw());
         }
         if (speed.has_value()) {
             columns.push_back(speed.value().partitioned(lengths_).value_or_throw());
+        }
+        if (tracking_entity.has_value()) {
+            columns.push_back(tracking_entity.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -34,6 +40,9 @@ namespace rerun::blueprint::archetypes {
         }
         if (speed.has_value()) {
             return columns(std::vector<uint32_t>(speed.value().length(), 1));
+        }
+        if (tracking_entity.has_value()) {
+            return columns(std::vector<uint32_t>(tracking_entity.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -47,13 +56,16 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(2);
+        cells.reserve(3);
 
         if (archetype.kind.has_value()) {
             cells.push_back(archetype.kind.value());
         }
         if (archetype.speed.has_value()) {
             cells.push_back(archetype.speed.value());
+        }
+        if (archetype.tracking_entity.has_value()) {
+            cells.push_back(archetype.tracking_entity.value());
         }
 
         return rerun::take_ownership(std::move(cells));
