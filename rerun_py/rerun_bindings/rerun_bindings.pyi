@@ -1313,6 +1313,8 @@ class Entry:
         """
 
 class DatasetEntry(Entry):
+    """A dataset entry in the catalog."""
+
     @property
     def manifest_url(self) -> str:
         """Return the dataset manifest URL."""
