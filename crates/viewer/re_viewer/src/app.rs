@@ -530,7 +530,10 @@ impl App {
 
                 let time_ctrl = self.state.time_control_mut(recording, &bp_ctx);
 
-                let should_diff_state = false;
+                // The state diffs are used to trigger callbacks if they are configured.
+                // If there's no active recording, we should not trigger any callbacks, but since there's an active recording here,
+                // we want to diff state changes.
+                let should_diff_state = true;
                 let response = time_ctrl.update(
                     recording.times_per_timeline(),
                     dt,
