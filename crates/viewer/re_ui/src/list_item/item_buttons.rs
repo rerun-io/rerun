@@ -57,7 +57,7 @@ impl<'a> ItemButtons<'a> {
         context: &ContentContext<'_>,
         rect: &mut egui::Rect,
     ) {
-        if self.buttons.is_empty() || !self.should_show_buttons(context) {
+        if self.buttons.is_empty() {
             return;
         }
 
@@ -83,8 +83,14 @@ impl<'a> ItemButtons<'a> {
             visuals.widgets.hovered.fg_stroke.color = tokens.icon_color_on_primary_hovered;
         }
 
-        for button in self.buttons {
-            button(&mut ui);
+        // In order to not mess with the layout & focus which may cause things like a layered color picker to disappear,
+        // we always compute the layout as if the buttons were visible.
+        // Only the button callbacks themselves are disabled.
+        let visible = self.should_show_buttons(context);
+        if visible {
+            for button in self.buttons {
+                button(&mut ui);
+            }
         }
 
         let used_rect = ui.min_rect();
