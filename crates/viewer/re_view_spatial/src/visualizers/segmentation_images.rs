@@ -74,12 +74,12 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                 let entity_path = ctx.target_entity_path;
 
                 let Some(all_buffer_chunks) =
-                    results.get_required_chunks(SegmentationImage::descriptor_buffer())
+                    results.get_required_chunks(SegmentationImage::descriptor_buffer().component)
                 else {
                     return Ok(());
                 };
                 let Some(all_formats_chunks) =
-                    results.get_required_chunks(SegmentationImage::descriptor_format())
+                    results.get_required_chunks(SegmentationImage::descriptor_format().component)
                 else {
                     return Ok(());
                 };
@@ -89,7 +89,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                 let all_formats_indexed =
                     iter_component::<ImageFormat>(&all_formats_chunks, timeline);
                 let all_opacities =
-                    results.iter_as(timeline, SegmentationImage::descriptor_opacity());
+                    results.iter_as(timeline, SegmentationImage::descriptor_opacity().component);
 
                 let data = re_query::range_zip_1x2(
                     all_buffers_indexed,

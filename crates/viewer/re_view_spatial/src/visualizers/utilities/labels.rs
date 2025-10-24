@@ -6,7 +6,7 @@ use itertools::{Either, izip};
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
 use re_types::{
-    Component as _, ComponentDescriptor,
+    ComponentIdentifier,
     components::{ShowLabels, Text},
 };
 use re_viewer_context::ResolvedAnnotationInfos;
@@ -105,7 +105,7 @@ const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
 /// Given a visualizer’s query context, compute its [`ShowLabels`] fallback value
 /// (used when neither the logged data nor the blueprint provides a value).
 ///
-/// Assumes that the visualizer reads the [`Text`] component for components.
+/// Assumes that the visualizer reads the [`Text`](re_types::components::Text) component.
 /// The `instance_count_component` parameter must be the component descriptor that defines the number of instances
 /// in the batch.
 ///
@@ -117,15 +117,9 @@ const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
 /// that will be used in a [`LabeledBatch`].
 pub fn show_labels_fallback(
     ctx: &re_viewer_context::QueryContext<'_>,
-    instance_count_component: &ComponentDescriptor,
-    text_component: &ComponentDescriptor,
+    instance_count_component: ComponentIdentifier,
+    text_component: ComponentIdentifier,
 ) -> ShowLabels {
-    debug_assert!(text_component.component_type == Some(Text::name()));
-
-    // TODO(#10460): Should take identifier directly.
-    let instance_count_component = instance_count_component.component;
-    let text_component = text_component.component;
-
     let results = ctx.recording().latest_at(
         ctx.query,
         ctx.target_entity_path,

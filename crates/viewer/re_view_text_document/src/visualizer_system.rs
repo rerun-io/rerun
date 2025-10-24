@@ -47,14 +47,14 @@ impl VisualizerSystem for TextDocumentSystem {
                 .latest_at_with_blueprint_resolved_data::<TextDocument>(ctx, &timeline_query);
 
             let Some(text) =
-                results.get_required_mono::<components::Text>(&TextDocument::descriptor_text())
+                results.get_required_mono::<components::Text>(TextDocument::descriptor_text().component)
             else {
                 continue;
             };
             self.text_entries.push(TextDocumentEntry {
                 body: text.clone(),
                 media_type: results
-                    .get_mono_with_fallback(&TextDocument::descriptor_media_type(), self),
+                    .get_mono_with_fallback(TextDocument::descriptor_media_type().component, self),
             });
         }
 

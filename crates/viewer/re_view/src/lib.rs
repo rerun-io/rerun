@@ -8,7 +8,7 @@ pub mod controls;
 
 mod annotation_context_utils;
 mod annotation_scene_context;
-mod chunks_with_descriptor;
+mod chunks_with_component;
 mod instance_hash_conversions;
 mod outlines;
 mod query;
@@ -19,7 +19,7 @@ pub use annotation_context_utils::{
     process_annotation_and_keypoint_slices, process_annotation_slices, process_color_slice,
 };
 pub use annotation_scene_context::AnnotationSceneContext;
-pub use chunks_with_descriptor::{ChunkWithDescriptor, ChunksWithDescriptor};
+pub use chunks_with_component::{ChunkWithComponent, ChunksWithComponent};
 pub use instance_hash_conversions::{
     instance_path_hash_from_picking_layer_id, picking_layer_id_from_instance_path_hash,
 };
