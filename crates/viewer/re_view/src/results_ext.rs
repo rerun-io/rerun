@@ -8,7 +8,7 @@ use re_query::{LatestAtResults, RangeResults};
 use re_types::{ComponentDescriptor, ComponentIdentifier};
 use re_viewer_context::{DataResult, TypedComponentFallbackProvider, ViewContext};
 
-use crate::chunks_with_descriptor::ChunksWithComponent;
+use crate::chunks_with_component::ChunksWithComponent;
 
 // ---
 
@@ -65,10 +65,11 @@ impl HybridLatestAtResults<'_> {
     ) -> C {
         debug_assert_eq!(component_descr.component_type, Some(C::name()));
 
-        self.get_instance(0, component_descr.component).unwrap_or_else(|| {
-            let query_context = self.ctx.query_context(self.data_result, &self.query);
-            fallback_provider.fallback_for(&query_context)
-        })
+        self.get_instance(0, component_descr.component)
+            .unwrap_or_else(|| {
+                let query_context = self.ctx.query_context(self.data_result, &self.query);
+                fallback_provider.fallback_for(&query_context)
+            })
     }
 
     /// Utility for retrieving a single instance of a component, not checking for defaults.
@@ -96,12 +97,10 @@ impl HybridLatestAtResults<'_> {
         index: usize,
         component: ComponentIdentifier,
     ) -> Option<C> {
-        self.get_required_instance(index, component)
-            .or_else(|| {
-                // No override & no store -> try default instead
-                self.defaults
-                    .component_instance::<C>(index, component)
-            })
+        self.get_required_instance(index, component).or_else(|| {
+            // No override & no store -> try default instead
+            self.defaults.component_instance::<C>(index, component)
+        })
     }
 }
 
