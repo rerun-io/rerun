@@ -3,7 +3,7 @@ use nohash_hasher::IntMap;
 use vec1::smallvec_v1::SmallVec1;
 
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::{EntityPath, EntityTree};
+use re_entity_db::{EntityDb, EntityPath, EntityTree};
 use re_types::ArchetypeName;
 
 use crate::{
@@ -239,7 +239,7 @@ impl TransformForest {
     /// entities are transformed relative to it.
     pub fn new(
         recording: &re_entity_db::EntityDb,
-        transform_cache: &TransformResolutionCache,
+        transform_cache: &mut TransformResolutionCache,
         time_query: &LatestAtQuery,
     ) -> Self {
         re_tracing::profile_function!();
@@ -256,6 +256,7 @@ impl TransformForest {
         };
         tree.entity_tree_gather_transforms_recursive(
             entity_tree,
+            recording,
             time_query,
             // Ignore potential pinhole camera at the root of the view, since it is regarded as being "above" this root.
             // TODO(andreas): Should we warn about that?
@@ -271,9 +272,10 @@ impl TransformForest {
     fn entity_tree_gather_transforms_recursive(
         &mut self,
         subtree: &EntityTree,
+        entity_db: &EntityDb,
         query: &LatestAtQuery,
         transform_root_from_parent: TransformInfo,
-        transforms_for_timeline: &CachedTransformsForTimeline,
+        transforms_for_timeline: &mut CachedTransformsForTimeline,
     ) {
         let root = transform_root_from_parent.root;
         let root_from_parent = transform_root_from_parent.target_from_source;
@@ -287,7 +289,8 @@ impl TransformForest {
         for child_tree in subtree.children.values() {
             let child_path = &child_tree.path;
 
-            let transforms_at_entity = transforms_at(child_path, query, transforms_for_timeline);
+            let transforms_at_entity =
+                transforms_at(child_path, entity_db, query, transforms_for_timeline);
 
             let root_from_child =
                 root_from_parent * transforms_at_entity.parent_from_entity_tree_transform;
@@ -313,11 +316,11 @@ impl TransformForest {
             // Collect & compute poses.
             let root_from_instances = compute_root_from_instances(
                 target_from_source,
-                transforms_at_entity.entity_from_instance_poses,
+                transforms_at_entity.entity_from_instance_poses.as_ref(),
             );
             let root_from_archetype = compute_root_from_archetype(
                 target_from_source,
-                transforms_at_entity.entity_from_instance_poses,
+                transforms_at_entity.entity_from_instance_poses.as_ref(),
             );
 
             let transform_root_from_child = TransformInfo {
@@ -329,6 +332,7 @@ impl TransformForest {
 
             self.entity_tree_gather_transforms_recursive(
                 child_tree,
+                entity_db,
                 query,
                 transform_root_from_child,
                 transforms_for_timeline,
@@ -656,17 +660,18 @@ fn pinhole3d_from_image_plane(
 
 /// Resolved transforms at an entity.
 #[derive(Default)]
-struct TransformsAtEntity<'a> {
+struct TransformsAtEntity {
     parent_from_entity_tree_transform: glam::Affine3A,
-    entity_from_instance_poses: Option<&'a PoseTransformArchetypeMap>,
-    pinhole_projection: Option<&'a ResolvedPinholeProjection>,
+    entity_from_instance_poses: Option<PoseTransformArchetypeMap>,
+    pinhole_projection: Option<ResolvedPinholeProjection>,
 }
 
-fn transforms_at<'a>(
+fn transforms_at(
     entity_path: &EntityPath,
+    entity_db: &EntityDb,
     query: &LatestAtQuery,
-    transforms_for_timeline: &'a CachedTransformsForTimeline,
-) -> TransformsAtEntity<'a> {
+    transforms_for_timeline: &mut CachedTransformsForTimeline,
+) -> TransformsAtEntity {
     // This is called very frequently, don't put a profile scope here.
 
     let Some(entity_transforms) = transforms_for_timeline
@@ -676,13 +681,17 @@ fn transforms_at<'a>(
     };
 
     let parent_from_entity_tree_transform = entity_transforms
-        .latest_at_transform(query)
+        .latest_at_transform(entity_db, query)
         //  TODO(RR-2511): Don't ignore target frame.
         .map_or(glam::Affine3A::IDENTITY, |source_to_target| {
             source_to_target.transform
         });
-    let entity_from_instance_poses = entity_transforms.latest_at_instance_poses(query);
-    let pinhole_projection = entity_transforms.latest_at_pinhole(query);
+    let entity_from_instance_poses = entity_transforms
+        .latest_at_instance_poses(entity_db, query)
+        .cloned();
+    let pinhole_projection = entity_transforms
+        .latest_at_pinhole(entity_db, query)
+        .cloned();
 
     TransformsAtEntity {
         parent_from_entity_tree_transform,
@@ -800,13 +809,10 @@ mod tests {
     fn test_simple_entity_hierarchy() {
         let test_scene = entity_hierarchy_test_scene();
         let mut transform_cache = TransformResolutionCache::default();
-        transform_cache.add_chunks(
-            &test_scene,
-            test_scene.storage_engine().store().iter_chunks(),
-        );
+        transform_cache.add_chunks(test_scene.storage_engine().store().iter_chunks());
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
-        let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+        let transform_forest = TransformForest::new(&test_scene, &mut transform_cache, &query);
 
         let all_entity_paths = test_scene
             .entity_paths()
@@ -935,10 +941,10 @@ mod tests {
             .unwrap();
 
         let mut transform_cache = TransformResolutionCache::default();
-        transform_cache.add_chunks(&entity_db, entity_db.storage_engine().store().iter_chunks());
+        transform_cache.add_chunks(entity_db.storage_engine().store().iter_chunks());
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
-        let transform_forest = TransformForest::new(&entity_db, &transform_cache, &query);
+        let transform_forest = TransformForest::new(&entity_db, &mut transform_cache, &query);
 
         let target = TransformFrameIdHash::from_entity_path(&EntityPath::from("box"));
         let sources = [TransformFrameIdHash::from_entity_path(&EntityPath::from(

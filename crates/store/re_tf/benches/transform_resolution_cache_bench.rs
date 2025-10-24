@@ -51,16 +51,19 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
         }
     }
 
-    let queried_timeline = TimelineName::new("timeline2");
+    let query = re_chunk_store::LatestAtQuery::new(TimelineName::new("timeline2"), 123);
     let queried_frame = TransformFrameIdHash::from_entity_path(&EntityPath::from("entity2"));
 
     c.bench_function("build_from_entitydb_and_query_single_frame", |b| {
         b.iter(|| {
             let mut cache = TransformResolutionCache::default();
-            cache.apply_all_updates(&entity_db, events.iter());
-            cache
-                .transforms_for_timeline(queried_timeline)
+            cache.apply_all_updates(events.iter());
+            let frame_transforms = cache
+                .transforms_for_timeline(query.timeline())
                 .frame_transforms(queried_frame)
+                .unwrap();
+            frame_transforms
+                .latest_at_transform(&entity_db, &query)
                 .unwrap()
                 .clone()
         });
