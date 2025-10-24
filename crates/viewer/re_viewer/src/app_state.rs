@@ -10,15 +10,15 @@ use re_log_types::{AbsoluteTimeRangeF, DataSourceMessage, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
 use re_smart_channel::ReceiveSet;
-use re_types::blueprint::components::PanelState;
+use re_types::blueprint::components::{PanelState, PlayState};
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintContext,
     BlueprintUndoState, CommandSender, ComponentUiRegistry, DataQueryResult, DisplayMode,
     DragAndDropManager, FallbackProviderRegistry, GlobalContext, IndicatedEntities, Item,
-    MaybeVisualizableEntities, PerVisualizer, PlayState, SelectionChange, StorageContext,
-    StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, TableStore, TimeControl,
-    TimeControlCommand, ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
+    MaybeVisualizableEntities, PerVisualizer, SelectionChange, StorageContext, StoreContext,
+    StoreHub, SystemCommand, SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand,
+    ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
     open_url::{self, ViewerOpenUrl},
 };
 use re_viewport::ViewportUi;
@@ -38,11 +38,14 @@ pub type TestHookFn = Box<dyn FnOnce(&ViewerContext<'_>)>;
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct AppState {
+    // TODO(isse): Just serialize app options since we skip everything else.
     /// Global options for the whole viewer.
     pub(crate) app_options: AppOptions,
 
     /// Configuration for the current recording (found in [`EntityDb`]).
+    #[serde(skip)]
     pub time_controls: HashMap<StoreId, TimeControl>,
+    #[serde(skip)]
     pub blueprint_time_control: TimeControl,
 
     /// Maps blueprint id to the current undo state for it.
@@ -921,7 +924,7 @@ pub(crate) fn create_time_control_for<'cfgs>(
         let mut time_ctrl = TimeControl::from_blueprint(blueprint_ctx);
 
         time_ctrl.set_play_state(
-            entity_db.times_per_timeline(),
+            Some(entity_db.times_per_timeline()),
             play_state,
             Some(blueprint_ctx),
         );

@@ -2,6 +2,7 @@
 
 .gitattributes linguist-generated=true
 __init__.py linguist-generated=true
+absolute_time_range.py linguist-generated=true
 angle.py linguist-generated=true
 annotation_info.py linguist-generated=true
 blob.py linguist-generated=true

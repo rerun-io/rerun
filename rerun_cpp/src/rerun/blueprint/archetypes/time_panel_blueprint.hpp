@@ -3,8 +3,11 @@
 
 #pragma once
 
+#include "../../blueprint/components/absolute_time_range.hpp"
 #include "../../blueprint/components/fps.hpp"
+#include "../../blueprint/components/loop_mode.hpp"
 #include "../../blueprint/components/panel_state.hpp"
+#include "../../blueprint/components/play_state.hpp"
 #include "../../blueprint/components/playback_speed.hpp"
 #include "../../blueprint/components/time_int.hpp"
 #include "../../blueprint/components/timeline_name.hpp"
@@ -39,6 +42,19 @@ namespace rerun::blueprint::archetypes {
         /// Frames per second. Only applicable for sequence timelines.
         std::optional<ComponentBatch> fps;
 
+        /// If the time is currently paused, playing, or following.
+        ///
+        /// Defaults to playing.
+        std::optional<ComponentBatch> play_state;
+
+        /// How the time should loop. A selection loop only works if there is also a `time_selection` passed.
+        ///
+        /// Defaults to off.
+        std::optional<ComponentBatch> loop_mode;
+
+        /// Selects a range of time on the time panel.
+        std::optional<ComponentBatch> time_selection;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] =
@@ -68,6 +84,21 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_fps = ComponentDescriptor(
             ArchetypeName, "TimePanelBlueprint:fps",
             Loggable<rerun::blueprint::components::Fps>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `play_state` field.
+        static constexpr auto Descriptor_play_state = ComponentDescriptor(
+            ArchetypeName, "TimePanelBlueprint:play_state",
+            Loggable<rerun::blueprint::components::PlayState>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `loop_mode` field.
+        static constexpr auto Descriptor_loop_mode = ComponentDescriptor(
+            ArchetypeName, "TimePanelBlueprint:loop_mode",
+            Loggable<rerun::blueprint::components::LoopMode>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `time_selection` field.
+        static constexpr auto Descriptor_time_selection = ComponentDescriptor(
+            ArchetypeName, "TimePanelBlueprint:time_selection",
+            Loggable<rerun::blueprint::components::AbsoluteTimeRange>::ComponentType
         );
 
       public:
@@ -118,6 +149,37 @@ namespace rerun::blueprint::archetypes {
         /// Frames per second. Only applicable for sequence timelines.
         TimePanelBlueprint with_fps(const rerun::blueprint::components::Fps& _fps) && {
             fps = ComponentBatch::from_loggable(_fps, Descriptor_fps).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// If the time is currently paused, playing, or following.
+        ///
+        /// Defaults to playing.
+        TimePanelBlueprint with_play_state(
+            const rerun::blueprint::components::PlayState& _play_state
+        ) && {
+            play_state =
+                ComponentBatch::from_loggable(_play_state, Descriptor_play_state).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// How the time should loop. A selection loop only works if there is also a `time_selection` passed.
+        ///
+        /// Defaults to off.
+        TimePanelBlueprint with_loop_mode(const rerun::blueprint::components::LoopMode& _loop_mode
+        ) && {
+            loop_mode =
+                ComponentBatch::from_loggable(_loop_mode, Descriptor_loop_mode).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Selects a range of time on the time panel.
+        TimePanelBlueprint with_time_selection(
+            const rerun::blueprint::components::AbsoluteTimeRange& _time_selection
+        ) && {
+            time_selection =
+                ComponentBatch::from_loggable(_time_selection, Descriptor_time_selection)
+                    .value_or_throw();
             return std::move(*this);
         }
 
