@@ -80,11 +80,7 @@ You can do this either using `git` on your command line, or through the UI:
 
 Once the branch has been created, push it to the remote repository.
 
-For patch releases, immediately bump the crate versions to the dev version and then commit and push the changes, so that any testing done against this branch will not look like the old version:
-
-```sh
-pixi run python scripts/ci/crates.py version --exact 0.x.y --dev
-```
+**NOTE (for patch release)**: upon creation of the branch, the version is set to the final version of the previous release. This can create issues when testing the patch release, since it has a non-"+dev" version identical to an existing release. Because of that, an RC should preferably be created before testing.
 
 ### 3. If this is a patch release, cherry-pick commits for inclusion in the release into the branch
 
