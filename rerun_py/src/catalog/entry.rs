@@ -109,7 +109,7 @@ impl From<PyEntryKind> for EntryKind {
 // ---
 
 /// An entry in the catalog.
-#[pyclass(name = "Entry", subclass, module = "rerun_bindings.rerun_bindings")] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(name = "Entry", subclass, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyEntry {
     pub client: Py<PyCatalogClientInternal>,
 

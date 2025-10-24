@@ -618,7 +618,7 @@ fn shutdown(py: Python<'_>) {
 
 // --- Recordings ---
 
-#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(frozen, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 #[derive(Clone)]
 struct PyRecordingStream(RecordingStream);
 
@@ -1300,7 +1300,7 @@ fn binary_stream(
     Some(PyBinarySinkStorage { inner })
 }
 
-#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(frozen, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 struct PyMemorySinkStorage {
     // So we can flush when needed!
     inner: MemorySinkStorage,
@@ -1366,7 +1366,7 @@ impl PyMemorySinkStorage {
     }
 }
 
-#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(frozen, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 struct PyBinarySinkStorage {
     /// The underlying binary sink storage.
     inner: BinaryStreamStorage,

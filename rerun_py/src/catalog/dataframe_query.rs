@@ -25,7 +25,7 @@ use crate::catalog::{PyDatasetEntry, to_py_err};
 use crate::utils::{get_tokio_runtime, wait_for_future};
 
 /// View into a remote dataset acting as DataFusion table provider.
-#[pyclass(name = "DataframeQueryView", module = "rerun_bindings.rerun_bindings")] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(name = "DataframeQueryView", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyDataframeQueryView {
     dataset: Py<PyDatasetEntry>,
 
