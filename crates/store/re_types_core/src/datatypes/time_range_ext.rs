@@ -1,12 +1,12 @@
 use super::{TimeRange, TimeRangeBoundary};
 
 impl TimeRange {
-    /// The range encompassing all time, from -∞ to +∞.
+    /// The range encompassing all time, from beginning to end.
     pub const EVERYTHING: Self = Self {
-        // This means -∞
+        // This means the beginning.
         start: TimeRangeBoundary::Infinite,
 
-        // This means +∞
+        // This means the end.
         end: TimeRangeBoundary::Infinite,
     };
 
