@@ -268,3 +268,19 @@ def test_datafusion_write_table(server_instance: ServerInstance) -> None:
     # Verify overwrite mode
     df_smaller.write_table(table_name, write_options=DataFrameWriteOptions(insert_operation=InsertOp.OVERWRITE))
     assert ctx.table(table_name).count() == smaller_count
+
+
+def test_datafusion_create_table(server_instance: ServerInstance) -> None:
+    table_name = "created_table"
+
+    original_schema = pa.schema([("int64", pa.int64()), ("float32", pa.float32()), ("utf8", pa.utf8())])
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = pathlib.Path(temp_dir).as_uri()
+
+        table_entry = server_instance.client.create_table(table_name, temp_path, original_schema)
+        df = table_entry.df()
+
+        returned_schema = df.schema().remove_metadata()
+
+        assert returned_schema == original_schema
