@@ -5,6 +5,8 @@ pub mod data;
 
 #[cfg(not(feature = "testing"))]
 mod data;
+mod recording_panel_command;
 mod recording_panel_ui;
 
 pub use self::recording_panel_ui::recordings_panel_ui;
+pub use recording_panel_command::RecordingPanelCommand;

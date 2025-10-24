@@ -668,6 +668,11 @@ impl AppState {
                 self.share_modal
                     .ui(&ctx, ui, startup_options.web_viewer_base_url().as_ref());
 
+                re_recording_panel::RecordingPanelCommand::handle_recording_panel_commands(
+                    &ctx,
+                    &self.redap_servers,
+                );
+
                 // Only in integration tests: call the test hook if any.
                 #[cfg(feature = "testing")]
                 if let Some(test_hook) = self.test_hook.take() {

@@ -2,6 +2,7 @@
 source: crates/viewer/re_recording_panel/tests/snapshot_tests.rs
 expression: data
 ---
+servers: []
 local_apps:
   - app_id: test_app
     is_active: false
@@ -14,5 +15,4 @@ local_apps:
 local_tables: []
 example_apps: []
 show_example_section: true
-servers: []
 loading_receivers: []
