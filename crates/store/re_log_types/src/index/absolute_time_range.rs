@@ -208,6 +208,108 @@ impl AbsoluteTimeRangeF {
     pub fn to_int(self) -> AbsoluteTimeRange {
         AbsoluteTimeRange::new(self.min.floor(), self.max.ceil())
     }
+
+    /// In the given range, pick the "simplest" number.
+    ///
+    /// The simplest number is defined approximately as
+    /// "the number with the most trailing zeroes".
+    ///
+    /// This is used in GUI code.
+    ///
+    /// NOTE: we only return integers here, because in the GUI
+    /// we don't care about "smart" selection things smaller than a nanosecond or a single time step.
+    pub fn smart_aim(self) -> TimeInt {
+        // Inspired by https://docs.rs/emath/latest/emath/smart_aim/fn.best_in_range_f64.html
+        let Self { min, max } = self;
+        if max < min {
+            return Self::new(max, min).smart_aim();
+        }
+        if min == max {
+            return min.round();
+        }
+
+        if min <= TimeReal::ZERO && TimeReal::ZERO <= max {
+            return TimeInt::ZERO; // always prefer zero
+        }
+        if min < TimeReal::ZERO {
+            // Keep things positive:
+            return -Self::new(-max, -min).smart_aim();
+        }
+
+        if min.round() == max.round() {
+            // We don't care about sub-integer precision in this function.
+            return min.round();
+        }
+
+        let min = min.round();
+        let max = max.round();
+
+        let min_str = min.as_i64().to_string();
+        let max_str = max.as_i64().to_string();
+
+        if min_str.len() < max_str.len() {
+            // Different orders of magnitude.
+            // Example: for `61` and `4236`: return 1000
+            return TimeInt::new_temporal(10_i64.pow(max_str.len() as u32 - 1));
+        }
+
+        debug_assert_eq!(min_str.len(), max_str.len());
+
+        // We now have two positive integers of the same length.
+        // We want to find the first non-matching digit,
+        // which we will call the "deciding digit".
+        // Everything before it will be the same,
+        // everything after will be zero,
+        // and the deciding digit itself will be picked as a "smart average"
+        // min:    12345
+        // max:    12780
+        // output: 12500
+
+        let len = min_str.len();
+        for i in 0..len {
+            if min_str.as_bytes()[i] != max_str.as_bytes()[i] {
+                // Found the deciding digit at index `i`
+                let prefix = &min_str[..i];
+                let mut deciding_digit_min = min_str.as_bytes()[i];
+                let deciding_digit_max = max_str.as_bytes()[i];
+
+                debug_assert!(deciding_digit_min < deciding_digit_max);
+
+                let rest_of_min_is_zeroes = min_str.as_bytes()[i + 1..].iter().all(|&c| c == b'0');
+
+                if !rest_of_min_is_zeroes {
+                    // There are more digits coming after `deciding_digit_min`, so we cannot pick it.
+                    // So the true min of what we can pick is one greater:
+                    deciding_digit_min += 1;
+                }
+
+                // if deciding_digit_min == b'1' && rest_of_min_is_zeroes {
+                //     return min; // Special case: the min is just zeroes from here on out. That's perfect!
+                // }
+
+                let deciding_digit = if deciding_digit_min == b'0' {
+                    b'0'
+                } else if deciding_digit_min <= b'5' && b'5' <= deciding_digit_max {
+                    b'5' // 5 is the roundest number in the range
+                } else {
+                    deciding_digit_min.midpoint(deciding_digit_max)
+                };
+
+                let mut result_str = String::with_capacity(len);
+                result_str.push_str(prefix);
+                result_str.push(deciding_digit as char);
+                for _ in i + 1..len {
+                    result_str.push('0');
+                }
+                return TimeInt::new_temporal(
+                    #[expect(clippy::unwrap_used)] // Cannot fail
+                    re_format::parse_i64(&result_str).unwrap(),
+                );
+            }
+        }
+
+        min // All digits are the same
+    }
 }
 
 impl From<AbsoluteTimeRangeF> for RangeInclusive<TimeReal> {
@@ -226,4 +328,59 @@ impl From<AbsoluteTimeRange> for AbsoluteTimeRangeF {
     fn from(range: AbsoluteTimeRange) -> Self {
         Self::new(range.min, range.max)
     }
+}
+
+#[test]
+fn test_smart_aim() {
+    #[track_caller]
+    fn test_f64((min, max): (f64, f64), expected: i64) {
+        let range = AbsoluteTimeRangeF::new(TimeReal::from(min), TimeReal::from(max));
+        let aimed = range.smart_aim().as_i64();
+        assert!(
+            aimed == expected,
+            "smart_aim({min} – {max}) => {aimed}, but expected {expected}"
+        );
+    }
+    #[track_caller]
+    fn test_i64((min, max): (i64, i64), expected: i64) {
+        let range = AbsoluteTimeRangeF::new(TimeReal::from(min), TimeReal::from(max));
+        let aimed = range.smart_aim().as_i64();
+        assert!(
+            aimed == expected,
+            "smart_aim({min} – {max}) => {aimed}, but expected {expected}"
+        );
+    }
+
+    test_i64((99, 300), 100);
+    test_i64((300, 99), 100);
+    test_i64((-99, -300), -100);
+    test_i64((-99, 123), 0); // Prefer zero
+    test_i64((4, 9), 5); // Prefer ending on 5
+    test_i64((14, 19), 15); // Prefer ending on 5
+    test_i64((12, 65), 50); // Prefer leading 5
+    test_i64((493, 879), 500); // Prefer leading 5
+    test_i64((37, 48), 40);
+    test_i64((100, 123), 100);
+    test_i64((101, 1000), 1000);
+    test_i64((999, 1000), 1000);
+    test_i64((123, 500), 500);
+    test_i64((500, 777), 500);
+    test_i64((500, 999), 500);
+    test_i64((12345, 12780), 12500);
+    test_i64((12371, 12376), 12375);
+    test_i64((12371, 12376), 12375);
+
+    test_f64((7.5, 16.3), 10);
+    test_f64((7.5, 76.3), 10);
+    test_f64((7.5, 763.3), 100);
+    test_f64((7.5, 1_345.0), 1_000);
+    test_f64((7.5, 123_456.0), 100_000);
+    test_f64((-0.2, 0.0), 0); // Prefer zero
+    test_f64((-10_004.23, 4.14), 0); // Prefer zero
+    test_f64((-0.2, 100.0), 0); // Prefer zero
+    test_f64((0.2, 0.0), 0); // Prefer zero
+    test_f64((7.8, 17.8), 10);
+    test_f64((7.8, 7.9), 8);
+    test_f64((14.1, 19.1), 15); // Prefer ending on 5
+    test_f64((12.3, 65.9), 50); // Prefer leading 5
 }
