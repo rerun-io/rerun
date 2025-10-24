@@ -721,13 +721,18 @@ where
     pub async fn create_table(
         &mut self,
         name: &str,
-        uri: &Url,
+        url: &Url,
         schema: SchemaRef,
     ) -> Result<EntryId, ApiError> {
+        let provider_details = LanceTable {
+            table_url: url.clone(),
+        }
+        .try_as_any()
+        .map_err(|err| ApiError::serialization(err, "/CreateTable failed"))?;
         let request = CreateTableEntryRequest {
             name: name.to_owned(),
             schema: schema.as_ref().clone(),
-            uri: uri.to_string(),
+            provider_details,
         };
 
         let resp = self
