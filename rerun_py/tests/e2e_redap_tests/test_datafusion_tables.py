@@ -321,29 +321,19 @@ def test_client_write_table(server_instance: ServerInstance) -> None:
     df_prior = ctx.table(table_name)
     original_count = df_prior.count()
 
-    schema = pa.schema([
-        ('id', pa.int32()),
-        ('bool_col', pa.bool_()),
-        ('double_col', pa.float64())
-    ])
+    schema = pa.schema([("id", pa.int32()), ("bool_col", pa.bool_()), ("double_col", pa.float64())])
 
-    batch1 = pa.RecordBatch.from_pydict({
-        'id': [1, 2, 3],
-        'bool_col': [True, False, None],
-        'double_col': [10.5, 20.3, 15.7]
-    }, schema=schema)
+    batch1 = pa.RecordBatch.from_pydict(
+        {"id": [1, 2, 3], "bool_col": [True, False, None], "double_col": [10.5, 20.3, 15.7]}, schema=schema
+    )
 
-    batch2 = pa.RecordBatch.from_pydict({
-        'id': [4, 5, 6],
-        'bool_col': [True, None, False],
-        'double_col': [30.2, 25.8, 18.9]
-    }, schema=schema)
+    batch2 = pa.RecordBatch.from_pydict(
+        {"id": [4, 5, 6], "bool_col": [True, None, False], "double_col": [30.2, 25.8, 18.9]}, schema=schema
+    )
 
-    batch3 = pa.RecordBatch.from_pydict({
-        'id': [7, 8, 9],
-        'bool_col': [True, True, False],
-        'double_col': [22.4, 28.1, 31.5]
-    }, schema=schema)
+    batch3 = pa.RecordBatch.from_pydict(
+        {"id": [7, 8, 9], "bool_col": [True, True, False], "double_col": [22.4, 28.1, 31.5]}, schema=schema
+    )
 
     # Test with a record batch reader
     reader = pa.RecordBatchReader.from_batches(schema, [batch1, batch2, batch3])

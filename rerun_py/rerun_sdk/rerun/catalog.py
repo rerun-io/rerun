@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from pyarrow import RecordBatch, RecordBatchReader
-
 from rerun_bindings import (
     AlreadyExistsError as AlreadyExistsError,
     CatalogClientInternal,
@@ -205,13 +205,34 @@ class CatalogClient:
         return self._raw_client.create_table_entry(name, schema, url)
 
     def write_table(
-            self,
+        self,
         name: str,
         batches: RecordBatchReader | RecordBatch | Sequence[RecordBatch] | Sequence[Sequence[RecordBatch]],
-        insert_mode: TableInsertMode
+        insert_mode: TableInsertMode,
     ) -> None:
+        """
+        Writes record batches into an existing table.
+
+        Parameters
+        ----------
+        name
+            The name of the table entry to write to. This table must already exist.
+
+        batches
+            One or more record batches to write into the table. For convenience, you can
+            pass in a record batch, list of record batches, list of list of batches, or
+            a [`pyarrow.RecordBatchReader`].
+
+        insert_mode
+            Determines how rows should be added to the existing table.
+
+        """
         if not isinstance(batches, RecordBatchReader):
-            def flatten_batches(batches):
+
+            def flatten_batches(
+                batches: RecordBatch | Sequence[RecordBatch] | Sequence[Sequence[RecordBatch]],
+            ) -> list[RecordBatch]:
+                """Convenience function to convert inputs to a list of batches."""
                 if isinstance(batches, RecordBatch):
                     return [batches]
 
@@ -227,6 +248,7 @@ class CatalogClient:
                     return result
 
                 raise TypeError(f"Expected RecordBatch or Sequence, got {type(batches)}")
+
             batches = flatten_batches(batches)
             if len(batches) == 0:
                 return

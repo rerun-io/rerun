@@ -1606,13 +1606,11 @@ class TableEntry(Entry):
     def to_arrow_reader(self) -> pa.RecordBatchReader:
         """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
 
-class EntryKind:
-    """The kinds of entries that can be stored in the catalog."""
+class TableInsertMode:
+    """The modes of operation when writing tables."""
 
-    DATASET: EntryKind
-    DATASET_VIEW: EntryKind
-    TABLE: EntryKind
-    TABLE_VIEW: EntryKind
+    APPEND: TableInsertMode
+    OVERWRITE: TableInsertMode
 
     def __str__(self, /) -> str:
         """Return str(self)."""
@@ -1834,6 +1832,7 @@ class CatalogClientInternal:
 
     def create_dataset(self, name: str) -> DatasetEntry: ...
     def register_table(self, name: str, url: str) -> TableEntry: ...
+    def write_table(self, name: str, batches: pa.RecordBatchReader, insert_mode: TableInsertMode) -> None: ...
     def ctx(self) -> dfn.SessionContext: ...
     def create_table_entry(self, name: str, schema: pa.Schema, url: str) -> TableEntry: ...
 
