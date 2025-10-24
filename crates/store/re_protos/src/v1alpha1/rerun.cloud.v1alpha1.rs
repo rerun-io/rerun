@@ -171,7 +171,13 @@ impl ::prost::Name for GetPartitionTableSchemaResponse {
 pub struct ScanPartitionTableRequest {
     /// A list of column names to be projected server-side.
     ///
-    /// All of them if left empty.
+    /// If empty, all columns are returned.
+    ///
+    /// If not empty, the returned `RecordBatch` are guaranteed to only have the requested column, in the order they were
+    /// requested.
+    ///
+    /// If a column that doesn't exist is requested, the `ScanPartitionTable` call will fail with an `InvalidArgument`
+    /// error.
     #[prost(string, repeated, tag = "3")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
@@ -232,7 +238,13 @@ impl ::prost::Name for GetDatasetManifestSchemaResponse {
 pub struct ScanDatasetManifestRequest {
     /// A list of column names to be projected server-side.
     ///
-    /// All of them if left empty.
+    /// If empty, all columns are returned.
+    ///
+    /// If not empty, the returned `RecordBatch` are guaranteed to only have the requested column, in the order they were
+    /// requested.
+    ///
+    /// If a column that doesn't exist is requested, the `ScanPartitionTable` call will fail with an `InvalidArgument`
+    /// error.
     #[prost(string, repeated, tag = "3")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
