@@ -60,7 +60,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
             .latest_at_component_quiet::<re_types::blueprint::components::TimeInt>(
                 &time_panel_blueprint_entity_path(),
                 self.blueprint_query(),
-                &TimePanelBlueprint::descriptor_time(),
+                TimePanelBlueprint::descriptor_time().component,
             )?;
 
         Some(TimeInt::saturated_temporal_i64(time.0.0))
@@ -81,7 +81,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
             .latest_at_component_quiet::<re_types::blueprint::components::TimelineName>(
             &time_panel_blueprint_entity_path(),
             self.blueprint_query(),
-            &TimePanelBlueprint::descriptor_timeline(),
+            TimePanelBlueprint::descriptor_timeline().component,
         )?;
 
         Some(TimelineName::new(timeline.as_str()))
@@ -115,7 +115,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
             .latest_at_component_quiet::<re_types::blueprint::components::PlaybackSpeed>(
             &time_panel_blueprint_entity_path(),
             self.blueprint_query(),
-            &TimePanelBlueprint::descriptor_playback_speed(),
+            TimePanelBlueprint::descriptor_playback_speed().component,
         )?;
 
         Some(**playback_speed)
@@ -135,7 +135,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
             .latest_at_component_quiet::<re_types::blueprint::components::Fps>(
                 &time_panel_blueprint_entity_path(),
                 self.blueprint_query(),
-                &TimePanelBlueprint::descriptor_fps(),
+                TimePanelBlueprint::descriptor_fps().component,
             )?;
 
         Some(**fps)
@@ -736,9 +736,13 @@ impl TimeControl {
                 NeedsRepaint::Yes
             }
             TimeControlCommand::ClearHighlightedRange => {
-                self.highlighted_range = None;
+                if self.highlighted_range.is_some() {
+                    self.highlighted_range = None;
 
-                NeedsRepaint::Yes
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
             }
             TimeControlCommand::ResetActiveTimeline => {
                 if let Some(blueprint_ctx) = blueprint_ctx {

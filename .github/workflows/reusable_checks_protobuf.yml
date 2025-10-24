@@ -27,6 +27,7 @@ permissions:
 jobs:
   pb-check:
     name: "Protobuf Checks: lints, BW compatibility, formatting, etc"
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

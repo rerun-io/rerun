@@ -71,13 +71,15 @@ fn resolution_of_image_at(
         .store()
         .all_components_for_entity(entity_path)?;
     let image_format_descr = all_components
-        .get(&archetypes::Image::descriptor_format())
-        .or_else(|| all_components.get(&archetypes::DepthImage::descriptor_format()))
-        .or_else(|| all_components.get(&archetypes::SegmentationImage::descriptor_format()));
+        .get(&archetypes::Image::descriptor_format().component)
+        .or_else(|| all_components.get(&archetypes::DepthImage::descriptor_format().component))
+        .or_else(|| {
+            all_components.get(&archetypes::SegmentationImage::descriptor_format().component)
+        });
 
-    if let Some((_, image_format)) = image_format_descr
-        .and_then(|desc| entity_db.latest_at_component::<ImageFormat>(entity_path, query, desc))
-    {
+    if let Some((_, image_format)) = image_format_descr.and_then(|component| {
+        entity_db.latest_at_component::<ImageFormat>(entity_path, query, *component)
+    }) {
         // Normal `Image` archetype
         return Some(Resolution::from([
             image_format.width as f32,
@@ -90,21 +92,21 @@ fn resolution_of_image_at(
         .latest_at_component::<re_types::components::Blob>(
             entity_path,
             query,
-            &archetypes::EncodedImage::descriptor_blob(),
+            archetypes::EncodedImage::descriptor_blob().component,
         )
     {
         let media_type = entity_db
             .latest_at_component::<MediaType>(
                 entity_path,
                 query,
-                &archetypes::EncodedImage::descriptor_media_type(),
+                archetypes::EncodedImage::descriptor_media_type().component,
             )
             .map(|(_, c)| c);
 
         let image = ctx.store_context.caches.entry(|c: &mut ImageDecodeCache| {
             c.entry(
                 row_id,
-                &archetypes::EncodedImage::descriptor_blob(),
+                archetypes::EncodedImage::descriptor_blob().component,
                 &blob,
                 media_type.as_ref(),
             )

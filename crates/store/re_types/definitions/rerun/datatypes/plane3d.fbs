@@ -11,7 +11,7 @@ namespace rerun.datatypes;
 /// I.e. the plane with xyz = (2, 0, 0), d = 1 is equivalent to xyz = (1, 0, 0), d = 0.5
 struct Plane3D (
   "attr.arrow.transparent",
-  "attr.python.array_aliases": "npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]]",
+  "attr.python.array_aliases": "npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[float]]",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.tuple_struct",
   "attr.rust.repr": "C",

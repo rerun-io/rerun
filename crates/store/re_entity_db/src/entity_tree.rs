@@ -3,11 +3,10 @@ use std::collections::BTreeMap;
 use ahash::HashSet;
 use nohash_hasher::{IntMap, IntSet};
 
-use re_chunk::{RowId, TimelineName};
+use re_chunk::{ComponentIdentifier, RowId, TimelineName};
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPath, EntityPathHash, EntityPathPart, TimeInt};
 use re_query::StorageEngineReadGuard;
-use re_types_core::ComponentDescriptor;
 
 // ----------------------------------------------------------------------------
 
@@ -57,10 +56,10 @@ pub struct CompactedStoreEvents {
 
     /// What time points were deleted for each entity+timeline+component?
     pub temporal:
-        IntMap<EntityPathHash, IntMap<TimelineName, IntMap<ComponentDescriptor, Vec<TimeInt>>>>,
+        IntMap<EntityPathHash, IntMap<TimelineName, IntMap<ComponentIdentifier, Vec<TimeInt>>>>,
 
     /// For each entity+component, how many static entries were deleted?
-    pub static_: IntMap<EntityPathHash, IntMap<ComponentDescriptor, u64>>,
+    pub static_: IntMap<EntityPathHash, IntMap<ComponentIdentifier, u64>>,
 }
 
 impl CompactedStoreEvents {
@@ -80,9 +79,8 @@ impl CompactedStoreEvents {
                     .static_
                     .entry(event.chunk.entity_path().hash())
                     .or_default();
-                for component_descr in event.chunk.component_descriptors() {
-                    *per_component.entry(component_descr).or_default() +=
-                        event.delta().unsigned_abs();
+                for component in event.chunk.components_identifiers() {
+                    *per_component.entry(component).or_default() += event.delta().unsigned_abs();
                 }
             } else {
                 for (&timeline, time_column) in event.chunk.timelines() {
@@ -92,9 +90,9 @@ impl CompactedStoreEvents {
                         .or_default();
                     for &time in time_column.times_raw() {
                         let per_component = per_timeline.entry(timeline).or_default();
-                        for component_descr in event.chunk.component_descriptors() {
+                        for component in event.chunk.components_identifiers() {
                             per_component
-                                .entry(component_descr)
+                                .entry(component)
                                 .or_default()
                                 .push(TimeInt::new_temporal(time));
                         }

@@ -145,7 +145,7 @@ impl ImageVisualizer {
             Some(ImageComponentData {
                 image: ImageInfo::from_stored_blob(
                     row_id,
-                    &Image::descriptor_buffer(),
+                    Image::descriptor_buffer().component,
                     buffer.clone().into(),
                     first_copied(formats.as_deref())?.0,
                     ImageKind::Color,

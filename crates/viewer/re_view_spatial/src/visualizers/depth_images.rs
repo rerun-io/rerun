@@ -288,7 +288,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                         Some(DepthImageComponentData {
                             image: ImageInfo::from_stored_blob(
                                 row_id,
-                                &DepthImage::descriptor_buffer(),
+                                DepthImage::descriptor_buffer().component,
                                 buffer.clone().into(),
                                 first_copied(format.as_deref())?.0,
                                 ImageKind::Depth,
@@ -369,18 +369,18 @@ impl TypedComponentFallbackProvider<ValueRange> for DepthImageVisualizer {
             ctx.recording().latest_at_component::<ImageBuffer>(
                 ctx.target_entity_path,
                 ctx.query,
-                &DepthImage::descriptor_buffer(),
+                DepthImage::descriptor_buffer().component,
             )
         {
             // TODO(andreas): What about overrides on the image format?
             if let Some((_, format)) = ctx.recording().latest_at_component::<ImageFormat>(
                 ctx.target_entity_path,
                 ctx.query,
-                &DepthImage::descriptor_format(),
+                DepthImage::descriptor_format().component,
             ) {
                 let image = ImageInfo::from_stored_blob(
                     buffer_row_id,
-                    &DepthImage::descriptor_buffer(),
+                    DepthImage::descriptor_buffer().component,
                     image_buffer.0,
                     format.0,
                     ImageKind::Depth,
@@ -409,7 +409,7 @@ impl TypedComponentFallbackProvider<DepthMeter> for DepthImageVisualizer {
             .latest_at_component::<components::ImageFormat>(
                 ctx.target_entity_path,
                 ctx.query,
-                &DepthImage::descriptor_format(),
+                DepthImage::descriptor_format().component,
             )
             .is_some_and(|(_index, format)| format.is_float());
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -51,11 +51,11 @@ def test_boxes2d() -> None:
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
         half_sizes = cast("Vec2DArrayLike", half_sizes)
         centers = cast("Vec2DArrayLike", centers)
-        radii = cast("Optional[Float32ArrayLike]", radii)
-        colors = cast("Optional[Rgba32ArrayLike]", colors)
-        labels = cast("Optional[Utf8ArrayLike]", labels)
-        draw_order = cast("Optional[Float32ArrayLike]", draw_order)
-        class_ids = cast("Optional[ClassIdArrayLike]", class_ids)
+        radii = cast("Float32ArrayLike | None", radii)
+        colors = cast("Rgba32ArrayLike | None", colors)
+        labels = cast("Utf8ArrayLike | None", labels)
+        draw_order = cast("Float32ArrayLike | None", draw_order)
+        class_ids = cast("ClassIdArrayLike | None", class_ids)
 
         print(
             f"rr.Boxes2D(\n"

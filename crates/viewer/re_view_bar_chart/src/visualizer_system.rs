@@ -100,7 +100,7 @@ impl TypedComponentFallbackProvider<components::TensorData> for BarChartVisualiz
             .latest_at_component::<components::TensorData>(
                 ctx.target_entity_path,
                 ctx.query,
-                &BarChart::descriptor_values(),
+                BarChart::descriptor_values().component,
             )
             && tensor.is_vector()
         {

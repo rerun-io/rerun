@@ -37,7 +37,7 @@ impl VisualizerSystem for Points3DColorVisualizer {
             // Instead, our custom query here is solely interested in Points3D's colors.
             VisualizerQueryInfo {
                 relevant_archetypes: Default::default(),
-                required: std::iter::once(rerun::Points3D::descriptor_colors()).collect(),
+                required: std::iter::once(rerun::Points3D::descriptor_colors().component).collect(),
                 queried: std::iter::once(rerun::Points3D::descriptor_colors()).collect(),
             }
         }
@@ -57,7 +57,7 @@ impl VisualizerSystem for Points3DColorVisualizer {
             let results = data_result.query_components_with_history(
                 ctx,
                 query,
-                [&rerun::Points3D::descriptor_colors()],
+                [rerun::Points3D::descriptor_colors().component],
             );
 
             // From the query result, get all the color arrays as `[u32]` slices.

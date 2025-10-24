@@ -61,6 +61,14 @@ This is a diverging colormap, often used to visualize data with a meaningful cen
 where deviations from that center are important to highlight.
 It interpolates from red to orange to yellow to green to blue to violet.
 
+#### `Twilight` = 9
+The Twilight colormap from Matplotlib.
+
+This is a perceptually uniform cyclic colormap from Matplotlib, it is useful for
+visualizing periodic or cyclic data.
+
+It interpolates from white to blue to purple to red to orange and back to white.
+
 
 ## Arrow datatype
 ```

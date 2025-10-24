@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -52,10 +51,7 @@ class RotationAxisAngle(RotationAxisAngleExt):
 
 
 RotationAxisAngleLike = RotationAxisAngle
-RotationAxisAngleArrayLike = Union[
-    RotationAxisAngle,
-    Sequence[RotationAxisAngleLike],
-]
+RotationAxisAngleArrayLike = RotationAxisAngle | Sequence[RotationAxisAngleLike]
 
 
 class RotationAxisAngleBatch(BaseBatch[RotationAxisAngleArrayLike]):

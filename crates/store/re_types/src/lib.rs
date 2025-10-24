@@ -310,5 +310,9 @@ pub use dynamic_archetype::DynamicArchetype;
 mod rotation3d;
 pub use rotation3d::Rotation3D;
 
+// Has to live here otherwise we can't export it from `re_types`.
+mod colormap_category;
+pub use colormap_category::ColormapCategory;
+
 #[cfg(feature = "testing")]
 pub mod testing;

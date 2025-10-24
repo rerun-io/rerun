@@ -13,7 +13,6 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
         window_size: Some(egui::Vec2::new(1024.0, 1024.0)),
     });
     harness.init_recording();
-    harness.set_selection_panel_opened(false);
 
     // Log some data
     harness.log_entity("boxes3d", |builder| {
@@ -60,6 +59,7 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
     });
 
     harness.clear_current_blueprint();
+    harness.set_selection_panel_opened(false);
     harness
 }
 

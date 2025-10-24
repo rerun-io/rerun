@@ -56,5 +56,7 @@ define_redap_tests! {
     register_partition::register_and_scan_empty_dataset,
     register_partition::register_and_scan_simple_dataset,
     register_partition::register_and_scan_simple_dataset_with_layers,
-    register_partition::register_with_prefix
+    register_partition::register_and_scan_simple_dataset_with_properties,
+    register_partition::register_and_scan_simple_dataset_with_properties_out_of_order,
+    register_partition::register_with_prefix,
 }

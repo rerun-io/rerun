@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -58,13 +58,19 @@ class Uuid(UuidExt):
 
 
 if TYPE_CHECKING:
-    UuidLike = Union[Uuid, npt.NDArray[Any], npt.ArrayLike, Sequence[int], bytes]
+    UuidLike = Uuid | npt.NDArray[Any] | npt.ArrayLike | Sequence[int] | bytes
 else:
     UuidLike = Any
 
-UuidArrayLike = Union[
-    Uuid, Sequence[UuidLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[int]], Sequence[int], Sequence[bytes]
-]
+UuidArrayLike = (
+    Uuid
+    | Sequence[UuidLike]
+    | npt.NDArray[Any]
+    | npt.ArrayLike
+    | Sequence[Sequence[int]]
+    | Sequence[int]
+    | Sequence[bytes]
+)
 
 
 class UuidBatch(BaseBatch[UuidArrayLike]):

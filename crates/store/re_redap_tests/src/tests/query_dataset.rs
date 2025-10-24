@@ -27,14 +27,17 @@ pub async fn query_empty_dataset(service: impl RerunCloudService) {
 }
 
 pub async fn query_simple_dataset(service: impl RerunCloudService) {
-    let data_sources_def = DataSourcesDefinition::new([
-        LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
-        LayerDefinition::simple("my_partition_id2", &["my/entity"]),
-        LayerDefinition::simple(
-            "my_partition_id3",
-            &["my/entity", "another/one", "yet/another/one"],
-        ),
-    ]);
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [
+            LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
+            LayerDefinition::simple("my_partition_id2", &["my/entity"]),
+            LayerDefinition::simple(
+                "my_partition_id3",
+                &["my/entity", "another/one", "yet/another/one"],
+            ),
+        ],
+    );
 
     let dataset_name = "dataset";
     service.create_dataset_entry_with_name(dataset_name).await;
@@ -74,13 +77,16 @@ pub async fn query_simple_dataset(service: impl RerunCloudService) {
 }
 
 pub async fn query_simple_dataset_with_layers(service: impl RerunCloudService) {
-    let data_sources_def = DataSourcesDefinition::new([
-        LayerDefinition::simple("partition1", &["my/entity"]),
-        LayerDefinition::simple("partition1", &["extra/entity"]).layer_name("extra"),
-        LayerDefinition::simple("partition2", &["another/one"]).layer_name("base"),
-        LayerDefinition::simple("partition2", &["extra/entity"]).layer_name("extra"),
-        LayerDefinition::simple("partition3", &["i/am/alone"]),
-    ]);
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [
+            LayerDefinition::simple("partition1", &["my/entity"]),
+            LayerDefinition::simple("partition1", &["extra/entity"]).layer_name("extra"),
+            LayerDefinition::simple("partition2", &["another/one"]).layer_name("base"),
+            LayerDefinition::simple("partition2", &["extra/entity"]).layer_name("extra"),
+            LayerDefinition::simple("partition3", &["i/am/alone"]),
+        ],
+    );
 
     let dataset_name = "dataset_with_layers";
     service.create_dataset_entry_with_name(dataset_name).await;

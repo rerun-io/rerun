@@ -37,6 +37,7 @@ permissions:
 jobs:
   build:
     name: Build rerun_js
+    timeout-minutes: 60
     runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v4

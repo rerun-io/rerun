@@ -22,7 +22,7 @@ use re_protos::{
         ext::{DatasetDetails, IndexProperties},
         index_query_properties,
     },
-    common::v1alpha1::{IfDuplicateBehavior, ext::DatasetHandle},
+    common::v1alpha1::ext::DatasetHandle,
     headers::RerunHeadersInjectorExt as _,
 };
 use re_redap_client::fetch_chunks_response_to_chunk_and_partition_id;
@@ -533,16 +533,11 @@ impl PyDatasetEntry {
         };
 
         let request = CreateIndexRequest {
-            partition_ids: vec![],
-            partition_layers: vec![],
-
             config: Some(IndexConfig {
                 properties: Some(properties.into()),
                 column: Some(component_descriptor.0.into()),
                 time_index: Some(time_selector.timeline.into()),
             }),
-
-            on_duplicate: IfDuplicateBehavior::Overwrite as i32,
         };
 
         wait_for_future(self_.py(), async {
@@ -599,16 +594,11 @@ impl PyDatasetEntry {
         };
 
         let request = CreateIndexRequest {
-            partition_ids: vec![],
-            partition_layers: vec![],
-
             config: Some(IndexConfig {
                 properties: Some(properties.into()),
                 column: Some(component_descriptor.0.into()),
                 time_index: Some(time_selector.timeline.into()),
             }),
-
-            on_duplicate: IfDuplicateBehavior::Overwrite as i32,
         };
 
         wait_for_future(self_.py(), async {
