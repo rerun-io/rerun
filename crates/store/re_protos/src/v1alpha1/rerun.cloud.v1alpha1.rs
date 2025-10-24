@@ -304,11 +304,8 @@ impl ::prost::Name for CreateIndexRequest {
         "/rerun.cloud.v1alpha1.CreateIndexRequest".into()
     }
 }
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct CreateIndexResponse {
-    #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
-}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CreateIndexResponse {}
 impl ::prost::Name for CreateIndexResponse {
     const NAME: &'static str = "CreateIndexResponse";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
