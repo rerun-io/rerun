@@ -36,4 +36,12 @@ thiserror.workspace = true
 vec1 = { workspace = true, features = ["smallvec-v1"] }
 
 [dev-dependencies]
+criterion.workspace = true
 insta.workspace = true
+
+[lib]
+bench = false
+
+[[bench]]
+name = "transform_resolution_cache_bench"
+harness = false
