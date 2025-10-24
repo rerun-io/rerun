@@ -44,7 +44,7 @@ impl HybridLatestAtResults<'_> {
         &self,
         component_descr: &ComponentDescriptor,
     ) -> Option<C> {
-        self.get_required_instance(0, component_descr)
+        self.get_required_instance(0, component_descr.component)
     }
 
     /// Utility for retrieving the first instance of a component.
@@ -53,7 +53,7 @@ impl HybridLatestAtResults<'_> {
         &self,
         component_descr: &ComponentDescriptor,
     ) -> Option<C> {
-        self.get_instance(0, component_descr)
+        self.get_instance(0, component_descr.component)
     }
 
     /// Utility for retrieving the first instance of a component.
@@ -65,7 +65,7 @@ impl HybridLatestAtResults<'_> {
     ) -> C {
         debug_assert_eq!(component_descr.component_type, Some(C::name()));
 
-        self.get_instance(0, component_descr).unwrap_or_else(|| {
+        self.get_instance(0, component_descr.component).unwrap_or_else(|| {
             let query_context = self.ctx.query_context(self.data_result, &self.query);
             fallback_provider.fallback_for(&query_context)
         })
@@ -78,13 +78,13 @@ impl HybridLatestAtResults<'_> {
     pub fn get_required_instance<C: re_types_core::Component>(
         &self,
         index: usize,
-        component_descr: &ComponentDescriptor, // TODO(#10460): Take `ComponentIdentifier` instead of descriptor.
+        component: ComponentIdentifier,
     ) -> Option<C> {
         self.overrides
-            .component_instance::<C>(index, component_descr.component)
+            .component_instance::<C>(index, component)
             .or_else(||
                 // No override -> try recording store instead
-                self.results.component_instance::<C>(index, component_descr.component))
+                self.results.component_instance::<C>(index, component))
     }
 
     /// Utility for retrieving a single instance of a component.
@@ -94,15 +94,13 @@ impl HybridLatestAtResults<'_> {
     pub fn get_instance<C: re_types_core::Component>(
         &self,
         index: usize,
-        component_descr: &ComponentDescriptor, // TODO(#10460): Take `ComponentIdentifier` instead of descriptor.
+        component: ComponentIdentifier,
     ) -> Option<C> {
-        debug_assert_eq!(component_descr.component_type, Some(C::name()));
-
-        self.get_required_instance(index, component_descr)
+        self.get_required_instance(index, component)
             .or_else(|| {
                 // No override & no store -> try default instead
                 self.defaults
-                    .component_instance::<C>(index, component_descr.component)
+                    .component_instance::<C>(index, component)
             })
     }
 }
