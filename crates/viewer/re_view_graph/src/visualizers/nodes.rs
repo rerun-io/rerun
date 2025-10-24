@@ -84,7 +84,7 @@ impl VisualizerSystem for NodeVisualizer {
             let all_labels = results.iter_as(query.timeline, GraphNodes::descriptor_labels().component);
             let all_radii = results.iter_as(query.timeline, GraphNodes::descriptor_radii().component);
             let show_label = results
-                .get_mono::<components::ShowLabels>(&GraphNodes::descriptor_show_labels())
+                .get_mono::<components::ShowLabels>(GraphNodes::descriptor_show_labels().component)
                 .is_none_or(bool::from);
 
             let data = range_zip_1x4(

@@ -97,7 +97,7 @@ fn collect_draw_order_per_visualizer(
             [draw_order_descriptor.component],
             query_shadowed_components,
         )
-        .get_mono::<DrawOrder>(draw_order_descriptor)
+        .get_mono::<DrawOrder>(draw_order_descriptor.component)
         .unwrap_or_else(|| {
             *default_draw_order.get_or_insert_with(|| {
                 let ctx = ctx.query_context(data_result, &latest_at_query);

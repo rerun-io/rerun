@@ -5,7 +5,7 @@ use itertools::Itertools as _;
 use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery};
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
-use re_types::{ComponentDescriptor, ComponentIdentifier};
+use re_types::ComponentIdentifier;
 use re_viewer_context::{DataResult, TypedComponentFallbackProvider, ViewContext};
 
 use crate::chunks_with_component::ChunksWithComponent;
@@ -42,30 +42,28 @@ impl HybridLatestAtResults<'_> {
     #[inline]
     pub fn get_required_mono<C: re_types_core::Component>(
         &self,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Option<C> {
-        self.get_required_instance(0, component_descr.component)
+        self.get_required_instance(0, component)
     }
 
     /// Utility for retrieving the first instance of a component.
     #[inline]
     pub fn get_mono<C: re_types_core::Component>(
         &self,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Option<C> {
-        self.get_instance(0, component_descr.component)
+        self.get_instance(0, component)
     }
 
     /// Utility for retrieving the first instance of a component.
     #[inline]
     pub fn get_mono_with_fallback<C: re_types_core::Component + Default>(
         &self,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
         fallback_provider: &impl TypedComponentFallbackProvider<C>,
     ) -> C {
-        debug_assert_eq!(component_descr.component_type, Some(C::name()));
-
-        self.get_instance(0, component_descr.component)
+        self.get_instance(0, component)
             .unwrap_or_else(|| {
                 let query_context = self.ctx.query_context(self.data_result, &self.query);
                 fallback_provider.fallback_for(&query_context)
