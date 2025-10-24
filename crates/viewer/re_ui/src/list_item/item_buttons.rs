@@ -86,8 +86,7 @@ impl<'a> ItemButtons<'a> {
         // In order to not mess with the layout & focus which may cause things like a layered color picker to disappear,
         // we always compute the layout as if the buttons were visible.
         // Only the button callbacks themselves are disabled.
-        let visible = self.should_show_buttons(context);
-        if visible {
+        if self.should_show_buttons(context) {
             for button in self.buttons {
                 button(&mut ui);
             }
