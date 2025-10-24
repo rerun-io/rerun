@@ -118,37 +118,41 @@ pub fn visualizer_ui_impl(
         }
 
         for &visualizer_id in active_visualizers {
-            // List all components that the visualizer may consume.
-            if let Ok(visualizer) = all_visualizers.get_by_identifier(visualizer_id) {
-                ui.list_item()
-                    .with_y_offset(1.0)
-                    .with_height(20.0)
-                    .interactive(false)
-                    .show_flat(
-                        ui,
-                        list_item::LabelContent::new(
-                            RichText::new(format!("{visualizer_id}")).size(10.0).color(
-                                design_tokens_of_visuals(ui.visuals()).list_item_strong_text,
-                            ),
-                        )
-                        .min_desired_width(150.0)
-                        .with_buttons(|ui| {
-                            remove_visualizer_button(ui, visualizer_id);
-                        })
-                        .with_always_show_buttons(true),
-                    );
-                visualizer_components(ctx, ui, data_result, visualizer);
-            } else {
-                ui.list_item_flat_noninteractive(
-                    list_item::LabelContent::new(format!("{visualizer_id} (unknown visualizer)"))
+            ui.push_id(visualizer_id, |ui| {
+                // List all components that the visualizer may consume.
+                if let Ok(visualizer) = all_visualizers.get_by_identifier(visualizer_id) {
+                    ui.list_item()
+                        .with_y_offset(1.0)
+                        .with_height(20.0)
+                        .interactive(false)
+                        .show_flat(
+                            ui,
+                            list_item::LabelContent::new(
+                                RichText::new(format!("{visualizer_id}")).size(10.0).color(
+                                    design_tokens_of_visuals(ui.visuals()).list_item_strong_text,
+                                ),
+                            )
+                            .min_desired_width(150.0)
+                            .with_buttons(|ui| {
+                                remove_visualizer_button(ui, visualizer_id);
+                            })
+                            .with_always_show_buttons(true),
+                        );
+                    visualizer_components(ctx, ui, data_result, visualizer);
+                } else {
+                    ui.list_item_flat_noninteractive(
+                        list_item::LabelContent::new(format!(
+                            "{visualizer_id} (unknown visualizer)"
+                        ))
                         .weak(true)
                         .min_desired_width(150.0)
                         .with_buttons(|ui| {
                             remove_visualizer_button(ui, visualizer_id);
                         })
                         .with_always_show_buttons(true),
-                );
-            }
+                    );
+                }
+            });
         }
     });
 }
@@ -405,7 +409,7 @@ fn visualizer_components(
             .interactive(false)
             .show_hierarchical_with_children(
                 ui,
-                ui.make_persistent_id(component_descr),
+                ui.make_persistent_id(component),
                 default_open,
                 list_item::PropertyContent::new(
                     // We're in the context of a visualizer, so we don't have to print the archetype name
