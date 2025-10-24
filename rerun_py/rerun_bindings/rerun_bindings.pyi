@@ -1313,6 +1313,8 @@ class Entry:
         """
 
 class DatasetEntry(Entry):
+    """A dataset entry in the catalog."""
+
     @property
     def manifest_url(self) -> str:
         """Return the dataset manifest URL."""
@@ -1556,6 +1558,8 @@ class TableEntry(Entry):
         """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
 
 class DataframeQueryView:
+    """View into a remote dataset acting as DataFusion table provider."""
+
     def filter_partition_id(self, partition_id: str, *args: Iterable[str]) -> Self:
         """Filter by one or more partition ids. All partition ids are included if not specified."""
 
