@@ -761,9 +761,9 @@ impl RerunCloudService for RerunCloudHandler {
         // project columns
         if !request.columns.is_empty() {
             record_batch = record_batch
-                .filter_columns_by(|field| request.columns.contains(field.name()))
+                .project_columns(request.columns.iter().map(|s| s.as_str()))
                 .map_err(|err| {
-                    tonic::Status::internal(format!("Unable to filter columns: {err:#}"))
+                    tonic::Status::invalid_argument(format!("Unable to project columns: {err:#}"))
                 })?;
         }
 
@@ -820,9 +820,9 @@ impl RerunCloudService for RerunCloudHandler {
         // project columns
         if !request.columns.is_empty() {
             record_batch = record_batch
-                .filter_columns_by(|field| request.columns.contains(field.name()))
+                .project_columns(request.columns.iter().map(|s| s.as_str()))
                 .map_err(|err| {
-                    tonic::Status::internal(format!("Unable to filter columns: {err:#}"))
+                    tonic::Status::invalid_argument(format!("Unable to project columns: {err:#}"))
                 })?;
         }
 

@@ -68,9 +68,82 @@ pub async fn column_projection_(service: impl RerunCloudService) {
         "the projection should have been applied"
     );
 
-    //TODO: order?
+    //
+    // check for order preservation
+    //
 
-    //TODO: same for dataset manifest
+    let prop_col = "property:points:Points2D:positions".to_owned();
+    let ordered_columns = partition_table_columns(
+        &service,
+        vec![
+            prop_col.clone(),
+            ScanPartitionTableResponse::FIELD_PARTITION_ID.to_owned(),
+        ],
+        dataset_name,
+    )
+    .await;
+
+    assert_eq!(
+        ordered_columns,
+        vec![
+            prop_col,
+            ScanPartitionTableResponse::FIELD_PARTITION_ID.to_owned(),
+        ],
+        "the column order should be preserved"
+    );
+
+    //
+    // check for unknown column
+    //
+
+    let result = service
+        .scan_partition_table(
+            tonic::Request::new(ScanPartitionTableRequest {
+                columns: vec!["unknown_column".to_owned()],
+            })
+            .with_entry_name(dataset_name)
+            .unwrap(),
+        )
+        .await;
+
+    match result {
+        Err(status) => {
+            assert_eq!(status.code(), tonic::Code::InvalidArgument);
+            assert!(status.message().contains("unknown_column"));
+            assert!(status.message().contains("not found"));
+        }
+        Ok(_) => panic!("expected InvalidArgument error for unknown column"),
+    }
+
+    //
+    // check for duplicate column
+    //
+
+    let result = service
+        .scan_partition_table(
+            tonic::Request::new(ScanPartitionTableRequest {
+                columns: vec![
+                    ScanPartitionTableResponse::FIELD_PARTITION_ID.to_owned(),
+                    ScanPartitionTableResponse::FIELD_PARTITION_ID.to_owned(),
+                ],
+            })
+            .with_entry_name(dataset_name)
+            .unwrap(),
+        )
+        .await;
+
+    match result {
+        Err(status) => {
+            assert_eq!(status.code(), tonic::Code::InvalidArgument);
+            assert!(
+                status
+                    .message()
+                    .contains(ScanPartitionTableResponse::FIELD_PARTITION_ID)
+            );
+            assert!(status.message().contains("twice") || status.message().contains("duplicate"));
+        }
+        Ok(_) => panic!("expected InvalidArgument error for duplicate column"),
+    }
 }
 
 async fn partition_table_columns(

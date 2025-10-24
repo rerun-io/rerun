@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use arrow::{
@@ -102,6 +103,14 @@ pub trait RecordBatchExt {
         self,
         predicate: impl Fn(&Field) -> bool,
     ) -> arrow::error::Result<RecordBatch>;
+
+    /// Project columns based on the provided column names.
+    ///
+    /// If a column is not found, or if a column is duplicated, returns an
+    /// [`arrow::error::ArrowError::InvalidArgumentError`] error.
+    fn project_columns<'a, I>(self, projected_columns: I) -> arrow::error::Result<RecordBatch>
+    where
+        I: Iterator<Item = &'a str>;
 }
 
 impl RecordBatchExt for RecordBatch {
@@ -180,7 +189,6 @@ impl RecordBatchExt for RecordBatch {
         )
     }
 
-    /// Retain columns based on the provided predicate.
     fn filter_columns_by(
         self,
         predicate: impl Fn(&Field) -> bool,
@@ -194,6 +202,50 @@ impl RecordBatchExt for RecordBatch {
             .zip(columns)
             .filter(|(field, _)| predicate(field))
             .unzip();
+
+        Self::try_new_with_options(
+            Arc::new(Schema::new_with_metadata(new_fields, metadata)),
+            new_columns,
+            &RecordBatchOptions::default().with_row_count(Some(row_count)),
+        )
+    }
+
+    fn project_columns<'a, I>(self, projected_columns: I) -> arrow::error::Result<RecordBatch>
+    where
+        I: Iterator<Item = &'a str>,
+    {
+        let (schema_ref, columns, row_count) = self.into_parts();
+        let Schema { fields, metadata } = Arc::unwrap_or_clone(schema_ref);
+
+        let mut seen_columns = HashSet::with_capacity(projected_columns.size_hint().0);
+        let (new_columns, new_fields): (Vec<_>, Vec<_>) = projected_columns
+            .map(|col_name| {
+                let (col_index, field) =
+                    fields
+                        .find(col_name)
+                        .ok_or(arrow::error::ArrowError::InvalidArgumentError(format!(
+                            "projected column '{col_name}' not found in schema"
+                        )))?;
+
+                //
+                if seen_columns.contains(col_name) {
+                    return Err(arrow::error::ArrowError::InvalidArgumentError(format!(
+                        "projected column '{col_name}' was requested twice"
+                    )));
+                } else {
+                    seen_columns.insert(col_name);
+                }
+
+                columns
+                    .get(col_index)
+                    .map(|col| (Arc::clone(col), Arc::clone(field)))
+                    .ok_or_else(|| {
+                        arrow::error::ArrowError::InvalidArgumentError(format!(
+                            "internal error: column index '{col_index}' out of bounds"
+                        ))
+                    })
+            })
+            .process_results(|iter| iter.unzip())?;
 
         Self::try_new_with_options(
             Arc::new(Schema::new_with_metadata(new_fields, metadata)),
@@ -215,6 +267,7 @@ mod tests {
             UInt64Array,
         },
         datatypes::{DataType, Field, Schema},
+        error::ArrowError,
     };
 
     use super::*;
@@ -923,5 +976,100 @@ mod tests {
 
         assert_eq!(filtered.num_columns(), 0);
         assert_eq!(filtered.num_rows(), 3);
+    }
+
+    fn sample_batch() -> RecordBatch {
+        RecordBatch::try_new(
+            Arc::new(Schema::new(vec![
+                Field::new("id", DataType::Int32, false),
+                Field::new("name", DataType::Utf8, false),
+                Field::new("age", DataType::Int32, false),
+            ])),
+            vec![
+                Arc::new(Int32Array::from(vec![1, 2, 3])),
+                Arc::new(StringArray::from(vec!["Alice", "Bob", "Charlie"])),
+                Arc::new(Int32Array::from(vec![30, 25, 35])),
+            ],
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn test_project_basic() {
+        let batch = sample_batch();
+        let projected = batch
+            .project_columns(["name", "id"].iter().copied())
+            .unwrap();
+
+        assert_eq!(projected.num_columns(), 2);
+        assert_eq!(projected.schema_ref().field(0).name(), "name");
+        assert_eq!(projected.schema_ref().field(1).name(), "id");
+        assert_eq!(projected.num_rows(), 3);
+    }
+
+    #[test]
+    fn test_project_preserves_order() {
+        let batch = sample_batch();
+        let projected = batch
+            .project_columns(["age", "name", "id"].iter().copied())
+            .unwrap();
+
+        assert_eq!(projected.num_columns(), 3);
+        assert_eq!(projected.schema_ref().field(0).name(), "age");
+        assert_eq!(projected.schema_ref().field(1).name(), "name");
+        assert_eq!(projected.schema_ref().field(2).name(), "id");
+
+        // Verify data matches the reordered columns
+        let age_col = projected
+            .column(0)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .unwrap();
+        assert_eq!(age_col.value(0), 30);
+    }
+
+    #[test]
+    fn test_project_column_not_found() {
+        let batch = sample_batch();
+        let result = batch.project_columns(["name", "missing"].iter().copied());
+
+        match result {
+            Err(ArrowError::InvalidArgumentError(msg)) => {
+                assert!(msg.contains("column 'missing' not found"));
+            }
+            _ => panic!("expected InvalidArgumentError"),
+        }
+    }
+
+    #[test]
+    fn test_project_duplicate_column() {
+        let batch = sample_batch();
+        let result = batch.project_columns(["name", "age", "name"].iter().copied());
+
+        match result {
+            Err(ArrowError::InvalidArgumentError(msg)) => {
+                assert!(msg.contains("name"));
+                assert!(msg.contains("twice") || msg.contains("duplicate"));
+            }
+            _ => panic!("expected InvalidArgumentError"),
+        }
+    }
+
+    #[test]
+    fn test_project_preserves_metadata() {
+        let mut metadata = std::collections::HashMap::new();
+        metadata.insert("key".to_owned(), "value".to_owned());
+
+        let batch = RecordBatch::try_new(
+            Arc::new(Schema::new_with_metadata(
+                vec![Field::new("id", DataType::Int32, false)],
+                metadata.clone(),
+            )),
+            vec![Arc::new(Int32Array::from(vec![1]))],
+        )
+        .unwrap();
+
+        let projected = batch.project_columns(std::iter::once("id")).unwrap();
+        assert_eq!(projected.schema_ref().metadata(), &metadata);
     }
 }

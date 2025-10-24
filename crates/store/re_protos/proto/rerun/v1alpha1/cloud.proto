@@ -274,8 +274,8 @@ message ScanPartitionTableRequest {
   // If not empty, the returned `RecordBatch` are guaranteed to only have the requested column, in the order they were
   // requested.
   //
-  // If a column that doesn't exist is requested, the `ScanPartitionTable` call will fail with an `InvalidArgument`
-  // error.
+  // If a projected column does not exist, or is projected more than once, the `ScanPartitionTable` call will fail with
+  // an `InvalidArgument` error.
   repeated string columns = 3;
 
   reserved 1;
@@ -304,8 +304,8 @@ message ScanDatasetManifestRequest {
   // If not empty, the returned `RecordBatch` are guaranteed to only have the requested column, in the order they were
   // requested.
   //
-  // If a column that doesn't exist is requested, the `ScanPartitionTable` call will fail with an `InvalidArgument`
-  // error.
+  // If a projected column does not exist, or is projected more than once, the `ScanDatasetManifest` call will fail with
+  // an `InvalidArgument` error.
   repeated string columns = 3;
 }
 
