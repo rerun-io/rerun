@@ -255,19 +255,9 @@ fn drag_right_loop_selection_edge(
     selected_range: &mut AbsoluteTimeRangeF,
     right_edge_id: Id,
 ) -> Option<()> {
-    use egui::emath::smart_aim::best_in_range_f64;
     let pointer_pos = ui.input(|i| i.pointer.hover_pos())?;
-    let aim_radius = ui.input(|i| i.aim_radius());
-
-    let time_low = time_ranges_ui.time_from_x_f32(pointer_pos.x - aim_radius)?;
-    let time_high = time_ranges_ui.time_from_x_f32(pointer_pos.x + aim_radius)?;
-
-    // TODO(emilk): snap to absolute time too
-    let low_length = selected_range.max - time_low;
-    let high_length = selected_range.max - time_high;
-    let best_length = TimeReal::from(best_in_range_f64(low_length.as_f64(), high_length.as_f64()));
-
-    selected_range.min = selected_range.max - best_length;
+    let time = time_ranges_ui.time_from_pointer(ui, pointer_pos)?;
+    selected_range.min = time;
 
     if selected_range.min > selected_range.max {
         std::mem::swap(&mut selected_range.min, &mut selected_range.max);
@@ -283,19 +273,9 @@ fn drag_left_loop_selection_edge(
     selected_range: &mut AbsoluteTimeRangeF,
     left_edge_id: Id,
 ) -> Option<()> {
-    use egui::emath::smart_aim::best_in_range_f64;
     let pointer_pos = ui.input(|i| i.pointer.hover_pos())?;
-    let aim_radius = ui.input(|i| i.aim_radius());
-
-    let time_low = time_ranges_ui.time_from_x_f32(pointer_pos.x - aim_radius)?;
-    let time_high = time_ranges_ui.time_from_x_f32(pointer_pos.x + aim_radius)?;
-
-    // TODO(emilk): snap to absolute time too
-    let low_length = time_low - selected_range.min;
-    let high_length = time_high - selected_range.min;
-    let best_length = TimeReal::from(best_in_range_f64(low_length.as_f64(), high_length.as_f64()));
-
-    selected_range.max = selected_range.min + best_length;
+    let time = time_ranges_ui.time_from_pointer(ui, pointer_pos)?;
+    selected_range.max = time;
 
     if selected_range.min > selected_range.max {
         std::mem::swap(&mut selected_range.min, &mut selected_range.max);

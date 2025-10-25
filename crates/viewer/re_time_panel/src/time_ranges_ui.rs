@@ -348,6 +348,7 @@ impl TimeRangesUi {
 
     /// Given the X coord of a pointer position, get a "smart aimed" time close to it.
     pub fn time_from_pointer(&self, ui: &egui::Ui, pointer: egui::Pos2) -> Option<TimeReal> {
+        // TODO(emilk): coarser snapping if some modifier is held down
         let aim_radius = ui.input(|i| i.aim_radius());
         let min_time = self.time_from_x_f32(pointer.x - aim_radius);
         let max_time = self.time_from_x_f32(pointer.x + aim_radius);
