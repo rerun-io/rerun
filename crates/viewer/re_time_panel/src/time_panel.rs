@@ -435,9 +435,9 @@ impl TimePanel {
             return;
         }
 
-        //               |timeline            |
+        //               |timeline            |    <- aka loop selection area
         // ------------------------------------
-        // tree          |streams             |
+        // tree          |streams             |    <- aka event canvas
         //               |  . .   .   . . .   |
         //               |            . . . . |
         //               ▲
@@ -1749,13 +1749,20 @@ fn interact_with_streams_rect(
     }
 
     // We only check for drags in the streams rect,
-    // because drags in the timeline rect should move the time
-    // (or create loop sections).
+    // because drags in the timeline rect creates loop sections.
     let response = ui.interact(
         *streams_rect,
         ui.id().with("time_area_interact"),
         egui::Sense::click_and_drag(),
     );
+    if (response.dragged_by(PointerButton::Primary) || response.clicked_by(PointerButton::Primary))
+        && let Some(pointer_pos) = pointer_pos
+    {
+        if let Some(time) = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x) {
+            time_commands.push(TimeControlCommand::SetTime(time));
+            time_commands.push(TimeControlCommand::Pause);
+        }
+    }
     if response.dragged_by(PointerButton::Middle) {
         delta_x += response.drag_delta().x;
         ui.ctx().set_cursor_icon(CursorIcon::AllScroll);
@@ -1881,31 +1888,13 @@ fn time_marker_ui(
     let is_hovering_the_loop_selection = ui.output(|o| o.cursor_icon) != CursorIcon::Default; // A kind of hacky proxy
     let is_anything_being_dragged = ui.ctx().dragged_id().is_some();
     let time_area_double_clicked = time_area_response.is_some_and(|resp| resp.double_clicked());
-    let interact_radius = ui.style().interaction.resize_grab_radius_side;
-
-    let mut is_hovering_time_cursor = false;
 
     // show current time as a line:
     if let Some(time) = time_ctrl.time()
         && let Some(mut x) = time_ranges_ui.x_from_time_f32(time)
         && timeline_rect.x_range().contains(x)
     {
-        let line_rect = Rect::from_x_y_ranges(x..=x, timeline_rect.top()..=ui.max_rect().bottom())
-            .expand(interact_radius);
-
-        let sense = if time_area_double_clicked {
-            egui::Sense::hover()
-        } else {
-            egui::Sense::drag()
-        };
-
-        let response = ui
-            .interact(line_rect, time_drag_id, sense)
-            .on_hover_and_drag_cursor(timeline_cursor_icon);
-
-        is_hovering_time_cursor = response.hovered();
-
-        if response.dragged()
+        if ui.ctx().is_being_dragged(time_drag_id)
             && let Some(pointer_pos) = pointer_pos
             && let Some(time) = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
         {
@@ -1915,10 +1904,9 @@ fn time_marker_ui(
 
             x = pointer_pos.x; // avoid frame-delay
         }
-
         ui.paint_time_cursor(
             time_area_painter,
-            &response,
+            None,
             x,
             Rangef::new(timeline_rect.top(), ui.max_rect().bottom()),
         );
@@ -1933,8 +1921,7 @@ fn time_marker_ui(
 
         let hovered_ctx_id = egui::Id::new("hovered timestamp context");
 
-        let on_timeline = !is_hovering_time_cursor
-            && !time_area_double_clicked
+        let on_timeline = !time_area_double_clicked
             && is_pointer_in_time_area_rect
             && !is_anything_being_dragged
             && !is_hovering_the_loop_selection;
