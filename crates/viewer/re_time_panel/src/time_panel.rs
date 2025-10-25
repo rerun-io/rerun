@@ -646,12 +646,12 @@ impl TimePanel {
             .auto_shrink([false; 2])
             // We turn off `ScrollSource::DRAG` so that the `ScrollArea` don't steal input from
             // the earlier `interact_with_time_area`.
-            // We implement drag-to-scroll manually instead!
+            // We implement drag-to-scroll manually instead, with middle mouse button
             .scroll_source(ScrollSource::MOUSE_WHEEL | ScrollSource::SCROLL_BAR)
             .show(ui, |ui| {
                 ui.spacing_mut().item_spacing.y = 0.0; // no spacing needed for ListItems
 
-                if time_area_response.dragged_by(PointerButton::Primary) {
+                if time_area_response.dragged_by(PointerButton::Middle) {
                     ui.scroll_with_delta(Vec2::Y * time_area_response.drag_delta().y);
                 }
 
@@ -1500,6 +1500,15 @@ fn paint_range_highlight(
 }
 
 fn help(os: egui::os::OperatingSystem) -> Help {
+    // There are multiple ways to pan and zoom:
+    // Mac trackpad: swipe and pinch
+    // Mouse: Scroll with shift/command
+    // Mouse: Drag with secondary/middle
+    // Which should we show here?
+    // If you have a good trackpad, we could hide the other ways to pan/zoom.
+    // But how can we know?
+    // Should we just assume that every mac user has a trackpad, and nobody else does?
+    // But some mac users (like @Wumpf) use a mouse with their mac.
     Help::new("Timeline")
         .control("Play/Pause", "Space")
         .control(
@@ -1510,8 +1519,17 @@ fn help(os: egui::os::OperatingSystem) -> Help {
             "Select time segment",
             (icons::SHIFT, "+", "drag time scale"),
         )
+<<<<<<< HEAD
         .control("Snap to grid", icons::SHIFT)
         .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag event canvas"))
+=======
+        .control("Pan", (icons::CENTER_MOUSE_CLICK, "+", "drag event canvas"))
+        .control("Zoom", (icons::RIGHT_MOUSE_CLICK, "+", "drag event canvas"))
+        .control(
+            "Pan",
+            IconText::from_modifiers_and(os, Modifiers::SHIFT, icons::SCROLL),
+        )
+>>>>>>> b1c8634da1 (Pan time panel with middle mouse button instead of primary)
         .control(
             "Zoom",
             IconText::from_modifiers_and(os, Modifiers::COMMAND, icons::SCROLL),
@@ -1779,7 +1797,7 @@ fn interact_with_streams_rect(
         ui.id().with("time_area_interact"),
         egui::Sense::click_and_drag(),
     );
-    if response.dragged_by(PointerButton::Primary) {
+    if response.dragged_by(PointerButton::Middle) {
         delta_x += response.drag_delta().x;
         ui.ctx().set_cursor_icon(CursorIcon::AllScroll);
     }
