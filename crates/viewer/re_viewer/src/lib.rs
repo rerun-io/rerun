@@ -53,8 +53,7 @@ pub use re_viewer_context::{
 };
 
 pub mod external {
-    pub use parking_lot;
-    pub use {eframe, egui};
+    pub use {eframe, egui, parking_lot};
     pub use {
         re_chunk, re_chunk::external::*, re_chunk_store, re_chunk_store::external::*, re_data_ui,
         re_entity_db, re_log, re_log_types, re_memory, re_renderer, re_smart_channel, re_types,
