@@ -2,11 +2,9 @@
 //!
 //! TODO(emilk): move some of this numeric formatting into `emath` so we can use it in `egui_plot`.
 
-mod time;
+pub mod time;
 
 use std::{cmp::PartialOrd, fmt::Display};
-
-pub use time::{format_timestamp_secs, next_grid_tick_magnitude_nanos, parse_timestamp_secs};
 
 // --- Numbers ---
 

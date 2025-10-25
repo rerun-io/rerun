@@ -23,7 +23,7 @@ pub fn next_grid_tick_magnitude_nanos(spacing_nanos: i64) -> i64 {
 ///
 /// This is meant for a relatively stable display of timestamps that are typically in minutes
 /// where we still care about fractional seconds.
-pub fn format_timestamp_secs(timestamp_secs: f64) -> String {
+pub fn format_relative_timestamp_secs(timestamp_secs: f64) -> String {
     let n = timestamp_secs as i32;
     let hours = n / (60 * 60);
     let mins = (n / 60) % 60;
@@ -44,7 +44,7 @@ pub fn format_timestamp_secs(timestamp_secs: f64) -> String {
 /// * fractional seconds
 /// * minutes:[fractional seconds]
 /// * hours:minutes:[fractional seconds]
-pub fn parse_timestamp_secs(s: &str) -> Option<f64> {
+pub fn parse_relative_timestamp_secs(s: &str) -> Option<f64> {
     let parts: Vec<&str> = s.split(':').collect();
     match parts.len() {
         1 => parts[0].parse::<f64>().ok(),
@@ -65,7 +65,7 @@ pub fn parse_timestamp_secs(s: &str) -> Option<f64> {
 
 #[test]
 fn test_format_timestamp_secs() {
-    assert_eq!(format_timestamp_secs(3.4), "00:03.40");
-    assert_eq!(format_timestamp_secs(3.53), "00:03.53");
-    assert_eq!(format_timestamp_secs(63.53), "01:03.53");
+    assert_eq!(format_relative_timestamp_secs(3.4), "00:03.40");
+    assert_eq!(format_relative_timestamp_secs(3.53), "00:03.53");
+    assert_eq!(format_relative_timestamp_secs(63.53), "01:03.53");
 }
