@@ -135,6 +135,15 @@ impl core::convert::TryFrom<i64> for NonMinI64 {
     }
 }
 
+impl std::ops::Neg for NonMinI64 {
+    type Output = Self;
+
+    #[inline]
+    fn neg(self) -> Self::Output {
+        Self(-self.0)
+    }
+}
+
 impl core::ops::BitAnd<Self> for NonMinI64 {
     type Output = Self;
 
