@@ -19,7 +19,7 @@ pub fn next_grid_tick_magnitude_nanos(spacing_nanos: i64) -> i64 {
     }
 }
 
-/// Formats a timestamp in seconds to a string.
+/// Formats a relative timestamp (e.g. those in a video) in seconds to a string.
 ///
 /// This is meant for a relatively stable display of timestamps that are typically in minutes
 /// where we still care about fractional seconds.
