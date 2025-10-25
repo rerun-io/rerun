@@ -1519,17 +1519,13 @@ fn help(os: egui::os::OperatingSystem) -> Help {
             "Select time segment",
             (icons::SHIFT, "+", "drag time scale"),
         )
-<<<<<<< HEAD
         .control("Snap to grid", icons::SHIFT)
-        .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag event canvas"))
-=======
         .control("Pan", (icons::CENTER_MOUSE_CLICK, "+", "drag event canvas"))
         .control("Zoom", (icons::RIGHT_MOUSE_CLICK, "+", "drag event canvas"))
         .control(
             "Pan",
             IconText::from_modifiers_and(os, Modifiers::SHIFT, icons::SCROLL),
         )
->>>>>>> b1c8634da1 (Pan time panel with middle mouse button instead of primary)
         .control(
             "Zoom",
             IconText::from_modifiers_and(os, Modifiers::COMMAND, icons::SCROLL),
@@ -1962,7 +1958,7 @@ fn time_marker_ui(
 
         ui.paint_time_cursor(
             time_area_painter,
-            &response,
+            Some(&response),
             x,
             Rangef::new(timeline_rect.top(), ui.max_rect().bottom()),
         );
