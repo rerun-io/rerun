@@ -4,7 +4,7 @@ use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
 use re_chunk_store::TimeType;
-use re_format::next_grid_tick_magnitude_nanos;
+use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::{EntityPath, TimeInt};
 use re_types::{
     Archetype as _, ComponentBatch as _, View as _, ViewClassIdentifier,

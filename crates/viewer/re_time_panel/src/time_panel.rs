@@ -1395,7 +1395,10 @@ impl TimePanel {
                 }
                 self.time_edit_string = None;
             }
-            let response = response.on_hover_text(format!("Timestamp: {}", time_int.as_i64()));
+            let response = response.on_hover_text(format!(
+                "Timestamp: {}",
+                re_format::format_int(time_int.as_i64())
+            ));
 
             response.context_menu(|ui| {
                 copy_time_properties_context_menu(ui, time);
