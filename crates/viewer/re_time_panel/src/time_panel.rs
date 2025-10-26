@@ -614,6 +614,7 @@ impl TimePanel {
             Some(&time_area_response),
             &time_area_painter,
             &timeline_rect,
+            &streams_rect,
             time_commands,
         );
 
@@ -1086,7 +1087,9 @@ impl TimePanel {
         }
     }
 
-    /// Handle setting/extending the selection based on shift-clicking.
+    /// Handle setting/extending the item selection based on shift-clicking.
+    ///
+    /// NOTE: this is NOT the time range (loop) selection!
     fn handle_range_selection(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -1356,6 +1359,7 @@ impl TimePanel {
                     None,
                     &painter,
                     &time_range_rect,
+                    &time_range_rect,
                     time_commands,
                 );
             }
@@ -1482,12 +1486,12 @@ fn help(os: egui::os::OperatingSystem) -> Help {
     Help::new("Timeline")
         .control("Play/Pause", "Space")
         .control(
-            "Move time cursor",
-            (icons::LEFT_MOUSE_CLICK, "+", "drag time scale"),
+            "Select time segment",
+            (icons::LEFT_MOUSE_CLICK, "+", "drag timeline"),
         )
         .control(
-            "Select time segment",
-            (icons::SHIFT, "+", "drag time scale"),
+            "Move time cursor",
+            (icons::LEFT_MOUSE_CLICK, "+", "drag event canva"),
         )
         .control("Pan", (icons::CENTER_MOUSE_CLICK, "+", "drag event canvas"))
         .control("Zoom", (icons::RIGHT_MOUSE_CLICK, "+", "drag event canvas"))
@@ -1877,7 +1881,8 @@ fn time_marker_ui(
     time_ctrl: &TimeControl,
     time_area_response: Option<&egui::Response>,
     time_area_painter: &egui::Painter,
-    timeline_rect: &Rect,
+    paint_rect: &Rect,
+    interact_rect: &Rect,
     time_commands: &mut Vec<TimeControlCommand>,
 ) {
     // timeline_rect: top part with the second ticks and time marker
@@ -1885,14 +1890,13 @@ fn time_marker_ui(
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
     let time_drag_id = ui.id().with("time_drag_id");
     let timeline_cursor_icon = CursorIcon::ResizeHorizontal;
-    let is_hovering_the_loop_selection = ui.output(|o| o.cursor_icon) != CursorIcon::Default; // A kind of hacky proxy
     let is_anything_being_dragged = ui.ctx().dragged_id().is_some();
     let time_area_double_clicked = time_area_response.is_some_and(|resp| resp.double_clicked());
 
     // show current time as a line:
     if let Some(time) = time_ctrl.time()
         && let Some(mut x) = time_ranges_ui.x_from_time_f32(time)
-        && timeline_rect.x_range().contains(x)
+        && paint_rect.x_range().contains(x)
     {
         if ui.ctx().is_being_dragged(time_drag_id)
             && let Some(pointer_pos) = pointer_pos
@@ -1908,23 +1912,19 @@ fn time_marker_ui(
             time_area_painter,
             None,
             x,
-            Rangef::new(timeline_rect.top(), ui.max_rect().bottom()),
+            Rangef::new(paint_rect.top(), ui.max_rect().bottom()),
         );
     }
 
     // "click here to view time here"
     if let Some(pointer_pos) = pointer_pos {
-        let is_pointer_in_time_area_rect =
-            ui.ui_contains_pointer() && time_area_painter.clip_rect().contains(pointer_pos);
-        let is_pointer_in_timeline_rect =
-            ui.ui_contains_pointer() && timeline_rect.contains(pointer_pos);
+        let is_pointer_in_interact_rect =
+            ui.ui_contains_pointer() && interact_rect.contains(pointer_pos);
 
         let hovered_ctx_id = egui::Id::new("hovered timestamp context");
 
-        let on_timeline = !time_area_double_clicked
-            && is_pointer_in_time_area_rect
-            && !is_anything_being_dragged
-            && !is_hovering_the_loop_selection;
+        let on_timeline =
+            is_pointer_in_interact_rect && !time_area_double_clicked && !is_anything_being_dragged;
 
         if on_timeline {
             ui.ctx().set_cursor_icon(timeline_cursor_icon);
@@ -1947,7 +1947,7 @@ fn time_marker_ui(
         if let Some(x) = hovered_x_pos {
             time_area_painter.vline(
                 x,
-                timeline_rect.top()..=ui.max_rect().bottom(),
+                paint_rect.top()..=ui.max_rect().bottom(),
                 ui.visuals().widgets.noninteractive.fg_stroke,
             );
         }
@@ -1961,7 +1961,7 @@ fn time_marker_ui(
 
         let hovered_time = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x);
 
-        if !is_hovering_the_loop_selection {
+        {
             let mut set_time_to_pointer = || {
                 if let Some(time) = hovered_time {
                     let time = time_ranges_ui.clamp_time(time);
@@ -1974,12 +1974,12 @@ fn time_marker_ui(
             // click on time area = set time
             // double click on time area = reset time
             if !is_anything_being_dragged
-                && is_pointer_in_timeline_rect
+                && is_pointer_in_interact_rect
                 && ui.input(|i| i.pointer.primary_down())
             {
                 set_time_to_pointer();
                 ui.ctx().set_dragged_id(time_drag_id);
-            } else if is_pointer_in_time_area_rect {
+            } else if is_pointer_in_interact_rect {
                 if time_area_response.double_clicked() {
                     time_commands.push(TimeControlCommand::ResetTimeView);
                 } else if time_area_response.clicked() && !is_anything_being_dragged {
