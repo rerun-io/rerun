@@ -167,7 +167,7 @@ pub fn loop_selection_ui(
             } else {
                 // inactive - show a tooltip at least:
                 ui.interact(rect, middle_id, egui::Sense::hover())
-                        .on_hover_text("Click the loop button to turn on the loop selection, or use shift-drag to select a new loop selection");
+                    .on_hover_text("Click the loop button to turn on the loop selection, or drag to select a new loop selection");
             }
         }
 
@@ -188,7 +188,7 @@ pub fn loop_selection_ui(
         let is_anything_being_dragged = ui.ctx().dragged_id().is_some();
         if is_pointer_in_timeline
             && !is_anything_being_dragged
-            && ui.input(|i| i.pointer.primary_down() && i.modifiers.shift_only())
+            && ui.input(|i| i.pointer.primary_down() && i.pointer.is_decidedly_dragging())
             && let Some(time) = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
         {
             time_commands.push(TimeControlCommand::SetLoopSelection(
