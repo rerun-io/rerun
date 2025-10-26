@@ -452,7 +452,7 @@ pub fn data_density_graph_ui(
 
     if let Some(pointer) = data.hovered_pos {
         hovered_time = time_ranges_ui
-            .time_from_pointer(ui, pointer)
+            .snapped_time_from_x(ui, pointer.x)
             .map(|t| t.round());
     }
 

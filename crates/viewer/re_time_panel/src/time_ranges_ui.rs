@@ -349,11 +349,11 @@ impl TimeRangesUi {
     /// Given the X coord of a pointer position, get a "smart aimed" time close to it.
     ///
     /// In effect, this will automatically choose the snap-radius based on zoom level.
-    pub fn time_from_pointer(&self, ui: &egui::Ui, pointer: egui::Pos2) -> Option<TimeReal> {
+    pub fn snapped_time_from_x(&self, ui: &egui::Ui, pointer_x: f32) -> Option<TimeReal> {
         // TODO(emilk): coarser snapping if some modifier is held down
         let aim_radius = ui.input(|i| i.aim_radius());
-        let min_time = self.time_from_x_f32(pointer.x - aim_radius);
-        let max_time = self.time_from_x_f32(pointer.x + aim_radius);
+        let min_time = self.time_from_x_f32(pointer_x - aim_radius);
+        let max_time = self.time_from_x_f32(pointer_x + aim_radius);
         if let (Some(min_time), Some(max_time)) = (min_time, max_time) {
             Some(AbsoluteTimeRangeF::new(min_time, max_time).smart_aim())
         } else {

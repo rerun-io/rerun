@@ -190,7 +190,7 @@ pub fn loop_selection_ui(
         if is_pointer_in_timeline
             && !is_anything_being_dragged
             && ui.input(|i| i.pointer.primary_down() && i.modifiers.shift_only())
-            && let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x)
+            && let Some(time) = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
         {
             time_commands.push(TimeControlCommand::SetLoopSelection(
                 AbsoluteTimeRangeF::point(time).to_int(),
@@ -256,7 +256,7 @@ fn drag_right_loop_selection_edge(
     right_edge_id: Id,
 ) -> Option<()> {
     let pointer_pos = ui.input(|i| i.pointer.hover_pos())?;
-    let time = time_ranges_ui.time_from_pointer(ui, pointer_pos)?;
+    let time = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)?;
     selected_range.min = time;
 
     if selected_range.min > selected_range.max {
@@ -274,7 +274,7 @@ fn drag_left_loop_selection_edge(
     left_edge_id: Id,
 ) -> Option<()> {
     let pointer_pos = ui.input(|i| i.pointer.hover_pos())?;
-    let time = time_ranges_ui.time_from_pointer(ui, pointer_pos)?;
+    let time = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)?;
     selected_range.max = time;
 
     if selected_range.min > selected_range.max {
@@ -295,8 +295,8 @@ fn on_drag_loop_selection(
     let min_x = time_ranges_ui.x_from_time_f32(selected_range.min)? + pointer_delta.x;
     let max_x = time_ranges_ui.x_from_time_f32(selected_range.max)? + pointer_delta.x;
 
-    let min_time = time_ranges_ui.time_from_x_f32(min_x)?;
-    let max_time = time_ranges_ui.time_from_x_f32(max_x)?;
+    let min_time = time_ranges_ui.snapped_time_from_x(ui, min_x)?;
+    let max_time = time_ranges_ui.snapped_time_from_x(ui, max_x)?;
 
     let mut new_range = AbsoluteTimeRangeF::new(min_time, max_time);
 
