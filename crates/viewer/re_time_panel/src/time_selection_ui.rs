@@ -381,6 +381,6 @@ fn paint_range_text(
 fn format_duration(time_typ: TimeType, duration: TimeReal) -> String {
     match time_typ {
         TimeType::DurationNs | TimeType::TimestampNs => Duration::from(duration).to_string(),
-        TimeType::Sequence => duration.round().as_i64().to_string(), // TODO(emilk): show real part?
+        TimeType::Sequence => re_format::format_int(duration.round().as_i64()),
     }
 }
