@@ -82,6 +82,12 @@ pub fn loop_selection_ui(
     let is_pointer_in_timeline =
         pointer_pos.is_some_and(|pointer_pos| timeline_rect.contains(pointer_pos));
 
+    if is_pointer_in_timeline {
+        // May be override below if hovering on existing loop region
+        ui.ctx()
+            .set_cursor_icon(crate::CREATE_TIME_LOOP_CURSOR_ICON);
+    }
+
     let left_edge_id = ui.id().with("selection_left_edge");
     let right_edge_id = ui.id().with("selection_right_edge");
     let middle_id = ui.id().with("selection_move");

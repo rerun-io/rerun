@@ -27,12 +27,13 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::{
+    MOVE_TIME_CURSOR_ICON, data_density_graph, paint_ticks,
     recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber,
     streams_tree_data::{EntityData, StreamsTreeData, components_for_entity},
     time_axis::TimelineAxis,
     time_control_ui::TimeControlUi,
-    time_ranges_ui::TimeRangesUi,
-    {data_density_graph, paint_ticks, time_ranges_ui, time_selection_ui},
+    time_ranges_ui::{self, TimeRangesUi},
+    time_selection_ui,
 };
 
 #[derive(Debug, Clone)]
@@ -1789,14 +1790,27 @@ fn interact_with_streams_rect(
         });
     }
 
-    // We only check for drags in the streams rect,
-    // because drags in the timeline rect should move the time
-    // (or create loop sections).
+    // We only check for drags in the streams rect, because
+    // drags in the timeline rect should create loop selections.
     let response = ui.interact(
         *streams_rect,
         ui.id().with("time_area_interact"),
         egui::Sense::click_and_drag(),
     );
+
+    if response.dragged_by(PointerButton::Primary) {
+        ui.ctx().set_cursor_icon(MOVE_TIME_CURSOR_ICON);
+    }
+
+    if (response.dragged_by(PointerButton::Primary) || response.clicked_by(PointerButton::Primary))
+        && let Some(pointer_pos) = pointer_pos
+    {
+        if let Some(time) = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x) {
+            time_commands.push(TimeControlCommand::SetTime(time));
+            time_commands.push(TimeControlCommand::Pause);
+        }
+    }
+
     if response.dragged_by(PointerButton::Middle) {
         delta_x += response.drag_delta().x;
         ui.ctx().set_cursor_icon(CursorIcon::AllScroll);
@@ -1919,7 +1933,6 @@ fn time_marker_ui(
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
     let time_drag_id = ui.id().with("time_drag_id");
-    let timeline_cursor_icon = CursorIcon::ResizeHorizontal;
     let is_anything_being_dragged = ui.ctx().dragged_id().is_some();
     let time_area_double_clicked = time_area_response.is_some_and(|resp| resp.double_clicked());
     let interact_radius = ui.style().interaction.resize_grab_radius_side;
@@ -1940,7 +1953,7 @@ fn time_marker_ui(
 
         let response = ui
             .interact(line_rect, time_drag_id, sense)
-            .on_hover_and_drag_cursor(timeline_cursor_icon);
+            .on_hover_and_drag_cursor(MOVE_TIME_CURSOR_ICON);
 
         if response.dragged()
             && let Some(pointer_pos) = pointer_pos
@@ -1973,7 +1986,7 @@ fn time_marker_ui(
             is_pointer_in_interact_rect && !time_area_double_clicked && !is_anything_being_dragged;
 
         if on_timeline {
-            ui.ctx().set_cursor_icon(timeline_cursor_icon);
+            ui.ctx().set_cursor_icon(MOVE_TIME_CURSOR_ICON);
         }
 
         // Click to move time here:
