@@ -90,7 +90,7 @@ class OPFProject:
 
         """
         self.path = path
-        self.project = resolve(load(self.path))
+        self.project = resolve(load(str(self.path)pi))
         self.log_as_frames = log_as_frames
 
     @classmethod
