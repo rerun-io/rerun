@@ -531,11 +531,7 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
     let override_path = data_result.override_path();
 
     let frame_id_before = query_result
-        .get_mono::<TransformFrameId>(component)
-        .map_or_else(
-            || TransformFrameId::from_entity_path(&data_result.entity_path),
-            |frame_id| TransformFrameId::new(&frame_id),
-        )
+        .get_mono_with_fallback::<TransformFrameId>(component)
         .to_string();
     let mut frame_id = frame_id_before.clone();
 

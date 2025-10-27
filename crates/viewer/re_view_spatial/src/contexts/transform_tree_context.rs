@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
 use nohash_hasher::IntMap;
-use vec1::smallvec_v1::SmallVec1;
-
 use re_chunk_store::LatestAtQuery;
 use re_log_types::EntityPathHash;
 use re_tf::{TransformFrameId, TransformFrameIdHash};
@@ -10,7 +8,9 @@ use re_types::{archetypes, components::ImagePlaneDistance};
 use re_view::{DataResultQuery as _, latest_at_with_blueprint_resolved_data};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextSystem, ViewContextSystemOncePerFrameResult,
+    typed_fallback_for,
 };
+use vec1::smallvec_v1::SmallVec1;
 
 use crate::caches::TransformDatabaseStoreCache;
 
@@ -251,7 +251,18 @@ fn collect_entity_to_transform_frame_id_mapping(
         let frame_id = results
             .get_mono::<TransformFrameId>(transform_frame_id_component)
             .map_or_else(
-                || TransformFrameIdHash::from_entity_path(&data_result.entity_path),
+                || {
+                    let fallback = TransformFrameIdHash::from_entity_path(&data_result.entity_path);
+                    // Make sure this is the same as the fallback provider (which is a lot slower to run)
+                    debug_assert_eq!(
+                        TransformFrameIdHash::new(&typed_fallback_for::<TransformFrameId>(
+                            &ctx.query_context(data_result, &latest_at_query),
+                            transform_frame_id_component
+                        )),
+                        fallback
+                    );
+                    fallback
+                },
                 |frame_id| TransformFrameIdHash::new(&frame_id),
             );
 
