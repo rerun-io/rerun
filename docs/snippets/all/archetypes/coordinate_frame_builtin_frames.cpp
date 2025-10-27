@@ -10,15 +10,15 @@ int main() {
     rec.set_time_sequence("time", 0);
     rec.log(
         "red_box",
-        rerun::Boxes3D::from_half_sizes({{0.5f, 0.5f, 0.5f}})
-            .with_colors({rerun::Color(255, 0, 0)}),
+        rerun::Boxes3D::from_half_sizes({{0.5f, 0.5f, 0.5f}}
+        ).with_colors({rerun::Color(255, 0, 0)}),
         // Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's pose.
         rerun::Transform3D::from_translation({2.0f, 0.0f, 0.0f})
     );
     rec.log(
         "blue_box",
-        rerun::Boxes3D::from_half_sizes({{0.5f, 0.5f, 0.5f}})
-            .with_colors({rerun::Color(0, 0, 255)}),
+        rerun::Boxes3D::from_half_sizes({{0.5f, 0.5f, 0.5f}}
+        ).with_colors({rerun::Color(0, 0, 255)}),
         // Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's pose.
         rerun::Transform3D::from_translation({-2.0f, 0.0f, 0.0f})
     );

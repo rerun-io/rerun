@@ -313,7 +313,7 @@ nb-strip = "python scripts/nbstripout.py mypy examples/python scripts/ tests/pyt
 py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --config rerun_py/pyproject.toml ."
 py-fmt-check = "ruff check --config rerun_py/pyproject.toml . && ruff format --check --config rerun_py/pyproject.toml"
 # Get non-internal things that are ok to not check rerun on
-py-lint-non-sdk = { cmd = "mypy --config-file rerun_py/.non_sdk_mypy.ini --install-types --non-int  eractive --no-warn-unused-ignore", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
+py-lint-non-sdk = { cmd = "mypy --config-file rerun_py/.non_sdk_mypy.ini --install-types --non-interactive --no-warn-unused-ignore", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
 # I couldn't get the config to work correctly so placing relevant directories in command line
 # Until we resolve nbqa config issue keep aligned with nb-strip dirs below
 py-lint-nb-rerun = { cmd = "nbqa mypy examples/python scripts/ tests/python/ docs/snippets/ --config rerun_py/pyproject.toml  ", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }

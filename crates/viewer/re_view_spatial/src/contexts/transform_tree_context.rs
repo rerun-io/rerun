@@ -229,7 +229,7 @@ fn collect_entity_to_transform_frame_id_mapping(
     re_tracing::profile_function!();
 
     let latest_at_query = ctx.current_query();
-    let transform_frame_id_descriptor = archetypes::CoordinateFrame::descriptor_frame_id();
+    let transform_frame_id_component = archetypes::CoordinateFrame::descriptor_frame_id().component;
 
     let mut entity_transform_id_mapping = EntityTransformIdMapping::default();
     let EntityTransformIdMapping {
@@ -244,12 +244,12 @@ fn collect_entity_to_transform_frame_id_mapping(
             None,
             &latest_at_query,
             data_result,
-            [transform_frame_id_descriptor.component],
+            [transform_frame_id_component],
             query_shadowed_components,
         );
 
         let frame_id = results
-            .get_mono::<TransformFrameId>(&transform_frame_id_descriptor)
+            .get_mono::<TransformFrameId>(transform_frame_id_component)
             .map_or_else(
                 || TransformFrameIdHash::from_entity_path(&data_result.entity_path),
                 |frame_id| TransformFrameIdHash::new(&frame_id),

@@ -31,4 +31,4 @@ utf8
 
 ## Used by
 
-* [`CoordinateFrame`](../archetypes/coordinate_frame.md)
+* [`CoordinateFrame`](../archetypes/coordinate_frame.md?speculative-link)

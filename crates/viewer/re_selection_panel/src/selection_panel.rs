@@ -517,20 +517,21 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
     use re_view::latest_at_with_blueprint_resolved_data;
 
     let component_descr = archetypes::CoordinateFrame::descriptor_frame_id();
+    let component = component_descr.component;
     let query_shadowed_components = true;
     let query_result = latest_at_with_blueprint_resolved_data(
         ctx,
         None,
         &ctx.current_query(),
         data_result,
-        [component_descr.component],
+        [component],
         query_shadowed_components,
     );
 
     let override_path = data_result.override_path();
 
     let frame_id_before = query_result
-        .get_mono::<TransformFrameId>(&component_descr)
+        .get_mono::<TransformFrameId>(component)
         .map_or_else(
             || TransformFrameId::from_entity_path(&data_result.entity_path),
             |frame_id| TransformFrameId::new(&frame_id),
@@ -542,9 +543,9 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
         list_item::PropertyContent::new("Coordinate frame")
             .value_text_mut(&mut frame_id)
             .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
-                let result_override = query_result.overrides.get(component_descr.component);
+                let result_override = query_result.overrides.get(component);
                 let raw_override = result_override
-                    .and_then(|c| c.non_empty_component_batch_raw(component_descr.component))
+                    .and_then(|c| c.non_empty_component_batch_raw(component))
                     .map(|(_, array)| array);
 
                 crate::visualizer_ui::remove_and_reset_override_buttons(
