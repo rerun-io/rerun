@@ -8877,6 +8877,7 @@ name = "re_format"
 version = "0.27.0-alpha.1+dev"
 dependencies = [
  "half",
+ "itertools 0.14.0",
  "num-traits",
 ]
 
