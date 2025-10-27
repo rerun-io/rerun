@@ -19,8 +19,6 @@ impl TransformDatabaseStoreCache {
     /// Gets access to the transform cache.
     ///
     /// If the cache was newly added, will make sure that all existing chunks in the entity db are processed.
-    ///
-    /// While the lock is held, no new updates can be applied to the transform cache.
     pub fn lock_transform_cache(
         &mut self,
         entity_db: &EntityDb,
@@ -65,7 +63,7 @@ impl Cache for TransformDatabaseStoreCache {
 
         self.transform_cache
             .lock()
-            .apply_all_updates(events.iter().copied());
+            .process_store_events(events.iter().copied());
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

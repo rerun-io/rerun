@@ -61,7 +61,7 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
     c.bench_function("build_from_entitydb", |b| {
         b.iter(|| {
             let mut cache = TransformResolutionCache::default();
-            cache.apply_all_updates(events.iter());
+            cache.process_store_events(events.iter());
             cache
         });
     });
@@ -73,7 +73,7 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
         b.iter_batched(
             || {
                 let mut cache = TransformResolutionCache::default();
-                cache.apply_all_updates(events.iter());
+                cache.process_store_events(events.iter());
                 cache
             },
             |mut cold_cache| {
@@ -90,7 +90,7 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
     });
 
     let mut warm_cache = TransformResolutionCache::default();
-    warm_cache.apply_all_updates(events.iter());
+    warm_cache.process_store_events(events.iter());
     warm_cache
         .transforms_for_timeline(query.timeline())
         .frame_transforms(queried_frame)

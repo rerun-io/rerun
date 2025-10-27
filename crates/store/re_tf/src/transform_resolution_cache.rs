@@ -138,6 +138,19 @@ impl CachedTransformsForTimeline {
             .append(&mut times);
     }
 
+    fn remove_recursive_clears(
+        &mut self,
+        recursively_cleared_entity_path: &EntityPath,
+        times: BTreeSet<TimeInt>,
+    ) {
+        if let Some() = self
+            .recursive_clears
+            .entry(recursively_cleared_entity_path.clone())
+        {}
+
+        // Removing clears from frame transforms is tricky, but also not
+    }
+
     /// Returns all transforms for a given source frame.
     #[inline]
     pub fn frame_transforms(
@@ -176,18 +189,18 @@ impl PoseTransformArchetypeMap {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-struct CachedTransform<T> {
+struct TransformEntry<T> {
     /// The entity path that produced information about this transform at this time.
     ///
     /// Note that it is user-data error if there's several entities producing data for the same source at the same time.
     /// (the entity that holds information about a source->target transform can however change over time!)
-    entity_path: EntityPath, // TODO(andreas): only storing a hash value would be nice!
+    entity_path: EntityPath, // TODO(andreas): only storing a hash value would be nice to avoid ref count bumping.
 
     /// The cached transform value.
     value: CachedTransformValue<T>,
 }
 
-impl<T> CachedTransform<T> {
+impl<T> TransformEntry<T> {
     fn new(entity_path: EntityPath) -> Self {
         Self {
             entity_path,
@@ -215,11 +228,11 @@ enum CachedTransformValue<T> {
     Cleared,
 }
 
-type FrameTransformTimeMap = BTreeMap<TimeInt, CachedTransform<SourceToTargetTransform>>;
+type FrameTransformTimeMap = BTreeMap<TimeInt, TransformEntry<SourceToTargetTransform>>;
 
-type PoseTransformTimeMap = BTreeMap<TimeInt, CachedTransform<PoseTransformArchetypeMap>>;
+type PoseTransformTimeMap = BTreeMap<TimeInt, TransformEntry<PoseTransformArchetypeMap>>;
 
-type PinholeProjectionMap = BTreeMap<TimeInt, CachedTransform<ResolvedPinholeProjection>>;
+type PinholeProjectionMap = BTreeMap<TimeInt, TransformEntry<ResolvedPinholeProjection>>;
 
 /// Cached transforms for a single source frame to a target frame.
 ///
@@ -271,13 +284,13 @@ impl TransformsForSourceFrame {
         if aspects.intersects(TransformAspect::Frame | TransformAspect::Clear) {
             // Invalidate existing transforms after min_time (rationale see above).
             for (_, transform) in frame_transforms.range_mut(min_time..) {
-                *transform = CachedTransform::new(entity_path.clone());
+                *transform = TransformEntry::new(entity_path.clone());
             }
 
             // Add new invalidated transforms.
             frame_transforms.extend(
                 get_new_invalidated_times()
-                    .map(|time| (time, CachedTransform::new(entity_path.clone()))),
+                    .map(|time| (time, TransformEntry::new(entity_path.clone()))),
             );
         }
 
@@ -286,13 +299,13 @@ impl TransformsForSourceFrame {
 
             // Invalidate existing transforms after min_time (rationale see above).
             for (_, transform) in pose_transforms.range_mut(min_time..) {
-                *transform = CachedTransform::new(entity_path.clone());
+                *transform = TransformEntry::new(entity_path.clone());
             }
 
             // Add new invalidated transforms.
             pose_transforms.extend(
                 get_new_invalidated_times()
-                    .map(|time| (time, CachedTransform::new(entity_path.clone()))),
+                    .map(|time| (time, TransformEntry::new(entity_path.clone()))),
             );
         }
 
@@ -301,13 +314,13 @@ impl TransformsForSourceFrame {
 
             // Invalidate existing transforms after min_time (rationale see above).
             for (_, transform) in pinhole_projections.range_mut(min_time..) {
-                *transform = CachedTransform::new(entity_path.clone());
+                *transform = TransformEntry::new(entity_path.clone());
             }
 
             // Add new invalidated transforms.
             pinhole_projections.extend(
                 get_new_invalidated_times()
-                    .map(|time| (time, CachedTransform::new(entity_path.clone()))),
+                    .map(|time| (time, TransformEntry::new(entity_path.clone()))),
             );
         }
     }
@@ -385,21 +398,21 @@ impl TransformsForSourceFrame {
         self.frame_transforms.extend(
             times
                 .iter()
-                .map(|time| (*time, CachedTransform::new_cleared(entity_path.clone()))),
+                .map(|time| (*time, TransformEntry::new_cleared(entity_path.clone()))),
         );
         self.pose_transforms
             .get_or_insert(Default::default())
             .extend(
                 times
                     .iter()
-                    .map(|time| (*time, CachedTransform::new_cleared(entity_path.clone()))),
+                    .map(|time| (*time, TransformEntry::new_cleared(entity_path.clone()))),
             );
         self.pinhole_projections
             .get_or_insert(Default::default())
             .extend(
                 times
                     .iter()
-                    .map(|time| (*time, CachedTransform::new_cleared(entity_path.clone()))),
+                    .map(|time| (*time, TransformEntry::new_cleared(entity_path.clone()))),
             );
     }
 
@@ -532,18 +545,20 @@ impl TransformResolutionCache {
             .unwrap_or(&mut self.static_timeline)
     }
 
-    /// Makes sure the transform cache is up to date with the latest data.
+    /// Makes sure the internal transform index is up to date and outdated cache entries are discarded.
     ///
     /// This needs to be called once per frame prior to any transform propagation.
     /// (which is done by [`crate::TransformForest`])
     ///
     /// See also [`Self::add_chunks`].
-    // TODO(andreas): easy optimization: apply only updates for a single timeline at a time.
-    pub fn apply_all_updates<'a>(
+    pub fn process_store_events<'a>(
         &mut self,
         events: impl Iterator<Item = &'a re_chunk_store::ChunkStoreEvent>,
     ) {
         re_tracing::profile_function!();
+
+        // TODO(andreas): We eagerly index for all timelines even if they're never used.
+        // This might be an easy optimization to do.
 
         for event in events {
             let aspects = TransformAspect::transform_aspects_of(&event.chunk);
@@ -563,7 +578,7 @@ impl TransformResolutionCache {
 
     /// Adds chunks to the transform cache.
     ///
-    /// See also [`Self::apply_all_updates`].
+    /// See also [`Self::process_store_events`].
     pub fn add_chunks<'a>(&mut self, chunks: impl Iterator<Item = &'a std::sync::Arc<Chunk>>) {
         re_tracing::profile_function!();
 
@@ -814,6 +829,30 @@ impl TransformResolutionCache {
                     {
                         per_timeline.per_source_frame_transforms.remove(source);
                     }
+
+                    // Remove any affected recursive clears.
+                    if aspects.contains(TransformAspect::Clear) {
+                        re_tracing::profile_scope!("check for recursive clears");
+
+                        let component =
+                            re_types::archetypes::Clear::descriptor_is_recursive().component;
+
+                        let recursively_cleared_times = chunk
+                            .iter_component_indices(*timeline, component)
+                            .zip(chunk.iter_slices::<bool>(component))
+                            .filter_map(|((time, _row_id), bool_slice)| {
+                                bool_slice
+                                    .values()
+                                    .first()
+                                    .and_then(|is_recursive| (*is_recursive != 0).then_some(time))
+                            })
+                            .collect::<BTreeSet<_>>();
+
+                        if !recursively_cleared_times.is_empty() {
+                            per_timeline
+                                .remove_recursive_clears(entity_path, recursively_cleared_times);
+                        }
+                    }
                 }
 
                 // Remove empty source update mentions.
@@ -1019,7 +1058,7 @@ mod tests {
 
     fn apply_store_subscriber_events(cache: &mut TransformResolutionCache, entity_db: &EntityDb) {
         let events = TestStoreSubscriber::take_transform_events(entity_db.store_id());
-        cache.apply_all_updates(events.iter());
+        cache.process_store_events(events.iter());
     }
 
     fn static_test_setup_store(
