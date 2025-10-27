@@ -147,7 +147,6 @@ class Uploader:
 
         """
 
-        
         data = path.read_bytes()
         digest = data_hash(data)
         object_name = f"{digest}_{path.name}"
