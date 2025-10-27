@@ -95,9 +95,10 @@ def get_workspace_crates(root: dict[str, Any]) -> dict[str, Crate]:
     for pattern in root["workspace"]["members"]:
         for crate in [member for member in glob(pattern) if os.path.isdir(member)]:
             crate_path = Path(crate)
-            if not os.path.exists(crate_path / "Cargo.toml"):
+            crate_cargo_toml = crate_path / "Cargo.toml"
+            if not crate_cargo_toml.exists():
                 continue
-            manifest_text = (crate_path / "Cargo.toml").read_text()
+            manifest_text = crate_cargo_toml.read_text()
             manifest: dict[str, Any] = tomlkit.parse(manifest_text)
             crates[manifest["package"]["name"]] = Crate(manifest, crate_path)
     return crates
@@ -153,36 +154,40 @@ def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dic
     This also filters any crates which have `publish` set to `false`.
     """
 
+    visited: dict[str, bool] = {}
+    output: dict[str, Crate] = {}
+
     def helper(
         ctx: Context,
         crates: dict[str, Crate],
         name: str,
-        output: dict[str, Crate],
-        visited: dict[str, bool],
     ) -> None:
+        nonlocal visited, output
+
+        # Circular references are possible, so we must check for cycles before recursing.
+        if name in visited:
+            return
+        else:
+            visited[name] = True
+
         crate = crates[name]
         for dependency in crate_deps(crate.manifest):
             assert dependency.name != name, f"Crate {name} had itself as a dependency"
             if dependency.name not in crates:
                 continue
-            if dependency.name in visited:
-                continue
-            helper(ctx, crates, dependency.name, output, visited)
+            helper(ctx, crates, dependency.name)
+
         # Insert only after all dependencies have been traversed
-        if name not in visited:
-            visited[name] = True
-            publish = crate.manifest["package"].get("publish")
-            if publish is None:
-                ctx.error(f"Crate {B}{name}{X} does not have {B}package.publish{X} set.")
-                return
+        publish = crate.manifest["package"].get("publish")
+        if publish is None:
+            ctx.error(f"Crate {B}{name}{X} does not have {B}package.publish{X} set.")
+            return
 
-            if publish:
-                output[name] = crate
+        if publish:
+            output[name] = crate
 
-    visited: dict[str, bool] = {}
-    output: dict[str, Crate] = {}
     for name in crates.keys():
-        helper(ctx, crates, name, output, visited)
+        helper(ctx, crates, name)
     return output
 
 
@@ -522,8 +527,10 @@ def publish(dry_run: bool, token: str) -> None:
 
     root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text(encoding="utf-8"))
     version: str = root["workspace"]["package"]["version"]
+
     print("Collecting publishable crates…")
-    crates = get_sorted_publishable_crates(ctx, get_workspace_crates(root))
+    workspace_crates = get_workspace_crates(root)
+    crates = get_sorted_publishable_crates(ctx, workspace_crates)
 
     for name in crates.keys():
         ctx.publish(name, version)
