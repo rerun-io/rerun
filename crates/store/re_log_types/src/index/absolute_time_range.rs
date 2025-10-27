@@ -310,7 +310,8 @@ impl AbsoluteTimeRangeF {
             }
         }
 
-        min.into() // All digits are the same
+        // All digits are the same. Already handled earlier, but:
+        min.into()
     }
 }
 
