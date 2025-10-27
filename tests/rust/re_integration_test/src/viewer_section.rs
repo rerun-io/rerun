@@ -5,7 +5,7 @@ use egui_kittest::kittest::Queryable as _;
 
 pub struct ViewerSection<'a, 'h> {
     pub harness: &'a mut egui_kittest::Harness<'h, re_viewer::App>,
-    pub section_label: &'a str,
+    pub section_label: Option<&'a str>,
 }
 
 impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
@@ -13,10 +13,11 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
     where
         'a: 'n,
     {
-        let node = self
-            .harness
-            .get_by_role_and_label(Role::Pane, self.section_label);
-        node
+        let Some(section_label) = self.section_label else {
+            return self.harness.root();
+        };
+        self.harness
+            .get_by_role_and_label(Role::Pane, section_label)
     }
 
     pub fn get_label<'n>(&'n mut self, label: &'n str) -> egui_kittest::Node<'n>
@@ -71,6 +72,11 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
 
     pub fn right_click_label(&mut self, label: &str) {
         self.root().get_by_label(label).click_secondary();
+        self.harness.run_ok();
+    }
+
+    pub fn right_click_nth_label(&mut self, label: &str, index: usize) {
+        self.get_nth_label(label, index).click_secondary();
         self.harness.run_ok();
     }
 
@@ -140,31 +146,45 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
 }
 
 pub trait GetSection<'h> {
-    fn get_section<'a>(&'a mut self, section_label: &'a str) -> ViewerSection<'a, 'h>
+    fn section<'a>(&'a mut self, section_label: &'a str) -> ViewerSection<'a, 'h>
+    where
+        'h: 'a;
+
+    fn root_section<'a>(&'a mut self) -> ViewerSection<'a, 'h>
     where
         'h: 'a;
 
     fn blueprint_tree<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
-        self.get_section("_blueprint_tree")
+        self.section("_blueprint_tree")
     }
 
     fn streams_tree<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
-        self.get_section("_streams_tree")
+        self.section("_streams_tree")
     }
 
     fn selection_panel<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
-        self.get_section("_selection_panel")
+        self.section("_selection_panel")
     }
 }
 
 impl<'h> GetSection<'h> for egui_kittest::Harness<'h, re_viewer::App> {
-    fn get_section<'a>(&'a mut self, section_label: &'a str) -> ViewerSection<'a, 'h>
+    fn section<'a>(&'a mut self, section_label: &'a str) -> ViewerSection<'a, 'h>
     where
         'h: 'a,
     {
         ViewerSection::<'a, 'h> {
             harness: self,
-            section_label,
+            section_label: Some(section_label),
+        }
+    }
+
+    fn root_section<'a>(&'a mut self) -> ViewerSection<'a, 'h>
+    where
+        'h: 'a,
+    {
+        ViewerSection::<'a, 'h> {
+            harness: self,
+            section_label: None,
         }
     }
 }

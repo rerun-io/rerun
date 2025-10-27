@@ -29,6 +29,8 @@ use re_viewer::{
 use re_viewer_context::ContainerId;
 use re_viewport_blueprint::ViewportBlueprint;
 
+use crate::GetSection as _;
+
 // Kittest harness utilities specific to the Rerun app.
 pub trait HarnessExt {
     // Initializes the chuck store with a new, empty recording and blueprint.
@@ -64,9 +66,6 @@ pub trait HarnessExt {
         build_chunk: impl FnOnce(ChunkBuilder) -> ChunkBuilder,
     );
 
-    // Finds the nth node with a given label
-    fn get_nth_label<'a>(&'a mut self, label: &'a str, index: usize) -> egui_kittest::Node<'a>;
-
     // Get the position of a node in the UI by its label.
     fn get_panel_position(&mut self, label: &str) -> egui::Rect;
 
@@ -76,7 +75,6 @@ pub trait HarnessExt {
     fn click_label_contains(&mut self, label: &str);
     fn click_nth_label(&mut self, label: &str, index: usize);
     fn right_click_nth_label(&mut self, label: &str, index: usize);
-    fn click_nth_label_modifiers(&mut self, label: &str, index: usize, modifiers: Modifiers);
     fn hover_label_contains(&mut self, label: &str);
     fn hover_nth_label(&mut self, label: &str, index: usize);
 
@@ -248,13 +246,11 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
     }
 
     fn click_label(&mut self, label: &str) {
-        self.get_by_label(label).click();
-        self.run_ok();
+        self.root_section().click_label(label);
     }
 
     fn right_click_label(&mut self, label: &str) {
-        self.get_by_label(label).click_secondary();
-        self.run_ok();
+        self.root_section().right_click_label(label);
     }
 
     fn click_label_contains(&mut self, label: &str) {
@@ -262,27 +258,16 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         self.run_ok();
     }
 
-    fn get_nth_label<'a>(&'a mut self, label: &'a str, index: usize) -> egui_kittest::Node<'a> {
-        let mut nodes = self.get_all_by_label(label).collect::<Vec<_>>();
-        assert!(
-            index < nodes.len(),
-            "Failed to find label '{label}' #{index}, there are only {} nodes:\n{nodes:#?}",
-            nodes.len()
-        );
-        nodes.swap_remove(index)
-    }
-
     fn get_panel_position(&mut self, label: &str) -> egui::Rect {
         self.get_by_role_and_label(Role::Pane, label).rect()
     }
 
     fn click_nth_label(&mut self, label: &str, index: usize) {
-        self.click_nth_label_modifiers(label, index, Modifiers::NONE);
+        self.root_section().click_nth_label(label, index);
     }
 
     fn right_click_nth_label(&mut self, label: &str, index: usize) {
-        self.get_nth_label(label, index).click_secondary();
-        self.run_ok();
+        self.root_section().right_click_nth_label(label, index);
     }
 
     fn hover_label_contains(&mut self, label: &str) {
@@ -291,45 +276,15 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
     }
 
     fn hover_nth_label(&mut self, label: &str, index: usize) {
-        self.get_nth_label(label, index).hover();
-        self.run_ok();
-    }
-
-    fn click_nth_label_modifiers(&mut self, label: &str, index: usize, modifiers: Modifiers) {
-        self.get_nth_label(label, index).click_modifiers(modifiers);
-        self.run_ok();
+        self.root_section().hover_nth_label(label, index);
     }
 
     fn drag_nth_label(&mut self, label: &str, index: usize) {
-        let node = self.get_nth_label(label, index);
-
-        let center = node.rect().center();
-        self.event(egui::Event::PointerButton {
-            pos: center,
-            button: PointerButton::Primary,
-            pressed: true,
-            modifiers: Modifiers::NONE,
-        });
-
-        // Step until the time has passed `max_click_duration` so this gets
-        // registered as a drag.
-        let wait_time = self.ctx.options(|o| o.input_options.max_click_duration);
-        let end_time = self.ctx.input(|i| i.time + wait_time);
-        while self.ctx.input(|i| i.time) < end_time {
-            self.step();
-        }
+        self.root_section().drag_nth_label(label, index);
     }
 
     fn drop_nth_label(&mut self, label: &str, index: usize) {
-        let node = self.get_nth_label(label, index);
-        let event = egui::Event::PointerButton {
-            pos: node.rect().center(),
-            button: PointerButton::Primary,
-            pressed: false,
-            modifiers: Modifiers::NONE,
-        };
-        self.event(event);
-        self.remove_cursor();
+        self.root_section().drop_nth_label(label, index);
     }
 
     fn drag_at(&mut self, pos: egui::Pos2) {
