@@ -86,7 +86,7 @@ impl BlueprintTree {
         }
 
         ui.panel_content(|ui| {
-            let response = ui.list_item_scope("blueprint_section_title", |ui| {
+            ui.list_item_scope("blueprint_section_title", |ui| {
                 ui.list_item().interactive(false).show_flat(
                     ui,
                     list_item::CustomContent::new(|ui, _| {
@@ -110,9 +110,6 @@ impl BlueprintTree {
                         },
                     ),
                 );
-            });
-            response.response.widget_info(|| {
-                WidgetInfo::labeled(WidgetType::Panel, true, "blueprint_section_title")
             });
         });
 
@@ -160,6 +157,10 @@ impl BlueprintTree {
                                 root_container,
                             );
                         }
+                    })
+                    .response
+                    .widget_info(|| {
+                        WidgetInfo::labeled(WidgetType::Panel, true, "_blueprint_tree")
                     });
 
                     let empty_space_response =

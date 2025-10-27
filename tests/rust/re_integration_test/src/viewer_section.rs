@@ -15,6 +15,16 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
         node
     }
 
+    pub fn click_label(&mut self, label: &str) {
+        self.root().get_by_label(label).click();
+        self.harness.run_ok();
+    }
+
+    pub fn click_label_modifiers(&mut self, label: &str, modifiers: egui::Modifiers) {
+        self.root().get_by_label(label).click_modifiers(modifiers);
+        self.harness.run_ok();
+    }
+
     pub fn right_click_label(&mut self, label: &str) {
         self.root().get_by_label(label).click_secondary();
         self.harness.run_ok();
@@ -26,8 +36,12 @@ pub trait GetSection<'h> {
     where
         'h: 'a;
 
-    fn blueprint_panel<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
-        self.get_section("blueprint_panel")
+    fn blueprint_tree<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
+        self.get_section("_blueprint_tree")
+    }
+
+    fn streams_tree<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
+        self.get_section("_streams_tree")
     }
 }
 

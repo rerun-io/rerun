@@ -60,53 +60,26 @@ pub async fn test_blueprint_tree_context_menu() {
     harness.click_label("Expand all");
     harness.snapshot_app("blueprint_tree_context_menu_03");
 
-    harness.right_click_label("Viewport (Grid container)");
+    harness
+        .blueprint_tree()
+        .right_click_label("Viewport (Grid container)");
     harness.snapshot_app("blueprint_tree_context_menu_04");
 
     harness.key_press(egui::Key::Escape);
     harness.snapshot_app("blueprint_tree_context_menu_05");
 
-    harness.right_click_nth_label("Test view", 0);
+    harness.blueprint_tree().right_click_label("Test view");
     harness.snapshot_app("blueprint_tree_context_menu_06");
 
     harness.key_press(egui::Key::Escape);
     harness.snapshot_app("blueprint_tree_context_menu_07");
 
-    harness.right_click_label("group");
+    harness.blueprint_tree().right_click_label("group");
     harness.snapshot_app("blueprint_tree_context_menu_08");
 
     harness.key_press(egui::Key::Escape);
     harness.snapshot_app("blueprint_tree_context_menu_09");
 
-    harness.right_click_nth_label("boxes3d", 1);
+    harness.blueprint_tree().right_click_label("boxes3d");
     harness.snapshot_app("blueprint_tree_context_menu_10");
-}
-
-#[tokio::test(flavor = "multi_thread")]
-pub async fn test_foo() {
-    let mut harness = make_test_harness();
-    setup_single_view_blueprint(&mut harness);
-
-    harness.set_selection_panel_opened(true);
-
-    // println!(
-    //     "1: {}",
-    //     harness
-    //         .blueprint_panel()
-    //         .root()
-    //         .get_all_by_label("Test view")
-    //         .count()
-    // );
-
-    println!("## :{:#?}", harness.root().children().collect::<Vec<_>>());
-
-    harness.blueprint_panel().right_click_label("Test view");
-
-    harness.snapshot_app("xtemp");
-
-    let section = harness.blueprint_panel();
-
-    let node = section.root();
-
-    println!("node: {:#?}", node);
 }
