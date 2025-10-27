@@ -8636,6 +8636,7 @@ dependencies = [
  "re_arrow_util",
  "re_build_info",
  "re_chunk",
+ "re_chunk_store",
  "re_crash_handler",
  "re_error",
  "re_log",
