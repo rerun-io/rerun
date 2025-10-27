@@ -27,7 +27,10 @@ if TYPE_CHECKING:
     import numpy as np
 
     from ..memory import MemoryRecording
+    from .components.absolute_time_range import AbsoluteTimeRange
     from .components.container_kind import ContainerKindLike
+    from .components.loop_mode import LoopModeLike
+    from .components.play_state import PlayStateLike
 
 ViewContentsLike = Utf8ArrayLike | ViewContents
 
