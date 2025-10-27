@@ -11,7 +11,7 @@ use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextSystem, ViewContextSystemOncePerFrameResult,
 };
 
-use crate::{caches::TransformDatabaseStoreCache, visualizers::CamerasVisualizer};
+use crate::caches::TransformDatabaseStoreCache;
 
 /// Provides a transform tree for the view & time it operates on.
 ///
@@ -163,7 +163,6 @@ fn lookup_image_plane_distance(
                 )
                 .get_mono_with_fallback::<ImagePlaneDistance>(
                     archetypes::Pinhole::descriptor_image_plane_distance().component,
-                    &CamerasVisualizer::default(),
                 )
         })
         .unwrap_or_default()

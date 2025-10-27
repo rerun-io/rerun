@@ -1,17 +1,13 @@
 use re_log_types::EntityPath;
 use re_renderer::{PickingLayerInstanceId, renderer::PointCloudDrawDataError};
-use re_types::{
-    archetypes::GeoPoints,
-    components::{Color, Radius},
-};
+use re_types::{archetypes::GeoPoints, components::Radius};
 use re_view::{
     AnnotationSceneContext, DataResultQuery as _, RangeResultsExt as _, process_annotation_slices,
     process_color_slice,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewHighlights, ViewQuery, ViewSystemExecutionError,
-    VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
+    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
+    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 #[derive(Debug, Default)]
@@ -63,8 +59,10 @@ impl VisualizerSystem for GeoPointsVisualizer {
 
             // fallback component values
             let query_context = ctx.query_context(data_result, &latest_at_query);
-            let fallback_radius: Radius =
-                self.fallback_for(&ctx.query_context(data_result, &latest_at_query));
+            let fallback_radius: Radius = typed_fallback_for(
+                &ctx.query_context(data_result, &latest_at_query),
+                GeoPoints::descriptor_radii().component,
+            );
 
             // iterate over each chunk and find all relevant component slices
             for (_index, positions, colors, radii, class_ids) in re_query::range_zip_1x3(
@@ -87,7 +85,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 // optional components
                 let colors = process_color_slice(
                     &query_context,
-                    self,
+                    GeoPoints::descriptor_colors().component,
                     num_instances,
                     &annotation_infos,
                     colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
@@ -124,10 +122,6 @@ impl VisualizerSystem for GeoPointsVisualizer {
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
         self
     }
 }
@@ -198,17 +192,3 @@ impl GeoPointsVisualizer {
         Ok(())
     }
 }
-
-impl TypedComponentFallbackProvider<Color> for GeoPointsVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
-        auto_color_for_entity_path(ctx.target_entity_path)
-    }
-}
-
-impl TypedComponentFallbackProvider<Radius> for GeoPointsVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> Radius {
-        Radius::new_ui_points(5.0)
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(GeoPointsVisualizer => [Color, Radius]);

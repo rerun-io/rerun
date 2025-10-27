@@ -2,12 +2,10 @@ use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
 use re_renderer::renderer::{GpuMeshInstance, LineStripFlags};
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, RenderContext};
-use re_types::ArchetypeName;
 use re_types::components::{self, FillMode};
+use re_types::{ArchetypeName, ComponentIdentifier};
 use re_view::{clamped_or_nothing, process_annotation_slices, process_color_slice};
-use re_viewer_context::{
-    QueryContext, TypedComponentFallbackProvider, ViewQuery, ViewSystemExecutionError,
-};
+use re_viewer_context::{QueryContext, ViewQuery, ViewSystemExecutionError, typed_fallback_for};
 
 use crate::contexts::SpatialSceneEntityContext;
 use crate::proc_mesh::{self, ProcMeshKey};
@@ -20,10 +18,9 @@ use re_viewer_context::VisualizerSystem;
 
 /// To be used within the scope of a single [`VisualizerSystem::execute()`] call
 /// when the visualizer wishes to draw batches of [`ProcMeshKey`] meshes.
-pub struct ProcMeshDrawableBuilder<'ctx, Fb> {
+pub struct ProcMeshDrawableBuilder<'ctx> {
     /// Bounding box and label info here will be updated by the drawn batches.
     pub data: &'ctx mut SpatialViewVisualizerData,
-    pub fallback: &'ctx Fb,
 
     /// Accumulates lines to render.
     /// TODO(kpreid): Should be using instanced meshes kept in GPU buffers
@@ -60,17 +57,12 @@ pub struct ProcMeshBatch<'a, IMesh, IFill> {
     pub class_ids: &'a [components::ClassId],
 }
 
-impl<'ctx, Fb> ProcMeshDrawableBuilder<'ctx, Fb>
-where
-    Fb: TypedComponentFallbackProvider<components::ShowLabels>
-        + TypedComponentFallbackProvider<components::Color>,
-{
+impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
     pub fn new(
         data: &'ctx mut SpatialViewVisualizerData,
         render_ctx: &'ctx re_renderer::RenderContext,
         view_query: &'ctx ViewQuery<'ctx>,
         line_batch_debug_label: impl Into<re_renderer::DebugLabel>,
-        fallback: &'ctx Fb,
     ) -> Self {
         let mut line_builder = LineDrawableBuilder::new(render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(
@@ -79,7 +71,6 @@ where
 
         ProcMeshDrawableBuilder {
             data,
-            fallback,
             line_builder,
             line_batch_debug_label: line_batch_debug_label.into(),
             solid_instances: Vec::new(),
@@ -89,11 +80,14 @@ where
     }
 
     /// Add a batch of data to be drawn.
+    #[expect(clippy::too_many_arguments)]
     pub fn add_batch(
         &mut self,
         query_context: &QueryContext<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
         archetype_name: ArchetypeName,
+        color_component: ComponentIdentifier,
+        show_labels_component: ComponentIdentifier,
         constant_instance_transform: glam::Affine3A,
         batch: ProcMeshBatch<'_, impl Iterator<Item = ProcMeshKey>, impl Iterator<Item = FillMode>>,
     ) -> Result<(), ViewSystemExecutionError> {
@@ -133,7 +127,7 @@ where
         );
         let colors = process_color_slice(
             query_context,
-            self.fallback,
+            color_component,
             num_instances,
             &annotation_infos,
             batch.colors,
@@ -255,7 +249,7 @@ where
                 colors: &colors,
                 show_labels: batch
                     .show_labels
-                    .unwrap_or_else(|| self.fallback.fallback_for(query_context)),
+                    .unwrap_or_else(|| typed_fallback_for(query_context, show_labels_component)),
                 annotation_infos: &annotation_infos,
             },
             glam::Affine3A::IDENTITY,
@@ -270,7 +264,6 @@ where
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let Self {
             data: _,
-            fallback: _,
             line_builder,
             line_batch_debug_label: _,
             solid_instances,

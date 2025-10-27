@@ -9,9 +9,8 @@ use re_types::{
 };
 use re_view::DataResultQuery as _;
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizerQueryInfo,
-    VisualizerSystem, auto_color_for_entity_path,
+    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 #[derive(Default)]
@@ -50,16 +49,16 @@ impl VisualizerSystem for BarChartVisualizerSystem {
             let results = data_result
                 .latest_at_with_blueprint_resolved_data::<BarChart>(ctx, &timeline_query);
 
-            let Some(tensor) =
-                results.get_required_mono::<components::TensorData>(BarChart::descriptor_values().component)
-            else {
+            let Some(tensor) = results.get_required_mono::<components::TensorData>(
+                BarChart::descriptor_values().component,
+            ) else {
                 continue;
             };
 
             if tensor.is_vector() {
                 let abscissa: components::TensorData =
-                    results.get_mono_with_fallback(BarChart::descriptor_abscissa().component, self);
-                let color = results.get_mono_with_fallback(BarChart::descriptor_color().component, self);
+                    results.get_mono_with_fallback(BarChart::descriptor_abscissa().component);
+                let color = results.get_mono_with_fallback(BarChart::descriptor_color().component);
                 self.charts.insert(
                     data_result.entity_path.clone(),
                     BarChartData {
@@ -77,51 +76,4 @@ impl VisualizerSystem for BarChartVisualizerSystem {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-impl TypedComponentFallbackProvider<components::Color> for BarChartVisualizerSystem {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::Color {
-        auto_color_for_entity_path(ctx.target_entity_path)
-    }
-}
-
-impl TypedComponentFallbackProvider<components::TensorData> for BarChartVisualizerSystem {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::TensorData {
-        // This fallback is for abscissa - generate a sequence from 0 to n-1
-        // where n is the length of the values tensor
-
-        // Try to get the values tensor to determine the length
-        if let Some(((_time, _row_id), tensor)) = ctx
-            .recording()
-            .latest_at_component::<components::TensorData>(
-                ctx.target_entity_path,
-                ctx.query,
-                BarChart::descriptor_values().component,
-            )
-            && tensor.is_vector()
-        {
-            let shape = tensor.shape();
-            if let Some(&length) = shape.first() {
-                // Create a sequence from 0 to length-1
-                #[expect(clippy::cast_possible_wrap)]
-                let indices: Vec<i64> = (0..length as i64).collect();
-                let tensor_data = datatypes::TensorData::new(
-                    vec![length],
-                    datatypes::TensorBuffer::I64(indices.into()),
-                );
-                return components::TensorData(tensor_data);
-            }
-        }
-
-        // Fallback to empty tensor if we can't determine the values length
-        let tensor_data =
-            datatypes::TensorData::new(vec![0u64], datatypes::TensorBuffer::I64(vec![].into()));
-        components::TensorData(tensor_data)
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(BarChartVisualizerSystem => [components::Color, components::TensorData]);

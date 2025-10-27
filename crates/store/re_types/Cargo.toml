@@ -100,18 +100,3 @@ itertools.workspace = true
 mint.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
 similar-asserts.workspace = true
-
-[build-dependencies]
-
-# Rerun
-re_build_tools.workspace = true
-re_types_builder.workspace = true
-
-# External
-rayon.workspace = true
-
-# `machete` is not a fan of `build-dependencies`.
-
-
-[package.metadata.cargo-shear]
-ignored = ["rayon", "re_build_tools", "re_types_builder"]

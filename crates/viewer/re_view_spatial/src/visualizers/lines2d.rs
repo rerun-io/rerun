@@ -3,13 +3,13 @@ use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, renderer::LineStr
 use re_types::{
     Archetype as _, ArrowString,
     archetypes::LineStrips2D,
-    components::{ClassId, Color, DrawOrder, Radius, ShowLabels},
+    components::{ClassId, Color, Radius, ShowLabels},
 };
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
+    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use crate::{contexts::SpatialSceneEntityContext, view_kind::SpatialViewKind};
@@ -63,8 +63,13 @@ impl Lines2DVisualizer {
             // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
             let radii =
                 process_radius_slice(entity_path, num_instances, data.radii, Radius::default());
-            let colors =
-                process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
+            let colors = process_color_slice(
+                ctx,
+                LineStrips2D::descriptor_colors().component,
+                num_instances,
+                &annotation_infos,
+                data.colors,
+            );
 
             let world_from_obj = ent_context
                 .transform_info
@@ -120,7 +125,9 @@ impl Lines2DVisualizer {
                     }),
                     labels: &data.labels,
                     colors: &colors,
-                    show_labels: data.show_labels.unwrap_or_else(|| self.fallback_for(ctx)),
+                    show_labels: data.show_labels.unwrap_or_else(|| {
+                        typed_fallback_for(ctx, LineStrips2D::descriptor_show_labels().component)
+                    }),
                     annotation_infos: &annotation_infos,
                 },
                 world_from_obj,
@@ -257,32 +264,4 @@ impl VisualizerSystem for Lines2DVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-impl TypedComponentFallbackProvider<Color> for Lines2DVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
-        auto_color_for_entity_path(ctx.target_entity_path)
-    }
-}
-
-impl TypedComponentFallbackProvider<DrawOrder> for Lines2DVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
-        DrawOrder::DEFAULT_LINES2D
-    }
-}
-
-impl TypedComponentFallbackProvider<ShowLabels> for Lines2DVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback(
-            ctx,
-            LineStrips2D::descriptor_strips().component,
-            LineStrips2D::descriptor_labels().component,
-        )
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(Lines2DVisualizer => [Color, DrawOrder, ShowLabels]);

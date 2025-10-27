@@ -5,9 +5,9 @@ use itertools::Itertools as _;
 use re_chunk_store::RangeQuery;
 use re_log_types::{EntityPath, TimeInt};
 use re_types::external::arrow::datatypes::DataType as ArrowDatatype;
-use re_types::{ComponentDescriptor, Loggable as _, RowId, components};
+use re_types::{ComponentDescriptor, ComponentIdentifier, Loggable as _, RowId, components};
 use re_view::{ChunksWithComponent, HybridRangeResults, RangeResultsExt as _, clamped_or_nothing};
-use re_viewer_context::{QueryContext, TypedComponentFallbackProvider, auto_color_egui};
+use re_viewer_context::{QueryContext, auto_color_egui, typed_fallback_for};
 
 use crate::{PlotPoint, PlotSeriesKind};
 
@@ -34,14 +34,14 @@ pub fn collect_series_visibility(
     bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
     results: &HybridRangeResults<'_>,
     num_series: usize,
-    visibility_descriptor: ComponentDescriptor,
+    visibility_component: ComponentIdentifier,
 ) -> Vec<bool> {
     bootstrapped_results
-        .iter_as(*query.timeline(), visibility_descriptor.component)
+        .iter_as(*query.timeline(), visibility_component)
         .slice::<bool>()
         .chain(
             results
-                .iter_as(*query.timeline(), visibility_descriptor.component)
+                .iter_as(*query.timeline(), visibility_component)
                 .slice::<bool>(),
         )
         .next()
@@ -229,7 +229,6 @@ pub fn collect_colors(
 
 /// Collects series names for the series into pre-allocated plot points.
 pub fn collect_series_name(
-    fallback_provider: &dyn TypedComponentFallbackProvider<components::Name>,
     query_ctx: &QueryContext<'_>,
     bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
     results: &re_view::HybridRangeResults<'_>,
@@ -241,7 +240,11 @@ pub fn collect_series_name(
     let mut series_names: Vec<String> = bootstrapped_results
         .get_optional_chunks(name_descriptor.component)
         .iter()
-        .chain(results.get_optional_chunks(name_descriptor.component).iter())
+        .chain(
+            results
+                .get_optional_chunks(name_descriptor.component)
+                .iter(),
+        )
         .find(|chunk| !chunk.is_empty())
         .and_then(|chunk| {
             chunk
@@ -252,7 +255,9 @@ pub fn collect_series_name(
         .unwrap_or_default();
 
     if series_names.len() < num_series {
-        let fallback_name: String = fallback_provider.fallback_for(query_ctx).to_string();
+        let fallback_name: String =
+            typed_fallback_for::<components::Name>(query_ctx, name_descriptor.component)
+                .to_string();
         if num_series == 1 {
             series_names.push(fallback_name);
         } else {

@@ -324,6 +324,50 @@ impl PyDatasetEntry {
         Ok(task_descriptor.partition_id.id)
     }
 
+    /// Register all RRDs under a given prefix to the dataset and return a handle to the tasks.
+    ///
+    /// A prefix is a directory-like path in an object store (e.g. an S3 bucket or ABS container).
+    /// All RRDs that are recursively found under the given prefix will be registered to the dataset.
+    ///
+    /// This method initiates the registration of the recordings to the dataset, and returns
+    /// the corresponding task ids in a [`Tasks`] object.
+    ///
+    /// Parameters
+    /// ----------
+    /// recordings_prefix: str
+    ///     The prefix under which to register all RRDs.
+    ///
+    /// layer_name: Optional[str]
+    ///     The layer to which the recordings will be registered to.
+    ///     If `None`, this defaults to `"base"`.
+    #[allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)]
+    #[pyo3(signature = (
+        recordings_prefix,
+        layer_name = None,
+    ))]
+    #[pyo3(text_signature = "(self, /, recordings_prefix, layer_name = None)")]
+    fn register_prefix(
+        self_: PyRef<'_, Self>,
+        recordings_prefix: String,
+        layer_name: Option<String>,
+    ) -> PyResult<PyTasks> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let results = connection.register_with_dataset_prefix(
+            self_.py(),
+            dataset_id,
+            recordings_prefix,
+            layer_name,
+        )?;
+
+        Ok(PyTasks::new(
+            super_.client.clone_ref(self_.py()),
+            results.into_iter().map(|desc| desc.task_id),
+        ))
+    }
+
     /// Register a batch of RRD URIs to the dataset and return a handle to the tasks.
     ///
     /// This method initiates the registration of multiple recordings to the dataset, and returns

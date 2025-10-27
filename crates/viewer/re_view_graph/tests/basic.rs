@@ -48,10 +48,7 @@ pub fn self_and_multi_edges() {
     // It's important to first register the view class before adding any entities,
     // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
     // and thus will not find anything applicable to the visualizer.
-    test_context
-        .view_class_registry
-        .add_class::<GraphView>()
-        .unwrap();
+    test_context.register_view_class::<GraphView>();
 
     let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
     test_context.log_entity(name, |builder| {
@@ -96,10 +93,7 @@ pub fn multi_graphs() {
     // It's important to first register the view class before adding any entities,
     // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
     // and thus will not find anything applicable to the visualizer.
-    test_context
-        .view_class_registry
-        .add_class::<GraphView>()
-        .unwrap();
+    test_context.register_view_class::<GraphView>();
 
     let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
     test_context.log_entity("graph1", |builder| {
