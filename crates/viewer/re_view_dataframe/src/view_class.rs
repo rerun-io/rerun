@@ -210,8 +210,6 @@ fn timeline_not_found_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view_id: Vi
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(DataframeView => []);
-
 #[test]
 fn test_help_view() {
     re_test_context::TestContext::test_help_view(|ctx| DataframeView.help(ctx));

@@ -4,7 +4,7 @@ use ahash::HashMap;
 use saturating_cast::SaturatingCast as _;
 
 use re_log_types::EntityPathHash;
-use re_types::{Loggable as _, components::DrawOrder};
+use re_types::components::DrawOrder;
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContextSystem, ViewSystemIdentifier,
@@ -101,7 +101,7 @@ fn collect_draw_order_per_visualizer(
         .unwrap_or_else(|| {
             *default_draw_order.get_or_insert_with(|| {
                 let ctx = ctx.query_context(data_result, &latest_at_query);
-                determine_default_draworder(&ctx, visualizer_identifier, draw_order_descriptor)
+                determine_default_draworder(&ctx, draw_order_descriptor.component)
             })
         });
 
@@ -114,22 +114,7 @@ fn collect_draw_order_per_visualizer(
 
 fn determine_default_draworder(
     ctx: &QueryContext<'_>,
-    visualizer_identifier: ViewSystemIdentifier,
-    draw_order_descriptor: &re_types::ComponentDescriptor,
+    draw_order_component: re_types::ComponentIdentifier,
 ) -> DrawOrder {
-    let Some(visualizer) = ctx
-        .viewer_ctx()
-        .view_class_registry()
-        .instantiate_visualizer(visualizer_identifier)
-    else {
-        return DrawOrder::default();
-    };
-
-    let draw_order_array = visualizer
-        .fallback_provider()
-        .fallback_for(ctx, draw_order_descriptor);
-    let draw_order_array = DrawOrder::from_arrow(&draw_order_array)
-        .ok()
-        .unwrap_or_default();
-    draw_order_array.first().copied().unwrap_or_default()
+    re_viewer_context::typed_fallback_for(ctx, draw_order_component)
 }
