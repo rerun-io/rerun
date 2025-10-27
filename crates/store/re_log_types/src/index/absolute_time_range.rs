@@ -288,10 +288,6 @@ impl AbsoluteTimeRangeF {
                     deciding_digit_min += 1;
                 }
 
-                // if deciding_digit_min == b'1' && rest_of_min_is_zeroes {
-                //     return min; // Special case: the min is just zeroes from here on out. That's perfect!
-                // }
-
                 let deciding_digit = if deciding_digit_min == b'0' {
                     b'0'
                 } else if deciding_digit_min <= b'5' && b'5' <= deciding_digit_max {
