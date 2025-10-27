@@ -1,5 +1,4 @@
 use ahash::HashMap;
-use arrow::array::ArrayRef;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::InstancePath;
@@ -10,6 +9,7 @@ use re_ui::ContextExt as _;
 use re_ui::list_item::ListItem;
 
 use crate::command_sender::{SelectionSource, SetSelection};
+use crate::component_fallbacks::FallbackProviderRegistry;
 use crate::drag_and_drop::DragAndDropPayload;
 use crate::time_control::TimeControlCommand;
 use crate::{
@@ -32,6 +32,9 @@ pub struct ViewerContext<'a> {
 
     /// How to display components.
     pub component_ui_registry: &'a ComponentUiRegistry,
+
+    /// Defaults for components in various contexts.
+    pub component_fallback_registry: &'a FallbackProviderRegistry,
 
     /// Mapping from class and system to entities for the store
     ///
@@ -87,12 +90,6 @@ impl ViewerContext<'_> {
     }
 
     /// Runtime info about components and archetypes.
-    ///
-    /// The component placeholder values for components are to be used when [`crate::ComponentFallbackProvider::try_provide_fallback`]
-    /// is not able to provide a value.
-    ///
-    /// ⚠️ In almost all cases you should not use this directly, but instead use the currently best fitting
-    /// [`crate::ComponentFallbackProvider`] and call [`crate::ComponentFallbackProvider::fallback_for`] instead.
     pub fn reflection(&self) -> &re_types_core::reflection::Reflection {
         self.global_context.reflection
     }
@@ -434,40 +431,6 @@ impl ViewerContext<'_> {
                 response.request_focus();
             }
         }
-    }
-
-    /// Returns a placeholder value for a given component, solely identified by its name.
-    ///
-    /// A placeholder is an array of the component type with a single element which takes on some default value.
-    /// It can be set as part of the reflection information, see [`re_types_core::reflection::ComponentReflection::custom_placeholder`].
-    /// Note that automatically generated placeholders ignore any extension types.
-    ///
-    /// This requires the component type to be known by either datastore or blueprint store and
-    /// will return a placeholder for a nulltype otherwise, logging an error.
-    /// The rationale is that to get into this situation, we need to know of a component type for which
-    /// we don't have a datatype, meaning that we can't make any statement about what data this component should represent.
-    // TODO(andreas): Are there cases where this is expected and how to handle this?
-    pub fn placeholder_for(&self, component: re_chunk::ComponentType) -> ArrayRef {
-        let datatype = if let Some(reflection) = self.reflection().components.get(&component) {
-            // It's a builtin type with reflection. We either have custom place holder, or can rely on the known datatype.
-            if let Some(placeholder) = reflection.custom_placeholder.as_ref() {
-                return placeholder.clone();
-            }
-            reflection.datatype.clone()
-        } else {
-            self.recording_engine()
-                .store()
-                .lookup_datatype(&component)
-                .or_else(|| self.blueprint_engine().store().lookup_datatype(&component))
-                .unwrap_or_else(|| {
-                    re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
-                    arrow::datatypes::DataType::Null
-                })
-        };
-
-        // TODO(andreas): Is this operation common enough to cache the result? If so, here or in the reflection data?
-        // The nice thing about this would be that we could always give out references (but updating said cache wouldn't be easy in that case).
-        re_types::reflection::generic_placeholder_for_datatype(&datatype)
     }
 
     /// Are we running inside the Safari browser?

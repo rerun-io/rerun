@@ -13,7 +13,7 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{OnResponseExt as _, SyntaxHighlighting as _, UiExt as _, list_item::LabelContent};
 use re_viewer_context::{
     ComponentUiTypes, QueryContext, SystemCommand, SystemCommandSender as _, UiLayout, ViewContext,
-    ViewSystemIdentifier, VisualizerCollection, blueprint_timeline,
+    VisualizerCollection, blueprint_timeline,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -22,9 +22,6 @@ use re_viewport_blueprint::ViewBlueprint;
 struct DefaultOverrideEntry {
     component_type: ComponentType,
     component: ComponentIdentifier,
-
-    /// Visualizer identifier that provides the fallback value for this component.
-    visualizer_identifier: ViewSystemIdentifier,
 }
 
 impl DefaultOverrideEntry {
@@ -73,7 +70,6 @@ pub fn view_components_defaults_section_ui(
                 &view.defaults_path,
                 query,
                 components_to_show_in_add_menu.unwrap_or_default(),
-                &visualizers,
             );
         })
         .on_hover_text("Add more component defaults");
@@ -211,7 +207,6 @@ fn visualized_components_by_archetype(
                 .push(DefaultOverrideEntry {
                     component_type,
                     component: descr.component,
-                    visualizer_identifier: id,
                 });
         }
     }
@@ -306,7 +301,6 @@ fn add_popup_ui(
     defaults_path: &EntityPath,
     query: &LatestAtQuery,
     components_to_show_in_add_menu: BTreeMap<ArchetypeName, Vec<DefaultOverrideEntry>>,
-    visualizers: &VisualizerCollection,
 ) {
     let query_context = QueryContext {
         view_ctx: ctx,
@@ -332,14 +326,7 @@ fn add_popup_ui(
                     })
                     .clicked()
                 {
-                    add_new_default(
-                        ctx,
-                        defaults_path,
-                        &query_context,
-                        descriptor,
-                        entry.visualizer_identifier,
-                        visualizers,
-                    );
+                    add_new_default(ctx, defaults_path, &query_context, descriptor);
                     ui.close();
                 }
             }
@@ -352,21 +339,19 @@ fn add_new_default(
     defaults_path: &EntityPath,
     query_context: &QueryContext<'_>,
     component_descr: ComponentDescriptor,
-    visualizer: ViewSystemIdentifier,
-    visualizers: &VisualizerCollection,
 ) {
     // We are creating a new override. We need to decide what initial value to give it.
     // - First see if there's an existing splat in the recording.
     // - Next see if visualizer system wants to provide a value.
     // - Finally, fall back on the default value from the component registry.
-    let Ok(visualizer) = visualizers.get_by_identifier(visualizer) else {
-        re_log::warn!("Could not find visualizer for: {}", visualizer);
-        return;
-    };
-
-    let initial_data = visualizer
-        .fallback_provider()
-        .fallback_for(query_context, &component_descr);
+    let initial_data = query_context
+        .viewer_ctx()
+        .component_fallback_registry
+        .fallback_for(
+            component_descr.component,
+            component_descr.component_type,
+            query_context,
+        );
 
     match Chunk::builder(defaults_path.clone())
         .with_row(

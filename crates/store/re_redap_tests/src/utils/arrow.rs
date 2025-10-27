@@ -173,7 +173,7 @@ impl RecordBatchExt for arrow::array::RecordBatch {
             arrays.push(array.clone());
         }
 
-        let schema = arrow::datatypes::Schema::new(fields);
+        let schema = arrow::datatypes::Schema::new_with_metadata(fields, schema.metadata().clone());
         Some(Self::try_new(Arc::new(schema), arrays).expect("creating record batch"))
     }
 
@@ -343,7 +343,7 @@ impl RecordBatchExt for arrow::array::RecordBatch {
             arrays.push(array.clone());
         }
 
-        let schema = arrow::datatypes::Schema::new(fields);
+        let schema = arrow::datatypes::Schema::new_with_metadata(fields, schema.metadata().clone());
         if schema.fields().is_empty() {
             Self::new_empty(Arc::new(schema))
         } else {
@@ -367,7 +367,7 @@ impl RecordBatchExt for arrow::array::RecordBatch {
             }
         }
 
-        let schema = arrow::datatypes::Schema::new(fields);
+        let schema = arrow::datatypes::Schema::new_with_metadata(fields, schema.metadata().clone());
         if schema.fields().is_empty() {
             Self::new_empty(Arc::new(schema))
         } else {

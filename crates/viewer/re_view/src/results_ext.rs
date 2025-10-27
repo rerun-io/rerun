@@ -6,7 +6,7 @@ use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery};
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_types::ComponentDescriptor;
-use re_viewer_context::{DataResult, TypedComponentFallbackProvider, ViewContext};
+use re_viewer_context::{DataResult, ViewContext};
 
 use crate::chunks_with_descriptor::ChunksWithDescriptor;
 
@@ -61,14 +61,27 @@ impl HybridLatestAtResults<'_> {
     pub fn get_mono_with_fallback<C: re_types_core::Component + Default>(
         &self,
         component_descr: &ComponentDescriptor,
-        fallback_provider: &impl TypedComponentFallbackProvider<C>,
     ) -> C {
         debug_assert_eq!(component_descr.component_type, Some(C::name()));
 
-        self.get_instance(0, component_descr).unwrap_or_else(|| {
-            let query_context = self.ctx.query_context(self.data_result, &self.query);
-            fallback_provider.fallback_for(&query_context)
-        })
+        self.get_instance(0, component_descr)
+            .or_else(|| {
+                let query_context = self.ctx.query_context(self.data_result, &self.query);
+                C::from_arrow(
+                    &query_context
+                        .viewer_ctx()
+                        .component_fallback_registry
+                        .fallback_for(
+                            component_descr.component,
+                            component_descr.component_type,
+                            &query_context,
+                        ),
+                )
+                .ok()?
+                .into_iter()
+                .next()
+            })
+            .unwrap_or_default()
     }
 
     /// Utility for retrieving a single instance of a component, not checking for defaults.
