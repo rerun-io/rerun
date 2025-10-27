@@ -43,6 +43,10 @@ pub trait GetSection<'h> {
     fn streams_tree<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
         self.get_section("_streams_tree")
     }
+
+    fn selection_panel<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
+        self.get_section("_selection_panel")
+    }
 }
 
 impl<'h> GetSection<'h> for egui_kittest::Harness<'h, re_viewer::App> {

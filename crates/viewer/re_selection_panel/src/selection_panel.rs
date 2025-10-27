@@ -138,7 +138,7 @@ impl SelectionPanel {
                     );
                 });
                 res.response.widget_info(|| {
-                    egui::WidgetInfo::labeled(egui::WidgetType::Panel, true, "_recordings_tree")
+                    egui::WidgetInfo::labeled(egui::WidgetType::Panel, true, "_selection_panel")
                 });
             }
         } else {
@@ -161,7 +161,7 @@ impl SelectionPanel {
                 }
             });
             res.response.widget_info(|| {
-                WidgetInfo::labeled(egui::WidgetType::Label, true, "_recordings_tree")
+                WidgetInfo::labeled(egui::WidgetType::Panel, true, "_selection_panel")
             });
         }
     }
