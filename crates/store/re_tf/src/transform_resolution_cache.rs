@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, hash_map::Entry};
 
 use ahash::HashMap;
 use glam::Affine3A;
@@ -141,14 +141,20 @@ impl CachedTransformsForTimeline {
     fn remove_recursive_clears(
         &mut self,
         recursively_cleared_entity_path: &EntityPath,
-        times: BTreeSet<TimeInt>,
+        times: &BTreeSet<TimeInt>,
     ) {
-        if let Some() = self
+        if let Entry::Occupied(mut clear_entry) = self
             .recursive_clears
             .entry(recursively_cleared_entity_path.clone())
-        {}
+        {
+            *clear_entry.get_mut() = clear_entry.get().difference(times).copied().collect();
 
-        // Removing clears from frame transforms is tricky, but also not
+            if clear_entry.get().is_empty() {
+                clear_entry.remove();
+            }
+        }
+
+        // Removing clears from `self.per_source_frame_transforms` is not critical since left over cache entries won't change out comes.
     }
 
     /// Returns all transforms for a given source frame.
@@ -625,10 +631,8 @@ impl TransformResolutionCache {
             // Note down that for this source frames there's updates at the given added times.
 
             let source_frame_update_entry = source_frame_updates.entry(source_frame);
-            let first_time_entity_adds_updates_for_this_source = matches!(
-                source_frame_update_entry,
-                std::collections::hash_map::Entry::Vacant(_)
-            );
+            let first_time_entity_adds_updates_for_this_source =
+                matches!(source_frame_update_entry, Entry::Vacant(_));
             source_frame_update_entry
                 .or_default()
                 .extend(time_column.times());
@@ -668,7 +672,7 @@ impl TransformResolutionCache {
             if aspects.contains(TransformAspect::Clear) {
                 re_tracing::profile_scope!("check for recursive clears");
 
-                let component = re_types::archetypes::Clear::descriptor_is_recursive().component;
+                let component = archetypes::Clear::descriptor_is_recursive().component;
 
                 let recursively_cleared_times = chunk
                     .iter_component_indices(*timeline, component)
@@ -777,6 +781,28 @@ impl TransformResolutionCache {
                 continue;
             };
 
+            // Remove any affected recursive clears.
+            if aspects.contains(TransformAspect::Clear) {
+                re_tracing::profile_scope!("check for recursive clears");
+
+                let component = archetypes::Clear::descriptor_is_recursive().component;
+
+                let recursively_cleared_times = chunk
+                    .iter_component_indices(*timeline, component)
+                    .zip(chunk.iter_slices::<bool>(component))
+                    .filter_map(|((time, _row_id), bool_slice)| {
+                        bool_slice
+                            .values()
+                            .first()
+                            .and_then(|is_recursive| (*is_recursive != 0).then_some(time))
+                    })
+                    .collect::<BTreeSet<_>>();
+
+                if !recursively_cleared_times.is_empty() {
+                    per_timeline.remove_recursive_clears(entity_path, &recursively_cleared_times);
+                }
+            }
+
             // Remove existing data.
             if let Some(per_source_frame_updates) = per_timeline
                 .per_entity_source_information
@@ -829,30 +855,6 @@ impl TransformResolutionCache {
                     {
                         per_timeline.per_source_frame_transforms.remove(source);
                     }
-
-                    // Remove any affected recursive clears.
-                    if aspects.contains(TransformAspect::Clear) {
-                        re_tracing::profile_scope!("check for recursive clears");
-
-                        let component =
-                            re_types::archetypes::Clear::descriptor_is_recursive().component;
-
-                        let recursively_cleared_times = chunk
-                            .iter_component_indices(*timeline, component)
-                            .zip(chunk.iter_slices::<bool>(component))
-                            .filter_map(|((time, _row_id), bool_slice)| {
-                                bool_slice
-                                    .values()
-                                    .first()
-                                    .and_then(|is_recursive| (*is_recursive != 0).then_some(time))
-                            })
-                            .collect::<BTreeSet<_>>();
-
-                        if !recursively_cleared_times.is_empty() {
-                            per_timeline
-                                .remove_recursive_clears(entity_path, recursively_cleared_times);
-                        }
-                    }
                 }
 
                 // Remove empty source update mentions.
@@ -881,7 +883,7 @@ fn warn_about_missing_source_transforms_for_update_on_entity(
 
 /// Queries all components that are part of pose transforms, returning the transform from child to parent.
 ///
-/// If any of the components yields an invalid transform, returns a `glam::Affine3A::ZERO`.
+/// If any of the components yields an invalid transform, returns a `Affine3A::ZERO`.
 /// (this effectively disconnects a subtree from the transform hierarchy!)
 // TODO(#3849): There's no way to discover invalid transforms right now (they can be intentional but often aren't).
 fn query_and_resolve_tree_transform_at_entity(
@@ -1036,7 +1038,7 @@ mod tests {
         }
 
         /// Retrieves all transform events that have not been processed yet since the last call to this function.
-        pub fn take_transform_events(store_id: &StoreId) -> Vec<re_chunk_store::ChunkStoreEvent> {
+        pub fn take_transform_events(store_id: &StoreId) -> Vec<ChunkStoreEvent> {
             ChunkStore::with_per_store_subscriber_mut(
                 Self::subscription_handle(),
                 store_id,
@@ -1226,7 +1228,7 @@ mod tests {
                 ),
                 Some(SourceToTargetTransform {
                     target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                    transform: glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                    transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
                 })
             );
             assert_eq!(
@@ -1242,7 +1244,7 @@ mod tests {
                     .latest_at_transform(&entity_db, &LatestAtQuery::new(*timeline.name(), 1)),
                 Some(SourceToTargetTransform {
                     target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                    transform: glam::Affine3A::from_scale_rotation_translation(
+                    transform: Affine3A::from_scale_rotation_translation(
                         glam::Vec3::new(123.0, 234.0, 345.0),
                         glam::Quat::IDENTITY,
                         glam::Vec3::new(1.0, 2.0, 3.0),
@@ -1264,7 +1266,7 @@ mod tests {
                 ),
                 Some(SourceToTargetTransform {
                     target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                    transform: glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                    transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
                 })
             );
         }
@@ -1329,8 +1331,8 @@ mod tests {
                 Some(&PoseTransformArchetypeMap {
                     instance_from_archetype_poses_per_archetype: IntMap::default(),
                     instance_from_poses: vec![
-                        glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
-                        glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
+                        Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                        Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
                     ],
                 })
             );
@@ -1350,12 +1352,12 @@ mod tests {
                     .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(*timeline.name(), 1))
                     .map(|poses| &poses.instance_from_poses),
                 Some(&vec![
-                    glam::Affine3A::from_scale_rotation_translation(
+                    Affine3A::from_scale_rotation_translation(
                         glam::Vec3::new(10.0, 20.0, 30.0),
                         glam::Quat::IDENTITY,
                         glam::Vec3::new(1.0, 2.0, 3.0),
                     ),
-                    glam::Affine3A::from_scale_rotation_translation(
+                    Affine3A::from_scale_rotation_translation(
                         glam::Vec3::new(10.0, 20.0, 30.0),
                         glam::Quat::IDENTITY,
                         glam::Vec3::new(4.0, 5.0, 6.0),
@@ -1378,8 +1380,8 @@ mod tests {
                     )
                     .map(|poses| &poses.instance_from_poses),
                 Some(&vec![
-                    glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
-                    glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
+                    Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                    Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
                 ])
             );
         }
@@ -1636,21 +1638,21 @@ mod tests {
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 2)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: glam::Affine3A::from_scale_rotation_translation(
+                transform: Affine3A::from_scale_rotation_translation(
                     glam::Vec3::new(1.0, 2.0, 3.0),
                     glam::Quat::IDENTITY,
                     glam::Vec3::new(1.0, 2.0, 3.0),
@@ -1661,21 +1663,21 @@ mod tests {
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 4)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: glam::Affine3A::from_quat(glam::Quat::from_rotation_x(1.0)),
+                transform: Affine3A::from_quat(glam::Quat::from_rotation_x(1.0)),
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 5)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: glam::Affine3A::IDENTITY, // Empty transform is treated as connected with identity.
+                transform: Affine3A::IDENTITY, // Empty transform is treated as connected with identity.
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 123)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: glam::Affine3A::IDENTITY, // Empty transform is treated as connected with identity.
+                transform: Affine3A::IDENTITY, // Empty transform is treated as connected with identity.
             })
         );
     }
@@ -1733,9 +1735,9 @@ mod tests {
                 .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 1))
                 .map(|poses| &poses.instance_from_poses),
             Some(&vec![
-                glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
-                glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
-                glam::Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
+                Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
+                Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
             ])
         );
         assert_eq!(
@@ -1743,9 +1745,9 @@ mod tests {
                 .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 2))
                 .map(|poses| &poses.instance_from_poses),
             Some(&vec![
-                glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
-                glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
-                glam::Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
+                Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
+                Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
             ])
         );
         assert_eq!(
@@ -1753,12 +1755,12 @@ mod tests {
                 .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 3))
                 .map(|poses| &poses.instance_from_poses),
             Some(&vec![
-                glam::Affine3A::from_scale_rotation_translation(
+                Affine3A::from_scale_rotation_translation(
                     glam::Vec3::new(2.0, 3.0, 4.0),
                     glam::Quat::IDENTITY,
                     glam::Vec3::new(1.0, 2.0, 3.0),
                 ),
-                glam::Affine3A::from_scale_rotation_translation(
+                Affine3A::from_scale_rotation_translation(
                     glam::Vec3::new(2.0, 3.0, 4.0),
                     glam::Quat::IDENTITY,
                     glam::Vec3::new(4.0, 5.0, 6.0),
@@ -1838,9 +1840,9 @@ mod tests {
                 assert_eq!(
                     instance_poses.get(archetype),
                     [
-                        glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
-                        glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
-                        glam::Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
+                        Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                        Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
+                        Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
                     ]
                 );
             }
@@ -1854,9 +1856,9 @@ mod tests {
             Some(&PoseTransformArchetypeMap {
                 instance_from_archetype_poses_per_archetype: IntMap::default(),
                 instance_from_poses: vec![
-                    glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
-                    glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
-                    glam::Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
+                    Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                    Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
+                    Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
                 ]
             })
         );
@@ -1869,16 +1871,16 @@ mod tests {
                 instance_from_archetype_poses_per_archetype: IntMap::from_iter([(
                     archetypes::Boxes3D::name(),
                     SmallVec1::try_from_slice(&[
-                        glam::Affine3A::from_translation(glam::Vec3::new(11.0, 2.0, 3.0)),
-                        glam::Affine3A::from_translation(glam::Vec3::new(4.0, 105.0, 6.0)),
-                        glam::Affine3A::from_translation(glam::Vec3::new(7.0, 108.0, 9.0)), // Affected by the last box center which is still splatted.
+                        Affine3A::from_translation(glam::Vec3::new(11.0, 2.0, 3.0)),
+                        Affine3A::from_translation(glam::Vec3::new(4.0, 105.0, 6.0)),
+                        Affine3A::from_translation(glam::Vec3::new(7.0, 108.0, 9.0)), // Affected by the last box center which is still splatted.
                     ])
                     .unwrap()
                 )]),
                 instance_from_poses: vec![
-                    glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
-                    glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
-                    glam::Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
+                    Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                    Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
+                    Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
                 ]
             })
         );
@@ -1900,25 +1902,25 @@ mod tests {
         let eps = 0.000001;
         // Rotation on the first box affects all instances since it's splatted.
         let rotation =
-            glam::Affine3A::from_axis_angle(glam::Vec3::new(0.0, 1.0, 0.0), 90.0_f32.to_radians());
-        let expected = glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)) * // Pose
-                            glam::Affine3A::from_translation(glam::Vec3::new(10.0, 0.0, 0.0)) * rotation; // Box
+            Affine3A::from_axis_angle(glam::Vec3::new(0.0, 1.0, 0.0), 90.0_f32.to_radians());
+        let expected = Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)) * // Pose
+                            Affine3A::from_translation(glam::Vec3::new(10.0, 0.0, 0.0)) * rotation; // Box
         assert!(
             query_result[0].abs_diff_eq(expected, eps),
             "Expected: {:?}\nGot: {:?}",
             expected,
             query_result[0]
         );
-        let expected = glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)) * // Pose
-                            (glam::Affine3A::from_translation(glam::Vec3::new(0.0, 100.0, 0.0)) * rotation); // Box
+        let expected = Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)) * // Pose
+                            (Affine3A::from_translation(glam::Vec3::new(0.0, 100.0, 0.0)) * rotation); // Box
         assert!(
             query_result[1].abs_diff_eq(expected, eps),
             "Expected: {:?}\nGot: {:?}",
             expected,
             query_result[1]
         );
-        let expected = glam::Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)) * // Pose
-                            (glam::Affine3A::from_translation(glam::Vec3::new(0.0, 100.0, 0.0)) * rotation); // Box
+        let expected = Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)) * // Pose
+                            (Affine3A::from_translation(glam::Vec3::new(0.0, 100.0, 0.0)) * rotation); // Box
         assert!(
             query_result[2].abs_diff_eq(expected, eps),
             "Expected: {:?}\nGot: {:?}",
@@ -2050,14 +2052,14 @@ mod tests {
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 1)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 3)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: glam::Affine3A::from_translation(glam::Vec3::new(2.0, 3.0, 4.0)),
+                transform: Affine3A::from_translation(glam::Vec3::new(2.0, 3.0, 4.0)),
             })
         );
 
@@ -2088,14 +2090,14 @@ mod tests {
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 1)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 2)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: glam::Affine3A::from_scale_rotation_translation(
+                transform: Affine3A::from_scale_rotation_translation(
                     glam::Vec3::new(-1.0, -2.0, -3.0),
                     glam::Quat::IDENTITY,
                     glam::Vec3::new(1.0, 2.0, 3.0),
@@ -2106,7 +2108,7 @@ mod tests {
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 3)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: glam::Affine3A::from_scale_rotation_translation(
+                transform: Affine3A::from_scale_rotation_translation(
                     glam::Vec3::new(-1.0, -2.0, -3.0),
                     glam::Quat::IDENTITY,
                     glam::Vec3::new(2.0, 3.0, 4.0),
@@ -2124,6 +2126,8 @@ mod tests {
             let mut cache = TransformResolutionCache::default();
 
             let timeline = Timeline::new_sequence("t");
+            let timeline_name = *timeline.name();
+
             let path = EntityPath::from("ent");
             let mut chunk = Chunk::builder(path.clone())
                 .with_archetype(
@@ -2148,6 +2152,32 @@ mod tests {
                 .unwrap();
 
             if clear_in_separate_chunk {
+                // If we're putting the clear in a separate chunk, we can try warming the cache and see whether we get the right transforms.
+                {
+                    apply_store_subscriber_events(&mut cache, &entity_db);
+                    let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+                    let transforms = transforms_per_timeline
+                        .frame_transforms(TransformFrameIdHash::from_entity_path(&path))
+                        .unwrap();
+                    assert_eq!(
+                        transforms
+                            .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
+                        Some(SourceToTargetTransform {
+                            target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                            transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                        })
+                    );
+                    assert_eq!(
+                        transforms
+                            .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
+                        Some(SourceToTargetTransform {
+                            target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                            transform: Affine3A::from_translation(glam::Vec3::new(3.0, 4.0, 5.0)),
+                        })
+                    );
+                }
+
+                // Now add a separate chunk with a clear.
                 let chunk = Chunk::builder(path.clone())
                     .with_archetype(
                         RowId::new(),
@@ -2159,31 +2189,36 @@ mod tests {
                 entity_db.add_chunk(&Arc::new(chunk)).unwrap();
             }
 
-            apply_store_subscriber_events(&mut cache, &entity_db);
-            let timeline = *timeline.name();
-            let transforms_per_timeline = cache.transforms_for_timeline(timeline);
-            let transforms = transforms_per_timeline
-                .frame_transforms(TransformFrameIdHash::from_entity_path(&path))
-                .unwrap();
+            // Check transforms AFTER we apply the clear.
+            {
+                apply_store_subscriber_events(&mut cache, &entity_db);
+                let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+                let transforms = transforms_per_timeline
+                    .frame_transforms(TransformFrameIdHash::from_entity_path(&path))
+                    .unwrap();
 
-            assert_eq!(
-                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 1)),
-                Some(SourceToTargetTransform {
-                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                    transform: glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
-                })
-            );
-            assert_eq!(
-                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 2)),
-                None
-            );
-            assert_eq!(
-                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 3)),
-                Some(SourceToTargetTransform {
-                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                    transform: glam::Affine3A::from_translation(glam::Vec3::new(3.0, 4.0, 5.0)),
-                })
-            );
+                assert_eq!(
+                    transforms
+                        .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
+                    Some(SourceToTargetTransform {
+                        target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                        transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                    })
+                );
+                assert_eq!(
+                    transforms
+                        .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 2)),
+                    None
+                );
+                assert_eq!(
+                    transforms
+                        .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
+                    Some(SourceToTargetTransform {
+                        target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                        transform: Affine3A::from_translation(glam::Vec3::new(3.0, 4.0, 5.0)),
+                    })
+                );
+            }
         }
     }
 
@@ -2258,7 +2293,7 @@ mod tests {
                     transform.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 1)),
                     Some(SourceToTargetTransform {
                         target: TransformFrameIdHash::from_entity_path(&path.parent().unwrap()),
-                        transform: glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                        transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
                     })
                 );
                 assert_eq!(
@@ -2316,6 +2351,40 @@ mod tests {
                 .per_source_frame_transforms
                 .clone(),
             cache.static_timeline.per_source_frame_transforms
+        );
+    }
+
+    // Tests GCing a recursive clear.
+    #[test]
+    fn test_gc_recursive_clear() {
+        let mut entity_db = new_entity_db_with_subscriber_registered();
+        let mut cache = TransformResolutionCache::default();
+
+        let timeline = Timeline::new_sequence("t");
+        let chunk = Chunk::builder(EntityPath::from("my_recursive_clear"))
+            .with_archetype(RowId::new(), [(timeline, 1)], &archetypes::Clear::new(true))
+            .build()
+            .unwrap();
+        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+
+        // Apply some updates to the transform before GC pass.
+        apply_store_subscriber_events(&mut cache, &entity_db);
+
+        assert!(
+            cache
+                .transforms_for_timeline(*timeline.name())
+                .recursive_clears
+                .contains_key(&EntityPath::from("my_recursive_clear")),
+        );
+
+        entity_db.gc(&GarbageCollectionOptions::gc_everything());
+        apply_store_subscriber_events(&mut cache, &entity_db);
+
+        assert!(
+            cache
+                .transforms_for_timeline(*timeline.name())
+                .recursive_clears
+                .is_empty(),
         );
     }
 }
