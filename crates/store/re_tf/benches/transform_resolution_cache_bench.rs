@@ -1,13 +1,13 @@
 #![expect(clippy::unwrap_used)] // acceptable in benchmarks
 
-use criterion::{Criterion, criterion_group, criterion_main};
+use criterion::{criterion_group, criterion_main, Criterion};
 use itertools::Itertools as _;
 use std::sync::Arc;
 
-use re_chunk_store::Chunk;
+use re_chunk_store::{Chunk, ChunkStoreEvent};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, StoreId, TimePoint, Timeline, TimelineName};
-use re_types::{RowId, archetypes};
+use re_types::{archetypes, RowId};
 
 use re_tf::{TransformFrameIdHash, TransformResolutionCache};
 
@@ -16,7 +16,7 @@ const NUM_TIMEPOINTS: usize = 1000;
 const NUM_TIMEPOINTS_PER_ENTITY: usize = 50;
 const NUM_ENTITIES: usize = 100;
 
-fn transform_resolution_cache_query(c: &mut Criterion) {
+fn setup_store() -> (EntityDb, Vec<ChunkStoreEvent>) {
     let mut entity_db = EntityDb::new(StoreId::random(
         re_log_types::StoreKind::Recording,
         "test_app",
@@ -52,6 +52,11 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
             events.extend(entity_db.add_chunk(&Arc::new(chunk)).unwrap().into_iter());
         }
     }
+    (entity_db, events)
+}
+
+fn transform_resolution_cache_query(c: &mut Criterion) {
+    let (entity_db, events) = setup_store();
 
     c.bench_function("build_from_entitydb", |b| {
         b.iter(|| {
