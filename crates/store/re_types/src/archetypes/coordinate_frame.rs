@@ -26,13 +26,61 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Experimental:** Transform frames are still in early development!
 ///
 /// If not specified, the coordinate frame uses an implicit frame derived from the entity path.
-/// TODO(RR-2698): Explain implicit coordinate frames in more detail.
+/// The implicit frame's name is `tf#/your/entity/path` and has an identity transform connection to its parent path.
 ///
-/// TODO: Why is this useful, how does it relate to ROS? etc.
-///
-/// TODO: Add preliminary example
+/// To learn more about transforms see [Spaces & Transforms](https://rerun.io/docs/concepts/spaces-and-transforms) in the reference.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+///
+/// ## Example
+///
+/// ### Change coordinate frame to different built-in frames
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_transform3d_hierarchy").spawn()?;
+///
+///     rec.set_time_sequence("time", 0);
+///     rec.log(
+///         "red_box",
+///         &[
+///             &rerun::Boxes3D::from_half_sizes([(0.5, 0.5, 0.5)]).with_colors([(255, 0, 0)])
+///                 as &dyn rerun::AsComponents,
+///             // Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's  pose.
+///             &rerun::Transform3D::from_translation([2.0, 0.0, 0.0]),
+///         ],
+///     )?;
+///     rec.log(
+///         "blue_box",
+///         &[
+///             &rerun::Boxes3D::from_half_sizes([(0.5, 0.5, 0.5)]).with_colors([(0, 0, 255)])
+///                 as &dyn rerun::AsComponents,
+///             // Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's  pose.
+///             &rerun::Transform3D::from_translation([-2.0, 0.0, 0.0]),
+///         ],
+///     )?;
+///     rec.log(
+///         "point",
+///         &rerun::Points3D::new([(0.0, 0.0, 0.0)]).with_radii([0.5]),
+///     )?;
+///
+///     // Change where the point is located by cycling through its coordinate frame.
+///     for (t, frame_id) in ["tf#/red_box", "tf#/blue_box"].into_iter().enumerate() {
+///         rec.set_time_sequence("time", t as i64 + 1); // leave it untouched at t==0.
+///         rec.log("point", &rerun::CoordinateFrame::new(frame_id))?;
+///     }
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/coordinate_frame_builtin_frame/71f941f35cf73c299c6ea7fbc4487a140db8e8f8/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/coordinate_frame_builtin_frame/71f941f35cf73c299c6ea7fbc4487a140db8e8f8/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/coordinate_frame_builtin_frame/71f941f35cf73c299c6ea7fbc4487a140db8e8f8/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/coordinate_frame_builtin_frame/71f941f35cf73c299c6ea7fbc4487a140db8e8f8/1200w.png">
+///   <img src="https://static.rerun.io/coordinate_frame_builtin_frame/71f941f35cf73c299c6ea7fbc4487a140db8e8f8/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct CoordinateFrame {
     /// The coordinate frame to use for the current entity.

@@ -29,13 +29,52 @@ class CoordinateFrame(Archetype):
     **Experimental:** Transform frames are still in early development!
 
     If not specified, the coordinate frame uses an implicit frame derived from the entity path.
-    TODO(RR-2698): Explain implicit coordinate frames in more detail.
+    The implicit frame's name is `tf#/your/entity/path` and has an identity transform connection to its parent path.
 
-    TODO: Why is this useful, how does it relate to ROS? etc.
-
-    TODO: Add preliminary example
+    To learn more about transforms see [Spaces & Transforms](https://rerun.io/docs/concepts/spaces-and-transforms) in the reference.
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+
+    Example
+    -------
+    ### Change coordinate frame to different built-in frames:
+    ```python
+    # TODO(RR-2777): This is still an experimental feature.
+
+    import rerun as rr
+
+    rr.init("rerun_example_transform3d_hierarchy", spawn=True)
+
+    rr.set_time("time", sequence=0)
+    rr.log(
+        "red_box",
+        rr.Boxes3D(half_sizes=[0.5, 0.5, 0.5], colors=[255, 0, 0]),
+        # Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's pose.
+        rr.Transform3D(translation=[2.0, 0.0, 0.0]),
+    )
+    rr.log(
+        "blue_box",
+        rr.Boxes3D(half_sizes=[0.5, 0.5, 0.5], colors=[0, 0, 255]),
+        # Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's pose.
+        rr.Transform3D(translation=[-2.0, 0.0, 0.0]),
+    )
+    rr.log("point", rr.Points3D([0.0, 0.0, 0.0], radii=0.5))
+
+    # Change where the point is located by cycling through its coordinate frame.
+    for t, frame_id in enumerate(["tf#/red_box", "tf#/blue_box"]):
+        rr.set_time("time", sequence=t + 1)  # leave it untouched at t==0.
+        rr.log("point", rr.CoordinateFrame(frame_id))
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/coordinate_frame_builtin_frame/71f941f35cf73c299c6ea7fbc4487a140db8e8f8/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/coordinate_frame_builtin_frame/71f941f35cf73c299c6ea7fbc4487a140db8e8f8/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/coordinate_frame_builtin_frame/71f941f35cf73c299c6ea7fbc4487a140db8e8f8/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/coordinate_frame_builtin_frame/71f941f35cf73c299c6ea7fbc4487a140db8e8f8/1200w.png">
+      <img src="https://static.rerun.io/coordinate_frame_builtin_frame/71f941f35cf73c299c6ea7fbc4487a140db8e8f8/full.png" width="640">
+    </picture>
+    </center>
+
     """
 
     def __init__(self: Any, frame_id: datatypes.Utf8Like) -> None:

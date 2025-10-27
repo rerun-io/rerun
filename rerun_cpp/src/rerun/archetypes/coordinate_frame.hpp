@@ -20,11 +20,47 @@ namespace rerun::archetypes {
     /// **Experimental:** Transform frames are still in early development!
     ///
     /// If not specified, the coordinate frame uses an implicit frame derived from the entity path.
-    /// TODO(RR-2698): Explain implicit coordinate frames in more detail.
+    /// The implicit frame's name is `tf#/your/entity/path` and has an identity transform connection to its parent path.
     ///
-    /// TODO: Why is this useful, how does it relate to ROS? etc.
+    /// To learn more about transforms see [Spaces & Transforms](https://rerun.io/docs/concepts/spaces-and-transforms) in the reference.
     ///
-    /// TODO: Add preliminary example
+    /// ## Example
+    ///
+    /// ### Change coordinate frame to different built-in frames
+    /// ![image](https://static.rerun.io/coordinate_frame_builtin_frame/71f941f35cf73c299c6ea7fbc4487a140db8e8f8/full.png)
+    ///
+    /// ```cpp
+    /// #include <rerun.hpp>
+    ///
+    /// int main() {
+    ///     const auto rec = rerun::RecordingStream("rerun_example_transform3d_hierarchy");
+    ///     rec.spawn().exit_on_failure();
+    ///
+    ///     rec.set_time_sequence("time", 0);
+    ///     rec.log(
+    ///         "red_box",
+    ///         rerun::Boxes3D::from_half_sizes({{0.5f, 0.5f, 0.5f}})
+    ///             .with_colors({rerun::Color(255, 0, 0)}),
+    ///         // Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's pose.
+    ///         rerun::Transform3D::from_translation({2.0f, 0.0f, 0.0f})
+    ///     );
+    ///     rec.log(
+    ///         "blue_box",
+    ///         rerun::Boxes3D::from_half_sizes({{0.5f, 0.5f, 0.5f}})
+    ///             .with_colors({rerun::Color(0, 0, 255)}),
+    ///         // Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's pose.
+    ///         rerun::Transform3D::from_translation({-2.0f, 0.0f, 0.0f})
+    ///     );
+    ///     rec.log("point", rerun::Points3D({{0.0f, 0.0f, 0.0f}}).with_radii({0.5f}));
+    ///
+    ///     // Change where the point is located by cycling through its coordinate frame.
+    ///     const char* frame_ids[] = {"tf#/red_box", "tf#/blue_box"};
+    ///     for (int t = 0; t <2; t++) {
+    ///         rec.set_time_sequence("time", t + 1); // leave it untouched at t==0.
+    ///         rec.log("point", rerun::CoordinateFrame(frame_ids[t]));
+    ///     }
+    /// }
+    /// ```
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
