@@ -119,7 +119,7 @@ impl ViewContextSystem for TransformTreeContext {
                             },
                         )
                 },
-                // Collect into Vec for simplicity, also bulk operating the transform loop seems like a good idea (perf citation needed!)
+                // Collect into Vec for simplicity, also bulk operating on the transform loop seems like a good idea (perf citation needed!)
             )
             .collect::<Vec<_>>();
 
