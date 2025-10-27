@@ -9651,6 +9651,7 @@ version = "0.27.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "bitflags 2.9.4",
+ "criterion",
  "glam",
  "insta",
  "itertools 0.14.0",
@@ -11932,6 +11933,17 @@ dependencies = [
  "mimalloc",
  "re_format",
  "re_memory",
+ "rerun",
+]
+
+[[package]]
+name = "test_out_of_order_transforms"
+version = "0.27.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "glam",
+ "re_log",
  "rerun",
 ]
 
