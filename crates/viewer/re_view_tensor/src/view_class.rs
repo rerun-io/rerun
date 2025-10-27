@@ -18,10 +18,9 @@ use re_view::view_property_ui;
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item,
     MaybeVisualizableEntities, PerVisualizer, SystemCommand, SystemCommandSender as _,
-    TensorStatsCache, TypedComponentFallbackProvider, ViewClass, ViewClassExt as _,
-    ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewerContext, VisualizableEntities, gpu_bridge,
-    suggest_view_for_each_entity,
+    TensorStatsCache, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId,
+    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    VisualizableEntities, gpu_bridge, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -81,6 +80,11 @@ Set the displayed dimensions in a selection panel.",
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
+        system_registry.register_fallback_provider(
+            TensorScalarMapping::descriptor_colormap().component,
+            |_| Colormap::Viridis,
+        );
+
         system_registry.register_visualizer::<TensorSystem>()
     }
 
@@ -146,8 +150,8 @@ Set the displayed dimensions in a selection panel.",
 
         list_item::list_item_scope(ui, "tensor_selection_ui", |ui| {
             let ctx = self.view_context(ctx, view_id, state);
-            view_property_ui::<TensorScalarMapping>(&ctx, ui, self);
-            view_property_ui::<TensorViewFit>(&ctx, ui, self);
+            view_property_ui::<TensorScalarMapping>(&ctx, ui);
+            view_property_ui::<TensorViewFit>(&ctx, ui);
         });
 
         // TODO(#6075): Listitemify
@@ -253,9 +257,7 @@ Set the displayed dimensions in a selection panel.",
 
         if response.clicked() {
             ctx.command_sender()
-                .send_system(SystemCommand::SetSelection(
-                    Item::View(query.view_id).into(),
-                ));
+                .send_system(SystemCommand::set_selection(Item::View(query.view_id)));
         }
 
         Ok(())
@@ -323,7 +325,7 @@ impl TensorView {
         egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
             let ctx = self.view_context(ctx, view_id, state);
             if let Err(err) =
-                self.tensor_slice_ui(&ctx, ui, state, dimension_labels, &slice_selection)
+                Self::tensor_slice_ui(&ctx, ui, state, dimension_labels, &slice_selection)
             {
                 ui.error_label(err.to_string());
             }
@@ -333,14 +335,13 @@ impl TensorView {
     }
 
     fn tensor_slice_ui(
-        &self,
         ctx: &ViewContext<'_>,
         ui: &mut egui::Ui,
         state: &ViewTensorState,
         dimension_labels: [Option<(String, bool)>; 2],
         slice_selection: &TensorSliceSelection,
     ) -> anyhow::Result<()> {
-        let (response, image_rect) = self.paint_tensor_slice(ctx, ui, state, slice_selection)?;
+        let (response, image_rect) = Self::paint_tensor_slice(ctx, ui, state, slice_selection)?;
 
         if !response.hovered() {
             let font_id = egui::TextStyle::Body.resolve(ui.style());
@@ -351,7 +352,6 @@ impl TensorView {
     }
 
     fn paint_tensor_slice(
-        &self,
         ctx: &ViewContext<'_>,
         ui: &mut egui::Ui,
         state: &ViewTensorState,
@@ -373,21 +373,12 @@ impl TensorView {
             ctx.blueprint_query(),
             ctx.view_id,
         );
-        let colormap: Colormap = scalar_mapping.component_or_fallback(
-            ctx,
-            self,
-            &TensorScalarMapping::descriptor_colormap(),
-        )?;
-        let gamma: GammaCorrection = scalar_mapping.component_or_fallback(
-            ctx,
-            self,
-            &TensorScalarMapping::descriptor_gamma(),
-        )?;
-        let mag_filter: MagnificationFilter = scalar_mapping.component_or_fallback(
-            ctx,
-            self,
-            &TensorScalarMapping::descriptor_mag_filter(),
-        )?;
+        let colormap: Colormap = scalar_mapping
+            .component_or_fallback(ctx, TensorScalarMapping::descriptor_colormap().component)?;
+        let gamma: GammaCorrection = scalar_mapping
+            .component_or_fallback(ctx, TensorScalarMapping::descriptor_gamma().component)?;
+        let mag_filter: MagnificationFilter = scalar_mapping
+            .component_or_fallback(ctx, TensorScalarMapping::descriptor_mag_filter().component)?;
 
         let colormap = ColormapWithRange {
             colormap,
@@ -408,7 +399,7 @@ impl TensorView {
             ctx.blueprint_query(),
             ctx.view_id,
         )
-        .component_or_fallback(ctx, self, &TensorViewFit::descriptor_scaling())?;
+        .component_or_fallback(ctx, TensorViewFit::descriptor_scaling().component)?;
 
         let img_size = egui::vec2(width as _, height as _);
         let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
@@ -726,16 +717,6 @@ fn selectors_ui(
         );
     }
 }
-
-impl TypedComponentFallbackProvider<Colormap> for TensorView {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Colormap {
-        // Viridis is a better fallback than Turbo for arbitrary tensors.
-        Colormap::Viridis
-    }
-}
-
-// Fallback for the various components of `TensorSliceSelection` is handled by `load_tensor_slice_selection_and_make_valid`.
-re_viewer_context::impl_component_fallback_provider!(TensorView => [Colormap]);
 
 #[test]
 fn test_help_view() {

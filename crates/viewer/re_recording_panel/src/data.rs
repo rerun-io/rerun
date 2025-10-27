@@ -186,10 +186,11 @@ impl<'a> AppIdData<'a> {
         entity_dbs.sort_by_cached_key(|entity_db| {
             (
                 entity_db
-                    .recording_info_property::<Name>(&RecordingInfo::descriptor_name())
+                    .recording_info_property::<Name>(RecordingInfo::descriptor_name().component)
                     .map(|s| natural_ordering::OrderedString(s.to_string())),
-                entity_db
-                    .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time()),
+                entity_db.recording_info_property::<Timestamp>(
+                    RecordingInfo::descriptor_start_time().component,
+                ),
             )
         });
 

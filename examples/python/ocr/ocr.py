@@ -8,7 +8,7 @@ import logging
 import os
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any, Final, TypeAlias
 
 import cv2
 import numpy as np
@@ -21,7 +21,6 @@ import rerun.blueprint as rrb
 import tqdm
 from paddleocr import PPStructure
 from paddleocr.ppstructure.recovery.recovery_to_doc import sorted_layout_boxes
-from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -330,7 +329,7 @@ def generate_blueprint(
     processed_layouts: list[LayoutStructure],
 ) -> rrb.Blueprint:
     page_tabs = []
-    for layout, processed_layout in zip(layouts, processed_layouts):
+    for layout, processed_layout in zip(layouts, processed_layouts, strict=False):
         paths, detections_paths, zoom_paths_figures, zoom_paths_tables, zoom_paths_texts = processed_layout
 
         section_tabs = []
@@ -383,7 +382,7 @@ def detect_and_log_layouts(file_path: str) -> None:
     layouts: list[Layout] = []
     page_numbers = [i + 1 for i in range(len(images))]
     processed_layouts: list[LayoutStructure] = []
-    for image, page_number in zip(images, page_numbers):
+    for image, page_number in zip(images, page_numbers, strict=False):
         layouts.append(detect_and_log_layout(image, page_number))
         page_path = f"page_{page_number}"
 

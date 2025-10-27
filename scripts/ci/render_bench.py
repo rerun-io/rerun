@@ -33,12 +33,12 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from subprocess import run
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from google.cloud import storage
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
 
 SCRIPT_PATH = os.path.dirname(os.path.relpath(__file__))
 DATE_FORMAT = "%Y-%m-%d"

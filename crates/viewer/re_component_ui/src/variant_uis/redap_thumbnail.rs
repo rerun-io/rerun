@@ -1,6 +1,6 @@
 use re_log_types::TimelineName;
 use re_types::components::MediaType;
-use re_types_core::{ComponentDescriptor, Loggable as _, RowId};
+use re_types_core::{ComponentIdentifier, Loggable as _, RowId};
 use re_ui::UiLayout;
 use re_viewer_context::ViewerContext;
 use re_viewer_context::external::re_chunk_store::LatestAtQuery;
@@ -10,7 +10,7 @@ use std::error::Error;
 pub fn redap_thumbnail(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    component_descriptor: &ComponentDescriptor,
+    component: ComponentIdentifier,
     row_id: Option<RowId>,
     data: &dyn arrow::array::Array,
 ) -> Result<(), Box<dyn Error>> {
@@ -27,7 +27,7 @@ pub fn redap_thumbnail(
         .store_context
         .caches
         .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
-            c.entry(row_id, component_descriptor, slice, media_type.as_ref())
+            c.entry(row_id, component, slice, media_type.as_ref())
         })?;
 
     re_data_ui::image_preview_ui(

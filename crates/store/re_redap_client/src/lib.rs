@@ -4,13 +4,13 @@ mod connection_client;
 mod connection_registry;
 mod grpc;
 
+use connection_registry::ClientCredentialsError;
+
 pub use self::{
     connection_client::GenericConnectionClient,
-    connection_registry::{
-        ClientConnectionError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
-    },
+    connection_registry::{ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle},
     grpc::{
-        ConnectionError, RedapClient, channel, fetch_chunks_response_to_chunk_and_partition_id,
+        RedapClient, channel, fetch_chunks_response_to_chunk_and_partition_id,
         stream_blueprint_and_partition_from_server,
     },
 };
@@ -83,7 +83,7 @@ pub struct ApiError {
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ApiErrorKind {
     NotFound,
     AlreadyExists,
@@ -107,19 +107,6 @@ impl From<tonic::Code> for ApiErrorKind {
             tonic::Code::InvalidArgument => Self::InvalidArguments,
             tonic::Code::DeadlineExceeded => Self::Timeout,
             _ => Self::Internal,
-        }
-    }
-}
-
-impl From<&ClientConnectionError> for ApiErrorKind {
-    fn from(err: &ClientConnectionError) -> Self {
-        match err {
-            ClientConnectionError::UnencryptedServer => Self::InvalidArguments,
-            ClientConnectionError::UnauthenticatedMissingToken(_)
-            | ClientConnectionError::UnauthenticatedBadToken(_) => Self::Unauthenticated,
-            ClientConnectionError::AuthCheckError(_) => Self::Connection,
-            #[cfg(not(target_arch = "wasm32"))]
-            ClientConnectionError::Tonic(_) => Self::Connection,
         }
     }
 }
@@ -182,21 +169,26 @@ impl ApiError {
         }
     }
 
-    pub fn client_connection(err: ClientConnectionError, message: impl Into<String>) -> Self {
-        let kind = ApiErrorKind::from(&err);
+    pub fn credentials(err: ClientCredentialsError, message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
-            kind,
+            kind: ApiErrorKind::Unauthenticated,
             source: Some(Box::new(err)),
         }
     }
 
-    /// Helper method to downcast the source error to a `ClientConnectionError` if possible.
+    /// Helper method to downcast the source error to a `ClientCredentialsError` if possible.
     #[inline]
-    pub fn as_client_connection_error(&self) -> Option<&ClientConnectionError> {
+    pub fn as_client_credentials_error(&self) -> Option<&ClientCredentialsError> {
         self.source
             .as_deref()?
-            .downcast_ref::<ClientConnectionError>()
+            .downcast_ref::<ClientCredentialsError>()
+    }
+
+    #[inline]
+    pub fn is_client_credentials_error(&self) -> bool {
+        self.kind == ApiErrorKind::Unauthenticated
+            && matches!(self.source.as_deref(), Some(e) if e.is::<ClientCredentialsError>())
     }
 }
 

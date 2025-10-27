@@ -257,13 +257,13 @@ fn load_panel_state(
     query: &LatestAtQuery,
 ) -> Option<PanelState> {
     re_tracing::profile_function!();
-    let descriptor = if path == &TIME_PANEL_PATH.into() {
-        TimePanelBlueprint::descriptor_state()
+    let component = if path == &TIME_PANEL_PATH.into() {
+        TimePanelBlueprint::descriptor_state().component
     } else {
-        PanelBlueprint::descriptor_state()
+        PanelBlueprint::descriptor_state().component
     };
 
     blueprint_db
-        .latest_at_component_quiet::<PanelState>(path, query, &descriptor)
+        .latest_at_component_quiet::<PanelState>(path, query, component)
         .map(|(_index, p)| p)
 }

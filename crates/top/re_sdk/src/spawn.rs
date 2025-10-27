@@ -179,7 +179,6 @@ impl std::fmt::Debug for SpawnError {
 ///
 /// This only starts a Viewer process: if you'd like to connect to it and start sending data, refer
 /// to [`crate::RecordingStream::connect_grpc`] or use [`crate::RecordingStream::spawn`] directly.
-#[expect(unsafe_code)]
 pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     #[cfg(target_family = "unix")]
     use std::os::unix::process::CommandExt as _;
@@ -319,6 +318,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
         // SAFETY: This code is only run in the child fork, we are not modifying any memory
         // that is shared with the parent process.
         #[cfg(target_family = "unix")]
+        #[expect(unsafe_code)]
         unsafe {
             rerun_bin.pre_exec(|| {
                 // On unix systems, we want to make sure that the child process becomes its

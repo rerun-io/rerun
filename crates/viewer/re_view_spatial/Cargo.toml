@@ -61,10 +61,10 @@ macaw = { workspace = true, features = ["serde"] }
 nohash-hasher.workspace = true
 ordered-float.workspace = true
 parking_lot.workspace = true
+saturating_cast.workspace = true
 serde.workspace = true
 smallvec = { workspace = true, features = ["serde"] }
 thiserror.workspace = true
-web-time.workspace = true
 
 
 [dev-dependencies]

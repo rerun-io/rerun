@@ -137,7 +137,7 @@ impl DatastoreUi {
             ChunkListMode::Query {
                 timeline,
                 entity_path,
-                component_descr,
+                component,
                 query: ChunkListQueryMode::LatestAt(at),
                 ..
             } => Either::Right(
@@ -145,14 +145,14 @@ impl DatastoreUi {
                     .latest_at_relevant_chunks(
                         &LatestAtQuery::new(*timeline.name(), *at),
                         entity_path,
-                        component_descr,
+                        *component,
                     )
                     .into_iter(),
             ),
             ChunkListMode::Query {
                 timeline,
                 entity_path,
-                component_descr,
+                component,
                 query: ChunkListQueryMode::Range(range),
                 ..
             } => Either::Right(
@@ -160,7 +160,7 @@ impl DatastoreUi {
                     .range_relevant_chunks(
                         &RangeQuery::new(*timeline.name(), *range),
                         entity_path,
-                        component_descr,
+                        *component,
                     )
                     .into_iter(),
             ),
@@ -210,11 +210,10 @@ impl DatastoreUi {
         } else {
             let component_filter = self.component_filter.to_lowercase();
             Either::Right(chunk_iterator.filter(move |chunk| {
-                chunk.components().keys().any(|name| {
-                    name.display_name()
-                        .to_lowercase()
-                        .contains(&component_filter)
-                })
+                chunk
+                    .components()
+                    .keys()
+                    .any(|name| name.as_str().to_lowercase().contains(&component_filter))
             }))
         };
 
@@ -331,7 +330,7 @@ impl DatastoreUi {
                     chunk
                         .components()
                         .keys()
-                        .map(|name| name.display_name())
+                        .map(|name| name.as_str())
                         .join(", "),
                 );
             });

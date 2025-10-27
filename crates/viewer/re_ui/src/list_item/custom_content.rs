@@ -63,10 +63,10 @@ impl<'a> CustomContent<'a> {
     /// Add a right-aligned button.
     ///
     /// Note: for aesthetics, space is always reserved for the action button.
-    // TODO(#6191): accept multiple calls for this function for multiple actions.
+    // TODO(ab): accept multiple calls for this function for multiple actions.
     #[inline]
     pub fn button(mut self, button: impl Widget + 'a) -> Self {
-        // TODO(#6191): support multiple action buttons
+        // TODO(ab): support multiple action buttons
         assert!(
             self.button.is_none(),
             "Only one action button is supported right now"

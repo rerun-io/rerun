@@ -128,6 +128,7 @@ impl Server {
                     let is_client = false;
                     re_protos::headers::new_rerun_headers_layer(name, version, is_client)
                 })
+                .layer(tower_http::cors::CorsLayer::permissive()) // Allow CORS for all origins (to support web clients)
                 .layer(tonic_web::GrpcWebLayer::new()) // Support `grpc-web` clients
                 .into_inner();
 

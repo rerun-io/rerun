@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Union
+from typing import Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -44,10 +44,7 @@ class AffixFuzzer5:
 
 
 AffixFuzzer5Like = AffixFuzzer5
-AffixFuzzer5ArrayLike = Union[
-    AffixFuzzer5,
-    Sequence[AffixFuzzer5Like],
-]
+AffixFuzzer5ArrayLike = AffixFuzzer5 | Sequence[AffixFuzzer5Like]
 
 
 class AffixFuzzer5Batch(BaseBatch[AffixFuzzer5ArrayLike]):

@@ -188,7 +188,7 @@ impl SerializedComponentBatch {
 /// A column's worth of component data.
 ///
 /// If a [`SerializedComponentBatch`] represents one row's worth of data
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SerializedComponentColumn {
     pub list_array: arrow::array::ListArray,
 
@@ -197,6 +197,14 @@ pub struct SerializedComponentColumn {
 }
 
 impl SerializedComponentColumn {
+    #[inline]
+    pub fn new(list_array: arrow::array::ListArray, descriptor: ComponentDescriptor) -> Self {
+        Self {
+            list_array,
+            descriptor,
+        }
+    }
+
     /// Repartitions the component data into multiple sub-batches, ignoring the previous partitioning.
     ///
     /// The specified `lengths` must sum to the total length of the component batch.
@@ -215,6 +223,13 @@ impl SerializedComponentColumn {
             list_array,
             descriptor,
         })
+    }
+}
+
+impl re_byte_size::SizeBytes for SerializedComponentColumn {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.list_array.heap_size_bytes() + self.descriptor.heap_size_bytes()
     }
 }
 

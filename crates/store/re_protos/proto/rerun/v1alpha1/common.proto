@@ -19,8 +19,7 @@ message RerunChunk {
   EncoderVersion encoder_version = 1;
 
   // Data payload is Arrow IPC encoded RecordBatch
-  // TODO(zehiko) make this optional (#9285)
-  bytes payload = 2;
+  optional bytes payload = 2;
 }
 
 // uniquely identifies a table

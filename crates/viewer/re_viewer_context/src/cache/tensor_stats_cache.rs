@@ -55,7 +55,7 @@ impl Cache for TensorStatsCache {
                     event
                         .chunk
                         .components()
-                        .contains_component(&Tensor::descriptor_data())
+                        .contains_component(Tensor::descriptor_data().component)
                 };
 
                 if is_deletion() && contains_tensor_data() {

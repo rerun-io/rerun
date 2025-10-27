@@ -71,6 +71,7 @@
 #include "components/text.hpp"
 #include "components/text_log_level.hpp"
 #include "components/timestamp.hpp"
+#include "components/transform_frame_id.hpp"
 #include "components/transform_mat3x3.hpp"
 #include "components/transform_relation.hpp"
 #include "components/translation3d.hpp"

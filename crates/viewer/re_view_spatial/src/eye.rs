@@ -3,19 +3,14 @@ use glam::{Mat4, Quat, Vec3, vec3};
 
 use macaw::IsoTransform;
 
-use re_log::ResultExt as _;
-use re_types::{
-    blueprint::{archetypes::EyeControls3D, components::Eye3DKind},
-    components::LinearSpeed,
-};
+use re_types::{blueprint::components::Eye3DKind, components::LinearSpeed};
 use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
     RuntimeModifiers, SPEED_UP_3D_MODIFIER,
 };
-use re_viewer_context::{TypedComponentFallbackProvider, ViewContext, ViewStateExt as _};
-use re_viewport_blueprint::ViewProperty;
+use re_viewer_context::ViewStateExt as _;
 
-use crate::{SpatialViewState, space_camera_3d::SpaceCamera3D};
+use crate::{SpatialViewState, space_camera_3d::SpaceCamera3D, ui_3d::EyeBlueprintProperties};
 
 /// An eye in a 3D view.
 ///
@@ -192,6 +187,9 @@ pub struct ViewEye {
     eye_up: Vec3,
 
     velocity: Vec3,
+
+    /// Tracks if any user input happened that shouldn't interrupt the entity tracking behavior.
+    ignore_input: bool,
 }
 
 impl ViewEye {
@@ -212,6 +210,7 @@ impl ViewEye {
             fov_y: Eye::DEFAULT_FOV_Y,
             eye_up,
             velocity: Vec3::ZERO,
+            ignore_input: false,
         }
     }
 
@@ -231,6 +230,10 @@ impl ViewEye {
 
             self.kind = new_kind;
         }
+    }
+
+    pub fn ignore_input(&self) -> bool {
+        self.ignore_input
     }
 
     /// If in orbit mode, what are we orbiting around?
@@ -326,6 +329,7 @@ impl ViewEye {
                 // and even then it's not a big deal.
                 eye_up: self.eye_up.lerp(other.eye_up, t).normalize_or_zero(),
                 velocity: self.velocity.lerp(other.velocity, t),
+                ignore_input: false,
             }
         }
     }
@@ -352,44 +356,28 @@ impl ViewEye {
         &mut self,
         response: &egui::Response,
         drag_threshold: f32,
-        view_ctx: &ViewContext<'_>,
-        eye_property: &ViewProperty,
+        mut blueprint_properties: EyeBlueprintProperties,
     ) -> bool {
-        let mut speed = **eye_property
-            .component_or_fallback::<LinearSpeed>(
-                view_ctx,
-                self,
-                &EyeControls3D::descriptor_speed(),
-            )
-            .unwrap_debug_or_log_error() // Should never fail.
-            .unwrap_or(1.0.into());
-
         // Modify speed based on modifiers:
         let os = response.ctx.os();
         response.ctx.input(|input| {
             if input.modifiers.contains(SPEED_UP_3D_MODIFIER) {
-                speed *= 10.0;
+                blueprint_properties.speed *= 10.0;
             }
             if input.modifiers.contains(RuntimeModifiers::slow_down(&os)) {
-                speed *= 0.1;
+                blueprint_properties.speed *= 0.1;
             }
         });
 
-        let kind = eye_property.component_or_fallback::<Eye3DKind>(
-            view_ctx,
-            self,
-            &EyeControls3D::descriptor_kind(),
-        );
-        match kind {
-            Ok(kind) => self.set_kind(kind),
-            Err(err) => {
-                re_log::error_once!("error while getting eye 3D kind: {}", err);
-            }
+        if let Some(kind) = blueprint_properties.kind {
+            self.set_kind(kind);
         }
 
         // Dragging even below the [`drag_threshold`] should be considered interaction.
         // Otherwise we flicker in and out of "has interacted" too quickly.
         let mut did_interact = response.drag_delta().length() > 0.0;
+
+        self.ignore_input = false;
 
         if response.drag_delta().length() > drag_threshold {
             let roll = response.dragged_by(ROLL_MOUSE)
@@ -401,12 +389,14 @@ impl ViewEye {
                 if let Some(pointer_pos) = response.ctx.pointer_latest_pos() {
                     self.roll(&response.rect, pointer_pos, response.drag_delta());
                 }
+                self.ignore_input = true;
             } else if response.dragged_by(ROTATE3D_BUTTON) {
                 self.rotate(response.drag_delta());
+                self.ignore_input = true;
             } else if response.dragged_by(DRAG_PAN3D_BUTTON) {
                 // The pan speed is selected to make the panning feel natural for orbit mode,
                 // but it should probably take FOV and screen size into account
-                let pan_speed = 0.001 * speed;
+                let pan_speed = 0.001 * blueprint_properties.speed;
                 let delta_in_view = pan_speed as f32 * response.drag_delta();
 
                 self.translate(delta_in_view);
@@ -414,8 +404,9 @@ impl ViewEye {
         }
 
         if response.hovered() {
-            did_interact |= self.keyboard_navigation(&response.ctx, speed as f32);
-            did_interact |= self.zoom(&response.ctx, speed as f32);
+            did_interact |=
+                self.keyboard_navigation(&response.ctx, blueprint_properties.speed as f32);
+            did_interact |= self.zoom(&response.ctx, blueprint_properties.speed as f32);
         }
 
         did_interact
@@ -494,6 +485,7 @@ impl ViewEye {
                 if f32::MIN_POSITIVE < new_radius && new_radius < 1.0e17 {
                     self.orbit_radius = new_radius;
                     did_interact = true;
+                    self.ignore_input = true;
                 }
             }
             Eye3DKind::FirstPerson => {
@@ -501,6 +493,7 @@ impl ViewEye {
                 let delta = (zoom_factor - 1.0) * speed;
                 self.center += delta * self.fwd();
                 did_interact = true;
+                self.ignore_input = true;
             }
         }
 
@@ -563,11 +556,8 @@ impl ViewEye {
 
         self.center += translate;
     }
-}
 
-// Logic should be similar to `impl TypedComponentFallbackProvider<LinearSpeed> for SpatialView3D`
-impl TypedComponentFallbackProvider<LinearSpeed> for ViewEye {
-    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> LinearSpeed {
+    pub fn fallback_speed(&self, ctx: &re_viewer_context::QueryContext<'_>) -> LinearSpeed {
         match self.kind {
             Eye3DKind::FirstPerson => {
                 let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
@@ -582,5 +572,3 @@ impl TypedComponentFallbackProvider<LinearSpeed> for ViewEye {
         .into()
     }
 }
-
-re_viewer_context::impl_component_fallback_provider!(ViewEye => [LinearSpeed]);

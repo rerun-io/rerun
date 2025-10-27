@@ -4,13 +4,12 @@ use arrow::array::{RecordBatch, RecordBatchIterator, RecordBatchReader};
 use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
-use pyo3::{PyErr, PyResult, Python, create_exception, exceptions::PyConnectionError};
+use pyo3::{PyErr, PyResult, Python};
 use tracing::Instrument as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::QueryExpression;
 use re_datafusion::query_from_query_expression;
-use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{
@@ -30,8 +29,6 @@ use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
 
 use crate::catalog::to_py_err;
 use crate::utils::wait_for_future;
-
-create_exception!(catalog, ConnectionError, PyConnectionError);
 
 /// Connection handle to a catalog service.
 #[derive(Clone)]
@@ -288,6 +285,39 @@ impl ConnectionHandle {
         )
     }
 
+    /// Initiate registration of all the recordings within provided object store prefix (aka directory)
+    /// and return the corresponding task descriptors.
+    ///
+    /// A custom layer can be specified via `recordings_layer`:
+    /// * When empty, this defaults to `["base"]`.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn register_with_dataset_prefix(
+        &self,
+        py: Python<'_>,
+        dataset_id: EntryId,
+        recordings_prefix: String,
+        recordings_layer: Option<String>,
+    ) -> PyResult<Vec<RegisterWithDatasetTaskDescriptor>> {
+        let layer = recordings_layer.unwrap_or_else(|| DataSource::DEFAULT_LAYER.to_owned());
+
+        let data_source =
+            DataSource::new_rrd_layer_prefix(layer, recordings_prefix).map_err(to_py_err)?;
+        let data_sources = vec![data_source];
+
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    //TODO(ab): expose `on_duplicate` as a method argument
+                    .register_with_dataset(dataset_id, data_sources, IfDuplicateBehavior::Error)
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
+    }
+
     #[tracing::instrument(level = "info", skip_all)]
     #[expect(clippy::fn_params_excessive_bools, clippy::too_many_arguments)]
     pub fn do_maintenance(
@@ -348,7 +378,7 @@ impl ConnectionHandle {
                     .map_err(to_py_err)?
                     .dataframe_part()
                     .map_err(to_py_err)?
-                    .decode()
+                    .try_into()
                     .map_err(to_py_err)?;
 
                 Ok(status_table)
@@ -382,7 +412,7 @@ impl ConnectionHandle {
                 // loop until all the tasks are done or the timeout is reached: both cases
                 // will complete the stream
                 while let Some(response) = response_stream.next().await {
-                    let item = response
+                    let item: RecordBatch = response
                         .map_err(|err| {
                             ApiError::tonic(
                                 err,
@@ -399,7 +429,7 @@ impl ConnectionHandle {
                             );
                             to_py_err(err)
                         })?
-                        .decode()
+                        .try_into()
                         .map_err(to_py_err)?;
 
                     // TODO(andrea): all this column unwrapping is a bit hideous. Maybe the idea of returning a dataframe rather
@@ -556,7 +586,7 @@ impl ConnectionHandle {
                     .map_err(to_py_err)?
                     .into_iter()
                     .filter_map(|response| response.data)
-                    .map(|dataframe_part| dataframe_part.decode().map_err(to_py_err))
+                    .map(|dataframe_part| dataframe_part.try_into().map_err(to_py_err))
                     .collect();
 
                 let record_batches = record_batches?;

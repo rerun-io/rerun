@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -83,14 +83,11 @@ class Mat4x4(Mat4x4Ext):
 
 
 if TYPE_CHECKING:
-    Mat4x4Like = Union[Mat4x4, npt.ArrayLike]
+    Mat4x4Like = Mat4x4 | npt.ArrayLike
 else:
     Mat4x4Like = Any
 
-Mat4x4ArrayLike = Union[
-    Mat4x4,
-    Sequence[Mat4x4Like],
-]
+Mat4x4ArrayLike = Mat4x4 | Sequence[Mat4x4Like]
 
 
 class Mat4x4Batch(BaseBatch[Mat4x4ArrayLike]):

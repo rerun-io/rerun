@@ -1,3 +1,5 @@
+#![expect(clippy::cast_possible_wrap)]
+
 //! Measures the memory overhead of the chunk store.
 
 // https://github.com/rust-lang/rust-clippy/issues/10011

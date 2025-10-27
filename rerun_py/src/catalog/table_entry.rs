@@ -91,10 +91,14 @@ impl PyTableEntry {
 
             self_.lazy_provider = Some(
                 wait_for_future(py, async {
-                    TableEntryTableProvider::new(connection.client().await?, id)
-                        .into_provider()
-                        .await
-                        .map_err(to_py_err)
+                    TableEntryTableProvider::new(
+                        connection.client().await?,
+                        id,
+                        Some(get_tokio_runtime().handle().clone()),
+                    )
+                    .into_provider()
+                    .await
+                    .map_err(to_py_err)
                 })
                 .map_err(|err| {
                     PyRuntimeError::new_err(format!("Error creating TableProvider: {err}"))

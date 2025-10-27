@@ -27,6 +27,9 @@ mod time_drag_value;
 mod ui_ext;
 mod ui_layout;
 
+#[cfg(feature = "testing")]
+pub mod testing;
+
 use egui::NumExt as _;
 
 pub use self::{

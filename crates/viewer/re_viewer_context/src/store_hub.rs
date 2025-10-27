@@ -33,7 +33,7 @@ use crate::{
 /// * The active blueprint
 /// * The default blueprint
 ///
-/// Either on of these can be `None`.
+/// Either one of these can be `None`.
 ///
 /// The active blueprint is what the user would see and edit, if they were to select that app id.
 /// If there is no active blueprint, the default will be cloned and made active.
@@ -441,7 +441,7 @@ impl StoreHub {
         // Find any matching recording and activate it
         for rec in self.store_bundle.recordings().sorted_by_key(|entity_db| {
             entity_db.recording_info_property::<Timestamp>(
-                &archetypes::RecordingInfo::descriptor_start_time(),
+                archetypes::RecordingInfo::descriptor_start_time().component,
             )
         }) {
             if rec.application_id() == &app_id {

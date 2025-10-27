@@ -2,7 +2,7 @@
 //!
 //! On the left is a 2D view, on the right a 3D view of the same scene.
 
-// TODO(#6330): remove unwrap()
+// TODO(#3408): remove unwrap()
 #![expect(clippy::unwrap_used)]
 #![expect(clippy::disallowed_methods)] // allow hardcoded colors
 

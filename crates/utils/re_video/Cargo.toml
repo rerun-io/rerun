@@ -57,6 +57,7 @@ itertools.workspace = true
 parking_lot.workspace = true
 poll-promise.workspace = true
 re_mp4.workspace = true
+saturating_cast.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
 web-time.workspace = true

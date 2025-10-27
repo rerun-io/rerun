@@ -188,14 +188,15 @@ impl TestContextExt for TestContext {
         size: egui::Vec2,
         snapshot_options: Option<SnapshotOptions>,
     ) {
-        let snapshot_options = snapshot_options.unwrap_or_default();
-        let mut harness = self
-            .setup_kittest_for_rendering()
-            .with_size(size)
-            .build_ui(|ui| {
-                self.run_with_single_view(ui, view_id);
-            });
+        let mut harness = self.setup_kittest_for_rendering_3d(size).build_ui(|ui| {
+            self.run_with_single_view(ui, view_id);
+        });
         harness.run();
-        harness.snapshot_options(snapshot_name, &snapshot_options);
+
+        if let Some(snapshot_options) = snapshot_options {
+            harness.snapshot_options(snapshot_name, &snapshot_options);
+        } else {
+            harness.snapshot(snapshot_name);
+        }
     }
 }

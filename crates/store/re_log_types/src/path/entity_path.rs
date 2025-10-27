@@ -193,6 +193,11 @@ impl EntityPath {
         self.parts.is_empty()
     }
 
+    #[inline]
+    pub fn is_property(&self) -> bool {
+        self.is_descendant_of(&Self::properties())
+    }
+
     /// Is this equals to, or a descendant of, the given path.
     #[inline]
     pub fn starts_with(&self, prefix: &Self) -> bool {

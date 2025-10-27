@@ -259,10 +259,10 @@ impl SpatialTopology {
         self.subspaces.get(&origin)
     }
 
-    fn on_store_diff(
+    fn on_store_diff<'a>(
         &mut self,
         entity_path: &EntityPath,
-        added_components: impl Iterator<Item = re_types::ComponentDescriptor>,
+        added_components: impl Iterator<Item = &'a re_types::ComponentDescriptor>,
     ) {
         re_tracing::profile_function!();
 
@@ -645,7 +645,7 @@ mod tests {
     }
 
     fn add_diff(topo: &mut SpatialTopology, path: &str, components: &[ComponentDescriptor]) {
-        topo.on_store_diff(&path.into(), components.iter().cloned());
+        topo.on_store_diff(&path.into(), components.iter());
     }
 
     fn check_paths_in_space(topo: &SpatialTopology, paths: &[&str], expected_origin: &str) {

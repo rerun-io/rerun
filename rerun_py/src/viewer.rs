@@ -4,7 +4,6 @@ use arrow::array::RecordBatch;
 use pyo3::{Bound, PyResult, prelude::*};
 
 use re_grpc_client::write_table::viewer_client;
-use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 
 use crate::{catalog::to_py_err, utils::wait_for_future};
@@ -79,7 +78,7 @@ impl ViewerConnectionHandle {
             self.client
                 .write_table(re_protos::sdk_comms::v1alpha1::WriteTableRequest {
                     id: Some(re_protos::common::v1alpha1::TableId { id }),
-                    data: Some(table.0.encode().map_err(to_py_err)?),
+                    data: Some(table.0.into()),
                 }),
         )
         .map_err(to_py_err)?;

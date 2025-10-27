@@ -1,10 +1,9 @@
-use arrow::datatypes::Schema as ArrowSchema;
-use tokio_stream::{Stream, StreamExt as _};
-use tonic::codegen::{Body, StdError};
-
+use crate::ApiError;
+use arrow::{array::RecordBatch, datatypes::Schema as ArrowSchema};
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
+use re_protos::cloud::v1alpha1::WriteTableRequest;
+use re_protos::cloud::v1alpha1::ext::TableInsertMode;
 use re_protos::{
     TypeConversionError,
     cloud::v1alpha1::{
@@ -32,8 +31,9 @@ use re_protos::{
     headers::RerunHeadersInjectorExt as _,
     invalid_schema, missing_column, missing_field,
 };
-
-use crate::ApiError;
+use tokio_stream::{Stream, StreamExt as _};
+use tonic::IntoStreamingRequest as _;
+use tonic::codegen::{Body, StdError};
 
 pub type FetchChunksResponseStream = std::pin::Pin<
     Box<
@@ -300,7 +300,7 @@ where
         let mut partition_ids = Vec::new();
 
         while let Some(resp) = stream.next().await {
-            let record_batch = resp
+            let record_batch: RecordBatch = resp
                 .map_err(|err| {
                     ApiError::tonic(err, "failed receiving item from /ScanPartitionTable stream")
                 })?
@@ -311,7 +311,7 @@ where
                         "failed parsing item from /ScanPartitionTable stream",
                     )
                 })?
-                .decode()
+                .try_into()
                 .map_err(|err| {
                     ApiError::serialization(
                         err,
@@ -383,16 +383,6 @@ where
         exclude_temporal_data: bool,
         query: Option<re_protos::cloud::v1alpha1::Query>,
     ) -> Result<FetchChunksResponseStream, ApiError> {
-        let fields_of_interest = [
-            QueryDatasetResponse::PARTITION_ID,
-            QueryDatasetResponse::CHUNK_ID,
-            QueryDatasetResponse::PARTITION_LAYER,
-            QueryDatasetResponse::CHUNK_KEY,
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect::<Vec<_>>();
-
         let query_request = QueryDatasetRequest {
             partition_ids: vec![partition_id.into()],
             chunk_ids: vec![],
@@ -403,7 +393,7 @@ where
             exclude_temporal_data,
             query,
             scan_parameters: Some(ScanParameters {
-                columns: fields_of_interest,
+                columns: FetchChunksRequest::required_column_names(),
                 ..Default::default()
             }),
         };
@@ -479,7 +469,7 @@ where
         .with_entry_id(dataset_id)
         .map_err(|err| ApiError::tonic(err, "failed building /RegisterWithDataset request"))?;
 
-        let response = self
+        let response: RecordBatch = self
             .inner()
             .register_with_dataset(req.map(Into::into))
             .await
@@ -490,7 +480,7 @@ where
                 let err = missing_field!(RegisterWithDatasetResponse, "data");
                 ApiError::serialization(err, "missing field in /RegisterWithDataset response")
             })?
-            .decode()
+            .try_into()
             .map_err(|err| {
                 ApiError::serialization(err, "failed decoding /RegisterWithDataset response")
             })?;
@@ -701,5 +691,28 @@ where
             .map_err(|err| ApiError::tonic(err, "/QueryTasks failed"))?
             .into_inner();
         Ok(response)
+    }
+
+    pub async fn write_table(
+        &mut self,
+        stream: impl Stream<Item = RecordBatch> + Send + 'static,
+        table_id: EntryId,
+        insert_mode: TableInsertMode,
+    ) -> Result<(), ApiError> {
+        let insert_mode = re_protos::cloud::v1alpha1::TableInsertMode::from(insert_mode).into();
+        let stream = stream
+            .map(move |batch| WriteTableRequest {
+                dataframe_part: Some(batch.into()),
+                insert_mode,
+            })
+            .into_streaming_request()
+            .with_entry_id(table_id)
+            .map_err(|err| ApiError::tonic(err, "/WriteTable failed"))?;
+
+        self.inner()
+            .write_table(stream)
+            .await
+            .map(|_| ())
+            .map_err(|err| ApiError::tonic(err, "/WriteTable failed"))
     }
 }

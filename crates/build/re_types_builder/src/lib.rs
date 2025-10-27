@@ -101,7 +101,7 @@
 
 // ---
 
-// TODO(#6330): remove unwrap()
+// TODO(#3408): remove unwrap()
 #![expect(clippy::unwrap_used)]
 // NOTE: This crate isn't only okay with `unimplemented`, it actively encourages it.
 #![expect(clippy::unimplemented)]

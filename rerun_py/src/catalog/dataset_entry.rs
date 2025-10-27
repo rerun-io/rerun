@@ -14,7 +14,6 @@ use tracing::instrument;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_datafusion::{DatasetManifestProvider, PartitionTableProvider, SearchResultsTableProvider};
-use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{StoreId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
@@ -23,7 +22,7 @@ use re_protos::{
         ext::{DatasetDetails, IndexProperties},
         index_query_properties,
     },
-    common::v1alpha1::{IfDuplicateBehavior, ext::DatasetHandle},
+    common::v1alpha1::ext::DatasetHandle,
     headers::RerunHeadersInjectorExt as _,
 };
 use re_redap_client::fetch_chunks_response_to_chunk_and_partition_id;
@@ -325,6 +324,50 @@ impl PyDatasetEntry {
         Ok(task_descriptor.partition_id.id)
     }
 
+    /// Register all RRDs under a given prefix to the dataset and return a handle to the tasks.
+    ///
+    /// A prefix is a directory-like path in an object store (e.g. an S3 bucket or ABS container).
+    /// All RRDs that are recursively found under the given prefix will be registered to the dataset.
+    ///
+    /// This method initiates the registration of the recordings to the dataset, and returns
+    /// the corresponding task ids in a [`Tasks`] object.
+    ///
+    /// Parameters
+    /// ----------
+    /// recordings_prefix: str
+    ///     The prefix under which to register all RRDs.
+    ///
+    /// layer_name: Optional[str]
+    ///     The layer to which the recordings will be registered to.
+    ///     If `None`, this defaults to `"base"`.
+    #[allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)]
+    #[pyo3(signature = (
+        recordings_prefix,
+        layer_name = None,
+    ))]
+    #[pyo3(text_signature = "(self, /, recordings_prefix, layer_name = None)")]
+    fn register_prefix(
+        self_: PyRef<'_, Self>,
+        recordings_prefix: String,
+        layer_name: Option<String>,
+    ) -> PyResult<PyTasks> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let results = connection.register_with_dataset_prefix(
+            self_.py(),
+            dataset_id,
+            recordings_prefix,
+            layer_name,
+        )?;
+
+        Ok(PyTasks::new(
+            super_.client.clone_ref(self_.py()),
+            results.into_iter().map(|desc| desc.task_id),
+        ))
+    }
+
     /// Register a batch of RRD URIs to the dataset and return a handle to the tasks.
     ///
     /// This method initiates the registration of multiple recordings to the dataset, and returns
@@ -534,16 +577,11 @@ impl PyDatasetEntry {
         };
 
         let request = CreateIndexRequest {
-            partition_ids: vec![],
-            partition_layers: vec![],
-
             config: Some(IndexConfig {
                 properties: Some(properties.into()),
                 column: Some(component_descriptor.0.into()),
                 time_index: Some(time_selector.timeline.into()),
             }),
-
-            on_duplicate: IfDuplicateBehavior::Overwrite as i32,
         };
 
         wait_for_future(self_.py(), async {
@@ -600,16 +638,11 @@ impl PyDatasetEntry {
         };
 
         let request = CreateIndexRequest {
-            partition_ids: vec![],
-            partition_layers: vec![],
-
             config: Some(IndexConfig {
                 properties: Some(properties.into()),
                 column: Some(component_descriptor.0.into()),
                 time_index: Some(time_selector.timeline.into()),
             }),
-
-            on_duplicate: IfDuplicateBehavior::Overwrite as i32,
         };
 
         wait_for_future(self_.py(), async {
@@ -664,11 +697,7 @@ impl PyDatasetEntry {
                     ),
                 ),
             }),
-            query: Some(
-                query
-                    .encode()
-                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
-            ),
+            query: Some(query.into()),
             scan_parameters: None,
         };
 
@@ -714,11 +743,7 @@ impl PyDatasetEntry {
                     top_k: Some(top_k),
                 })),
             }),
-            query: Some(
-                query
-                    .encode()
-                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
-            ),
+            query: Some(query.into()),
             scan_parameters: None,
         };
 

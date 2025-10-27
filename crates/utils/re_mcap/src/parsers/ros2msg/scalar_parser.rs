@@ -45,7 +45,10 @@ impl<T: ScalarExtractor> ScalarMessageParser<T> {
 
         // Recreate the builder with the correct number of fields
         if scalar_values.len() != 1 {
-            self.scalars = fixed_size_list_builder(scalar_values.len() as i32, self.num_rows);
+            // more than 2B differently named scalars? unlikely
+            #[expect(clippy::cast_possible_wrap)]
+            let num_scalars = scalar_values.len() as i32;
+            self.scalars = fixed_size_list_builder(num_scalars, self.num_rows);
         }
     }
 

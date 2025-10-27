@@ -491,9 +491,6 @@ impl UICommand {
         use strum::IntoEnumIterator as _;
 
         let anything_has_focus = egui_ctx.memory(|mem| mem.focused().is_some());
-        if anything_has_focus {
-            return None; // e.g. we're typing in a TextField
-        }
 
         let mut commands: Vec<(KeyboardShortcut, Self)> = Self::iter()
             .flat_map(|cmd| {
@@ -518,6 +515,10 @@ impl UICommand {
 
         egui_ctx.input_mut(|input| {
             for (kb_shortcut, command) in commands {
+                if kb_shortcut.modifiers == Modifiers::NONE && anything_has_focus {
+                    // Don't trigger non-modifier shortcuts when something has focus.
+                    continue;
+                }
                 if input.consume_shortcut(&kb_shortcut) {
                     // Clear the shortcut key from input to prevent it from propagating to other UI component.
                     input.keys_down.remove(&kb_shortcut.logical_key);

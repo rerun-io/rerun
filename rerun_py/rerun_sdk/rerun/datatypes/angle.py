@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -45,11 +45,11 @@ class Angle(AngleExt):
 
 
 if TYPE_CHECKING:
-    AngleLike = Union[Angle, float, int]
+    AngleLike = Angle | float | int
 else:
     AngleLike = Any
 
-AngleArrayLike = Union[Angle, Sequence[AngleLike], npt.ArrayLike, Sequence[float], Sequence[int]]
+AngleArrayLike = Angle | Sequence[AngleLike] | npt.ArrayLike | Sequence[float] | Sequence[int]
 
 
 class AngleBatch(BaseBatch[AngleArrayLike]):

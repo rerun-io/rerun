@@ -12,6 +12,7 @@
 //! pixi run rs-plot-dashboard --num-plots 10 --num-series-per-plot 5 --num-points-per-series 5000 --freq 1000
 //! ```
 
+#![expect(clippy::cast_possible_wrap)]
 #![expect(clippy::disallowed_methods)]
 
 use rerun::external::re_log;
@@ -93,8 +94,8 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     let expected_total_freq = args.freq * num_series as f64;
 
     use rand::Rng as _;
-    let mut rng = rand::thread_rng();
-    let distr_uniform_pi = rand::distributions::Uniform::new(0f64, std::f64::consts::PI);
+    let mut rng = rand::rng();
+    let distr_uniform_pi = rand::distr::Uniform::new(0f64, std::f64::consts::PI)?;
     let distr_std_normal = rand_distr::StandardNormal;
 
     let mut sim_times: Vec<f64> = (0..args.num_points_per_series as i64)

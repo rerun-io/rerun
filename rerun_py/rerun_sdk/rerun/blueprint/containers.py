@@ -8,7 +8,7 @@ from .components.container_kind import ContainerKind
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from ..datatypes import Float32ArrayLike, Utf8Like
+    from ..datatypes import BoolLike, Float32ArrayLike, Utf8Like
 
 
 class Horizontal(Container):
@@ -20,6 +20,7 @@ class Horizontal(Container):
         contents: Iterable[Container | View] | None = None,
         column_shares: Float32ArrayLike | None = None,
         name: Utf8Like | None = None,
+        visible: BoolLike | None = None,
     ) -> None:
         """
         Construct a new horizontal container.
@@ -36,6 +37,10 @@ class Horizontal(Container):
             column should take up. The column with index `i` will take up the fraction `shares[i] / total_shares`.
         name
             The name of the container
+        visible:
+            Whether this container is visible.
+
+            Defaults to true if not specified.
 
         """
         super().__init__(
@@ -44,6 +49,7 @@ class Horizontal(Container):
             kind=ContainerKind.Horizontal,
             column_shares=column_shares,
             name=name,
+            visible=visible,
         )
 
 
@@ -56,6 +62,7 @@ class Vertical(Container):
         contents: Iterable[Container | View] | None = None,
         row_shares: Float32ArrayLike | None = None,
         name: Utf8Like | None = None,
+        visible: BoolLike | None = None,
     ) -> None:
         """
         Construct a new vertical container.
@@ -72,9 +79,20 @@ class Vertical(Container):
             row should take up. The row with index `i` will take up the fraction `shares[i] / total_shares`.
         name
             The name of the container
+        visible:
+            Whether this container is visible.
+
+            Defaults to true if not specified.
 
         """
-        super().__init__(*args, contents=contents, kind=ContainerKind.Vertical, row_shares=row_shares, name=name)
+        super().__init__(
+            *args,
+            contents=contents,
+            kind=ContainerKind.Vertical,
+            row_shares=row_shares,
+            name=name,
+            visible=visible,
+        )
 
 
 class Grid(Container):
@@ -88,6 +106,7 @@ class Grid(Container):
         row_shares: Float32ArrayLike | None = None,
         grid_columns: int | None = None,
         name: Utf8Like | None = None,
+        visible: BoolLike | None = None,
     ) -> None:
         """
         Construct a new grid container.
@@ -109,6 +128,10 @@ class Grid(Container):
             The number of columns in the grid.
         name
             The name of the container
+        visible:
+            Whether this container is visible.
+
+            Defaults to true if not specified.
 
         """
         super().__init__(
@@ -119,6 +142,7 @@ class Grid(Container):
             row_shares=row_shares,
             grid_columns=grid_columns,
             name=name,
+            visible=visible,
         )
 
 
@@ -131,6 +155,7 @@ class Tabs(Container):
         contents: Iterable[Container | View] | None = None,
         active_tab: int | str | None = None,
         name: Utf8Like | None = None,
+        visible: BoolLike | None = None,
     ) -> None:
         """
         Construct a new tab container.
@@ -146,6 +171,17 @@ class Tabs(Container):
             The index or name of the active tab.
         name
             The name of the container
+        visible:
+            Whether this container is visible.
+
+            Defaults to true if not specified.
 
         """
-        super().__init__(*args, contents=contents, kind=ContainerKind.Tabs, active_tab=active_tab, name=name)
+        super().__init__(
+            *args,
+            contents=contents,
+            kind=ContainerKind.Tabs,
+            active_tab=active_tab,
+            name=name,
+            visible=visible,
+        )

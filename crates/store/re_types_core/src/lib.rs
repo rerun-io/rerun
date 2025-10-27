@@ -46,8 +46,7 @@ pub use self::{
     },
     id::{ChunkId, RowId},
     loggable::{
-        Component, ComponentDescriptorSet, ComponentType, DatatypeName, Loggable,
-        UnorderedComponentDescriptorSet,
+        Component, ComponentSet, ComponentType, DatatypeName, Loggable, UnorderedComponentSet,
     },
     result::{
         _Backtrace, DeserializationError, DeserializationResult, ResultExt, SerializationError,

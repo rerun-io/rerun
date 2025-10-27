@@ -4,7 +4,7 @@ use egui::Vec2;
 
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::archetypes;
 use re_view_graph::GraphView;
@@ -48,10 +48,7 @@ pub fn self_and_multi_edges() {
     // It's important to first register the view class before adding any entities,
     // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
     // and thus will not find anything applicable to the visualizer.
-    test_context
-        .view_class_registry
-        .add_class::<GraphView>()
-        .unwrap();
+    test_context.register_view_class::<GraphView>();
 
     let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
     test_context.log_entity(name, |builder| {
@@ -96,10 +93,7 @@ pub fn multi_graphs() {
     // It's important to first register the view class before adding any entities,
     // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
     // and thus will not find anything applicable to the visualizer.
-    test_context
-        .view_class_registry
-        .add_class::<GraphView>()
-        .unwrap();
+    test_context.register_view_class::<GraphView>();
 
     let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
     test_context.log_entity("graph1", |builder| {
@@ -141,16 +135,12 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, 
     });
 
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
+        .setup_kittest_for_rendering_ui(size)
         .with_max_steps(256) // Give it some time to settle the graph.
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
 
     harness.run();
-    harness.snapshot_options(
-        name,
-        &SnapshotOptions::new().failed_pixel_count_threshold(4),
-    );
+    harness.snapshot(name);
 }

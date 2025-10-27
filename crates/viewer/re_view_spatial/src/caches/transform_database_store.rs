@@ -44,7 +44,7 @@ impl Cache for TransformDatabaseStoreCache {
 
     fn memory_report(&self) -> CacheMemoryReport {
         CacheMemoryReport {
-            // TODO(RR-2516): Implement SizeBytes for TransformResolutionCache.
+            // TODO(RR-2517): Implement SizeBytes for TransformResolutionCache.
             bytes_cpu: 0, //self.transform_cache.total_size_bytes(),
             bytes_gpu: None,
             per_cache_item_info: Vec::new(),

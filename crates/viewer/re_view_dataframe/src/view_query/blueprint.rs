@@ -22,7 +22,7 @@ impl Query {
         let timeline_name = self
             .query_property
             .component_or_empty::<components::TimelineName>(
-                &DataframeQuery::descriptor_timeline(),
+                DataframeQuery::descriptor_timeline().component,
             )?;
 
         // if the timeline is unset, we "freeze" it to the current time panel timeline
@@ -68,7 +68,7 @@ impl Query {
         Ok(self
             .query_property
             .component_or_empty::<components::FilterByRange>(
-                &DataframeQuery::descriptor_filter_by_range(),
+                DataframeQuery::descriptor_filter_by_range().component,
             )?
             .map(|range_filter| AbsoluteTimeRange::new(range_filter.start, range_filter.end))
             .unwrap_or(AbsoluteTimeRange::EVERYTHING))
@@ -104,7 +104,7 @@ impl Query {
         Ok(self
             .query_property
             .component_or_empty::<components::FilterIsNotNull>(
-                &DataframeQuery::descriptor_filter_is_not_null(),
+                DataframeQuery::descriptor_filter_is_not_null().component,
             )?)
     }
 
@@ -124,7 +124,7 @@ impl Query {
         Ok(self
             .query_property
             .component_or_empty::<components::ApplyLatestAt>(
-                &DataframeQuery::descriptor_apply_latest_at(),
+                DataframeQuery::descriptor_apply_latest_at().component,
             )?
             .is_some_and(|comp| *comp.0))
     }
@@ -203,7 +203,7 @@ impl Query {
         let selected_columns = self
             .query_property
             .component_or_empty::<components::SelectedColumns>(
-                &DataframeQuery::descriptor_select(),
+                DataframeQuery::descriptor_select().component,
             )?;
 
         // no selected columns means all columns are visible

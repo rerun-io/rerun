@@ -8,6 +8,7 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 
+import requests
 from github import Github
 from gitignore_parser import parse_gitignore
 from tqdm import tqdm
@@ -18,10 +19,16 @@ parser = argparse.ArgumentParser(description="Hunt down zombie TODOs.")
 # To access private repositories, the token must either be a fine-grained
 # generated from inside the organization or a classic token with `repo` scope.
 parser.add_argument(
-    "--token",
+    "--github-token",
     dest="GITHUB_TOKEN",
     default=os.environ.get("GITHUB_TOKEN", None),
     help="Github token to fetch issues (required for API mode) (env: GITHUB_TOKEN)",
+)
+parser.add_argument(
+    "--linear-token",
+    dest="LINEAR_TOKEN",
+    default=os.environ.get("LINEAR_TOKEN", None),
+    help="Linear API token to fetch issues (required for Linear API mode) (env: LINEAR_TOKEN)",
 )
 parser.add_argument("--markdown", action="store_true", help="Format output as markdown checklist")
 parser.add_argument(
@@ -38,16 +45,27 @@ args = parser.parse_args()
 if args.GITHUB_TOKEN is None:
     print("Warning: Without GITHUB_TOKEN can only check public repos.")
 
+if args.LINEAR_TOKEN is None:
+    print("Warning: Without LINEAR_TOKEN cannot check Linear issues.")
+
 # --- GitHub API access ---
 
 # Initialize GitHub client
 github_client = None
 
 # Cache for issue status checks: (repo_owner, repo_name, issue_number) -> (is_closed, author)
-issue_cache: dict[tuple[str, str, int], tuple[bool, str]] = {}
-cache_hit = 0  # Cache hit count
-cache_miss = 0  # Cache miss count
-cache_lock = Lock()  # Thread safety for the cache
+github_issue_cache: dict[tuple[str, str, int], tuple[bool, str]] = {}
+github_cache_hit = 0  # Cache hit count
+github_cache_miss = 0  # Cache miss count
+github_cache_lock = Lock()  # Thread safety for the cache
+
+# --- Linear API access ---
+
+# Cache for Linear issue status checks: (issue_id) -> (is_closed, author)
+linear_issue_cache: dict[str, tuple[bool, str]] = {}
+linear_cache_hit = 0  # Cache hit count
+linear_cache_miss = 0  # Cache miss count
+linear_cache_lock = Lock()  # Thread safety for the cache
 
 
 def init_github_client() -> None:
@@ -65,21 +83,21 @@ def check_issue_closed(repo_owner: str, repo_name: str, issue_number: int) -> tu
         (is_closed, author) tuple
 
     """
-    global issue_cache, cache_hit, cache_miss
+    global github_issue_cache, github_cache_hit, github_cache_miss
     cache_key = (repo_owner, repo_name, issue_number)
 
     # Check if we already have this result cached
-    with cache_lock:
-        if cache_key in issue_cache:
-            cache_hit += 1
-            return issue_cache[cache_key]
-        cache_miss += 1
+    with github_cache_lock:
+        if cache_key in github_issue_cache:
+            github_cache_hit += 1
+            return github_issue_cache[cache_key]
+        github_cache_miss += 1
     # Fetch the result and cache it
     result = check_issue_closed_api(repo_owner, repo_name, issue_number)
 
     # Store in cache
-    with cache_lock:
-        issue_cache[cache_key] = result
+    with github_cache_lock:
+        github_issue_cache[cache_key] = result
 
     return result
 
@@ -98,6 +116,100 @@ def check_issue_closed_api(repo_owner: str, repo_name: str, issue_number: int) -
     except Exception as e:
         print(f"Error fetching issue {repo_owner}/{repo_name}#{issue_number}: {e}")
         return False, "unknown"
+
+
+def check_linear_issue_closed_api(issue_id: str) -> tuple[bool, str]:
+    """Check if a Linear issue is closed using GraphQL API."""
+    try:
+        if args.LINEAR_TOKEN is None:
+            print(f"Warning: Linear token not provided, skipping Linear issue {issue_id}")
+            return False, "unknown"
+
+        # Linear GraphQL API endpoint
+        url = "https://api.linear.app/graphql"
+
+        # GraphQL query to get issue details
+        query = f"""{{
+        issue(id: "{issue_id}") {{
+            id,
+            title,
+            creator {{
+                name,
+                email
+            }},
+            state {{
+                name,
+                type
+            }}
+        }}
+        }}"""
+
+        headers = {
+            "Authorization": f"{args.LINEAR_TOKEN}",
+            "Content-Type": "application/json",
+        }
+
+        response = requests.post(url, headers=headers, json={"query": query}, timeout=30)
+        data = response.json()
+
+        if "errors" in data:
+            print(f"GraphQL errors for Linear issue {issue_id}: {data['errors']}")
+            return False, "unknown"
+
+        issue_data = data.get("data", {}).get("issue")
+        if not issue_data:
+            print(f"Linear issue {issue_id} not found")
+            return False, "unknown"
+
+        # Check if issue is closed (Done or Canceled states)
+        state = issue_data.get("state", {})
+        state_name = state.get("name", "").lower()
+        state_type = state.get("type", "").lower()
+
+        # Linear issue is considered closed if state is "Done" or "Canceled"
+        is_closed = state_name in ["done", "canceled"] or state_type == "completed"
+
+        # Get author information
+        creator = issue_data.get("creator", {})
+        author = creator.get("name") or creator.get("email") or "unknown"
+
+        return is_closed, author
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching Linear issue {issue_id}: {e}")
+        return False, "unknown"
+    except Exception as e:
+        print(f"Unexpected error fetching Linear issue {issue_id}: {e}")
+        return False, "unknown"
+
+
+def check_linear_issue_closed(issue_id: str) -> tuple[bool, str]:
+    """
+    Check if a Linear issue is closed (Done or Canceled) and get its author.
+
+    Uses caching to avoid repeated API calls for the same issue.
+
+    Returns:
+        (is_closed, author) tuple
+
+    """
+    global linear_issue_cache, linear_cache_hit, linear_cache_miss
+    cache_key = issue_id
+
+    # Check if we already have this result cached
+    with linear_cache_lock:
+        if cache_key in linear_issue_cache:
+            linear_cache_hit += 1
+            return linear_issue_cache[cache_key]
+        linear_cache_miss += 1
+
+    # Fetch the result and cache it
+    result = check_linear_issue_closed_api(issue_id)
+
+    # Store in cache
+    with linear_cache_lock:
+        linear_issue_cache[cache_key] = result
+
+    return result
 
 
 # --- Git blame on a line ---
@@ -160,6 +272,7 @@ repo_name = "rerun"
 
 internal_issue_number_pattern = re.compile(r"TODO\((?:#(\d+))(?:,\s*(?:#(\d+)))*\)")
 external_issue_pattern = re.compile(r"TODO\(([a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+)#(\d+)\)")
+linear_issue_pattern = re.compile(r"TODO\((RR-\d+)\)")
 
 
 def collect_external_repos_from_file(path: str) -> set[str]:
@@ -176,6 +289,20 @@ def collect_external_repos_from_file(path: str) -> set[str]:
     return repos
 
 
+def collect_linear_issues_from_file(path: str) -> set[str]:
+    """Scan a file and collect all Linear issue references."""
+    issues = set()
+    try:
+        with open(path, encoding="utf8") as f:
+            content = f.read()
+            matches = linear_issue_pattern.findall(content)
+            for issue_id in matches:
+                issues.add(issue_id)
+    except Exception as e:
+        print(f"Error reading {path}: {e}")
+    return issues
+
+
 def get_line_output(owner: str, name: str, issue_num: int, path: str, i: int, line: str) -> tuple[bool, str]:
     is_closed, author = check_issue_closed(owner, name, issue_num)
     display = ""
@@ -190,6 +317,27 @@ def get_line_output(owner: str, name: str, issue_num: int, path: str, i: int, li
             display = (
                 f"* [ ] `{line.strip()}`\n"
                 f"   * #{issue_num} (Issue author: @{author})\n"
+                f"   * [`{display_path}#L{i}`]({github_url}){blame_string}\n"
+            )
+        else:
+            display = f"{path}:{i}: {line.strip()}\n"
+    return is_closed, display
+
+
+def get_linear_line_output(issue_id: str, path: str, i: int, line: str) -> tuple[bool, str]:
+    is_closed, author = check_linear_issue_closed(issue_id)
+    display = ""
+
+    if is_closed:
+        blame_info = get_line_blame_info(path, i + 1)
+        blame_string = f" {blame_info}" if blame_info is not None else ""
+        if args.markdown:
+            # Convert path to relative path for clean display
+            display_path = path.lstrip("./")
+            github_url = f"https://github.com/{repo_owner}/{repo_name}/blob/main/{display_path}#L{i + 1}"
+            display = (
+                f"* [ ] `{line.strip()}`\n"
+                f"   * {issue_id} (Issue author: {author})\n"
                 f"   * [`{display_path}#L{i}`]({github_url}){blame_string}\n"
             )
         else:
@@ -222,6 +370,14 @@ def check_file(path: str) -> tuple[bool, str]:
                 owner, name = repo_key.split("/")
 
                 is_closed, line_display = get_line_output(owner, name, issue_num, path, i, line)
+                display += line_display
+                ok &= is_closed
+
+            # Check for Linear issue references (TODO(ABC-123))
+            linear_matches = linear_issue_pattern.search(line)
+            if linear_matches is not None:
+                issue_id = linear_matches.group(1)
+                is_closed, line_display = get_linear_line_output(issue_id, path, i, line)
                 display += line_display
                 ok &= is_closed
     return ok, display
@@ -321,13 +477,21 @@ def main() -> None:
     print(display)
 
     # Print cache statistics
-    if issue_cache:
-        print("\nCache statistics:")
-        print(f"  Total unique issues checked: {len(issue_cache)}")
-        closed_count = sum(1 for is_closed, _ in issue_cache.values() if is_closed)
+    if github_issue_cache:
+        print("\nGitHub cache statistics:")
+        print(f"  Total unique issues checked: {len(github_issue_cache)}")
+        closed_count = sum(1 for is_closed, _ in github_issue_cache.values() if is_closed)
         print(f"  Closed issues found: {closed_count}")
-        print(f"  Open/unknown issues: {len(issue_cache) - closed_count}")
-        print(f"  Cache hits: {cache_hit}, Cache misses: {cache_miss}")
+        print(f"  Open/unknown issues: {len(github_issue_cache) - closed_count}")
+        print(f"  Cache hits: {github_cache_hit}, Cache misses: {github_cache_miss}")
+
+    if linear_issue_cache:
+        print("\nLinear cache statistics:")
+        print(f"  Total unique issues checked: {len(linear_issue_cache)}")
+        closed_count = sum(1 for is_closed, _ in linear_issue_cache.values() if is_closed)
+        print(f"  Closed issues found: {closed_count}")
+        print(f"  Open/unknown issues: {len(linear_issue_cache) - closed_count}")
+        print(f"  Cache hits: {linear_cache_hit}, Cache misses: {linear_cache_miss}")
 
     if not ok:
         raise ValueError("Clean your zombies!")

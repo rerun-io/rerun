@@ -5,7 +5,7 @@ use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
 use re_types::{
-    ComponentDescriptor,
+    ComponentIdentifier,
     components::{ImageBuffer, MediaType},
     image::{ImageKind, ImageLoadError},
 };
@@ -43,7 +43,7 @@ impl ImageDecodeCache {
     pub fn entry(
         &mut self,
         blob_row_id: RowId,
-        blob_component_descriptor: &ComponentDescriptor,
+        blob_component: ComponentIdentifier,
         image_bytes: &[u8],
         media_type: Option<&MediaType>,
     ) -> Result<ImageInfo, ImageLoadError> {
@@ -63,7 +63,7 @@ impl ImageDecodeCache {
 
         // The descriptor should always be the one in the encoded image archetype, but in the future
         // we may allow overrides such that it is sourced from somewhere else.
-        let blob_cache_key = StoredBlobCacheKey::new(blob_row_id, blob_component_descriptor);
+        let blob_cache_key = StoredBlobCacheKey::new(blob_row_id, blob_component);
 
         let lookup = self
             .cache
@@ -73,7 +73,7 @@ impl ImageDecodeCache {
             .or_insert_with(|| {
                 let result = decode_image(
                     blob_row_id,
-                    blob_component_descriptor,
+                    blob_component,
                     image_bytes,
                     media_type.as_str(),
                 );
@@ -92,7 +92,7 @@ impl ImageDecodeCache {
 
 fn decode_image(
     blob_row_id: RowId,
-    blob_component_descriptor: &ComponentDescriptor,
+    blob_component: ComponentIdentifier,
     image_bytes: &[u8],
     media_type: &str,
 ) -> Result<ImageInfo, ImageLoadError> {
@@ -112,7 +112,7 @@ fn decode_image(
 
     Ok(ImageInfo::from_stored_blob(
         blob_row_id,
-        blob_component_descriptor,
+        blob_component,
         buffer.0,
         format.0,
         ImageKind::Color,

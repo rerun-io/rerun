@@ -83,7 +83,7 @@ impl Mesh3DVisualizer {
                 // TODO(#7026): We should formalize this kind of hybrid joining better.
                 for &world_from_instance in ent_context
                     .transform_info
-                    .reference_from_instances(Mesh3D::name())
+                    .target_from_instances(Mesh3D::name())
                 {
                     instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
                         let entity_from_mesh = mesh_instance.world_from_mesh;
@@ -244,10 +244,4 @@ impl VisualizerSystem for Mesh3DVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-re_viewer_context::impl_component_fallback_provider!(Mesh3DVisualizer => []);

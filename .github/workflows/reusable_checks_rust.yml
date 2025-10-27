@@ -52,6 +52,7 @@ jobs:
 
   rs-lints:
     name: Rust lints (fmt, check, clippy, doc)
+    timeout-minutes: 60
     # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
     runs-on: ubuntu-22.04-large
     steps:
@@ -92,6 +93,7 @@ jobs:
 
   rs-tests:
     name: Test on Linux
+    timeout-minutes: 60
     # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
     runs-on: ubuntu-22.04-large
     env:
@@ -144,6 +146,7 @@ jobs:
   # Run some basics tests on Mac and Windows
   mac-windows-tests:
     name: Test on ${{ matrix.name }}
+    timeout-minutes: 60
     strategy:
       matrix:
         include:

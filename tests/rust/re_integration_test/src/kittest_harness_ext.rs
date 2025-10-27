@@ -1,8 +1,11 @@
 use std::{collections::BTreeSet, sync::Arc};
 
+use egui::Modifiers;
+use egui::PointerButton;
+use egui::accesskit::Role;
 use egui::accesskit::Toggled;
 use egui_kittest::kittest::NodeT as _;
-use egui_kittest::{SnapshotOptions, kittest::Queryable as _};
+use egui_kittest::kittest::Queryable as _;
 use parking_lot::Mutex;
 use re_sdk::{
     Component as _, ComponentDescriptor, EntityPath, EntityPathPart, RecordingInfo, StoreId,
@@ -64,11 +67,29 @@ pub trait HarnessExt {
     // Finds the nth node with a given label
     fn get_nth_label<'a>(&'a mut self, label: &'a str, index: usize) -> egui_kittest::Node<'a>;
 
+    // Get the position of a node in the UI by its label.
+    fn get_panel_position(&mut self, label: &str) -> egui::Rect;
+
     // Clicks a node in the UI by its label.
     fn click_label(&mut self, label: &str);
     fn right_click_label(&mut self, label: &str);
+    fn click_label_contains(&mut self, label: &str);
+    fn click_nth_label(&mut self, label: &str, index: usize);
     fn right_click_nth_label(&mut self, label: &str, index: usize);
+    fn click_nth_label_modifiers(&mut self, label: &str, index: usize, modifiers: Modifiers);
     fn hover_label_contains(&mut self, label: &str);
+    fn hover_nth_label(&mut self, label: &str, index: usize);
+
+    // Drag-and-drop functions. You can use `hover` between `drag` and `drop`.
+    fn drag_nth_label(&mut self, label: &str, index: usize);
+    fn drop_nth_label(&mut self, label: &str, index: usize);
+
+    fn drag_at(&mut self, pos: egui::Pos2);
+    fn hover_at(&mut self, pos: egui::Pos2);
+    fn drop_at(&mut self, pos: egui::Pos2);
+
+    // Changes the value of a dropdown menu.
+    fn change_dropdown_value(&mut self, dropdown_label: &str, value: &str);
 
     // Takes a snapshot of the current app state with good-enough snapshot options.
     fn snapshot_app(&mut self, snapshot_name: &str);
@@ -220,8 +241,8 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
             .set_cloned_blueprint_active_for_app(&blueprint_id)
             .expect("Failed to set blueprint as active");
 
-        app.command_sender.send_system(SystemCommand::SetSelection(
-            re_viewer_context::Item::StoreId(recording_store_id.clone()).into(),
+        app.command_sender.send_system(SystemCommand::set_selection(
+            re_viewer_context::Item::StoreId(recording_store_id.clone()),
         ));
         self.run_ok();
     }
@@ -236,6 +257,11 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         self.run_ok();
     }
 
+    fn click_label_contains(&mut self, label: &str) {
+        self.get_by_label_contains(label).click();
+        self.run_ok();
+    }
+
     fn get_nth_label<'a>(&'a mut self, label: &'a str, index: usize) -> egui_kittest::Node<'a> {
         let mut nodes = self.get_all_by_label(label).collect::<Vec<_>>();
         assert!(
@@ -246,6 +272,14 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         nodes.swap_remove(index)
     }
 
+    fn get_panel_position(&mut self, label: &str) -> egui::Rect {
+        self.get_by_role_and_label(Role::Pane, label).rect()
+    }
+
+    fn click_nth_label(&mut self, label: &str, index: usize) {
+        self.click_nth_label_modifiers(label, index, Modifiers::NONE);
+    }
+
     fn right_click_nth_label(&mut self, label: &str, index: usize) {
         self.get_nth_label(label, index).click_secondary();
         self.run_ok();
@@ -253,6 +287,74 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
 
     fn hover_label_contains(&mut self, label: &str) {
         self.get_by_label_contains(label).hover();
+        self.run_ok();
+    }
+
+    fn hover_nth_label(&mut self, label: &str, index: usize) {
+        self.get_nth_label(label, index).hover();
+        self.run_ok();
+    }
+
+    fn click_nth_label_modifiers(&mut self, label: &str, index: usize, modifiers: Modifiers) {
+        self.get_nth_label(label, index).click_modifiers(modifiers);
+        self.run_ok();
+    }
+
+    fn drag_nth_label(&mut self, label: &str, index: usize) {
+        let node = self.get_nth_label(label, index);
+
+        let center = node.rect().center();
+        self.event(egui::Event::PointerButton {
+            pos: center,
+            button: PointerButton::Primary,
+            pressed: true,
+            modifiers: Modifiers::NONE,
+        });
+
+        // Step until the time has passed `max_click_duration` so this gets
+        // registered as a drag.
+        let wait_time = self.ctx.options(|o| o.input_options.max_click_duration);
+        let end_time = self.ctx.input(|i| i.time + wait_time);
+        while self.ctx.input(|i| i.time) < end_time {
+            self.step();
+        }
+    }
+
+    fn drop_nth_label(&mut self, label: &str, index: usize) {
+        let node = self.get_nth_label(label, index);
+        let event = egui::Event::PointerButton {
+            pos: node.rect().center(),
+            button: PointerButton::Primary,
+            pressed: false,
+            modifiers: Modifiers::NONE,
+        };
+        self.event(event);
+        self.remove_cursor();
+    }
+
+    fn drag_at(&mut self, pos: egui::Pos2) {
+        self.event(egui::Event::PointerButton {
+            pos,
+            button: PointerButton::Primary,
+            pressed: true,
+            modifiers: Modifiers::NONE,
+        });
+        self.run_ok();
+    }
+
+    fn hover_at(&mut self, pos: egui::Pos2) {
+        self.event(egui::Event::PointerMoved(pos));
+        self.run_ok();
+    }
+
+    fn drop_at(&mut self, pos: egui::Pos2) {
+        self.event(egui::Event::PointerButton {
+            pos,
+            button: PointerButton::Primary,
+            pressed: false,
+            modifiers: Modifiers::NONE,
+        });
+        self.remove_cursor();
         self.run_ok();
     }
 
@@ -277,16 +379,16 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         });
     }
 
+    fn change_dropdown_value(&mut self, dropdown_label: &str, value: &str) {
+        let node = self.get_by_role_and_label(Role::ComboBox, dropdown_label);
+        node.click();
+        self.run_ok();
+        self.click_label(value);
+    }
+
     fn snapshot_app(&mut self, snapshot_name: &str) {
         self.run_ok();
-        // TODO(aedm): we allow some pixel differences because of a font rendering issue:
-        // https://github.com/rerun-io/rerun/issues/11448
-        self.snapshot_options(
-            snapshot_name,
-            &SnapshotOptions::new()
-                .threshold(1.5) // Anti-aliasing implementations have considerable platform-specific differences
-                .failed_pixel_count_threshold(20),
-        );
+        self.snapshot(snapshot_name);
     }
 
     fn add_blueprint_container(

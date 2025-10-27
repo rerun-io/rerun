@@ -13,7 +13,7 @@ use re_log_types::{
     example_components::{MyColor, MyPoint, MyPoints},
 };
 
-use re_log_encoding::EncodingOptions;
+use re_log_encoding::rrd::EncodingOptions;
 const PROTOBUF_COMPRESSED: EncodingOptions = EncodingOptions::PROTOBUF_COMPRESSED;
 
 use criterion::{Criterion, criterion_group, criterion_main};
@@ -35,7 +35,7 @@ criterion_main!(benches);
 
 fn encode_log_msgs(
     messages: &[LogMsg],
-    encoding_options: re_log_encoding::EncodingOptions,
+    encoding_options: re_log_encoding::rrd::EncodingOptions,
 ) -> Vec<u8> {
     let mut bytes = vec![];
     re_log_encoding::Encoder::encode_into(

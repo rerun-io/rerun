@@ -4,9 +4,8 @@ use re_ui::Help;
 use re_viewer_context::external::re_chunk_store::external::re_chunk;
 
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewClass,
-    ViewSpawnHeuristics, ViewState, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
-    suggest_view_for_each_entity,
+    IdentifiedViewSystem, ViewClass, ViewSpawnHeuristics, ViewState, ViewerContext,
+    VisualizerQueryInfo, VisualizerSystem, suggest_view_for_each_entity,
 };
 
 #[derive(Default)]
@@ -45,10 +44,6 @@ impl VisualizerSystem for TestSystem {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
 
 impl IdentifiedViewSystem for TestSystem {
@@ -56,14 +51,6 @@ impl IdentifiedViewSystem for TestSystem {
         "Test".into()
     }
 }
-
-impl TypedComponentFallbackProvider<MyPoint> for TestSystem {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> MyPoint {
-        MyPoint { x: 0., y: 0. }
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(TestSystem => [MyPoint]);
 
 impl ViewClass for TestView {
     fn identifier() -> re_types::ViewClassIdentifier
@@ -85,7 +72,14 @@ impl ViewClass for TestView {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), re_viewer_context::ViewClassRegistryError> {
-        system_registry.register_visualizer::<TestSystem>()
+        system_registry.register_visualizer::<TestSystem>()?;
+
+        system_registry
+            .register_fallback_provider(MyPoint::partial_descriptor().component, |_ctx| {
+                MyPoint::new(0.0, 0.0)
+            });
+
+        Ok(())
     }
 
     fn new_state(&self) -> Box<dyn re_viewer_context::ViewState> {

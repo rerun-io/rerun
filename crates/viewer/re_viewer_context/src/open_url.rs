@@ -491,7 +491,7 @@ impl ViewerOpenUrl {
 
         match self {
             Self::IntraRecordingSelection(item) => {
-                command_sender.send_system(SystemCommand::SetSelection(item.into()));
+                command_sender.send_system(SystemCommand::set_selection(item));
             }
             Self::RrdHttpUrl(url) => {
                 command_sender.send_system(SystemCommand::LoadDataSource(
@@ -522,20 +522,18 @@ impl ViewerOpenUrl {
                 command_sender.send_system(SystemCommand::LoadDataSource(
                     LogDataSource::RedapProxy(proxy_uri.clone()),
                 ));
-                command_sender.send_system(SystemCommand::SetSelection(
-                    Item::RedapServer(proxy_uri.origin).into(),
-                ));
+                command_sender.send_system(SystemCommand::set_selection(Item::RedapServer(
+                    proxy_uri.origin,
+                )));
             }
             Self::RedapCatalog(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-                command_sender.send_system(SystemCommand::SetSelection(
-                    Item::RedapServer(uri.origin).into(),
-                ));
+                command_sender
+                    .send_system(SystemCommand::set_selection(Item::RedapServer(uri.origin)));
             }
             Self::RedapEntry(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-                command_sender
-                    .send_system(SystemCommand::SetSelection(Item::RedapEntry(uri).into()));
+                command_sender.send_system(SystemCommand::set_selection(Item::RedapEntry(uri)));
             }
             Self::WebEventListener => {
                 handle_web_event_listener(egui_ctx, command_sender);
@@ -676,7 +674,7 @@ fn handle_web_event_listener(_egui_ctx: &egui::Context, _command_sender: &Comman
 #[cfg(target_arch = "wasm32")]
 fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandSender) {
     use re_log::ResultExt as _;
-    use re_log_encoding::stream_rrd_from_http::HttpMessage;
+    use re_log_encoding::rrd::stream_from_http::HttpMessage;
     use std::{ops::ControlFlow, sync::Arc};
 
     // Process an rrd when it's posted via `window.postMessage`
@@ -685,7 +683,7 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandS
         re_smart_channel::SmartChannelSource::RrdWebEventListener,
     );
     let egui_ctx = egui_ctx.clone();
-    re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(Arc::new({
+    re_log_encoding::rrd::stream_from_http::stream_rrd_from_event_listener(Arc::new({
         move |msg| {
             egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
 

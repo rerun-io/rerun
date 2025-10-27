@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -45,11 +45,11 @@ class ClassId:
 
 
 if TYPE_CHECKING:
-    ClassIdLike = Union[ClassId, int]
+    ClassIdLike = ClassId | int
 else:
     ClassIdLike = Any
 
-ClassIdArrayLike = Union[ClassId, Sequence[ClassIdLike], int, npt.ArrayLike]
+ClassIdArrayLike = ClassId | Sequence[ClassIdLike] | int | npt.ArrayLike
 
 
 class ClassIdBatch(BaseBatch[ClassIdArrayLike]):

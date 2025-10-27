@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -40,10 +40,7 @@ class AffixFuzzer7(ComponentMixin):
 
 
 AffixFuzzer7Like = AffixFuzzer7
-AffixFuzzer7ArrayLike = Union[
-    AffixFuzzer7,
-    Sequence[AffixFuzzer7Like],
-]
+AffixFuzzer7ArrayLike = AffixFuzzer7 | Sequence[AffixFuzzer7Like]
 
 
 class AffixFuzzer7Batch(BaseBatch[AffixFuzzer7ArrayLike], ComponentBatchMixin):

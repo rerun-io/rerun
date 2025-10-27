@@ -3,7 +3,7 @@
 //! It is easiest to call this using `pixi run codegen`,
 //! which will set up the necessary tools.
 
-// TODO(#6330): remove unwrap()
+// TODO(#3408): remove unwrap()
 #![expect(clippy::unwrap_used)]
 
 use re_build_tools::{

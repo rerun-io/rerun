@@ -18,4 +18,9 @@ table EyeControls3D (
     /// For orbit cameras it is derived from the distance to the orbit center.
     /// For first person cameras it is derived from the scene size.
     speed: rerun.components.LinearSpeed ("attr.rerun.component_optional", nullable, order: 2000);
+
+    /// Currently tracked entity.
+    ///
+    /// If this is a camera, it takes over the camera pose, otherwise follows the entity.
+    tracking_entity: rerun.components.EntityPath ("attr.rerun.component_optional", nullable, order: 3000);
 }

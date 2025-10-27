@@ -291,6 +291,10 @@ pub mod external {
     pub use image;
 }
 
+// Has to live here because otherwise we can't use it to implement `Hash` for `crate::components::TransformFrameId`.
+mod transform_frame_id_hash;
+pub use transform_frame_id_hash::TransformFrameIdHash;
+
 // TODO(jleibs): Should all of this go into `tensor_data_ext`? Don't have a good way to export
 // additional helpers yet.
 pub mod image;
@@ -305,6 +309,10 @@ pub use dynamic_archetype::DynamicArchetype;
 
 mod rotation3d;
 pub use rotation3d::Rotation3D;
+
+// Has to live here otherwise we can't export it from `re_types`.
+mod colormap_category;
+pub use colormap_category::ColormapCategory;
 
 #[cfg(feature = "testing")]
 pub mod testing;

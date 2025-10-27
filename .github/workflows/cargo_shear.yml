@@ -9,6 +9,7 @@ on:
 
 jobs:
   cargo-shear:
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

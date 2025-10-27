@@ -17,11 +17,10 @@ pub struct HarnessOptions {
 
 /// Convenience function for creating a kittest harness of the viewer App.
 pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
-    let window_size = options.window_size.unwrap_or(egui::vec2(1024., 768.));
-    Harness::builder()
-        .wgpu()
-        .with_size(window_size)
-        .build_eframe(|cc| {
+    let window_size = options.window_size.unwrap_or(egui::vec2(1024.0, 768.0));
+
+    re_ui::testing::new_harness(re_ui::testing::TestOptions::Rendering3D, window_size).build_eframe(
+        |cc| {
             cc.egui_ctx.set_os(egui::os::OperatingSystem::Nix);
             customize_eframe_and_setup_renderer(cc).expect("Failed to customize eframe");
             let mut app = App::new(
@@ -45,7 +44,8 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
             app.app_options_mut().video_decoder_ffmpeg_path = "/fake/ffmpeg/path".to_owned();
             app.app_options_mut().video_decoder_override_ffmpeg_path = true;
             app
-        })
+        },
+    )
 }
 
 /// Steps through the harness until the `predicate` closure returns `true`.

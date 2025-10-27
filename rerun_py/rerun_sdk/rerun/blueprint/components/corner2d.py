@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -57,12 +57,17 @@ class Corner2D(Enum):
         return self.name
 
 
-Corner2DLike = Union[
-    Corner2D,
-    Literal["LeftBottom", "LeftTop", "RightBottom", "RightTop", "leftbottom", "lefttop", "rightbottom", "righttop"],
-    int,
-]
-Corner2DArrayLike = Union[Corner2DLike, Sequence[Corner2DLike]]
+Corner2DLike = (
+    Corner2D
+    | Literal["LeftBottom", "LeftTop", "RightBottom", "RightTop", "leftbottom", "lefttop", "rightbottom", "righttop"]
+    | int
+)
+Corner2DArrayLike = (
+    Corner2D
+    | Literal["LeftBottom", "LeftTop", "RightBottom", "RightTop", "leftbottom", "lefttop", "rightbottom", "righttop"]
+    | int
+    | Sequence[Corner2DLike]
+)
 
 
 class Corner2DBatch(BaseBatch[Corner2DArrayLike], ComponentBatchMixin):

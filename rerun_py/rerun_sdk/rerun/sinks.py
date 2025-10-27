@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 import rerun_bindings as bindings
 from rerun_bindings import (
@@ -31,7 +31,7 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
     return bindings.is_enabled()  # type: ignore[no-any-return]
 
 
-LogSinkLike = Union[GrpcSink, FileSink]
+LogSinkLike = GrpcSink | FileSink
 
 
 def set_sinks(
@@ -320,8 +320,9 @@ def serve_grpc(
     You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
     Once reached, the earliest logged data will be dropped. Static data is never dropped.
 
-    It is highly recommended that you set the memory limit to `0B` if both the server and client are running
-    on the same machine, otherwise you're potentially doubling your memory usage!
+    If server & client are running on the same machine and all clients are expected to connect before
+    any data is sent, it is highly recommended that you set the memory limit to `0B`,
+    otherwise you're potentially doubling your memory usage!
 
     Returns the URI of the server so you can connect the viewer to it.
 

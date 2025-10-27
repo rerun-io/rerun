@@ -46,7 +46,11 @@ fn check_tags(rec: &rerun::RecordingStream) {
         {
             let chunk = &chunks[0];
 
-            let mut descriptors = chunk.components().keys().cloned().collect::<Vec<_>>();
+            let mut descriptors = chunk
+                .components()
+                .component_descriptors()
+                .cloned()
+                .collect::<Vec<_>>();
             descriptors.sort();
 
             let expected = vec![

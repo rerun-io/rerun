@@ -2,18 +2,24 @@
 //!
 //! TODO(emilk): move some of this numeric formatting into `emath` so we can use it in `egui_plot`.
 
-mod time;
+mod duration;
+pub mod time;
+
+pub use self::duration::DurationFormatOptions;
 
 use std::{cmp::PartialOrd, fmt::Display};
-
-pub use time::{format_timestamp_secs, next_grid_tick_magnitude_nanos, parse_timestamp_secs};
 
 // --- Numbers ---
 
 /// The minus character: <https://www.compart.com/en/unicode/U+2212>
 ///
 /// Looks slightly different from the normal hyphen `-`.
-const MINUS: char = '−';
+pub const MINUS: char = '−';
+
+/// A thin space, used for thousands separators, like `1 234`:
+///
+/// <https://en.wikipedia.org/wiki/Thin_space>
+pub const THIN_SPACE: char = '\u{2009}';
 
 // TODO(rust-num/num-traits#315): waiting for https://github.com/rust-num/num-traits/issues/315 to land
 pub trait UnsignedAbs {
@@ -115,8 +121,7 @@ fn add_thousands_separators(number: &str) -> String {
     while chars.peek().is_some() {
         if !result.is_empty() {
             // thousands-deliminator:
-            let thin_space = '\u{2009}'; // https://en.wikipedia.org/wiki/Thin_space
-            result.push(thin_space);
+            result.push(THIN_SPACE);
         }
         for _ in 0..3 {
             if let Some(c) = chars.next() {

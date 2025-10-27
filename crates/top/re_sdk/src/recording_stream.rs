@@ -490,8 +490,9 @@ impl RecordingStreamBuilder {
     /// You can limit the amount of data buffered by the gRPC server with the `server_options` argument.
     /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
     ///
-    /// It is highly recommended that you set the memory limit to `0B` if both the server and client are running
-    /// on the same machine, otherwise you're potentially doubling your memory usage!
+    /// If server & client are running on the same machine and all clients are expected to connect before
+    /// any data is sent, it is highly recommended that you set the memory limit to `0B`,
+    /// otherwise you're potentially doubling your memory usage!
     pub fn serve_grpc_opts(
         self,
         bind_ip: impl AsRef<str>,
@@ -1343,11 +1344,10 @@ impl RecordingStream {
 
         let entity_path = entity_path.into();
 
-        let comp_batches: Vec<_> = comp_batches
+        let components: IntMap<_, _> = comp_batches
             .into_iter()
-            .map(|comp_batch| (comp_batch.descriptor, comp_batch.array))
+            .map(|comp_batch| (comp_batch.descriptor.component, comp_batch))
             .collect();
-        let components: IntMap<_, _> = comp_batches.into_iter().collect();
 
         // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
         // internal clock.
@@ -2721,7 +2721,9 @@ impl RecordingStream {
 #[cfg(test)]
 mod tests {
     use insta::assert_debug_snapshot;
+    use itertools::Itertools as _;
     use re_log_types::example_components::{MyLabel, MyPoints};
+    use re_types::SerializedComponentBatch;
 
     use super::*;
 
@@ -2734,7 +2736,8 @@ mod tests {
                 .entries(
                     self.0
                         .component_descriptors()
-                        .map(|d| d.display_name().to_owned()),
+                        .map(|d| d.display_name().to_owned())
+                        .sorted(),
                 )
                 .finish()
         }
@@ -3031,20 +3034,29 @@ mod tests {
                 timepoint: timepoint(1),
                 components: [
                     (
-                        MyPoints::descriptor_points(),
-                        <MyPoint as Loggable>::to_arrow([
-                            MyPoint::new(10.0, 10.0),
-                            MyPoint::new(20.0, 20.0),
-                        ])
-                        .unwrap(),
+                        MyPoints::descriptor_points().component,
+                        SerializedComponentBatch::new(
+                            <MyPoint as Loggable>::to_arrow([
+                                MyPoint::new(10.0, 10.0),
+                                MyPoint::new(20.0, 20.0),
+                            ])
+                            .unwrap(),
+                            MyPoints::descriptor_points(),
+                        ),
                     ), //
                     (
-                        MyPoints::descriptor_colors(),
-                        <MyColor as Loggable>::to_arrow([MyColor(0x8080_80FF)]).unwrap(),
+                        MyPoints::descriptor_colors().component,
+                        SerializedComponentBatch::new(
+                            <MyColor as Loggable>::to_arrow([MyColor(0x8080_80FF)]).unwrap(),
+                            MyPoints::descriptor_colors(),
+                        ),
                     ), //
                     (
-                        MyPoints::descriptor_labels(),
-                        <MyLabel as Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
+                        MyPoints::descriptor_labels().component,
+                        SerializedComponentBatch::new(
+                            <MyLabel as Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
+                            MyPoints::descriptor_labels(),
+                        ),
                     ), //
                 ]
                 .into_iter()
@@ -3058,16 +3070,25 @@ mod tests {
                 timepoint: timepoint(1),
                 components: [
                     (
-                        MyPoints::descriptor_points(),
-                        <MyPoint as Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
+                        MyPoints::descriptor_points().component,
+                        SerializedComponentBatch::new(
+                            <MyPoint as Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
+                            MyPoints::descriptor_points(),
+                        ),
                     ), //
                     (
-                        MyPoints::descriptor_colors(),
-                        <MyColor as Loggable>::to_arrow([] as [MyColor; 0]).unwrap(),
+                        MyPoints::descriptor_colors().component,
+                        SerializedComponentBatch::new(
+                            <MyColor as Loggable>::to_arrow([] as [MyColor; 0]).unwrap(),
+                            MyPoints::descriptor_colors(),
+                        ),
                     ), //
                     (
-                        MyPoints::descriptor_labels(),
-                        <MyLabel as Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
+                        MyPoints::descriptor_labels().component,
+                        SerializedComponentBatch::new(
+                            <MyLabel as Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
+                            MyPoints::descriptor_labels(),
+                        ),
                     ), //
                 ]
                 .into_iter()
@@ -3081,16 +3102,25 @@ mod tests {
                 timepoint: timepoint(1),
                 components: [
                     (
-                        MyPoints::descriptor_points(),
-                        <MyPoint as Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
+                        MyPoints::descriptor_points().component,
+                        SerializedComponentBatch::new(
+                            <MyPoint as Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
+                            MyPoints::descriptor_points(),
+                        ),
                     ), //
                     (
-                        MyPoints::descriptor_colors(),
-                        <MyColor as Loggable>::to_arrow([MyColor(0xFFFF_FFFF)]).unwrap(),
+                        MyPoints::descriptor_colors().component,
+                        SerializedComponentBatch::new(
+                            <MyColor as Loggable>::to_arrow([MyColor(0xFFFF_FFFF)]).unwrap(),
+                            MyPoints::descriptor_colors(),
+                        ),
                     ), //
                     (
-                        MyPoints::descriptor_labels(),
-                        <MyLabel as Loggable>::to_arrow([MyLabel("hey".into())]).unwrap(),
+                        MyPoints::descriptor_labels().component,
+                        SerializedComponentBatch::new(
+                            <MyLabel as Loggable>::to_arrow([MyLabel("hey".into())]).unwrap(),
+                            MyPoints::descriptor_labels(),
+                        ),
                     ), //
                 ]
                 .into_iter()

@@ -7,12 +7,12 @@ use ahash::HashMap;
 use nohash_hasher::IntSet;
 use parking_lot::RwLock;
 
-use re_chunk::ChunkId;
+use re_chunk::{ChunkId, ComponentIdentifier};
 use re_chunk_store::{
     ChunkCompactionReport, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber,
 };
 use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimeInt, TimelineName};
-use re_types_core::{ComponentDescriptor, archetypes};
+use re_types_core::archetypes;
 
 use crate::{LatestAtCache, RangeCache};
 
@@ -23,7 +23,7 @@ use crate::{LatestAtCache, RangeCache};
 pub struct QueryCacheKey {
     pub entity_path: EntityPath,
     pub timeline_name: TimelineName,
-    pub component_descr: ComponentDescriptor,
+    pub component: ComponentIdentifier,
 }
 
 impl re_byte_size::SizeBytes for QueryCacheKey {
@@ -31,12 +31,12 @@ impl re_byte_size::SizeBytes for QueryCacheKey {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             entity_path,
-            timeline_name: timeline,
-            component_descr,
+            timeline_name,
+            component: component_identifier,
         } = self;
         entity_path.heap_size_bytes()
-            + timeline.heap_size_bytes()
-            + component_descr.heap_size_bytes()
+            + timeline_name.heap_size_bytes()
+            + component_identifier.heap_size_bytes()
     }
 }
 
@@ -45,11 +45,11 @@ impl std::fmt::Debug for QueryCacheKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             entity_path,
-            timeline_name: timeline,
-            component_descr,
+            timeline_name,
+            component: component_identifier,
         } = self;
         f.write_fmt(format_args!(
-            "{entity_path}:{component_descr} on '{timeline}'"
+            "{entity_path}:{component_identifier} on '{timeline_name}'"
         ))
     }
 }
@@ -59,12 +59,12 @@ impl QueryCacheKey {
     pub fn new(
         entity_path: impl Into<EntityPath>,
         timeline: impl Into<TimelineName>,
-        component_descr: ComponentDescriptor,
+        component_identifier: ComponentIdentifier,
     ) -> Self {
         Self {
             entity_path: entity_path.into(),
             timeline_name: timeline.into(),
-            component_descr,
+            component: component_identifier,
         }
     }
 }
@@ -283,7 +283,7 @@ impl ChunkStoreSubscriber for QueryCache {
 
         #[derive(Default, Debug)]
         struct CompactedEvents {
-            static_: HashMap<(EntityPath, ComponentDescriptor), BTreeSet<ChunkId>>,
+            static_: HashMap<(EntityPath, ComponentIdentifier), BTreeSet<ChunkId>>,
             temporal_latest_at: HashMap<QueryCacheKey, TimeInt>,
             temporal_range: HashMap<QueryCacheKey, BTreeSet<ChunkId>>,
         }
@@ -315,10 +315,10 @@ impl ChunkStoreSubscriber for QueryCache {
                 re_tracing::profile_scope!("compact events");
 
                 if chunk.is_static() {
-                    for component_descr in chunk.component_descriptors() {
+                    for component_identifier in chunk.components_identifiers() {
                         let compacted_events = compacted_events
                             .static_
-                            .entry((chunk.entity_path().clone(), component_descr))
+                            .entry((chunk.entity_path().clone(), component_identifier))
                             .or_default();
 
                         compacted_events.insert(chunk.id());
@@ -333,11 +333,11 @@ impl ChunkStoreSubscriber for QueryCache {
                 }
 
                 for (timeline, per_component) in chunk.time_range_per_component() {
-                    for (component_desc, time_range) in per_component {
+                    for (component_identifier, time_range) in per_component {
                         let key = QueryCacheKey::new(
                             chunk.entity_path().clone(),
                             timeline,
-                            component_desc,
+                            component_identifier,
                         );
 
                         // latest-at
@@ -354,9 +354,7 @@ impl ChunkStoreSubscriber for QueryCache {
                                     let data_time_compacted = chunk
                                         .time_range_per_component()
                                         .get(&timeline)
-                                        .and_then(|per_component| {
-                                            per_component.get(&key.component_descr)
-                                        })
+                                        .and_then(|per_component| per_component.get(&key.component))
                                         .map_or(TimeInt::MAX, |time_range| time_range.min());
 
                                     data_time_min =
@@ -406,19 +404,19 @@ impl ChunkStoreSubscriber for QueryCache {
             // yet another layer of caching indirection.
             // But since this pretty much never happens in practice, let's not go there until we
             // have metrics showing that show we need to.
-            for ((entity_path, component_descr), chunk_ids) in compacted_events.static_ {
-                if component_descr == archetypes::Clear::descriptor_is_recursive() {
+            for ((entity_path, component_identifier), chunk_ids) in compacted_events.static_ {
+                if component_identifier == archetypes::Clear::descriptor_is_recursive().component {
                     might_require_clearing.insert(entity_path.clone());
                 }
 
                 for (key, cache) in caches_latest_at.iter() {
-                    if key.entity_path == entity_path && key.component_descr == component_descr {
+                    if key.entity_path == entity_path && key.component == component_identifier {
                         cache.write().pending_invalidations.insert(TimeInt::STATIC);
                     }
                 }
 
                 for (key, cache) in caches_range.iter() {
-                    if key.entity_path == entity_path && key.component_descr == component_descr {
+                    if key.entity_path == entity_path && key.component == component_identifier {
                         cache
                             .write()
                             .pending_invalidations
@@ -432,7 +430,7 @@ impl ChunkStoreSubscriber for QueryCache {
             re_tracing::profile_scope!("temporal");
 
             for (key, time) in compacted_events.temporal_latest_at {
-                if key.component_descr == archetypes::Clear::descriptor_is_recursive() {
+                if key.component == archetypes::Clear::descriptor_is_recursive().component {
                     might_require_clearing.insert(key.entity_path.clone());
                 }
 

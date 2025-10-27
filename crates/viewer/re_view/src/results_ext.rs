@@ -6,7 +6,7 @@ use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery};
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_types::ComponentDescriptor;
-use re_viewer_context::{DataResult, TypedComponentFallbackProvider, ViewContext};
+use re_viewer_context::{DataResult, ViewContext};
 
 use crate::chunks_with_descriptor::ChunksWithDescriptor;
 
@@ -61,14 +61,27 @@ impl HybridLatestAtResults<'_> {
     pub fn get_mono_with_fallback<C: re_types_core::Component + Default>(
         &self,
         component_descr: &ComponentDescriptor,
-        fallback_provider: &impl TypedComponentFallbackProvider<C>,
     ) -> C {
         debug_assert_eq!(component_descr.component_type, Some(C::name()));
 
-        self.get_instance(0, component_descr).unwrap_or_else(|| {
-            let query_context = self.ctx.query_context(self.data_result, &self.query);
-            fallback_provider.fallback_for(&query_context)
-        })
+        self.get_instance(0, component_descr)
+            .or_else(|| {
+                let query_context = self.ctx.query_context(self.data_result, &self.query);
+                C::from_arrow(
+                    &query_context
+                        .viewer_ctx()
+                        .component_fallback_registry
+                        .fallback_for(
+                            component_descr.component,
+                            component_descr.component_type,
+                            &query_context,
+                        ),
+                )
+                .ok()?
+                .into_iter()
+                .next()
+            })
+            .unwrap_or_default()
     }
 
     /// Utility for retrieving a single instance of a component, not checking for defaults.
@@ -78,13 +91,13 @@ impl HybridLatestAtResults<'_> {
     pub fn get_required_instance<C: re_types_core::Component>(
         &self,
         index: usize,
-        component_descr: &ComponentDescriptor,
+        component_descr: &ComponentDescriptor, // TODO(#10460): Take `ComponentIdentifier` instead of descriptor.
     ) -> Option<C> {
         self.overrides
-            .component_instance::<C>(index, component_descr)
+            .component_instance::<C>(index, component_descr.component)
             .or_else(||
                 // No override -> try recording store instead
-                self.results.component_instance::<C>(index, component_descr))
+                self.results.component_instance::<C>(index, component_descr.component))
     }
 
     /// Utility for retrieving a single instance of a component.
@@ -94,7 +107,7 @@ impl HybridLatestAtResults<'_> {
     pub fn get_instance<C: re_types_core::Component>(
         &self,
         index: usize,
-        component_descr: &ComponentDescriptor,
+        component_descr: &ComponentDescriptor, // TODO(#10460): Take `ComponentIdentifier` instead of descriptor.
     ) -> Option<C> {
         debug_assert_eq!(component_descr.component_type, Some(C::name()));
 
@@ -102,7 +115,7 @@ impl HybridLatestAtResults<'_> {
             .or_else(|| {
                 // No override & no store -> try default instead
                 self.defaults
-                    .component_instance::<C>(index, component_descr)
+                    .component_instance::<C>(index, component_descr.component)
             })
     }
 }
@@ -164,13 +177,11 @@ impl HybridResults<'_> {
                         .values()
                         .filter_map(|chunk| chunk.row_id()),
                 );
-                indices.extend(r.results.components.iter().flat_map(
-                    |(component_descriptor, chunks)| {
-                        chunks
-                            .iter()
-                            .flat_map(|chunk| chunk.component_row_ids(component_descriptor))
-                    },
-                ));
+                indices.extend(r.results.components.iter().flat_map(|(component, chunks)| {
+                    chunks
+                        .iter()
+                        .flat_map(|chunk| chunk.component_row_ids(*component))
+                }));
 
                 Hash64::hash(&indices)
             }
@@ -239,9 +250,9 @@ impl RangeResultsExt for LatestAtResults {
     #[inline]
     fn get_required_chunks(
         &self,
-        component_descriptor: ComponentDescriptor,
+        component_descriptor: ComponentDescriptor, // TODO(#10460): Take `ComponentIdentifier` instead of descriptor.
     ) -> Option<ChunksWithDescriptor<'_>> {
-        self.get(&component_descriptor)
+        self.get(component_descriptor.component)
             .cloned()
             .map(|chunk| ChunksWithDescriptor {
                 chunks: Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]),
@@ -249,12 +260,15 @@ impl RangeResultsExt for LatestAtResults {
             })
     }
 
+    // TODO(#10460): Take `ComponentIdentifier` instead of descriptor.
     #[inline]
     fn get_optional_chunks(&self, component_descriptor: ComponentDescriptor) -> Cow<'_, [Chunk]> {
-        self.get(&component_descriptor).cloned().map_or_else(
-            || Cow::Owned(vec![]),
-            |chunk| Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]),
-        )
+        self.get(component_descriptor.component)
+            .cloned()
+            .map_or_else(
+                || Cow::Owned(vec![]),
+                |chunk| Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]),
+            )
     }
 }
 
@@ -262,9 +276,9 @@ impl RangeResultsExt for RangeResults {
     #[inline]
     fn get_required_chunks(
         &self,
-        component_descriptor: ComponentDescriptor,
+        component_descriptor: ComponentDescriptor, // TODO(#10460): Take `ComponentIdentifier` instead of descriptor.
     ) -> Option<ChunksWithDescriptor<'_>> {
-        self.get_required(&component_descriptor)
+        self.get_required(component_descriptor.component)
             .ok()
             .map(|chunks| ChunksWithDescriptor {
                 chunks: Cow::Borrowed(chunks),
@@ -272,21 +286,23 @@ impl RangeResultsExt for RangeResults {
             })
     }
 
+    // TODO(#10460): Take `ComponentIdentifier` instead of descriptor.
     #[inline]
     fn get_optional_chunks(&self, component_descriptor: ComponentDescriptor) -> Cow<'_, [Chunk]> {
-        Cow::Borrowed(self.get(&component_descriptor).unwrap_or_default())
+        Cow::Borrowed(self.get(component_descriptor.component).unwrap_or_default())
     }
 }
 
 impl RangeResultsExt for HybridRangeResults<'_> {
     // TODO(andreas): We typically lookup inside the returned chunks using the same descriptor.
     // We should return a more highlevel type that doesn't require passing the descriptor again!
+    // TODO(#10460): Take `ComponentIdentifier` instead of descriptor.
     #[inline]
     fn get_required_chunks(
         &self,
         component_descriptor: ComponentDescriptor,
     ) -> Option<ChunksWithDescriptor<'_>> {
-        if let Some(unit) = self.overrides.get(&component_descriptor) {
+        if let Some(unit) = self.overrides.get(component_descriptor.component) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -300,11 +316,12 @@ impl RangeResultsExt for HybridRangeResults<'_> {
         }
     }
 
+    // TODO(#10460): Take `ComponentIdentifier` instead of descriptor.
     #[inline]
     fn get_optional_chunks(&self, component_descriptor: ComponentDescriptor) -> Cow<'_, [Chunk]> {
         re_tracing::profile_function!();
 
-        if let Some(unit) = self.overrides.get(&component_descriptor) {
+        if let Some(unit) = self.overrides.get(component_descriptor.component) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -315,12 +332,15 @@ impl RangeResultsExt for HybridRangeResults<'_> {
 
             // NOTE: Because this is a range query, we always need the defaults to come first,
             // since range queries don't have any state to bootstrap from.
-            let defaults = self.defaults.get(&component_descriptor).map(|unit| {
-                // Because this is an default from the blueprint we always re-index the data as static
-                Arc::unwrap_or_clone(unit.clone().into_chunk())
-                    .into_static()
-                    .zeroed()
-            });
+            let defaults = self
+                .defaults
+                .get(component_descriptor.component)
+                .map(|unit| {
+                    // Because this is an default from the blueprint we always re-index the data as static
+                    Arc::unwrap_or_clone(unit.clone().into_chunk())
+                        .into_static()
+                        .zeroed()
+                });
 
             let chunks = self.results.get_optional_chunks(component_descriptor);
 
@@ -340,9 +360,10 @@ impl RangeResultsExt for HybridLatestAtResults<'_> {
     #[inline]
     fn get_required_chunks(
         &self,
+        // TODO(#10460): Take `ComponentIdentifier` instead of descriptor.
         component_descriptor: ComponentDescriptor,
     ) -> Option<ChunksWithDescriptor<'_>> {
-        if let Some(unit) = self.overrides.get(&component_descriptor) {
+        if let Some(unit) = self.overrides.get(component_descriptor.component) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -356,9 +377,10 @@ impl RangeResultsExt for HybridLatestAtResults<'_> {
         }
     }
 
+    // TODO(#10460): Take `ComponentIdentifier` instead of descriptor.
     #[inline]
     fn get_optional_chunks(&self, component_descriptor: ComponentDescriptor) -> Cow<'_, [Chunk]> {
-        if let Some(unit) = self.overrides.get(&component_descriptor) {
+        if let Some(unit) = self.overrides.get(component_descriptor.component) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -382,7 +404,7 @@ impl RangeResultsExt for HybridLatestAtResults<'_> {
             }
 
             // Otherwise try to use the default data.
-            let Some(unit) = self.defaults.get(&component_descriptor) else {
+            let Some(unit) = self.defaults.get(component_descriptor.component) else {
                 return Cow::Owned(Vec::new());
             };
             // Because this is an default from the blueprint we always re-index the data as static
@@ -440,8 +462,8 @@ impl<'a> HybridResultsChunkIter<'a> {
     ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
         self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_descriptor),
-                chunk.iter_component::<C>(&self.component_descriptor),
+                chunk.iter_component_indices(self.timeline, self.component_descriptor.component),
+                chunk.iter_component::<C>(self.component_descriptor.component),
             )
         })
     }
@@ -454,8 +476,8 @@ impl<'a> HybridResultsChunkIter<'a> {
     ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
         self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_descriptor),
-                chunk.iter_slices::<S>(self.component_descriptor.clone()),
+                chunk.iter_component_indices(self.timeline, self.component_descriptor.component),
+                chunk.iter_slices::<S>(self.component_descriptor.component),
             )
         })
     }
@@ -469,9 +491,9 @@ impl<'a> HybridResultsChunkIter<'a> {
     ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
         self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_descriptor),
+                chunk.iter_component_indices(self.timeline, self.component_descriptor.component),
                 chunk.iter_slices_from_struct_field::<S>(
-                    self.component_descriptor.clone(),
+                    self.component_descriptor.component,
                     field_name,
                 )
             )

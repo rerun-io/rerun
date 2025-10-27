@@ -48,7 +48,7 @@ pub fn ingest(
     let mut crates = Vec::new();
 
     for pkg in ctx.metadata.workspace_packages() {
-        progress.set(pkg.name.clone(), ctx.is_tty());
+        progress.set(pkg.name.to_string(), ctx.is_tty());
 
         if exclude_crates.contains(&pkg.name) {
             continue;

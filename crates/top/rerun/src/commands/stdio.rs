@@ -80,7 +80,9 @@ pub fn read_raw_rrd_streams_from_file_or_stdin(
     read_any_rrd_streams_from_file_or_stdin::<re_protos::log_msg::v1alpha1::log_msg::Msg>(paths)
 }
 
-fn read_any_rrd_streams_from_file_or_stdin<T: re_log_encoding::FileEncoded + Send + 'static>(
+fn read_any_rrd_streams_from_file_or_stdin<
+    T: re_log_encoding::DecoderEntrypoint + Send + 'static,
+>(
     paths: &[String],
 ) -> (
     channel::Receiver<(InputSource, anyhow::Result<T>)>,

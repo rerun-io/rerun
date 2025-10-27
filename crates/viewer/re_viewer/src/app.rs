@@ -16,9 +16,10 @@ use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, Item, NeedsRepaint, PlayState, RecordingOrTable,
-    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore,
-    TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError, command_channel,
+    ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint, PlayState,
+    RecordingOrTable, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _,
+    TableStore, TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError,
+    command_channel,
     open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url},
     sanitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
@@ -81,6 +82,7 @@ pub struct App {
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
 
     component_ui_registry: ComponentUiRegistry,
+    component_fallback_registry: FallbackProviderRegistry,
 
     rx_log: ReceiveSet<DataSourceMessage>,
     rx_table: ReceiveSetTable,
@@ -245,11 +247,15 @@ impl App {
             state.app_options.show_metrics = false;
         }
 
-        let view_class_registry = crate::default_views::create_view_class_registry()
-            .unwrap_or_else(|err| {
-                re_log::error!("Failed to create view class registry: {err}");
-                Default::default()
-            });
+        let mut component_fallback_registry =
+            re_component_fallbacks::create_component_fallback_registry();
+
+        let view_class_registry =
+            crate::default_views::create_view_class_registry(&mut component_fallback_registry)
+                .unwrap_or_else(|err| {
+                    re_log::error!("Failed to create view class registry: {err}");
+                    Default::default()
+                });
 
         #[allow(clippy::allow_attributes, unused_mut, clippy::needless_update)]
         // false positive on web
@@ -334,6 +340,38 @@ impl App {
             }),
         );
 
+        {
+            // TODO(emilk/egui#7659): This is a workaround consuming the Space key so we can use it
+            // as the play/pause shortcut. Egui's built in behavior is to trigger clicks on the
+            // focused item, and we don't want that. Users can use `Enter` instead.
+            // But of course text edits should still get it so we use this ugly hack to check if
+            // a text edit is focused.
+            let command_sender = command_sender.clone();
+            creation_context.egui_ctx.on_begin_pass(
+                "filter space key",
+                Arc::new(move |ctx| {
+                    if let Some(focused) = ctx.memory(|mem| mem.focused()) {
+                        let is_text_edit_focused =
+                            egui::text_edit::TextEditState::load(ctx, focused).is_some();
+
+                        if !is_text_edit_focused {
+                            let shortcut = UICommand::PlaybackTogglePlayPause
+                                .primary_kb_shortcut(ctx.os())
+                                .expect("Play / pause should have a keyboard shortcut");
+                            debug_assert_eq!(
+                                shortcut.logical_key,
+                                egui::Key::Space,
+                                "Expected space key shortcut"
+                            );
+                            if ctx.input_mut(|i| i.consume_shortcut(&shortcut)) {
+                                command_sender.send_ui(UICommand::PlaybackTogglePlayPause);
+                            }
+                        }
+                    }
+                }),
+            );
+        }
+
         Self {
             main_thread_token,
             build_info,
@@ -352,6 +390,7 @@ impl App {
 
             text_log_rx,
             component_ui_registry,
+            component_fallback_registry,
             rx_log: Default::default(),
             rx_table: Default::default(),
             #[cfg(target_arch = "wasm32")]
@@ -498,7 +537,10 @@ impl App {
 
                 let time_ctrl = self.state.time_control_mut(recording, &bp_ctx);
 
-                let should_diff_state = false;
+                // The state diffs are used to trigger callbacks if they are configured.
+                // If there's no active recording, we should not trigger any callbacks, but since there's an active recording here,
+                // we want to diff state changes.
+                let should_diff_state = true;
                 let response = time_ctrl.update(
                     recording.times_per_timeline(),
                     dt,
@@ -565,14 +607,11 @@ impl App {
     }
 
     /// Adds a new view class to the viewer.
-    #[deprecated(
-        since = "0.24.0",
-        note = "Use `view_class_registry().add_class(..)` instead."
-    )]
     pub fn add_view_class<T: ViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), ViewClassRegistryError> {
-        self.view_class_registry.add_class::<T>()
+        self.view_class_registry
+            .add_class::<T>(&mut self.component_fallback_registry)
     }
 
     /// Accesses the view class registry which can be used to extend the Viewer.
@@ -581,6 +620,10 @@ impl App {
     /// Doing so later in the application life cycle may cause unexpected behavior.
     pub fn view_class_registry(&mut self) -> &mut ViewClassRegistry {
         &mut self.view_class_registry
+    }
+
+    pub fn component_fallback_registry(&mut self) -> &mut FallbackProviderRegistry {
+        &mut self.component_fallback_registry
     }
 
     fn check_keyboard_shortcuts(&self, egui_ctx: &egui::Context) {
@@ -1047,8 +1090,8 @@ impl App {
                 self.app_options_mut().inspect_blueprint_timeline = show;
             }
 
-            SystemCommand::SetSelection(items) => {
-                if let Some(item) = items.single_item() {
+            SystemCommand::SetSelection(set) => {
+                if let Some(item) = set.selection.single_item() {
                     match item {
                         Item::RedapEntry(entry) => {
                             self.state
@@ -1085,7 +1128,7 @@ impl App {
                     }
                 }
 
-                self.state.selection_state.set_selection(items);
+                self.state.selection_state.set_selection(set);
                 egui_ctx.request_repaint(); // Make sure we actually see the new selection.
             }
 
@@ -1265,7 +1308,7 @@ impl App {
             };
 
             self.command_sender
-                .send_system(SystemCommand::SetSelection(item.clone().into()));
+                .send_system(SystemCommand::set_selection(item.clone()));
         }
 
         if let Some((timeline, timecell)) = when {
@@ -1779,7 +1822,7 @@ impl App {
 
             let file_name = if let Some(rec_name) = store
                 .recording_info_property::<re_types::components::Name>(
-                    &re_types::archetypes::RecordingInfo::descriptor_name(),
+                    re_types::archetypes::RecordingInfo::descriptor_name().component,
                 ) {
                 rec_name.to_string()
             } else {
@@ -2004,6 +2047,7 @@ impl App {
                             storage_context,
                             &self.reflection,
                             &self.component_ui_registry,
+                            &self.component_fallback_registry,
                             &self.view_class_registry,
                             &self.rx_log,
                             &self.command_sender,
@@ -2055,9 +2099,10 @@ impl App {
                     } else {
                         re_log::debug!("Inserted table store with id: `{}`", table.id);
                     }
-                    self.command_sender.send_system(SystemCommand::SetSelection(
-                        re_viewer_context::Item::TableId(table.id.clone()).into(),
-                    ));
+                    self.command_sender
+                        .send_system(SystemCommand::set_selection(
+                            re_viewer_context::Item::TableId(table.id.clone()),
+                        ));
 
                     // If the viewer is in the background, tell the user that it has received something new.
                     egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
@@ -2131,8 +2176,8 @@ impl App {
             );
         }
 
-        let msg_will_add_new_store = matches!(&msg, LogMsg::SetStoreInfo(..))
-            && !store_hub.store_bundle().contains(store_id);
+        // Note that the `SetStoreInfo` message might be missing. It's not strictly necessary to add a new store.
+        let msg_will_add_new_store = !store_hub.store_bundle().contains(store_id);
 
         let entity_db = store_hub.entity_db_mut(store_id);
         if entity_db.data_source.is_none() {
@@ -2169,53 +2214,14 @@ impl App {
             }
         }
 
-        let is_example = entity_db.store_class().is_example();
-
+        #[expect(clippy::match_same_arms)]
         match &msg {
             LogMsg::SetStoreInfo(_) => {
-                if channel_source.select_when_loaded() {
-                    // Set the recording-id after potentially creating the store in the hub.
-                    // This ordering is important because the `StoreHub` internally
-                    // updates the app-id when changing the recording.
-                    match store_id.kind() {
-                        StoreKind::Recording => {
-                            re_log::trace!("Opening a new recording: '{store_id:?}'");
-                            self.make_store_active_and_highlight(store_hub, egui_ctx, store_id);
-                        }
-                        StoreKind::Blueprint => {
-                            // We wait with activating blueprints until they are fully loaded,
-                            // so that we don't run heuristics on half-loaded blueprints.
-                            // Otherwise on a mixed connection (SDK sending both blueprint and recording)
-                            // the blueprint won't be activated until the whole _recording_ has finished loading.
-                        }
-                    }
-                }
-
-                if cfg!(target_arch = "wasm32")
-                    && !self.startup_options.is_in_notebook
-                    && !is_example
-                {
-                    use std::sync::Once;
-                    static ONCE: Once = Once::new();
-                    ONCE.call_once(|| {
-                        // Tell the user there is a faster native viewer they can use instead of the web viewer:
-                        let notification = re_ui::notifications::Notification::new(
-                                re_ui::notifications::NotificationLevel::Tip, "For better performance, try the native Rerun Viewer!").with_link(
-                                re_ui::Link {
-                                    text: "Install…".into(),
-                                    url: "https://rerun.io/docs/getting-started/installing-viewer#installing-the-viewer".into(),
-                                }
-                            )
-                            .no_toast()
-                            .permanent_dismiss_id(egui::Id::new("install_native_viewer_prompt"));
-                        self.command_sender
-                            .send_system(SystemCommand::ShowNotification(notification));
-                    });
-                }
+                // Causes a new store typically. But that's handled below via `on_new_store`.
             }
 
             LogMsg::ArrowMsg(_, _) => {
-                // Handled by `EntityDb::add`
+                // Handled by `EntityDb::add`.
             }
 
             LogMsg::BlueprintActivationCommand(cmd) => match store_id.kind() {
@@ -2263,10 +2269,60 @@ impl App {
             },
         }
 
-        // Do analytics/events after ingesting the new message,
-        // because `entity_db.store_info` needs to be set.
+        // Handle any action that is triggered by a new store _after_ processing the message that caused it.
+        if msg_will_add_new_store {
+            self.on_new_store(egui_ctx, store_id, channel_source, store_hub);
+        }
+    }
+
+    fn on_new_store(
+        &self,
+        egui_ctx: &egui::Context,
+        store_id: &StoreId,
+        channel_source: &SmartChannelSource,
+        store_hub: &mut StoreHub,
+    ) {
+        if channel_source.select_when_loaded() {
+            // Set the recording-id after potentially creating the store in the hub.
+            // This ordering is important because the `StoreHub` internally
+            // updates the app-id when changing the recording.
+            match store_id.kind() {
+                StoreKind::Recording => {
+                    re_log::trace!("Opening a new recording: '{store_id:?}'");
+                    self.make_store_active_and_highlight(store_hub, egui_ctx, store_id);
+                }
+                StoreKind::Blueprint => {
+                    // We wait with activating blueprints until they are fully loaded,
+                    // so that we don't run heuristics on half-loaded blueprints.
+                    // Otherwise on a mixed connection (SDK sending both blueprint and recording)
+                    // the blueprint won't be activated until the whole _recording_ has finished loading.
+                }
+            }
+        }
+
         let entity_db = store_hub.entity_db_mut(store_id);
-        if msg_will_add_new_store && entity_db.store_kind() == StoreKind::Recording {
+        let is_example = entity_db.store_class().is_example();
+
+        if cfg!(target_arch = "wasm32") && !self.startup_options.is_in_notebook && !is_example {
+            use std::sync::Once;
+            static ONCE: Once = Once::new();
+            ONCE.call_once(|| {
+                // Tell the user there is a faster native viewer they can use instead of the web viewer:
+                let notification = re_ui::notifications::Notification::new(
+                        re_ui::notifications::NotificationLevel::Tip, "For better performance, try the native Rerun Viewer!").with_link(
+                        re_ui::Link {
+                            text: "Install…".into(),
+                            url: "https://rerun.io/docs/getting-started/installing-viewer#installing-the-viewer".into(),
+                        }
+                    )
+                    .no_toast()
+                    .permanent_dismiss_id(egui::Id::new("install_native_viewer_prompt"));
+                self.command_sender
+                    .send_system(SystemCommand::ShowNotification(notification));
+            });
+        }
+
+        if entity_db.store_kind() == StoreKind::Recording {
             #[cfg(feature = "analytics")]
             if let Some(analytics) = re_analytics::Analytics::global_or_init()
                 && let Some(event) =
@@ -2350,9 +2406,10 @@ impl App {
         store_hub.set_active_recording_id(store_id.clone());
 
         // Also select the new recording:
-        self.command_sender.send_system(SystemCommand::SetSelection(
-            re_viewer_context::Item::StoreId(store_id.clone()).into(),
-        ));
+        self.command_sender
+            .send_system(SystemCommand::set_selection(
+                re_viewer_context::Item::StoreId(store_id.clone()),
+            ));
 
         // If the viewer is in the background, tell the user that it has received something new.
         egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
@@ -2368,8 +2425,7 @@ impl App {
             let chunk = &event.diff.chunk;
 
             // For speed, we don't care about the order of the following log statements, so we silence this warning
-            #[expect(clippy::iter_over_hash_type)]
-            for component_descr in chunk.components().keys() {
+            for component_descr in chunk.components().component_descriptors() {
                 if let Some(archetype_name) = component_descr.archetype {
                     if let Some(archetype) = self.reflection.archetypes.get(&archetype_name) {
                         for &view_type in archetype.view_types {
@@ -3313,7 +3369,7 @@ fn save_recording(
 
     let file_name = if let Some(recording_name) = entity_db
         .recording_info_property::<re_types::components::Name>(
-            &re_types::archetypes::RecordingInfo::descriptor_name(),
+            re_types::archetypes::RecordingInfo::descriptor_name().component,
         ) {
         format!("{}.rrd", sanitize_file_name(&recording_name))
     } else {
@@ -3447,7 +3503,7 @@ async fn async_save_dialog(
         return Ok(()); // aborted
     };
 
-    let options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
+    let options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
     let mut bytes = Vec::new();
     re_log_encoding::Encoder::encode_into(rrd_version, options, messages, &mut bytes)?;
     file_handle.write(&bytes).await.context("Failed to save")

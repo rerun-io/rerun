@@ -12,7 +12,7 @@ use re_log_types::{
     example_components::{MyColor, MyPoint, MyPoints},
 };
 use re_query::QueryCache;
-use re_types_core::{Archetype as _, ComponentBatch as _};
+use re_types_core::ComponentBatch as _;
 
 // ---
 
@@ -105,10 +105,10 @@ fn simple_query_with_differently_tagged_components() {
     let cached = caches.latest_at(
         &query,
         &entity_path.into(),
-        [&points2_serialized.descriptor],
+        [points2_serialized.descriptor.component],
     );
     let cached_points = cached
-        .component_batch::<MyPoint>(&points2_serialized.descriptor)
+        .component_batch::<MyPoint>(points2_serialized.descriptor.component)
         .unwrap();
     similar_asserts::assert_eq!(points2, cached_points);
 }
@@ -660,14 +660,15 @@ fn query_and_compare(
 ) {
     re_log::setup_logging();
 
-    for _ in 0..3 {
-        let cached = caches.latest_at(query, entity_path, MyPoints::all_components().iter());
+    let component_points = MyPoints::descriptor_points().component;
+    let component_colors = MyPoints::descriptor_colors().component;
 
-        let cached_points = cached
-            .component_batch::<MyPoint>(&MyPoints::descriptor_points())
-            .unwrap();
+    for _ in 0..3 {
+        let cached = caches.latest_at(query, entity_path, [component_points, component_colors]);
+
+        let cached_points = cached.component_batch::<MyPoint>(component_points).unwrap();
         let cached_colors = cached
-            .component_batch::<MyColor>(&MyPoints::descriptor_colors())
+            .component_batch::<MyColor>(component_colors)
             .unwrap_or_default();
 
         eprintln!("{:?}", cached.components.keys());

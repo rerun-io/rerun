@@ -193,6 +193,9 @@ fn all_sections_ui(
                 .item_response
         };
 
+        ctx.handle_select_hover_drag_interactions(&response, item.clone(), false);
+        ctx.handle_select_focus_sync(&response, item.clone());
+
         if response.clicked() {
             re_redap_browser::switch_to_welcome_screen(ctx.command_sender());
         }
@@ -270,6 +273,7 @@ fn server_section_ui(
         .on_hover_text(origin.to_string());
 
     ctx.handle_select_hover_drag_interactions(&item_response, server_data.item(), false);
+    ctx.handle_select_focus_sync(&item_response, server_data.item());
 
     if item_response.clicked() {
         ctx.command_sender()
@@ -375,12 +379,16 @@ fn dataset_entry_ui(
 
                         PartitionData::Loaded { entity_db } => {
                             let include_app_id = false; // we already show it in the parent item
-                            entity_db_button_ui(
+                            let response = entity_db_button_ui(
                                 ctx,
                                 ui,
                                 entity_db,
                                 UiLayout::SelectionPanel,
                                 include_app_id,
+                            );
+                            ctx.handle_select_focus_sync(
+                                &response,
+                                Item::StoreId(entity_db.store_id().clone()),
                             );
                         }
                     }
@@ -419,9 +427,12 @@ fn dataset_entry_ui(
         }
     });
 
+    ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
+    ctx.handle_select_focus_sync(&item_response, item.clone());
+
     if item_response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item.into()));
+            .send_system(SystemCommand::set_selection(item));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(new_display_mode));
     }
@@ -451,9 +462,12 @@ fn remote_table_entry_ui(
     let list_item_content = LabelContent::new(text).with_icon(icon);
     let item_response = list_item.show_hierarchical(ui, list_item_content);
 
+    ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
+    ctx.handle_select_focus_sync(&item_response, item.clone());
+
     if item_response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item.into()));
+            .send_system(SystemCommand::set_selection(item));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
                 re_uri::EntryUri::new(origin.clone(), *entry_id),
@@ -488,7 +502,7 @@ fn failed_entry_ui(
 
     if item_response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item.into()));
+            .send_system(SystemCommand::set_selection(item));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
                 re_uri::EntryUri::new(origin.clone(), *entry_id),
@@ -535,12 +549,16 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
             .show_hierarchical_with_children(ui, id, true, list_item_content, |ui| {
                 for recording_data in loaded_recordings {
                     let include_app_id = false; // we already show it in the parent item
-                    entity_db_button_ui(
+                    let response = entity_db_button_ui(
                         ctx,
                         ui,
                         recording_data.entity_db,
                         UiLayout::SelectionPanel,
                         include_app_id,
+                    );
+                    ctx.handle_select_focus_sync(
+                        &response,
+                        Item::StoreId(recording_data.entity_db.store_id().clone()),
                     );
                 }
             })
@@ -553,7 +571,13 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
         app_id.data_ui_recording(ctx, ui, UiLayout::Tooltip);
     });
 
-    ctx.handle_select_hover_drag_interactions(&item_response, item, false);
+    ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
+    ctx.handle_select_focus_sync(&item_response, item);
+    if list_item::ListItem::gained_focus_via_arrow_key(ui.ctx(), item_response.id) {
+        ctx.command_sender()
+            .send_system(SystemCommand::ActivateApp(app_id.clone()));
+    }
+
     if item_response.clicked() {
         //TODO(ab): shouldn't this be done by handle_select_hover_drag_interactions?
         ctx.command_sender()

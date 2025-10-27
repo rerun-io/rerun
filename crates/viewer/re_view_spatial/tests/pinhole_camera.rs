@@ -1,6 +1,6 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::archetypes::Pinhole;
 use re_types::components::{Color, Radius};
@@ -32,8 +32,7 @@ pub fn test_pinhole_camera() {
 
 fn run_view_ui_and_save_snapshot(test_context: &TestContext, view_id: ViewId, size: egui::Vec2) {
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
+        .setup_kittest_for_rendering_3d(size)
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
@@ -49,12 +48,6 @@ fn run_view_ui_and_save_snapshot(test_context: &TestContext, view_id: ViewId, si
         modifiers: egui::Modifiers::default(),
     });
     harness.run_steps(10);
-    let broken_pixels_fraction = 0.0045;
 
-    harness.snapshot_options(
-        "pinhole_camera",
-        &SnapshotOptions::new().failed_pixel_count_threshold(
-            (size.x * size.y * broken_pixels_fraction).round() as usize,
-        ),
-    );
+    harness.snapshot("pinhole_camera");
 }

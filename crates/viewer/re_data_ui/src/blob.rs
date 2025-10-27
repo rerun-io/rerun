@@ -3,6 +3,7 @@ use crate::video::VideoUi;
 use crate::{EntityDataUi, find_and_deserialize_archetype_mono_component};
 use re_chunk_store::UnitChunkShared;
 use re_log_types::EntityPath;
+use re_types::ComponentIdentifier;
 use re_types::{
     ComponentDescriptor, RowId, archetypes, components,
     components::{Blob, MediaType, VideoTimestamp},
@@ -128,7 +129,7 @@ fn exif_ui(ui: &mut egui::Ui, key: StoredBlobCacheKey, blob: &re_types::datatype
 
 /// Utility for displaying additional UI for blobs.
 pub struct BlobUi {
-    descr: ComponentDescriptor,
+    component: ComponentIdentifier,
     blob: re_types::datatypes::Blob,
 
     /// Additional image ui if any.
@@ -157,7 +158,7 @@ impl BlobUi {
         }
 
         let blob = blob_chunk
-            .component_mono::<components::Blob>(blob_descr)?
+            .component_mono::<components::Blob>(blob_descr.component)?
             .ok()?;
 
         // Media type comes typically alongside the blob in various different archetypes.
@@ -176,7 +177,9 @@ impl BlobUi {
             .find_map(|(descr, chunk)| {
                 (descr == &video_timestamp_descr).then(|| {
                     chunk
-                        .component_mono::<components::VideoTimestamp>(&video_timestamp_descr)?
+                        .component_mono::<components::VideoTimestamp>(
+                            video_timestamp_descr.component,
+                        )?
                         .ok()
                 })
             })
@@ -228,7 +231,7 @@ impl BlobUi {
             image,
             video,
             row_id: blob_row_id,
-            descr: blob_component_descriptor.clone(),
+            component: blob_component_descriptor.component,
             blob,
             media_type: media_type.cloned(),
         }
@@ -274,10 +277,13 @@ impl BlobUi {
         entity_path: &EntityPath,
     ) {
         if let Some(row_id) = self.row_id
-            && !ui_layout.is_single_line()
-            && ui_layout != UiLayout::Tooltip
+            && ui_layout == UiLayout::SelectionPanel
         {
-            exif_ui(ui, StoredBlobCacheKey::new(row_id, &self.descr), &self.blob);
+            exif_ui(
+                ui,
+                StoredBlobCacheKey::new(row_id, self.component),
+                &self.blob,
+            );
         }
 
         if let Some(image) = &self.image {

@@ -5,9 +5,11 @@ use nohash_hasher::IntSet;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_tf::query_view_coordinates;
-use re_types::blueprint::archetypes::{EyeControls3D, LineGrid3D};
-use re_types::components;
-use re_types::{Component as _, View as _, ViewClassIdentifier, blueprint::archetypes::Background};
+use re_types::{
+    Component as _, View as _, ViewClassIdentifier, archetypes,
+    blueprint::archetypes::{Background, EyeControls3D, LineGrid3D},
+    components::Plane3D,
+};
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
@@ -19,7 +21,6 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::visualizers::{AxisLengthDetector, CamerasVisualizer, Transform3DArrowsVisualizer};
 use crate::{
     contexts::register_spatial_contexts,
     heuristics::default_visualized_entities_for_visualizer_kind,
@@ -27,6 +28,10 @@ use crate::{
     ui::{SpatialViewState, format_vector},
     view_kind::SpatialViewKind,
     visualizers::register_3d_spatial_visualizers,
+};
+use crate::{
+    shared_fallbacks,
+    visualizers::{AxisLengthDetector, CamerasVisualizer, Transform3DArrowsVisualizer},
 };
 
 #[derive(Default)]
@@ -72,6 +77,63 @@ impl ViewClass for SpatialView3D {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
+        system_registry
+            .register_fallback_provider(LineGrid3D::descriptor_color().component, |_| {
+                re_types::components::Color::from_unmultiplied_rgba(128, 128, 128, 60)
+            });
+
+        system_registry.register_fallback_provider(
+            LineGrid3D::descriptor_plane().component,
+            |ctx| {
+                const DEFAULT_PLANE: Plane3D = Plane3D::XY;
+
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    return DEFAULT_PLANE;
+                };
+
+                view_state
+                    .state_3d
+                    .scene_view_coordinates
+                    .and_then(|view_coordinates| view_coordinates.up())
+                    .map_or(DEFAULT_PLANE, |up| Plane3D::new(up.as_vec3(), 0.0))
+            },
+        );
+
+        system_registry
+            .register_fallback_provider(LineGrid3D::descriptor_stroke_width().component, |_| {
+                re_types::components::StrokeWidth::from(1.0)
+            });
+
+        system_registry.register_fallback_provider(
+            Background::descriptor_kind().component,
+            |ctx| match ctx.egui_ctx().theme() {
+                egui::Theme::Dark => re_types::blueprint::components::BackgroundKind::GradientDark,
+                egui::Theme::Light => {
+                    re_types::blueprint::components::BackgroundKind::GradientBright
+                }
+            },
+        );
+
+        system_registry.register_fallback_provider(
+            re_types::blueprint::archetypes::EyeControls3D::descriptor_speed().component,
+            |ctx| {
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    re_log::error_once!(
+                        "Fallback for `LinearSpeed` queried on 3D view outside the context of a spatial view."
+                    );
+                    return 1.0.into();
+                };
+                let Some(view_eye) = &view_state.state_3d.view_eye else {
+                    // There's no view eye yet. This may happen on startup
+                    return 1.0.into();
+                };
+
+                view_eye.fallback_speed(ctx)
+            },
+        );
+
+        shared_fallbacks::register_fallbacks(system_registry);
+
         // Ensure spatial topology is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
 
@@ -285,11 +347,12 @@ impl ViewClass for SpatialView3D {
         // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
         let engine = ctx.recording_engine();
         ctx.recording().tree().visit_children_recursively(|path| {
-            // TODO(#2663): Note that the view coordinates component may be logged by different archetypes which is why we do a name query here.
-            if !engine
-                .store()
-                .entity_component_descriptors_with_type(path, components::ViewCoordinates::name())
-                .is_empty()
+            if let Some(components) = engine.store().all_components_for_entity(path)
+                && components.into_iter().any(|component| {
+                    // TODO(#2663): Note that the view coordinates component may be logged by different archetypes.
+                    component == archetypes::Pinhole::descriptor_camera_xyz().component
+                        || component == archetypes::ViewCoordinates::descriptor_xyz().component
+                })
             {
                 indicated_entities.insert(path.clone());
             }
@@ -380,7 +443,7 @@ impl ViewClass for SpatialView3D {
             ui.grid_left_hand_label("Camera")
                 .on_hover_text("The virtual camera which controls what is shown on screen");
             ui.vertical(|ui| {
-                state.view_eye_ui(ui, scene_view_coordinates);
+                state.view_eye_ui(ui, ctx, scene_view_coordinates, view_id);
             });
             ui.end_row();
 
@@ -423,9 +486,9 @@ impl ViewClass for SpatialView3D {
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
             let view_ctx = self.view_context(ctx, view_id, state);
-            view_property_ui::<EyeControls3D>(&view_ctx, ui, self);
-            view_property_ui::<Background>(&view_ctx, ui, self);
-            view_property_ui_grid3d(&view_ctx, ui, self);
+            view_property_ui::<EyeControls3D>(&view_ctx, ui);
+            view_property_ui::<Background>(&view_ctx, ui);
+            view_property_ui_grid3d(&view_ctx, ui);
         });
 
         Ok(())
@@ -452,11 +515,7 @@ impl ViewClass for SpatialView3D {
 // The generic ui (via `view_property_ui::<Background>(ctx, ui, view_id, self, state);`)
 // is suitable for the most part. However, as of writing the alpha color picker doesn't handle alpha
 // which we need here.
-fn view_property_ui_grid3d(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    fallback_provider: &dyn re_viewer_context::ComponentFallbackProvider,
-) {
+fn view_property_ui_grid3d(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
     let property = ViewProperty::from_archetype::<LineGrid3D>(
         ctx.blueprint_db(),
         ctx.blueprint_query(),
@@ -487,8 +546,7 @@ fn view_property_ui_grid3d(
                         let Ok(color) = property
                             .component_or_fallback::<re_types::components::Color>(
                                 ctx,
-                                fallback_provider,
-                                &LineGrid3D::descriptor_color(),
+                                LineGrid3D::descriptor_color().component,
                             )
                         else {
                             ui.error_label("Failed to query color component");
@@ -519,7 +577,6 @@ fn view_property_ui_grid3d(
                     &property,
                     field.display_name,
                     field,
-                    fallback_provider,
                 );
             }
         }

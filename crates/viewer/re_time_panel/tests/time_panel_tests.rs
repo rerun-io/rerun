@@ -1,14 +1,12 @@
 #![cfg(feature = "testing")]
 
-use egui::Vec2;
-
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
 use re_log_types::{
     AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, TimeType, Timeline, build_frame_nr,
     example_components::{MyPoint, MyPoints},
 };
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_context::TestContext;
 use re_time_panel::TimePanel;
 use re_types::archetypes::Points2D;
 use re_viewer_context::{CollapseScope, TimeControlCommand, TimeView, blueprint_timeline};
@@ -398,8 +396,7 @@ fn run_time_panel_and_save_snapshot(
     snapshot_name: &str,
 ) {
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(Vec2::new(700.0, height))
+        .setup_kittest_for_rendering_ui([700.0, height])
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                 if expand_all {
@@ -435,8 +432,5 @@ fn run_time_panel_and_save_snapshot(
         });
 
     harness.run();
-    harness.snapshot_options(
-        snapshot_name,
-        &SnapshotOptions::default().failed_pixel_count_threshold(4),
-    );
+    harness.snapshot(snapshot_name);
 }

@@ -1,17 +1,20 @@
 use std::sync::Arc;
 
-use arrow::array::{ArrayRef, RecordBatch, RecordBatchOptions};
-use arrow::datatypes::{DataType, Field, Fields, Schema};
+use arrow::{
+    array::{ArrayRef, RecordBatch, RecordBatchOptions},
+    datatypes::{DataType, Field, Fields, Schema},
+};
 use egui::vec2;
-use egui_kittest::{Harness, SnapshotOptions};
+use egui_kittest::Harness;
 
 use re_dataframe_ui::column_header_tooltip_ui;
 use re_log_types::{EntityPath, Timeline};
 use re_sorbet::{
     BatchType, ComponentColumnDescriptor, IndexColumnDescriptor, RowIdColumnDescriptor, SorbetBatch,
 };
-use re_types_core::reflection::generic_placeholder_for_datatype;
-use re_types_core::{ArchetypeName, ComponentIdentifier, ComponentType};
+use re_types_core::{
+    ArchetypeName, ComponentIdentifier, ComponentType, reflection::generic_placeholder_for_datatype,
+};
 
 #[test]
 fn test_column_header_tooltips() {
@@ -69,13 +72,10 @@ fn test_column_header_tooltips() {
                 });
 
             harness.run();
-            harness.snapshot_options(
-                format!(
-                    "header_tooltip_{description}{}",
-                    if show_extras { "_with_extras" } else { "" }
-                ),
-                &SnapshotOptions::new().threshold(3.1),
-            );
+            harness.snapshot(format!(
+                "header_tooltip_{description}{}",
+                if show_extras { "_with_extras" } else { "" }
+            ));
         }
     }
 }

@@ -59,6 +59,21 @@ pub trait Archetype {
         .into()
     }
 
+    /// Utility method based on [`Self::all_components`] to return all component identifiers.
+    #[inline]
+    fn all_component_identifiers() -> impl Iterator<Item = ComponentIdentifier> {
+        match Self::all_components() {
+            // Need to resolve the Cow to work around borrow checker not being able to take ownership of it otherwise.
+            std::borrow::Cow::Borrowed(components) => {
+                itertools::Either::Left(components.iter().map(|c| c.component))
+            }
+
+            std::borrow::Cow::Owned(components) => {
+                itertools::Either::Right(components.into_iter().map(|c| c.component))
+            }
+        }
+    }
+
     // ---
 
     /// Given an iterator of Arrow arrays and their respective field metadata, deserializes them

@@ -261,7 +261,7 @@ It should include an output similar to the following:
 
 ```
 implementation=CPython
-version=3.9
+version=3.10
 shared=true
 abi3=true
 lib_name=python3.12

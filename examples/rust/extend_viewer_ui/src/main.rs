@@ -143,7 +143,7 @@ fn entity_ui(
     {
         for component in &components {
             ui.collapsing(component.to_string(), |ui| {
-                component_ui(ui, entity_db, timeline, entity_path, component);
+                component_ui(ui, entity_db, timeline, entity_path, *component);
             });
         }
     }
@@ -154,19 +154,18 @@ fn component_ui(
     entity_db: &re_entity_db::EntityDb,
     timeline: re_log_types::TimelineName,
     entity_path: &re_log_types::EntityPath,
-    component_descriptor: &re_types::ComponentDescriptor,
+    component: re_types::ComponentIdentifier,
 ) {
     // You can query the data for any time point, but for now
     // just show the last value logged for each component:
     let query = re_chunk_store::LatestAtQuery::latest(timeline);
 
-    let results =
-        entity_db
-            .storage_engine()
-            .cache()
-            .latest_at(&query, entity_path, [component_descriptor]);
+    let results = entity_db
+        .storage_engine()
+        .cache()
+        .latest_at(&query, entity_path, [component]);
 
-    if let Some(data) = results.component_batch_raw(component_descriptor) {
+    if let Some(data) = results.component_batch_raw(component) {
         egui::ScrollArea::vertical()
             .auto_shrink([false, true])
             .show(ui, |ui| {

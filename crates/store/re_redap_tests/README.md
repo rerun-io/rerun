@@ -26,3 +26,13 @@ As such, it is implemented to be as close as possible to the actual API boundary
 
 - Test layers outside the redap boundary, including `re_redap_client::ConnectionClient` or the Python SDK.
 - Test anything about the internals of the redap implementors (OSS server, Rerun Cloud, etc.)
+
+## Usage
+
+This crate provides the test suite, but it requires an actual implementation
+of the server in order to run these tests. To use the OSS rerun server to
+perform these tests use the following command
+
+```shell
+cargo test -p re_server --all-features
+```

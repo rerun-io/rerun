@@ -115,6 +115,8 @@ pub struct DesignTokens {
     pub icon_color_on_primary_hovered: Color32,
     pub selection_stroke_color: Color32,
     pub selection_bg_fill: Color32,
+    pub focus_outline_stroke: Stroke,
+    pub focus_halo_stroke: Stroke,
 
     // ------
     pub panel_bg_color: Color32,
@@ -294,6 +296,8 @@ impl DesignTokens {
             icon_color_on_primary_hovered: get_color("icon_color_on_primary_hovered"),
             selection_bg_fill: get_color("selection_bg_fill"),
             selection_stroke_color: get_color("selection_stroke_color"),
+            focus_outline_stroke: get_stroke("focus_outline_stroke"),
+            focus_halo_stroke: get_stroke("focus_halo_stroke"),
 
             panel_bg_color: get_color("panel_bg_color"),
             text_edit_bg_color: get_color("text_edit_bg_color"),

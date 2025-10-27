@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
 
 use arrow::{
     array::{ArrayRef, FixedSizeListArray, Float32Array},
@@ -47,17 +47,33 @@ pub fn create_simple_recording(
     partition_id: &str,
     entity_paths: &[&str],
 ) -> anyhow::Result<TempPath> {
+    let tmp_dir = tempfile::tempdir()?;
+    let path = create_simple_recording_in(tuid_prefix, partition_id, entity_paths, tmp_dir.path())?;
+    Ok(TempPath::new(tmp_dir, path))
+}
+
+/// Creates a simple, clean recording with sequential data and no overlaps or duplicates and save
+/// it to `in_dir`.
+///
+/// This recording is made such that it cannot be compacted, so that the effect of compaction is
+/// ruled out in snapshots. The `in_dir` is assumed to exist and not deleted automatically.
+pub fn create_simple_recording_in(
+    tuid_prefix: TuidPrefix,
+    partition_id: &str,
+    entity_paths: &[&str],
+    in_dir: &std::path::Path,
+) -> anyhow::Result<PathBuf> {
     use re_chunk::{Chunk, TimePoint};
     use re_log_types::{
         EntityPath, TimeInt, build_frame_nr,
         example_components::{MyColor, MyLabel, MyPoint, MyPoints},
     };
 
-    let tmp_path = {
-        let dir = tempfile::tempdir()?;
-        let path = dir.path().join(format!("{partition_id}.rrd"));
-        TempPath::new(dir, path)
-    };
+    if !std::fs::metadata(in_dir)?.is_dir() {
+        return Err(anyhow::anyhow!("Expected `in_dir` to be a directory"));
+    }
+
+    let tmp_path = in_dir.join(format!("{partition_id}.rrd"));
 
     let rec = RecordingStreamBuilder::new(format!("rerun_example_{partition_id}"))
         .recording_id(partition_id)
@@ -564,6 +580,7 @@ pub fn create_recording_with_scalars(
     let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
     let mut next_row_id = next_row_id_generator(tuid_prefix);
 
+    #[expect(clippy::cast_possible_wrap)]
     for i in 1..=n as i64 {
         let floats: Vec<f32> = (0..10).map(|j| 0.1f32 * i as f32 * j as f32).collect();
         let float_array = Arc::new(Float32Array::from(floats)) as ArrayRef;
@@ -634,6 +651,7 @@ pub fn create_recording_with_text(
     let mut next_row_id = next_row_id_generator(tuid_prefix);
 
     for (i, sentence) in sentences.iter().enumerate() {
+        #[expect(clippy::cast_possible_wrap)]
         let frame = TimeInt::new_temporal((i * 10) as i64);
 
         let chunk = Chunk::builder_with_id(next_chunk_id(), "/my_text")

@@ -23,7 +23,7 @@ impl Points3D {
             .with_context(|| format!("Failed to open file {filepath:?}"))?;
         let mut file = std::io::BufReader::new(file);
 
-        let parser = ply_rs::parser::Parser::<ply_rs::ply::DefaultElement>::new();
+        let parser = ply_rs_bw::parser::Parser::<ply_rs_bw::ply::DefaultElement>::new();
         let ply = {
             re_tracing::profile_scope!("read_ply");
             parser.read_ply(&mut file)?
@@ -37,7 +37,7 @@ impl Points3D {
     /// If unspecified, he media type will be inferred from the contents.
     pub fn from_file_contents(contents: &[u8]) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
-        let parser = ply_rs::parser::Parser::<ply_rs::ply::DefaultElement>::new();
+        let parser = ply_rs_bw::parser::Parser::<ply_rs_bw::ply::DefaultElement>::new();
         let mut contents = std::io::Cursor::new(contents);
         let ply = {
             re_tracing::profile_scope!("read_ply");
@@ -47,13 +47,13 @@ impl Points3D {
     }
 }
 
-fn from_ply(ply: ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
+fn from_ply(ply: ply_rs_bw::ply::Ply<ply_rs_bw::ply::DefaultElement>) -> Points3D {
     re_tracing::profile_function!();
 
     use std::borrow::Cow;
 
     use linked_hash_map::LinkedHashMap;
-    use ply_rs::ply::Property;
+    use ply_rs_bw::ply::Property;
 
     use crate::components::{Color, Position3D, Radius, Text};
 

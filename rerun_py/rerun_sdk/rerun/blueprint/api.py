@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterable, Mapping
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 import rerun_bindings as bindings
 
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from ..memory import MemoryRecording
     from .components.container_kind import ContainerKindLike
 
-ViewContentsLike = Union[Utf8ArrayLike, ViewContents]
+ViewContentsLike = Utf8ArrayLike | ViewContents
 
 
 class View:
@@ -208,6 +208,7 @@ class Container:
         grid_columns: int | None = None,
         active_tab: int | str | None = None,
         name: Utf8Like | None,
+        visible: BoolLike | None = None,
     ) -> None:
         """
         Construct a new container.
@@ -236,6 +237,10 @@ class Container:
             The active tab in the container. This is only applicable to `Tabs` containers.
         name
             The name of the container
+        visible:
+            Whether this container is visible.
+
+            Defaults to true if not specified.
 
         """
 
@@ -254,6 +259,7 @@ class Container:
         self.grid_columns = grid_columns
         self.active_tab = active_tab
         self.name = name
+        self.visible = visible
 
     def blueprint_path(self) -> str:
         """
@@ -289,7 +295,7 @@ class Container:
             contents=[sub.blueprint_path() for sub in self.contents],
             col_shares=self.column_shares,
             row_shares=self.row_shares,
-            visible=True,
+            visible=self.visible,
             grid_columns=self.grid_columns,
             active_tab=active_tab_path,
             display_name=self.name,
@@ -511,7 +517,7 @@ class TimePanel(Panel):
             stream.log(self.blueprint_path(), static_arch, static=True)
 
 
-ContainerLike = Union[Container, View]
+ContainerLike = Container | View
 """
 A type that can be converted to a container.
 
@@ -519,7 +525,7 @@ These types all implement a `to_container()` method that wraps them in the neces
 helper classes.
 """
 
-BlueprintPart = Union[ContainerLike, TopPanel, BlueprintPanel, SelectionPanel, TimePanel]
+BlueprintPart = ContainerLike | TopPanel | BlueprintPanel | SelectionPanel | TimePanel
 """
 The types that make up a blueprint.
 """
@@ -770,7 +776,7 @@ class Blueprint:
         self.connect_grpc(application_id=application_id, url=f"rerun+http://127.0.0.1:{port}/proxy")
 
 
-BlueprintLike = Union[Blueprint, View, Container]
+BlueprintLike = Blueprint | View | Container
 """
 A type that can be converted to a blueprint.
 

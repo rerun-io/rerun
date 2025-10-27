@@ -60,7 +60,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
             .latest_at_component_quiet::<re_types::blueprint::components::TimeInt>(
                 &time_panel_blueprint_entity_path(),
                 self.blueprint_query(),
-                &TimePanelBlueprint::descriptor_time(),
+                TimePanelBlueprint::descriptor_time().component,
             )?;
 
         Some(TimeInt::saturated_temporal_i64(time.0.0))
@@ -81,7 +81,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
             .latest_at_component_quiet::<re_types::blueprint::components::TimelineName>(
             &time_panel_blueprint_entity_path(),
             self.blueprint_query(),
-            &TimePanelBlueprint::descriptor_timeline(),
+            TimePanelBlueprint::descriptor_timeline().component,
         )?;
 
         Some(TimelineName::new(timeline.as_str()))
@@ -115,7 +115,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
             .latest_at_component_quiet::<re_types::blueprint::components::PlaybackSpeed>(
             &time_panel_blueprint_entity_path(),
             self.blueprint_query(),
-            &TimePanelBlueprint::descriptor_playback_speed(),
+            TimePanelBlueprint::descriptor_playback_speed().component,
         )?;
 
         Some(**playback_speed)
@@ -135,7 +135,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
             .latest_at_component_quiet::<re_types::blueprint::components::Fps>(
                 &time_panel_blueprint_entity_path(),
                 self.blueprint_query(),
-                &TimePanelBlueprint::descriptor_fps(),
+                TimePanelBlueprint::descriptor_fps().component,
             )?;
 
         Some(**fps)
@@ -563,7 +563,14 @@ impl TimeControl {
 
                     if more_data_is_coming {
                         // then let's wait for it without pausing!
-                        return TimeControlResponse::no_repaint(); // ui will wake up when more data arrives
+                        return self.apply_state_diff_if_needed(
+                            TimeControlResponse::no_repaint(), // ui will wake up when more data arrives
+                            should_diff_state,
+                            times_per_timeline,
+                            old_timeline,
+                            old_playing,
+                            old_state,
+                        );
                     } else {
                         self.pause();
                         return TimeControlResponse::no_repaint();
@@ -622,14 +629,33 @@ impl TimeControl {
             }
         };
 
-        let mut response = TimeControlResponse::new(needs_repaint);
+        self.apply_state_diff_if_needed(
+            TimeControlResponse::new(needs_repaint),
+            should_diff_state,
+            times_per_timeline,
+            old_timeline,
+            old_playing,
+            old_state,
+        )
+    }
 
-        // Only diff if the caller asked for it, _and_ we have some times on the timeline.
-        let should_diff_state = should_diff_state
+    /// Apply state diff to response if needed.
+    fn apply_state_diff_if_needed(
+        &mut self,
+        response: TimeControlResponse,
+        should_diff_state: bool,
+        times_per_timeline: &TimesPerTimeline,
+        old_timeline: Timeline,
+        old_playing: bool,
+        old_state: Option<TimeState>,
+    ) -> TimeControlResponse {
+        let mut response = response;
+
+        if should_diff_state
             && times_per_timeline
                 .get(self.timeline.name())
-                .is_some_and(|stats| !stats.per_time.is_empty());
-        if should_diff_state {
+                .is_some_and(|stats| !stats.per_time.is_empty())
+        {
             self.diff_with(&mut response, old_timeline, old_playing, old_state);
         }
 
@@ -736,9 +762,13 @@ impl TimeControl {
                 NeedsRepaint::Yes
             }
             TimeControlCommand::ClearHighlightedRange => {
-                self.highlighted_range = None;
+                if self.highlighted_range.is_some() {
+                    self.highlighted_range = None;
 
-                NeedsRepaint::Yes
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
             }
             TimeControlCommand::ResetActiveTimeline => {
                 if let Some(blueprint_ctx) = blueprint_ctx {

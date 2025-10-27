@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -35,17 +35,10 @@ if TYPE_CHECKING:
 
     from .. import datatypes
 
-    AffixFuzzer4Like = Union[
-        AffixFuzzer4,
-        datatypes.AffixFuzzer3,
-        list[datatypes.AffixFuzzer3],
-    ]
-    AffixFuzzer4ArrayLike = Union[
-        AffixFuzzer4,
-        datatypes.AffixFuzzer3,
-        list[datatypes.AffixFuzzer3],
-        Sequence[AffixFuzzer4Like],
-    ]
+    AffixFuzzer4Like = AffixFuzzer4 | datatypes.AffixFuzzer3 | list[datatypes.AffixFuzzer3]
+    AffixFuzzer4ArrayLike = (
+        AffixFuzzer4 | datatypes.AffixFuzzer3 | list[datatypes.AffixFuzzer3] | Sequence[AffixFuzzer4Like]
+    )
 else:
     AffixFuzzer4Like = Any
     AffixFuzzer4ArrayLike = Any

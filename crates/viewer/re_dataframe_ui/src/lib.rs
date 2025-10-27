@@ -12,11 +12,13 @@ mod table_blueprint;
 pub mod table_utils;
 
 pub use self::{
-    datafusion_table_widget::DataFusionTableWidget,
+    datafusion_table_widget::{DataFusionTableWidget, TableStatus},
     display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError},
     header_tooltip::column_header_tooltip_ui,
     requested_object::RequestedObject,
-    table_blueprint::{ColumnBlueprint, TableBlueprint, default_display_name_for_column},
+    table_blueprint::{
+        ColumnBlueprint, SortBy, SortDirection, TableBlueprint, default_display_name_for_column,
+    },
 };
 
 // for testing purposes

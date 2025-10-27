@@ -169,6 +169,9 @@ impl AllocationTracker {
                 })
             })
             .collect();
+
+        // TODO(emilk): this could be faster with `select_nth_unstable`
+        #[expect(clippy::cast_possible_wrap)]
         vec.sort_by_key(|stats| -(stats.extant.size as i64));
         vec.truncate(n);
         vec.shrink_to_fit();

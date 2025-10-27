@@ -1,5 +1,5 @@
 use arrow::array::ArrayRef;
-use re_chunk::{LatestAtQuery, RowId, TimelineName};
+use re_chunk::{ComponentIdentifier, LatestAtQuery, RowId, TimelineName};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, StoreId, TimeInt, TimePoint, Timeline};
@@ -189,12 +189,12 @@ pub trait BlueprintContext {
     fn raw_latest_at_in_default_blueprint(
         &self,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Option<ArrayRef> {
         self.default_blueprint()?
-            .latest_at(self.blueprint_query(), entity_path, [component_descr])
-            .get(component_descr)?
-            .component_batch_raw(component_descr)
+            .latest_at(self.blueprint_query(), entity_path, [component])
+            .get(component)?
+            .component_batch_raw(component)
     }
 
     /// Resets a blueprint component to the value it had in the default blueprint.
@@ -204,7 +204,7 @@ pub trait BlueprintContext {
         component_descr: ComponentDescriptor,
     ) {
         if let Some(default_value) =
-            self.raw_latest_at_in_default_blueprint(&entity_path, &component_descr)
+            self.raw_latest_at_in_default_blueprint(&entity_path, component_descr.component)
         {
             self.save_blueprint_array(entity_path, component_descr, default_value);
         } else {
@@ -219,12 +219,13 @@ pub trait BlueprintContext {
         component_descr: ComponentDescriptor,
     ) {
         let blueprint = self.current_blueprint();
+        let component = component_descr.component;
 
         let Some(datatype) = blueprint
-            .latest_at(self.blueprint_query(), &entity_path, [&component_descr])
-            .get(&component_descr)
+            .latest_at(self.blueprint_query(), &entity_path, [component])
+            .get(component)
             .and_then(|unit| {
-                unit.component_batch_raw(&component_descr)
+                unit.component_batch_raw(component)
                     .map(|array| array.data_type().clone())
             })
         else {
@@ -263,12 +264,13 @@ pub trait BlueprintContext {
         component_descr: ComponentDescriptor,
     ) {
         let blueprint = self.current_blueprint();
+        let component = component_descr.component;
 
         let Some(datatype) = blueprint
-            .latest_at(self.blueprint_query(), &entity_path, [&component_descr])
-            .get(&component_descr)
+            .latest_at(self.blueprint_query(), &entity_path, [component])
+            .get(component)
             .and_then(|unit| {
-                unit.component_batch_raw(&component_descr)
+                unit.component_batch_raw(component)
                     .map(|array| array.data_type().clone())
             })
         else {

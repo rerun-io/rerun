@@ -92,6 +92,7 @@ def lint_url(url: str) -> str | None:
     ALLOW_LIST_URLS = {
         "https://github.com/lycheeverse/lychee/blob/master/lychee.example.toml",
         "https://github.com/rerun-io/documentation/blob/main/src/utils/tokens.ts",
+        "https://github.com/rerun-io/landing/blob/main/src/lib/lang.ts",  # if this file moves we should check the linked code.
         "https://github.com/rerun-io/rerun/blob/main/ARCHITECTURE.md",
         "https://github.com/rerun-io/rerun/blob/main/CODE_OF_CONDUCT.md",
         "https://github.com/rerun-io/rerun/blob/main/CONTRIBUTING.md",
@@ -1106,7 +1107,7 @@ def lint_file(filepath: str, args: Any) -> int:
         if filepath.startswith("./rerun_py/") and filepath.endswith(".rs"):
             pyclass_errors, error_lines = lint_pyclass_eq(source.lines)
             valid_errors = 0
-            for error, line_number in zip(pyclass_errors, error_lines):
+            for error, line_number in zip(pyclass_errors, error_lines, strict=False):
                 if not source.should_ignore(line_number):
                     print(source.error(error))
                     valid_errors += 1

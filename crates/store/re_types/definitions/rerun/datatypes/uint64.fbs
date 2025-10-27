@@ -4,7 +4,7 @@ namespace rerun.datatypes;
 struct UInt64 (
   "attr.arrow.transparent",
   "attr.python.aliases": "int",
-  "attr.python.array_aliases": "int, npt.NDArray[np.uint64]",
+  "attr.python.array_aliases": "int | npt.NDArray[np.uint64]",
   "attr.rust.derive": "Default, Copy, PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.override_crate": "re_types_core",
   "attr.rust.tuple_struct"

@@ -15,7 +15,7 @@ table QueryExpression (
   "attr.rerun.scope": "blueprint",
   "attr.arrow.transparent",
   "attr.python.aliases": "str",
-  "attr.python.array_aliases": "str, Sequence[str]",
+  "attr.python.array_aliases": "str | Sequence[str]",
   "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.repr": "transparent"
 ) {

@@ -414,18 +414,10 @@ impl PyDataframeQueryView {
         let ctx = client.ctx(py)?;
         let ctx = ctx.bind(py);
 
-        let uuid = uuid::Uuid::new_v4().simple();
-        let name = format!("{}_dataframe_query_{uuid}", super_.name());
-
         drop(client);
         drop(dataset);
 
-        // We're fine with this failing.
-        ctx.call_method1("deregister_table", (name.clone(),))?;
-
-        ctx.call_method1("register_table_provider", (name.clone(), self_))?;
-
-        let df = ctx.call_method1("table", (name,))?;
+        let df = ctx.call_method1("read_table", (self_,))?;
 
         Ok(df)
     }

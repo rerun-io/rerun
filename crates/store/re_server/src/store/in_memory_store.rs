@@ -1,30 +1,26 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
+use ahash::HashMap;
 use arrow::array::{
     ArrayRef, Int32Array, RecordBatch, RecordBatchOptions, StringArray, TimestampNanosecondArray,
 };
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
-use datafusion::catalog::{MemTable, TableProvider};
+use datafusion::catalog::MemTable;
 use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
-use lance::datafusion::LanceTableProvider;
 
-use re_chunk_store::ChunkStoreConfig;
-use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::EntryKind;
+use re_chunk_store::{Chunk, ChunkStoreConfig};
+use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::{
-    cloud::v1alpha1::{
-        SystemTableKind,
-        ext::{EntryDetails, SystemTable},
-    },
-    common::v1alpha1::ext::IfDuplicateBehavior,
+    cloud::v1alpha1::{EntryKind, ext::EntryDetails},
+    common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId},
 };
 use re_tuid::Tuid;
 use re_types_core::{ComponentBatch as _, Loggable as _};
 
 use crate::entrypoint::NamedPath;
-use crate::store::{Dataset, Error, Table};
+use crate::store::table::TableType;
+use crate::store::{ChunkKey, Dataset, Error, Table};
 
 const ENTRIES_TABLE_NAME: &str = "__entries";
 
@@ -53,6 +49,71 @@ impl InMemoryStore {
         ChunkStoreConfig::CHANGELOG_DISABLED
             .apply_env()
             .unwrap_or(ChunkStoreConfig::CHANGELOG_DISABLED)
+    }
+
+    /// Returns the chunks corresponding to the provided chunk keys.
+    ///
+    /// Important: there is no guarantee on the order of the returned chunks.
+    pub fn chunks_from_chunk_keys(
+        &self,
+        chunk_keys: &[ChunkKey],
+    ) -> Result<Vec<(StoreId, Arc<Chunk>)>, Error> {
+        // sort keys per dataset, partition, layer
+        let mut chunk_key_index: HashMap<
+            &EntryId,
+            HashMap<&PartitionId, HashMap<&str, Vec<&ChunkKey>>>,
+        > = Default::default();
+
+        for chunk_key in chunk_keys {
+            chunk_key_index
+                .entry(&chunk_key.dataset_id)
+                .or_default()
+                .entry(&chunk_key.partition_id)
+                .or_default()
+                .entry(&chunk_key.layer_name)
+                .or_default()
+                .push(chunk_key);
+        }
+
+        let mut result = Vec::with_capacity(chunk_keys.len());
+
+        for (dataset_id, partition_index) in chunk_key_index {
+            let dataset = self.dataset(*dataset_id)?;
+
+            for (partition_id, layer_index) in partition_index {
+                let partition = dataset.partition(partition_id)?;
+
+                let store_id = StoreId::new(
+                    StoreKind::Recording,
+                    dataset_id.to_string(),
+                    partition_id.id.as_str(),
+                );
+
+                for (layer_name, chunk_keys) in layer_index {
+                    let store_handle = partition
+                        .layer(layer_name)
+                        .ok_or_else(|| {
+                            Error::LayerNameNotFound(
+                                layer_name.to_owned(),
+                                partition_id.clone(),
+                                *dataset_id,
+                            )
+                        })?
+                        .store_handle()
+                        .read();
+
+                    for chunk_key in chunk_keys {
+                        let chunk = store_handle
+                            .chunk(&chunk_key.chunk_id)
+                            .ok_or_else(|| Error::ChunkNotFound(chunk_key.clone()))?;
+
+                        result.push((store_id.clone(), Arc::clone(chunk)));
+                    }
+                }
+            }
+        }
+
+        Ok(result)
     }
 
     /// Load a directory of RRDs.
@@ -100,11 +161,14 @@ impl InMemoryStore {
         Ok(())
     }
 
+    #[cfg(feature = "lance")]
     pub async fn load_directory_as_table(
         &mut self,
         named_path: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
-    ) -> Result<(), Error> {
+    ) -> Result<EntryId, Error> {
+        use std::sync::Arc;
+
         let directory = named_path.path.canonicalize()?;
         if !directory.is_dir() {
             return Err(std::io::Error::new(
@@ -128,21 +192,22 @@ impl InMemoryStore {
             format!("Expected a valid path, got: {}", directory.display()),
         ))?;
 
-        let table = lance::Dataset::open(path)
-            .await
-            .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?;
-        let provider = Arc::new(LanceTableProvider::new(Arc::new(table), false, false));
+        let table = TableType::LanceDataset(Arc::new(
+            lance::Dataset::open(path)
+                .await
+                .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?,
+        ));
 
         let entry_id = EntryId::new();
 
         match self.table_by_name(entry_name.as_ref()) {
             None => {
-                self.add_table_entry(entry_name.as_ref(), entry_id, provider)?;
+                self.add_table_entry(entry_name.as_ref(), entry_id, table)?;
             }
             Some(_) => match on_duplicate {
                 IfDuplicateBehavior::Overwrite => {
                     re_log::info!("Overwriting {entry_name}");
-                    self.add_table_entry(entry_name.as_ref(), entry_id, provider)?;
+                    self.add_table_entry(entry_name.as_ref(), entry_id, table)?;
                 }
                 IfDuplicateBehavior::Skip => {
                     re_log::info!("Ignoring {entry_name}: it already exists");
@@ -153,19 +218,20 @@ impl InMemoryStore {
             },
         }
 
-        Ok(())
+        Ok(entry_id)
     }
 
+    #[cfg(feature = "lance")] // only used by the `lance` feature
     fn add_table_entry(
         &mut self,
         entry_name: &str,
         entry_id: EntryId,
-        provider: Arc<dyn TableProvider>,
+        table: TableType,
     ) -> Result<(), Error> {
         self.id_by_name.insert(entry_name.to_owned(), entry_id);
         self.tables.insert(
             entry_id,
-            Table::new(entry_id, entry_name.to_owned(), provider, None, None),
+            Table::new(entry_id, entry_name.to_owned(), table, None, None),
         );
 
         self.update_entries_table()
@@ -177,6 +243,10 @@ impl InMemoryStore {
     /// `Arc<Mutex<_>>` and then have an ac-hoc table generation.
     /// TODO(#11369)
     fn update_entries_table(&mut self) -> Result<(), Error> {
+        use std::sync::Arc;
+
+        use re_protos::cloud::v1alpha1::{SystemTableKind, ext::SystemTable};
+
         let entries_table_id = *self
             .id_by_name
             .entry(ENTRIES_TABLE_NAME.to_owned())
@@ -189,7 +259,7 @@ impl InMemoryStore {
             Table::new(
                 entries_table_id,
                 ENTRIES_TABLE_NAME.to_owned(),
-                entries_table,
+                TableType::DataFusionTable(entries_table),
                 prior_entries_table.map(|t| t.created_at()),
                 Some(SystemTable {
                     kind: SystemTableKind::Entries,
@@ -226,16 +296,22 @@ impl InMemoryStore {
         }
     }
 
-    pub fn dataset(&self, entry_id: EntryId) -> Option<&Dataset> {
-        self.datasets.get(&entry_id)
+    pub fn dataset(&self, entry_id: EntryId) -> Result<&Dataset, Error> {
+        self.datasets
+            .get(&entry_id)
+            .ok_or(Error::EntryIdNotFound(entry_id))
     }
 
     pub fn dataset_mut(&mut self, entry_id: EntryId) -> Option<&mut Dataset> {
         self.datasets.get_mut(&entry_id)
     }
 
-    pub fn dataset_by_name(&self, name: &str) -> Option<&Dataset> {
-        let entry_id = self.id_by_name.get(name).copied()?;
+    pub fn dataset_by_name(&self, name: &str) -> Result<&Dataset, Error> {
+        let entry_id = self
+            .id_by_name
+            .get(name)
+            .copied()
+            .ok_or(Error::EntryNameNotFound(name.to_owned()))?;
         self.dataset(entry_id)
     }
 
@@ -258,6 +334,10 @@ impl InMemoryStore {
 
     pub fn iter_tables(&self) -> impl Iterator<Item = &Table> {
         self.tables.values()
+    }
+
+    pub fn id_by_name(&self, name: &str) -> Option<&EntryId> {
+        self.id_by_name.get(name)
     }
 }
 
@@ -306,7 +386,7 @@ fn generate_entries_table(entries: &[EntryDetails]) -> Result<RecordBatch, Error
                 false,
             ),
         ],
-        HashMap::new(),
+        Default::default(),
     ));
 
     let num_rows = id_arr.len();

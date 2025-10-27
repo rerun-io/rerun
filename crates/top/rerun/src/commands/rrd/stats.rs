@@ -1,6 +1,7 @@
 use ahash::{HashMap, HashMapExt as _};
 use itertools::Itertools as _;
 
+use re_log_encoding::ToApplication as _;
 use re_protos::log_msg::v1alpha1::log_msg::Msg;
 
 use crate::commands::read_raw_rrd_streams_from_file_or_stdin;
@@ -389,7 +390,7 @@ fn compute_stats(app: bool, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
         };
 
         let app = if app {
-            let decoded = re_log_encoding::protobuf_conversions::arrow_msg_from_proto(arrow_msg)?;
+            let decoded = arrow_msg.to_application(())?;
 
             let schema = decoded.batch.schema();
 

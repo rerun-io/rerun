@@ -520,8 +520,9 @@ extern void rr_recording_stream_connect_grpc(
 /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
 /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
 ///
-/// It is highly recommended that you set the memory limit to `0B` if both the server and client are running
-/// on the same machine, otherwise you're potentially doubling your memory usage!
+/// If server & client are running on the same machine and all clients are expected to connect before
+/// any data is sent, it is highly recommended that you set the memory limit to `0B`,
+/// otherwise you're potentially doubling your memory usage!
 ///
 /// `newest_first` controls whether or not to play back the newest data first to clients.
 extern void rr_recording_stream_serve_grpc(

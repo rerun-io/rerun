@@ -66,10 +66,10 @@ fn visible_time_range_ui(
         .latest_at(
             ctx.blueprint_query,
             time_range_override_path,
-            [&blueprint_archetypes::VisibleTimeRanges::descriptor_ranges()],
+            [blueprint_archetypes::VisibleTimeRanges::descriptor_ranges().component],
         )
         .component_batch::<VisibleTimeRange>(
-            &blueprint_archetypes::VisibleTimeRanges::descriptor_ranges(),
+            blueprint_archetypes::VisibleTimeRanges::descriptor_ranges().component,
         )
         .unwrap_or_default();
 

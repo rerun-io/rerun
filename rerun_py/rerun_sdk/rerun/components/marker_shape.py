@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -75,9 +75,9 @@ class MarkerShape(Enum):
         return self.name
 
 
-MarkerShapeLike = Union[
-    MarkerShape,
-    Literal[
+MarkerShapeLike = (
+    MarkerShape
+    | Literal[
         "Asterisk",
         "Circle",
         "Cross",
@@ -98,10 +98,36 @@ MarkerShapeLike = Union[
         "right",
         "square",
         "up",
-    ],
-    int,
-]
-MarkerShapeArrayLike = Union[MarkerShapeLike, Sequence[MarkerShapeLike]]
+    ]
+    | int
+)
+MarkerShapeArrayLike = (
+    MarkerShape
+    | Literal[
+        "Asterisk",
+        "Circle",
+        "Cross",
+        "Diamond",
+        "Down",
+        "Left",
+        "Plus",
+        "Right",
+        "Square",
+        "Up",
+        "asterisk",
+        "circle",
+        "cross",
+        "diamond",
+        "down",
+        "left",
+        "plus",
+        "right",
+        "square",
+        "up",
+    ]
+    | int
+    | Sequence[MarkerShapeLike]
+)
 
 
 class MarkerShapeBatch(BaseBatch[MarkerShapeArrayLike], ComponentBatchMixin):

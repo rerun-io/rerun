@@ -1,4 +1,4 @@
-use re_types::reflection::Enum as _;
+use re_types::{ColormapCategory, reflection::Enum as _};
 use re_ui::list_item;
 
 use crate::{
@@ -78,18 +78,52 @@ fn colormap_variant_ui(
 
     let mut response = list_item.show_flat(
         ui,
-        list_item::PropertyContent::new(option.to_string())
-            .min_desired_width(MIN_WIDTH)
-            .value_fn(|ui, _| {
-                if let Err(err) = colormap_preview_ui(render_ctx, ui, *option) {
-                    re_log::error_once!("Failed to paint colormap preview: {err}");
-                }
-            }),
+        list_item::CustomContent::new(|ui, _| {
+            if let Err(err) = colormap_preview_ui(render_ctx, ui, *option) {
+                re_log::error_once!("Failed to paint colormap preview: {err}");
+            }
+
+            ui.add_space(8.0);
+
+            ui.label(option.to_string());
+        }),
     );
 
     if response.clicked() {
         *map = *option;
         response.mark_changed();
+    }
+
+    response
+}
+
+fn colormap_category_ui(
+    ctx: &crate::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    category: ColormapCategory,
+    selected: &mut re_types::components::Colormap,
+) -> egui::Response {
+    let label_content = match category {
+        ColormapCategory::Sequential => "Sequential",
+        ColormapCategory::Diverging => "Diverging",
+        ColormapCategory::Cyclic => "Cyclic",
+    };
+
+    let mut response = list_item::ListItem::new()
+        .interactive(false)
+        .header()
+        .show_flat(
+            ui,
+            list_item::LabelContent::header(label_content)
+                .strong(true)
+                .min_desired_width(MIN_WIDTH),
+        );
+
+    for option in re_types::components::Colormap::variants()
+        .iter()
+        .filter(|&&colormap| colormap.category() == category)
+    {
+        response |= colormap_variant_ui(ctx.render_ctx(), ui, option, selected);
     }
 
     response
@@ -103,23 +137,18 @@ pub fn colormap_edit_or_view_ui(
     if let Some(map) = map.as_mut() {
         let selected_text = map.to_string();
         let content_ui = |ui: &mut egui::Ui| {
-            let mut iter = re_types::components::Colormap::variants().iter();
+            let mut response = ui.allocate_response(egui::Vec2::ZERO, egui::Sense::hover());
 
-            let Some(first) = iter.next() else {
-                return ui.label("<no variants>");
-            };
-
-            let mut response = colormap_variant_ui(ctx.render_ctx(), ui, first, map);
-
-            for option in iter {
-                response |= colormap_variant_ui(ctx.render_ctx(), ui, option, map);
-            }
+            response |= colormap_category_ui(ctx, ui, ColormapCategory::Sequential, map);
+            response |= colormap_category_ui(ctx, ui, ColormapCategory::Diverging, map);
+            response |= colormap_category_ui(ctx, ui, ColormapCategory::Cyclic, map);
 
             response
         };
 
         let mut inner_response = egui::ComboBox::from_id_salt("color map select")
             .selected_text(selected_text)
+            .height(400.0)
             .show_ui(ui, |ui| {
                 list_item::list_item_scope(ui, "inner_scope", content_ui)
             });
@@ -158,5 +187,6 @@ pub fn colormap_to_re_renderer(colormap: re_types::components::Colormap) -> re_r
         re_types::components::Colormap::Viridis => re_renderer::Colormap::Viridis,
         re_types::components::Colormap::CyanToYellow => re_renderer::Colormap::CyanToYellow,
         re_types::components::Colormap::Spectral => re_renderer::Colormap::Spectral,
+        re_types::components::Colormap::Twilight => re_renderer::Colormap::Twilight,
     }
 }

@@ -1,6 +1,7 @@
 use glam::vec3;
 use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
+use re_tf::TransformFrameIdHash;
 use re_types::{
     Archetype as _,
     archetypes::Pinhole,
@@ -8,16 +9,14 @@ use re_types::{
 };
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    DataResult, IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewOutlineMasks,
-    ViewQuery, ViewStateExt as _, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    DataResult, IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext,
+    ViewContextCollection, ViewOutlineMasks, ViewQuery, ViewSystemExecutionError,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 use crate::{
-    contexts::TransformTreeContext, resolution_of_image_at, space_camera_3d::SpaceCamera3D,
-    ui::SpatialViewState, visualizers::process_radius,
+    contexts::TransformTreeContext, space_camera_3d::SpaceCamera3D, visualizers::process_radius,
 };
 
 pub struct CamerasVisualizer {
@@ -73,8 +72,8 @@ impl CamerasVisualizer {
         let instance = Instance::from(0);
         let ent_path = &data_result.entity_path;
 
-        // If the camera is our reference, there is nothing for us to display.
-        if transforms.target_path() == ent_path.hash() {
+        // If the camera is the target frame, there is nothing for us to display.
+        if transforms.target_frame() == TransformFrameIdHash::from_entity_path(ent_path) {
             self.space_cameras.push(SpaceCamera3D {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
@@ -85,7 +84,8 @@ impl CamerasVisualizer {
             return;
         }
 
-        let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(ent_path.hash())
+        let Some(pinhole_tree_root_info) =
+            transforms.pinhole_tree_root_info_for_entity(ent_path.hash())
         else {
             // This implies that the transform context didn't see the pinhole transform.
             // Should be impossible!
@@ -231,8 +231,6 @@ impl VisualizerSystem for CamerasVisualizer {
         );
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
-            let latest_at = query.latest_at_query();
-            let query_ctx = ctx.query_context(data_result, &latest_at);
             let time_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
             let query_shadowed_components = false;
@@ -241,7 +239,7 @@ impl VisualizerSystem for CamerasVisualizer {
                 None,
                 &time_query,
                 data_result,
-                Pinhole::all_components().iter(),
+                Pinhole::all_component_identifiers(),
                 query_shadowed_components,
             );
 
@@ -253,17 +251,17 @@ impl VisualizerSystem for CamerasVisualizer {
                 continue;
             };
 
-            let resolution = query_results
-                .get_mono::<components::Resolution>(&Pinhole::descriptor_resolution())
-                .unwrap_or_else(|| self.fallback_for(&query_ctx));
-            let camera_xyz = query_results
-                .get_mono::<components::ViewCoordinates>(&Pinhole::descriptor_camera_xyz())
-                .unwrap_or_else(|| self.fallback_for(&query_ctx));
+            let resolution =
+                query_results.get_mono_with_fallback::<components::Resolution>(
+                    &Pinhole::descriptor_resolution(),
+                );
+            let camera_xyz = query_results.get_mono_with_fallback::<components::ViewCoordinates>(
+                &Pinhole::descriptor_camera_xyz(),
+            );
             let image_plane_distance = query_results
-                .get_mono::<components::ImagePlaneDistance>(
+                .get_mono_with_fallback::<components::ImagePlaneDistance>(
                     &Pinhole::descriptor_image_plane_distance(),
-                )
-                .unwrap_or_else(|| self.fallback_for(&query_ctx));
+                );
             let color = query_results
                 .get_mono::<components::Color>(&Pinhole::descriptor_color())
                 .map(|color| color.into());
@@ -306,53 +304,4 @@ impl VisualizerSystem for CamerasVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-impl TypedComponentFallbackProvider<components::ImagePlaneDistance> for CamerasVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::ImagePlaneDistance {
-        let Ok(state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
-            return Default::default();
-        };
-
-        let scene_size = state.bounding_boxes.smoothed.size().length();
-
-        if scene_size.is_finite() && scene_size > 0.0 {
-            // Works pretty well for `examples/python/open_photogrammetry_format/open_photogrammetry_format.py --no-frames`
-            scene_size * 0.02
-        } else {
-            // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
-            // the heuristic will change it or it will be user edited. In the case of non-defined bounds
-            // this value works better with the default camera setup.
-            0.3
-        }
-        .into()
-    }
-}
-
-impl TypedComponentFallbackProvider<components::ViewCoordinates> for CamerasVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> components::ViewCoordinates {
-        Pinhole::DEFAULT_CAMERA_XYZ
-    }
-}
-
-impl TypedComponentFallbackProvider<components::Resolution> for CamerasVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::Resolution {
-        // If the Pinhole has no resolution, use the resolution for the image logged at the same path.
-        // See https://github.com/rerun-io/rerun/issues/3852
-        resolution_of_image_at(ctx.viewer_ctx(), ctx.query, ctx.target_entity_path)
-            // Zero will be seen as invalid resolution by the visualizer, making it opt out of visualization.
-            // TODO(andreas): We should display a warning about this somewhere.
-            // Since it's not a required component, logging a warning about this might be too noisy.
-            .unwrap_or(components::Resolution::from([0.0, 0.0]))
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(CamerasVisualizer => [
-    components::ImagePlaneDistance,
-    components::ViewCoordinates,
-    components::Resolution
-]);

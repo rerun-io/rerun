@@ -247,7 +247,7 @@ pub fn resolve_mono_instance_path(
         let engine = entity_db.storage_engine();
 
         // NOTE: While we normally frown upon direct queries to the datastore, `all_components` is fine.
-        let Some(component_descrs) = engine
+        let Some(components) = engine
             .store()
             .all_components_on_timeline(&query.timeline(), &instance.entity_path)
         else {
@@ -256,11 +256,11 @@ pub fn resolve_mono_instance_path(
         };
 
         #[expect(clippy::iter_over_hash_type)]
-        for component_descr in &component_descrs {
+        for component in components {
             if let Some(array) = engine
                 .cache()
-                .latest_at(query, &instance.entity_path, [component_descr])
-                .component_batch_raw(component_descr)
+                .latest_at(query, &instance.entity_path, [component])
+                .component_batch_raw(component)
                 && array.len() > 1
             {
                 return instance.clone();

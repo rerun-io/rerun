@@ -2159,7 +2159,7 @@ fn default_recording_id(py: Python<'_>, application_id: &str) -> RecordingId {
                 "Failed to retrieve python authkey: {err}\nMultiprocessing will result in split recordings."
             );
             // If authkey failed, just generate a random 8-byte authkey
-            let bytes = rand::Rng::r#gen::<[u8; 8]>(&mut rand::thread_rng());
+            let bytes = rand::Rng::random::<[u8; 8]>(&mut rand::rng());
             bytes.to_vec()
         }
     };
@@ -2174,7 +2174,7 @@ fn default_recording_id(py: Python<'_>, application_id: &str) -> RecordingId {
     // targeting different application IDs, won't share the same recording ID.
     application_id.hash(&mut hasher);
     let mut rng = rand::rngs::StdRng::seed_from_u64(hasher.finish());
-    let uuid = uuid::Builder::from_random_bytes(rng.r#gen()).into_uuid();
+    let uuid = uuid::Builder::from_random_bytes(rng.random()).into_uuid();
     RecordingId::from(uuid.simple().to_string())
 }
 

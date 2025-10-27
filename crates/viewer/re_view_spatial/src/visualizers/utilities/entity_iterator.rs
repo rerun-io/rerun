@@ -161,7 +161,7 @@ pub fn iter_component<'a, C: re_types::Component>(
 ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
     chunks.iter().flat_map(move |chunk| {
         itertools::izip!(
-            chunk.iter_component_indices(&timeline),
+            chunk.iter_component_indices(timeline),
             chunk.iter_component::<C>()
         )
     })
@@ -176,7 +176,7 @@ pub fn iter_slices<'a, T: 'a + re_chunk::ChunkComponentSlicer>(
 ) -> impl Iterator<Item = ((TimeInt, RowId), T::Item<'a>)> + 'a {
     chunks.iter().flat_map(move |chunk| {
         itertools::izip!(
-            chunk.iter_component_indices(&timeline),
+            chunk.iter_component_indices(timeline),
             chunk.iter_slices::<T>()
         )
     })

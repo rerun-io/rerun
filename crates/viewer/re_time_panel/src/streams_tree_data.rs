@@ -258,7 +258,12 @@ pub fn components_for_entity(
     entity_path: &EntityPath,
 ) -> ArchetypeComponentMap {
     if let Some(components) = store.all_components_for_entity(entity_path) {
-        sorted_component_list_by_archetype_for_ui(viewer_context.reflection(), components.iter())
+        sorted_component_list_by_archetype_for_ui(
+            viewer_context.reflection(),
+            components
+                .iter()
+                .filter_map(|component| store.entity_component_descriptor(entity_path, *component)),
+        )
     } else {
         ArchetypeComponentMap::default()
     }

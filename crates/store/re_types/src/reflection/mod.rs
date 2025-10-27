@@ -1148,6 +1148,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <TransformFrameId as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A string identifier for a transform frame.\n\n**Experimental:** Transform frames are still in early development!\n\nTransform frames may be derived from entity paths to refer to Rerun's implicit\nentity path driven hierarchy which is defined via [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d), [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole) etc..\nNote that any transform logged at an entity path describes a relationship between the two transform\nframes represented by that entity path and its parent path,\n**not** the transform frame that the entity path may be using.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: TransformFrameId::arrow_datatype(),
+                verify_arrow_array: TransformFrameId::verify_arrow_array,
+            },
+        ),
+        (
             <TransformMat3x3 as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3x3 transformation matrix Matrix.\n\n3x3 matrixes are able to represent any affine transformation in 3D space,\ni.e. rotation, scaling, shearing, reflection etc.\n\nMatrices in Rerun are stored as flat list of coefficients in column-major order:\n```text\n            column 0       column 1       column 2\n       -------------------------------------------------\nrow 0 | flat_columns[0] flat_columns[3] flat_columns[6]\nrow 1 | flat_columns[1] flat_columns[4] flat_columns[7]\nrow 2 | flat_columns[2] flat_columns[5] flat_columns[8]\n```",
@@ -3390,6 +3400,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Speed",
                         component_type: "rerun.components.LinearSpeed".into(),
                         docstring_md: "Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).\n\nThe default depends on the control kind.\nFor orbit cameras it is derived from the distance to the orbit center.\nFor first person cameras it is derived from the scene size.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "tracking_entity",
+                        display_name: "Tracking entity",
+                        component_type: "rerun.components.EntityPath".into(),
+                        docstring_md: "Currently tracked entity.\n\nIf this is a camera, it takes over the camera pose, otherwise follows the entity.",
                         is_required: false,
                     },
                 ],

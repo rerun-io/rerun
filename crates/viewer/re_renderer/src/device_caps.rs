@@ -476,7 +476,7 @@ pub fn default_backends() -> wgpu::Backends {
         wgpu::Backends::from_env()
             .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL | wgpu::Backends::GL)
     } else if is_safari_browser() || is_firefox_browser() {
-        // TODO(#8559): Fix WebGPU on Safari
+        // TODO(#10609): Fix WebGPU on Safari
         // TODO(#11009): Fix videos on WebGPU firefox
         wgpu::Backends::GL
     } else {

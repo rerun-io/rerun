@@ -21,7 +21,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer21 {
     pub single_half: half::f16,
     pub many_halves: ::arrow::buffer::ScalarBuffer<half::f16>,

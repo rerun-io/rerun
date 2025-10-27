@@ -9,7 +9,7 @@ use crate::{view_kind::SpatialViewKind, visualizers::SpatialViewVisualizerData};
 /// Returns all entities for which a visualizer of the given kind would be picked.
 ///
 /// I.e. all entities for which at least one visualizer of the specified kind is "maybe visualizable"
-/// *and* has a matching indicator component.
+/// *and* has a relevant archetype.
 /// (we can't reason with "visualizable" because that can be influenced by view properties like its origin)
 pub fn default_visualized_entities_for_visualizer_kind(
     ctx: &ViewerContext<'_>,

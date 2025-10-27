@@ -1,10 +1,15 @@
 //! Core list item functionality.
 
-use egui::{Color32, NumExt as _, Response, Shape, Ui, emath::GuiRounding as _};
+use egui::{
+    Color32, EventFilter, NumExt as _, Response, Sense, Shape, Ui, emath::GuiRounding as _,
+};
 
 use crate::{
     DesignTokens, UiExt as _, design_tokens_of,
-    list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent},
+    list_item::{
+        ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent,
+        navigation::ListItemNavigation,
+    },
 };
 
 struct ListItemResponse {
@@ -298,6 +303,14 @@ impl ListItem {
         self
     }
 
+    /// Did we gain focus via arrow key navigation last pass?
+    ///
+    /// Useful if you want to select items when they gain focus via arrow keys, but not via
+    /// tab.
+    pub fn gained_focus_via_arrow_key(ctx: &egui::Context, id: egui::Id) -> bool {
+        ListItemNavigation::gained_focus_via_arrow_key(ctx, id)
+    }
+
     /// Draw the item as part of a flat list.
     ///
     /// *Important*: must be called while nested in a [`super::list_item_scope`].
@@ -401,6 +414,9 @@ impl ListItem {
             state.toggle(ui);
         }
 
+        ListItemNavigation::with_mut(ui.ctx(), |nav| {
+            nav.parent_stack.push(id);
+        });
         let body_response = ui
             .scope(|ui| {
                 if indented {
@@ -412,6 +428,9 @@ impl ListItem {
                 }
             })
             .inner;
+        ListItemNavigation::with_mut(ui.ctx(), |nav| {
+            nav.parent_stack.pop();
+        });
 
         ShowCollapsingResponse {
             item_response: response.response,
@@ -485,6 +504,8 @@ impl ListItem {
         };
 
         let (allocated_id, mut rect) = ui.allocate_space(desired_size);
+        let id = id.unwrap_or(allocated_id);
+
         rect.min.x += extra_indent;
 
         ui.sanity_check();
@@ -499,7 +520,38 @@ impl ListItem {
 
         // We want to be able to select/hover the item across its full span, so we interact over the
         // entire background rect. But…
-        let mut response = ui.interact(bg_rect, allocated_id, sense);
+        let mut response = ui.interact(bg_rect, id, sense);
+
+        if interactive {
+            let focused = response.has_focus();
+            ui.memory_mut(|mem| {
+                mem.set_focus_lock_filter(
+                    response.id,
+                    EventFilter {
+                        vertical_arrows: true,
+                        ..Default::default()
+                    },
+                );
+            });
+            ListItemNavigation::with_mut(ui.ctx(), |nav| {
+                if nav.current_focused.is_none() {
+                    if focused {
+                        nav.current_focused = Some(id);
+                        nav.focused_collapsed = collapse_openness.map(|o| o < 0.5);
+                        nav.focused_parent = nav.parent_stack.last().copied();
+                    } else {
+                        nav.previous_item = Some(id);
+                    }
+                } else if nav.next_item.is_none() {
+                    nav.next_item = Some(id);
+                }
+            });
+
+            // Clicking the item focuses it, so we can do keyboard navigation
+            if response.clicked() {
+                response.request_focus();
+            }
+        }
 
         // …we must not "leak" rects that span beyond `ui.available_width()` (which is typically
         // the case for `bg_rect`), because that can have unwanted side effect. For example, it
@@ -522,12 +574,13 @@ impl ListItem {
             style_response.flags |= egui::response::Flags::HOVERED;
         }
 
+        let hovered = (style_response.hovered() || style_response.contains_pointer())
+            && interactive
+            && !drag_target
+            && !egui::DragAndDrop::has_any_payload(ui.ctx());
         let visuals = ListVisuals {
             theme: ui.theme(),
-            hovered: (style_response.hovered() || style_response.contains_pointer())
-                && interactive
-                && !drag_target
-                && !egui::DragAndDrop::has_any_payload(ui.ctx()),
+            hovered,
             selected,
             active,
             interactive,
@@ -547,10 +600,12 @@ impl ListItem {
             )
             .round_to_pixels(ui.pixels_per_point());
             let triangle_rect = egui::Rect::from_min_size(triangle_pos, collapsing_triangle_size);
+            let mut triangle_sense = egui::Sense::click();
+            triangle_sense.remove(Sense::FOCUSABLE);
             let triangle_response = ui.interact(
                 triangle_rect.expand(3.0), // make it easier to click
-                id.unwrap_or(ui.id()).with("collapsing_triangle"),
-                egui::Sense::click(),
+                id.with("collapsing_triangle"),
+                triangle_sense,
             );
 
             let color = visuals.collapse_button_color(triangle_response.hovered());
@@ -602,6 +657,10 @@ impl ListItem {
                     background_frame,
                     Shape::rect_filled(bg_rect_to_paint, 0.0, bg_fill),
                 );
+            }
+
+            if response.has_focus() && !selected {
+                ui.draw_focus_outline(rect.expand2(egui::vec2(tokens.text_to_icon_padding(), 0.0)));
             }
         }
 

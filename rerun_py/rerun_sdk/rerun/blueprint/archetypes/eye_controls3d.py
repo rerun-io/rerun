@@ -30,7 +30,11 @@ class EyeControls3D(Archetype):
     """
 
     def __init__(
-        self: Any, *, kind: blueprint_components.Eye3DKindLike | None = None, speed: datatypes.Float64Like | None = None
+        self: Any,
+        *,
+        kind: blueprint_components.Eye3DKindLike | None = None,
+        speed: datatypes.Float64Like | None = None,
+        tracking_entity: datatypes.EntityPathLike | None = None,
     ) -> None:
         """
         Create a new instance of the EyeControls3D archetype.
@@ -48,12 +52,16 @@ class EyeControls3D(Archetype):
             The default depends on the control kind.
             For orbit cameras it is derived from the distance to the orbit center.
             For first person cameras it is derived from the scene size.
+        tracking_entity:
+            Currently tracked entity.
+
+            If this is a camera, it takes over the camera pose, otherwise follows the entity.
 
         """
 
         # You can define your own __init__ function as a member of EyeControls3DExt in eye_controls3d_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(kind=kind, speed=speed)
+            self.__attrs_init__(kind=kind, speed=speed, tracking_entity=tracking_entity)
             return
         self.__attrs_clear__()
 
@@ -62,6 +70,7 @@ class EyeControls3D(Archetype):
         self.__attrs_init__(
             kind=None,
             speed=None,
+            tracking_entity=None,
         )
 
     @classmethod
@@ -78,6 +87,7 @@ class EyeControls3D(Archetype):
         clear_unset: bool = False,
         kind: blueprint_components.Eye3DKindLike | None = None,
         speed: datatypes.Float64Like | None = None,
+        tracking_entity: datatypes.EntityPathLike | None = None,
     ) -> EyeControls3D:
         """
         Update only some specific fields of a `EyeControls3D`.
@@ -97,6 +107,10 @@ class EyeControls3D(Archetype):
             The default depends on the control kind.
             For orbit cameras it is derived from the distance to the orbit center.
             For first person cameras it is derived from the scene size.
+        tracking_entity:
+            Currently tracked entity.
+
+            If this is a camera, it takes over the camera pose, otherwise follows the entity.
 
         """
 
@@ -105,6 +119,7 @@ class EyeControls3D(Archetype):
             kwargs = {
                 "kind": kind,
                 "speed": speed,
+                "tracking_entity": tracking_entity,
             }
 
             if clear_unset:
@@ -143,6 +158,17 @@ class EyeControls3D(Archetype):
     # The default depends on the control kind.
     # For orbit cameras it is derived from the distance to the orbit center.
     # For first person cameras it is derived from the scene size.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    tracking_entity: components.EntityPathBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.EntityPathBatch._converter,  # type: ignore[misc]
+    )
+    # Currently tracked entity.
+    #
+    # If this is a camera, it takes over the camera pose, otherwise follows the entity.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

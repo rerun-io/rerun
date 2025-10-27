@@ -500,6 +500,7 @@ fn static_unsorted() -> anyhow::Result<()> {
 
 // ---
 
+// TODO(andreas): This doesn't have to take a full descriptor, but all our access methods are using descriptors right now.
 fn query_and_compare(
     (component_desc, query): (ComponentDescriptor, &RangeQuery),
     chunk: &Chunk,
@@ -507,7 +508,7 @@ fn query_and_compare(
 ) {
     re_log::setup_logging();
 
-    let results = chunk.range(query, &component_desc);
+    let results = chunk.range(query, component_desc.component);
 
     eprintln!("Query: {component_desc} @ {query:?}");
     eprintln!("Data:\n{chunk}");

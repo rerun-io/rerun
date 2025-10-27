@@ -42,16 +42,16 @@ pub type ArchetypeComponentMap =
     std::collections::BTreeMap<Option<ArchetypeName>, Vec<ComponentDescriptor>>;
 
 /// Components grouped by archetype.
-pub fn sorted_component_list_by_archetype_for_ui<'a>(
+pub fn sorted_component_list_by_archetype_for_ui(
     reflection: &Reflection,
-    iter: impl IntoIterator<Item = &'a ComponentDescriptor> + 'a,
+    iter: impl IntoIterator<Item = ComponentDescriptor>,
 ) -> ArchetypeComponentMap {
     let mut map = iter
         .into_iter()
         .fold(ArchetypeComponentMap::default(), |mut acc, descriptor| {
             acc.entry(descriptor.archetype)
                 .or_default()
-                .push(descriptor.clone());
+                .push(descriptor);
             acc
         });
 
@@ -159,7 +159,7 @@ fn find_and_deserialize_archetype_mono_component<C: Component>(
 ) -> Option<C> {
     components.iter().find_map(|(descr, chunk)| {
         (descr.component_type == Some(C::name()) && descr.archetype == archetype_name)
-            .then(|| chunk.component_mono::<C>(descr)?.ok())
+            .then(|| chunk.component_mono::<C>(descr.component)?.ok())
             .flatten()
     })
 }

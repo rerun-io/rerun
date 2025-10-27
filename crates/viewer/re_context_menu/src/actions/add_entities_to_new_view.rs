@@ -175,7 +175,7 @@ fn create_view_for_selected_entities(
         .add_views(std::iter::once(view), target_container_id, None);
     ctx.viewer_context
         .command_sender()
-        .send_system(SystemCommand::SetSelection(Item::View(view_id).into()));
+        .send_system(SystemCommand::set_selection(Item::View(view_id)));
     ctx.viewport_blueprint
         .mark_user_interaction(ctx.viewer_context);
 }

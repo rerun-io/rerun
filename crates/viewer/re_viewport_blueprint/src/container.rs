@@ -75,36 +75,36 @@ impl ContainerBlueprint {
         let results = blueprint_db.storage_engine().cache().latest_at(
             query,
             &id.as_entity_path(),
-            blueprint_archetypes::ContainerBlueprint::all_components().iter(),
+            blueprint_archetypes::ContainerBlueprint::all_component_identifiers(),
         );
 
         // This is a required component. Note that when loading containers we crawl the subtree and so
         // cleared empty container paths may exist transiently. The fact that they have an empty container_kind
         // is the marker that the have been cleared and not an error.
         let container_kind = results.component_mono::<ContainerKind>(
-            &blueprint_archetypes::ContainerBlueprint::descriptor_container_kind(),
+            blueprint_archetypes::ContainerBlueprint::descriptor_container_kind().component,
         )?;
 
         let display_name = results.component_mono::<Name>(
-            &blueprint_archetypes::ContainerBlueprint::descriptor_display_name(),
+            blueprint_archetypes::ContainerBlueprint::descriptor_display_name().component,
         );
         let contents = results.component_batch::<IncludedContent>(
-            &blueprint_archetypes::ContainerBlueprint::descriptor_contents(),
+            blueprint_archetypes::ContainerBlueprint::descriptor_contents().component,
         );
         let col_shares = results.component_batch::<ColumnShare>(
-            &blueprint_archetypes::ContainerBlueprint::descriptor_col_shares(),
+            blueprint_archetypes::ContainerBlueprint::descriptor_col_shares().component,
         );
         let row_shares = results.component_batch::<RowShare>(
-            &blueprint_archetypes::ContainerBlueprint::descriptor_row_shares(),
+            blueprint_archetypes::ContainerBlueprint::descriptor_row_shares().component,
         );
         let active_tab = results.component_mono::<ActiveTab>(
-            &blueprint_archetypes::ContainerBlueprint::descriptor_active_tab(),
+            blueprint_archetypes::ContainerBlueprint::descriptor_active_tab().component,
         );
         let visible = results.component_mono::<Visible>(
-            &blueprint_archetypes::ContainerBlueprint::descriptor_visible(),
+            blueprint_archetypes::ContainerBlueprint::descriptor_visible().component,
         );
         let grid_columns = results.component_mono::<GridColumns>(
-            &blueprint_archetypes::ContainerBlueprint::descriptor_grid_columns(),
+            blueprint_archetypes::ContainerBlueprint::descriptor_grid_columns().component,
         );
 
         // ----
@@ -204,11 +204,12 @@ impl ContainerBlueprint {
             arch = arch.with_display_name(display_name.clone());
         }
 
-        // TODO(jleibs): The need for this pattern is annoying. Should codegen
-        // a version of this that can take an Option.
-        if let Some(active_tab) = &active_tab {
-            arch = arch.with_active_tab(&active_tab.as_entity_path());
-        }
+        // We want to write an empty array if `active_tab` is none. So can't use `arch.with_active_tab`
+        // here.
+        arch.active_tab = re_types::try_serialize_field::<re_types::blueprint::components::ActiveTab>(
+            re_types::blueprint::archetypes::ContainerBlueprint::descriptor_active_tab(),
+            active_tab.map(|c| c.as_entity_path()).as_ref(),
+        );
 
         if let Some(cols) = grid_columns {
             arch = arch.with_grid_columns(*cols);
@@ -411,11 +412,7 @@ impl ContainerBlueprint {
         let container = match self.container_kind {
             egui_tiles::ContainerKind::Tabs => {
                 let mut tabs = egui_tiles::Tabs::new(children);
-                tabs.active = self
-                    .active_tab
-                    .as_ref()
-                    .map(|id| id.as_tile_id())
-                    .or_else(|| tabs.children.first().copied());
+                tabs.active = self.active_tab.as_ref().map(|id| id.as_tile_id());
                 egui_tiles::Container::Tabs(tabs)
             }
             egui_tiles::ContainerKind::Horizontal | egui_tiles::ContainerKind::Vertical => {

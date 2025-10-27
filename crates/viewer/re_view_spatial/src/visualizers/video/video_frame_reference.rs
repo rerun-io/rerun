@@ -5,18 +5,17 @@ use re_renderer::{external::re_video::VideoLoadError, video::Video};
 use re_types::{
     Archetype as _,
     archetypes::{AssetVideo, VideoFrameReference},
-    components::{self, Blob, MediaType, Opacity, VideoTimestamp},
-    image::ImageKind,
+    components::{Blob, MediaType, Opacity, VideoTimestamp},
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider,
-    VideoAssetCache, ViewContext, ViewContextCollection, ViewId, ViewQuery,
-    ViewSystemExecutionError, ViewerContext, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, MaybeVisualizableEntities, VideoAssetCache, ViewContext,
+    ViewContextCollection, ViewId, ViewQuery, ViewSystemExecutionError, ViewerContext,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 use crate::{
-    PickableTexturedRect, SpatialViewState,
+    PickableTexturedRect,
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialViewKind,
     visualizers::{
@@ -30,8 +29,6 @@ use crate::{
     },
 };
 
-// TODO(#9832): Support opacity for videos
-// TODO(jan): Fallback opacity in the same way as color/depth/segmentation images
 pub struct VideoFrameReferenceVisualizer {
     pub data: SpatialViewVisualizerData,
 }
@@ -113,7 +110,12 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                             .and_then(|slice| slice.first())
                             .copied()
                             .map(Opacity::from)
-                            .unwrap_or_else(|| self.fallback_for(ctx)),
+                            .unwrap_or_else(|| {
+                                typed_fallback_for(
+                                    ctx,
+                                    VideoFrameReference::descriptor_opacity().component,
+                                )
+                            }),
                         entity_path,
                         view_query.view_id,
                     );
@@ -134,10 +136,6 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
         self
     }
 }
@@ -161,16 +159,15 @@ impl VideoFrameReferenceVisualizer {
         // Follow the reference to the video asset.
         let video_reference: EntityPath = video_references
             .and_then(|v| v.first().map(|e| e.as_str().into()))
-            .unwrap_or_else(|| {
-                TypedComponentFallbackProvider::<components::EntityPath>::fallback_for(self, ctx)
-                    .as_str()
-                    .into()
-            });
+            .unwrap_or_else(|| ctx.target_entity_path.clone());
         let query_result = latest_at_query_video_from_datastore(ctx.viewer_ctx(), &video_reference);
 
         let world_from_entity = spatial_ctx
             .transform_info
-            .single_entity_transform_required(ctx.target_entity_path, VideoFrameReference::name());
+            .single_transform_required_for_entity(
+                ctx.target_entity_path,
+                VideoFrameReference::name(),
+            );
 
         // Note that we may or may not know the video size independently of error occurrence.
         // (if it's just a decoding error we may still know the size from the container!)
@@ -278,20 +275,20 @@ fn latest_at_query_video_from_datastore(
     let results = ctx.recording_engine().cache().latest_at(
         &query,
         entity_path,
-        AssetVideo::all_components().iter(),
+        AssetVideo::all_component_identifiers(),
     );
 
-    let blob_row_id = results.component_row_id(&AssetVideo::descriptor_blob())?;
-    let blob = results.component_instance::<Blob>(0, &AssetVideo::descriptor_blob())?;
+    let blob_row_id = results.component_row_id(AssetVideo::descriptor_blob().component)?;
+    let blob = results.component_instance::<Blob>(0, AssetVideo::descriptor_blob().component)?;
     let media_type =
-        results.component_instance::<MediaType>(0, &AssetVideo::descriptor_media_type());
+        results.component_instance::<MediaType>(0, AssetVideo::descriptor_media_type().component);
 
     let video = ctx.store_context.caches.entry(|c: &mut VideoAssetCache| {
         let debug_name = entity_path.to_string();
         c.entry(
             debug_name,
             blob_row_id,
-            &AssetVideo::descriptor_blob(),
+            AssetVideo::descriptor_blob().component,
             &blob,
             media_type.as_ref(),
             ctx.app_options().video_decoder_settings(),
@@ -299,34 +296,3 @@ fn latest_at_query_video_from_datastore(
     });
     Some((video, blob))
 }
-
-impl TypedComponentFallbackProvider<components::EntityPath> for VideoFrameReferenceVisualizer {
-    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> components::EntityPath {
-        ctx.target_entity_path.to_string().into()
-    }
-}
-
-impl TypedComponentFallbackProvider<components::DrawOrder> for VideoFrameReferenceVisualizer {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> components::DrawOrder {
-        components::DrawOrder::DEFAULT_VIDEO
-    }
-}
-
-impl TypedComponentFallbackProvider<components::Opacity> for VideoFrameReferenceVisualizer {
-    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> components::Opacity {
-        // Videos should be transparent whenever they're on top of other media,
-        // But fully opaque if there is no other media in the scene.
-        let Some(view_state) = ctx.view_state().as_any().downcast_ref::<SpatialViewState>() else {
-            return 1.0.into();
-        };
-
-        // Videos are basically color images.
-        //
-        // Check [`crates/viewer/re_view_spatial/src/visualizers/images.rs`] for possible issues with this approach.
-        view_state
-            .fallback_opacity_for_image_kind(ImageKind::Color)
-            .into()
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(VideoFrameReferenceVisualizer => [components::EntityPath, components::DrawOrder, Opacity]);

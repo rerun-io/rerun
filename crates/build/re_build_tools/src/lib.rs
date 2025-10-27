@@ -317,7 +317,7 @@ pub fn enabled_features_of(crate_name: &str) -> anyhow::Result<Vec<String>> {
 
     let mut features = vec![];
     for package in &metadata.packages {
-        if package.name == crate_name {
+        if package.name.as_str() == crate_name {
             for feature in package.features.keys() {
                 println!("Checking if feature is enabled: {feature:?}");
                 let feature_in_screaming_snake_case =

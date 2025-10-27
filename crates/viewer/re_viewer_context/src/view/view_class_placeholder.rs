@@ -79,5 +79,3 @@ impl ViewClass for ViewClassPlaceholder {
         Ok(())
     }
 }
-
-crate::impl_component_fallback_provider!(ViewClassPlaceholder => []);
