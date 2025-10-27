@@ -1,4 +1,5 @@
-use re_chunk::ComponentIdentifier;
+use arrow::array::ArrayRef;
+use re_chunk::{ComponentIdentifier, ComponentType};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, external::re_query::LatestAtResults};
 use re_log_types::EntityPath;
@@ -6,9 +7,8 @@ use re_types::{
     Archetype, ArchetypeName, ComponentBatch, ComponentDescriptor, DeserializationError,
 };
 use re_viewer_context::{
-    BlueprintContext as _, ComponentFallbackError, ComponentFallbackProvider, QueryContext,
-    ViewContext, ViewId, ViewSystemExecutionError, ViewerContext,
-    external::re_entity_db::EntityTree,
+    BlueprintContext as _, ComponentFallbackError, QueryContext, ViewContext, ViewId,
+    ViewSystemExecutionError, ViewerContext, external::re_entity_db::EntityTree,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -91,15 +91,12 @@ impl ViewProperty {
     }
 
     /// Get the value of a specific component or its fallback if the component is not present.
-    // TODO(andreas): Unfortunately we can't use TypedComponentFallbackProvider here because it may not be implemented for all components of interest.
-    // This sadly means that there's a bit of unnecessary back and forth between arrow array and untyped that could be avoided otherwise.
     pub fn component_or_fallback<C: re_types::Component>(
         &self,
         ctx: &ViewContext<'_>,
-        fallback_provider: &dyn ComponentFallbackProvider,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Result<C, ViewPropertyQueryError> {
-        self.component_array_or_fallback::<C>(ctx, fallback_provider, component_descr)?
+        self.component_array_or_fallback::<C>(ctx, component)?
             .into_iter()
             .next()
             .ok_or(ComponentFallbackError::UnexpectedEmptyFallback.into())
@@ -109,11 +106,10 @@ impl ViewProperty {
     pub fn component_array_or_fallback<C: re_types::Component>(
         &self,
         ctx: &ViewContext<'_>,
-        fallback_provider: &dyn ComponentFallbackProvider,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Result<Vec<C>, ViewPropertyQueryError> {
         C::from_arrow(
-            self.component_or_fallback_raw(ctx, component_descr, fallback_provider)
+            self.component_or_fallback_raw(ctx, component, Some(C::name()))
                 .as_ref(),
         )
         .map_err(|err| err.into())
@@ -161,16 +157,20 @@ impl ViewProperty {
     fn component_or_fallback_raw(
         &self,
         ctx: &ViewContext<'_>,
-        component_descr: &ComponentDescriptor,
-        fallback_provider: &dyn ComponentFallbackProvider,
-    ) -> arrow::array::ArrayRef {
-        if let Some(value) = self.component_raw(component_descr.component)
+        component_identifier: ComponentIdentifier,
+        component_type: Option<ComponentType>,
+    ) -> ArrayRef {
+        if let Some(value) = self.component_raw(component_identifier)
             && !value.is_empty()
         {
             return value;
         }
 
-        fallback_provider.fallback_for(&self.query_context(ctx), component_descr)
+        ctx.viewer_ctx.component_fallback_registry.fallback_for(
+            component_identifier,
+            component_type,
+            &self.query_context(ctx),
+        )
     }
 
     /// Save change to a blueprint component.

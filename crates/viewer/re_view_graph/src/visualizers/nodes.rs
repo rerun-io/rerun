@@ -3,16 +3,15 @@ use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
 use re_query::{clamped_zip_2x4, range_zip_1x4};
 use re_types::archetypes::GraphNodes;
-use re_types::components::{Color, Radius, ShowLabels};
+use re_types::components::Color;
 use re_types::{
     self, ArrowString, archetypes,
     components::{self},
 };
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
-    self, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
-    VisualizerQueryInfo, VisualizerSystem,
+    self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::graph::NodeId;
@@ -151,22 +150,4 @@ impl VisualizerSystem for NodeVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-impl TypedComponentFallbackProvider<ShowLabels> for NodeVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> ShowLabels {
-        true.into()
-    }
-}
-
-impl TypedComponentFallbackProvider<Radius> for NodeVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> Radius {
-        FALLBACK_RADIUS.into()
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(NodeVisualizer => [ShowLabels, Radius]);
