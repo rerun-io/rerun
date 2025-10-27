@@ -192,7 +192,7 @@ fn lookup_image_plane_distance(
     // If there's several entity paths (with pinhole cameras) for the same transform id,
     // we don't know which camera plane to use.
     //
-    // That's rather strange, but can a scene can be set up for this to happen!
+    // That's rather strange, but a scene can be set up for this to happen!
     // Unfortunately it's also really hard to log a warning or anything at this point since
     // we don't know the full entity path names.
     //
