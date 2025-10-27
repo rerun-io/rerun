@@ -334,7 +334,6 @@ impl SelectionPanel {
                         visible_interactive_toggle_ui(&view_ctx, ui, query_result, data_result);
 
                         // TODO(RR-2700): Come up with something non-experimental.
-                        // TODO: limit to 2d & 3d views
                         let is_spatial_view =
                             view.class_identifier() == "3D" || view.class_identifier() == "2D";
                         if ctx
