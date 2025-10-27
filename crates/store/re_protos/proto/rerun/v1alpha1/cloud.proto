@@ -330,7 +330,8 @@ message CreateIndexRequest {
 }
 
 message CreateIndexResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
+  reserved 1;
+  reserved "data";
 }
 
 message IndexConfig {
