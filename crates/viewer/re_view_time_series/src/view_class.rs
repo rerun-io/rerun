@@ -1,4 +1,7 @@
-use egui::ahash::{HashMap, HashSet};
+use egui::{
+    Vec2,
+    ahash::{HashMap, HashSet},
+};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
 use nohash_hasher::IntSet;
 use smallvec::SmallVec;
@@ -711,7 +714,15 @@ impl ViewClass for TimeSeriesView {
                 if response.dragged()
                     && let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos())
                 {
-                    let new_offset_time = transform.value_from_position(pointer_pos).x;
+                    let aim_radius = ui.input(|i| i.aim_radius());
+                    let new_offset_time = egui::emath::smart_aim::best_in_range_f64(
+                        transform
+                            .value_from_position(pointer_pos - aim_radius * Vec2::X)
+                            .x,
+                        transform
+                            .value_from_position(pointer_pos + aim_radius * Vec2::X)
+                            .x,
+                    );
                     let new_time = time_offset + new_offset_time.round() as i64;
 
                     // Avoid frame-delay:

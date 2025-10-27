@@ -1893,7 +1893,7 @@ fn time_marker_ui(
 
         if response.dragged()
             && let Some(pointer_pos) = pointer_pos
-            && let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x)
+            && let Some(time) = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
         {
             let time = time_ranges_ui.clamp_time(time);
             time_commands.push(TimeControlCommand::SetTime(time));
@@ -1958,7 +1958,7 @@ fn time_marker_ui(
             egui::Sense::click(),
         );
 
-        let hovered_time = time_ranges_ui.time_from_x_f32(pointer_pos.x);
+        let hovered_time = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x);
 
         if !is_hovering_the_loop_selection {
             let mut set_time_to_pointer = || {
