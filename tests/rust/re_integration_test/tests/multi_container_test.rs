@@ -251,7 +251,9 @@ pub async fn test_multi_change_container_type() {
     add_containers_recursive(&mut harness, None, 1, 2, 0);
     harness.set_selection_panel_opened(true);
 
-    harness.click_nth_label("Vertical container", 0);
+    harness
+        .blueprint_tree()
+        .click_nth_label("Vertical container", 0);
     harness.snapshot_app("change_container_type_1");
 
     harness.change_dropdown_value("Container kind", "Horizontal");
@@ -274,7 +276,7 @@ pub async fn test_simplify_container_hierarchy() {
     harness.snapshot_app("simplify_container_hierarchy_2");
 
     harness.set_selection_panel_opened(true);
-    harness.click_nth_label("Horizontal container", 0);
+    harness.blueprint_tree().click_label("Horizontal container");
     harness.click_label("Simplify hierarchy");
     harness.snapshot_app("simplify_container_hierarchy_3");
 }
@@ -293,11 +295,13 @@ pub async fn test_simplify_root_hierarchy() {
     // Only add content to the first child, leave the second child empty
     add_views_to_container(&mut harness, Some(child_cid_1), 2, 0);
 
-    harness.click_nth_label("Viewport (Grid container)", 0);
+    harness
+        .blueprint_tree()
+        .click_label("Viewport (Grid container)");
     harness.snapshot_app("simplify_root_hierarchy_2");
 
     harness.set_selection_panel_opened(true);
-    harness.click_label("Simplify hierarchy");
+    harness.selection_panel().click_label("Simplify hierarchy");
     harness.snapshot_app("simplify_root_hierarchy_3");
 }
 

@@ -59,6 +59,11 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
         self.harness.run_ok();
     }
 
+    pub fn click_nth_label(&mut self, label: &str, index: usize) {
+        self.get_nth_label(label, index).click();
+        self.harness.run_ok();
+    }
+
     pub fn click_label_modifiers(&mut self, label: &str, modifiers: egui::Modifiers) {
         self.root().get_by_label(label).click_modifiers(modifiers);
         self.harness.run_ok();
