@@ -155,7 +155,7 @@ impl SeriesLinesSystem {
 
             // If we have no scalars, we can't do anything.
             let Some(all_scalar_chunks) =
-                results.get_required_chunks(archetypes::Scalars::descriptor_scalars())
+                results.get_required_chunks(archetypes::Scalars::descriptor_scalars().component)
             else {
                 return;
             };
@@ -226,11 +226,11 @@ impl SeriesLinesSystem {
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             let aggregation_policy_descr = archetypes::SeriesLines::descriptor_aggregation_policy();
             let aggregator = bootstrapped_results
-                .get_optional_chunks(aggregation_policy_descr.clone())
+                .get_optional_chunks(aggregation_policy_descr.component)
                 .iter()
                 .chain(
                     results
-                        .get_optional_chunks(aggregation_policy_descr.clone())
+                        .get_optional_chunks(aggregation_policy_descr.component)
                         .iter(),
                 )
                 .find(|chunk| !chunk.is_empty())
@@ -297,7 +297,7 @@ impl SeriesLinesSystem {
                 &bootstrapped_results,
                 &results,
                 num_series,
-                archetypes::SeriesLines::descriptor_visible_series(),
+                archetypes::SeriesLines::descriptor_visible_series().component,
             );
             let series_names = collect_series_name(
                 &query_ctx,
@@ -359,7 +359,7 @@ fn collect_recursive_clears(
 
         cleared_indices.extend(
             results
-                .iter_as(*query.timeline(), clear_descriptor.clone())
+                .iter_as(*query.timeline(), clear_descriptor.component)
                 .slice::<bool>()
                 .filter_map(|(index, is_recursive_buffer)| {
                     let is_recursive =
@@ -378,7 +378,7 @@ fn collect_recursive_clears(
 
         cleared_indices.extend(
             results
-                .iter_as(*query.timeline(), clear_descriptor.clone())
+                .iter_as(*query.timeline(), clear_descriptor.component)
                 .slice::<bool>()
                 .filter_map(|(index, is_recursive_buffer)| {
                     let is_recursive =

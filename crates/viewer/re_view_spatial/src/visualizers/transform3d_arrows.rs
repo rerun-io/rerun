@@ -135,7 +135,9 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             );
 
             let axis_length: f32 = results
-                .get_mono_with_fallback::<AxisLength>(&Transform3D::descriptor_axis_length())
+                .get_mono_with_fallback::<AxisLength>(
+                    Transform3D::descriptor_axis_length().component,
+                )
                 .into();
 
             if axis_length == 0.0 {

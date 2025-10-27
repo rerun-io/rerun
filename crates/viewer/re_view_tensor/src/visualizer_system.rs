@@ -55,7 +55,8 @@ impl VisualizerSystem for TensorSystem {
                 query_shadowed_defaults,
             );
 
-            let Some(all_tensor_chunks) = results.get_required_chunks(Tensor::descriptor_data())
+            let Some(all_tensor_chunks) =
+                results.get_required_chunks(Tensor::descriptor_data().component)
             else {
                 continue;
             };
@@ -66,7 +67,7 @@ impl VisualizerSystem for TensorSystem {
                     .iter_component_indices(timeline)
                     .zip(chunk.iter_component::<TensorData>())
             });
-            let all_ranges = results.iter_as(timeline, Tensor::descriptor_value_range());
+            let all_ranges = results.iter_as(timeline, Tensor::descriptor_value_range().component);
 
             for ((_, tensor_row_id), tensors, data_ranges) in
                 re_query::range_zip_1x1(all_tensors_indexed, all_ranges.slice::<[f64; 2]>())

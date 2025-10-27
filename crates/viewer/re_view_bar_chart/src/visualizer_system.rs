@@ -49,16 +49,16 @@ impl VisualizerSystem for BarChartVisualizerSystem {
             let results = data_result
                 .latest_at_with_blueprint_resolved_data::<BarChart>(ctx, &timeline_query);
 
-            let Some(tensor) =
-                results.get_required_mono::<components::TensorData>(&BarChart::descriptor_values())
-            else {
+            let Some(tensor) = results.get_required_mono::<components::TensorData>(
+                BarChart::descriptor_values().component,
+            ) else {
                 continue;
             };
 
             if tensor.is_vector() {
                 let abscissa: components::TensorData =
-                    results.get_mono_with_fallback(&BarChart::descriptor_abscissa());
-                let color = results.get_mono_with_fallback(&BarChart::descriptor_color());
+                    results.get_mono_with_fallback(BarChart::descriptor_abscissa().component);
+                let color = results.get_mono_with_fallback(BarChart::descriptor_color().component);
                 self.charts.insert(
                     data_result.entity_path.clone(),
                     BarChartData {

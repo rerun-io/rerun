@@ -114,11 +114,13 @@ impl ImageVisualizer {
 
         let entity_path = ctx.target_entity_path;
 
-        let Some(all_buffer_chunks) = results.get_required_chunks(Image::descriptor_buffer())
+        let Some(all_buffer_chunks) =
+            results.get_required_chunks(Image::descriptor_buffer().component)
         else {
             return;
         };
-        let Some(all_formats_chunks) = results.get_required_chunks(Image::descriptor_format())
+        let Some(all_formats_chunks) =
+            results.get_required_chunks(Image::descriptor_format().component)
         else {
             return;
         };
@@ -126,7 +128,7 @@ impl ImageVisualizer {
         let timeline = ctx.query.timeline();
         let all_buffers_indexed = iter_slices::<&[u8]>(&all_buffer_chunks, timeline);
         let all_formats_indexed = iter_component::<ImageFormat>(&all_formats_chunks, timeline);
-        let all_opacities = results.iter_as(timeline, Image::descriptor_opacity());
+        let all_opacities = results.iter_as(timeline, Image::descriptor_opacity().component);
 
         let data = re_query::range_zip_1x2(
             all_buffers_indexed,

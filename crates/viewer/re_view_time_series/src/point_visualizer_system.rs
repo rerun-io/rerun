@@ -156,7 +156,7 @@ impl SeriesPointsSystem {
 
             // If we have no scalars, we can't do anything.
             let Some(all_scalar_chunks) =
-                results.get_required_chunks(archetypes::Scalars::descriptor_scalars())
+                results.get_required_chunks(archetypes::Scalars::descriptor_scalars().component)
             else {
                 return;
             };
@@ -235,12 +235,16 @@ impl SeriesPointsSystem {
 
                 {
                     let all_marker_shapes_chunks = bootstrapped_results
-                        .get_optional_chunks(archetypes::SeriesPoints::descriptor_markers())
+                        .get_optional_chunks(
+                            archetypes::SeriesPoints::descriptor_markers().component,
+                        )
                         .iter()
                         .cloned()
                         .chain(
                             results
-                                .get_optional_chunks(archetypes::SeriesPoints::descriptor_markers())
+                                .get_optional_chunks(
+                                    archetypes::SeriesPoints::descriptor_markers().component,
+                                )
                                 .iter()
                                 .cloned(),
                         )
@@ -334,7 +338,7 @@ impl SeriesPointsSystem {
                 &bootstrapped_results,
                 &results,
                 num_series,
-                archetypes::SeriesPoints::descriptor_visible_series(),
+                archetypes::SeriesPoints::descriptor_visible_series().component,
             );
             let series_names = collect_series_name(
                 &query_ctx,

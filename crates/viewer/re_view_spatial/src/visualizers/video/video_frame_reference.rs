@@ -81,15 +81,19 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                 let timeline = ctx.query.timeline();
                 let entity_path = ctx.target_entity_path;
 
-                let Some(all_video_timestamp_chunks) =
-                    results.get_required_chunks(VideoFrameReference::descriptor_timestamp())
+                let Some(all_video_timestamp_chunks) = results
+                    .get_required_chunks(VideoFrameReference::descriptor_timestamp().component)
                 else {
                     return Ok(());
                 };
-                let all_video_references =
-                    results.iter_as(timeline, VideoFrameReference::descriptor_video_reference());
-                let all_opacities =
-                    results.iter_as(timeline, VideoFrameReference::descriptor_opacity());
+                let all_video_references = results.iter_as(
+                    timeline,
+                    VideoFrameReference::descriptor_video_reference().component,
+                );
+                let all_opacities = results.iter_as(
+                    timeline,
+                    VideoFrameReference::descriptor_opacity().component,
+                );
 
                 for (_index, video_timestamps, video_references, opacity) in re_query::range_zip_1x2(
                     entity_iterator::iter_component(&all_video_timestamp_chunks, timeline),

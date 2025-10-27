@@ -245,28 +245,27 @@ impl VisualizerSystem for CamerasVisualizer {
 
             let Some(pinhole_projection) = query_results
                 .get_required_mono::<components::PinholeProjection>(
-                    &Pinhole::descriptor_image_from_camera(),
+                    Pinhole::descriptor_image_from_camera().component,
                 )
             else {
                 continue;
             };
 
-            let resolution =
-                query_results.get_mono_with_fallback::<components::Resolution>(
-                    &Pinhole::descriptor_resolution(),
-                );
+            let resolution = query_results.get_mono_with_fallback::<components::Resolution>(
+                Pinhole::descriptor_resolution().component,
+            );
             let camera_xyz = query_results.get_mono_with_fallback::<components::ViewCoordinates>(
-                &Pinhole::descriptor_camera_xyz(),
+                Pinhole::descriptor_camera_xyz().component,
             );
             let image_plane_distance = query_results
                 .get_mono_with_fallback::<components::ImagePlaneDistance>(
-                    &Pinhole::descriptor_image_plane_distance(),
+                    Pinhole::descriptor_image_plane_distance().component,
                 );
             let color = query_results
-                .get_mono::<components::Color>(&Pinhole::descriptor_color())
+                .get_mono::<components::Color>(Pinhole::descriptor_color().component)
                 .map(|color| color.into());
             let line_width = query_results
-                .get_mono::<components::Radius>(&Pinhole::descriptor_line_width())
+                .get_mono::<components::Radius>(Pinhole::descriptor_line_width().component)
                 .map(|radius| process_radius(&data_result.entity_path, radius));
 
             let component_data = CameraComponentDataWithFallbacks {

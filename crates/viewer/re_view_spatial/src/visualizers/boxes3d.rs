@@ -132,7 +132,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_half_size_chunks) =
-                    results.get_required_chunks(Boxes3D::descriptor_half_sizes())
+                    results.get_required_chunks(Boxes3D::descriptor_half_sizes().component)
                 else {
                     return Ok(());
                 };
@@ -149,14 +149,17 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let timeline = ctx.query.timeline();
                 let all_half_sizes_indexed =
                     iter_slices::<[f32; 3]>(&all_half_size_chunks, timeline);
-                let all_colors = results.iter_as(timeline, Boxes3D::descriptor_colors());
-                let all_radii = results.iter_as(timeline, Boxes3D::descriptor_radii());
-                let all_labels = results.iter_as(timeline, Boxes3D::descriptor_labels());
-                let all_class_ids = results.iter_as(timeline, Boxes3D::descriptor_class_ids());
-                let all_show_labels = results.iter_as(timeline, Boxes3D::descriptor_show_labels());
+                let all_colors = results.iter_as(timeline, Boxes3D::descriptor_colors().component);
+                let all_radii = results.iter_as(timeline, Boxes3D::descriptor_radii().component);
+                let all_labels = results.iter_as(timeline, Boxes3D::descriptor_labels().component);
+                let all_class_ids =
+                    results.iter_as(timeline, Boxes3D::descriptor_class_ids().component);
+                let all_show_labels =
+                    results.iter_as(timeline, Boxes3D::descriptor_show_labels().component);
 
                 // Deserialized because it's a union.
-                let all_fill_modes = results.iter_as(timeline, Boxes3D::descriptor_fill_mode());
+                let all_fill_modes =
+                    results.iter_as(timeline, Boxes3D::descriptor_fill_mode().component);
                 // fill mode is currently a non-repeated component
                 let fill_mode: FillMode = all_fill_modes
                     .slice::<u8>()

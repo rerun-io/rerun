@@ -85,7 +85,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
 
                         Some(
                             results.get_mono_with_fallback::<components::ImagePlaneDistance>(
-                                &archetypes::Pinhole::descriptor_image_plane_distance(),
+                                archetypes::Pinhole::descriptor_image_plane_distance().component,
                             ),
                         )
                     } else {

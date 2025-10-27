@@ -221,7 +221,7 @@ impl VisualizerSystem for Points2DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_position_chunks) =
-                    results.get_required_chunks(Points2D::descriptor_positions())
+                    results.get_required_chunks(Points2D::descriptor_positions().component)
                 else {
                     return Ok(());
                 };
@@ -240,13 +240,15 @@ impl VisualizerSystem for Points2DVisualizer {
 
                 let timeline = ctx.query.timeline();
                 let all_positions_indexed = iter_slices::<[f32; 2]>(&all_position_chunks, timeline);
-                let all_colors = results.iter_as(timeline, Points2D::descriptor_colors());
-                let all_radii = results.iter_as(timeline, Points2D::descriptor_radii());
-                let all_labels = results.iter_as(timeline, Points2D::descriptor_labels());
-                let all_class_ids = results.iter_as(timeline, Points2D::descriptor_class_ids());
+                let all_colors = results.iter_as(timeline, Points2D::descriptor_colors().component);
+                let all_radii = results.iter_as(timeline, Points2D::descriptor_radii().component);
+                let all_labels = results.iter_as(timeline, Points2D::descriptor_labels().component);
+                let all_class_ids =
+                    results.iter_as(timeline, Points2D::descriptor_class_ids().component);
                 let all_keypoint_ids =
-                    results.iter_as(timeline, Points2D::descriptor_keypoint_ids());
-                let all_show_labels = results.iter_as(timeline, Points2D::descriptor_show_labels());
+                    results.iter_as(timeline, Points2D::descriptor_keypoint_ids().component);
+                let all_show_labels =
+                    results.iter_as(timeline, Points2D::descriptor_show_labels().component);
 
                 let data = re_query::range_zip_1x6(
                     all_positions_indexed,

@@ -88,7 +88,9 @@ impl TextLogSystem {
             TextLog::all_component_identifiers(),
         );
 
-        let Some(all_text_chunks) = results.get_required_chunks(TextLog::descriptor_text()) else {
+        let Some(all_text_chunks) =
+            results.get_required_chunks(TextLog::descriptor_text().component)
+        else {
             return;
         };
 
@@ -100,9 +102,9 @@ impl TextLogSystem {
             .flat_map(|chunk| chunk.iter_component_timepoints());
 
         let timeline = *query.timeline();
-        let all_texts = results.iter_as(timeline, TextLog::descriptor_text());
-        let all_levels = results.iter_as(timeline, TextLog::descriptor_level());
-        let all_colors = results.iter_as(timeline, TextLog::descriptor_color());
+        let all_texts = results.iter_as(timeline, TextLog::descriptor_text().component);
+        let all_levels = results.iter_as(timeline, TextLog::descriptor_level().component);
+        let all_colors = results.iter_as(timeline, TextLog::descriptor_color().component);
 
         let all_frames = range_zip_1x2(
             all_texts.slice::<String>(),
