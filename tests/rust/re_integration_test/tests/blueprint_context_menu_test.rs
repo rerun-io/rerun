@@ -54,6 +54,7 @@ pub async fn test_blueprint_tree_context_menu() {
 
     harness.snapshot_app("blueprint_tree_context_menu_01");
 
+    // Click on the view panel widget
     harness.right_click_nth_label("Test view", 1);
     harness.snapshot_app("blueprint_tree_context_menu_02");
 

@@ -312,6 +312,7 @@ pub async fn test_drag_view_to_other_view_right() {
 
     let target_pos = harness.get_panel_position("2D view 1").right_center() + vec2(-50.0, 0.0);
 
+    // Drag the view panel widget
     harness.drag_nth_label("3D view 4", 1);
     harness.hover_at(target_pos);
     harness.snapshot_app("drag_view_to_other_view_right_1");
@@ -327,6 +328,7 @@ pub async fn test_drag_view_to_other_view_left() {
 
     let target_pos = harness.get_panel_position("2D view 1").left_center() + vec2(50.0, 0.0);
 
+    // Drag the view panel widget
     harness.drag_nth_label("3D view 4", 1);
     harness.hover_at(target_pos);
     harness.snapshot_app("drag_view_to_other_view_left_1");
@@ -342,6 +344,7 @@ pub async fn test_drag_view_to_other_view_center() {
 
     let target_pos = harness.get_panel_position("2D view 1").center();
 
+    // Drag the view panel widget
     harness.drag_nth_label("3D view 4", 1);
     harness.hover_at(target_pos);
     harness.snapshot_app("drag_view_to_other_view_center_1");
@@ -357,6 +360,7 @@ pub async fn test_drag_view_to_other_view_top() {
 
     let target_pos = harness.get_panel_position("2D view 1").center_top() + vec2(0.0, 50.0);
 
+    // Drag the view panel widget
     harness.drag_nth_label("3D view 4", 1);
     harness.hover_at(target_pos);
     harness.snapshot_app("drag_view_to_other_view_top_1");
@@ -372,6 +376,7 @@ pub async fn test_drag_view_to_other_view_bottom() {
 
     let target_pos = harness.get_panel_position("2D view 1").center_bottom() + vec2(0.0, -50.0);
 
+    // Drag the view panel widget
     harness.drag_nth_label("3D view 4", 1);
     harness.hover_at(target_pos);
     harness.snapshot_app("drag_view_to_other_view_bottom_1");
