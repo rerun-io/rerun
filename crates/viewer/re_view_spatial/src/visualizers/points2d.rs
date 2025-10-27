@@ -243,10 +243,12 @@ impl VisualizerSystem for Points2DVisualizer {
                 let all_colors = results.iter_as(timeline, Points2D::descriptor_colors().component);
                 let all_radii = results.iter_as(timeline, Points2D::descriptor_radii().component);
                 let all_labels = results.iter_as(timeline, Points2D::descriptor_labels().component);
-                let all_class_ids = results.iter_as(timeline, Points2D::descriptor_class_ids().component);
+                let all_class_ids =
+                    results.iter_as(timeline, Points2D::descriptor_class_ids().component);
                 let all_keypoint_ids =
                     results.iter_as(timeline, Points2D::descriptor_keypoint_ids().component);
-                let all_show_labels = results.iter_as(timeline, Points2D::descriptor_show_labels().component);
+                let all_show_labels =
+                    results.iter_as(timeline, Points2D::descriptor_show_labels().component);
 
                 let data = re_query::range_zip_1x6(
                     all_positions_indexed,

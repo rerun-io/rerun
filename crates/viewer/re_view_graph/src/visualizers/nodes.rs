@@ -77,11 +77,16 @@ impl VisualizerSystem for NodeVisualizer {
                     &timeline_query,
                 );
 
-            let all_nodes = results.iter_as(query.timeline, GraphNodes::descriptor_node_ids().component);
-            let all_colors = results.iter_as(query.timeline, GraphNodes::descriptor_colors().component);
-            let all_positions = results.iter_as(query.timeline, GraphNodes::descriptor_positions().component);
-            let all_labels = results.iter_as(query.timeline, GraphNodes::descriptor_labels().component);
-            let all_radii = results.iter_as(query.timeline, GraphNodes::descriptor_radii().component);
+            let all_nodes =
+                results.iter_as(query.timeline, GraphNodes::descriptor_node_ids().component);
+            let all_colors =
+                results.iter_as(query.timeline, GraphNodes::descriptor_colors().component);
+            let all_positions =
+                results.iter_as(query.timeline, GraphNodes::descriptor_positions().component);
+            let all_labels =
+                results.iter_as(query.timeline, GraphNodes::descriptor_labels().component);
+            let all_radii =
+                results.iter_as(query.timeline, GraphNodes::descriptor_radii().component);
             let show_label = results
                 .get_mono::<components::ShowLabels>(GraphNodes::descriptor_show_labels().component)
                 .is_none_or(bool::from);

@@ -163,10 +163,14 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     results.iter_as(timeline, Mesh3D::descriptor_triangle_indices().component);
                 let all_albedo_factors =
                     results.iter_as(timeline, Mesh3D::descriptor_albedo_factor().component);
-                let all_albedo_buffers =
-                    results.iter_as(timeline, Mesh3D::descriptor_albedo_texture_buffer().component);
-                let all_albedo_formats =
-                    results.iter_as(timeline, Mesh3D::descriptor_albedo_texture_format().component);
+                let all_albedo_buffers = results.iter_as(
+                    timeline,
+                    Mesh3D::descriptor_albedo_texture_buffer().component,
+                );
+                let all_albedo_formats = results.iter_as(
+                    timeline,
+                    Mesh3D::descriptor_albedo_texture_format().component,
+                );
 
                 let query_result_hash = results.query_result_hash();
 

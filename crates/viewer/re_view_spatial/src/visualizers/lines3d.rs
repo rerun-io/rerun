@@ -227,10 +227,14 @@ impl VisualizerSystem for Lines3DVisualizer {
 
                 let timeline = ctx.query.timeline();
                 let all_strips_indexed = iter_slices::<&[[f32; 3]]>(&all_strip_chunks, timeline);
-                let all_colors = results.iter_as(timeline, LineStrips3D::descriptor_colors().component);
-                let all_radii = results.iter_as(timeline, LineStrips3D::descriptor_radii().component);
-                let all_labels = results.iter_as(timeline, LineStrips3D::descriptor_labels().component);
-                let all_class_ids = results.iter_as(timeline, LineStrips3D::descriptor_class_ids().component);
+                let all_colors =
+                    results.iter_as(timeline, LineStrips3D::descriptor_colors().component);
+                let all_radii =
+                    results.iter_as(timeline, LineStrips3D::descriptor_radii().component);
+                let all_labels =
+                    results.iter_as(timeline, LineStrips3D::descriptor_labels().component);
+                let all_class_ids =
+                    results.iter_as(timeline, LineStrips3D::descriptor_class_ids().component);
                 let all_show_labels =
                     results.iter_as(timeline, LineStrips3D::descriptor_show_labels().component);
 

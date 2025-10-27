@@ -229,12 +229,15 @@ impl VisualizerSystem for Arrows2DVisualizer {
 
                 let timeline = ctx.query.timeline();
                 let all_vectors_indexed = iter_slices::<[f32; 2]>(&all_vector_chunks, timeline);
-                let all_origins = results.iter_as(timeline, Arrows2D::descriptor_origins().component);
+                let all_origins =
+                    results.iter_as(timeline, Arrows2D::descriptor_origins().component);
                 let all_colors = results.iter_as(timeline, Arrows2D::descriptor_colors().component);
                 let all_radii = results.iter_as(timeline, Arrows2D::descriptor_radii().component);
                 let all_labels = results.iter_as(timeline, Arrows2D::descriptor_labels().component);
-                let all_class_ids = results.iter_as(timeline, Arrows2D::descriptor_class_ids().component);
-                let all_show_labels = results.iter_as(timeline, Arrows2D::descriptor_show_labels().component);
+                let all_class_ids =
+                    results.iter_as(timeline, Arrows2D::descriptor_class_ids().component);
+                let all_show_labels =
+                    results.iter_as(timeline, Arrows2D::descriptor_show_labels().component);
 
                 let data = re_query::range_zip_1x6(
                     all_vectors_indexed,

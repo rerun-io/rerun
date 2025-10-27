@@ -114,11 +114,13 @@ impl ImageVisualizer {
 
         let entity_path = ctx.target_entity_path;
 
-        let Some(all_buffer_chunks) = results.get_required_chunks(Image::descriptor_buffer().component)
+        let Some(all_buffer_chunks) =
+            results.get_required_chunks(Image::descriptor_buffer().component)
         else {
             return;
         };
-        let Some(all_formats_chunks) = results.get_required_chunks(Image::descriptor_format().component)
+        let Some(all_formats_chunks) =
+            results.get_required_chunks(Image::descriptor_format().component)
         else {
             return;
         };

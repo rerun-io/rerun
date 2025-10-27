@@ -152,11 +152,14 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let all_colors = results.iter_as(timeline, Boxes3D::descriptor_colors().component);
                 let all_radii = results.iter_as(timeline, Boxes3D::descriptor_radii().component);
                 let all_labels = results.iter_as(timeline, Boxes3D::descriptor_labels().component);
-                let all_class_ids = results.iter_as(timeline, Boxes3D::descriptor_class_ids().component);
-                let all_show_labels = results.iter_as(timeline, Boxes3D::descriptor_show_labels().component);
+                let all_class_ids =
+                    results.iter_as(timeline, Boxes3D::descriptor_class_ids().component);
+                let all_show_labels =
+                    results.iter_as(timeline, Boxes3D::descriptor_show_labels().component);
 
                 // Deserialized because it's a union.
-                let all_fill_modes = results.iter_as(timeline, Boxes3D::descriptor_fill_mode().component);
+                let all_fill_modes =
+                    results.iter_as(timeline, Boxes3D::descriptor_fill_mode().component);
                 // fill mode is currently a non-repeated component
                 let fill_mode: FillMode = all_fill_modes
                     .slice::<u8>()

@@ -52,10 +52,12 @@ impl VisualizerSystem for GeoPointsVisualizer {
 
             // gather all relevant chunks
             let timeline = view_query.timeline;
-            let all_positions = results.iter_as(timeline, GeoPoints::descriptor_positions().component);
+            let all_positions =
+                results.iter_as(timeline, GeoPoints::descriptor_positions().component);
             let all_colors = results.iter_as(timeline, GeoPoints::descriptor_colors().component);
             let all_radii = results.iter_as(timeline, GeoPoints::descriptor_radii().component);
-            let all_class_ids = results.iter_as(timeline, GeoPoints::descriptor_class_ids().component);
+            let all_class_ids =
+                results.iter_as(timeline, GeoPoints::descriptor_class_ids().component);
 
             // fallback component values
             let query_context = ctx.query_context(data_result, &latest_at_query);

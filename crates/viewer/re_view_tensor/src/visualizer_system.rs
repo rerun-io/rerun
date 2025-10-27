@@ -55,7 +55,8 @@ impl VisualizerSystem for TensorSystem {
                 query_shadowed_defaults,
             );
 
-            let Some(all_tensor_chunks) = results.get_required_chunks(Tensor::descriptor_data().component)
+            let Some(all_tensor_chunks) =
+                results.get_required_chunks(Tensor::descriptor_data().component)
             else {
                 continue;
             };

@@ -88,7 +88,9 @@ impl TextLogSystem {
             TextLog::all_component_identifiers(),
         );
 
-        let Some(all_text_chunks) = results.get_required_chunks(TextLog::descriptor_text().component) else {
+        let Some(all_text_chunks) =
+            results.get_required_chunks(TextLog::descriptor_text().component)
+        else {
             return;
         };
 

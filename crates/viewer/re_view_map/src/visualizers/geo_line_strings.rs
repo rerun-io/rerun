@@ -52,8 +52,12 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
 
             // gather all relevant chunks
             let timeline = view_query.timeline;
-            let all_lines = results.iter_as(timeline, GeoLineStrings::descriptor_line_strings().component);
-            let all_colors = results.iter_as(timeline, GeoLineStrings::descriptor_colors().component);
+            let all_lines = results.iter_as(
+                timeline,
+                GeoLineStrings::descriptor_line_strings().component,
+            );
+            let all_colors =
+                results.iter_as(timeline, GeoLineStrings::descriptor_colors().component);
             let all_radii = results.iter_as(timeline, GeoLineStrings::descriptor_radii().component);
 
             // fallback component values
