@@ -2,6 +2,7 @@
 
 ## [0.26.2](https://github.com/rerun-io/rerun/compare/0.26.1...0.26.2) - 2025-10-27 - More bug fixes
 
+- Add missing `line_radii` and `fill_mode` params to `Capsules3D` in Python SDK [#11660](https://github.com/rerun-io/rerun/pull/11660) (thanks [@yunho-c](https://github.com/yunho-c)!)
 - Fix pressing the play button sometimes going to follow mode [#11609](https://github.com/rerun-io/rerun/pull/11609)
 - Fix hiding all tabs in a tab-view breaking undo [#11619](https://github.com/rerun-io/rerun/pull/11619)
 - Fix color picker on default & override disappearing when trying to edit [#11651](https://github.com/rerun-io/rerun/pull/11651)
