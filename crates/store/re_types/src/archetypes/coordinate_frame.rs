@@ -36,6 +36,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ### Change coordinate frame to different built-in frames
 /// ```ignore
+/// #![expect(clippy::cast_possible_wrap)]
+///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_transform3d_hierarchy").spawn()?;
 ///

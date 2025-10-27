@@ -1,6 +1,8 @@
 //! Demonstrates using explicit `CoordinateFrame` with implicit transform frames only.
 //! TODO(RR-2777): This is still an experimental feature.
 
+#![expect(clippy::cast_possible_wrap)]
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_transform3d_hierarchy").spawn()?;
 

@@ -556,7 +556,6 @@ pub fn remove_and_reset_override_buttons(
     {
         ctx.reset_blueprint_component(override_path.clone(), component_descr.clone());
         ui.close();
-        return;
     }
 }
 
