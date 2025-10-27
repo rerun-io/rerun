@@ -47,7 +47,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         &[
 ///             &rerun::Boxes3D::from_half_sizes([(0.5, 0.5, 0.5)]).with_colors([(255, 0, 0)])
 ///                 as &dyn rerun::AsComponents,
-///             // Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's  pose.
+///             // Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's pose.
 ///             &rerun::Transform3D::from_translation([2.0, 0.0, 0.0]),
 ///         ],
 ///     )?;
@@ -56,7 +56,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         &[
 ///             &rerun::Boxes3D::from_half_sizes([(0.5, 0.5, 0.5)]).with_colors([(0, 0, 255)])
 ///                 as &dyn rerun::AsComponents,
-///             // Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's  pose.
+///             // Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's pose.
 ///             &rerun::Transform3D::from_translation([-2.0, 0.0, 0.0]),
 ///         ],
 ///     )?;
