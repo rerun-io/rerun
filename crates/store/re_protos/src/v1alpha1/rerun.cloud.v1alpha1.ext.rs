@@ -1844,7 +1844,8 @@ pub enum IndexProperties {
         base_tokenizer: String,
     },
     VectorIvfPq {
-        num_partitions: usize,
+        num_partitions: Option<usize>,
+        target_partition_size: Option<usize>,
         num_sub_vectors: usize,
         metric: VectorDistanceMetric,
     },
@@ -1863,12 +1864,27 @@ impl std::fmt::Display for IndexProperties {
             ),
             Self::VectorIvfPq {
                 num_partitions,
+                target_partition_size,
                 num_sub_vectors,
                 metric,
-            } => write!(
-                f,
-                "VectorIvfPq {{ num_partitions: {num_partitions}, num_sub_vectors: {num_sub_vectors}, metric: {metric:?} }}"
-            ),
+            } => {
+                if let Some(target_partition_size) = target_partition_size {
+                    return write!(
+                        f,
+                        "VectorIvfPq {{ target_partition_size: {target_partition_size}, num_sub_vectors: {num_sub_vectors}, metric: {metric:?} }}"
+                    );
+                } else if let Some(num_partitions) = num_partitions {
+                    return write!(
+                        f,
+                        "VectorIvfPq {{ num_partitions: {num_partitions}, num_sub_vectors: {num_sub_vectors}, metric: {metric:?} }}"
+                    );
+                } else {
+                    write!(
+                        f,
+                        "VectorIvfPq {{ num_sub_vectors: {num_sub_vectors}, metric: {metric:?} }}"
+                    )
+                }
+            }
             Self::Btree => write!(f, "Btree"),
         }
     }
@@ -1896,12 +1912,14 @@ impl From<IndexProperties> for crate::cloud::v1alpha1::IndexProperties {
             },
             IndexProperties::VectorIvfPq {
                 num_partitions,
+                target_partition_size,
                 num_sub_vectors,
                 metric,
             } => Self {
                 props: Some(crate::cloud::v1alpha1::index_properties::Props::Vector(
                     crate::cloud::v1alpha1::VectorIvfPqIndex {
-                        num_partitions: Some(num_partitions as u32),
+                        num_partitions: num_partitions.map(|n| n as u32),
+                        target_partition_size: target_partition_size.map(|n| n as u32),
                         num_sub_vectors: Some(num_sub_vectors as u32),
                         distance_metrics: metric.into(),
                     },

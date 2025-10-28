@@ -606,7 +606,8 @@ impl PyDatasetEntry {
         *,
         column,
         time_index,
-        num_partitions = 5,
+        num_partitions = None,
+        target_partition_size = None,
         num_sub_vectors = 16,
         distance_metric = VectorDistanceMetricLike::VectorDistanceMetric(crate::catalog::PyVectorDistanceMetric::Cosine),
     ))]
@@ -615,7 +616,8 @@ impl PyDatasetEntry {
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
         time_index: PyIndexColumnSelector,
-        num_partitions: usize,
+        num_partitions: Option<usize>,
+        target_partition_size: Option<usize>,
         num_sub_vectors: usize,
         distance_metric: VectorDistanceMetricLike,
     ) -> PyResult<()> {
@@ -631,8 +633,32 @@ impl PyDatasetEntry {
         let distance_metric: re_protos::cloud::v1alpha1::VectorDistanceMetric =
             distance_metric.try_into()?;
 
+        let (num_partitions, target_partition_size) = match (num_partitions, target_partition_size)
+        {
+            // num_partitions is deprecated
+            (Some(n), None) => {
+                re_log::warn!(
+                    "The 'num_partitions' parameter is deprecated. Please use 'target_partition_size' instead."
+                );
+                (Some(n), None)
+            }
+            // target_partition_size is preferred
+            (None, Some(s)) => (None, Some(s)),
+            // If neither is set, default target_partition_size to 4096
+            (None, None) => (None, Some(4096)),
+            // If both are set it's an error
+            (Some(_), Some(_)) => {
+                return Err(PyValueError::new_err(
+                    "Cannot specify both num_partitions and target_partition_size.",
+                ));
+            }
+        };
+
+        // Otherwise
+
         let properties = IndexProperties::VectorIvfPq {
             num_partitions,
+            target_partition_size,
             num_sub_vectors,
             metric: distance_metric,
         };
