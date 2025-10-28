@@ -34,7 +34,8 @@ pub struct ConnectionRegistry {
 
     /// Use stored Rerun Cloud credentials.
     ///
-    /// If set, we always attempt to use these when no explicit token is provided.
+    /// If set, we always attempt to use these when no explicit token is provided,
+    /// unless the origin is localhost.
     use_stored_credentials: bool,
 
     /// The cached clients.
@@ -166,7 +167,7 @@ impl ConnectionRegistryHandle {
 
         // Don't hold the lock while creating the client - this may take a while and we may
         // want to read the tokens in the meantime for other purposes.
-        let (saved_token, fallback_token, use_store_credentials) = {
+        let (saved_token, fallback_token, may_use_stored_credentials) = {
             let inner = self.inner.read().await;
             (
                 inner.saved_credentials.get(&origin).cloned(),
@@ -184,7 +185,13 @@ impl ConnectionRegistryHandle {
         .flatten()
         .unique();
 
-        let client_result = if use_store_credentials {
+        // It's not common that you'd need credentials on localhost.
+        let use_stored_credentials_on_localhost = std::env::var("USE_STORED_CREDENTIALS").is_ok();
+        let actually_use_stored_credentials = !use_stored_credentials_on_localhost
+            && !origin.is_localhost()
+            && may_use_stored_credentials;
+
+        let client_result = if actually_use_stored_credentials {
             Self::try_create_raw_client(
                 origin.clone(),
                 token_to_try.chain(std::iter::once(Credentials::Stored)),
