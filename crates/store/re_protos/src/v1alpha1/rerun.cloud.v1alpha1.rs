@@ -419,7 +419,7 @@ impl ::prost::Name for InvertedIndex {
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct VectorIvfPqIndex {
-    /// num_partitions is deprecated. Use target_partition_size instead
+    /// num_partitions is deprecated. Use target_partition_num_rows instead
     /// TODO(RR-2798): Remove in 0.6
     #[prost(uint32, optional, tag = "1")]
     pub num_partitions: ::core::option::Option<u32>,
@@ -429,7 +429,7 @@ pub struct VectorIvfPqIndex {
     pub distance_metrics: i32,
     /// Target size of the IVF partition in rows
     #[prost(uint32, optional, tag = "4")]
-    pub target_partition_size: ::core::option::Option<u32>,
+    pub target_partition_num_rows: ::core::option::Option<u32>,
 }
 impl ::prost::Name for VectorIvfPqIndex {
     const NAME: &'static str = "VectorIvfPqIndex";

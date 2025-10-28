@@ -1530,7 +1530,7 @@ class DatasetEntry(Entry):
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         time_index: IndexColumnSelector,
         num_partitions: int | None = None,
-        target_partition_size: int | None = None,
+        target_partition_num_rows: int | None = None,
         num_sub_vectors: int = 16,
         distance_metric: VectorDistanceMetric | str = ...,
     ) -> None:
@@ -1554,8 +1554,8 @@ class DatasetEntry(Entry):
             Which timeline this index will map to.
         num_partitions : int | None
             The number of partitions to create for the index.
-            (Deprecated, use target_partition_size instead)
-        target_partition_size : int | None
+            (Deprecated, use target_partition_num_rows instead)
+        target_partition_num_rows : int | None
             The target size (in number of rows) for each partition.
             Defaults to 4096 if neither this nor num_partitions is specified.
         num_sub_vectors : int

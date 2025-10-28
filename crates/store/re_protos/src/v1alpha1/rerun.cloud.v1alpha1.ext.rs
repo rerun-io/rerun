@@ -1845,7 +1845,7 @@ pub enum IndexProperties {
     },
     VectorIvfPq {
         num_partitions: Option<usize>,
-        target_partition_size: Option<usize>,
+        target_partition_num_rows: Option<usize>,
         num_sub_vectors: usize,
         metric: VectorDistanceMetric,
     },
@@ -1864,14 +1864,14 @@ impl std::fmt::Display for IndexProperties {
             ),
             Self::VectorIvfPq {
                 num_partitions,
-                target_partition_size,
+                target_partition_num_rows,
                 num_sub_vectors,
                 metric,
             } => {
-                if let Some(target_partition_size) = target_partition_size {
+                if let Some(target_partition_num_rows) = target_partition_num_rows {
                     return write!(
                         f,
-                        "VectorIvfPq {{ target_partition_size: {target_partition_size}, num_sub_vectors: {num_sub_vectors}, metric: {metric:?} }}"
+                        "VectorIvfPq {{ target_partition_num_rows: {target_partition_num_rows}, num_sub_vectors: {num_sub_vectors}, metric: {metric:?} }}"
                     );
                 } else if let Some(num_partitions) = num_partitions {
                     return write!(
@@ -1912,14 +1912,14 @@ impl From<IndexProperties> for crate::cloud::v1alpha1::IndexProperties {
             },
             IndexProperties::VectorIvfPq {
                 num_partitions,
-                target_partition_size,
+                target_partition_num_rows,
                 num_sub_vectors,
                 metric,
             } => Self {
                 props: Some(crate::cloud::v1alpha1::index_properties::Props::Vector(
                     crate::cloud::v1alpha1::VectorIvfPqIndex {
                         num_partitions: num_partitions.map(|n| n as u32),
-                        target_partition_size: target_partition_size.map(|n| n as u32),
+                        target_partition_num_rows: target_partition_num_rows.map(|n| n as u32),
                         num_sub_vectors: Some(num_sub_vectors as u32),
                         distance_metrics: metric.into(),
                     },

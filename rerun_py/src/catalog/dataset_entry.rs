@@ -620,8 +620,8 @@ impl PyDatasetEntry {
     ///     Which timeline this index will map to.
     /// num_partitions : int | None
     ///     The number of partitions to create for the index.
-    ///     (Deprecated, use target_partition_size instead)
-    /// target_partition_size : int | None
+    ///     (Deprecated, use target_partition_num_rows instead)
+    /// target_partition_num_rows : int | None
     ///     The target size (in number of rows) for each partition.
     ///     Defaults to 4096 if neither this nor num_partitions is specified.
     /// num_sub_vectors : int
@@ -633,7 +633,7 @@ impl PyDatasetEntry {
         column,
         time_index,
         num_partitions = None,
-        target_partition_size = None,
+        target_partition_num_rows = None,
         num_sub_vectors = 16,
         distance_metric = VectorDistanceMetricLike::VectorDistanceMetric(crate::catalog::PyVectorDistanceMetric::Cosine),
     ))]
@@ -644,7 +644,7 @@ impl PyDatasetEntry {
         time_index: PyIndexColumnSelector,
         // TODO(RR-2798): Remove num_partitions since deprecated
         num_partitions: Option<usize>,
-        target_partition_size: Option<usize>,
+        target_partition_num_rows: Option<usize>,
         num_sub_vectors: usize,
         distance_metric: VectorDistanceMetricLike,
     ) -> PyResult<()> {
@@ -660,23 +660,25 @@ impl PyDatasetEntry {
         let distance_metric: re_protos::cloud::v1alpha1::VectorDistanceMetric =
             distance_metric.try_into()?;
 
-        let (num_partitions, target_partition_size) = match (num_partitions, target_partition_size)
-        {
+        let (num_partitions, target_partition_num_rows) = match (
+            num_partitions,
+            target_partition_num_rows,
+        ) {
             // num_partitions is deprecated
             (Some(n), None) => {
                 re_log::warn!(
-                    "The 'num_partitions' parameter is deprecated. Please use 'target_partition_size' instead."
+                    "The 'num_partitions' parameter is deprecated. Please use 'target_partition_num_rows' instead."
                 );
                 (Some(n), None)
             }
-            // target_partition_size is preferred
+            // target_partition_num_rows is preferred
             (None, Some(s)) => (None, Some(s)),
-            // If neither is set, default target_partition_size to 4096
+            // If neither is set, default target_partition_num_rows to 4096
             (None, None) => (None, Some(4096)),
             // If both are set it's an error
             (Some(_), Some(_)) => {
                 return Err(PyValueError::new_err(
-                    "Cannot specify both num_partitions and target_partition_size.",
+                    "Cannot specify both num_partitions and target_partition_num_rows.",
                 ));
             }
         };
@@ -685,7 +687,7 @@ impl PyDatasetEntry {
 
         let properties = IndexProperties::VectorIvfPq {
             num_partitions,
-            target_partition_size,
+            target_partition_num_rows,
             num_sub_vectors,
             metric: distance_metric,
         };

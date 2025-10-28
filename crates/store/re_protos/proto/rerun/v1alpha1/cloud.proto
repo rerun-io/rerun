@@ -383,7 +383,7 @@ message InvertedIndex {
 }
 
 message VectorIvfPqIndex {
-  // num_partitions is deprecated. Use target_partition_size instead
+  // num_partitions is deprecated. Use target_partition_num_rows instead
   // TODO(RR-2798): Remove in 0.6
   optional uint32 num_partitions = 1;
 
@@ -392,7 +392,7 @@ message VectorIvfPqIndex {
   VectorDistanceMetric distance_metrics = 3;
 
   // Target size of the IVF partition in rows
-  optional uint32 target_partition_size = 4;
+  optional uint32 target_partition_num_rows = 4;
 }
 
 enum VectorDistanceMetric {
