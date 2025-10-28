@@ -149,6 +149,14 @@ service RerunCloudService {
 
   rpc ScanTable(ScanTableRequest) returns (stream ScanTableResponse) {}
 
+  // Write record batches to a table.
+  //
+  // This endpoint requires the standard dataset headers.
+  //
+  // TODO(#11645): endpoints with streaming input are not supported by `grpc-web`.
+  // A non-streaming shim will need to be added if/when the viewer uses this endpoint.
+  rpc WriteTable(stream WriteTableRequest) returns (WriteTableResponse) {}
+
   // --- Tasks ---
 
   // Query the status of submitted tasks
@@ -306,25 +314,24 @@ message GetDatasetSchemaResponse {
 /* Indexing */
 
 message CreateIndexRequest {
-  // List of specific partitions that will be indexed (all if left empty).
-  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
-
-  // List of specific partition layers that will be indexed (all if left empty).
-  //
-  // If non-empty, this must match the length of `partition_ids`.
-  repeated string partition_layers = 5;
-
   IndexConfig config = 3;
-
-  // Specify behavior when index for a partition was already created.
-  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 4;
 
   reserved 1;
   reserved "dataset_id";
+
+  reserved 2;
+  reserved "partition_ids";
+
+  reserved 4;
+  reserved "on_duplicate";
+
+  reserved 5;
+  reserved "partition_layers";
 }
 
 message CreateIndexResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
+  reserved 1;
+  reserved "data";
 }
 
 message IndexConfig {
@@ -588,6 +595,24 @@ message ScanTableRequest {
 message ScanTableResponse {
   rerun.common.v1alpha1.DataframePart dataframe_part = 1;
 }
+
+enum TableInsertMode {
+  // Always reserve unspecified as default value
+  TABLE_INSERT_MODE_UNSPECIFIED = 0;
+
+  // Appends new rows to the existing table without modifying any existing rows.
+  TABLE_INSERT_MODE_APPEND = 1;
+
+  // Overwrites all existing rows in the table with the new rows.
+  TABLE_INSERT_MODE_OVERWRITE = 2;
+}
+
+message WriteTableRequest {
+  rerun.common.v1alpha1.DataframePart dataframe_part = 1;
+  TableInsertMode insert_mode = 2;
+}
+
+message WriteTableResponse {}
 
 // --- Maintenance ---
 

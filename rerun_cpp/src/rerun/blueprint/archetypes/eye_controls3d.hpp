@@ -7,6 +7,7 @@
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
+#include "../../components/entity_path.hpp"
 #include "../../components/linear_speed.hpp"
 #include "../../result.hpp"
 
@@ -36,6 +37,11 @@ namespace rerun::blueprint::archetypes {
         /// For first person cameras it is derived from the scene size.
         std::optional<ComponentBatch> speed;
 
+        /// Currently tracked entity.
+        ///
+        /// If this is a camera, it takes over the camera pose, otherwise follows the entity.
+        std::optional<ComponentBatch> tracking_entity;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.EyeControls3D";
@@ -49,6 +55,11 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_speed = ComponentDescriptor(
             ArchetypeName, "EyeControls3D:speed",
             Loggable<rerun::components::LinearSpeed>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `tracking_entity` field.
+        static constexpr auto Descriptor_tracking_entity = ComponentDescriptor(
+            ArchetypeName, "EyeControls3D:tracking_entity",
+            Loggable<rerun::components::EntityPath>::ComponentType
         );
 
       public:
@@ -82,6 +93,17 @@ namespace rerun::blueprint::archetypes {
         /// For first person cameras it is derived from the scene size.
         EyeControls3D with_speed(const rerun::components::LinearSpeed& _speed) && {
             speed = ComponentBatch::from_loggable(_speed, Descriptor_speed).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Currently tracked entity.
+        ///
+        /// If this is a camera, it takes over the camera pose, otherwise follows the entity.
+        EyeControls3D with_tracking_entity(const rerun::components::EntityPath& _tracking_entity
+        ) && {
+            tracking_entity =
+                ComponentBatch::from_loggable(_tracking_entity, Descriptor_tracking_entity)
+                    .value_or_throw();
             return std::move(*this);
         }
 

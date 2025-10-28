@@ -1,5 +1,6 @@
-use egui::{NumExt as _, emath::RectTransform};
+use egui::{Modifiers, NumExt as _, emath::RectTransform};
 use glam::{Affine3A, Quat, Vec3};
+use re_log::ResultExt as _;
 
 use macaw::BoundingBox;
 use re_log_types::EntityPath;
@@ -11,9 +12,9 @@ use re_tf::{image_view_coordinates, query_view_coordinates_at_closest_ancestor};
 use re_types::{
     blueprint::{
         archetypes::{Background, EyeControls3D, LineGrid3D},
-        components::GridSpacing,
+        components::{Eye3DKind, GridSpacing},
     },
-    components::{ViewCoordinates, Visible},
+    components::{LinearSpeed, ViewCoordinates, Visible},
     view_coordinates::SignedAxis3,
 };
 use re_ui::{ContextExt as _, Help, IconText, MouseButtonText, UiExt as _, icons};
@@ -97,27 +98,41 @@ fn ease_out(t: f32) -> f32 {
     1. - (1. - t) * (1. - t)
 }
 
+/// Eye properties stored in blueprint.
+///
+/// This is used to get around borrow issues with retrieving these properties
+/// when updating the eye.
+pub struct EyeBlueprintProperties {
+    pub speed: f64,
+    pub kind: Option<Eye3DKind>,
+}
+
 impl View3DState {
     pub fn reset_camera(
         &mut self,
         scene_bbox: &SceneBoundingBoxes,
         scene_view_coordinates: Option<ViewCoordinates>,
+        ctx: &ViewerContext<'_>,
+        eye_property: &ViewProperty,
     ) {
+        eye_property.clear_blueprint_component(ctx, EyeControls3D::descriptor_tracking_entity());
+
         self.last_eye_interaction = None;
         self.interpolate_to_view_eye(default_eye(&scene_bbox.current, scene_view_coordinates));
         self.tracked_entity = None;
         self.camera_before_tracked_entity = None;
     }
 
+    /// The returned bool will be `true` if interaction occurred.
+    /// I.e. the camera changed via user input.
     fn update_eye(
         &mut self,
         response: &egui::Response,
+        blueprint_properties: EyeBlueprintProperties,
         bounding_boxes: &SceneBoundingBoxes,
         space_cameras: &[SpaceCamera3D],
         scene_view_coordinates: Option<ViewCoordinates>,
-        view_ctx: &ViewContext<'_>,
-        eye_property: &ViewProperty,
-    ) -> ViewEye {
+    ) -> (bool, ViewEye) {
         // If the user has not interacted with the eye-camera yet, continue to
         // interpolate to the new default eye. This gives much better robustness
         // with scenes that change over time.
@@ -137,6 +152,8 @@ impl View3DState {
         }
         self.scene_view_coordinates = scene_view_coordinates;
 
+        let mut view_eye_drag_threshold = 0.0;
+
         // Follow tracked object.
         if let Some(tracked_entity) = self.tracked_entity.clone() {
             if let Some(target_eye) = find_camera(space_cameras, &tracked_entity) {
@@ -147,9 +164,13 @@ impl View3DState {
                 } else if let Some(view_eye) = &mut self.view_eye {
                     view_eye.copy_from_eye(&target_eye);
                 }
+                // If we're tracking a camera right now, we want to make it slightly sticky,
+                // so that a click on some entity doesn't immediately break the tracked state.
+                // (Threshold is in amount of ui points the mouse was moved.)
+                view_eye_drag_threshold = 4.0;
             } else {
                 // For other entities we keep interpolating, so when the entity jumps, we follow smoothly.
-                self.interpolate_eye_to_entity(&tracked_entity, bounding_boxes, space_cameras);
+                self.interpolate_eye_to_entity(&tracked_entity, bounding_boxes);
             }
         }
 
@@ -190,23 +211,16 @@ impl View3DState {
             }
         }
 
-        // If we're tracking a camera right now, we want to make it slightly sticky,
-        // so that a click on some entity doesn't immediately break the tracked state.
-        // (Threshold is in amount of ui points the mouse was moved.)
-        let view_eye_drag_threshold = if self.tracked_entity.is_some() {
-            4.0
-        } else {
-            0.0
-        };
+        let interaction = view_eye.update(response, view_eye_drag_threshold, blueprint_properties);
 
-        if view_eye.update(response, view_eye_drag_threshold, view_ctx, eye_property) {
+        if interaction && !(self.tracked_entity.is_some() && view_eye.ignore_input()) {
             self.last_eye_interaction = Some(response.ctx.time());
             self.eye_interpolation = None;
             self.tracked_entity = None;
             self.camera_before_tracked_entity = None;
         }
 
-        *view_eye
+        (interaction, *view_eye)
     }
 
     fn interpolate_to_eye(&mut self, target: Eye) {
@@ -234,7 +248,6 @@ impl View3DState {
         &mut self,
         entity_path: &EntityPath,
         bounding_boxes: &SceneBoundingBoxes,
-        space_cameras: &[SpaceCamera3D],
     ) {
         // Note that we may want to focus on an _instance_ instead in the future:
         // The problem with that is that there may be **many** instances (think point cloud)
@@ -250,9 +263,7 @@ impl View3DState {
         //     ..
         // }) = ctx.selection_state().hovered_space_context()
 
-        if let Some(tracked_camera) = find_camera(space_cameras, entity_path) {
-            self.interpolate_to_eye(tracked_camera);
-        } else if let Some(entity_bbox) = bounding_boxes.per_entity.get(&entity_path.hash()) {
+        if let Some(entity_bbox) = bounding_boxes.per_entity.get(&entity_path.hash()) {
             let Some(mut new_view_eye) = self.view_eye else {
                 // Happens only the first frame when there's no eye set up yet.
                 return;
@@ -262,13 +273,19 @@ impl View3DState {
             let orbit_radius = if radius < 0.0001 {
                 // Handle zero-sized bounding boxes:
                 (bounding_boxes.current.centered_bounding_sphere_radius() * 1.5).at_least(0.01)
+            } else if let Some(radius) = new_view_eye.orbit_radius() {
+                radius
             } else {
                 radius
             };
 
             new_view_eye.set_orbit_center_and_radius(entity_bbox.center(), orbit_radius);
 
-            self.interpolate_to_view_eye(new_view_eye);
+            if self.tracked_entity.is_some() {
+                self.view_eye = Some(new_view_eye);
+            } else {
+                self.interpolate_to_view_eye(new_view_eye);
+            }
         }
     }
 
@@ -311,21 +328,8 @@ impl View3DState {
         }
     }
 
-    fn track_entity(
-        &mut self,
-        entity_path: &EntityPath,
-        bounding_boxes: &SceneBoundingBoxes,
-        space_cameras: &[SpaceCamera3D],
-    ) {
-        if self.tracked_entity == Some(entity_path.clone()) {
-            return; // already tracking this entity.
-        }
-
-        re_log::debug!("3D view tracks now {:?}", entity_path);
-        self.tracked_entity = Some(entity_path.clone());
-        self.camera_before_tracked_entity = self.view_eye.map(|eye| eye.to_eye());
-
-        self.interpolate_eye_to_entity(entity_path, bounding_boxes, space_cameras);
+    pub fn is_tracking_entity(&self) -> bool {
+        self.tracked_entity.is_some()
     }
 
     pub fn spin(&self) -> bool {
@@ -410,6 +414,16 @@ pub fn help(os: egui::os::OperatingSystem) -> Help {
         )
         .control("Focus", ("double", icons::LEFT_MOUSE_CLICK, "object"))
         .control(
+            "Track",
+            (
+                IconText::from_modifiers(os, Modifiers::ALT),
+                "+",
+                "double",
+                icons::LEFT_MOUSE_CLICK,
+                "object",
+            ),
+        )
+        .control(
             "Reset view",
             ("double", icons::LEFT_MOUSE_CLICK, "background"),
         )
@@ -450,14 +464,58 @@ impl SpatialView3D {
             query.view_id,
         );
 
-        let view_eye = state.state_3d.update_eye(
+        let view_context = self.view_context(ctx, query.view_id, state);
+
+        let speed = **eye_property.component_or_fallback::<LinearSpeed>(
+            &view_context,
+            EyeControls3D::descriptor_speed().component,
+        )?; // Should never fail.
+
+        let kind = eye_property
+            .component_or_fallback::<Eye3DKind>(
+                &view_context,
+                EyeControls3D::descriptor_kind().component,
+            )
+            .unwrap_debug_or_log_error(); // Should never fail.
+
+        let blueprint_properties = EyeBlueprintProperties { speed, kind };
+
+        let (interaction, view_eye) = state.state_3d.update_eye(
             &response,
+            blueprint_properties,
             &state.bounding_boxes,
             space_cameras,
             scene_view_coordinates,
-            &self.view_context(ctx, query.view_id, &state.clone()),
-            &eye_property,
         );
+
+        if let Some(entity_path) = eye_property
+            .component_or_empty::<re_types::components::EntityPath>(
+                EyeControls3D::descriptor_tracking_entity().component,
+            )?
+        {
+            // Clear the tracking entity component if it's some and we interacted.
+            let entity_path = re_log_types::EntityPath::from(entity_path.as_str());
+            if interaction && !(state.state_3d.is_tracking_entity() && view_eye.ignore_input()) {
+                state.state_3d.tracked_entity = None;
+                eye_property
+                    .clear_blueprint_component(ctx, EyeControls3D::descriptor_tracking_entity());
+            } else if state.state_3d.tracked_entity.as_ref() != Some(&entity_path) {
+                re_log::debug!("3D view tracks now {entity_path:?}");
+                state.state_3d.tracked_entity = Some(entity_path.clone());
+                state.state_3d.camera_before_tracked_entity =
+                    state.state_3d.view_eye.map(|eye| eye.to_eye());
+
+                state
+                    .state_3d
+                    .interpolate_eye_to_entity(&entity_path, &state.bounding_boxes);
+
+                state.state_3d.tracked_entity = Some(entity_path);
+            }
+        } else {
+            state.state_3d.tracked_entity = None;
+            state.state_3d.camera_before_tracked_entity = None;
+        }
+
         let eye = view_eye.to_eye();
 
         // Determine view port resolution and position.
@@ -569,9 +627,12 @@ impl SpatialView3D {
 
                 Item::View(view_id) => {
                     if view_id == &query.view_id {
-                        state
-                            .state_3d
-                            .reset_camera(&state.bounding_boxes, scene_view_coordinates);
+                        state.state_3d.reset_camera(
+                            &state.bounding_boxes,
+                            scene_view_coordinates,
+                            ctx,
+                            &eye_property,
+                        );
                     }
                     None
                 }
@@ -590,18 +651,27 @@ impl SpatialView3D {
             };
             if let Some(entity_path) = focused_entity {
                 state.state_3d.last_eye_interaction = Some(ui.time());
+                state.state_3d.tracked_entity = None;
 
-                // TODO(#4812): We currently only track cameras on double click since tracking arbitrary entities was deemed too surprising.
-                if find_camera(space_cameras, entity_path).is_some() {
-                    state
-                        .state_3d
-                        .track_entity(entity_path, &state.bounding_boxes, space_cameras);
-                } else {
-                    state.state_3d.interpolate_eye_to_entity(
-                        entity_path,
-                        &state.bounding_boxes,
-                        space_cameras,
-                    );
+                if ctx.recording().is_logged_entity(entity_path) {
+                    if let Some(tracked_camera) = find_camera(space_cameras, entity_path) {
+                        state.state_3d.interpolate_to_eye(tracked_camera);
+                        state.state_3d.tracked_entity = Some(entity_path.clone());
+                    } else {
+                        // Additionally track the entity if `alt` is pressed.
+                        // (Note that this means slightly different things for cameras & regular entities)
+                        if response.ctx.input(|i| i.modifiers.alt) {
+                            eye_property.save_blueprint_component(
+                                ctx,
+                                &EyeControls3D::descriptor_tracking_entity(),
+                                &re_types::components::EntityPath::from(entity_path),
+                            );
+                        } else {
+                            state
+                                .state_3d
+                                .interpolate_eye_to_entity(entity_path, &state.bounding_boxes);
+                        }
+                    }
                 }
             }
 
@@ -684,7 +754,7 @@ impl SpatialView3D {
             ctx.blueprint_query,
             query.view_id,
         );
-        if let Some(draw_data) = self.setup_grid_3d(&view_ctx, &grid_config)? {
+        if let Some(draw_data) = Self::setup_grid_3d(&view_ctx, &grid_config)? {
             view_builder.queue_draw(ctx.render_ctx(), draw_data);
         }
 
@@ -697,7 +767,7 @@ impl SpatialView3D {
             query.view_id,
         );
         let (background_drawable, clear_color) =
-            crate::configure_background(&view_ctx, &background, self)?;
+            crate::configure_background(&view_ctx, &background)?;
         if let Some(background_drawable) = background_drawable {
             view_builder.queue_draw(ctx.render_ctx(), background_drawable);
         }
@@ -724,38 +794,31 @@ impl SpatialView3D {
     }
 
     fn setup_grid_3d(
-        &self,
         ctx: &ViewContext<'_>,
         grid_config: &ViewProperty,
     ) -> Result<Option<re_renderer::renderer::WorldGridDrawData>, ViewSystemExecutionError> {
-        if !**grid_config.component_or_fallback::<Visible>(
-            ctx,
-            self,
-            &LineGrid3D::descriptor_visible(),
-        )? {
+        if !**grid_config
+            .component_or_fallback::<Visible>(ctx, LineGrid3D::descriptor_visible().component)?
+        {
             return Ok(None);
         }
 
         let spacing = **grid_config.component_or_fallback::<GridSpacing>(
             ctx,
-            self,
-            &LineGrid3D::descriptor_spacing(),
+            LineGrid3D::descriptor_spacing().component,
         )?;
         let thickness_ui = **grid_config
             .component_or_fallback::<re_types::components::StrokeWidth>(
                 ctx,
-                self,
-                &LineGrid3D::descriptor_stroke_width(),
+                LineGrid3D::descriptor_stroke_width().component,
             )?;
         let color = grid_config.component_or_fallback::<re_types::components::Color>(
             ctx,
-            self,
-            &LineGrid3D::descriptor_color(),
+            LineGrid3D::descriptor_color().component,
         )?;
         let plane = grid_config.component_or_fallback::<re_types::components::Plane3D>(
             ctx,
-            self,
-            &LineGrid3D::descriptor_plane(),
+            LineGrid3D::descriptor_plane().component,
         )?;
 
         Ok(Some(re_renderer::renderer::WorldGridDrawData::new(

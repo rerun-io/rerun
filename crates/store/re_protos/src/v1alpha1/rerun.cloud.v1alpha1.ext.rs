@@ -1395,36 +1395,60 @@ impl ScanPartitionTableResponse {
     /// Total size in bytes for this partition.
     pub const FIELD_SIZE_BYTES: &str = "rerun_size_bytes";
 
+    pub fn field_partition_id() -> FieldRef {
+        lazy_field_ref!(Field::new(Self::FIELD_PARTITION_ID, DataType::Utf8, false))
+    }
+
+    pub fn field_layer_names() -> FieldRef {
+        lazy_field_ref!(Field::new(
+            Self::FIELD_LAYER_NAMES,
+            DataType::List(Self::field_layer_names_inner()),
+            false,
+        ))
+    }
+
     pub fn field_layer_names_inner() -> FieldRef {
         lazy_field_ref!(Field::new(Self::FIELD_LAYER_NAMES, DataType::Utf8, false))
+    }
+
+    pub fn field_storage_urls() -> FieldRef {
+        lazy_field_ref!(Field::new(
+            Self::FIELD_STORAGE_URLS,
+            DataType::List(Self::field_storage_urls_inner()),
+            false,
+        ))
     }
 
     pub fn field_storage_urls_inner() -> FieldRef {
         lazy_field_ref!(Field::new(Self::FIELD_STORAGE_URLS, DataType::Utf8, false))
     }
 
+    pub fn field_last_updated_at() -> FieldRef {
+        lazy_field_ref!(Field::new(
+            Self::FIELD_LAST_UPDATED_AT,
+            DataType::Timestamp(TimeUnit::Nanosecond, None),
+            false,
+        ))
+    }
+
+    pub fn field_num_chunks() -> FieldRef {
+        lazy_field_ref!(Field::new(Self::FIELD_NUM_CHUNKS, DataType::UInt64, false))
+    }
+
+    pub fn field_size_bytes() -> FieldRef {
+        lazy_field_ref!(Field::new(Self::FIELD_SIZE_BYTES, DataType::UInt64, false))
+    }
+
     // NOTE: changing this method is a breaking change for implementation (aka it at least breaks
     // tests in `dataplatform`)
-    pub fn fields() -> Vec<Field> {
+    pub fn fields() -> Vec<FieldRef> {
         vec![
-            Field::new(Self::FIELD_PARTITION_ID, DataType::Utf8, false),
-            Field::new(
-                Self::FIELD_LAYER_NAMES,
-                DataType::List(Self::field_layer_names_inner()),
-                false,
-            ),
-            Field::new(
-                Self::FIELD_STORAGE_URLS,
-                DataType::List(Self::field_storage_urls_inner()),
-                false,
-            ),
-            Field::new(
-                Self::FIELD_LAST_UPDATED_AT,
-                DataType::Timestamp(TimeUnit::Nanosecond, None),
-                false,
-            ),
-            Field::new(Self::FIELD_NUM_CHUNKS, DataType::UInt64, false),
-            Field::new(Self::FIELD_SIZE_BYTES, DataType::UInt64, false),
+            Self::field_partition_id(),
+            Self::field_layer_names(),
+            Self::field_storage_urls(),
+            Self::field_last_updated_at(),
+            Self::field_num_chunks(),
+            Self::field_size_bytes(),
         ]
     }
 
@@ -1505,31 +1529,65 @@ impl ScanDatasetManifestResponse {
     pub const FIELD_SIZE_BYTES: &str = "rerun_size_bytes";
     pub const FIELD_SCHEMA_SHA256: &str = "rerun_schema_sha256";
 
-    // NOTE: changing this method is a breaking change for implementation (aka it at least breaks
-    // tests in `dataplatform`)
-    pub fn fields() -> Vec<Field> {
+    pub fn field_layer_name() -> FieldRef {
+        lazy_field_ref!(Field::new(Self::FIELD_LAYER_NAME, DataType::Utf8, false))
+    }
+
+    pub fn field_partition_id() -> FieldRef {
+        lazy_field_ref!(Field::new(Self::FIELD_PARTITION_ID, DataType::Utf8, false))
+    }
+
+    pub fn field_storage_url() -> FieldRef {
+        lazy_field_ref!(Field::new(Self::FIELD_STORAGE_URL, DataType::Utf8, false))
+    }
+
+    pub fn field_layer_type() -> FieldRef {
+        lazy_field_ref!(Field::new(Self::FIELD_LAYER_TYPE, DataType::Utf8, false))
+    }
+
+    pub fn field_registration_time() -> FieldRef {
+        lazy_field_ref!(Field::new(
+            Self::FIELD_REGISTRATION_TIME,
+            DataType::Timestamp(TimeUnit::Nanosecond, None),
+            false
+        ))
+    }
+
+    pub fn field_last_updated_at() -> FieldRef {
+        lazy_field_ref!(Field::new(
+            Self::FIELD_LAST_UPDATED_AT,
+            DataType::Timestamp(TimeUnit::Nanosecond, None),
+            false
+        ))
+    }
+
+    pub fn field_num_chunks() -> FieldRef {
+        lazy_field_ref!(Field::new(Self::FIELD_NUM_CHUNKS, DataType::UInt64, false))
+    }
+
+    pub fn field_size_bytes() -> FieldRef {
+        lazy_field_ref!(Field::new(Self::FIELD_SIZE_BYTES, DataType::UInt64, false))
+    }
+
+    pub fn field_schema_sha256() -> FieldRef {
+        lazy_field_ref!(Field::new(
+            Self::FIELD_SCHEMA_SHA256,
+            DataType::FixedSizeBinary(32),
+            false
+        ))
+    }
+
+    pub fn fields() -> Vec<FieldRef> {
         vec![
-            Field::new(Self::FIELD_LAYER_NAME, DataType::Utf8, false),
-            Field::new(Self::FIELD_PARTITION_ID, DataType::Utf8, false),
-            Field::new(Self::FIELD_STORAGE_URL, DataType::Utf8, false),
-            Field::new(Self::FIELD_LAYER_TYPE, DataType::Utf8, false),
-            Field::new(
-                Self::FIELD_REGISTRATION_TIME,
-                DataType::Timestamp(TimeUnit::Nanosecond, None),
-                false,
-            ),
-            Field::new(
-                Self::FIELD_LAST_UPDATED_AT,
-                DataType::Timestamp(TimeUnit::Nanosecond, None),
-                false,
-            ),
-            Field::new(Self::FIELD_NUM_CHUNKS, DataType::UInt64, false),
-            Field::new(Self::FIELD_SIZE_BYTES, DataType::UInt64, false),
-            Field::new(
-                Self::FIELD_SCHEMA_SHA256,
-                DataType::FixedSizeBinary(32),
-                false,
-            ),
+            Self::field_layer_name(),
+            Self::field_partition_id(),
+            Self::field_storage_url(),
+            Self::field_layer_type(),
+            Self::field_registration_time(),
+            Self::field_last_updated_at(),
+            Self::field_num_chunks(),
+            Self::field_size_bytes(),
+            Self::field_schema_sha256(),
         ]
     }
 
@@ -1921,6 +1979,48 @@ impl TryFrom<QueryTasksRequest> for crate::cloud::v1alpha1::QueryTasksRequest {
 }
 
 // --
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum TableInsertMode {
+    Append,
+    Overwrite,
+}
+
+impl Default for TableInsertMode {
+    fn default() -> Self {
+        Self::Append
+    }
+}
+
+impl TryFrom<i32> for TableInsertMode {
+    type Error = TypeConversionError;
+
+    fn try_from(value: i32) -> Result<Self, TypeConversionError> {
+        let proto_value = crate::cloud::v1alpha1::TableInsertMode::try_from(value)?;
+        Ok(Self::from(proto_value))
+    }
+}
+
+impl From<crate::cloud::v1alpha1::TableInsertMode> for TableInsertMode {
+    fn from(value: crate::cloud::v1alpha1::TableInsertMode) -> Self {
+        use crate::cloud::v1alpha1 as cloud;
+        match value {
+            cloud::TableInsertMode::Unspecified | cloud::TableInsertMode::Append => Self::Append,
+            cloud::TableInsertMode::Overwrite => Self::Overwrite,
+        }
+    }
+}
+
+impl From<TableInsertMode> for crate::cloud::v1alpha1::TableInsertMode {
+    fn from(value: TableInsertMode) -> Self {
+        match value {
+            TableInsertMode::Append => Self::Append,
+            TableInsertMode::Overwrite => Self::Overwrite,
+        }
+    }
+}
+
+// ---
 
 #[cfg(test)]
 mod tests {

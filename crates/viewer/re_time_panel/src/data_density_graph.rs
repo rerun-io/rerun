@@ -448,7 +448,15 @@ pub fn data_density_graph_ui(
         ui.tokens().density_graph_outside_valid_ranges,
     );
 
-    if tooltips_enabled && let Some(hovered_time) = data.hovered_time {
+    let mut hovered_time = data.hovered_time;
+
+    if let Some(pointer) = data.hovered_pos {
+        hovered_time = time_ranges_ui
+            .snapped_time_from_x(ui, pointer.x)
+            .map(|t| t.round());
+    }
+
+    if tooltips_enabled && let Some(hovered_time) = hovered_time {
         ctx.selection_state().set_hovered(item.to_item());
 
         if ui.ctx().dragged_id().is_none() {
@@ -680,6 +688,7 @@ pub struct DensityGraphBuilder<'a> {
 
     pub density_graph: DensityGraph,
     pub hovered_time: Option<TimeInt>,
+    pub hovered_pos: Option<egui::Pos2>,
 }
 
 impl<'a> DensityGraphBuilder<'a> {
@@ -696,6 +705,7 @@ impl<'a> DensityGraphBuilder<'a> {
 
             density_graph: DensityGraph::new(row_rect.x_range()),
             hovered_time: None,
+            hovered_pos: None,
         }
     }
 
@@ -752,9 +762,8 @@ impl<'a> DensityGraphBuilder<'a> {
                 time_range_rect.contains(pointer_pos)
             };
 
-            if is_hovered && let Some(at_time) = self.time_ranges_ui.time_from_x_f32(pointer_pos.x)
-            {
-                self.hovered_time = Some(at_time.round());
+            if is_hovered {
+                self.hovered_pos = Some(pointer_pos);
             }
         }
     }

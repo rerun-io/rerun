@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -62,10 +62,7 @@ class FilterByRange(FilterByRangeExt):
 
 
 FilterByRangeLike = FilterByRange
-FilterByRangeArrayLike = Union[
-    FilterByRange,
-    Sequence[FilterByRangeLike],
-]
+FilterByRangeArrayLike = FilterByRange | Sequence[FilterByRangeLike]
 
 
 class FilterByRangeBatch(BaseBatch[FilterByRangeArrayLike]):

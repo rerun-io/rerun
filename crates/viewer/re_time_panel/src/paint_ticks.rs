@@ -2,7 +2,7 @@ use std::ops::RangeInclusive;
 
 use egui::{Align2, Color32, Rect, Rgba, Shape, Stroke, lerp, pos2, remap_clamp};
 
-use re_format::next_grid_tick_magnitude_nanos;
+use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::{AbsoluteTimeRangeF, TimeReal, TimeType, TimestampFormat};
 
 use super::time_ranges_ui::TimeRangesUi;

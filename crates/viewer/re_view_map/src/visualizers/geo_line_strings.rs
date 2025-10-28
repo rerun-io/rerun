@@ -9,9 +9,8 @@ use re_types::{
 };
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewHighlights, ViewQuery, ViewSystemExecutionError,
-    VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
+    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
+    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 #[derive(Debug, Default)]
@@ -53,15 +52,23 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
 
             // gather all relevant chunks
             let timeline = view_query.timeline;
-            let all_lines = results.iter_as(timeline, GeoLineStrings::descriptor_line_strings());
-            let all_colors = results.iter_as(timeline, GeoLineStrings::descriptor_colors());
-            let all_radii = results.iter_as(timeline, GeoLineStrings::descriptor_radii());
+            let all_lines = results.iter_as(
+                timeline,
+                GeoLineStrings::descriptor_line_strings().component,
+            );
+            let all_colors =
+                results.iter_as(timeline, GeoLineStrings::descriptor_colors().component);
+            let all_radii = results.iter_as(timeline, GeoLineStrings::descriptor_radii().component);
 
             // fallback component values
-            let fallback_color: Color =
-                self.fallback_for(&ctx.query_context(data_result, &view_query.latest_at_query()));
-            let fallback_radius: Radius =
-                self.fallback_for(&ctx.query_context(data_result, &view_query.latest_at_query()));
+            let fallback_color: Color = typed_fallback_for(
+                &ctx.query_context(data_result, &view_query.latest_at_query()),
+                GeoLineStrings::descriptor_colors().component,
+            );
+            let fallback_radius: Radius = typed_fallback_for(
+                &ctx.query_context(data_result, &view_query.latest_at_query()),
+                GeoLineStrings::descriptor_radii().component,
+            );
 
             // iterate over each chunk and find all relevant component slices
             for (_index, lines, colors, radii) in re_query::range_zip_1x2(
@@ -109,10 +116,6 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
         self
     }
 }
@@ -183,17 +186,3 @@ impl GeoLineStringsVisualizer {
         Ok(())
     }
 }
-
-impl TypedComponentFallbackProvider<Color> for GeoLineStringsVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
-        auto_color_for_entity_path(ctx.target_entity_path)
-    }
-}
-
-impl TypedComponentFallbackProvider<Radius> for GeoLineStringsVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> Radius {
-        Radius::new_ui_points(2.0)
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(GeoLineStringsVisualizer => [Color, Radius]);

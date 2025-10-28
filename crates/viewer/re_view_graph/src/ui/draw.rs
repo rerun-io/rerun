@@ -376,13 +376,10 @@ pub fn draw_graph(
                 if response.double_clicked() {
                     // Select the entire entity
                     ctx.command_sender()
-                        .send_system(SystemCommand::SetSelection(
-                            Item::DataResult(
-                                query.view_id,
-                                instance_path.entity_path.clone().into(),
-                            )
-                            .into(),
-                        ));
+                        .send_system(SystemCommand::set_selection(Item::DataResult(
+                            query.view_id,
+                            instance_path.entity_path.clone().into(),
+                        )));
                 } else if response.hovered() || response.clicked() {
                     *hover_click_item = Some((
                         Item::DataResult(query.view_id, instance_path.clone()),

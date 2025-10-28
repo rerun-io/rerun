@@ -1,18 +1,18 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use arrow::compute::SortOptions;
-use arrow::datatypes::Fields;
 use arrow::{
     array::{ArrayRef, ListArray, StringArray},
-    datatypes::{DataType, Field, Schema},
+    compute::SortOptions,
+    datatypes::{DataType, Field, Fields},
 };
-use datafusion::common::DataFusionError;
-use datafusion::physical_expr::expressions::col;
-use datafusion::physical_expr::{LexOrdering, PhysicalSortExpr};
+use datafusion::{
+    common::DataFusionError,
+    physical_expr::{LexOrdering, PhysicalSortExpr, expressions::col},
+};
 use itertools::Itertools as _;
 
-use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
 use re_chunk::ArrowArray as _;
 
 // --
@@ -24,7 +24,17 @@ pub trait RecordBatchExt {
     /// Formats a record batch's schema in a snapshot-friendly way.
     fn format_schema_snapshot(&self) -> String;
 
+    /// Sort columns by field name.
     fn horizontally_sorted(&self) -> Self;
+
+    /// Sort property columns lexicographically.
+    ///
+    /// This is useful because there is no guarantee on property ordering in partition tables and
+    /// dataset manifest.
+    ///
+    /// Well, in practice there is no guarantee at all, but the base columns have a consistent,
+    /// logical order, and it's nice to keep it in the snapshots while we can.
+    fn sort_property_columns(&self) -> Self;
 
     fn sort_rows_by(&self, columns: &[&str]) -> Result<Self, DataFusionError>
     where
@@ -92,22 +102,21 @@ impl RecordBatchExt for arrow::array::RecordBatch {
     }
 
     fn horizontally_sorted(&self) -> Self {
-        let schema = self.schema();
+        self.clone()
+            .sort_columns_by(|f1, f2| f1.name().cmp(f2.name()))
+            .expect("should be able to sort")
+    }
 
-        let mut fields_and_columns =
-            itertools::izip!(schema.fields.iter(), self.columns()).collect_vec();
-        fields_and_columns.sort_by_key(|(field, _column)| field.name());
-
-        let (fields, columns): (Vec<_>, Vec<_>) = fields_and_columns.into_iter().unzip();
-
-        Self::try_new(
-            Arc::new(Schema::new_with_metadata(
-                fields.into_iter().cloned().collect_vec(),
-                schema.metadata.clone(),
-            )),
-            columns.into_iter().cloned().collect_vec(),
-        )
-        .unwrap()
+    fn sort_property_columns(&self) -> Self {
+        self.clone()
+            .sort_columns_by(|f1, f2| {
+                if f1.name().starts_with("property:") && f2.name().starts_with("property:") {
+                    f1.name().cmp(f2.name())
+                } else {
+                    std::cmp::Ordering::Equal
+                }
+            })
+            .expect("should be able to sort")
     }
 
     fn sort_rows_by(&self, columns: &[&str]) -> Result<Self, DataFusionError> {
@@ -164,7 +173,7 @@ impl RecordBatchExt for arrow::array::RecordBatch {
             arrays.push(array.clone());
         }
 
-        let schema = arrow::datatypes::Schema::new(fields);
+        let schema = arrow::datatypes::Schema::new_with_metadata(fields, schema.metadata().clone());
         Some(Self::try_new(Arc::new(schema), arrays).expect("creating record batch"))
     }
 
@@ -334,7 +343,7 @@ impl RecordBatchExt for arrow::array::RecordBatch {
             arrays.push(array.clone());
         }
 
-        let schema = arrow::datatypes::Schema::new(fields);
+        let schema = arrow::datatypes::Schema::new_with_metadata(fields, schema.metadata().clone());
         if schema.fields().is_empty() {
             Self::new_empty(Arc::new(schema))
         } else {
@@ -358,7 +367,7 @@ impl RecordBatchExt for arrow::array::RecordBatch {
             }
         }
 
-        let schema = arrow::datatypes::Schema::new(fields);
+        let schema = arrow::datatypes::Schema::new_with_metadata(fields, schema.metadata().clone());
         if schema.fields().is_empty() {
             Self::new_empty(Arc::new(schema))
         } else {
@@ -374,32 +383,42 @@ pub trait SchemaExt {
 
 impl SchemaExt for arrow::datatypes::Schema {
     fn format_snapshot(&self) -> String {
+        let metadata = (!self.metadata().is_empty()).then(|| {
+            format!(
+                "top-level metadata: [\n    {}\n]",
+                self.metadata()
+                    .iter()
+                    .map(|(k, v)| format!("{k}:{v}"))
+                    .sorted()
+                    .join("\n    ")
+            )
+        });
+
         let mut fields = self.fields.iter().collect_vec();
         fields.sort_by(|a, b| a.name().cmp(b.name()));
-        fields
-            .into_iter()
-            .map(|field| {
-                if field.metadata().is_empty() {
-                    format!(
-                        "{}: {}",
-                        field.name(),
-                        re_arrow_util::format_data_type(field.data_type())
-                    )
-                } else {
-                    format!(
-                        "{}: {} [\n    {}\n]",
-                        field.name(),
-                        re_arrow_util::format_data_type(field.data_type()),
-                        field
-                            .metadata()
-                            .iter()
-                            .map(|(k, v)| format!("{k}:{v}"))
-                            .sorted()
-                            .join("\n    ")
-                    )
-                }
-            })
-            .join("\n")
+        let fields = fields.into_iter().map(|field| {
+            if field.metadata().is_empty() {
+                format!(
+                    "{}: {}",
+                    field.name(),
+                    re_arrow_util::format_data_type(field.data_type())
+                )
+            } else {
+                format!(
+                    "{}: {} [\n    {}\n]",
+                    field.name(),
+                    re_arrow_util::format_data_type(field.data_type()),
+                    field
+                        .metadata()
+                        .iter()
+                        .map(|(k, v)| format!("{k}:{v}"))
+                        .sorted()
+                        .join("\n    ")
+                )
+            }
+        });
+
+        metadata.into_iter().chain(fields).join("\n")
     }
 }
 

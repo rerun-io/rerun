@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.9"
+  PYTHON_VERSION: "3.10"
 
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
@@ -42,6 +42,7 @@ permissions:
 jobs:
   no-codegen-changes:
     name: Check if running codegen would produce any changes
+    timeout-minutes: 60
     runs-on: ubuntu-latest-16-cores
     steps:
       # Note: We explicitly don't override `ref` here. We need to see if changes would be made
@@ -77,6 +78,7 @@ jobs:
 
   rerun-lints:
     name: Rerun lints
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

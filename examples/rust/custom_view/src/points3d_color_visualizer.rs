@@ -4,7 +4,7 @@ use rerun::external::{
     re_log_types::{EntityPath, Instance},
     re_renderer,
     re_viewer_context::{
-        self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
+        IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
         ViewSystemExecutionError, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
     },
 };
@@ -63,8 +63,10 @@ impl VisualizerSystem for Points3DColorVisualizer {
             // From the query result, get all the color arrays as `[u32]` slices.
             // For latest-at queries should be only a single slice`,
             // but if visible history is enabled, there might be several!
-            let colors_per_time =
-                results.iter_as(query.timeline, rerun::Points3D::descriptor_colors());
+            let colors_per_time = results.iter_as(
+                query.timeline,
+                rerun::Points3D::descriptor_colors().component,
+            );
             let color_slices_per_time = colors_per_time.slice::<u32>();
 
             // Collect all different kinds of colors that are returned from the cache.
@@ -95,13 +97,4 @@ impl VisualizerSystem for Points3DColorVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-// Implements a `ComponentFallbackProvider` trait for the `InstanceColorSystem`.
-// It is left empty here but could be used to provides fallback values for optional components in case they're missing.
-use rerun::external::re_types;
-re_viewer_context::impl_component_fallback_provider!(Points3DColorVisualizer => []);

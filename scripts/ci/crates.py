@@ -95,9 +95,10 @@ def get_workspace_crates(root: dict[str, Any]) -> dict[str, Crate]:
     for pattern in root["workspace"]["members"]:
         for crate in [member for member in glob(pattern) if os.path.isdir(member)]:
             crate_path = Path(crate)
-            if not os.path.exists(crate_path / "Cargo.toml"):
+            crate_cargo_toml = crate_path / "Cargo.toml"
+            if not crate_cargo_toml.exists():
                 continue
-            manifest_text = (crate_path / "Cargo.toml").read_text()
+            manifest_text = crate_cargo_toml.read_text()
             manifest: dict[str, Any] = tomlkit.parse(manifest_text)
             crates[manifest["package"]["name"]] = Crate(manifest, crate_path)
     return crates
@@ -153,36 +154,40 @@ def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dic
     This also filters any crates which have `publish` set to `false`.
     """
 
+    visited: dict[str, bool] = {}
+    output: dict[str, Crate] = {}
+
     def helper(
         ctx: Context,
         crates: dict[str, Crate],
         name: str,
-        output: dict[str, Crate],
-        visited: dict[str, bool],
     ) -> None:
+        nonlocal visited, output
+
+        # Circular references are possible, so we must check for cycles before recursing.
+        if name in visited:
+            return
+        else:
+            visited[name] = True
+
         crate = crates[name]
         for dependency in crate_deps(crate.manifest):
             assert dependency.name != name, f"Crate {name} had itself as a dependency"
             if dependency.name not in crates:
                 continue
-            if dependency.name in visited:
-                continue
-            helper(ctx, crates, dependency.name, output, visited)
+            helper(ctx, crates, dependency.name)
+
         # Insert only after all dependencies have been traversed
-        if name not in visited:
-            visited[name] = True
-            publish = crate.manifest["package"].get("publish")
-            if publish is None:
-                ctx.error(f"Crate {B}{name}{X} does not have {B}package.publish{X} set.")
-                return
+        publish = crate.manifest["package"].get("publish")
+        if publish is None:
+            ctx.error(f"Crate {B}{name}{X} does not have {B}package.publish{X} set.")
+            return
 
-            if publish:
-                output[name] = crate
+        if publish:
+            output[name] = crate
 
-    visited: dict[str, bool] = {}
-    output: dict[str, Crate] = {}
     for name in crates.keys():
-        helper(ctx, crates, name, output, visited)
+        helper(ctx, crates, name)
     return output
 
 
@@ -443,7 +448,7 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
         # TODO(#11199): remove this hack
         publish_cmd += " --allow-dirty"
 
-    print(f"{G}Publishing{X} {B}{name}{X}…")
+    print(f"{datetime.now()} {G}Publishing{X} {B}{name}{X}…")
     retry_attempts = 5
     while True:
         try:
@@ -457,17 +462,19 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
 
             if not is_already_published(version, crate):
                 # Theoretically this shouldn't be needed… but sometimes it is.
-                print(f"{R}Waiting for {name} to become available…")
+                print(f"{datetime.now()}  {R}Waiting for {name} to become available…")
                 time.sleep(2)  # give crates.io some time to index the new crate
                 num_retries = 0
                 while not is_already_published(version, crate):
                     time.sleep(3)
                     num_retries += 1
                     if num_retries > 10:
-                        print(f"{R}We published{X} {B}{name}{X} but it was never made available. Continuing anyway.")
+                        print(
+                            f"{datetime.now()} {R}We published{X} {B}{name}{X} but it was never made available. Continuing anyway."
+                        )
                         return
 
-            print(f"{G}Published{X} {B}{name}{X}@{B}{version}{X}")
+            print(f"{datetime.now()} {G}Published{X} {B}{name}{X}@{B}{version}{X}")
 
             break
         except subprocess.CalledProcessError as e:
@@ -476,27 +483,27 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
             # for any other error, retry after 6 seconds
             retry_delay = 1 + (parse_retry_delay_secs(error_message) or 5.0)
             if retry_attempts > 0:
-                print(f"{R}Failed to publish{X} {B}{name}{X}, retrying in {retry_delay} seconds…")
+                print(f"{datetime.now()} {R}Failed to publish{X} {B}{name}{X}, retrying in {retry_delay} seconds…")
                 retry_attempts -= 1
                 retry_delay *= 1.5  # some backoff
                 time.sleep(retry_delay + 1)
             else:
-                print(f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}")
+                print(f"{datetime.now()} {R}Failed to publish{X} {B}{name}{X}:\n{error_message}")
                 raise
 
 
 def publish_unpublished_crates_in_parallel(all_crates: dict[str, Crate], version: str, token: str) -> None:
     # filter all_crates for any that are already published
-    print("Collecting unpublished crates…")
+    print(f"{datetime.now()} Collecting unpublished crates…")
     unpublished_crates: dict[str, Crate] = {}
     for name, crate in all_crates.items():
         if is_already_published(version, crate):
-            print(f"{G}Already published{X} {B}{name}{X}@{B}{version}{X}")
+            print(f"{datetime.now()} {G}Already published{X} {B}{name}{X}@{B}{version}{X}")
         else:
             unpublished_crates[name] = crate
 
     # collect dependency graph (adjacency list of `crate -> dependencies`)
-    print("Building dependency graph…")
+    print(f"{datetime.now()} Building dependency graph…")
     dependency_graph: dict[str, list[str]] = {}
     for name, crate in unpublished_crates.items():
         dependencies = []
@@ -506,7 +513,7 @@ def publish_unpublished_crates_in_parallel(all_crates: dict[str, Crate], version
         dependency_graph[name] = dependencies
 
     # walk the dependency graph in parallel and publish each crate
-    print(f"Publishing {len(unpublished_crates)} crates…")
+    print(f"{datetime.now()} Publishing {len(unpublished_crates)} crates…")
     env = {**os.environ.copy(), "RERUN_IS_PUBLISHING_CRATES": "yes"}
     DAG(dependency_graph).walk_parallel(
         lambda name: publish_crate(unpublished_crates[name], token, version, env),
@@ -522,8 +529,10 @@ def publish(dry_run: bool, token: str) -> None:
 
     root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text(encoding="utf-8"))
     version: str = root["workspace"]["package"]["version"]
+
     print("Collecting publishable crates…")
-    crates = get_sorted_publishable_crates(ctx, get_workspace_crates(root))
+    workspace_crates = get_workspace_crates(root)
+    crates = get_sorted_publishable_crates(ctx, workspace_crates)
 
     for name in crates.keys():
         ctx.publish(name, version)
@@ -573,7 +582,7 @@ class Target(Enum):
 
 
 def get_release_version_from_git_branch() -> str:
-    return git.Repo().active_branch.name.removeprefix("release-")
+    return git.Repo().active_branch.name.removeprefix("prepare-release-")
 
 
 def get_version(target: Target | None, skip_prerelease: bool = False) -> VersionInfo:
@@ -583,7 +592,7 @@ def get_version(target: Target | None, skip_prerelease: bool = False) -> Version
             current_version = VersionInfo.parse(branch_name)  # ensures that it is a valid version
         except ValueError:
             print(f"the current branch `{branch_name}` does not specify a valid version.")
-            print("this script expects the format `release-x.y.z-meta.N`")
+            print("this script expects the format `prepare-release-x.y.z-meta.N`")
             sys.exit(1)
     elif target is Target.CratesIo:
         latest_published_version = get_latest_published_version("rerun", skip_prerelease)

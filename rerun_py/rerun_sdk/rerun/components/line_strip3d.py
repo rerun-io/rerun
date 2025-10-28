@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -58,11 +58,11 @@ class LineStrip3D(LineStrip3DExt, ComponentMixin):
 if TYPE_CHECKING:
     from .. import datatypes
 
-    LineStrip3DLike = Union[LineStrip3D, datatypes.Vec3DArrayLike, npt.NDArray[np.float32]]
+    LineStrip3DLike = LineStrip3D | datatypes.Vec3DArrayLike | npt.NDArray[np.float32]
 else:
     LineStrip3DLike = Any
 
-LineStrip3DArrayLike = Union[LineStrip3D, Sequence[LineStrip3DLike], npt.NDArray[np.float32]]
+LineStrip3DArrayLike = LineStrip3D | Sequence[LineStrip3DLike] | npt.NDArray[np.float32]
 
 
 class LineStrip3DBatch(BaseBatch[LineStrip3DArrayLike], ComponentBatchMixin):
