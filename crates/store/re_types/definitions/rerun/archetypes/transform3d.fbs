@@ -43,11 +43,29 @@ table Transform3D (
   /// Specifies the relation this transform establishes between this entity and its parent.
   relation: rerun.components.TransformRelation ("attr.rerun.component_optional", nullable, order: 1600);
 
+  // --- transform frame
+
+  /// The frame this transform transforms from.
+  ///
+  /// If not specified, this is set to the implicit transform frame of the current entity path.
+  /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
+  ///
+  /// To set the frame an entity is part of see [archetypes.CoordinateFrame]
+  source_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", nullable, order: 2000);
+
+  /// The frame this transform transforms to.
+  ///
+  /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
+  /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
+  ///
+  /// To set the frame an entity is part of see [archetypes.CoordinateFrame]
+  target_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", nullable, order: 2100);
+
   // --- visual representation
 
   /// Visual length of the 3 axes.
   ///
   /// The length is interpreted in the local coordinate system of the transform.
   /// If the transform is scaled, the axes will be scaled accordingly.
-  axis_length: rerun.components.AxisLength ("attr.rerun.component_optional", nullable, order: 2000);
+  axis_length: rerun.components.AxisLength ("attr.rerun.component_optional", nullable, order: 3000);
 }

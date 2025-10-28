@@ -3130,6 +3130,20 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
+                        name: "source_frame",
+                        display_name: "Source frame",
+                        component_type: "rerun.components.TransformFrameId".into(),
+                        docstring_md: "The frame this transform transforms from.\n\nIf not specified, this is set to the implicit transform frame of the current entity path.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame?speculative-link)",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "target_frame",
+                        display_name: "Target frame",
+                        component_type: "rerun.components.TransformFrameId".into(),
+                        docstring_md: "The frame this transform transforms to.\n\nIf not specified, this is set to the implicit transform frame of the current entity path's parent.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame?speculative-link)",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
                         name: "axis_length",
                         display_name: "Axis length",
                         component_type: "rerun.components.AxisLength".into(),
