@@ -21,7 +21,7 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
     }
 
     // Returns the only node with the given label.
-    pub fn get_label<'n>(&'n mut self, label: &'n str) -> egui_kittest::Node<'n>
+    pub fn get_label<'n>(&'n self, label: &'n str) -> egui_kittest::Node<'n>
     where
         'a: 'n,
     {
@@ -29,7 +29,7 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
     }
 
     // Returns the nth node with the given label.
-    pub fn get_nth_label<'n>(&'n mut self, label: &'n str, index: usize) -> egui_kittest::Node<'n>
+    pub fn get_nth_label<'n>(&'n self, label: &'n str, index: usize) -> egui_kittest::Node<'n>
     where
         'a: 'n,
     {
@@ -105,7 +105,7 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
 
     // Helper function to get the node with the given label
     fn get_nth_label_inner<'n>(
-        &'n mut self,
+        &'n self,
         label: &'n str,
         index: Option<usize>,
     ) -> egui_kittest::Node<'n>

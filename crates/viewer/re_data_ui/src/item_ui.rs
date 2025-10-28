@@ -867,7 +867,8 @@ pub fn table_id_button_ui(
             .on_hover_ui(|ui| {
                 ui.label(format!("Table: {table_id}"));
             })
-    }).inner;
+    })
+    .inner;
 
     if response.hovered() {
         ctx.selection_state().set_hovered(item.clone());
