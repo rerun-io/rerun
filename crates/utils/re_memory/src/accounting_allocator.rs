@@ -187,8 +187,12 @@ pub fn turn_on_tracking_if_env_var(env_var: &str) {
 
 // ----------------------------------------------------------------------------
 
-const MAX_CALLSTACKS: usize = 128;
+/// Max number of peak callstacks we collect
+const MAX_CALLSTACKS: usize = 32;
 
+/// Detailed statistics about memory usage.
+///
+/// Requires [`set_tracking_callstacks`] having been called.
 #[derive(Debug)]
 pub struct TrackingStatistics {
     /// Allocations smaller than these are left untracked.
