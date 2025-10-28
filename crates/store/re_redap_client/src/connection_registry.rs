@@ -47,13 +47,35 @@ pub struct ConnectionRegistry {
 
 impl ConnectionRegistry {
     /// Create a new connection registry and return a handle to it.
+    ///
+    /// This version explicitly disables using credentials stored on the local machine,
+    /// which makes sense to do in test contexts, or where you don't want the connection
+    /// registry "impersonating" the local user.
+    ///
+    /// Using stored credentials by default should be preferred in all other contexts,
+    /// see [`Self::new_with_stored_credentials`].
     #[expect(clippy::new_ret_no_self)] // intentional, to reflect the fact that this is a handle
-    pub fn new() -> ConnectionRegistryHandle {
+    pub fn new_without_stored_credentials() -> ConnectionRegistryHandle {
         ConnectionRegistryHandle {
             inner: Arc::new(RwLock::new(Self {
                 saved_credentials: HashMap::new(),
                 fallback_token: None,
                 use_stored_credentials: false,
+                clients: HashMap::new(),
+            })),
+        }
+    }
+
+    /// Create a new connection registry and return a handle to it.
+    ///
+    /// This version explicitly enables using credentials stored on the local machine.
+    #[expect(clippy::new_ret_no_self)] // intentional, to reflect the fact that this is a handle
+    pub fn new_with_stored_credentials() -> ConnectionRegistryHandle {
+        ConnectionRegistryHandle {
+            inner: Arc::new(RwLock::new(Self {
+                saved_credentials: HashMap::new(),
+                fallback_token: None,
+                use_stored_credentials: true,
                 clients: HashMap::new(),
             })),
         }
@@ -133,14 +155,6 @@ impl ConnectionRegistryHandle {
             let mut inner = self.inner.blocking_write();
             inner.fallback_token = Some(token);
         });
-    }
-
-    pub fn with_stored_credentials(self) -> Self {
-        wrap_blocking_lock(|| {
-            let mut inner = self.inner.blocking_write();
-            inner.use_stored_credentials = true;
-        });
-        self
     }
 
     /// Get a client for the given origin, creating one if it doesn't exist yet.

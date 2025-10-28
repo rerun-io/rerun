@@ -52,7 +52,7 @@ impl PyCatalogClientInternal {
         let origin = addr.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
 
         let connection_registry =
-            re_redap_client::ConnectionRegistry::new().with_stored_credentials();
+            re_redap_client::ConnectionRegistry::new_with_stored_credentials();
 
         let token = token
             .map(TryFrom::try_from)
