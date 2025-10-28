@@ -1,3 +1,9 @@
+"""
+Configuration file for pytest.
+
+`conftest.py` is where pytest looks for fixtures and other customization/extensions.
+"""
+
 from __future__ import annotations
 
 import os
