@@ -129,8 +129,8 @@ pub enum PyTableInsertMode {
 impl From<PyTableInsertMode> for TableInsertMode {
     fn from(value: PyTableInsertMode) -> Self {
         match value {
-            PyTableInsertMode::Append => TableInsertMode::Append,
-            PyTableInsertMode::Overwrite => TableInsertMode::Overwrite,
+            PyTableInsertMode::Append => Self::Append,
+            PyTableInsertMode::Overwrite => Self::Overwrite,
         }
     }
 }

@@ -366,17 +366,18 @@ impl PyCatalogClientInternal {
         let table = PyTableEntry::default();
 
         Py::new(py, (table, entry))
+    }
 
     fn write_table(
         self_: Py<Self>,
         py: Python<'_>,
         name: String,
-        record_batches: &Bound<'_, PyAny>,
+        batches: &Bound<'_, PyAny>,
         insert_mode: PyTableInsertMode,
     ) -> PyResult<()> {
         let connection = self_.borrow_mut(py).connection.clone();
 
-        let stream = ArrowArrayStreamReader::from_pyarrow_bound(record_batches)?;
+        let stream = ArrowArrayStreamReader::from_pyarrow_bound(batches)?;
 
         connection.write_table(py, name, stream, insert_mode)?;
 
