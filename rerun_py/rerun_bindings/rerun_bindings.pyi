@@ -1552,10 +1552,10 @@ class DatasetEntry(Entry):
             The component column to create the index on.
         time_index : IndexColumnSelector
             Which timeline this index will map to.
-        num_partitions : Optional[int]
+        num_partitions : int | None
             The number of partitions to create for the index.
             (Deprecated, use target_partition_size instead)
-        target_partition_size : Optional[int]
+        target_partition_size : int | None
             The target size (in number of rows) for each partition.
             Defaults to 4096 if neither this nor num_partitions is specified.
         num_sub_vectors : int
