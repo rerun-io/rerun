@@ -30,8 +30,9 @@ class Server:
     # Start a server with some datasets
     with rr.Server(port=9876, datasets={"my_data": "path/to/data.rrd"}) as server:
         client = server.client()
+
         # Use the client to interact with the catalog
-        entries = client.all_entries()
+        datasets = client.datasets()
     ```
 
     """
