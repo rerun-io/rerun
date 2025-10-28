@@ -44,32 +44,32 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
 
     pub fn click_label(&mut self, label: &str) {
         self.root().get_by_label(label).click();
-        self.harness.run_ok();
+        self.harness.run();
     }
 
     pub fn right_click_label(&mut self, label: &str) {
         self.root().get_by_label(label).click_secondary();
-        self.harness.run_ok();
+        self.harness.run();
     }
 
     pub fn click_nth_label(&mut self, label: &str, index: usize) {
         self.get_nth_label(label, index).click();
-        self.harness.run_ok();
+        self.harness.run();
     }
 
     pub fn right_click_nth_label(&mut self, label: &str, index: usize) {
         self.get_nth_label(label, index).click_secondary();
-        self.harness.run_ok();
+        self.harness.run();
     }
 
     pub fn click_label_modifiers(&mut self, label: &str, modifiers: egui::Modifiers) {
         self.root().get_by_label(label).click_modifiers(modifiers);
-        self.harness.run_ok();
+        self.harness.run();
     }
 
     pub fn click_label_contains(&mut self, label: &str) {
         self.root().get_by_label_contains(label).click();
-        self.harness.run_ok();
+        self.harness.run();
     }
 
     pub fn drag_nth_label(&mut self, label: &str, index: usize) {
@@ -90,17 +90,17 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
 
     pub fn hover_label(&mut self, label: &str) {
         self.get_label(label).hover();
-        self.harness.run_ok();
+        self.harness.run();
     }
 
     pub fn hover_nth_label(&mut self, label: &str, index: usize) {
         self.get_nth_label(label, index).hover();
-        self.harness.run_ok();
+        self.harness.run();
     }
 
     pub fn hover_label_contains(&mut self, label: &str) {
         self.root().get_by_label_contains(label).hover();
-        self.harness.run_ok();
+        self.harness.run();
     }
 
     // Helper function to get the node with the given label
@@ -152,6 +152,6 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
         };
         self.harness.event(event);
         self.harness.remove_cursor();
-        self.harness.run_ok();
+        self.harness.run();
     }
 }
