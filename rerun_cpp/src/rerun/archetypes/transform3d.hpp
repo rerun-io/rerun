@@ -319,21 +319,21 @@ namespace rerun::archetypes {
         /// Specifies the relation this transform establishes between this entity and its parent.
         std::optional<ComponentBatch> relation;
 
-        /// The frame this transform transforms from.
+        /// The frames this transform transforms from.
         ///
         /// If not specified, this is set to the implicit transform frame of the current entity path.
         /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
         ///
         /// To set the frame an entity is part of see `archetypes::CoordinateFrame`
-        std::optional<ComponentBatch> source_frame;
+        std::optional<ComponentBatch> source_frames;
 
-        /// The frame this transform transforms to.
+        /// The frames this transform transforms to.
         ///
         /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
         /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
         ///
         /// To set the frame an entity is part of see `archetypes::CoordinateFrame`
-        std::optional<ComponentBatch> target_frame;
+        std::optional<ComponentBatch> target_frames;
 
         /// Visual length of the 3 axes.
         ///
@@ -374,14 +374,14 @@ namespace rerun::archetypes {
             ArchetypeName, "Transform3D:relation",
             Loggable<rerun::components::TransformRelation>::ComponentType
         );
-        /// `ComponentDescriptor` for the `source_frame` field.
-        static constexpr auto Descriptor_source_frame = ComponentDescriptor(
-            ArchetypeName, "Transform3D:source_frame",
+        /// `ComponentDescriptor` for the `source_frames` field.
+        static constexpr auto Descriptor_source_frames = ComponentDescriptor(
+            ArchetypeName, "Transform3D:source_frames",
             Loggable<rerun::components::TransformFrameId>::ComponentType
         );
-        /// `ComponentDescriptor` for the `target_frame` field.
-        static constexpr auto Descriptor_target_frame = ComponentDescriptor(
-            ArchetypeName, "Transform3D:target_frame",
+        /// `ComponentDescriptor` for the `target_frames` field.
+        static constexpr auto Descriptor_target_frames = ComponentDescriptor(
+            ArchetypeName, "Transform3D:target_frames",
             Loggable<rerun::components::TransformFrameId>::ComponentType
         );
         /// `ComponentDescriptor` for the `axis_length` field.
@@ -889,51 +889,31 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// The frame this transform transforms from.
+        /// The frames this transform transforms from.
         ///
         /// If not specified, this is set to the implicit transform frame of the current entity path.
         /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
         ///
         /// To set the frame an entity is part of see `archetypes::CoordinateFrame`
-        Transform3D with_source_frame(const rerun::components::TransformFrameId& _source_frame) && {
-            source_frame = ComponentBatch::from_loggable(_source_frame, Descriptor_source_frame)
-                               .value_or_throw();
-            return std::move(*this);
-        }
-
-        /// This method makes it possible to pack multiple `source_frame` in a single component batch.
-        ///
-        /// This only makes sense when used in conjunction with `columns`. `with_source_frame` should
-        /// be used when logging a single row's worth of data.
-        Transform3D with_many_source_frame(
-            const Collection<rerun::components::TransformFrameId>& _source_frame
+        Transform3D with_source_frames(
+            const Collection<rerun::components::TransformFrameId>& _source_frames
         ) && {
-            source_frame = ComponentBatch::from_loggable(_source_frame, Descriptor_source_frame)
-                               .value_or_throw();
+            source_frames = ComponentBatch::from_loggable(_source_frames, Descriptor_source_frames)
+                                .value_or_throw();
             return std::move(*this);
         }
 
-        /// The frame this transform transforms to.
+        /// The frames this transform transforms to.
         ///
         /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
         /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
         ///
         /// To set the frame an entity is part of see `archetypes::CoordinateFrame`
-        Transform3D with_target_frame(const rerun::components::TransformFrameId& _target_frame) && {
-            target_frame = ComponentBatch::from_loggable(_target_frame, Descriptor_target_frame)
-                               .value_or_throw();
-            return std::move(*this);
-        }
-
-        /// This method makes it possible to pack multiple `target_frame` in a single component batch.
-        ///
-        /// This only makes sense when used in conjunction with `columns`. `with_target_frame` should
-        /// be used when logging a single row's worth of data.
-        Transform3D with_many_target_frame(
-            const Collection<rerun::components::TransformFrameId>& _target_frame
+        Transform3D with_target_frames(
+            const Collection<rerun::components::TransformFrameId>& _target_frames
         ) && {
-            target_frame = ComponentBatch::from_loggable(_target_frame, Descriptor_target_frame)
-                               .value_or_throw();
+            target_frames = ComponentBatch::from_loggable(_target_frames, Descriptor_target_frames)
+                                .value_or_throw();
             return std::move(*this);
         }
 

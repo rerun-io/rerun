@@ -45,21 +45,21 @@ table Transform3D (
 
   // --- transform frame
 
-  /// The frame this transform transforms from.
+  /// The frames this transform transforms from.
   ///
   /// If not specified, this is set to the implicit transform frame of the current entity path.
   /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
   ///
   /// To set the frame an entity is part of see [archetypes.CoordinateFrame]
-  source_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", nullable, order: 2000);
+  source_frames: [rerun.components.TransformFrameId] ("attr.rerun.component_optional", nullable, order: 2000);
 
-  /// The frame this transform transforms to.
+  /// The frames this transform transforms to.
   ///
   /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
   /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
   ///
   /// To set the frame an entity is part of see [archetypes.CoordinateFrame]
-  target_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", nullable, order: 2100);
+  target_frames: [rerun.components.TransformFrameId] ("attr.rerun.component_optional", nullable, order: 2100);
 
   // --- visual representation
 
