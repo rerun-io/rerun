@@ -42,9 +42,6 @@ use re_view::{
 
 #[derive(Clone)]
 pub struct TimeSeriesViewState {
-    /// State of `egui_plot`'s auto bounds before the user started dragging the time cursor.
-    saved_auto_bounds: egui::Vec2b,
-
     /// The range of the scalar values currently on screen.
     scalar_range: Range1D,
 
@@ -68,12 +65,6 @@ pub struct TimeSeriesViewState {
 impl Default for TimeSeriesViewState {
     fn default() -> Self {
         Self {
-            saved_auto_bounds: egui::Vec2b {
-                // Default x bounds to automatically show all time values.
-                x: true,
-                // Never use y auto bounds: we dictated bounds via blueprint under all circumstances.
-                y: false,
-            },
             scalar_range: [0.0, 0.0].into(),
             max_time_view_range: AbsoluteTimeRange::EMPTY,
             time_offset: 0,
@@ -605,7 +596,7 @@ impl ViewClass for TimeSeriesView {
             let mut plot = Plot::new(plot_id_src)
                 .id(plot_id)
                 .show_grid(**show_grid)
-                .auto_bounds(state.saved_auto_bounds) // Note that this only sets the initial default.
+                .auto_bounds(false)
                 .allow_zoom(false)
                 .allow_scroll(false)
                 .allow_drag(false)
@@ -643,13 +634,6 @@ impl ViewClass for TimeSeriesView {
                         )
                     }
                 });
-
-            match link_x_axis {
-                LinkAxis::Independent => {}
-                LinkAxis::LinkToGlobal => {
-                    plot = plot.link_axis(timeline.name().as_str(), [true, false]);
-                }
-            }
 
             // Sharing the same cursor is always nice:
             plot = plot.link_cursor(timeline.name().as_str(), [true; 2]);
@@ -815,13 +799,54 @@ impl ViewClass for TimeSeriesView {
 
                 let move_delta = drag_delta + scroll_delta;
 
+                let mut transform_changed = false;
+
                 if let Some(hover_pos) = response.hover_pos()
                     && (move_delta != egui::Vec2::ZERO || zoom_delta != egui::Vec2::ONE)
                 {
-                    transform.translate_bounds((-move_delta.x as f64, -move_delta.y as f64));
+                    let apply_to_transform = |transform: &mut egui_plot::PlotTransform| {
+                        transform.translate_bounds((-move_delta.x as f64, -move_delta.y as f64));
 
-                    transform.zoom(zoom_delta, hover_pos);
+                        transform.zoom(zoom_delta, hover_pos);
+                    };
 
+                    match link_x_axis {
+                        LinkAxis::Independent => {
+                            apply_to_transform(&mut transform);
+                        }
+                        LinkAxis::LinkToGlobal => {
+                            ui.memory_mut(|mem| {
+                                let shared_transform = mem.data.get_temp_mut_or_insert_with(
+                                    egui::Id::new(timeline.name()),
+                                    || transform,
+                                );
+
+                                apply_to_transform(shared_transform);
+                            });
+                        }
+                    }
+
+                    transform_changed = true;
+                }
+
+                match link_x_axis {
+                    LinkAxis::Independent => {}
+                    LinkAxis::LinkToGlobal => ui.memory_mut(|mem| {
+                        let shared_transform = mem
+                            .data
+                            .get_temp_mut_or_insert_with(egui::Id::new(timeline.name()), || {
+                                transform
+                            });
+
+                        if transform.bounds() != shared_transform.bounds() {
+                            transform = *shared_transform;
+
+                            transform_changed = true;
+                        }
+                    }),
+                }
+
+                if transform_changed {
                     let new_x_range = transform.bounds().range_x();
                     let new_x_range = Range1D::new(*new_x_range.start(), *new_x_range.end());
 
