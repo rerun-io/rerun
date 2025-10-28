@@ -181,8 +181,8 @@ impl App {
     ) -> Self {
         re_tracing::profile_function!();
 
-        let connection_registry =
-            connection_registry.unwrap_or_else(re_redap_client::ConnectionRegistry::new);
+        let connection_registry = connection_registry
+            .unwrap_or_else(re_redap_client::ConnectionRegistry::new_with_stored_credentials);
 
         if let Some(storage) = creation_context.storage
             && let Some(tokens) = eframe::get_value(storage, REDAP_TOKEN_KEY)

@@ -13,7 +13,7 @@ pub enum Error {
     #[error("HTTP server error: {0}")]
     Http(std::io::Error),
 
-    #[error("{0}")]
+    #[error(transparent)]
     Generic(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
 
     #[error("{0}")]
@@ -54,7 +54,7 @@ pub struct LoginOptions<'a> {
 struct NoCredentialsError;
 
 #[derive(Debug, thiserror::Error)]
-#[error("Your credentials are expired, run `rerun auth login` first")]
+#[error("Your session ended due to inactivity, run `rerun auth login` first")]
 struct ExpiredCredentialsError;
 
 /// Prints the token to stdout
@@ -69,7 +69,7 @@ pub async fn token() -> Result<(), Error> {
 
         Err(err) => {
             re_log::debug!("invalid credentials: {err}");
-            Err(Error::Generic(ExpiredCredentialsError.into()))
+            Err(Error::Generic(Box::new(ExpiredCredentialsError)))
         }
     }
 }
