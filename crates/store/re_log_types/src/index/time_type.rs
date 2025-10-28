@@ -47,8 +47,8 @@ impl TimeType {
     pub fn parse_sequence(s: &str) -> Option<TimeInt> {
         match s {
             "<static>" | "static" => Some(TimeInt::STATIC),
-            "−∞" | "-inf" | "-infinity" => Some(TimeInt::MIN),
-            "∞" | "+∞" | "inf" | "infinity" => Some(TimeInt::MAX),
+            "beginning" | "−∞" | "-inf" | "-infinity" => Some(TimeInt::MIN),
+            "end" | "∞" | "+∞" | "inf" | "infinity" => Some(TimeInt::MAX),
             _ => {
                 let s = s.strip_prefix('#').unwrap_or(s);
                 re_format::parse_i64(s).map(TimeInt::new_temporal)
@@ -60,8 +60,8 @@ impl TimeType {
     pub fn parse_time(&self, s: &str, timestamp_format: TimestampFormat) -> Option<TimeInt> {
         match s.to_lowercase().as_str() {
             "<static>" | "static" => Some(TimeInt::STATIC),
-            "−∞" | "-inf" | "-infinity" => Some(TimeInt::MIN),
-            "∞" | "+∞" | "inf" | "infinity" => Some(TimeInt::MAX),
+            "beginning" | "−∞" | "-inf" | "-infinity" => Some(TimeInt::MIN),
+            "end" | "∞" | "+∞" | "inf" | "infinity" => Some(TimeInt::MAX),
             _ => {
                 match self {
                     Self::Sequence => {
