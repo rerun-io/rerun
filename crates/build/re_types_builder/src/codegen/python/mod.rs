@@ -319,13 +319,14 @@ impl ExtensionClass {
     }
 }
 
-struct ExtentionClasses {
+struct ExtensionClasses {
     classes: BTreeMap<String, ExtensionClass>,
 }
 
-impl Deref for ExtentionClasses {
+impl Deref for ExtensionClasses {
     type Target = BTreeMap<String, ExtensionClass>;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.classes
     }
@@ -348,7 +349,7 @@ impl PythonCodeGenerator {
         let mut scoped_mods = BTreeMap::<String, BTreeMap<String, Vec<String>>>::new();
         let mut test_mods = BTreeMap::<String, Vec<String>>::new();
 
-        let ext_classes = ExtentionClasses {
+        let ext_classes = ExtensionClasses {
             classes: objects
                 .objects_of_kind(object_kind)
                 .map(|obj| {
@@ -637,7 +638,7 @@ fn code_for_struct(
     type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
-    ext_classes: &ExtentionClasses,
+    ext_classes: &ExtensionClasses,
     obj: &Object,
 ) -> String {
     assert!(obj.is_struct());
@@ -1074,7 +1075,7 @@ fn code_for_union(
     type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
-    ext_classes: &ExtentionClasses,
+    ext_classes: &ExtensionClasses,
     obj: &Object,
 ) -> String {
     assert_eq!(obj.class, ObjectClass::Union);
@@ -1759,7 +1760,7 @@ fn quote_field_type_from_field(
 fn quote_field_converter_from_field(
     obj: &Object,
     objects: &Objects,
-    ext_classes: &ExtentionClasses,
+    ext_classes: &ExtensionClasses,
     field: &ObjectField,
 ) -> (String, String) {
     let mut function = String::new();
@@ -1835,7 +1836,7 @@ fn quote_field_converter_from_field(
             });
             let field_obj = &objects[fqname];
 
-            // If the extention class has a custom init we don't know if we can
+            // If the extension class has a custom init we don't know if we can
             // pass a single argument to it.
             //
             // We generate a default converter only if the field's type can be constructed with a
