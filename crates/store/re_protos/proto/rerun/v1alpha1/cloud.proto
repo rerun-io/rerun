@@ -383,8 +383,8 @@ message InvertedIndex {
 }
 
 message VectorIvfPqIndex {
-  // num_partitions is deprecated. Remove in 0.6
-  // Use target_partition_size instead
+  // num_partitions is deprecated. Use target_partition_size instead
+  // TODO(RR-2798): Remove in 0.6
   optional uint32 num_partitions = 1;
 
   optional uint32 num_sub_vectors = 2;

@@ -1529,11 +1529,41 @@ class DatasetEntry(Entry):
         *,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         time_index: IndexColumnSelector,
-        num_partitions: int = 5,
+        num_partitions: int | None = None,
+        target_partition_size: int | None = None,
         num_sub_vectors: int = 16,
         distance_metric: VectorDistanceMetric | str = ...,
     ) -> None:
-        """Create a vector index on the given column."""
+        """
+        Create a vector index on the given column.
+
+        This will enable indexing and build the vector index over all existing values
+        in the specified component column.
+
+        Results can be retrieved using the `search_vector` API, which will include
+        the time-point on the indexed timeline.
+
+        Only one index can be created per component column -- executing this a second
+        time for the same component column will replace the existing index.
+
+        Parameters
+        ----------
+        column : AnyComponentColumn
+            The component column to create the index on.
+        time_index : IndexColumnSelector
+            Which timeline this index will map to.
+        num_partitions : Optional[int]
+            The number of partitions to create for the index.
+            (Deprecated, use target_partition_size instead)
+        target_partition_size : Optional[int]
+            The target size (in number of rows) for each partition.
+            Defaults to 4096 if neither this nor num_partitions is specified.
+        num_sub_vectors : int
+            The number of sub-vectors to use when building the index.
+        distance_metric : VectorDistanceMetricLike
+            The distance metric to use for the index. ("L2", "Cosine", "Dot", "Hamming")
+
+        """
 
     def search_fts(
         self,
