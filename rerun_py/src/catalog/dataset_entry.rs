@@ -875,7 +875,7 @@ fn py_object_to_i64(py: Python<'_>, obj: &Bound<'_, PyAny>) -> PyResult<i64> {
     converted.extract::<i64>()
 }
 
-/// A dataset entry in the catalog.
+/// The result returned from an indexing operation.
 #[pyclass(name = "IndexingResult")] // NOLINT: skip pyclass_eq, non-trivial implementation
 pub struct PyIndexingResult {
     debug_info: Option<re_protos::cloud::v1alpha1::DebugInfo>,
