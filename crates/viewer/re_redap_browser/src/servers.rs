@@ -11,7 +11,7 @@ use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_log_types::{EntityPathPart, EntryId};
 use re_protos::cloud::v1alpha1::{EntryKind, ScanPartitionTableResponse};
 use re_redap_client::ConnectionRegistryHandle;
-use re_sorbet::{BatchType, ColumnDescriptorRef};
+use re_sorbet::ColumnDescriptorRef;
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
 use re_viewer_context::{AsyncRuntimeHandle, GlobalContext, ViewerContext};
@@ -215,19 +215,8 @@ impl Server {
             let default_visible = if desc.entity_path().is_some_and(|entity_path| {
                 entity_path.starts_with(&std::iter::once(EntityPathPart::properties()).collect())
             }) {
-                // Property column, just hide indicator components
-                // TODO(grtlr): Indicators are gone, but since servers might still
-                // have this column we keep this check for now.
-                let is_indicator = desc
-                    .column_name(BatchType::Dataframe)
-                    .ends_with("Indicator");
-                if is_indicator {
-                    re_log::warn_once!(
-                        "Encountered unexpected indicator column name: {}",
-                        desc.column_name(BatchType::Dataframe)
-                    );
-                }
-                !is_indicator
+                // Property columns are visible by default
+                true
             } else {
                 matches!(
                     desc.display_name().as_str(),

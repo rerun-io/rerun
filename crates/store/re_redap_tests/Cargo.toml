@@ -15,7 +15,7 @@ version.workspace = true
 [features]
 
 default = []
-
+lance = ["dep:lance", "dep:chrono"]
 
 [lints]
 workspace = true
@@ -36,7 +36,6 @@ re_tuid.workspace = true
 re_types_core.workspace = true
 re_types.workspace = true
 
-
 anyhow.workspace = true
 arrow.workspace = true
 datafusion.workspace = true
@@ -47,3 +46,8 @@ prost-types.workspace = true
 tempfile.workspace = true
 tonic.workspace = true
 url.workspace = true
+
+# Lance is an optional dependency for re_server
+lance = { workspace = true, optional = true }
+# TODO(lancedb/lance#5075): we need to force activate this feature
+chrono = { workspace = true, optional = true, features = ["serde"] }

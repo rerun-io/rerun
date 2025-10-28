@@ -5,6 +5,7 @@ This document describes the technical architecture of Rerun.
 ## See also
 
 -   [`BUILD.md`](BUILD.md)
+-   [`TESTING.md`](TESTING.md)
 -   [`rerun_py/README.md`](rerun_py/README.md) - build instructions for Python SDK
 -   [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 -   [`CODE_STYLE.md`](CODE_STYLE.md)
@@ -98,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/94a6a4d696e8dcef822c698f0f3c44954be5d8fc/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/94a6a4d696e8dcef822c698f0f3c44954be5d8fc/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/94a6a4d696e8dcef822c698f0f3c44954be5d8fc/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/94a6a4d696e8dcef822c698f0f3c44954be5d8fc/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/94a6a4d696e8dcef822c698f0f3c44954be5d8fc/1200w.png">
+  <img src="https://static.rerun.io/crates/80d8e18346e420d94e7609ffe03fa7fdd56299bd/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/80d8e18346e420d94e7609ffe03fa7fdd56299bd/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/80d8e18346e420d94e7609ffe03fa7fdd56299bd/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/80d8e18346e420d94e7609ffe03fa7fdd56299bd/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/80d8e18346e420d94e7609ffe03fa7fdd56299bd/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -132,29 +133,30 @@ Update instructions:
 
 ##### UI crates
 
-| Crate                 | Description                                                                                                |
-| --------------------- | ---------------------------------------------------------------------------------------------------------- |
-| re_arrow_ui           | Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting.                   |
-| re_blueprint_tree     | The UI for the blueprint tree in the left panel.                                                           |
-| re_redap_browser      | The UI and communication to implement the in-viewer redap server browser.                                  |
-| re_chunk_store_ui     | A chunk store browser UI.                                                                                  |
-| re_component_ui       | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry. |
-| re_dataframe_ui       | Rich table widget over DataFusion.                                                                         |
-| re_recording_panel    | The UI for the recording panel.                                                                            |
-| re_selection_panel    | The UI for the selection panel.                                                                            |
-| re_view               | Types & utilities for defining View classes and communicating with the Viewport.                           |
-| re_view_bar_chart     | A View that shows a single bar chart.                                                                      |
-| re_view_dataframe     | A View that shows the data contained in entities in a table.                                               |
-| re_view_graph         | A View that shows a graph (node-link diagram).                                                             |
-| re_view_map           | A View that shows geospatial data on a map.                                                                |
-| re_view_spatial       | Views that show entities in a 2D or 3D spatial relationship.                                               |
-| re_view_tensor        | A View dedicated to visualizing tensors with arbitrary dimensionality.                                     |
-| re_view_text_document | A simple View that shows a single text box.                                                                |
-| re_view_text_log      | A View that shows text entries in a table and scrolls with the active time.                                |
-| re_view_time_series   | A View that shows plots over Rerun timelines.                                                              |
-| re_time_panel         | The time panel of the Rerun Viewer, allowing to control the displayed timeline & time.                     |
-| re_viewer             | The Rerun Viewer                                                                                           |
-| re_viewport           | The central viewport panel of the Rerun viewer.                                                            |
+| Crate                  | Description                                                                                                |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------- |
+| re_arrow_ui            | Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting.                   |
+| re_blueprint_tree      | The UI for the blueprint tree in the left panel.                                                           |
+| re_redap_browser       | The UI and communication to implement the in-viewer redap server browser.                                  |
+| re_chunk_store_ui      | A chunk store browser UI.                                                                                  |
+| re_component_fallbacks | Provides default fallbacks for Rerun components in the fallback provider registry.                         |
+| re_component_ui        | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry. |
+| re_dataframe_ui        | Rich table widget over DataFusion.                                                                         |
+| re_recording_panel     | The UI for the recording panel.                                                                            |
+| re_selection_panel     | The UI for the selection panel.                                                                            |
+| re_view                | Types & utilities for defining View classes and communicating with the Viewport.                           |
+| re_view_bar_chart      | A View that shows a single bar chart.                                                                      |
+| re_view_dataframe      | A View that shows the data contained in entities in a table.                                               |
+| re_view_graph          | A View that shows a graph (node-link diagram).                                                             |
+| re_view_map            | A View that shows geospatial data on a map.                                                                |
+| re_view_spatial        | Views that show entities in a 2D or 3D spatial relationship.                                               |
+| re_view_tensor         | A View dedicated to visualizing tensors with arbitrary dimensionality.                                     |
+| re_view_text_document  | A simple View that shows a single text box.                                                                |
+| re_view_text_log       | A View that shows text entries in a table and scrolls with the active time.                                |
+| re_view_time_series    | A View that shows plots over Rerun timelines.                                                              |
+| re_time_panel          | The time panel of the Rerun Viewer, allowing to control the displayed timeline & time.                     |
+| re_viewer              | The Rerun Viewer                                                                                           |
+| re_viewport            | The central viewport panel of the Rerun viewer.                                                            |
 
 ##### UI support crates
 

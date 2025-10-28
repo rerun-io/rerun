@@ -219,6 +219,18 @@ impl From<re_types_core::datatypes::TimeInt> for TimeInt {
     }
 }
 
+impl std::ops::Neg for TimeInt {
+    type Output = Self;
+
+    #[inline]
+    fn neg(self) -> Self::Output {
+        match self.0 {
+            Some(t) => Self(Some(-t)),
+            None => self,
+        }
+    }
+}
+
 impl std::ops::Add for TimeInt {
     type Output = Self;
 

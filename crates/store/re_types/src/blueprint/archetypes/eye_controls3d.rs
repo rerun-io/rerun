@@ -40,6 +40,11 @@ pub struct EyeControls3D {
     /// For orbit cameras it is derived from the distance to the orbit center.
     /// For first person cameras it is derived from the scene size.
     pub speed: Option<SerializedComponentBatch>,
+
+    /// Currently tracked entity.
+    ///
+    /// If this is a camera, it takes over the camera pose, otherwise follows the entity.
+    pub tracking_entity: Option<SerializedComponentBatch>,
 }
 
 impl EyeControls3D {
@@ -66,6 +71,18 @@ impl EyeControls3D {
             component_type: Some("rerun.components.LinearSpeed".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::tracking_entity`].
+    ///
+    /// The corresponding component is [`crate::components::EntityPath`].
+    #[inline]
+    pub fn descriptor_tracking_entity() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+            component: "EyeControls3D:tracking_entity".into(),
+            component_type: Some("rerun.components.EntityPath".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
@@ -74,25 +91,27 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
     std::sync::LazyLock::new(|| {
         [
             EyeControls3D::descriptor_kind(),
             EyeControls3D::descriptor_speed(),
+            EyeControls3D::descriptor_tracking_entity(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
     std::sync::LazyLock::new(|| {
         [
             EyeControls3D::descriptor_kind(),
             EyeControls3D::descriptor_speed(),
+            EyeControls3D::descriptor_tracking_entity(),
         ]
     });
 
 impl EyeControls3D {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 impl ::re_types_core::Archetype for EyeControls3D {
@@ -139,7 +158,16 @@ impl ::re_types_core::Archetype for EyeControls3D {
         let speed = arrays_by_descr
             .get(&Self::descriptor_speed())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_speed()));
-        Ok(Self { kind, speed })
+        let tracking_entity = arrays_by_descr
+            .get(&Self::descriptor_tracking_entity())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_tracking_entity())
+            });
+        Ok(Self {
+            kind,
+            speed,
+            tracking_entity,
+        })
     }
 }
 
@@ -147,10 +175,14 @@ impl ::re_types_core::AsComponents for EyeControls3D {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [self.kind.clone(), self.speed.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        [
+            self.kind.clone(),
+            self.speed.clone(),
+            self.tracking_entity.clone(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
     }
 }
 
@@ -163,6 +195,7 @@ impl EyeControls3D {
         Self {
             kind: None,
             speed: None,
+            tracking_entity: None,
         }
     }
 
@@ -184,6 +217,10 @@ impl EyeControls3D {
             speed: Some(SerializedComponentBatch::new(
                 crate::components::LinearSpeed::arrow_empty(),
                 Self::descriptor_speed(),
+            )),
+            tracking_entity: Some(SerializedComponentBatch::new(
+                crate::components::EntityPath::arrow_empty(),
+                Self::descriptor_tracking_entity(),
             )),
         }
     }
@@ -208,11 +245,26 @@ impl EyeControls3D {
         self.speed = try_serialize_field(Self::descriptor_speed(), [speed]);
         self
     }
+
+    /// Currently tracked entity.
+    ///
+    /// If this is a camera, it takes over the camera pose, otherwise follows the entity.
+    #[inline]
+    pub fn with_tracking_entity(
+        mut self,
+        tracking_entity: impl Into<crate::components::EntityPath>,
+    ) -> Self {
+        self.tracking_entity =
+            try_serialize_field(Self::descriptor_tracking_entity(), [tracking_entity]);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for EyeControls3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.kind.heap_size_bytes() + self.speed.heap_size_bytes()
+        self.kind.heap_size_bytes()
+            + self.speed.heap_size_bytes()
+            + self.tracking_entity.heap_size_bytes()
     }
 }

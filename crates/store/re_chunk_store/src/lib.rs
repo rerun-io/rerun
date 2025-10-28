@@ -18,6 +18,7 @@ mod dataframe;
 mod drop_time_range;
 mod events;
 mod gc;
+mod properties;
 mod query;
 mod stats;
 mod store;
@@ -31,6 +32,7 @@ pub use self::{
     },
     events::{ChunkCompactionReport, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent},
     gc::{GarbageCollectionOptions, GarbageCollectionTarget},
+    properties::ExtractPropertiesError,
     stats::{ChunkStoreChunkStats, ChunkStoreStats},
     store::{ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata},
     subscribers::{ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber},

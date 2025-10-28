@@ -86,10 +86,10 @@ struct VisualizerEntityMapping {
     /// Which entities the visualizer can be applied to.
     maybe_visualizable_entities: MaybeVisualizableEntities,
 
-    /// List of all entities in this store that at some point in time had any of the indicator components.
+    /// List of all entities in this store that at some point in time had any of the relevant archetypes.
     ///
     /// Special case:
-    /// If the visualizer has no indicator components, this list will contain all entities in the store.
+    /// If the visualizer has no relevant archetypes, this list will contain all entities in the store.
     indicated_entities: IndicatedEntities,
 }
 
@@ -171,7 +171,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
 
             let entity_path = event.diff.chunk.entity_path();
 
-            // Update indicator component tracking:
+            // Update archetype tracking:
             if self.relevant_archetypes.is_empty()
                 || self.relevant_archetypes.iter().any(|archetype| {
                     event

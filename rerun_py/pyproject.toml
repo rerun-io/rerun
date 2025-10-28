@@ -35,9 +35,9 @@ name = "Rerun.io"
 text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
-tests = ["pytest==8.4.1"]
+tests = ["pytest==8.4.2", "syrupy==5.0.0"]
 notebook = ["rerun-notebook==0.27.0-alpha.1+dev"]
-datafusion = ["datafusion==49.0.0"]
+datafusion = ["datafusion==50.1.0"]
 all = ["rerun-sdk[notebook]", "rerun-sdk[datafusion]"]
 
 [project.urls]

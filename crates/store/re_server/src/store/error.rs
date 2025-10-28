@@ -44,6 +44,16 @@ pub enum Error {
 
     #[error("Could not find chunk: {0:#?}")]
     ChunkNotFound(ChunkKey),
+
+    #[error("Failed to extract properties: {0:#?}")]
+    FailedToExtractProperties(String),
+}
+
+impl Error {
+    #[inline]
+    pub fn failed_to_extract_properties(err: impl std::error::Error) -> Self {
+        Self::FailedToExtractProperties(err.to_string())
+    }
 }
 
 impl From<Error> for tonic::Status {
@@ -62,7 +72,9 @@ impl From<Error> for tonic::Status {
             Error::RrdLoadingError(err) => Self::internal(format!("{err:#}")),
 
             Error::FailedToDecodeChunkKey(_) => Self::invalid_argument(format!("{err:#}")),
-            Error::FailedToEncodeChunkKey(_) => Self::internal(format!("{err:#}")),
+            Error::FailedToEncodeChunkKey(_) | Error::FailedToExtractProperties(_) => {
+                Self::internal(format!("{err:#}"))
+            }
 
             Error::DuplicateEntryNameError(_) | Error::LayerAlreadyExists(_) => {
                 Self::already_exists(format!("{err:#}"))

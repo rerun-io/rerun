@@ -1,5 +1,3 @@
-use std::ops::ControlFlow;
-
 use egui::{Response, Ui};
 use smallvec::SmallVec;
 
@@ -564,7 +562,7 @@ impl BlueprintTree {
                     .clicked()
                 {
                     ctx.command_sender()
-                        .send_system(SystemCommand::SetSelection(item.into()));
+                        .send_system(SystemCommand::set_selection(item));
                 }
 
                 return;
@@ -673,107 +671,9 @@ impl BlueprintTree {
         );
         self.scroll_to_me_if_needed(ui, item, response);
         ctx.handle_select_hover_drag_interactions(response, item.clone(), true);
+        ctx.handle_select_focus_sync(response, item.clone());
 
         self.handle_range_selection(ctx, blueprint_tree_data, item.clone(), response);
-
-        self.handle_key_navigation(ctx, blueprint_tree_data, item);
-    }
-
-    fn handle_key_navigation(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        blueprint_tree_data: &BlueprintTreeData,
-        item: &Item,
-    ) {
-        if ctx.selection_state().selected_items().single_item() != Some(item) {
-            return;
-        }
-        // Don't do keyboard navigation if something is focused
-        if ctx.egui_ctx().memory(|mem| mem.focused().is_some()) {
-            return;
-        }
-
-        if ctx
-            .egui_ctx()
-            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight))
-            && let Some(collapse_id) = self.collapse_scope().item(item.clone())
-        {
-            collapse_id.set_open(ctx.egui_ctx(), true);
-        }
-
-        if ctx
-            .egui_ctx()
-            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft))
-            && let Some(collapse_id) = self.collapse_scope().item(item.clone())
-        {
-            collapse_id.set_open(ctx.egui_ctx(), false);
-        }
-
-        if ctx
-            .egui_ctx()
-            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
-        {
-            let mut found_current = false;
-
-            let result = blueprint_tree_data.visit(|tree_item| {
-                let is_item_collapsed = !tree_item.is_open(ctx.egui_ctx(), self.collapse_scope());
-
-                if &tree_item.item() == item {
-                    found_current = true;
-
-                    return if is_item_collapsed {
-                        VisitorControlFlow::SkipBranch
-                    } else {
-                        VisitorControlFlow::Continue
-                    };
-                }
-
-                if found_current {
-                    VisitorControlFlow::Break(Some(tree_item.item()))
-                } else if is_item_collapsed {
-                    VisitorControlFlow::SkipBranch
-                } else {
-                    VisitorControlFlow::Continue
-                }
-            });
-
-            if let ControlFlow::Break(Some(item)) = result {
-                ctx.command_sender()
-                    .send_system(SystemCommand::SetSelection(item.clone().into()));
-                self.scroll_to_me_item = Some(item.clone());
-                self.range_selection_anchor_item = Some(item);
-            }
-        }
-
-        if ctx
-            .egui_ctx()
-            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp))
-        {
-            let mut last_item = None;
-
-            let result = blueprint_tree_data.visit(|tree_item| {
-                let is_item_collapsed = !tree_item.is_open(ctx.egui_ctx(), self.collapse_scope());
-
-                if &tree_item.item() == item {
-                    return VisitorControlFlow::Break(last_item.clone());
-                }
-
-                last_item = Some(tree_item.item());
-
-                if is_item_collapsed {
-                    VisitorControlFlow::SkipBranch
-                } else {
-                    VisitorControlFlow::Continue
-                }
-            });
-
-            if let ControlFlow::Break(Some(item)) = result {
-                ctx.command_sender()
-                    .send_system(SystemCommand::SetSelection(item.clone().into()));
-                self.scroll_to_me_item = Some(item.clone());
-                self.range_selection_anchor_item = Some(item);
-            }
-        }
     }
 
     /// Handle setting/extending the selection based on shift-clicking.
@@ -822,10 +722,10 @@ impl BlueprintTree {
                         let mut selection = ctx.selection().clone();
                         selection.extend(items);
                         ctx.command_sender()
-                            .send_system(SystemCommand::SetSelection(selection));
+                            .send_system(SystemCommand::set_selection(selection));
                     } else {
                         ctx.command_sender()
-                            .send_system(SystemCommand::SetSelection(items));
+                            .send_system(SystemCommand::set_selection(items));
                     }
                 }
             }

@@ -1,18 +1,18 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use arrow::compute::SortOptions;
-use arrow::datatypes::Fields;
 use arrow::{
     array::{ArrayRef, ListArray, StringArray},
-    datatypes::{DataType, Field, Schema},
+    compute::SortOptions,
+    datatypes::{DataType, Field, Fields},
 };
-use datafusion::common::DataFusionError;
-use datafusion::physical_expr::expressions::col;
-use datafusion::physical_expr::{LexOrdering, PhysicalSortExpr};
+use datafusion::{
+    common::DataFusionError,
+    physical_expr::{LexOrdering, PhysicalSortExpr, expressions::col},
+};
 use itertools::Itertools as _;
 
-use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
 use re_chunk::ArrowArray as _;
 
 // --
@@ -24,7 +24,17 @@ pub trait RecordBatchExt {
     /// Formats a record batch's schema in a snapshot-friendly way.
     fn format_schema_snapshot(&self) -> String;
 
+    /// Sort columns by field name.
     fn horizontally_sorted(&self) -> Self;
+
+    /// Sort property columns lexicographically.
+    ///
+    /// This is useful because there is no guarantee on property ordering in partition tables and
+    /// dataset manifest.
+    ///
+    /// Well, in practice there is no guarantee at all, but the base columns have a consistent,
+    /// logical order, and it's nice to keep it in the snapshots while we can.
+    fn sort_property_columns(&self) -> Self;
 
     fn sort_rows_by(&self, columns: &[&str]) -> Result<Self, DataFusionError>
     where
@@ -60,15 +70,15 @@ pub trait RecordBatchExt {
     /// Returns a copy of `self` with only the specified columns, in the specified order.
     ///
     /// Missing columns are ignored.
-    fn filtered_columns(&self, columns: &[&str]) -> Self;
+    fn project_columns(&self, columns: &[&str]) -> Self;
 
-    /// Returns copy of self with only the columns that start with the specified prefix
-    fn filtered_columns_by_prefix(&self, prefix: &str) -> Self;
+    /// Returns a copy of `self` with only the columns that start with the specified prefix
+    fn filter_columns_by_prefix(&self, prefix: &str) -> Self;
 
     /// Returns a copy of `self` with the specified columns removed.
     ///
     /// Missing columns are ignored.
-    fn unfiltered_columns(&self, columns: &[&str]) -> Self;
+    fn remove_columns(&self, columns: &[&str]) -> Self;
 }
 
 impl RecordBatchExt for arrow::array::RecordBatch {
@@ -92,22 +102,21 @@ impl RecordBatchExt for arrow::array::RecordBatch {
     }
 
     fn horizontally_sorted(&self) -> Self {
-        let schema = self.schema();
+        self.clone()
+            .sort_columns_by(|f1, f2| f1.name().cmp(f2.name()))
+            .expect("should be able to sort")
+    }
 
-        let mut fields_and_columns =
-            itertools::izip!(schema.fields.iter(), self.columns()).collect_vec();
-        fields_and_columns.sort_by_key(|(field, _column)| field.name());
-
-        let (fields, columns): (Vec<_>, Vec<_>) = fields_and_columns.into_iter().unzip();
-
-        Self::try_new(
-            Arc::new(Schema::new_with_metadata(
-                fields.into_iter().cloned().collect_vec(),
-                schema.metadata.clone(),
-            )),
-            columns.into_iter().cloned().collect_vec(),
-        )
-        .unwrap()
+    fn sort_property_columns(&self) -> Self {
+        self.clone()
+            .sort_columns_by(|f1, f2| {
+                if f1.name().starts_with("property:") && f2.name().starts_with("property:") {
+                    f1.name().cmp(f2.name())
+                } else {
+                    std::cmp::Ordering::Equal
+                }
+            })
+            .expect("should be able to sort")
     }
 
     fn sort_rows_by(&self, columns: &[&str]) -> Result<Self, DataFusionError> {
@@ -164,7 +173,7 @@ impl RecordBatchExt for arrow::array::RecordBatch {
             arrays.push(array.clone());
         }
 
-        let schema = arrow::datatypes::Schema::new(fields);
+        let schema = arrow::datatypes::Schema::new_with_metadata(fields, schema.metadata().clone());
         Some(Self::try_new(Arc::new(schema), arrays).expect("creating record batch"))
     }
 
@@ -303,67 +312,27 @@ impl RecordBatchExt for arrow::array::RecordBatch {
     }
 
     /// Remove the named columns.
-    fn unfiltered_columns(&self, columns: &[&str]) -> Self {
-        let schema = self.schema();
-        let columns = schema
-            .fields()
-            .iter()
-            .filter_map(|field| {
-                let name = field.name().as_str();
-                (!columns.contains(&name)).then_some(name)
-            })
-            .collect_vec();
-        self.filtered_columns(&columns)
+    fn remove_columns(&self, columns: &[&str]) -> Self {
+        self.clone()
+            .filter_columns_by(|field| !columns.contains(&field.name().as_str()))
+            .expect("should be able to filter")
     }
 
     /// Only keep the named columns.
-    fn filtered_columns(&self, columns: &[&str]) -> Self {
-        let mut fields = Vec::new();
-        let mut arrays = Vec::new();
+    fn project_columns(&self, columns: &[&str]) -> Self {
+        let col_idx = |field: &Field| columns.iter().position(|c| c == field.name());
 
-        let schema = self.schema();
-        for column in columns {
-            let Some((_, field)) = schema.column_with_name(column) else {
-                continue;
-            };
-            fields.push(field.clone());
-
-            let Some(array) = self.column_by_name(column) else {
-                continue;
-            };
-            arrays.push(array.clone());
-        }
-
-        let schema = arrow::datatypes::Schema::new(fields);
-        if schema.fields().is_empty() {
-            Self::new_empty(Arc::new(schema))
-        } else {
-            Self::try_new(Arc::new(schema), arrays).expect("creation should succeed")
-        }
+        self.clone()
+            .filter_columns_by(|field| columns.contains(&field.name().as_str()))
+            .expect("should be able to filter")
+            .sort_columns_by(|f1, f2| col_idx(f1).cmp(&col_idx(f2)))
+            .expect("should be able to sort")
     }
 
-    fn filtered_columns_by_prefix(&self, prefix: &str) -> Self {
-        let mut fields = Vec::new();
-        let mut arrays = Vec::new();
-
-        let schema = self.schema();
-        for column in schema.fields() {
-            if column.name().starts_with(prefix) {
-                fields.push(column.clone());
-
-                let Some(array) = self.column_by_name(column.name()) else {
-                    continue;
-                };
-                arrays.push(array.clone());
-            }
-        }
-
-        let schema = arrow::datatypes::Schema::new(fields);
-        if schema.fields().is_empty() {
-            Self::new_empty(Arc::new(schema))
-        } else {
-            Self::try_new(Arc::new(schema), arrays).expect("creation should succeed")
-        }
+    fn filter_columns_by_prefix(&self, prefix: &str) -> Self {
+        self.clone()
+            .filter_columns_by(|field| field.name().starts_with(prefix))
+            .expect("should be able to filter")
     }
 }
 
@@ -374,32 +343,42 @@ pub trait SchemaExt {
 
 impl SchemaExt for arrow::datatypes::Schema {
     fn format_snapshot(&self) -> String {
+        let metadata = (!self.metadata().is_empty()).then(|| {
+            format!(
+                "top-level metadata: [\n    {}\n]",
+                self.metadata()
+                    .iter()
+                    .map(|(k, v)| format!("{k}:{v}"))
+                    .sorted()
+                    .join("\n    ")
+            )
+        });
+
         let mut fields = self.fields.iter().collect_vec();
         fields.sort_by(|a, b| a.name().cmp(b.name()));
-        fields
-            .into_iter()
-            .map(|field| {
-                if field.metadata().is_empty() {
-                    format!(
-                        "{}: {}",
-                        field.name(),
-                        re_arrow_util::format_data_type(field.data_type())
-                    )
-                } else {
-                    format!(
-                        "{}: {} [\n    {}\n]",
-                        field.name(),
-                        re_arrow_util::format_data_type(field.data_type()),
-                        field
-                            .metadata()
-                            .iter()
-                            .map(|(k, v)| format!("{k}:{v}"))
-                            .sorted()
-                            .join("\n    ")
-                    )
-                }
-            })
-            .join("\n")
+        let fields = fields.into_iter().map(|field| {
+            if field.metadata().is_empty() {
+                format!(
+                    "{}: {}",
+                    field.name(),
+                    re_arrow_util::format_data_type(field.data_type())
+                )
+            } else {
+                format!(
+                    "{}: {} [\n    {}\n]",
+                    field.name(),
+                    re_arrow_util::format_data_type(field.data_type()),
+                    field
+                        .metadata()
+                        .iter()
+                        .map(|(k, v)| format!("{k}:{v}"))
+                        .sorted()
+                        .join("\n    ")
+                )
+            }
+        });
+
+        metadata.into_iter().chain(fields).join("\n")
     }
 }
 

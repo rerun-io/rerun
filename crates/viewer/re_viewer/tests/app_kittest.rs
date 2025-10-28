@@ -88,7 +88,7 @@ fn colormap_selector_ui() {
     harness.snapshot("colormap_selector_closed");
 
     // give the combo box some room to open
-    harness.set_size(egui::Vec2::new(200.0, 250.0));
+    harness.set_size(egui::Vec2::new(200.0, 350.0));
     harness.get_by_role(Role::ComboBox).click(); // open combo box
     harness.run();
 
