@@ -23,6 +23,7 @@ use errors::{AlreadyExistsError, NotFoundError};
 use pyo3::{Bound, PyResult, exceptions::PyRuntimeError, prelude::*};
 
 use crate::catalog::dataframe_query::PyDataframeQueryView;
+use crate::catalog::dataset_entry::PyIndexingResult;
 
 pub use self::{
     catalog_client::PyCatalogClientInternal,
@@ -48,6 +49,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyTask>()?;
     m.add_class::<PyTasks>()?;
     m.add_class::<PyDataFusionTable>()?;
+    m.add_class::<PyIndexingResult>()?;
 
     m.add_class::<PyDataframeQueryView>()?;
 

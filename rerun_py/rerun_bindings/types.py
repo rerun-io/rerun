@@ -18,6 +18,7 @@ if TYPE_CHECKING:
         ComponentDescriptor as ComponentDescriptor,
         IndexColumnDescriptor as IndexColumnDescriptor,
         IndexColumnSelector as IndexColumnSelector,
+        IndexingResult as IndexingResult,
     )
 
 AnyColumn: TypeAlias = Union[

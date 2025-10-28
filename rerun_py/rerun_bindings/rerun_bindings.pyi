@@ -1532,7 +1532,7 @@ class DatasetEntry(Entry):
         num_partitions: int = 5,
         num_sub_vectors: int = 16,
         distance_metric: VectorDistanceMetric | str = ...,
-    ) -> None:
+    ) -> IndexingResult:
         """Create a vector index on the given column."""
 
     def search_fts(
@@ -1742,6 +1742,23 @@ class DataframeQueryView:
 
     def to_arrow_reader(self) -> pa.RecordBatchReader:
         """Convert this view to a [`pyarrow.RecordBatchReader`][]."""
+
+class IndexingResult:
+    """Indexing operation status result."""
+
+    def debug_info(self) -> dict[str, Any] | None:
+        """
+        Get debug information about the indexing operation.
+
+        The exact contents of debug information may vary depending on the indexing operation performed
+        and the server implementation.
+
+        Returns
+        -------
+        Optional[dict]
+            A dictionary containing debug information, or `None` if no debug information is available
+
+        """
 
 # TODO(ab): internal object, we need auto-gen stubs for these.
 class CatalogClientInternal:
