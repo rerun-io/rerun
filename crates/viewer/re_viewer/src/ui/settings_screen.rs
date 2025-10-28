@@ -181,9 +181,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     // Experimental features
     //
 
-    // Currently, the wasm target does not have any experimental features. If/when that changes,
-    // move the conditional compilation flag to the respective checkbox code.
-    #[cfg(not(target_arch = "wasm32"))]
+    //#[cfg(not(target_arch = "wasm32"))]
     if true {
         separator_with_some_space(ui);
         ui.strong("Experimental features");
