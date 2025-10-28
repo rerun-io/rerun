@@ -2,6 +2,8 @@ use egui::PointerButton;
 use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable as _;
 
+// A section of the viewer, e.g. the "Blueprint" or "Recording" panel. Every query and action in a section
+// only affects the children of the section.
 pub struct ViewerSection<'a, 'h> {
     pub harness: &'a mut egui_kittest::Harness<'h, re_viewer::App>,
     pub section_label: Option<&'a str>,
