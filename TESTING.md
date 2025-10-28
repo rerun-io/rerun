@@ -1,6 +1,6 @@
 # Testing
 
-This is an overview of our testing infrastructure. 
+This is an overview of our testing infrastructure.
 
 ## See also
 * [`rerun_py/README.md`](rerun_py/README.md) - build instructions for Python SDK
@@ -22,9 +22,9 @@ While developing, default to using `--all-features`.
 (Our CI runs checks and tests with many feature configurations.)
 
 Typically:
-```
-cargo nextest run -p re_XXX --all-features 
 
+```
+cargo nextest run -p re_XXX --all-features
 ```
 where `re_XXX` is the crate under development.
 
