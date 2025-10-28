@@ -344,15 +344,13 @@ pub trait UiExt {
 
     // TODO(ab): this used to be used for inner margin, after registering full span range in panels.
     // It's highly likely that all these use are now redundant.
-    fn panel_content<R>(
-        &mut self,
-        add_contents: impl FnOnce(&mut egui::Ui) -> R,
-    ) -> egui::InnerResponse<R> {
+    fn panel_content<R>(&mut self, add_contents: impl FnOnce(&mut egui::Ui) -> R) -> R {
         egui::Frame {
             inner_margin: self.tokens().panel_margin(),
             ..Default::default()
         }
         .show(self.ui_mut(), |ui| add_contents(ui))
+        .inner
     }
 
     /// Static title bar used to separate panels into section.
