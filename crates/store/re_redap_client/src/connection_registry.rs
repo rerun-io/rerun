@@ -452,9 +452,9 @@ impl<'de> serde::Deserialize<'de> for SerializedCredentials {
     {
         let s: String = String::deserialize(deserializer)?;
         if s == "stored" {
-            return Ok(Self::Stored);
+            Ok(Self::Stored)
         } else {
-            return Ok(Self::Jwt(s));
+            Ok(Self::Jwt(s))
         }
     }
 }
@@ -465,8 +465,8 @@ impl serde::Serialize for SerializedCredentials {
         S: serde::Serializer,
     {
         match self {
-            SerializedCredentials::Stored => serializer.serialize_str("stored"),
-            SerializedCredentials::Jwt(token) => serializer.serialize_str(token),
+            Self::Stored => serializer.serialize_str("stored"),
+            Self::Jwt(token) => serializer.serialize_str(token),
         }
     }
 }
