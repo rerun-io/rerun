@@ -69,7 +69,7 @@ macro_rules! define_redap_tests {
 define_redap_tests! {
     column_projection::test_partition_table_column_projections,
     column_projection::test_dataset_manifest_column_projections,
-    create_table::create_table,
+    create_table::create_table_entry,
     dataset_schema::empty_dataset_schema,
     dataset_schema::simple_dataset_schema,
     entries_table::list_entries_table,
