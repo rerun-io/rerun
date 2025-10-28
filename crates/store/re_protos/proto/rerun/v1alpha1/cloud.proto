@@ -346,7 +346,7 @@ message CreateIndexResponse {
   reserved "data";
 
   // Optional debug information about the index-creation task
-  optional DebugInfo debug_info = 2;
+  DebugInfo debug_info = 2;
 }
 
 message IndexConfig {
