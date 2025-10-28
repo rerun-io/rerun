@@ -8,6 +8,7 @@ from .catalog import CatalogClient
 
 if TYPE_CHECKING:
     from os import PathLike
+    from types import TracebackType
 
 
 class Server:
@@ -39,7 +40,7 @@ class Server:
         self,
         address: str | None = None,
         port: int | None = None,
-        datasets: dict[str, PathLike] | None = None,
+        datasets: dict[str, PathLike[str]] | None = None,
     ) -> None:
         """
         Create a new Rerun server instance and start it.
@@ -121,6 +122,8 @@ class Server:
         """Enter the context manager, returning the server instance."""
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
+    def __exit__(
+        self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
+    ) -> None:
         """Exit the context manager, shutting down the server."""
         self._internal.shutdown()

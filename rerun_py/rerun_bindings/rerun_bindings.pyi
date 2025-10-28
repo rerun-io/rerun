@@ -1926,22 +1926,66 @@ class NotFoundError(Exception):
 class AlreadyExistsError(Exception):
     """Raised when trying to create a resource that already exists."""
 
-class Server:
-    """A Rerun server instance."""
+class ServerInternal:
+    """
+    Internal Rerun server instance.
 
-    def __init__(self, address: str | None, port: int | None, datasets: dict[str, os.PathLike] | None) -> None:
+    This is the low-level binding to the Rust server implementation.
+    Users should typically use `rerun.server.Server` instead.
+    """
+
+    def __init__(
+        self,
+        address: str | None = None,
+        port: int | None = None,
+        datasets: dict[str, str] | None = None,
+    ) -> None:
         """
-        Initialize and start a Rerun server.
+        Create and start a Rerun server.
 
         Parameters
         ----------
         address : str | None
-            The address on which the server should listen. If None, the default address `0.0.0.0` will be used.
-
+            The address to bind the server to. Defaults to "0.0.0.0".
         port : int | None
-            The port on which the server should listen. If None, the default port `51234` will be used.
+            The port to bind the server to. Defaults to 51234.
+        datasets : dict[str, str] | None
+            Optional dictionary mapping dataset names to their file paths.
 
-        datasets : dict[str, PathLike] | None
-            A mapping of dataset names to their paths. If None, no datasets will be loaded.
+        """
+
+    def address(self) -> str:
+        """
+        Get the server's connection address.
+
+        Returns the address that clients can use to connect to this server,
+        formatted as a `rerun+http://` URL.
+
+        Returns
+        -------
+        str
+            The connection URL in the format `rerun+http://address:port`.
+
+        """
+
+    def shutdown(self) -> None:
+        """
+        Shutdown the server, blocking until it has fully stopped.
+
+        Raises
+        ------
+        ValueError
+            If the server is not running or has already been shut down.
+
+        """
+
+    def is_running(self) -> bool:
+        """
+        Check if the server is currently running.
+
+        Returns
+        -------
+        bool
+            True if the server is running, False otherwise.
 
         """
