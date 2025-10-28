@@ -5,7 +5,7 @@ use glam::Affine3A;
 use itertools::{Itertools, MinMaxResult};
 use nohash_hasher::IntMap;
 
-use crate::source_query::{query_sources_in_extended_bounds, query_source_frames_in_static_chunk};
+use crate::source_query::{query_source_frames_in_static_chunk, query_sources_in_extended_bounds};
 use crate::{
     TransformFrameIdHash,
     transform_aspect::TransformAspect,
@@ -175,7 +175,7 @@ impl CachedTransformsForTimeline {
 /// If there's a concrete archetype in here, the mapped values are the full resolved pose transform.
 ///
 /// `TransformResolutionCache` doesn't do tree propagation, however (!!!) there's a mini-tree in here that we already fully apply:
-/// `InstancePose3D` are applied on top of concrete archetype poses.
+/// `InstancePose3D` is applied on top of concrete archetype poses.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct PoseTransformArchetypeMap {
     /// Iff there's a concrete archetype in here, the mapped values are the full resolved pose transform.
@@ -454,16 +454,6 @@ impl TransformsForSourceFrame {
                     query,
                 );
 
-                // TODO(RR-2511): Read out target frame from query.
-                let target = TransformFrameIdHash::from_entity_path(
-                    &frame_transform
-                        .entity_path
-                        .parent()
-                        .unwrap_or_else(EntityPath::root),
-                );
-
-                let transform =
-                    transform.map(|transform| SourceToTargetTransform { target, transform });
                 frame_transform.value = match &transform {
                     Some(transform) => CachedTransformValue::Resident(transform.clone()),
                     None => CachedTransformValue::Cleared,
@@ -604,7 +594,11 @@ impl TransformResolutionCache {
     /// * create empty entries for where transforms may change over time (may happen conservatively - creating more entries than needed)
     ///
     /// See also [`Self::process_store_events`].
-    pub fn add_chunks<'a>(&mut self, entity_db: &EntityDb, chunks: impl Iterator<Item = &'a std::sync::Arc<Chunk>>) {
+    pub fn add_chunks<'a>(
+        &mut self,
+        entity_db: &EntityDb,
+        chunks: impl Iterator<Item = &'a std::sync::Arc<Chunk>>,
+    ) {
         re_tracing::profile_function!();
 
         // TODO(andreas): We eagerly index for all timelines even if they're never used.
@@ -750,7 +744,11 @@ impl TransformResolutionCache {
             .or_default();
 
         // Note down that for these source frames we have potentially static transforms.
-        source_frame_updates.extend(source_frames.iter().map(|frame| (*frame, std::iter::once(TimeInt::STATIC).collect())));
+        source_frame_updates.extend(
+            source_frames
+                .iter()
+                .map(|frame| (*frame, std::iter::once(TimeInt::STATIC).collect())),
+        );
 
         for source_frame in source_frames {
             // Invalidate all frames for this source frame.
@@ -920,14 +918,14 @@ fn warn_about_missing_source_transforms_for_update_on_entity(
 
 /// Queries all components that are part of pose transforms, returning the transform from child to parent.
 ///
-/// If any of the components yields an invalid transform, returns a `Affine3A::ZERO`.
-/// (this effectively disconnects a subtree from the transform hierarchy!)
+/// If any of the components yields an invalid transform, returns `None`.
 // TODO(#3849): There's no way to discover invalid transforms right now (they can be intentional but often aren't).
 fn query_and_resolve_tree_transform_at_entity(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
-) -> Option<Affine3A> {
+) -> Option<SourceToTargetTransform> {
+    // TODO(RR-2799): Output more than one target at once, doing the usual clamping - means probably we can merge a lot of code here with instance poses!
     // TODO(andreas): Filter out styling components.
     let results = entity_db.latest_at(
         query,
@@ -938,12 +936,25 @@ fn query_and_resolve_tree_transform_at_entity(
         return None;
     }
 
+    let target = results
+        .component_mono_quiet::<components::TransformFrameId>(
+            archetypes::Transform3D::descriptor_target_frames().component,
+        )
+        .map_or_else(
+            || {
+                TransformFrameIdHash::from_entity_path(
+                    &entity_path.parent().unwrap_or(EntityPath::root()),
+                )
+            },
+            |frame_id| TransformFrameIdHash::new(&frame_id),
+        );
+
     let mut transform = Affine3A::IDENTITY;
 
     // It's an error if there's more than one component. Warn in that case.
     let mono_log_level = re_log::Level::Warn;
 
-    // The order of the components here is important, and checked by `debug_assert_transform_field_order`
+    // The order of the components here is important and checked by `debug_assert_transform_field_order`
     if let Some(translation) = results.component_mono_with_log_level::<components::Translation3D>(
         archetypes::Transform3D::descriptor_translation().component,
         mono_log_level,
@@ -959,7 +970,7 @@ fn query_and_resolve_tree_transform_at_entity(
         if let Ok(axis_angle) = Affine3A::try_from(axis_angle) {
             transform *= axis_angle;
         } else {
-            return Some(Affine3A::ZERO);
+            return None;
         }
     }
     if let Some(quaternion) = results.component_mono_with_log_level::<components::RotationQuat>(
@@ -969,7 +980,7 @@ fn query_and_resolve_tree_transform_at_entity(
         if let Ok(quaternion) = Affine3A::try_from(quaternion) {
             transform *= quaternion;
         } else {
-            return Some(Affine3A::ZERO);
+            return None;
         }
     }
     if let Some(scale) = results.component_mono_with_log_level::<components::Scale3D>(
@@ -977,7 +988,7 @@ fn query_and_resolve_tree_transform_at_entity(
         mono_log_level,
     ) {
         if scale.x() == 0.0 && scale.y() == 0.0 && scale.z() == 0.0 {
-            return Some(Affine3A::ZERO);
+            return None;
         }
         transform *= Affine3A::from(scale);
     }
@@ -987,7 +998,7 @@ fn query_and_resolve_tree_transform_at_entity(
     ) {
         let affine_transform = Affine3A::from(mat3x3);
         if affine_transform.matrix3.determinant() == 0.0 {
-            return Some(Affine3A::ZERO);
+            return None;
         }
         transform *= affine_transform;
     }
@@ -1010,7 +1021,7 @@ fn query_and_resolve_tree_transform_at_entity(
         }
     }
 
-    Some(transform)
+    Some(SourceToTargetTransform { transform, target })
 }
 
 #[cfg(test)]
