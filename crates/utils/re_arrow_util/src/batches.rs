@@ -227,7 +227,7 @@ impl RecordBatchExt for RecordBatch {
                             "projected column '{col_name}' not found in schema"
                         )))?;
 
-                //
+                // Check for duplicate projected column names and return an error if found.
                 if seen_columns.contains(col_name) {
                     return Err(arrow::error::ArrowError::InvalidArgumentError(format!(
                         "projected column '{col_name}' was requested twice"
