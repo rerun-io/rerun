@@ -125,6 +125,7 @@ pub async fn test_origin_keypoint_2d() {
     harness.right_click_at(harness.get_by_label("keypoint").rect().left_center());
     harness.hover_label_contains("Add to new view");
     harness.click_label("2D");
+    harness.remove_cursor();
     harness.snapshot_app("origin_keypoint_2d");
 }
 
