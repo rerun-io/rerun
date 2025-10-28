@@ -30,7 +30,7 @@ impl crate::DataLoader for RrdLoader {
 
         let mut extension = crate::extension(&filepath);
         if !matches!(extension.as_str(), "rbl" | "rrd") {
-            if !filepath.is_file() {
+            if filepath.is_file() || filepath.is_dir() {
                 // NOTE: blueprints and recordings have the same file format
                 return Err(crate::DataLoaderError::Incompatible(filepath.clone()));
             } else {
