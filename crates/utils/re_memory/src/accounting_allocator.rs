@@ -166,8 +166,8 @@ pub fn set_tracking_options(options: TrackingOptions) {
 ///
 /// Requires that you have installed the [`AccountingAllocator`].
 pub fn set_tracking_callstacks(track: bool) {
-    GLOBAL.track_callstacks.store(track, Relaxed);
-    if track {
+    let did_track = GLOBAL.track_callstacks.swap(track, Relaxed);
+    if !did_track && track {
         re_log::info!("Turning on stochastic tracking of all allocations");
     }
 }
