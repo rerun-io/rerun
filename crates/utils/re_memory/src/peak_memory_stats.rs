@@ -52,7 +52,7 @@ impl PeakMemoryStats {
 
         match handle.join() {
             Err(err) => {
-                re_log::warn_once!("Failed to collect PeakMemoryStates: {err:?}");
+                re_log::warn_once!("Failed to collect PeakMemoryStates: {err:?}"); // NOLINT: err does not implement Display
                 None
             }
             Ok(result) => result,
