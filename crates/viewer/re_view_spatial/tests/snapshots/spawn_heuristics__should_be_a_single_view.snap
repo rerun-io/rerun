@@ -5,7 +5,31 @@ expression: recommended_views
 ViewSpawnHeuristics {
     recommended_views: [
         RecommendedView {
+            origin: /3D/camera,
+            query_filter: [
+                "+ $origin/**",
+            ],
+        },
+        RecommendedView {
             origin: /image,
+            query_filter: [
+                "+ $origin",
+            ],
+        },
+        RecommendedView {
+            origin: /image/color,
+            query_filter: [
+                "+ $origin/**",
+            ],
+        },
+        RecommendedView {
+            origin: /image/depth,
+            query_filter: [
+                "+ $origin/**",
+            ],
+        },
+        RecommendedView {
+            origin: /image/seg,
             query_filter: [
                 "+ $origin/**",
             ],
