@@ -38,6 +38,7 @@ pub mod accounting_allocator;
 mod allocation_tracker;
 mod memory_limit;
 mod memory_use;
+mod peak_memory_stats;
 mod ram_warner;
 pub mod util;
 
@@ -53,11 +54,12 @@ mod backtrace_web;
 #[cfg(target_arch = "wasm32")]
 use backtrace_web::Backtrace;
 
-pub use {
+pub use self::{
     accounting_allocator::{AccountingAllocator, TrackingStatistics},
     allocation_tracker::{CallstackStatistics, ReadableBacktrace},
     memory_limit::MemoryLimit,
     memory_use::MemoryUse,
+    peak_memory_stats::PeakMemoryStats,
     ram_warner::*,
 };
 
