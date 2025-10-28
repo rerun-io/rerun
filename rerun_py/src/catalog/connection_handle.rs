@@ -211,8 +211,8 @@ impl ConnectionHandle {
         &self,
         py: Python<'_>,
         name: String,
-        url: &url::Url,
         schema: SchemaRef,
+        url: &url::Url,
     ) -> PyResult<TableEntry> {
         let entry_id = wait_for_future(
             py,

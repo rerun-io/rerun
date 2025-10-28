@@ -340,8 +340,8 @@ impl PyCatalogClientInternal {
         self_: Py<Self>,
         py: Python<'_>,
         name: String,
-        url: String,
         schema: PyArrowType<Schema>,
+        url: String,
     ) -> PyResult<Py<PyTableEntry>> {
         let connection = self_.borrow_mut(py).connection.clone();
 
@@ -350,7 +350,7 @@ impl PyCatalogClientInternal {
             .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
 
         let schema = Arc::new(schema.0);
-        let table_entry = connection.create_table(py, name, &url, schema)?;
+        let table_entry = connection.create_table(py, name, schema, &url)?;
 
         let entry_id = Py::new(py, PyEntryId::from(table_entry.details.id))?;
 

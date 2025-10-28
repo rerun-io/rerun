@@ -278,7 +278,7 @@ def test_datafusion_create_table(server_instance: ServerInstance) -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = pathlib.Path(temp_dir).as_uri()
 
-        table_entry = server_instance.client.create_table(table_name, temp_path, original_schema)
+        table_entry = server_instance.client.create_table(table_name, original_schema, temp_path)
         df = table_entry.df()
 
         returned_schema = df.schema().remove_metadata()
@@ -295,7 +295,7 @@ def test_datafusion_create_table_from_dataset(server_instance: ServerInstance) -
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = pathlib.Path(temp_dir).as_uri()
 
-        table_entry = server_instance.client.create_table(table_name, temp_path, original_schema)
+        table_entry = server_instance.client.create_table(table_name, original_schema, temp_path)
         df = table_entry.df()
 
         # Due to https://github.com/lancedb/lance/issues/2304 we cannot
