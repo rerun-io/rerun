@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from .conftest import DATASET_FILEPATH, ServerInstance
 
+if TYPE_CHECKING:
+    from syrupy import SnapshotAssertion
 
-def test_partition_ids(server_instance: ServerInstance, snapshot) -> None:
+
+def test_partition_ids(server_instance: ServerInstance, snapshot: SnapshotAssertion) -> None:
     """Test that we can successfully collect information about partitions."""
     client = server_instance.client
 
