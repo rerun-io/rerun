@@ -198,7 +198,7 @@ def test_query_lance_table(server_instance) -> None:
     assert entry.kind == EntryKind.TABLE
 
 
-def test_dataset_schema_comparison_self_consistent(server_instance) -> None:
+def test_dataset_schema_comparison_self_consistent(server_instance: ServerInstance) -> None:
     dataset = server_instance.dataset
 
     schema_0 = dataset.schema()
