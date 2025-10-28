@@ -25,6 +25,7 @@ pub fn determine_num_series(all_scalar_chunks: &ChunksWithComponent<'_>) -> usiz
         .find_map(|chunk| {
             chunk
                 // TODO(grtlr): The comment above is even more important when we do casting (allocations) here.
+                // TODO(grtlr): Unless we're on the happy path this allocates and happens everytime the visualizer runs!
                 .iter_slices::<CastToPrimitive<arrow::datatypes::Float64Type, f64>>()
                 .find_map(|values| (!values.is_empty()).then_some(values.len()))
         })
@@ -99,6 +100,7 @@ pub fn collect_scalars(
         all_scalar_chunks
             .iter()
             .flat_map(|chunk| {
+                // TODO(grtlr): Unless we're on the happy path this allocates and happens everytime the visualizer runs!
                 chunk.iter_slices::<CastToPrimitive<arrow::datatypes::Float64Type, f64>>()
             })
             .enumerate()
@@ -113,6 +115,7 @@ pub fn collect_scalars(
         all_scalar_chunks
             .iter()
             .flat_map(|chunk| {
+                // TODO(grtlr): Unless we're on the happy path this allocates and happens everytime the visualizer runs!
                 chunk.iter_slices::<CastToPrimitive<arrow::datatypes::Float64Type, f64>>()
             })
             .enumerate()
