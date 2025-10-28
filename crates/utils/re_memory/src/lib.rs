@@ -93,12 +93,9 @@ impl CountAndSize {
 struct BacktraceHash(u64);
 
 impl BacktraceHash {
+    #[inline]
     pub fn new(backtrace: &Backtrace) -> Self {
-        use std::hash::{Hash as _, Hasher as _};
-        let mut hasher =
-            std::hash::BuildHasher::build_hasher(&ahash::RandomState::with_seeds(0, 1, 2, 3));
-        backtrace.hash(&mut hasher);
-        Self(hasher.finish())
+        Self(ahash::RandomState::with_seeds(1, 2, 3, 4).hash_one(backtrace))
     }
 }
 
