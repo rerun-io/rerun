@@ -24,14 +24,9 @@ if TYPE_CHECKING:
 HOST = "localhost"
 DATASET_NAME = "dataset"
 
-DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent.parent / "tests" / "assets" / "rrd" / "dataset"
+DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "rrd" / "dataset"
 TABLE_FILEPATH = (
-    pathlib.Path(__file__).parent.parent.parent.parent.parent
-    / "tests"
-    / "assets"
-    / "table"
-    / "lance"
-    / "simple_datatypes"
+    pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "table" / "lance" / "simple_datatypes"
 )
 
 
