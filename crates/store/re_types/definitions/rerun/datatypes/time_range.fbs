@@ -6,9 +6,9 @@ struct AbsoluteTimeRange (
   "attr.rust.override_crate": "re_types_core"
 ) {
   /// Start of the range.
-  min: rerun.datatypes.TimeInt (order: 100);
+  min: TimeInt (order: 100);
 
   /// End of the range.
-  max: rerun.datatypes.TimeInt (order: 200);
+  max: TimeInt (order: 200);
 }
 

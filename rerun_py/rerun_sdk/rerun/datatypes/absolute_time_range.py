@@ -6,59 +6,34 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
+from typing import TYPE_CHECKING
 
 import pyarrow as pa
 from attrs import define, field
 
-from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
 )
+from .absolute_time_range_ext import AbsoluteTimeRangeExt
+
+if TYPE_CHECKING:
+    from .. import datatypes
 
 __all__ = ["AbsoluteTimeRange", "AbsoluteTimeRangeArrayLike", "AbsoluteTimeRangeBatch", "AbsoluteTimeRangeLike"]
 
 
-def _absolute_time_range__min__special_field_converter_override(x: datatypes.TimeIntLike) -> datatypes.TimeInt:
-    if isinstance(x, datatypes.TimeInt):
-        return x
-    else:
-        return datatypes.TimeInt(x)
-
-
-def _absolute_time_range__max__special_field_converter_override(x: datatypes.TimeIntLike) -> datatypes.TimeInt:
-    if isinstance(x, datatypes.TimeInt):
-        return x
-    else:
-        return datatypes.TimeInt(x)
-
-
 @define(init=False)
-class AbsoluteTimeRange:
+class AbsoluteTimeRange(AbsoluteTimeRangeExt):
     """**Datatype**: A 64-bit number describing either nanoseconds OR sequence numbers."""
 
-    def __init__(self: Any, min: datatypes.TimeIntLike, max: datatypes.TimeIntLike) -> None:
-        """
-        Create a new instance of the AbsoluteTimeRange datatype.
+    # __init__ can be found in absolute_time_range_ext.py
 
-        Parameters
-        ----------
-        min:
-            Start of the range.
-        max:
-            End of the range.
-
-        """
-
-        # You can define your own __init__ function as a member of AbsoluteTimeRangeExt in absolute_time_range_ext.py
-        self.__attrs_init__(min=min, max=max)
-
-    min: datatypes.TimeInt = field(converter=_absolute_time_range__min__special_field_converter_override)
+    min: datatypes.TimeInt = field()
     # Start of the range.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    max: datatypes.TimeInt = field(converter=_absolute_time_range__max__special_field_converter_override)
+    max: datatypes.TimeInt = field()
     # End of the range.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
