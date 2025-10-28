@@ -176,7 +176,7 @@ def test_query_view_from_schema(server_instance: ServerInstance) -> None:
             assert contents.count() > 0
 
 
-def test_query_lance_table(server_instance) -> None:
+def test_query_lance_table(server_instance: ServerInstance) -> None:
     expected_table_name = "simple_datatypes"
     entries_table_name = "__entries"
 
