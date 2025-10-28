@@ -63,10 +63,7 @@ pub use self::{
     command_sender::{
         CommandReceiver, CommandSender, SystemCommand, SystemCommandSender, command_channel,
     },
-    component_fallbacks::{
-        ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
-        TypedComponentFallbackProvider,
-    },
+    component_fallbacks::{ComponentFallbackError, FallbackProviderRegistry, typed_fallback_for},
     component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, EditTarget, VariantName},
     contents::{Contents, ContentsName, blueprint_id_to_tile_id},
     display_mode::DisplayMode,
@@ -74,7 +71,7 @@ pub use self::{
     file_dialog::sanitize_file_name,
     global_context::GlobalContext,
     heuristics::suggest_view_for_each_entity,
-    image_info::{ColormapWithRange, ImageInfo, StoredBlobCacheKey},
+    image_info::{ColormapWithRange, ImageInfo, StoredBlobCacheKey, resolution_of_image_at},
     item::{Item, resolve_mono_instance_path, resolve_mono_instance_path_item},
     item_collection::{ItemCollection, ItemContext},
     maybe_mut_ref::MaybeMutRef,

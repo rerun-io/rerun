@@ -8544,6 +8544,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_component_fallbacks"
+version = "0.27.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "insta",
+ "re_log_types",
+ "re_test_context",
+ "re_types",
+ "re_viewer_context",
+]
+
+[[package]]
 name = "re_component_ui"
 version = "0.27.0-alpha.1+dev"
 dependencies = [
@@ -8624,6 +8636,7 @@ dependencies = [
  "re_arrow_util",
  "re_build_info",
  "re_chunk",
+ "re_chunk_store",
  "re_crash_handler",
  "re_error",
  "re_log",
@@ -8865,6 +8878,7 @@ name = "re_format"
 version = "0.27.0-alpha.1+dev"
 dependencies = [
  "half",
+ "itertools 0.14.0",
  "num-traits",
 ]
 
@@ -9312,10 +9326,12 @@ version = "0.27.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
+ "chrono",
  "datafusion",
  "futures",
  "insta",
  "itertools 0.14.0",
+ "lance",
  "prost-types 0.14.1",
  "re_arrow_util",
  "re_chunk",
@@ -9597,6 +9613,7 @@ dependencies = [
  "re_build_info",
  "re_chunk",
  "re_chunk_store",
+ "re_component_fallbacks",
  "re_entity_db",
  "re_log",
  "re_log_encoding",
@@ -9634,6 +9651,7 @@ version = "0.27.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "bitflags 2.9.4",
+ "criterion",
  "glam",
  "insta",
  "itertools 0.14.0",
@@ -9728,8 +9746,6 @@ dependencies = [
  "nohash-hasher",
  "ply-rs-bw",
  "rand 0.9.2",
- "rayon",
- "re_build_tools",
  "re_byte_size",
  "re_error",
  "re_format",
@@ -9737,7 +9753,6 @@ dependencies = [
  "re_log_types",
  "re_sorbet",
  "re_tracing",
- "re_types_builder",
  "re_types_core",
  "re_video",
  "serde",
@@ -10186,6 +10201,7 @@ dependencies = [
  "re_chunk",
  "re_chunk_store",
  "re_chunk_store_ui",
+ "re_component_fallbacks",
  "re_component_ui",
  "re_data_loader",
  "re_data_source",
@@ -11917,6 +11933,17 @@ dependencies = [
  "mimalloc",
  "re_format",
  "re_memory",
+ "rerun",
+]
+
+[[package]]
+name = "test_out_of_order_transforms"
+version = "0.27.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "glam",
+ "re_log",
  "rerun",
 ]
 

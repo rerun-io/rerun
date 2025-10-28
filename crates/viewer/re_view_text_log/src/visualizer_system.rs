@@ -69,10 +69,6 @@ impl VisualizerSystem for TextLogSystem {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
 
 impl TextLogSystem {
@@ -92,7 +88,9 @@ impl TextLogSystem {
             TextLog::all_component_identifiers(),
         );
 
-        let Some(all_text_chunks) = results.get_required_chunks(TextLog::descriptor_text()) else {
+        let Some(all_text_chunks) =
+            results.get_required_chunks(TextLog::descriptor_text().component)
+        else {
             return;
         };
 
@@ -104,9 +102,9 @@ impl TextLogSystem {
             .flat_map(|chunk| chunk.iter_component_timepoints());
 
         let timeline = *query.timeline();
-        let all_texts = results.iter_as(timeline, TextLog::descriptor_text());
-        let all_levels = results.iter_as(timeline, TextLog::descriptor_level());
-        let all_colors = results.iter_as(timeline, TextLog::descriptor_color());
+        let all_texts = results.iter_as(timeline, TextLog::descriptor_text().component);
+        let all_levels = results.iter_as(timeline, TextLog::descriptor_level().component);
+        let all_colors = results.iter_as(timeline, TextLog::descriptor_color().component);
 
         let all_frames = range_zip_1x2(
             all_texts.slice::<String>(),
@@ -144,5 +142,3 @@ impl TextLogSystem {
         }
     }
 }
-
-re_viewer_context::impl_component_fallback_provider!(TextLogSystem => []);

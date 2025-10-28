@@ -1980,6 +1980,48 @@ impl TryFrom<QueryTasksRequest> for crate::cloud::v1alpha1::QueryTasksRequest {
 
 // --
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum TableInsertMode {
+    Append,
+    Overwrite,
+}
+
+impl Default for TableInsertMode {
+    fn default() -> Self {
+        Self::Append
+    }
+}
+
+impl TryFrom<i32> for TableInsertMode {
+    type Error = TypeConversionError;
+
+    fn try_from(value: i32) -> Result<Self, TypeConversionError> {
+        let proto_value = crate::cloud::v1alpha1::TableInsertMode::try_from(value)?;
+        Ok(Self::from(proto_value))
+    }
+}
+
+impl From<crate::cloud::v1alpha1::TableInsertMode> for TableInsertMode {
+    fn from(value: crate::cloud::v1alpha1::TableInsertMode) -> Self {
+        use crate::cloud::v1alpha1 as cloud;
+        match value {
+            cloud::TableInsertMode::Unspecified | cloud::TableInsertMode::Append => Self::Append,
+            cloud::TableInsertMode::Overwrite => Self::Overwrite,
+        }
+    }
+}
+
+impl From<TableInsertMode> for crate::cloud::v1alpha1::TableInsertMode {
+    fn from(value: TableInsertMode) -> Self {
+        match value {
+            TableInsertMode::Append => Self::Append,
+            TableInsertMode::Overwrite => Self::Overwrite,
+        }
+    }
+}
+
+// ---
+
 #[cfg(test)]
 mod tests {
     use super::*;

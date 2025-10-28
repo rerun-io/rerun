@@ -11,7 +11,7 @@ use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextSystem, ViewContextSystemOncePerFrameResult,
 };
 
-use crate::{caches::TransformDatabaseStoreCache, visualizers::CamerasVisualizer};
+use crate::caches::TransformDatabaseStoreCache;
 
 /// Provides a transform tree for the view & time it operates on.
 ///
@@ -50,12 +50,14 @@ impl ViewContextSystem for TransformTreeContext {
         ctx: &re_viewer_context::ViewerContext<'_>,
     ) -> ViewContextSystemOncePerFrameResult {
         let caches = ctx.store_context.caches;
-        let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
-            c.read_lock_transform_cache(ctx.recording())
-        });
+        let mut transform_cache = caches
+            .entry(|c: &mut TransformDatabaseStoreCache| c.lock_transform_cache(ctx.recording()));
 
-        let transform_forest =
-            re_tf::TransformForest::new(ctx.recording(), &transform_cache, &ctx.current_query());
+        let transform_forest = re_tf::TransformForest::new(
+            ctx.recording(),
+            &mut transform_cache,
+            &ctx.current_query(),
+        );
 
         Box::new(TransformTreeContextOncePerFrameResult {
             transform_forest: Arc::new(transform_forest),
@@ -162,8 +164,7 @@ fn lookup_image_plane_distance(
                     archetypes::Pinhole::descriptor_image_plane_distance().component,
                 )
                 .get_mono_with_fallback::<ImagePlaneDistance>(
-                    &archetypes::Pinhole::descriptor_image_plane_distance(),
-                    &CamerasVisualizer::default(),
+                    archetypes::Pinhole::descriptor_image_plane_distance().component,
                 )
         })
         .unwrap_or_default()

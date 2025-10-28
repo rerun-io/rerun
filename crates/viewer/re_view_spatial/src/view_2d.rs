@@ -18,6 +18,7 @@ use crate::{
     contexts::register_spatial_contexts,
     heuristics::default_visualized_entities_for_visualizer_kind,
     max_image_dimension_subscriber::{ImageTypes, MaxDimensions},
+    shared_fallbacks,
     spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
@@ -63,6 +64,47 @@ impl ViewClass for SpatialView2D {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
+        system_registry.register_fallback_provider(Background::descriptor_kind().component, |_| {
+            re_types::blueprint::components::BackgroundKind::SolidColor
+        });
+
+        fn valid_bound(rect: &egui::Rect) -> bool {
+            rect.is_finite() && rect.is_positive()
+        }
+
+        system_registry.register_fallback_provider(
+            VisualBounds2D::descriptor_range().component,
+            |ctx| {
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    return re_types::blueprint::components::VisualBounds2D::default();
+                };
+
+                // TODO(andreas): It makes sense that we query the bounding box from the view_state,
+                // but the pinhole should be an ad-hoc query instead. For this we need a little bit more state information on the QueryContext.
+                let default_scene_rect = view_state
+                    .pinhole_at_origin
+                    .as_ref()
+                    .map(|pinhole| pinhole.resolution_rect())
+                    .unwrap_or_else(|| {
+                        // TODO(emilk): if there is a single image in this view, use that as the default bounds
+                        let scene_rect_smoothed = view_state.bounding_boxes.smoothed;
+                        egui::Rect::from_min_max(
+                            scene_rect_smoothed.min.truncate().to_array().into(),
+                            scene_rect_smoothed.max.truncate().to_array().into(),
+                        )
+                    });
+
+                if valid_bound(&default_scene_rect) {
+                    default_scene_rect.into()
+                } else {
+                    // Nothing in scene, probably.
+                    re_types::blueprint::components::VisualBounds2D::default()
+                }
+            },
+        );
+
+        shared_fallbacks::register_fallbacks(system_registry);
+
         // Ensure spatial topology & max image dimension is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
         crate::max_image_dimension_subscriber::MaxImageDimensionsStoreSubscriber::subscription_handle();
@@ -254,9 +296,9 @@ impl ViewClass for SpatialView2D {
 
         re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
             let view_ctx = self.view_context(ctx, view_id, state);
-            view_property_ui::<VisualBounds2D>(&view_ctx, ui, self);
-            view_property_ui::<NearClipPlane>(&view_ctx, ui, self);
-            view_property_ui::<Background>(&view_ctx, ui, self);
+            view_property_ui::<VisualBounds2D>(&view_ctx, ui);
+            view_property_ui::<NearClipPlane>(&view_ctx, ui);
+            view_property_ui::<Background>(&view_ctx, ui);
         });
 
         Ok(())

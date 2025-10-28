@@ -68,9 +68,10 @@ impl VisualizerSystem for EdgesVisualizer {
                     &timeline_query,
                 );
 
-            let all_edges = results.iter_as(query.timeline, GraphEdges::descriptor_edges());
+            let all_edges =
+                results.iter_as(query.timeline, GraphEdges::descriptor_edges().component);
             let graph_type = results
-                .get_mono::<components::GraphType>(&GraphEdges::descriptor_graph_type())
+                .get_mono::<components::GraphType>(GraphEdges::descriptor_graph_type().component)
                 .unwrap_or_default();
 
             let sources = all_edges
@@ -116,10 +117,4 @@ impl VisualizerSystem for EdgesVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-re_viewer_context::impl_component_fallback_provider!(EdgesVisualizer => []);

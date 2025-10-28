@@ -145,7 +145,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_vertex_position_chunks) =
-                    results.get_required_chunks(Mesh3D::descriptor_vertex_positions())
+                    results.get_required_chunks(Mesh3D::descriptor_vertex_positions().component)
                 else {
                     return Ok(());
                 };
@@ -154,19 +154,23 @@ impl VisualizerSystem for Mesh3DVisualizer {
                 let all_vertex_positions_indexed =
                     iter_slices::<[f32; 3]>(&all_vertex_position_chunks, timeline);
                 let all_vertex_normals =
-                    results.iter_as(timeline, Mesh3D::descriptor_vertex_normals());
+                    results.iter_as(timeline, Mesh3D::descriptor_vertex_normals().component);
                 let all_vertex_colors =
-                    results.iter_as(timeline, Mesh3D::descriptor_vertex_colors());
+                    results.iter_as(timeline, Mesh3D::descriptor_vertex_colors().component);
                 let all_vertex_texcoords =
-                    results.iter_as(timeline, Mesh3D::descriptor_vertex_texcoords());
+                    results.iter_as(timeline, Mesh3D::descriptor_vertex_texcoords().component);
                 let all_triangle_indices =
-                    results.iter_as(timeline, Mesh3D::descriptor_triangle_indices());
+                    results.iter_as(timeline, Mesh3D::descriptor_triangle_indices().component);
                 let all_albedo_factors =
-                    results.iter_as(timeline, Mesh3D::descriptor_albedo_factor());
-                let all_albedo_buffers =
-                    results.iter_as(timeline, Mesh3D::descriptor_albedo_texture_buffer());
-                let all_albedo_formats =
-                    results.iter_as(timeline, Mesh3D::descriptor_albedo_texture_format());
+                    results.iter_as(timeline, Mesh3D::descriptor_albedo_factor().component);
+                let all_albedo_buffers = results.iter_as(
+                    timeline,
+                    Mesh3D::descriptor_albedo_texture_buffer().component,
+                );
+                let all_albedo_formats = results.iter_as(
+                    timeline,
+                    Mesh3D::descriptor_albedo_texture_format().component,
+                );
 
                 let query_result_hash = results.query_result_hash();
 
@@ -244,10 +248,4 @@ impl VisualizerSystem for Mesh3DVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-re_viewer_context::impl_component_fallback_provider!(Mesh3DVisualizer => []);
