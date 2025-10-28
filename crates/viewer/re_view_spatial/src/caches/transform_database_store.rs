@@ -27,7 +27,7 @@ impl TransformDatabaseStoreCache {
             self.initialized = true;
             self.transform_cache
                 .lock()
-                .add_chunks(entity_db.storage_engine().store().iter_chunks());
+                .add_chunks(entity_db, entity_db.storage_engine().store().iter_chunks());
         }
 
         self.transform_cache.lock_arc()
@@ -53,7 +53,7 @@ impl Cache for TransformDatabaseStoreCache {
         "Transform Database"
     }
 
-    fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent], entity_db: &EntityDb) {
         re_tracing::profile_function!();
 
         debug_assert!(
@@ -63,7 +63,7 @@ impl Cache for TransformDatabaseStoreCache {
 
         self.transform_cache
             .lock()
-            .process_store_events(events.iter().copied());
+            .process_store_events(entity_db, events.iter().copied());
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
