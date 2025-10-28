@@ -29,11 +29,12 @@ use re_viewer::{
 use re_viewer_context::ContainerId;
 use re_viewport_blueprint::ViewportBlueprint;
 
-use crate::GetSection;
-use crate::GetSection as _;
+// use crate::GetSection;
+// use crate::GetSection as _;
+use crate::ViewerSection;
 
 // Kittest harness utilities specific to the Rerun app.
-pub trait HarnessExt<'h>: GetSection<'h> {
+pub trait HarnessExt<'h> {
     // Initializes the chuck store with a new, empty recording and blueprint.
     fn init_recording(&mut self);
 
@@ -99,7 +100,32 @@ pub trait HarnessExt<'h>: GetSection<'h> {
         self.set_panel_opened("Time panel toggle", opened);
     }
 
-    // Convenience proxy functions to the root ViewerSection
+    // Get a viewer section, eg. blueprint tree or selection panel.
+    fn section<'a>(&'a mut self, section_label: &'a str) -> ViewerSection<'a, 'h>
+    where
+        'h: 'a;
+
+    // The viewer section whose root node is the root of the app.
+    fn root_section<'a>(&'a mut self) -> ViewerSection<'a, 'h>
+    where
+        'h: 'a;
+
+    // The viewer section whose root node is the blueprint tree.
+    fn blueprint_tree<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
+        self.section("_blueprint_tree")
+    }
+
+    // The viewer section whose root node is the streams tree.
+    fn streams_tree<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
+        self.section("_streams_tree")
+    }
+
+    // The viewer section whose root node is the selection panel.
+    fn selection_panel<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
+        self.section("_selection_panel")
+    }
+
+    // Convenience proxy functions to the root section:
 
     fn click_label(&mut self, label: &str) {
         self.root_section().click_label(label);
@@ -377,5 +403,25 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
         }
         self.remove_cursor();
         self.run_ok();
+    }
+
+    fn section<'a>(&'a mut self, section_label: &'a str) -> ViewerSection<'a, 'h>
+    where
+        'h: 'a,
+    {
+        ViewerSection::<'a, 'h> {
+            harness: self,
+            section_label: Some(section_label),
+        }
+    }
+
+    fn root_section<'a>(&'a mut self) -> ViewerSection<'a, 'h>
+    where
+        'h: 'a,
+    {
+        ViewerSection::<'a, 'h> {
+            harness: self,
+            section_label: None,
+        }
     }
 }

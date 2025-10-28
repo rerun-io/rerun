@@ -1,6 +1,4 @@
 use egui::Modifiers;
-
-use re_integration_test::{GetSection as _, HarnessExt as _};
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
 use re_viewer::external::re_viewer_context::ViewClass as _;

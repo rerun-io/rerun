@@ -1,4 +1,3 @@
-use re_integration_test::{GetSection as _, HarnessExt as _};
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
 use re_view_text_document::TextDocumentView;

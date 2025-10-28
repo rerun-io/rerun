@@ -1,6 +1,5 @@
 use egui::PointerButton;
 use egui::accesskit::Role;
-use egui_kittest::kittest::NodeT as _;
 use egui_kittest::kittest::Queryable as _;
 
 pub struct ViewerSection<'a, 'h> {
@@ -154,49 +153,5 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
         self.harness.event(event);
         self.harness.remove_cursor();
         self.harness.run_ok();
-    }
-}
-
-pub trait GetSection<'h> {
-    fn section<'a>(&'a mut self, section_label: &'a str) -> ViewerSection<'a, 'h>
-    where
-        'h: 'a;
-
-    fn root_section<'a>(&'a mut self) -> ViewerSection<'a, 'h>
-    where
-        'h: 'a;
-
-    fn blueprint_tree<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
-        self.section("_blueprint_tree")
-    }
-
-    fn streams_tree<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
-        self.section("_streams_tree")
-    }
-
-    fn selection_panel<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
-        self.section("_selection_panel")
-    }
-}
-
-impl<'h> GetSection<'h> for egui_kittest::Harness<'h, re_viewer::App> {
-    fn section<'a>(&'a mut self, section_label: &'a str) -> ViewerSection<'a, 'h>
-    where
-        'h: 'a,
-    {
-        ViewerSection::<'a, 'h> {
-            harness: self,
-            section_label: Some(section_label),
-        }
-    }
-
-    fn root_section<'a>(&'a mut self) -> ViewerSection<'a, 'h>
-    where
-        'h: 'a,
-    {
-        ViewerSection::<'a, 'h> {
-            harness: self,
-            section_label: None,
-        }
     }
 }

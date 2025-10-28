@@ -3,7 +3,6 @@
 //! Contains all views.
 
 use ahash::HashMap;
-use egui::{WidgetInfo, remap_clamp};
 use egui_tiles::{Behavior as _, EditAction};
 
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};

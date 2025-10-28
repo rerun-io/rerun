@@ -1,6 +1,6 @@
 use egui::vec2;
 use egui_kittest::kittest::Queryable as _;
-use re_integration_test::{GetSection, HarnessExt as _};
+use re_integration_test::{HarnessExt as _};
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
 use re_viewer::external::re_viewer_context::{ContainerId, ViewClass as _};

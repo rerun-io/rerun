@@ -9,7 +9,7 @@ use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistry};
 use re_server::ServerHandle;
 use re_uri::external::url::Host;
 use std::net::TcpListener;
-pub use viewer_section::GetSection;
+// pub use viewer_section::GetSection;
 pub use viewer_section::ViewerSection;
 
 pub struct TestServer {
