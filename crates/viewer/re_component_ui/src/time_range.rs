@@ -267,7 +267,6 @@ fn edit_visible_history_boundary_ui(
     // boundary cannot be moved against the low boundary. This asymmetry is intentional, and avoids
     // both boundaries fighting each other in some corner cases (when the user interacts with the
     // current time cursor)
-
     match visible_history_boundary {
         TimeRangeBoundary::CursorRelative(value) => {
             // see note above
@@ -279,19 +278,25 @@ fn edit_visible_history_boundary_ui(
 
             let mut edit_value = (*value).into();
             time_drag_value
-                        .drag_value_ui(
-                            ui,
-                            time_type,
-                            &mut edit_value,
-                            false,
-                            low_bound_override,
-                            ctx.app_options().timestamp_format,
-                        )
-                        .on_hover_text(match time_type {
-                            TimeType::DurationNs | TimeType::TimestampNs => "Time duration before/after the current time to use as time range boundary",
-                            TimeType::Sequence => "Number of frames before/after the current time to use a time range boundary",
-                        })
-                    ;
+                .drag_value_ui(
+                    ui,
+                    time_type,
+                    &mut edit_value,
+                    false,
+                    low_bound_override,
+                    ctx.app_options().timestamp_format,
+                )
+                .on_hover_text(match time_type {
+                    TimeType::DurationNs | TimeType::TimestampNs => {
+                        "Time duration before/after the current time to use as a \
+                         time range boundary"
+                    }
+                    TimeType::Sequence => {
+                        "Number of frames before/after the current time to use a \
+                         time range boundary"
+                    }
+                });
+
             *value = edit_value.into();
         }
         TimeRangeBoundary::Absolute(value) => {
