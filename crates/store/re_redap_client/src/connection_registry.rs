@@ -54,7 +54,6 @@ impl ConnectionRegistry {
     ///
     /// Using stored credentials by default should be preferred in all other contexts,
     /// see [`Self::new_with_stored_credentials`].
-    #[expect(clippy::new_ret_no_self)] // intentional, to reflect the fact that this is a handle
     pub fn new_without_stored_credentials() -> ConnectionRegistryHandle {
         ConnectionRegistryHandle {
             inner: Arc::new(RwLock::new(Self {
@@ -69,7 +68,6 @@ impl ConnectionRegistry {
     /// Create a new connection registry and return a handle to it.
     ///
     /// This version explicitly enables using credentials stored on the local machine.
-    #[expect(clippy::new_ret_no_self)] // intentional, to reflect the fact that this is a handle
     pub fn new_with_stored_credentials() -> ConnectionRegistryHandle {
         ConnectionRegistryHandle {
             inner: Arc::new(RwLock::new(Self {
