@@ -419,8 +419,8 @@ impl ::prost::Name for InvertedIndex {
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct VectorIvfPqIndex {
-    /// num_partitions is deprecated. Remove in 0.6
-    /// Use target_partition_size instead
+    /// num_partitions is deprecated. Use target_partition_size instead
+    /// TODO(RR-2798): Remove in 0.6
     #[prost(uint32, optional, tag = "1")]
     pub num_partitions: ::core::option::Option<u32>,
     #[prost(uint32, optional, tag = "2")]
