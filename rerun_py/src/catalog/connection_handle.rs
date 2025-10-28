@@ -226,7 +226,7 @@ impl ConnectionHandle {
             .in_current_span(),
         )?;
 
-        self.read_table(py, entry_id)
+        self.read_table(py, entry_id.details.id)
     }
 
     #[tracing::instrument(level = "info", skip_all)]

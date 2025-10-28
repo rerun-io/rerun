@@ -723,7 +723,7 @@ where
         name: &str,
         url: &Url,
         schema: SchemaRef,
-    ) -> Result<EntryId, ApiError> {
+    ) -> Result<TableEntry, ApiError> {
         let provider_details = LanceTable {
             table_url: url.clone(),
         }
@@ -747,8 +747,6 @@ where
             .into_inner();
 
         resp.table
-            .and_then(|t| t.details)
-            .and_then(|d| d.id)
             .ok_or(ApiError::tonic(
                 Status::invalid_argument("entry ID not set in response"),
                 "/CreateTable failed",
