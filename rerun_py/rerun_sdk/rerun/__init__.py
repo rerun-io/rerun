@@ -28,6 +28,7 @@ from . import (
     catalog as catalog,
     dataframe as dataframe,
     experimental as experimental,
+    server as server,
 )
 from ._baseclasses import (
     ComponentBatchLike as ComponentBatchLike,

@@ -9441,6 +9441,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_memory",
+ "re_server",
  "re_smart_channel",
  "re_tracing",
  "re_types",

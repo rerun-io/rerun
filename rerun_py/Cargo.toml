@@ -15,14 +15,14 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 
 
 [features]
-default = ["extension-module"]
+default = ["extension-module", "oss_server"]
 
 ## Extra features that aren't ready to be included in release builds yet.
 extra = []
 
 ## The features we turn on when building the `rerun-sdk` PyPi package
 ## for <https://pypi.org/project/rerun-sdk/>.
-pypi = ["extension-module", "nasm", "web_viewer", "server"]
+pypi = ["extension-module", "nasm", "web_viewer", "server", "oss_server"]
 
 ## We need to enable the `pyo3/extension-module` when building the SDK,
 ## but we cannot enable it when building tests and benchmarks, so we
@@ -41,6 +41,9 @@ nasm = ["re_video/nasm"]
 perf_telemetry = ["dep:re_perf_telemetry", "re_redap_client/perf_telemetry"]
 
 server = ["re_sdk/server", "dep:re_grpc_server"]
+
+## Support for running an open-source Rerun server instance.
+oss_server = ["re_sdk/oss_server"]
 
 ## Support serving a web viewer over HTTP with `serve()`.
 ##

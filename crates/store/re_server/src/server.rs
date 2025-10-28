@@ -60,9 +60,8 @@ impl ServerHandle {
             }
             failed = self.failed.recv() => {
                 match failed {
-                    Some(reason) => Err(ServerError::ServerFailedToStart { reason }),
-                    None => Err(ServerError::FailedChannelClosedUnexpectedly)
-
+                        Some(reason) => Err(ServerError::ServerFailedToStart { reason }),
+                        None => Err(ServerError::FailedChannelClosedUnexpectedly)
                 }
             }
         }

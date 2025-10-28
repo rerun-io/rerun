@@ -1925,3 +1925,23 @@ class NotFoundError(Exception):
 
 class AlreadyExistsError(Exception):
     """Raised when trying to create a resource that already exists."""
+
+class Server:
+    """A Rerun server instance."""
+
+    def __init__(self, address: str | None, port: int | None, datasets: dict[str, os.PathLike] | None) -> None:
+        """
+        Initialize and start a Rerun server.
+
+        Parameters
+        ----------
+        address : str | None
+            The address on which the server should listen. If None, the default address `0.0.0.0` will be used.
+
+        port : int | None
+            The port on which the server should listen. If None, the default port `51234` will be used.
+
+        datasets : dict[str, PathLike] | None
+            A mapping of dataset names to their paths. If None, no datasets will be loaded.
+
+        """
