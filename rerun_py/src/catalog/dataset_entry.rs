@@ -4,7 +4,7 @@ use arrow::array::{RecordBatch, RecordBatchOptions, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
 use pyo3::Bound;
-use pyo3::types::PyAnyMethods as _;
+use pyo3::types::{PyAnyMethods as _, PyDict};
 use pyo3::{
     Py, PyAny, PyRef, PyRefMut, PyResult, Python, exceptions::PyRuntimeError,
     exceptions::PyValueError, pyclass, pymethods,
@@ -618,7 +618,7 @@ impl PyDatasetEntry {
         num_partitions: usize,
         num_sub_vectors: usize,
         distance_metric: VectorDistanceMetricLike,
-    ) -> PyResult<()> {
+    ) -> PyResult<PyIndexingResult> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
@@ -646,7 +646,7 @@ impl PyDatasetEntry {
         };
 
         wait_for_future(self_.py(), async {
-            connection
+            let result = connection
                 .client()
                 .await?
                 .inner()
@@ -658,7 +658,9 @@ impl PyDatasetEntry {
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-            Ok(())
+            Ok(PyIndexingResult {
+                debug_info: result.into_inner().debug_info,
+            })
         })
     }
 
@@ -871,4 +873,37 @@ fn py_object_to_i64(py: Python<'_>, obj: &Bound<'_, PyAny>) -> PyResult<i64> {
     let int_builtin = py.import("builtins")?.getattr("int")?;
     let converted = int_builtin.call1((obj,))?;
     converted.extract::<i64>()
+}
+
+/// A dataset entry in the catalog.
+#[pyclass(name = "IndexingResult")] // NOLINT: skip pyclass_eq, non-trivial implementation
+pub struct PyIndexingResult {
+    debug_info: Option<re_protos::cloud::v1alpha1::DebugInfo>,
+}
+
+#[pymethods]
+impl PyIndexingResult {
+    /// Get debug information about the indexing operation.
+    ///
+    /// The exact contents of debug information may vary depending on the indexing operation performed
+    /// and the server implementation.
+    ///
+    /// Returns
+    /// -------
+    /// Optional[dict]
+    ///     A dictionary containing debug information, or `None` if no debug information is available
+    fn debug_info(&self, py: Python<'_>) -> PyResult<Option<Py<PyDict>>> {
+        match &self.debug_info {
+            Some(debug_info) => {
+                let dict = PyDict::new(py);
+
+                if let Some(memory_used) = debug_info.memory_used {
+                    dict.set_item("memory_used", memory_used)?;
+                };
+
+                Ok(Some(dict.into()))
+            }
+            None => Ok(None),
+        }
+    }
 }
