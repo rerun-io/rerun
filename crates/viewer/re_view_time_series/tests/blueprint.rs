@@ -8,7 +8,7 @@ use re_types::{
     Archetype as _, DynamicArchetype,
     archetypes::{self, Scalars},
     blueprint, components,
-    external::arrow::array::{Float32Array, Float64Array, Int64Array},
+    external::arrow::array::{Float32Array, Int64Array},
 };
 use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
@@ -75,6 +75,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     })
 }
 
+// TODO: Move this test to a better place.
 #[test]
 pub fn test_blueprint_f64_with_time_series() {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
@@ -131,7 +132,7 @@ pub fn test_blueprint_f64_with_time_series() {
 }
 
 fn setup_descriptor_override_blueprint(test_context: &mut TestContext) -> ViewId {
-    test_context.setup_viewport_blueprint(|ctx, blueprint| {
+    test_context.setup_viewport_blueprint(|_ctx, blueprint| {
         let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
 
         blueprint.add_view_at_root(view)

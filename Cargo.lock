@@ -10150,7 +10150,6 @@ dependencies = [
  "itertools 0.14.0",
  "nohash-hasher",
  "rayon",
- "re_arrow_util",
  "re_chunk_store",
  "re_format",
  "re_log",

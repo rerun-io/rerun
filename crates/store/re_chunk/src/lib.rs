@@ -24,7 +24,12 @@ pub use self::chunk::{
 };
 pub use self::helpers::{ChunkShared, UnitChunkShared};
 pub use self::iter::{
-    ChunkComponentIter, ChunkComponentIterItem, ChunkComponentSlicer, ChunkIndicesIter,
+    // TODO: Right place? Maybe `re_view`?
+    CastToPrimitive,
+    ChunkComponentIter,
+    ChunkComponentIterItem,
+    ChunkComponentSlicer,
+    ChunkIndicesIter,
 };
 pub use self::latest_at::LatestAtQuery;
 pub use self::range::{RangeQuery, RangeQueryOptions};

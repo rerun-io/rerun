@@ -1,10 +1,9 @@
 //! Shared functionality for querying time series data.
 
-use itertools::{Either, Itertools as _};
+use itertools::Itertools as _;
 
-use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk_store::external::re_chunk::ChunkComponentSlicer;
-use re_chunk_store::{RangeQuery, Span};
+use re_chunk_store::RangeQuery;
+use re_chunk_store::external::re_chunk::CastToPrimitive;
 use re_log_types::{EntityPath, TimeInt};
 use re_types::external::arrow;
 use re_types::external::arrow::datatypes::DataType as ArrowDatatype;
@@ -16,103 +15,6 @@ use crate::{PlotPoint, PlotSeriesKind};
 
 type PlotPointsPerSeries = smallvec::SmallVec<[Vec<PlotPoint>; 1]>;
 
-struct ToFloat64;
-
-/// Iterator that owns both the array values and component spans.
-/// This is necessary when we need to cast the array, as the casted array
-/// must be owned by the iterator rather than borrowed from the caller.
-struct OwnedSliceIterator<P, T, I>
-where
-    P: arrow::array::ArrowPrimitiveType<Native = T>,
-    T: arrow::datatypes::ArrowNativeType,
-    I: Iterator<Item = Span<usize>>,
-{
-    values: arrow::array::PrimitiveArray<P>,
-    component_spans: I,
-    _phantom: std::marker::PhantomData<T>,
-}
-
-impl<P, T, I> Iterator for OwnedSliceIterator<P, T, I>
-where
-    P: arrow::array::ArrowPrimitiveType<Native = T>,
-    T: arrow::datatypes::ArrowNativeType,
-    I: Iterator<Item = Span<usize>>,
-{
-    type Item = Vec<T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let span = self.component_spans.next()?;
-        let values_slice = self.values.values().as_ref();
-        Some(values_slice[span.range()].to_vec())
-    }
-}
-
-fn error_on_downcast_failure(
-    component: ComponentIdentifier,
-    target: &str,
-    actual: &arrow::datatypes::DataType,
-) {
-    if cfg!(debug_assertions) {
-        panic!(
-            "[DEBUG ASSERT] downcast failed to {target} failed for {component}. Array data type was {actual:?}. Data discarded"
-        );
-    } else {
-        re_log::error_once!(
-            "downcast failed to {target} for {component}. Array data type was {actual:?}. data discarded"
-        );
-    }
-}
-
-/// The actual implementation of `impl_native_type!`, so that we don't have to work in a macro.
-/// Returns an iterator that owns the array values and yields Vec<T> slices.
-fn slice_as_native_with_cast<P, T, I>(
-    component: ComponentIdentifier,
-    array: &dyn arrow::array::Array,
-    component_spans: I,
-) -> impl Iterator<Item = Vec<T>>
-where
-    P: arrow::array::ArrowPrimitiveType<Native = T>,
-    T: arrow::datatypes::ArrowNativeType,
-    I: Iterator<Item = Span<usize>>,
-{
-    // We first try to down cast (happy path).
-    let values = if let Some(value) = array.downcast_array_ref::<arrow::array::PrimitiveArray<P>>()
-    {
-        value.clone()
-    } else {
-        // Then we try to perform a primitive cast.
-        let casted = arrow::compute::cast(array, &ArrowDatatype::Float64).unwrap();
-        let Some(casted) = casted.downcast_array_ref::<arrow::array::PrimitiveArray<P>>() else {
-            error_on_downcast_failure(component, "ArrowPrimitiveArray<T>", array.data_type());
-            return Either::Left(std::iter::empty());
-        };
-        casted.clone()
-    };
-
-    // Return an iterator that owns the array and component_spans
-    Either::Right(OwnedSliceIterator {
-        values,
-        component_spans,
-        _phantom: std::marker::PhantomData,
-    })
-}
-
-impl ChunkComponentSlicer for ToFloat64 {
-    type Item<'a> = Vec<f64>;
-
-    fn slice<'a>(
-        component: ComponentIdentifier,
-        array: &'a dyn re_chunk_store::external::re_chunk::ArrowArray,
-        component_spans: impl Iterator<Item = re_chunk_store::Span<usize>> + 'a,
-    ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
-        slice_as_native_with_cast::<arrow::datatypes::Float64Type, _, _>(
-            component,
-            array,
-            component_spans,
-        )
-    }
-}
-
 /// Determines how many series there are in the scalar chunks.
 pub fn determine_num_series(all_scalar_chunks: &ChunksWithComponent<'_>) -> usize {
     // TODO(andreas): We should determine this only once and cache the result.
@@ -122,7 +24,8 @@ pub fn determine_num_series(all_scalar_chunks: &ChunksWithComponent<'_>) -> usiz
         .iter()
         .find_map(|chunk| {
             chunk
-                .iter_slices::<ToFloat64>()
+                // TODO(grtlr): The comment above is even more important when we do casting (allocations) here.
+                .iter_slices::<CastToPrimitive<arrow::datatypes::Float64Type, f64>>()
                 .find_map(|values| (!values.is_empty()).then_some(values.len()))
         })
         .unwrap_or(1)
@@ -195,7 +98,9 @@ pub fn collect_scalars(
         let points = &mut *points_per_series[0];
         all_scalar_chunks
             .iter()
-            .flat_map(|chunk| chunk.iter_slices::<ToFloat64>())
+            .flat_map(|chunk| {
+                chunk.iter_slices::<CastToPrimitive<arrow::datatypes::Float64Type, f64>>()
+            })
             .enumerate()
             .for_each(|(i, values)| {
                 if let Some(value) = values.first() {
@@ -207,13 +112,16 @@ pub fn collect_scalars(
     } else {
         all_scalar_chunks
             .iter()
-            .flat_map(|chunk| chunk.iter_slices::<ToFloat64>())
+            .flat_map(|chunk| {
+                chunk.iter_slices::<CastToPrimitive<arrow::datatypes::Float64Type, f64>>()
+            })
             .enumerate()
             .for_each(|(i, values)| {
-                for (points, value) in points_per_series.iter_mut().zip(&values) {
+                let values_slice = values.as_ref();
+                for (points, value) in points_per_series.iter_mut().zip(values_slice) {
                     points[i].value = *value;
                 }
-                for points in points_per_series.iter_mut().skip(values.len()) {
+                for points in points_per_series.iter_mut().skip(values_slice.len()) {
                     points[i].attrs.kind = PlotSeriesKind::Clear;
                 }
             });
