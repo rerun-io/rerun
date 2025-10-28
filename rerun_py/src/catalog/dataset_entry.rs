@@ -892,6 +892,7 @@ impl PyIndexingResult {
     /// -------
     /// Optional[dict]
     ///     A dictionary containing debug information, or `None` if no debug information is available
+    #[allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)]
     fn debug_info(&self, py: Python<'_>) -> PyResult<Option<Py<PyDict>>> {
         match &self.debug_info {
             Some(debug_info) => {
@@ -899,7 +900,7 @@ impl PyIndexingResult {
 
                 if let Some(memory_used) = debug_info.memory_used {
                     dict.set_item("memory_used", memory_used)?;
-                };
+                }
 
                 Ok(Some(dict.into()))
             }
