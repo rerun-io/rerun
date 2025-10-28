@@ -336,7 +336,7 @@ impl PyCatalogClientInternal {
         Py::new(py, (table, entry))
     }
 
-    fn create_table(
+    fn create_table_entry(
         self_: Py<Self>,
         py: Python<'_>,
         name: String,
@@ -350,7 +350,7 @@ impl PyCatalogClientInternal {
             .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
 
         let schema = Arc::new(schema.0);
-        let table_entry = connection.create_table(py, name, schema, &url)?;
+        let table_entry = connection.create_table_entry(py, name, schema, &url)?;
 
         let entry_id = Py::new(py, PyEntryId::from(table_entry.details.id))?;
 

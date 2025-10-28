@@ -7,7 +7,7 @@ use re_protos::cloud::v1alpha1::ext::{
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use std::collections::HashMap;
 
-pub async fn create_table(service: impl RerunCloudService) {
+pub async fn create_table_entry(service: impl RerunCloudService) {
     let tmp_dir = tempfile::tempdir().expect("create temp dir");
 
     let table_name = "created_table";

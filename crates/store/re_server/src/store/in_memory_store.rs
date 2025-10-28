@@ -341,7 +341,7 @@ impl InMemoryStore {
         self.id_by_name.get(name)
     }
 
-    pub async fn create_table(
+    pub async fn create_table_entry(
         &mut self,
         name: &str,
         url: &url::Url,
@@ -355,7 +355,7 @@ impl InMemoryStore {
         let entry_id = EntryId::new();
         self.id_by_name.insert(name.to_owned(), entry_id);
 
-        let table = Table::create_table(entry_id, name, url, schema).await?;
+        let table = Table::create_table_entry(entry_id, name, url, schema).await?;
         let table_entry = table.as_table_entry();
 
         self.tables.insert(entry_id, table);

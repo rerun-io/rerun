@@ -202,7 +202,7 @@ impl Table {
     }
 
     #[cfg(feature = "lance")]
-    pub async fn create_table(
+    pub async fn create_table_entry(
         id: EntryId,
         name: &str,
         url: &url::Url,
@@ -229,7 +229,7 @@ impl Table {
 
     #[cfg(not(feature = "lance"))]
     #[expect(clippy::unused_async)]
-    pub async fn create_table(
+    pub async fn create_table_entry(
         _id: EntryId,
         _name: &str,
         _url: &url::Url,

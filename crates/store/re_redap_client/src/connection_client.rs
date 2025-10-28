@@ -718,7 +718,7 @@ where
             .map_err(|err| ApiError::tonic(err, "/WriteTable failed"))
     }
 
-    pub async fn create_table(
+    pub async fn create_table_entry(
         &mut self,
         name: &str,
         url: &Url,

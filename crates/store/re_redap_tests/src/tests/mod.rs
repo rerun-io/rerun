@@ -6,7 +6,7 @@ mod create_table;
 mod create_table {
     // This is a stub test so that we do not have issues with setting
     // --no-default-options when running tests
-    pub async fn create_table(
+    pub async fn create_table_entry(
         _service: impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
     ) {
     }

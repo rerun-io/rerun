@@ -1335,7 +1335,7 @@ impl RerunCloudService for RerunCloudHandler {
         let schema = Arc::new(request.schema);
 
         let table = store
-            .create_table(table_name, &provider_details.table_url, schema)
+            .create_table_entry(table_name, &provider_details.table_url, schema)
             .await?;
 
         Ok(Response::new(CreateTableEntryResponse { table }.into()))

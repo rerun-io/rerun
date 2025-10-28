@@ -207,7 +207,7 @@ impl ConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn create_table(
+    pub fn create_table_entry(
         &self,
         py: Python<'_>,
         name: String,
@@ -219,7 +219,7 @@ impl ConnectionHandle {
             async {
                 self.client()
                     .await?
-                    .create_table(&name, url, schema)
+                    .create_table_entry(&name, url, schema)
                     .await
                     .map_err(to_py_err)
             }

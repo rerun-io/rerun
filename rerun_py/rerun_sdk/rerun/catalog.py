@@ -182,7 +182,7 @@ class CatalogClient:
         """
         return self._raw_client.register_table(name, url)
 
-    def create_table(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
+    def create_table_entry(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
         """
         Create and register a new table.
 
@@ -199,7 +199,7 @@ class CatalogClient:
             The URL of the directory for where to store the Lance table.
 
         """
-        return self._raw_client.create_table(name, schema, url)
+        return self._raw_client.create_table_entry(name, schema, url)
 
     def do_global_maintenance(self) -> None:
         """Perform maintenance tasks on the whole system."""
