@@ -25,12 +25,17 @@ pub struct ConnectionRegistry {
     ///
     /// When no saved token is available for a given server, we fall back to the `REDAP_TOKEN`
     /// envvar if set. See [`ConnectionRegistryHandle::client`].
-    saved_tokens: HashMap<re_uri::Origin, Jwt>,
+    saved_credentials: HashMap<re_uri::Origin, Credentials>,
 
     /// Fallback token.
     ///
     /// If set, the fallback token is used when no specific token is registered for a given origin.
     fallback_token: Option<Jwt>,
+
+    /// Use stored Rerun Cloud credentials.
+    ///
+    /// If set, we always attempt to use these when no explicit token is provided.
+    use_stored_credentials: bool,
 
     /// The cached clients.
     ///
@@ -45,8 +50,9 @@ impl ConnectionRegistry {
     pub fn new() -> ConnectionRegistryHandle {
         ConnectionRegistryHandle {
             inner: Arc::new(RwLock::new(Self {
-                saved_tokens: HashMap::new(),
+                saved_credentials: HashMap::new(),
                 fallback_token: None,
+                use_stored_credentials: false,
                 clients: HashMap::new(),
             })),
         }
@@ -83,11 +89,22 @@ pub struct ConnectionRegistryHandle {
     inner: Arc<RwLock<ConnectionRegistry>>,
 }
 
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum Credentials {
+    /// Explicit token
+    Token(Jwt),
+
+    /// Credentials from local storage
+    Stored,
+}
+
 impl ConnectionRegistryHandle {
     pub fn set_token(&self, origin: &re_uri::Origin, token: Jwt) {
         wrap_blocking_lock(|| {
             let mut inner = self.inner.blocking_write();
-            inner.saved_tokens.insert(origin.clone(), token);
+            inner
+                .saved_credentials
+                .insert(origin.clone(), Credentials::Token(token));
             inner.clients.remove(origin);
         });
     }
@@ -95,14 +112,17 @@ impl ConnectionRegistryHandle {
     pub fn token(&self, origin: &re_uri::Origin) -> Option<Jwt> {
         wrap_blocking_lock(|| {
             let inner = self.inner.blocking_read();
-            inner.saved_tokens.get(origin).cloned()
+            match inner.saved_credentials.get(origin).cloned() {
+                Some(Credentials::Token(token)) => Some(token),
+                _ => None,
+            }
         })
     }
 
     pub fn remove_token(&self, origin: &re_uri::Origin) {
         wrap_blocking_lock(|| {
             let mut inner = self.inner.blocking_write();
-            inner.saved_tokens.remove(origin);
+            inner.saved_credentials.remove(origin);
             inner.clients.remove(origin);
         });
     }
@@ -112,6 +132,14 @@ impl ConnectionRegistryHandle {
             let mut inner = self.inner.blocking_write();
             inner.fallback_token = Some(token);
         });
+    }
+
+    pub fn with_stored_credentials(self) -> Self {
+        wrap_blocking_lock(|| {
+            let mut inner = self.inner.blocking_write();
+            inner.use_stored_credentials = true;
+        });
+        self
     }
 
     /// Get a client for the given origin, creating one if it doesn't exist yet.
@@ -138,37 +166,51 @@ impl ConnectionRegistryHandle {
 
         // Don't hold the lock while creating the client - this may take a while and we may
         // want to read the tokens in the meantime for other purposes.
-        let (saved_token, fallback_token) = {
+        let (saved_token, fallback_token, use_store_credentials) = {
             let inner = self.inner.read().await;
             (
-                inner.saved_tokens.get(&origin).cloned(),
+                inner.saved_credentials.get(&origin).cloned(),
                 inner.fallback_token.clone(),
+                inner.use_stored_credentials,
             )
         };
 
-        let token_to_try = [saved_token.clone(), fallback_token, get_token_from_env()]
-            .into_iter()
-            .flatten()
-            .unique();
+        let token_to_try = [
+            saved_token.clone(),
+            fallback_token.map(Credentials::Token),
+            get_token_from_env().map(Credentials::Token),
+        ]
+        .into_iter()
+        .flatten()
+        .unique();
 
-        let (raw_client, successful_token) =
-            match Self::try_create_raw_client(origin.clone(), token_to_try).await {
-                Ok(res) => res,
-                Err(err) => {
-                    // if we had a saved token, it doesn't work, so we forget about it
-                    if err.is_client_credentials_error() {
-                        let mut inner = self.inner.write().await;
+        let client_result = if use_store_credentials {
+            Self::try_create_raw_client(
+                origin.clone(),
+                token_to_try.chain(std::iter::once(Credentials::Stored)),
+            )
+            .await
+        } else {
+            Self::try_create_raw_client(origin.clone(), token_to_try).await
+        };
 
-                        // make sure that we're not deleting some token that another thread might
-                        // have just set
-                        if inner.saved_tokens.get(&origin) == saved_token.as_ref() {
-                            inner.saved_tokens.remove(&origin);
-                        }
+        let (raw_client, successful_token) = match client_result {
+            Ok(res) => res,
+            Err(err) => {
+                // if we had a saved token, it doesn't work, so we forget about it
+                if err.is_client_credentials_error() {
+                    let mut inner = self.inner.write().await;
+
+                    // make sure that we're not deleting some token that another thread might
+                    // have just set
+                    if inner.saved_credentials.get(&origin) == saved_token.as_ref() {
+                        inner.saved_credentials.remove(&origin);
                     }
-
-                    return Err(err);
                 }
-            };
+
+                return Err(err);
+            }
+        };
         let client = ConnectionClient::new(raw_client.clone());
 
         // We have a successful client, so we cache it and remember about the successful token.
@@ -183,9 +225,11 @@ impl ConnectionRegistryHandle {
 
             if successful_token != saved_token {
                 if let Some(successful_token) = successful_token {
-                    inner.saved_tokens.insert(origin.clone(), successful_token);
+                    inner
+                        .saved_credentials
+                        .insert(origin.clone(), successful_token);
                 } else {
-                    inner.saved_tokens.remove(&origin);
+                    inner.saved_credentials.remove(&origin);
                 }
             }
         }
@@ -198,25 +242,25 @@ impl ConnectionRegistryHandle {
     /// If successful, returns both the client and the working token.
     async fn try_create_raw_client(
         origin: re_uri::Origin,
-        possible_tokens: impl Iterator<Item = Jwt>,
-    ) -> Result<(RedapClient, Option<Jwt>), ApiError> {
-        let mut first_failed_token_attempt = None;
+        possible_credentials: impl Iterator<Item = Credentials>,
+    ) -> Result<(RedapClient, Option<Credentials>), ApiError> {
+        let mut first_failed_attempt = None;
 
-        for token in possible_tokens {
+        for credentials in possible_credentials {
             let result = Self::create_and_validate_raw_client_with_token(
                 origin.clone(),
-                Some(token.clone()),
+                Some(credentials.clone()),
             )
             .await;
 
             match result {
-                Ok(raw_client) => return Ok((raw_client, Some(token))),
+                Ok(raw_client) => return Ok((raw_client, Some(credentials))),
 
                 Err(err) if err.is_client_credentials_error() => {
                     // remember about the first occurrence of this error but continue trying other
                     // tokens
-                    if first_failed_token_attempt.is_none() {
-                        first_failed_token_attempt = Some(err);
+                    if first_failed_attempt.is_none() {
+                        first_failed_attempt = Some(err);
                     }
                 }
 
@@ -232,8 +276,8 @@ impl ConnectionRegistryHandle {
 
             Err(err) => {
                 // If we actually tried tokens, this error is more relevant.
-                if let Some(first_failed_token_attempt) = first_failed_token_attempt {
-                    Err(first_failed_token_attempt)
+                if let Some(first_failed_attempt) = first_failed_attempt {
+                    Err(first_failed_attempt)
                 } else {
                     Err(err)
                 }
@@ -243,17 +287,20 @@ impl ConnectionRegistryHandle {
 
     async fn create_and_validate_raw_client_with_token(
         origin: re_uri::Origin,
-        token: Option<Jwt>,
+        credentials: Option<Credentials>,
     ) -> Result<RedapClient, ApiError> {
-        let credentials: Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync> =
-            match &token {
-                Some(token) => Arc::new(re_auth::credentials::StaticCredentialsProvider::new(
-                    token.clone(),
+        let provider: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync>> =
+            match &credentials {
+                Some(Credentials::Token(token)) => Some(Arc::new(
+                    re_auth::credentials::StaticCredentialsProvider::new(token.clone()),
                 )),
-                None => Arc::new(re_auth::credentials::CliCredentialsProvider::new()),
+                Some(Credentials::Stored) => {
+                    Some(Arc::new(re_auth::credentials::CliCredentialsProvider::new()))
+                }
+                None => None,
             };
 
-        let mut raw_client = crate::grpc::client(origin.clone(), credentials).await?;
+        let mut raw_client = crate::grpc::client(origin.clone(), provider).await?;
 
         // Call the version endpoint to check that authentication is successful. It's ok to do this
         // since we're caching the client, so we're not spamming such a request unnecessarily.
@@ -271,7 +318,7 @@ impl ConnectionRegistryHandle {
         match request_result {
             // catch unauthenticated errors and forget the token if they happen
             Err(err) if err.code() == Code::Unauthenticated => {
-                if token.is_none() {
+                if credentials.is_none() {
                     Err(ApiError::credentials(
                         ClientCredentialsError::UnauthenticatedMissingToken(err.into()),
                         "verifying credentials",
@@ -295,9 +342,17 @@ impl ConnectionRegistryHandle {
         wrap_blocking_lock(|| {
             let this = self.inner.blocking_read();
             let per_origin = this
-                .saved_tokens
+                .saved_credentials
                 .iter()
-                .map(|(origin, token)| (origin.clone(), token.to_string()))
+                .map(|(origin, credentials)| {
+                    (
+                        origin.clone(),
+                        match credentials {
+                            Credentials::Token(jwt) => SerializedCredentials::Jwt(jwt.to_string()),
+                            Credentials::Stored => SerializedCredentials::Stored,
+                        },
+                    )
+                })
                 .collect();
             let fallback = this.fallback_token.clone().map(|v| v.to_string());
 
@@ -316,11 +371,18 @@ impl ConnectionRegistryHandle {
         wrap_blocking_lock(|| {
             let mut inner = self.inner.blocking_write();
             for (origin, token) in tokens.tokens_per_origin {
-                if let Entry::Vacant(e) = inner.saved_tokens.entry(origin.clone()) {
-                    if let Ok(jwt) = Jwt::try_from(token) {
-                        e.insert(jwt);
-                    } else {
-                        re_log::debug!("Failed to parse token for origin {origin}");
+                if let Entry::Vacant(e) = inner.saved_credentials.entry(origin.clone()) {
+                    match token {
+                        SerializedCredentials::Stored => {
+                            e.insert(Credentials::Stored);
+                        }
+                        SerializedCredentials::Jwt(token) => {
+                            if let Ok(jwt) = Jwt::try_from(token) {
+                                e.insert(Credentials::Token(jwt));
+                            } else {
+                                re_log::debug!("Failed to parse token for origin {origin}");
+                            }
+                        }
                     }
                 } else {
                     re_log::trace!("Ignoring token for origin {origin} as it is already set");
@@ -360,8 +422,40 @@ where
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SerializedTokens {
-    tokens_per_origin: Vec<(re_uri::Origin, String)>,
+    tokens_per_origin: Vec<(re_uri::Origin, SerializedCredentials)>,
     fallback_token: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+enum SerializedCredentials {
+    Stored,
+    Jwt(String),
+}
+
+impl<'de> serde::Deserialize<'de> for SerializedCredentials {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: String = String::deserialize(deserializer)?;
+        if s == "stored" {
+            return Ok(Self::Stored);
+        } else {
+            return Ok(Self::Jwt(s));
+        }
+    }
+}
+
+impl serde::Serialize for SerializedCredentials {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            SerializedCredentials::Stored => serializer.serialize_str("stored"),
+            SerializedCredentials::Jwt(token) => serializer.serialize_str(token),
+        }
+    }
 }
 
 // ---
