@@ -54,7 +54,7 @@ To create or update snapshots, you may use:
 UPDATE_SNAPSHOTS=1 cargo nextest run -p re_XXX --all-features
 ```
 
-Our CI automatically provide a link in PR for [kitdiff](https://github.com/rerun-io/kitdiff), our custom visual image diff tool.
+Our CI automatically provides a link in PR for [kitdiff](https://github.com/rerun-io/kitdiff), our custom visual image diff tool.
 
 
 ## Python unit tests
