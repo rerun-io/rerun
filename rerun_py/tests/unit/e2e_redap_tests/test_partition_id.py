@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 
-from .conftest import ServerInstance, DATASET_FILEPATH
+from .conftest import DATASET_FILEPATH, ServerInstance
 
 
 def test_partition_ids(server_instance: ServerInstance, snapshot) -> None:
-    """Test that we can successfully collect information about partitions"""
+    """Test that we can successfully collect information about partitions."""
     client = server_instance.client
 
     ds = client.create_dataset("test_dataset")
