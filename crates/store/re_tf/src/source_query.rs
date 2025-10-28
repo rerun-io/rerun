@@ -12,10 +12,25 @@ use re_types::{TransformFrameIdHash, archetypes};
 /// since logically it is present whenever there's no source logged.
 /// Therefore, the returned list is never empty.
 ///
-/// Note that to build our look-up data-structure in [`crate::TransformResolutionCache`] we have to know the source frame for this entity.
-/// Doing so just by looking at this chunk is unfortunately not possible - there may be temporally overlapping chunks,
-/// clears and recursive clears, all which have to be taken into account.
-/// Therefore, we have to do a range query for the affected range.
+/// This is used to build our look-up data-structure in [`crate::TransformResolutionCache`].
+/// There, we have to know the source frame for a given entity.
+/// Doing so just by looking at individual chunks as they come in is unfortunately not possible:
+/// there may be temporally overlapping chunks, clears and recursive clears, all which have to be taken into account.
+/// Therefore, we have to do a range query for the affected range as done here.
+///
+/// Since we don't allow source frames to be mentioned in multiple entities over time,
+/// this is safe to use for a conservative estimate of when a source frame may have changed.
+/// If we did allow for it, this kind of conservative set would cause issues!
+/// Example:
+/// Let's take this setup violating said invariant:
+/// ```raw
+/// /entity0/ time=0: sources: A, B
+///           time=1: sources: C
+/// /entity1/ time=1: sources: A, B
+/// ```
+/// `query_sources_in_extended_bounds` would now report A, B and C.
+/// Leaving us to incorrectly believe that for `/entity0/ @ time=1` there might be data for A & B when we
+/// actually need to lookup `/entity1/`.
 pub fn query_sources_in_extended_bounds(
     entity_db: &EntityDb,
     entity_path: &EntityPath,
@@ -67,6 +82,31 @@ pub fn query_sources_in_extended_bounds(
     IntSet::from_iter([fallback_source])
 }
 
+/// Extracts all the source frames mentioned in a static chunk.
+pub fn query_source_frames_in_static_chunk(
+    chunk: &re_chunk_store::Chunk,
+    aspects: TransformAspect,
+) -> IntSet<TransformFrameIdHash> {
+    debug_assert!(chunk.is_static());
+
+    // We only care about static time, so unlike on temporal chunks, we can just check the source frame list directly from the chunk if any.
+    if aspects.contains(TransformAspect::Frame) {
+        let source_frame_component = archetypes::Transform3D::descriptor_source_frames().component;
+        if let Some(sources) = chunk.iter_slices::<String>(source_frame_component).next() {
+            let sources: IntSet<_> = sources
+                .into_iter()
+                .map(|source| TransformFrameIdHash::from_str(source.as_str()))
+                .collect();
+            if !sources.is_empty() {
+                return sources;
+            }
+        }
+    }
+
+    // TODO(RR-2627, RR-2680): Custom source is not supported yet for Pinhole & Poses.
+    IntSet::from_iter([TransformFrameIdHash::from_entity_path(chunk.entity_path())])
+}
+
 #[cfg(test)]
 mod tests {
     use super::query_sources_in_extended_bounds;
@@ -116,7 +156,9 @@ mod tests {
                 .build()?,
         ))?;
 
-        // Test on static component.
+        // Test on chunk with static data.
+        // Note that this is *not* a made-up or redundant case that should be covered by `query_sources_static_chunk`.
+        // Rather, this can be of interest when there are other temporal data on the same entity, but sources happen to be static.
         assert_eq!(
             query_sources_in_extended_bounds(
                 &entity_db,
@@ -187,6 +229,41 @@ mod tests {
                 100.try_into()?,
             ),
             IntSet::from_iter([TransformFrameIdHash::from_entity_path(&entity_path)])
+        );
+
+        Ok(())
+    }
+    
+    #[test]
+    fn test_query_source_frames_in_static_chunk() -> Result<(), Box<dyn std::error::Error>> {
+        let entity_path = EntityPath::from("test_entry");
+
+        // Test with an empty chunk.
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &archetypes::Transform3D::update_fields(),
+            )
+            .build()?;
+        assert_eq!(
+            super::query_source_frames_in_static_chunk(&chunk, TransformAspect::Frame),
+            IntSet::from_iter([TransformFrameIdHash::from_entity_path(&entity_path)])
+        );
+
+        // Test chunk with multiple sources
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &archetypes::Transform3D::update_fields().with_source_frames(["frame1", "frame2"]),
+            )
+            .build()?;
+
+        assert_eq!(
+            super::query_source_frames_in_static_chunk(&chunk, TransformAspect::Frame),
+            IntSet::from_iter([
+                TransformFrameIdHash::from_str("frame1"),
+                TransformFrameIdHash::from_str("frame2")
+            ])
         );
 
         Ok(())
