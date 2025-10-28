@@ -270,7 +270,7 @@ def test_datafusion_write_table(server_instance: ServerInstance) -> None:
     assert ctx.table(table_name).count() == smaller_count
 
 
-def test_datafusion_create_table(server_instance: ServerInstance) -> None:
+def test_create_table(server_instance: ServerInstance) -> None:
     table_name = "created_table"
 
     original_schema = pa.schema([("int64", pa.int64()), ("float32", pa.float32()), ("utf8", pa.utf8())])
@@ -286,7 +286,7 @@ def test_datafusion_create_table(server_instance: ServerInstance) -> None:
         assert returned_schema == original_schema
 
 
-def test_datafusion_create_table_from_dataset(server_instance: ServerInstance) -> None:
+def test_create_table_from_dataset(server_instance: ServerInstance) -> None:
     table_name = "dataset_to_table"
 
     df = server_instance.dataset.dataframe_query_view(index="time_1", contents="/**").df()
