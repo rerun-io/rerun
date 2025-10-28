@@ -62,13 +62,23 @@ pub use {
 };
 
 /// Number of allocation and their total size.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, Hash)]
 pub struct CountAndSize {
     /// Number of allocations.
     pub count: usize,
 
     /// Number of bytes.
     pub size: usize,
+}
+
+impl std::fmt::Debug for CountAndSize {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { count, size } = self;
+        f.debug_struct("CountAndSize")
+            .field("count", &re_format::format_uint(*count))
+            .field("size", &re_format::format_bytes(*size as _))
+            .finish()
+    }
 }
 
 impl CountAndSize {
