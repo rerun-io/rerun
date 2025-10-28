@@ -38,9 +38,11 @@ pub mod accounting_allocator;
 mod allocation_tracker;
 mod memory_limit;
 mod memory_use;
-mod peak_memory_stats;
 mod ram_warner;
 pub mod util;
+
+#[cfg(not(target_arch = "wasm32"))]
+mod peak_memory_stats;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod backtrace_native;
@@ -59,9 +61,11 @@ pub use self::{
     allocation_tracker::{CallstackStatistics, ReadableBacktrace},
     memory_limit::MemoryLimit,
     memory_use::MemoryUse,
-    peak_memory_stats::PeakMemoryStats,
     ram_warner::*,
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::peak_memory_stats::PeakMemoryStats;
 
 /// Number of allocation and their total size.
 #[derive(Copy, Clone, Default, PartialEq, Eq, Hash)]
