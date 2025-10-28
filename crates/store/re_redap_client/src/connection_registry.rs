@@ -191,6 +191,12 @@ impl ConnectionRegistryHandle {
             && !origin.is_localhost()
             && may_use_stored_credentials;
 
+        if actually_use_stored_credentials != may_use_stored_credentials {
+            re_log::debug!(
+                "not using stored credentials because origin is localhost; set USE_STORED_CREDENTIALS=1 if this is desired"
+            );
+        }
+
         let client_result = if actually_use_stored_credentials {
             Self::try_create_raw_client(
                 origin.clone(),
