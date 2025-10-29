@@ -330,12 +330,20 @@ impl SelectionPanel {
                     if let Some(data_result) = &data_result
                         && let Some(view) = viewport.view(view_id)
                     {
-                        visible_interactive_toggle_ui(
-                            &view.bundle_context_with_states(ctx, view_states),
-                            ui,
-                            ctx.lookup_query_result(*view_id),
-                            data_result,
-                        );
+                        let view_ctx = view.bundle_context_with_states(ctx, view_states);
+                        visible_interactive_toggle_ui(&view_ctx, ui, query_result, data_result);
+
+                        // TODO(RR-2700): Come up with something non-experimental.
+                        let is_spatial_view =
+                            view.class_identifier() == "3D" || view.class_identifier() == "2D";
+                        if ctx
+                            .global_context
+                            .app_options
+                            .experimental_coordinate_frame_display_and_override
+                            && is_spatial_view
+                        {
+                            coordinate_frame_ui(ui, &view_ctx, data_result);
+                        }
                     }
                 }
             }
@@ -497,6 +505,69 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
             visible_time_range_ui_for_view(ctx, ui, view, view_class, view_state);
         }
+    }
+}
+
+/// Shows the active coordinate frame.
+///
+/// This is not technically a visualizer, but it affects visualization, so we show it alongside.
+fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &DataResult) {
+    use re_types::archetypes;
+    use re_types::components::TransformFrameId;
+    use re_view::latest_at_with_blueprint_resolved_data;
+
+    let component_descr = archetypes::CoordinateFrame::descriptor_frame_id();
+    let component = component_descr.component;
+    let query_shadowed_components = true;
+    let query_result = latest_at_with_blueprint_resolved_data(
+        ctx,
+        None,
+        &ctx.current_query(),
+        data_result,
+        [component],
+        query_shadowed_components,
+    );
+
+    let override_path = data_result.override_path();
+
+    let frame_id_before = query_result
+        .get_mono_with_fallback::<TransformFrameId>(component)
+        .to_string();
+    let mut frame_id = frame_id_before.clone();
+
+    ui.list_item_flat_noninteractive(
+        list_item::PropertyContent::new("Coordinate frame")
+            .value_text_mut(&mut frame_id)
+            .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
+                let result_override = query_result.overrides.get(component);
+                let raw_override = result_override
+                    .and_then(|c| c.non_empty_component_batch_raw(component))
+                    .map(|(_, array)| array);
+
+                crate::visualizer_ui::remove_and_reset_override_buttons(
+                    ctx,
+                    ui,
+                    component_descr.clone(),
+                    override_path,
+                    &raw_override,
+                );
+            }),
+    )
+        .on_hover_ui(|ui| {
+            ui.markdown_ui(
+                "The coordinate frame this entity is associated with.
+
+To learn more about coordinate frames, see the [Spaces & Transforms](https://rerun.io/docs/concepts/spaces-and-transforms) in the manual.",
+            );
+        });
+
+    if frame_id_before != frame_id {
+        // Save as blueprint override.
+        ctx.save_blueprint_component(
+            override_path.clone(),
+            &component_descr,
+            &TransformFrameId::new(&frame_id),
+        );
     }
 }
 

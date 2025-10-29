@@ -10073,6 +10073,7 @@ dependencies = [
  "serde",
  "smallvec",
  "thiserror 2.0.17",
+ "vec1",
 ]
 
 [[package]]
