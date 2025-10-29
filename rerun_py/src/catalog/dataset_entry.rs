@@ -602,11 +602,38 @@ impl PyDatasetEntry {
     }
 
     /// Create a vector index on the given column.
+    ///
+    /// This will enable indexing and build the vector index over all existing values
+    /// in the specified component column.
+    ///
+    /// Results can be retrieved using the `search_vector` API, which will include
+    /// the time-point on the indexed timeline.
+    ///
+    /// Only one index can be created per component column -- executing this a second
+    /// time for the same component column will replace the existing index.
+    ///
+    /// Parameters
+    /// ----------
+    /// column : AnyComponentColumn
+    ///     The component column to create the index on.
+    /// time_index : IndexColumnSelector
+    ///     Which timeline this index will map to.
+    /// num_partitions : int | None
+    ///     The number of partitions to create for the index.
+    ///     (Deprecated, use target_partition_num_rows instead)
+    /// target_partition_num_rows : int | None
+    ///     The target size (in number of rows) for each partition.
+    ///     Defaults to 4096 if neither this nor num_partitions is specified.
+    /// num_sub_vectors : int
+    ///     The number of sub-vectors to use when building the index.
+    /// distance_metric : VectorDistanceMetricLike
+    ///     The distance metric to use for the index. ("L2", "Cosine", "Dot", "Hamming")
     #[pyo3(signature = (
         *,
         column,
         time_index,
-        num_partitions = 5,
+        num_partitions = None,
+        target_partition_num_rows = None,
         num_sub_vectors = 16,
         distance_metric = VectorDistanceMetricLike::VectorDistanceMetric(crate::catalog::PyVectorDistanceMetric::Cosine),
     ))]
@@ -615,7 +642,9 @@ impl PyDatasetEntry {
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
         time_index: PyIndexColumnSelector,
-        num_partitions: usize,
+        // TODO(RR-2798): Remove num_partitions since deprecated
+        num_partitions: Option<usize>,
+        target_partition_num_rows: Option<usize>,
         num_sub_vectors: usize,
         distance_metric: VectorDistanceMetricLike,
     ) -> PyResult<PyIndexingResult> {
@@ -631,8 +660,34 @@ impl PyDatasetEntry {
         let distance_metric: re_protos::cloud::v1alpha1::VectorDistanceMetric =
             distance_metric.try_into()?;
 
+        let (num_partitions, target_partition_num_rows) = match (
+            num_partitions,
+            target_partition_num_rows,
+        ) {
+            // num_partitions is deprecated
+            (Some(n), None) => {
+                re_log::warn!(
+                    "The 'num_partitions' parameter is deprecated. Please use 'target_partition_num_rows' instead."
+                );
+                (Some(n), None)
+            }
+            // target_partition_num_rows is preferred
+            (None, Some(s)) => (None, Some(s)),
+            // If neither is set, default target_partition_num_rows to 4096
+            (None, None) => (None, Some(4096)),
+            // If both are set it's an error
+            (Some(_), Some(_)) => {
+                return Err(PyValueError::new_err(
+                    "Cannot specify both num_partitions and target_partition_num_rows.",
+                ));
+            }
+        };
+
+        // Otherwise
+
         let properties = IndexProperties::VectorIvfPq {
             num_partitions,
+            target_partition_num_rows,
             num_sub_vectors,
             metric: distance_metric,
         };
