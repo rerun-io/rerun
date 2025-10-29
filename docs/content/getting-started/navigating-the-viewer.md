@@ -100,8 +100,8 @@ Each of the three sides has a button in the upper-right corner. Click these to s
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_toggle/2dadc5f29d9948678bdec9ef0e0671f4643c5f24/1200w.png">
 </picture>
 
-There are several ways to rearrange the viewer layout to your liking: through the Viewer [user interface](configure-the-viewer/interactively.md),
-via the [Blueprint API](configure-the-viewer/through-code-tutorial.md), or by [loading an .rbl file](configure-the-viewer/save-and-load.md).
+There are several ways to rearrange the viewer layout to your liking: through the Viewer [user interface](configure-the-viewer.md#interactive-configuration),
+via the [Blueprint API](configure-the-viewer.md#programmatic-blueprints), or by [loading an .rbl file](configure-the-viewer.md#save-and-load-blueprint-files).
 
 ## Exploring data
 
