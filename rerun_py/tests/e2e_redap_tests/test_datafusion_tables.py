@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 from datafusion import DataFrameWriteOptions, InsertOp, SessionContext, col, functions as f
-from rerun.catalog import CatalogClient, EntryKind, TableInsertMode
+from rerun.catalog import EntryKind, TableInsertMode
 
 if TYPE_CHECKING:
     from .conftest import ServerInstance
@@ -313,6 +313,7 @@ def test_create_table_from_dataset(server_instance: ServerInstance) -> None:
         for returned_field in returned_schema:
             original_field = original_schema.field(returned_field.name)
             assert returned_field.metadata == original_field.metadata
+
 
 def test_client_write_table(server_instance: ServerInstance) -> None:
     table_name = "simple_datatypes"

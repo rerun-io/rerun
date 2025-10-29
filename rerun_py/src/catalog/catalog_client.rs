@@ -1,6 +1,6 @@
 use arrow::datatypes::Schema;
-use arrow::pyarrow::PyArrowType;
 use arrow::ffi_stream::ArrowArrayStreamReader;
+use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
     Bound, Py, PyAny, PyResult, Python,

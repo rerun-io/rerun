@@ -24,7 +24,6 @@ from .error_utils import RerunIncompatibleDependencyVersionError, RerunMissingDe
 
 if TYPE_CHECKING:
     import datafusion
-    import pyarrow as pa
 
 
 # Known FFI compatible releases of Datafusion.
