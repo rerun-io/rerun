@@ -1,4 +1,7 @@
-use std::{borrow::Cow, sync::Arc};
+use std::{
+    borrow::{Borrow as _, Cow},
+    sync::Arc,
+};
 
 use arrow::{
     array::{
@@ -759,20 +762,17 @@ where
 ///
 /// This is necessary when we need to cast the array, as the casted array
 /// must be owned by the iterator rather than borrowed from the caller.
-struct OwnedSliceIterator<'a, P, T, I>
+struct OwnedSliceIterator<'a, T, I>
 where
-    P: arrow::array::ArrowPrimitiveType<Native = T>,
     T: arrow::datatypes::ArrowNativeType,
     I: Iterator<Item = Span<usize>>,
 {
-    values: arrow::array::PrimitiveArray<P>,
+    values: Cow<'a, arrow::buffer::ScalarBuffer<T>>,
     component_spans: I,
-    _phantom: std::marker::PhantomData<&'a T>,
 }
 
-impl<'a, P, T, I> Iterator for OwnedSliceIterator<'a, P, T, I>
+impl<'a, T, I> Iterator for OwnedSliceIterator<'a, T, I>
 where
-    P: arrow::array::ArrowPrimitiveType<Native = T>,
     T: arrow::datatypes::ArrowNativeType + Clone,
     I: Iterator<Item = Span<usize>>,
 {
@@ -780,8 +780,11 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         let span = self.component_spans.next()?;
-        let values_slice = self.values.values().as_ref();
-        Some(Cow::Owned(values_slice[span.range()].to_vec()))
+        match &self.values {
+            Cow::Borrowed(values) => Some(Cow::Borrowed(&values[span.range()])),
+            // TODO(grtlr): This `clone` here makes me sad, but I don't see a way around it.
+            Cow::Owned(values) => Some(Cow::Owned(values[span.range()].to_vec())),
+        }
     }
 }
 
@@ -816,10 +819,10 @@ where
     ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
         // We first try to down cast (happy path - zero copy).
         if let Some(values) = array.downcast_array_ref::<arrow::array::PrimitiveArray<P>>() {
-            let values_slice = values.values().as_ref();
-            return Either::Left(Either::Left(
-                component_spans.map(move |span| Cow::Borrowed(&values_slice[span.range()])),
-            ));
+            return Either::Right(OwnedSliceIterator {
+                values: Cow::Borrowed(values.values()),
+                component_spans,
+            });
         }
 
         // Then we try to perform a primitive cast (requires ownership).
@@ -827,20 +830,18 @@ where
             Ok(casted) => casted,
             Err(err) => {
                 error_on_cast_failure(component, &P::DATA_TYPE, array.data_type(), &err);
-                return Either::Left(Either::Right(std::iter::empty()));
+                return Either::Left(std::iter::empty());
             }
         };
 
-        let Some(casted) = casted.downcast_array_ref::<arrow::array::PrimitiveArray<P>>() else {
+        let Some(values) = casted.downcast_array_ref::<arrow::array::PrimitiveArray<P>>() else {
             error_on_downcast_failure(component, "ArrowPrimitiveArray<T>", array.data_type());
-            // TODO: left-right-left-right 🇳🇱🎶
-            return Either::Left(Either::Right(std::iter::empty()));
+            return Either::Left(std::iter::empty());
         };
 
         Either::Right(OwnedSliceIterator {
-            values: casted.clone(),
+            values: Cow::Owned(values.values().clone()),
             component_spans,
-            _phantom: std::marker::PhantomData,
         })
     }
 }
