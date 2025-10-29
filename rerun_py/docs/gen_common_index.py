@@ -299,11 +299,14 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Interfaces",
         mod_path="rerun",
         class_list=[
+            "ComponentMixin",
+            "ComponentBatchLike",
             "AsComponents",
             "ComponentBatchLike",
             "ComponentColumn",
         ],
         default_filters=False,
+        show_tables=True,
     ),
     ################################################################################
     # Blueprint APIs

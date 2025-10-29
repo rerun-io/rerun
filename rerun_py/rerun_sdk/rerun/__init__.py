@@ -35,6 +35,7 @@ from ._baseclasses import (
     ComponentColumn as ComponentColumn,
     ComponentColumnList as ComponentColumnList,
     ComponentDescriptor as ComponentDescriptor,
+    ComponentMixin as ComponentMixin,
     DescribedComponentBatch as DescribedComponentBatch,
 )
 from ._image_encoded import (
