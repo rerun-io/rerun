@@ -815,6 +815,8 @@ impl ViewClass for TimeSeriesView {
                         });
                     }
                 }
+
+                ui.ctx().request_repaint(); // Make sure we get another frame with the view reset.
             } else {
                 let mut transform_changed = false;
 
