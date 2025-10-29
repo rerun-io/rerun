@@ -42,7 +42,7 @@ class RateLimiter:
 _T = TypeVar("_T", bound=Hashable)
 
 
-def _sanitize_dependency_graph(dependency_graph: dict[_T, list[_T]]):
+def _sanitize_dependency_graph(dependency_graph: dict[_T, list[_T]]) -> None:
     """
     Sanitize the dependency graph.
 
@@ -63,7 +63,7 @@ def _sanitize_dependency_graph(dependency_graph: dict[_T, list[_T]]):
     rec_stack = set()
     path = []
 
-    def find_cycle(node):
+    def find_cycle(node: _T) -> bool:
         visited.add(node)
         rec_stack.add(node)
         path.append(node)
