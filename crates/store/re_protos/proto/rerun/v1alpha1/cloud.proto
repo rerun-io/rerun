@@ -344,6 +344,9 @@ message CreateIndexRequest {
 message CreateIndexResponse {
   reserved 1;
   reserved "data";
+
+  // Optional debug information about the index-creation task
+  DebugInfo debug_info = 2;
 }
 
 message IndexConfig {
@@ -912,4 +915,10 @@ message SystemTable {
 message LanceTable {
   // The URL of the Lance table.
   string table_url = 1;
+}
+
+// Optional debug info
+message DebugInfo {
+  // The amount of memory used by the task or service call in bytes
+  optional uint64 memory_used = 1;
 }
