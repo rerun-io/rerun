@@ -116,7 +116,12 @@ impl PyTableEntry {
     }
 }
 
-#[pyclass(name = "TableInsertMode", eq, eq_int)]
+#[pyclass(
+    name = "TableInsertMode",
+    eq,
+    eq_int,
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, strum_macros::EnumIter)]
 pub enum PyTableInsertMode {
     #[pyo3(name = "APPEND")]
