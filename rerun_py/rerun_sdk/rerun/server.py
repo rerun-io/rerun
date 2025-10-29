@@ -19,6 +19,7 @@ class Server:
     This class allows you to start and manage a Rerun server programmatically.
     The server hosts recordings and serves them via HTTP, and provides access to
     the catalog through a client connection.
+    When the object goes out of scope the server is automatically shut down.
 
     The server can be used as a context manager, which will automatically shut down
     the server when exiting the context.
