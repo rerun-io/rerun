@@ -5,7 +5,6 @@ use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::{PyErr, PyResult, Python};
 use std::collections::BTreeSet;
-use std::sync::Arc;
 use tracing::Instrument as _;
 
 use crate::catalog::table_entry::PyTableInsertMode;
@@ -265,7 +264,6 @@ impl ConnectionHandle {
                     .await
                     .map_err(to_py_err)?
                     .ok_or(PyValueError::new_err("Unable to find EntryId for table"))?;
-                let schema = stream.schema();
 
                 // Since the errors occur during streaming, we cannot let this method
                 // fail without doing a collect operation. Instead, we log a warning to
