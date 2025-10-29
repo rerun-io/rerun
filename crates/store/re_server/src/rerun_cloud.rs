@@ -871,6 +871,28 @@ impl RerunCloudService for RerunCloudHandler {
         Err(tonic::Status::unimplemented("create_index not implemented"))
     }
 
+    async fn list_indexes(
+        &self,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::ListIndexesRequest>,
+    ) -> std::result::Result<
+        tonic::Response<re_protos::cloud::v1alpha1::ListIndexesResponse>,
+        tonic::Status,
+    > {
+        Err(tonic::Status::unimplemented("list_indexes not implemented"))
+    }
+
+    async fn delete_indexes(
+        &self,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::DeleteIndexesRequest>,
+    ) -> std::result::Result<
+        tonic::Response<re_protos::cloud::v1alpha1::DeleteIndexesResponse>,
+        tonic::Status,
+    > {
+        Err(tonic::Status::unimplemented(
+            "delete_indexes not implemented",
+        ))
+    }
+
     /* Queries */
 
     type SearchDatasetStream = SearchDatasetResponseStream;
