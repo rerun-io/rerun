@@ -154,9 +154,6 @@ pub mod external {
 
     #[cfg(feature = "data_loaders")]
     pub use re_data_loader::{self, external::*};
-
-    #[cfg(feature = "oss_server")]
-    pub use re_server;
 }
 
 #[cfg(feature = "web_viewer")]

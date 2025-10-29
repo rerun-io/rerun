@@ -9,7 +9,7 @@ use pyo3::{
         PyStringMethods as _,
     },
 };
-use re_sdk::external::re_server::{self, Args as ServerArgs};
+use re_server::{self, Args as ServerArgs};
 
 #[pyclass(name = "ServerInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: skip pyclass_eq, non-trivial implementation
 pub struct PyServerInternal {

@@ -23,7 +23,9 @@ mod arrow;
 mod catalog;
 mod dataframe;
 mod python_bridge;
-mod server;
 mod utils;
 mod video;
 mod viewer;
+
+#[cfg(feature = "oss_server")]
+mod server;

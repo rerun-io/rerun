@@ -259,6 +259,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     crate::viewer::register(py, m)?;
 
     // server
+    #[cfg(feature = "oss_server")]
     crate::server::register(py, m)?;
 
     Ok(())
