@@ -1,4 +1,5 @@
 use crate::transform_aspect::TransformAspect;
+use std::collections::BTreeMap;
 
 use nohash_hasher::IntSet;
 use re_chunk_store::RangeQuery;
@@ -6,42 +7,34 @@ use re_entity_db::EntityDb;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, TimelineName};
 use re_types::{TransformFrameIdHash, archetypes};
 
-/// Returns all sources ever mentioned in the given time range plus values ahead and before min/max.
+/// Returns for which source frames the transforms applies within the given time range.
 ///
-/// If extended bounds yield no value for times <=min, the entity-derived default frame will automatically be appended
-/// since logically it is present whenever there's no source logged.
-/// Therefore, the returned list is never empty.
+/// `min_time`/`max_time` are inclusive.
 ///
-/// This is used to build our look-up data-structure in [`crate::TransformResolutionCache`].
-/// There, we have to know the source frame for a given entity.
-/// Doing so just by looking at individual chunks as they come in is unfortunately not possible:
-/// there may be temporally overlapping chunks, clears and recursive clears, all which have to be taken into account.
-/// Therefore, we have to do a range query for the affected range as done here.
+/// The returned map is keyed over the minimum of a range and will always at least contain `min_time`.
+/// If there was no value at `min_time` logged directly, the value returned for it is the last known value on this timeline.
 ///
-/// Since we don't allow source frames to be mentioned in multiple entities over time,
-/// this is safe to use for a conservative estimate of when a source frame may have changed.
-/// If we did allow for it, this kind of conservative set would cause issues!
-/// Example:
-/// Let's take this setup violating said invariant:
-/// ```raw
-/// /entity0/ time=0: sources: A, B
-///           time=1: sources: C
-/// /entity1/ time=1: sources: A, B
-/// ```
-/// `query_sources_in_extended_bounds` would now report A, B and C.
-/// Leaving us to incorrectly believe that for `/entity0/ @ time=1` there might be data for A & B when we
-/// actually need to lookup `/entity1/`.
-pub fn query_sources_in_extended_bounds(
+/// The minimum time will never be lower than `min_time`.
+/// The maximum time will never be larger than `max_time`.
+///
+/// Why is this needed? Why the query?
+/// To build our look-up data-structure chunk by chunk, we have to know the source frames for any new chunk.
+/// Doing so just by looking at a single chunk is unfortunately not possible - there may be temporally overlapping chunks,
+/// clears and recursive clears, all of which have to be taken into account.
+/// Therefore, we have to do a range query for the affected range.
+pub fn query_sources_per_time_range(
     entity_db: &EntityDb,
     entity_path: &EntityPath,
     timeline: TimelineName,
     aspects: TransformAspect,
     min_time: TimeInt,
     max_time: TimeInt,
-) -> IntSet<TransformFrameIdHash> {
+) -> BTreeMap<TimeInt, Vec<TransformFrameIdHash>> {
     let fallback_source = TransformFrameIdHash::from_entity_path(entity_path);
 
     if aspects.contains(TransformAspect::Frame) {
+        re_tracing::profile_function!();
+
         let source_frame_component = archetypes::Transform3D::descriptor_source_frame().component;
         let result = entity_db.storage_engine().cache().range(
             &RangeQuery::new(timeline, AbsoluteTimeRange::new(min_time, max_time))
@@ -50,36 +43,67 @@ pub fn query_sources_in_extended_bounds(
             [source_frame_component],
         );
 
+        dbg!(min_time, max_time);
+        dbg!(&result);
+
         if let Some(chunks) = result.get(source_frame_component) {
-            let mut need_to_add_fallback = chunks
-                .iter()
-                .flat_map(|chunk| chunk.iter_component_indices(timeline, source_frame_component))
-                .next()
-                .is_none_or(|(first_time, _)| first_time > min_time);
+            let mut query_sources_per_time_range: BTreeMap<TimeInt, Vec<TransformFrameIdHash>> =
+                chunks
+                    .iter()
+                    .flat_map(move |chunk| {
+                        itertools::izip!(
+                            chunk.iter_component_indices(timeline, source_frame_component),
+                            chunk.iter_slices::<String>(source_frame_component),
+                        )
+                    })
+                    .map(|((time, _row), sources)| {
+                        if sources.is_empty() {
+                            (time, vec![fallback_source])
+                        } else {
+                            (
+                                time,
+                                sources
+                                    .into_iter()
+                                    .map(|source_frame| {
+                                        TransformFrameIdHash::from_str(source_frame.as_str())
+                                    })
+                                    .collect(),
+                            )
+                        }
+                    })
+                    .collect();
 
-            let mut query_sources_in_extended_bounds: IntSet<TransformFrameIdHash> = chunks
-                .iter()
-                .flat_map(|chunk| chunk.iter_slices::<String>(source_frame_component))
-                .flat_map(|sources| {
-                    if sources.is_empty() {
-                        // If empty shows up we have to assume the fallback is active.
-                        need_to_add_fallback = true;
+            if let Some(first_time) = query_sources_per_time_range.keys().next().copied() {
+                if first_time < min_time {
+                    // Clamp the first value's time to the min range, unless the min-range value is already in the list.
+                    if let Some(first_value) = query_sources_per_time_range.remove(&first_time) {
+                        query_sources_per_time_range
+                            .entry(min_time)
+                            .or_insert(first_value);
                     }
-                    sources
-                        .into_iter()
-                        .map(|source| TransformFrameIdHash::from_str(source.as_str()))
-                })
-                .collect();
+                } else if first_time > min_time {
+                    // If the first value's time is higher than the min range, we need to add the fallback entry for everything before.
+                    query_sources_per_time_range.insert(min_time, vec![fallback_source]);
+                }
 
-            if need_to_add_fallback {
-                query_sources_in_extended_bounds.insert(fallback_source);
+                // Extended range may give us a single value larger than the max range. Remove it.
+                if let Some(entry) = query_sources_per_time_range.last_entry()
+                    && entry.key() > &max_time
+                {
+                    entry.remove();
+                }
+
+                query_sources_per_time_range
+            } else {
+                BTreeMap::from_iter([(min_time, vec![fallback_source])])
             }
-            return query_sources_in_extended_bounds;
+        } else {
+            BTreeMap::from_iter([(min_time, vec![fallback_source])])
         }
+    } else {
+        // TODO(RR-2627, RR-2680): Custom source is not supported yet for Pinhole & Poses.
+        BTreeMap::from_iter([(min_time, vec![fallback_source])])
     }
-
-    // TODO(RR-2627, RR-2680): Custom source is not supported yet for Pinhole & Poses.
-    IntSet::from_iter([fallback_source])
 }
 
 /// Extracts all the source frames mentioned in a static chunk.
@@ -109,8 +133,9 @@ pub fn query_source_frames_in_static_chunk(
 
 #[cfg(test)]
 mod tests {
-    use super::query_sources_in_extended_bounds;
+    use super::query_sources_per_time_range;
     use crate::transform_aspect::TransformAspect;
+    use std::collections::BTreeMap;
 
     use nohash_hasher::IntSet;
     use re_chunk_store::Chunk;
@@ -161,7 +186,7 @@ mod tests {
         // Note that this is *not* a made-up or redundant case that should be covered by `query_sources_static_chunk`.
         // Rather, this can be of interest when there are other temporal data on the same entity, but sources happen to be static.
         assert_eq!(
-            query_sources_in_extended_bounds(
+            query_sources_per_time_range(
                 &entity_db,
                 &entity_path_static,
                 *timeline.name(),
@@ -169,10 +194,13 @@ mod tests {
                 TimeInt::STATIC,
                 100.try_into()?,
             ),
-            IntSet::from_iter([TransformFrameIdHash::from_str("frame0")])
+            BTreeMap::from_iter([(
+                TimeInt::STATIC,
+                vec![TransformFrameIdHash::from_str("frame0")]
+            )])
         );
         assert_eq!(
-            query_sources_in_extended_bounds(
+            query_sources_per_time_range(
                 &entity_db,
                 &entity_path_static,
                 *timeline.name(),
@@ -180,12 +208,15 @@ mod tests {
                 10.try_into()?,
                 100.try_into()?,
             ),
-            IntSet::from_iter([TransformFrameIdHash::from_str("frame0")])
+            BTreeMap::from_iter([(
+                10.try_into()?,
+                vec![TransformFrameIdHash::from_str("frame0")]
+            )])
         );
 
         // Test on changing component.
         assert_eq!(
-            query_sources_in_extended_bounds(
+            query_sources_per_time_range(
                 &entity_db,
                 &entity_path_dynamic,
                 *timeline.name(),
@@ -193,16 +224,30 @@ mod tests {
                 0.try_into()?,
                 10000.try_into()?,
             ),
-            IntSet::from_iter([
-                TransformFrameIdHash::from_entity_path(&entity_path_dynamic),
-                TransformFrameIdHash::from_str("frame1"),
-                TransformFrameIdHash::from_str("frame2"),
-                TransformFrameIdHash::from_str("frame3"),
-                TransformFrameIdHash::from_str("frame4")
+            BTreeMap::from_iter([
+                (
+                    0.try_into()?,
+                    vec![TransformFrameIdHash::from_entity_path(&entity_path_dynamic)]
+                ),
+                (
+                    10.try_into()?,
+                    vec![TransformFrameIdHash::from_str("frame1")]
+                ),
+                (
+                    20.try_into()?,
+                    vec![
+                        TransformFrameIdHash::from_str("frame2"),
+                        TransformFrameIdHash::from_str("frame3")
+                    ]
+                ),
+                (
+                    30.try_into()?,
+                    vec![TransformFrameIdHash::from_str("frame4")]
+                )
             ])
         );
         assert_eq!(
-            query_sources_in_extended_bounds(
+            query_sources_per_time_range(
                 &entity_db,
                 &entity_path_dynamic,
                 *timeline.name(),
@@ -210,18 +255,25 @@ mod tests {
                 11.try_into()?,
                 29.try_into()?,
             ),
-            IntSet::from_iter([
-                TransformFrameIdHash::from_str("frame1"),
-                TransformFrameIdHash::from_str("frame2"),
-                TransformFrameIdHash::from_str("frame3"),
-                TransformFrameIdHash::from_str("frame4") // Because of extended range
+            BTreeMap::from_iter([
+                (
+                    11.try_into()?,
+                    vec![TransformFrameIdHash::from_str("frame1")]
+                ),
+                (
+                    20.try_into()?,
+                    vec![
+                        TransformFrameIdHash::from_str("frame2"),
+                        TransformFrameIdHash::from_str("frame3")
+                    ]
+                ),
             ])
         );
 
         // Test for correct behavior if there's no data at all.
         let entity_path = EntityPath::from("nope");
         assert_eq!(
-            query_sources_in_extended_bounds(
+            query_sources_per_time_range(
                 &entity_db,
                 &entity_path,
                 *timeline.name(),
@@ -229,7 +281,10 @@ mod tests {
                 42.try_into()?,
                 100.try_into()?,
             ),
-            IntSet::from_iter([TransformFrameIdHash::from_entity_path(&entity_path)])
+            BTreeMap::from_iter([(
+                42.try_into()?,
+                vec![TransformFrameIdHash::from_entity_path(&entity_path)]
+            )])
         );
 
         Ok(())
