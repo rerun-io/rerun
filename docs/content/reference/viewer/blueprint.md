@@ -1,51 +1,62 @@
 ---
-title: Blueprint
+title: Blueprint Panel
 order: 1
 ---
 
-The blueprint is how you configure what is displayed in the Rerun viewer.
-It is saved between sessions and is unique to a given [application id](../../concepts/apps-and-recordings.md).
-The blueprint includes all view configurations, entity groupings and entity settings, also known as _data blueprints_.
+The Blueprint Panel shows the hierarchical structure of your current blueprint and provides controls for modifying the Viewer layout.
 
-This view shows the blueprint for the active recording.
-Everything visible in the [Viewport](viewport.md) has a representation here,
-making it an easy way to select a View and the [Entities](../../concepts/entity-component.md) it shows.
+For a complete understanding of blueprints, see [Blueprints](../../concepts/blueprint.md). For hands-on tutorials on configuring the Viewer, see [Configure the Viewer](../../getting-started/configure-the-viewer.md).
 
 <picture>
-  <img src="https://static.rerun.io/blueprint-example/24fe3f15c15dc8c74e1feec879cab624a34136e6/full.png" alt="">
+  <img src="https://static.rerun.io/blueprint-example/24fe3f15c15dc8c74e1feec879cab624a34136e6/full.png" alt="Blueprint panel showing view hierarchy">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/blueprint-example/24fe3f15c15dc8c74e1feec879cab624a34136e6/480w.png">
 </picture>
 
+## Panel Header Controls
 
-Controls
---------
-### Reset
-The reset button resets the entire blueprint back to its heuristic-chosen default.
-This includes all settings for entities, Groups and Views.
+### Reset Button
+The reset button in the blueprint panel header provides two reset options:
 
-### Add view
-With this control you can add new Views for arbitrary [Spaces](../../concepts/spaces-and-transforms.md).
+- **Reset to Default Blueprint**: Returns to your programmatically specified blueprint (sent from code via `rr.send_blueprint()`) or a loaded blueprint file (`.rbl`). This becomes the "default" whenever you send or load a blueprint.
 
-Contents
---------
-Upon hovering any line in the Blueprint panel, you'll find shorthands for removing and hide/show.
+- **Reset to Heuristic Blueprint**: Generates a new blueprint automatically based on your current data. The Viewer analyzes your logged data and creates an appropriate layout using built-in heuristics.
 
-### Data blueprints
-All entities shown in the blueprint panel refer in fact to their Data Blueprints.
-I.e. the entity plus the associated blueprint settings.
-As such, all changes made here are only relevant for the View in which they reside.
+If no default blueprint has been set, the reset button uses the heuristic blueprint. See [Reset Behavior](../../concepts/blueprint.md#reset-behavior-heuristic-vs-default) for more details.
+
+### Add View
+The "+" button allows you to add new views or containers for any [Space](../../concepts/spaces-and-transforms.md).
+
+## Blueprint Tree
+
+The blueprint panel displays a tree view showing:
+- The viewport (root container)
+- Nested containers (Horizontal, Vertical, Grid, Tabs)
+- Views within containers
+- Entities displayed in each view
+
+### Interaction
+
+Hovering over any item reveals controls for:
+- **Eye icon**: Show or hide the item
+- **"-" button**: Remove the item from the blueprint
+
+Right-click any item for a context menu with additional operations. See [Configure the Viewer](../../getting-started/configure-the-viewer.md#interactive-configuration) for details on all interactive operations.
+
+### Data Blueprints
+
+Entities shown in the blueprint panel refer to their *data blueprints*—the entity plus its associated blueprint settings. Changes made here apply only to the specific view where the entity appears.
 
 ### Groups
-Whenever entities are added to a view (either manually or automatically), groupings
-are automatically created.
-Groups, despite being derived from the [Entity Path](../../concepts/entity-path.md) are independent of logged data.
-They are meant to improve the handling of large views and allow for hierarchical manipulation
-of blueprints.
 
-Adding Entities
------------------------------
-To (re-)add an entity to a view, you need first need to select the respective view.
-You then can open a dedicated menu through a button in the [Selection view](selection.md).
+When entities are added to a view (manually or automatically), hierarchical groupings are created based on [Entity Paths](../../concepts/entity-path.md). These groups help organize large views and enable hierarchical manipulation of blueprints. Groups are independent of logged data and exist purely for blueprint organization.
 
-This allows you to add any entity with a matching [category](viewport.md#view-classes) and a valid [transform](../../concepts/spaces-and-transforms.md) to your
-view's path.
+## Adding Entities to Views
+
+To add or re-add an entity to a view:
+1. Select the target view in the blueprint panel
+2. Click the button in the [Selection Panel](selection.md) to open the entity picker
+3. Select entities to add (only compatible entities for that view type are shown)
+
+See [Entity Queries](../../reference/entity-queries.md) for information on how view content is determined.
+
+For more information about configuring the viewer, see [Blueprints](../../getting-started/configure-the-viewer.md).
