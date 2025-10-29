@@ -11,8 +11,6 @@ This supports a workflow to develop or debug locally on a single recording then 
 
 # Open source server
 
-The open source server is still in development to reach API parity with the cloud offering and evolve with the cloud offering.
-
 ## Launching the server
 
 The server needs to be opened in a separate window.
@@ -65,15 +63,18 @@ Everything below assumes that the server has been launched and a client has been
 ### Datasets overview
 
 A dataset is a collection of recordings that can be queried against.
-If we have already created a dataset we can retrieve it, otherwise we can create it.
+If we have already created a dataset we can retrieve it,
 
 ```python
-if "oss_demo" in client.dataset_names():
-        dataset = client.get_dataset_entry(name="oss_demo")
-else:
-    dataset = client.create_dataset(
-        name="oss_demo",
-    )
+dataset = client.get_dataset_entry(name="oss_demo")
+```
+
+otherwise we can create it.
+
+```python
+dataset = client.create_dataset(
+    name="oss_demo",
+)
 ```
 
 In order to add additional recordings to a dataset we use the `register` api.
