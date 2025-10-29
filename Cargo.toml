@@ -272,7 +272,7 @@ macaw = "0.30.0"
 mcap = "0.23.3"
 memmap2 = "0.9.8"
 memory-stats = "1.2"
-mimalloc = "0.1.48"
+mimalloc = { version = "0.1.48", features = ["v3"] }
 mime_guess2 = "2.3" # infer MIME type by file extension, and map mime to file extension
 mint = "0.5.9"
 natord = "1.0.9"
