@@ -233,17 +233,14 @@ mod tests {
 
         Ok(())
     }
-    
+
     #[test]
     fn test_query_source_frames_in_static_chunk() -> Result<(), Box<dyn std::error::Error>> {
         let entity_path = EntityPath::from("test_entry");
 
         // Test with an empty chunk.
         let chunk = Chunk::builder(entity_path.clone())
-            .with_archetype_auto_row(
-                TimePoint::STATIC,
-                &archetypes::Transform3D::update_fields(),
-            )
+            .with_archetype_auto_row(TimePoint::STATIC, &archetypes::Transform3D::update_fields())
             .build()?;
         assert_eq!(
             super::query_source_frames_in_static_chunk(&chunk, TransformAspect::Frame),
