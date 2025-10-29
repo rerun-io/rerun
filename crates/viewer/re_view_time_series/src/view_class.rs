@@ -527,21 +527,26 @@ impl ViewClass for TimeSeriesView {
                 &view_ctx,
                 TimeAxis::descriptor_view_range().component,
             )?;
-        let x_range = make_range_sane(Range1D::new(
-            (match view_time_range.start {
-                re_types::datatypes::TimeRangeBoundary::Infinite => timeline_start,
-                _ => {
-                    view_time_range
-                        .start
-                        .start_boundary_time(view_current_time)
-                        .0
-                }
-            } - time_offset) as f64,
-            (match view_time_range.end {
-                re_types::datatypes::TimeRangeBoundary::Infinite => timeline_end,
-                _ => view_time_range.end.end_boundary_time(view_current_time).0,
-            } - time_offset) as f64,
-        ));
+
+        let resolve_time_range = |view_time_range: &re_types::blueprint::components::TimeRange| {
+            make_range_sane(Range1D::new(
+                (match view_time_range.start {
+                    re_types::datatypes::TimeRangeBoundary::Infinite => timeline_start,
+                    _ => {
+                        view_time_range
+                            .start
+                            .start_boundary_time(view_current_time)
+                            .0
+                    }
+                } - time_offset) as f64,
+                (match view_time_range.end {
+                    re_types::datatypes::TimeRangeBoundary::Infinite => timeline_end,
+                    _ => view_time_range.end.end_boundary_time(view_current_time).0,
+                } - time_offset) as f64,
+            ))
+        };
+
+        let x_range = resolve_time_range(&view_time_range);
 
         let scalar_axis =
             ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
@@ -777,8 +782,42 @@ impl ViewClass for TimeSeriesView {
                 scalar_axis.reset_blueprint_component(ctx, ScalarAxis::descriptor_range());
                 time_axis.reset_blueprint_component(ctx, TimeAxis::descriptor_view_range());
 
-                ui.ctx().request_repaint(); // Make sure we get another frame with the reset actually applied.
+                match link_x_axis {
+                    LinkAxis::Independent => {}
+                    LinkAxis::LinkToGlobal => {
+                        // Also reset the globally linked transform to fallbacks.
+                        ui.memory_mut(|mem| {
+                            let shared_transform = mem.data.get_temp_mut_or_insert_with(
+                                egui::Id::new(timeline.name()),
+                                || transform,
+                            );
+
+                            let view_ctx = self.view_context(ctx, view_id, state);
+                            let view_time_range = re_viewer_context::typed_fallback_for::<
+                                re_types::blueprint::components::TimeRange,
+                            >(
+                                &time_axis.query_context(&view_ctx),
+                                TimeAxis::descriptor_view_range().component,
+                            );
+                            let x_range = resolve_time_range(&view_time_range);
+
+                            let y_range = re_viewer_context::typed_fallback_for::<Range1D>(
+                                &scalar_axis.query_context(&view_ctx),
+                                ScalarAxis::descriptor_range().component,
+                            );
+
+                            let bounds = egui_plot::PlotBounds::from_min_max(
+                                [x_range.start(), y_range.start()],
+                                [x_range.end(), y_range.end()],
+                            );
+                            *shared_transform =
+                                egui_plot::PlotTransform::new(*transform.frame(), bounds, false);
+                        });
+                    }
+                }
             } else {
+                let mut transform_changed = false;
+
                 // We manually handle inputs for the plot to better interact with blueprints.
                 let drag_delta = if !is_dragging_time_cursor
                     && response.dragged_by(egui::PointerButton::Primary)
@@ -798,8 +837,6 @@ impl ViewClass for TimeSeriesView {
                 }
 
                 let move_delta = drag_delta + scroll_delta;
-
-                let mut transform_changed = false;
 
                 if let Some(hover_pos) = response.hover_pos()
                     && (move_delta != egui::Vec2::ZERO || zoom_delta != egui::Vec2::ONE)
