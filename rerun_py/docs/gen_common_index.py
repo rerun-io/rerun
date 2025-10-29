@@ -97,7 +97,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "notebook_show",
             "legacy_notebook_show",
         ],
-        class_list=["RecordingStream"],
+        class_list=["ChunkBatcherConfig", "DescribedComponentBatch", "RecordingStream", "TimeColumnLike"],
     ),
     Section(
         title="Logging functions",
@@ -175,6 +175,11 @@ SECTION_TABLE: Final[list[Section]] = [
             "datatypes.ClassDescription",
         ],
         gen_page=False,
+    ),
+    Section(
+        title="ErrorUtils",
+        mod_path="rerun.error_utils",
+        show_tables=False,
     ),
     Section(
         title="Images",
@@ -308,6 +313,7 @@ SECTION_TABLE: Final[list[Section]] = [
         mod_path="rerun.blueprint",
         class_list=[
             "Blueprint",
+            "BlueprintLike",
             "BlueprintPart",
             "Container",
             "ContainerLike",

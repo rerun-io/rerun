@@ -57,6 +57,7 @@ from ._properties import (
 )
 from ._send_columns import (
     TimeColumn as TimeColumn,
+    TimeColumnLike as TimeColumnLike,
     TimeNanosColumn as TimeNanosColumn,
     TimeSecondsColumn as TimeSecondsColumn,
     TimeSequenceColumn as TimeSequenceColumn,
@@ -147,6 +148,7 @@ from .dynamic_archetype import (
     DynamicArchetype as DynamicArchetype,
 )
 from .error_utils import (
+    strict_mode as strict_mode,
     set_strict_mode as set_strict_mode,
 )
 from .legacy_notebook import (
