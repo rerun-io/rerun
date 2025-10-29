@@ -28,6 +28,7 @@ plugins:
             - https://docs.python.org/3/objects.inv
             - https://numpy.org/doc/stable/objects.inv
             - https://ipython.readthedocs.io/en/stable/objects.inv
+            - https://datafusion.apache.org/python/objects.inv
           options: # https://mkdocstrings.github.io/python/usage/#globallocal-options
             docstring_section_style: spacy # list spacy table
             docstring_style: numpy
