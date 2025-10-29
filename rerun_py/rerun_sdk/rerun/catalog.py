@@ -20,6 +20,7 @@ from .error_utils import RerunIncompatibleDependencyVersionError, RerunMissingDe
 
 if TYPE_CHECKING:
     import datafusion
+    import pyarrow as pa
 
 
 # Known FFI compatible releases of Datafusion.
@@ -180,6 +181,25 @@ class CatalogClient:
 
         """
         return self._raw_client.register_table(name, url)
+
+    def create_table_entry(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
+        """
+        Create and register a new table.
+
+        Parameters
+        ----------
+        name
+            The name of the table entry to create. It must be unique within all entries in the catalog. An exception
+            will be raised if an entry with the same name already exists.
+
+        schema
+            The schema of the table to create.
+
+        url
+            The URL of the directory for where to store the Lance table.
+
+        """
+        return self._raw_client.create_table_entry(name, schema, url)
 
     def do_global_maintenance(self) -> None:
         """Perform maintenance tasks on the whole system."""

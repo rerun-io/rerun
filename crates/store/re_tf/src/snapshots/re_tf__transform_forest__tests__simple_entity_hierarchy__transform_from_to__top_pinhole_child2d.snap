@@ -4,10 +4,10 @@ expression: "pretty_print_transform_frame_ids_in(&result, &all_transform_frame_i
 ---
 [
     (
-        rerun_tf#/,
+        tf#/,
         Ok(
             TransformInfo {
-                root: rerun_tf#/,
+                root: tf#/,
                 target_from_source: Affine3A {
                     matrix3: Mat3A {
                         x_axis: Vec3A(
@@ -63,10 +63,10 @@ expression: "pretty_print_transform_frame_ids_in(&result, &all_transform_frame_i
         ),
     ),
     (
-        rerun_tf#/top,
+        tf#/top,
         Ok(
             TransformInfo {
-                root: rerun_tf#/,
+                root: tf#/,
                 target_from_source: Affine3A {
                     matrix3: Mat3A {
                         x_axis: Vec3A(
@@ -197,10 +197,10 @@ expression: "pretty_print_transform_frame_ids_in(&result, &all_transform_frame_i
         ),
     ),
     (
-        rerun_tf#/top/pinhole,
+        tf#/top/pinhole,
         Ok(
             TransformInfo {
-                root: rerun_tf#/top/pinhole,
+                root: tf#/top/pinhole,
                 target_from_source: Affine3A {
                     matrix3: Mat3A {
                         x_axis: Vec3A(
@@ -256,10 +256,10 @@ expression: "pretty_print_transform_frame_ids_in(&result, &all_transform_frame_i
         ),
     ),
     (
-        rerun_tf#/top/child3d,
+        tf#/top/child3d,
         Ok(
             TransformInfo {
-                root: rerun_tf#/,
+                root: tf#/,
                 target_from_source: Affine3A {
                     matrix3: Mat3A {
                         x_axis: Vec3A(
@@ -315,18 +315,18 @@ expression: "pretty_print_transform_frame_ids_in(&result, &all_transform_frame_i
         ),
     ),
     (
-        rerun_tf#/top/nonexistent,
+        tf#/top/nonexistent,
         Err(
             UnknownSourceFrame(
-                rerun_tf#/top/nonexistent,
+                tf#/top/nonexistent,
             ),
         ),
     ),
     (
-        rerun_tf#/top/pinhole/child2d,
+        tf#/top/pinhole/child2d,
         Ok(
             TransformInfo {
-                root: rerun_tf#/top/pinhole,
+                root: tf#/top/pinhole,
                 target_from_source: Affine3A {
                     matrix3: Mat3A {
                         x_axis: Vec3A(
