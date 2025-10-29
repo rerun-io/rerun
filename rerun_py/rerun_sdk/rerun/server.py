@@ -144,7 +144,3 @@ class Server:
     ) -> None:
         """Exit the context manager, shutting down the server."""
         self._internal.shutdown()
-
-    def __del__(self) -> None:
-        """Ensure the server is gracefully shut down when the instance is deleted."""
-        self._internal.shutdown()

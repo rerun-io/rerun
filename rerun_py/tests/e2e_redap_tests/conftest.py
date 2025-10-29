@@ -6,20 +6,16 @@ Configuration file for pytest.
 
 from __future__ import annotations
 
-import os
 import pathlib
 import platform
 import shutil
-import socket
-import subprocess
 import tempfile
-import time
 from typing import TYPE_CHECKING
 
-import psutil
 import pyarrow as pa
 import pytest
 from rerun.catalog import CatalogClient
+from rerun.server import Server
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -27,7 +23,6 @@ if TYPE_CHECKING:
     from rerun_bindings import DatasetEntry
 
 
-HOST = "localhost"
 DATASET_NAME = "dataset"
 
 DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "rrd" / "dataset"
@@ -69,69 +64,9 @@ def setup_windows_tzdata() -> None:
         pa.util.download_tzdata_on_windows()
 
 
-def shutdown_process(process: subprocess.Popen[str]) -> None:
-    main_pid = process.pid
-
-    # Teardown: kill the specific process and any child processes
-    try:
-        if psutil.pid_exists(main_pid):
-            main_process = psutil.Process(main_pid)
-
-            # Get all child processes
-            children = main_process.children(recursive=True)
-
-            # Terminate children
-            for child in children:
-                try:
-                    child.terminate()
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    pass
-
-            if process.stdout:
-                process.stdout.close()
-            if process.stderr:
-                process.stderr.close()
-            if process.stdin:
-                process.stdin.close()
-
-            # Terminate main process
-            process.terminate()
-
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=30)
-        else:
-            pass
-
-    except Exception as e:
-        print(f"Error during cleanup: {e}")
-
-
-def wait_for_server_ready(port: int, timeout: int = 30) -> None:
-    def is_port_open() -> bool:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(1)
-        try:
-            result = sock.connect_ex((HOST, port))
-            return result == 0
-        finally:
-            sock.close()
-
-    # Wait for port to be open
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        if is_port_open():
-            break
-        time.sleep(0.1)
-    else:
-        raise TimeoutError(f"Server port {port} not ready within {timeout}s")
-
-
 class ServerInstance:
-    def __init__(self, proc: subprocess.Popen[str], client: CatalogClient, dataset: DatasetEntry) -> None:
-        self.proc = proc
+    def __init__(self, server: Server, client: CatalogClient, dataset: DatasetEntry) -> None:
+        self.server = server
         self.client = client
         self.dataset = dataset
 
@@ -141,45 +76,22 @@ def server_instance(table_filepath: pathlib.Path) -> Generator[ServerInstance, N
     assert DATASET_FILEPATH.is_dir()
     assert table_filepath.is_dir()
 
-    env = os.environ.copy()
-    if "RUST_LOG" not in env:
-        # Server can be noisy by default
-        env["RUST_LOG"] = "warning"
+    # Create server with datasets and tables
+    server = Server(
+        datasets={DATASET_NAME: DATASET_FILEPATH},
+        tables={
+            "simple_datatypes": table_filepath,
+            "second_schema.second_table": table_filepath,
+            "alternate_catalog.third_schema.third_table": table_filepath,
+        },
+    )
 
-    # Find a free port dynamically
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.bind((HOST, 0))
-    port = sock.getsockname()[1]
-    sock.close()
-
-    catalog_url = f"rerun+http://{HOST}:{port}"
-
-    cmd = [
-        "python",
-        "-m",
-        "rerun",
-        "server",
-        "--dataset",
-        str(DATASET_FILEPATH),
-        "--table",
-        str(table_filepath),
-        "--table",
-        f"second_schema.second_table={table_filepath}",
-        "--table",
-        f"alternate_catalog.third_schema.third_table={table_filepath}",
-        f"--port={port}",
-    ]
-    server_process = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-    try:
-        wait_for_server_ready(port)
-    except Exception as e:
-        print(f"Error during waiting for server to start: {e}")
-
-    client = CatalogClient(catalog_url)
+    # Get client and dataset from the server
+    client = server.client()
     dataset = client.get_dataset(name=DATASET_NAME)
 
-    resource = ServerInstance(server_process, client, dataset)
+    resource = ServerInstance(server, client, dataset)
     yield resource
 
-    shutdown_process(server_process)
+    # Shutdown the server
+    server.shutdown()
