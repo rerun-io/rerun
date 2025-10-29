@@ -17,7 +17,7 @@ This design naturally allows for both the production and the storage of recordin
 You can learn more about sharding in the [dedicated documentation page](../howto/logging/shared-recordings.md).
 
 In practice, most Rerun recordings are encoded in binary files with the `.rrd` extension by default. This is our basic storage solution for recordings, which is specifically designed for streaming use cases (i.e. `.rrd` files do not offer random-access to the data within).
-Note that [blueprints](../howto/configure-viewer-through-code.md) are recordings too, and by convention are stored in binary `.rbl` files.
+Note that [blueprints](blueprint.md) are recordings too, and by convention are stored in binary `.rbl` files.
 
 
 ## Application IDs
