@@ -38,11 +38,6 @@ class RateLimiter:
         else:
             return False
 
-    def put(self) -> None:
-        """Return a token to the bucket when a task completes."""
-        if self.used_tokens > 0:
-            self.used_tokens -= 1
-
 
 _T = TypeVar("_T", bound=Hashable)
 
@@ -181,9 +176,7 @@ class DAG(Generic[_T]):
 
                 try:
                     while True:  # pull loop
-                        node = done_queue.get_nowait()
-                        rate_limiter.put()
-                        state._finish(node)
+                        state._finish(done_queue.get_nowait())
                 except Empty:
                     time.sleep(0)  # yield here to prevent busy-looping
 

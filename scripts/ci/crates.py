@@ -557,10 +557,18 @@ def publish_unpublished_crates_in_parallel(
     # walk the dependency graph in parallel and publish each crate
     print(f"{datetime.now()} Publishing {len(unpublished_crates)} crates…")
     env = {**os.environ.copy(), "RERUN_IS_PUBLISHING_CRATES": "yes"}
+
+    # The max token parameter attempts to model `crates.io` rate limiting. In dry run mode, we don't want to wait so
+    # we seed the rate limiter with plenty of tokens.
+    if dry_run:
+        max_token = 1e3
+    else:
+        max_token = 30
+
     DAG(dependency_graph).walk_parallel(
         lambda name: publish_crate(unpublished_crates[name], token, version, env, dry_run),
         # 30 tokens per minute (burst limit in crates.io)
-        rate_limiter=RateLimiter(max_tokens=30, refill_interval_sec=60),
+        rate_limiter=RateLimiter(max_tokens=max_token, refill_interval_sec=60),
         # publishing already uses all cores, don't start too many publishes at once
         num_workers=min(MAX_PUBLISH_WORKERS, cpu_count()),
     )
