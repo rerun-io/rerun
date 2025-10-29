@@ -277,6 +277,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.McapSchema",
             "archetypes.McapStatistics",
         ],
+        gen_page=False,
     ),
     # Section(
     #     title="Deprecated",
