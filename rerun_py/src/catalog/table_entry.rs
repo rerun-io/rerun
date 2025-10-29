@@ -10,13 +10,13 @@ use pyo3::{
 };
 use tracing::instrument;
 
-use re_datafusion::TableEntryTableProvider;
-
 use crate::catalog::to_py_err;
 use crate::{
     catalog::PyEntry,
     utils::{get_tokio_runtime, wait_for_future},
 };
+use re_datafusion::TableEntryTableProvider;
+use re_protos::cloud::v1alpha1::ext::TableInsertMode;
 
 /// A table entry in the catalog.
 ///
@@ -113,5 +113,24 @@ impl PyTableEntry {
             .clone();
 
         Ok(provider)
+    }
+}
+
+#[pyclass(name = "TableInsertMode", eq, eq_int)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, strum_macros::EnumIter)]
+pub enum PyTableInsertMode {
+    #[pyo3(name = "APPEND")]
+    Append = 1,
+
+    #[pyo3(name = "OVERWRITE")]
+    Overwrite = 2,
+}
+
+impl From<PyTableInsertMode> for TableInsertMode {
+    fn from(value: PyTableInsertMode) -> Self {
+        match value {
+            PyTableInsertMode::Append => Self::Append,
+            PyTableInsertMode::Overwrite => Self::Overwrite,
+        }
     }
 }

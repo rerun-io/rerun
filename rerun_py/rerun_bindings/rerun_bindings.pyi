@@ -1608,6 +1608,18 @@ class TableEntry(Entry):
     def to_arrow_reader(self) -> pa.RecordBatchReader:
         """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
 
+class TableInsertMode:
+    """The modes of operation when writing tables."""
+
+    APPEND: TableInsertMode
+    OVERWRITE: TableInsertMode
+
+    def __str__(self, /) -> str:
+        """Return str(self)."""
+
+    def __int__(self) -> int:
+        """int(self)"""  # noqa: D400
+
 class DataframeQueryView:
     """View into a remote dataset acting as DataFusion table provider."""
 
@@ -1824,6 +1836,7 @@ class CatalogClientInternal:
 
     def create_dataset(self, name: str) -> DatasetEntry: ...
     def register_table(self, name: str, url: str) -> TableEntry: ...
+    def write_table(self, name: str, batches: pa.RecordBatchReader, insert_mode: TableInsertMode) -> None: ...
     def ctx(self) -> dfn.SessionContext: ...
     def create_table_entry(self, name: str, schema: pa.Schema, url: str) -> TableEntry: ...
 
