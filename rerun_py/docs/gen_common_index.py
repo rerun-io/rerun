@@ -352,6 +352,12 @@ SECTION_TABLE: Final[list[Section]] = [
     ),
     Section(
         title="Blueprint",
+        sub_title="Datatypes",
+        mod_path="rerun.blueprint.datatypes",
+        show_tables=False,
+    ),
+    Section(
+        title="Blueprint",
         sub_title="Views",
         mod_path="rerun.blueprint.views",
         show_tables=False,
