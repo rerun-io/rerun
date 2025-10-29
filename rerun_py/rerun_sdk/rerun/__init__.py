@@ -149,8 +149,8 @@ from .dynamic_archetype import (
     DynamicArchetype as DynamicArchetype,
 )
 from .error_utils import (
-    strict_mode as strict_mode,
     set_strict_mode as set_strict_mode,
+    strict_mode as strict_mode,
 )
 from .legacy_notebook import (
     legacy_notebook_show as legacy_notebook_show,
