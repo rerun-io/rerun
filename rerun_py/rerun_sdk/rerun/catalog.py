@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any
 import pyarrow as pa
 from pyarrow import RecordBatch, RecordBatchReader
 from rerun_bindings import (
+    AnyColumn as AnyColumn,
+    AnyComponentColumn as AnyComponentColumn,
     AlreadyExistsError as AlreadyExistsError,
     CatalogClientInternal,
     DataframeQueryView as DataframeQueryView,
@@ -13,11 +15,14 @@ from rerun_bindings import (
     Entry as Entry,
     EntryId as EntryId,
     EntryKind as EntryKind,
+    IndexValuesLike as IndexValuesLike,
     NotFoundError as NotFoundError,
     TableEntry as TableEntry,
     TableInsertMode as TableInsertMode,
     Task as Task,
     VectorDistanceMetric as VectorDistanceMetric,
+    VectorDistanceMetricLike as VectorDistanceMetricLike,
+    ViewContentsLike as ViewContentsLike,
 )
 
 from .error_utils import RerunIncompatibleDependencyVersionError, RerunMissingDependencyError
