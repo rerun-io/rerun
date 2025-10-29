@@ -19,7 +19,7 @@ A way to think about the Rerun View is that
 
 Both pieces are crucial. Without a recording there is nothing to show. Without a blueprint there is no way to show it. Even when you use Rerun without explicitly loading a blueprint, the Viewer creates one automatically for you.
 
-## What Blueprints Control
+## What blueprints control
 
 Blueprints give you complete control over the Viewer's layout and configuration:
 
@@ -30,7 +30,7 @@ Blueprints give you complete control over the Viewer's layout and configuration:
 
 In general, if you can modify an aspect of how something looks through the Viewer, you are actually modifying the blueprint.
 
-## Application IDs: Binding Blueprints to Data
+## Application IDs: binding blueprints to data
 
 The [Application ID](apps-and-recordings.md) is how blueprints connect to your data. This is a critical concept:
 
@@ -43,7 +43,7 @@ This loose coupling between blueprints and recordings means:
 
 Think of the Application ID as the "key" that binds a blueprint to a specific type of recording. If you want recordings to share the same layout, give them the same Application ID.
 
-## Reset Behavior: Heuristic vs Default
+## Reset behavior: heuristic vs default
 
 The Viewer provides two types of blueprint reset, accessible from the blueprint panel:
 
@@ -55,10 +55,10 @@ The Viewer provides two types of blueprint reset, accessible from the blueprint 
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/1200w.png">
 </picture>
 
-### Reset to Heuristic Blueprint
+### Reset to heuristic blueprint
 This generates a new blueprint automatically based on your current data. The Viewer analyzes what you've logged and creates an appropriate layout using built-in heuristics. This is useful when you want to start fresh and let Rerun figure out a reasonable layout.
 
-### Reset to Default Blueprint
+### Reset to default blueprint
 This returns to your programmatically specified blueprint (sent from code) or a saved blueprint file (`.rbl`). If you've sent a blueprint using `rr.send_blueprint()` or loaded a `.rbl` file, this becomes your "default." The reset button in the blueprint panel will restore this default whenever you need it.
 
 When no default blueprint has been set, the reset button will use the heuristic blueprint instead.
@@ -68,7 +68,7 @@ When no default blueprint has been set, the reset button will use the heuristic 
   <img src="https://static.rerun.io/fe1fcf086752f5d7cdd64b195fb3a6cb99c50737_current_default_heuristic.png" width="550px" alt="Current, default, and heuristic blueprints">
 </picture>
 
-## Three Ways to Work with Blueprints
+## Three ways to work with blueprints
 
 There are three complementary approaches to creating and modifying blueprints:
 
@@ -83,10 +83,10 @@ Modify blueprints directly in the Viewer UI:
 
 This is the fastest way to experiment with layouts. See [Configure the Viewer](../getting-started/configure-the-viewer.md) for a complete guide.
 
-### 2. Save and Load Files
+### 2. Save and load files
 Save your blueprint configuration to `.rbl` files:
--   Use "Save blueprint..." from the file menu to save your current layout
--   Load blueprints with "Open..." or by dragging `.rbl` files into the Viewer
+-   Use "Save blueprint…" from the file menu to save your current layout
+-   Load blueprints with "Open…" or by dragging `.rbl` files into the Viewer
 -   Share blueprint files with teammates to ensure everyone sees data the same way
 -   Reuse blueprints across sessions and different recordings (with the same Application ID)
 
@@ -116,28 +116,28 @@ if robot_error:
 
 See [Configure the Viewer](../getting-started/configure-the-viewer.md#programmatic-blueprints) for detailed examples.
 
-## Common Use Cases
+## Common use cases
 
-### Debugging Specific Scenarios
+### Debugging specific scenarios
 Create blueprints optimized for diagnosing particular issues. For example, when debugging robot perception, you might want a blueprint that shows:
 -   The camera view in 2D
 -   The 3D world with detected objects
 -   Detection confidence scores in a time series chart
 -   Error logs in a text panel
 
-### Sharing Layouts with Teams
+### Sharing layouts with teams
 Save a blueprint file and share it with your team. Everyone loading that blueprint with matching recordings will see the data the same way, making it easier to discuss findings and collaborate.
 
-### Templating for Different Data Types
+### Templating for different data types
 Create different blueprint templates for different types of recordings. For example:
 -   A blueprint for autonomous vehicle data that focuses on map views and sensor fusion
 -   A blueprint for robotics manipulation that emphasizes joint angles and gripper cameras
 -   A blueprint for computer vision that shows side-by-side comparisons of different models
 
-### Dynamic Viewer Configuration
+### Dynamic Viewer configuration
 Generate blueprints programmatically based on runtime conditions. For instance, automatically create one view per detected anomaly, or adjust the layout based on how many data sources are active.
 
-## Blueprint Architecture
+## Blueprint architecture
 
 Under the hood, blueprints are just data. They are structured using the same [Entity Component System](./entity-component.md) as your recordings, but with blueprint-specific archetypes and a separate blueprint timeline. This architecture provides several advantages:
 
@@ -147,7 +147,7 @@ Under the hood, blueprints are just data. They are structured using the same [En
 -   **The full time-series nature** simplifies future features like snapshots and undo/redo
 -   **Debugging tools for Rerun data** can inspect blueprint state just like recording data
 
-### Viewer Operation
+### Viewer operation
 
 The Viewer is designed to be deterministic. Every frame, the Viewer:
 1. Takes the active blueprint and active recording
@@ -158,7 +158,7 @@ The Viewer is designed to be deterministic. Every frame, the Viewer:
 
 This means the Viewer output is a deterministic function of the blueprint and the recording, with minimal persisted state between frames.
 
-## Next Steps
+## Next steps
 
 -   **Learn to use blueprints**: See [Configure the Viewer](../getting-started/configure-the-viewer.md) for hands-on tutorials covering interactive, file-based, and programmatic workflows
 -   **Understand the UI**: Check the [Blueprint Panel Reference](../reference/viewer/blueprint.md) for details on UI controls

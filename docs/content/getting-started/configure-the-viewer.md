@@ -12,11 +12,11 @@ This guide covers three complementary ways to work with blueprints:
 - **[Save and load blueprint files](#save-and-load-blueprint-files)**: Share layouts using `.rbl` files
 - **[Programmatic blueprints](#programmatic-blueprints)**: Control layouts from code
 
-## Interactive Configuration
+## Interactive configuration
 
 The Rerun Viewer is fully configurable through its UI, making it easy to experiment with different layouts.
 
-### Viewer Overview
+### Viewer overview
 
 <picture>
   <img src="https://static.rerun.io/overview/158a13691fe0364ed5d4dc420f5b2c39b60705cd/full.png" alt="">
@@ -34,7 +34,7 @@ The Viewer consists of:
 
 The blueprint defines what appears in the viewport. All changes you make to the viewport are actually changes to the blueprint.
 
-### Configuring the View Hierarchy
+### Configuring the view hierarchy
 
 The viewport contains views arranged hierarchically using containers. Containers come in four types:
 - **Horizontal**: Arranges views side-by-side
@@ -42,7 +42,7 @@ The viewport contains views arranged hierarchically using containers. Containers
 - **Grid**: Organizes views in a grid layout
 - **Tabs**: Shows views in tabs (only one visible at a time)
 
-#### Add New Containers or Views
+#### Add new containers or views
 
 Click the "+" button at the top of the blueprint panel to add containers or views.
 
@@ -57,7 +57,7 @@ If a container (or the viewport) is selected, a "+" button also appears in the s
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/add_view_selection_panel/2daf01c80dcd2496b554e4376af702c7713a47dc/480w.png">
 </picture>
 
-#### Rearrange Views and Containers
+#### Rearrange views and containers
 
 Drag and drop items in the blueprint panel to reorganize the hierarchy. You can also drag views directly in the viewport using their title tabs.
 
@@ -66,7 +66,7 @@ Drag and drop items in the blueprint panel to reorganize the hierarchy. You can 
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/drag_and_drop_viewport/8521fda375a2f6af15628b04ead4ba848cb8bc27/480w.png">
 </picture>
 
-#### Show, Hide, or Remove Elements
+#### Show, hide, or remove elements
 
 Use the eye icon to show or hide any container, view, or entity:
 
@@ -80,7 +80,7 @@ Use the "-" button to permanently remove an element:
   <img src="https://static.rerun.io/remove/6b9d97e4297738b8aad89158e4d15420be362b4a/full.png" alt="">
 </picture>
 
-#### Rename Views and Containers
+#### Rename views and containers
 
 Select a view or container and edit its name at the top of the selection panel.
 
@@ -89,7 +89,7 @@ Select a view or container and edit its name at the top of the selection panel.
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/rename/9dcb63d36f1676568fb106ee55ab110438b63fa9/480w.png">
 </picture>
 
-#### Change Container Type
+#### Change container type
 
 Select a container and change its type using the dropdown in the selection panel.
 
@@ -98,7 +98,7 @@ Select a container and change its type using the dropdown in the selection panel
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/container_kind/f123f2220d9e82d520af367b7af020179a4de675/480w.png">
 </picture>
 
-#### Using Context Menus
+#### Using context menus
 
 Right-click on any element in the blueprint panel for quick access to common operations:
 
@@ -108,11 +108,11 @@ Right-click on any element in the blueprint panel for quick access to common ope
 
 Context menus support multi-selection (Ctrl+click or Cmd+click), enabling bulk operations like removing multiple views at once.
 
-### Configuring View Content
+### Configuring view content
 
 Each view displays data based on its entity query. You can modify what appears in a view interactively.
 
-#### Show or Hide Entities
+#### Show or hide entities
 
 Use the eye icon next to any entity to control its visibility within the view.
 
@@ -120,7 +120,7 @@ Use the eye icon next to any entity to control its visibility within the view.
   <img src="https://static.rerun.io/show_hide_entity/587a5d8fd763c0bade461bc54a66a4acdd087821/full.png" alt="">
 </picture>
 
-#### Remove Entities from Views
+#### Remove entities from views
 
 Click the "-" button next to an entity to remove it from the view.
 
@@ -128,7 +128,7 @@ Click the "-" button next to an entity to remove it from the view.
   <img src="https://static.rerun.io/remove_entity/ec0447ca7e420bc9d19a7bf015cc39f88b42598a/full.png" alt="">
 </picture>
 
-#### Using the Query Editor
+#### Using the query editor
 
 With a view selected, click "Edit" next to the entity query in the selection panel to visually add or remove entities.
 
@@ -137,7 +137,7 @@ With a view selected, click "Edit" next to the entity query in the selection pan
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/add_remove_entity/4c5e536d4ca145058a8bc59a0b32267821663f06/480w.png">
 </picture>
 
-#### Creating Views from Entities
+#### Creating views from entities
 
 Select one or more entities (in existing views or in the time panel's streams), right-click, and choose "Add to new view" from the context menu.
 
@@ -150,7 +150,7 @@ Select one or more entities (in existing views or in the time panel's streams), 
 
 The view's origin will automatically be set based on the selected data.
 
-### Overriding Visualizers and Components
+### Overriding visualizers and components
 
 Select an entity within a view to control which visualizers are used and override component values.
 
@@ -172,13 +172,13 @@ See [Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for
 
 ---
 
-## Save and Load Blueprint Files
+## Save and load blueprint files
 
 Once you've configured your layout, you can save it as a blueprint file (`.rbl`) to reuse across sessions or share with your team.
 
-### Saving a Blueprint
+### Saving a blueprint
 
-To save your current blueprint, go to the file menu and choose "Save blueprint...":
+To save your current blueprint, go to the file menu and choose "Save blueprint…":
 
 <picture>
   <img src="https://static.rerun.io/save_blueprint/85644e086ba9cf7fb81cb7ece55b38bef863c755/full.png" alt="">
@@ -186,13 +186,13 @@ To save your current blueprint, go to the file menu and choose "Save blueprint..
 
 Blueprint files are small, portable, and can be version-controlled alongside your code.
 
-### Loading a Blueprint
+### Loading a blueprint
 
-Load a blueprint file using "Open..." from the file menu, or simply drag and drop the `.rbl` file into the Viewer.
+Load a blueprint file using "Open…" from the file menu, or simply drag and drop the `.rbl` file into the Viewer.
 
 **Important:** The blueprint's Application ID must match the Application ID of your recording. Blueprints are bound to specific Application IDs to ensure they work with compatible data structures. See [Application IDs](../concepts/blueprint.md#application-ids-binding-blueprints-to-data) for more details.
 
-### Sharing Blueprints
+### Sharing blueprints
 
 Blueprint files make it easy to ensure everyone on your team views data consistently:
 
@@ -208,7 +208,7 @@ This is particularly valuable for:
 
 ---
 
-## Programmatic Blueprints
+## Programmatic blueprints
 
 For maximum control and automation, you can define blueprints in code using the Python Blueprint API. This is ideal for:
 - Creating layouts dynamically based on your data
@@ -216,7 +216,7 @@ For maximum control and automation, you can define blueprints in code using the 
 - Generating complex layouts that would be tedious to build manually
 - Sending different blueprints based on runtime conditions
 
-### Getting Started Example
+### Getting started example
 
 This walkthrough demonstrates the Blueprint API using stock market data. We'll start simple and progressively build more complex layouts.
 
@@ -238,7 +238,7 @@ python -m venv venv
 pip install rerun-sdk humanize yfinance
 ```
 
-#### Basic Script
+#### Basic script
 
 Create `stocks.py` with the necessary imports:
 
@@ -361,7 +361,7 @@ Without a blueprint, the heuristic layout may not be ideal:
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_tutorial_no_blueprint/b7341f41683825f4186d661af509f8da03dc4ed1/1200w.png">
 </picture>
 
-### Creating a Simple View
+### Creating a simple view
 
 Replace the blueprint section with:
 
@@ -383,7 +383,7 @@ The `origin` parameter scopes the view to a specific subtree. Now you'll see jus
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_tutorial_one_stock/bda8f536306f9d9eb1b2aafe8bd8aceb746c2e0c/1200w.png">
 </picture>
 
-### Controlling Panel State
+### Controlling panel state
 
 You can control which panels are visible:
 
@@ -406,7 +406,7 @@ rr.send_blueprint(blueprint)
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_tutorial_one_stock_hide_panels/41d3f42d2e33bcaec33b27e98752eddb17352c0f/1200w.png">
 </picture>
 
-### Combining Multiple Views
+### Combining multiple views
 
 Use containers to combine multiple views. The `Vertical` container stacks views, and `row_shares` controls relative sizing:
 
@@ -433,7 +433,7 @@ rr.send_blueprint(blueprint)
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_tutorial_one_stock_and_info/9fbf481aaf9da399718d8afb9f64b9364bb34268/1200w.png">
 </picture>
 
-### Specifying View Contents
+### Specifying view contents
 
 The `contents` parameter provides fine-grained control over what appears in a view. You can include data from multiple sources:
 
@@ -462,7 +462,7 @@ rr.send_blueprint(blueprint)
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_tutorial_comare_two/0ac7d7d02bebb433828aec16a085716951740dff/1200w.png">
 </picture>
 
-### Filtering with Expressions
+### Filtering with expressions
 
 Content expressions can include or exclude subtrees using wildcards. They can reference `$origin` and use `/**` to match entire subtrees:
 
@@ -494,7 +494,7 @@ rr.send_blueprint(blueprint)
 
 See [Entity Queries](../../reference/entity-queries.md) for complete expression syntax.
 
-### Programmatic Layout Generation
+### Programmatic layout generation
 
 Since blueprints are Python code, you can generate them dynamically. This example creates a grid with one row per stock symbol:
 
@@ -537,7 +537,7 @@ rr.send_blueprint(blueprint)
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_tutorial_grid/b9c41481818f9028d75df6076c62653989a02c66/1200w.png">
 </picture>
 
-### Saving Blueprints from Code
+### Saving blueprints from code
 
 You can save programmatically-created blueprints to `.rbl` files:
 
@@ -555,7 +555,7 @@ rr.log_file_from_path("my_blueprint.rbl")
 
 This enables reusing blueprints across different programming languages. See the [Blueprint API Reference](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) for complete details.
 
-### Advanced Customization
+### Advanced customization
 
 Blueprints support deep customization of view properties. For example:
 
@@ -835,7 +835,7 @@ rr.send_blueprint(blueprint)
 
 ---
 
-## Next Steps
+## Next steps
 
 - **Explore view types**: Check the [View Type Reference](../../reference/types/views/) to see all available views and their configuration options
 - **Learn about overrides**: See [Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for per-entity customization

@@ -12,9 +12,9 @@ For a complete understanding of blueprints, see [Blueprints](../../concepts/blue
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/blueprint-example/24fe3f15c15dc8c74e1feec879cab624a34136e6/480w.png">
 </picture>
 
-## Panel Header Controls
+## Panel header controls
 
-### Reset Button
+### Reset button
 The reset button in the blueprint panel header provides two reset options:
 
 - **Reset to Default Blueprint**: Returns to your programmatically specified blueprint (sent from code via `rr.send_blueprint()`) or a loaded blueprint file (`.rbl`). This becomes the "default" whenever you send or load a blueprint.
@@ -23,10 +23,10 @@ The reset button in the blueprint panel header provides two reset options:
 
 If no default blueprint has been set, the reset button uses the heuristic blueprint. See [Reset Behavior](../../concepts/blueprint.md#reset-behavior-heuristic-vs-default) for more details.
 
-### Add View
+### Add view
 The "+" button allows you to add new views or containers for any [Space](../../concepts/spaces-and-transforms.md).
 
-## Blueprint Tree
+## Blueprint tree
 
 The blueprint panel displays a tree view showing:
 - The viewport (root container)
@@ -42,7 +42,7 @@ Hovering over any item reveals controls for:
 
 Right-click any item for a context menu with additional operations. See [Configure the Viewer](../../getting-started/configure-the-viewer.md#interactive-configuration) for details on all interactive operations.
 
-### Data Blueprints
+### Data blueprints
 
 Entities shown in the blueprint panel refer to their *data blueprints*—the entity plus its associated blueprint settings. Changes made here apply only to the specific view where the entity appears.
 
@@ -50,7 +50,7 @@ Entities shown in the blueprint panel refer to their *data blueprints*—the ent
 
 When entities are added to a view (manually or automatically), hierarchical groupings are created based on [Entity Paths](../../concepts/entity-path.md). These groups help organize large views and enable hierarchical manipulation of blueprints. Groups are independent of logged data and exist purely for blueprint organization.
 
-## Adding Entities to Views
+## Adding entities to views
 
 To add or re-add an entity to a view:
 1. Select the target view in the blueprint panel
