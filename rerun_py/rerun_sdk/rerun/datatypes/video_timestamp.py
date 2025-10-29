@@ -62,10 +62,12 @@ class VideoTimestamp:
 
 if TYPE_CHECKING:
     VideoTimestampLike = VideoTimestamp | int
+    """A type alias for any VideoTimestamp-like object."""
 else:
     VideoTimestampLike = Any
 
 VideoTimestampArrayLike = VideoTimestamp | Sequence[VideoTimestampLike] | npt.NDArray[np.int64]
+"""A type alias for any VideoTimestamp-like array object."""
 
 
 class VideoTimestampBatch(BaseBatch[VideoTimestampArrayLike]):

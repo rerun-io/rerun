@@ -42,7 +42,10 @@ class PrimitiveComponent:
 
 
 PrimitiveComponentLike = PrimitiveComponent
+"""A type alias for any PrimitiveComponent-like object."""
+
 PrimitiveComponentArrayLike = PrimitiveComponent | Sequence[PrimitiveComponentLike]
+"""A type alias for any PrimitiveComponent-like array object."""
 
 
 class PrimitiveComponentBatch(BaseBatch[PrimitiveComponentArrayLike]):

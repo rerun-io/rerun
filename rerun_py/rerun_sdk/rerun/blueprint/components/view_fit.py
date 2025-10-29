@@ -57,12 +57,15 @@ class ViewFit(Enum):
 ViewFitLike = (
     ViewFit | Literal["Fill", "FillKeepAspectRatio", "Original", "fill", "fillkeepaspectratio", "original"] | int
 )
+"""A type alias for any ViewFit-like object."""
+
 ViewFitArrayLike = (
     ViewFit
     | Literal["Fill", "FillKeepAspectRatio", "Original", "fill", "fillkeepaspectratio", "original"]
     | int
     | Sequence[ViewFitLike]
 )
+"""A type alias for any ViewFit-like array object."""
 
 
 class ViewFitBatch(BaseBatch[ViewFitArrayLike], ComponentBatchMixin):
