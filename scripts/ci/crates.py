@@ -396,6 +396,11 @@ def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool)
         subprocess.check_output(["taplo", "fmt"])
 
 
+# When in dry run mode, we don't want to query `crates.io` to check if a given crate has been published yet because:
+# - It takes time at the beginning of the run (which introduces friction when iterating)
+# - It's incorrect, aka we don't really publish things, so `crates.io` doesn't know about what we "fake-publish"
+#
+# Instead, we use this global variable to keep track of the crates we pretend we have published so far.
 DRY_RUN_PUBLISHED_CRATE_PATH: set[Path] = set()
 
 
