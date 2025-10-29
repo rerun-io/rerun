@@ -14,7 +14,10 @@ use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::ext::{LanceTable, ProviderDetails as _, TableInsertMode};
+use re_protos::cloud::v1alpha1::ext::{
+    CreateTableEntryRequest, CreateTableEntryResponse, LanceTable, ProviderDetails as _,
+    TableInsertMode,
+};
 use re_protos::{
     cloud::v1alpha1::{
         DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
@@ -1318,6 +1321,24 @@ impl RerunCloudService for RerunCloudHandler {
         Err(tonic::Status::unimplemented(
             "do_global_maintenance not implemented",
         ))
+    }
+
+    async fn create_table_entry(
+        &self,
+        request: Request<re_protos::cloud::v1alpha1::CreateTableEntryRequest>,
+    ) -> Result<Response<re_protos::cloud::v1alpha1::CreateTableEntryResponse>, Status> {
+        let mut store = self.store.write().await;
+
+        let request: CreateTableEntryRequest = request.into_inner().try_into()?;
+        let table_name = &request.name;
+        let provider_details = LanceTable::try_from_any(&request.provider_details)?;
+        let schema = Arc::new(request.schema);
+
+        let table = store
+            .create_table_entry(table_name, &provider_details.table_url, schema)
+            .await?;
+
+        Ok(Response::new(CreateTableEntryResponse { table }.into()))
     }
 }
 

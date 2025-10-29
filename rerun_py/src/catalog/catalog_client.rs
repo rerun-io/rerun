@@ -1,3 +1,5 @@
+use arrow::datatypes::Schema;
+use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
     Py, PyAny, PyResult, Python,
@@ -7,6 +9,7 @@ use pyo3::{
 };
 use re_datafusion::{DEFAULT_CATALOG_NAME, get_all_catalog_names};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
+use std::sync::Arc;
 
 use crate::catalog::datafusion_catalog::PyDataFusionCatalogProvider;
 use crate::catalog::{
@@ -319,6 +322,35 @@ impl PyCatalogClientInternal {
             .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
 
         let table_entry = connection.register_table(py, name, url)?;
+
+        let entry_id = Py::new(py, PyEntryId::from(table_entry.details.id))?;
+
+        let entry = PyEntry {
+            client: self_.clone_ref(py),
+            id: entry_id,
+            details: table_entry.details,
+        };
+
+        let table = PyTableEntry::default();
+
+        Py::new(py, (table, entry))
+    }
+
+    fn create_table_entry(
+        self_: Py<Self>,
+        py: Python<'_>,
+        name: String,
+        schema: PyArrowType<Schema>,
+        url: String,
+    ) -> PyResult<Py<PyTableEntry>> {
+        let connection = self_.borrow_mut(py).connection.clone();
+
+        let url = url
+            .parse::<url::Url>()
+            .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
+
+        let schema = Arc::new(schema.0);
+        let table_entry = connection.create_table_entry(py, name, schema, &url)?;
 
         let entry_id = Py::new(py, PyEntryId::from(table_entry.details.id))?;
 
