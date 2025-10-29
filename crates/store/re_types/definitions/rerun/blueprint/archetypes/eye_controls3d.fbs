@@ -6,6 +6,25 @@ namespace rerun.blueprint.archetypes;
 table EyeControls3D (
     "attr.rerun.scope": "blueprint"
 ) {
+    /// The cameras current position.
+    position: rerun.components.Position3D ("attr.rerun.component_optional", nullable, order: 100);
+
+    /// The position the camera is currently looking at.
+    ///
+    /// If this is an orbital camera, this also is the center it orbits around.
+    look_target: rerun.components.Position3D ("attr.rerun.component_optional", nullable, order: 200);
+
+    /// What speed, if any, the camera should spin around the eye-up axis when in orbit mode.
+    spin_speed: rerun.blueprint.components.AngularSpeed ("attr.rerun.component_optional", nullable, order: 300);
+
+    /// The up-axis of the eye itself, in world-space.
+    ///
+    /// Initially, the up-axis of the eye will be the same as the up-axis of the scene (or +Z if
+    /// the scene has no up axis defined).
+    ///
+    /// A zero vector is valid and will result in 3 degrees of freedom.
+    eye_up: rerun.components.Vector3D ("attr.rerun.component_optional", nullable, order: 400);
+
     /// The kind of the eye for the spatial 3D view.
     ///
     /// This controls how the eye movement behaves when the user interact with the view.

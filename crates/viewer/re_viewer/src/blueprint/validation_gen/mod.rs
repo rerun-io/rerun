@@ -5,6 +5,7 @@
 use super::validation::validate_component;
 use re_entity_db::EntityDb;
 pub use re_types::blueprint::components::ActiveTab;
+pub use re_types::blueprint::components::AngularSpeed;
 pub use re_types::blueprint::components::ApplyLatestAt;
 pub use re_types::blueprint::components::AutoLayout;
 pub use re_types::blueprint::components::AutoViews;
@@ -52,6 +53,7 @@ pub use re_types::blueprint::components::ZoomLevel;
 
 pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
     validate_component::<ActiveTab>(blueprint)
+        && validate_component::<AngularSpeed>(blueprint)
         && validate_component::<ApplyLatestAt>(blueprint)
         && validate_component::<AutoLayout>(blueprint)
         && validate_component::<AutoViews>(blueprint)

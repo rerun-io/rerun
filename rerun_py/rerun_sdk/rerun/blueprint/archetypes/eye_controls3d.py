@@ -32,6 +32,10 @@ class EyeControls3D(Archetype):
     def __init__(
         self: Any,
         *,
+        position: datatypes.Vec3DLike | None = None,
+        look_target: datatypes.Vec3DLike | None = None,
+        spin_speed: datatypes.Float64Like | None = None,
+        eye_up: datatypes.Vec3DLike | None = None,
         kind: blueprint_components.Eye3DKindLike | None = None,
         speed: datatypes.Float64Like | None = None,
         tracking_entity: datatypes.EntityPathLike | None = None,
@@ -41,6 +45,21 @@ class EyeControls3D(Archetype):
 
         Parameters
         ----------
+        position:
+            The cameras current position.
+        look_target:
+            The position the camera is currently looking at.
+
+            If this is an orbital camera, this also is the center it orbits around.
+        spin_speed:
+            What speed, if any, the camera should spin around the eye-up axis when in orbit mode.
+        eye_up:
+            The up-axis of the eye itself, in world-space.
+
+            Initially, the up-axis of the eye will be the same as the up-axis of the scene (or +Z if
+            the scene has no up axis defined).
+
+            A zero vector is valid and will result in 3 degrees of freedom.
         kind:
             The kind of the eye for the spatial 3D view.
 
@@ -61,13 +80,25 @@ class EyeControls3D(Archetype):
 
         # You can define your own __init__ function as a member of EyeControls3DExt in eye_controls3d_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(kind=kind, speed=speed, tracking_entity=tracking_entity)
+            self.__attrs_init__(
+                position=position,
+                look_target=look_target,
+                spin_speed=spin_speed,
+                eye_up=eye_up,
+                kind=kind,
+                speed=speed,
+                tracking_entity=tracking_entity,
+            )
             return
         self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
+            position=None,
+            look_target=None,
+            spin_speed=None,
+            eye_up=None,
             kind=None,
             speed=None,
             tracking_entity=None,
@@ -85,6 +116,10 @@ class EyeControls3D(Archetype):
         cls,
         *,
         clear_unset: bool = False,
+        position: datatypes.Vec3DLike | None = None,
+        look_target: datatypes.Vec3DLike | None = None,
+        spin_speed: datatypes.Float64Like | None = None,
+        eye_up: datatypes.Vec3DLike | None = None,
         kind: blueprint_components.Eye3DKindLike | None = None,
         speed: datatypes.Float64Like | None = None,
         tracking_entity: datatypes.EntityPathLike | None = None,
@@ -96,6 +131,21 @@ class EyeControls3D(Archetype):
         ----------
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
+        position:
+            The cameras current position.
+        look_target:
+            The position the camera is currently looking at.
+
+            If this is an orbital camera, this also is the center it orbits around.
+        spin_speed:
+            What speed, if any, the camera should spin around the eye-up axis when in orbit mode.
+        eye_up:
+            The up-axis of the eye itself, in world-space.
+
+            Initially, the up-axis of the eye will be the same as the up-axis of the scene (or +Z if
+            the scene has no up axis defined).
+
+            A zero vector is valid and will result in 3 degrees of freedom.
         kind:
             The kind of the eye for the spatial 3D view.
 
@@ -117,6 +167,10 @@ class EyeControls3D(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
+                "position": position,
+                "look_target": look_target,
+                "spin_speed": spin_speed,
+                "eye_up": eye_up,
                 "kind": kind,
                 "speed": speed,
                 "tracking_entity": tracking_entity,
@@ -135,6 +189,49 @@ class EyeControls3D(Archetype):
     def cleared(cls) -> EyeControls3D:
         """Clear all the fields of a `EyeControls3D`."""
         return cls.from_fields(clear_unset=True)
+
+    position: components.Position3DBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.Position3DBatch._converter,  # type: ignore[misc]
+    )
+    # The cameras current position.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    look_target: components.Position3DBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.Position3DBatch._converter,  # type: ignore[misc]
+    )
+    # The position the camera is currently looking at.
+    #
+    # If this is an orbital camera, this also is the center it orbits around.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    spin_speed: blueprint_components.AngularSpeedBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.AngularSpeedBatch._converter,  # type: ignore[misc]
+    )
+    # What speed, if any, the camera should spin around the eye-up axis when in orbit mode.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    eye_up: components.Vector3DBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.Vector3DBatch._converter,  # type: ignore[misc]
+    )
+    # The up-axis of the eye itself, in world-space.
+    #
+    # Initially, the up-axis of the eye will be the same as the up-axis of the scene (or +Z if
+    # the scene has no up axis defined).
+    #
+    # A zero vector is valid and will result in 3 degrees of freedom.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     kind: blueprint_components.Eye3DKindBatch | None = field(
         metadata={"component": True},

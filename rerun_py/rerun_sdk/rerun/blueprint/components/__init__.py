@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .active_tab import ActiveTab, ActiveTabBatch
+from .angular_speed import AngularSpeed, AngularSpeedBatch
 from .apply_latest_at import ApplyLatestAt, ApplyLatestAtBatch
 from .auto_layout import AutoLayout, AutoLayoutBatch
 from .auto_views import AutoViews, AutoViewsBatch
@@ -48,6 +49,8 @@ from .zoom_level import ZoomLevel, ZoomLevelBatch
 __all__ = [
     "ActiveTab",
     "ActiveTabBatch",
+    "AngularSpeed",
+    "AngularSpeedBatch",
     "ApplyLatestAt",
     "ApplyLatestAtBatch",
     "AutoLayout",

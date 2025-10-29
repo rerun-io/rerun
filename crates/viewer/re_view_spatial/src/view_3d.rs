@@ -132,6 +132,24 @@ impl ViewClass for SpatialView3D {
             },
         );
 
+        system_registry.register_fallback_provider(
+            re_types::blueprint::archetypes::EyeControls3D::descriptor_look_target().component,
+            |ctx| {
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    re_log::error_once!(
+                        "Fallback for `LinearSpeed` queried on 3D view outside the context of a spatial view."
+                    );
+                    return 1.0.into();
+                };
+                let Some(view_eye) = &view_state.state_3d.view_eye else {
+                    // There's no view eye yet. This may happen on startup
+                    return 1.0.into();
+                };
+
+                view_eye.fallback_speed(ctx)
+            },
+        );
+
         shared_fallbacks::register_fallbacks(system_registry);
 
         // Ensure spatial topology is registered.

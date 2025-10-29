@@ -3,12 +3,16 @@ use glam::{Mat4, Quat, Vec3, vec3};
 
 use macaw::IsoTransform;
 
-use re_types::{blueprint::components::Eye3DKind, components::LinearSpeed};
+use re_types::{
+    blueprint::{archetypes::EyeControls3D, components::Eye3DKind},
+    components::LinearSpeed,
+};
 use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
     RuntimeModifiers, SPEED_UP_3D_MODIFIER,
 };
-use re_viewer_context::ViewStateExt as _;
+use re_viewer_context::{ViewContext, ViewStateExt as _};
+use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 use crate::{SpatialViewState, space_camera_3d::SpaceCamera3D, ui_3d::EyeBlueprintProperties};
 
@@ -159,32 +163,8 @@ impl Eye {
 /// Note: we use "eye" so we don't confuse this with logged camera.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ViewEye {
-    /// First person or orbital?
-    kind: Eye3DKind,
-
-    /// Center of orbit, or camera position in first person kind.
-    center: Vec3,
-
-    /// Ignored for [`Eye3DKind::FirstPerson`],
-    /// but kept for if/when the user switches to orbital kind.
-    orbit_radius: f32,
-
-    /// Rotate to world-space from view-space (RUB).
-    world_from_view_rot: Quat,
-
     /// Vertical field of view in radians.
     fov_y: f32,
-
-    /// The up-axis of the eye itself, in world-space.
-    ///
-    /// Initially, the up-axis of the eye will be the same as the up-axis of the scene (or +Z if
-    /// the scene has no up axis defined).
-    /// Rolling the camera (e.g. middle-click) will permanently modify the eye's up axis, until the
-    /// next reset.
-    ///
-    /// A value of `Vec3::ZERO` is valid and will result in 3 degrees of freedom, although we never
-    /// use it at the moment.
-    eye_up: Vec3,
 
     velocity: Vec3,
 
@@ -196,158 +176,8 @@ impl ViewEye {
     /// Avoids zentith/nadir singularity.
     const MAX_PITCH: f32 = 0.99 * 0.25 * std::f32::consts::TAU;
 
-    pub fn new_orbital(
-        orbit_center: Vec3,
-        orbit_radius: f32,
-        world_from_view_rot: Quat,
-        eye_up: Vec3,
-    ) -> Self {
-        Self {
-            kind: Eye3DKind::Orbital,
-            center: orbit_center,
-            orbit_radius,
-            world_from_view_rot,
-            fov_y: Eye::DEFAULT_FOV_Y,
-            eye_up,
-            velocity: Vec3::ZERO,
-            ignore_input: false,
-        }
-    }
-
-    pub fn kind(&self) -> Eye3DKind {
-        self.kind
-    }
-
-    pub fn set_kind(&mut self, new_kind: Eye3DKind) {
-        if self.kind != new_kind {
-            // Keep the same position:
-            match new_kind {
-                Eye3DKind::FirstPerson => self.center = self.position(),
-                Eye3DKind::Orbital => {
-                    self.center = self.position() + self.orbit_radius * self.fwd();
-                }
-            }
-
-            self.kind = new_kind;
-        }
-    }
-
     pub fn ignore_input(&self) -> bool {
         self.ignore_input
-    }
-
-    /// If in orbit mode, what are we orbiting around?
-    pub fn orbit_center(&self) -> Option<Vec3> {
-        match self.kind {
-            Eye3DKind::FirstPerson => None,
-            Eye3DKind::Orbital => Some(self.center),
-        }
-    }
-
-    /// If in orbit mode, how far from the orbit center are we?
-    pub fn orbit_radius(&self) -> Option<f32> {
-        match self.kind {
-            Eye3DKind::FirstPerson => None,
-            Eye3DKind::Orbital => Some(self.orbit_radius),
-        }
-    }
-
-    /// Set what we orbit around, and at what distance.
-    ///
-    /// If we are not in orbit mode, the state will still be set and used if the user switches to orbit mode.
-    pub fn set_orbit_center_and_radius(&mut self, orbit_center: Vec3, orbit_radius: f32) {
-        // Temporarily switch to orbital, set the values, and then switch back.
-        // This ensures the camera position will be set correctly, even if we
-        // were in first-person mode:
-        let old_mode = self.kind();
-        self.set_kind(Eye3DKind::Orbital);
-        self.center = orbit_center;
-        self.orbit_radius = orbit_radius;
-        self.set_kind(old_mode);
-    }
-
-    /// The world-space position of the eye.
-    pub fn position(&self) -> Vec3 {
-        match self.kind {
-            Eye3DKind::FirstPerson => self.center,
-            Eye3DKind::Orbital => self.center - self.orbit_radius * self.fwd(),
-        }
-    }
-
-    /// The local up-axis, if set
-    pub fn eye_up(&self) -> Option<Vec3> {
-        self.eye_up.try_normalize()
-    }
-
-    pub fn to_eye(self) -> Eye {
-        Eye {
-            world_from_rub_view: IsoTransform::from_rotation_translation(
-                self.world_from_view_rot,
-                self.position(),
-            ),
-            fov_y: Some(self.fov_y),
-        }
-    }
-
-    /// Create an [`ViewEye`] from a [`Eye`].
-    pub fn copy_from_eye(&mut self, eye: &Eye) {
-        match self.kind {
-            Eye3DKind::FirstPerson => {
-                self.center = eye.pos_in_world();
-            }
-
-            Eye3DKind::Orbital => {
-                // The hard part is finding a good center. Let's try to keep the same, and see how that goes:
-                let distance = eye
-                    .forward_in_world()
-                    .dot(self.center - eye.pos_in_world())
-                    .abs();
-                self.orbit_radius = distance.at_least(self.orbit_radius / 5.0);
-                self.center = eye.pos_in_world() + self.orbit_radius * eye.forward_in_world();
-            }
-        }
-        self.world_from_view_rot = eye.world_from_rub_view.rotation();
-        self.fov_y = eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y);
-        self.velocity = Vec3::ZERO;
-        self.eye_up = eye.world_from_rub_view.rotation() * glam::Vec3::Y;
-    }
-
-    pub fn lerp(&self, other: &Self, t: f32) -> Self {
-        if t == 0.0 {
-            *self // avoid rounding errors
-        } else if t == 1.0 {
-            *other // avoid rounding errors
-        } else {
-            Self {
-                kind: other.kind,
-                center: self.center.lerp(other.center, t),
-                orbit_radius: lerp(self.orbit_radius..=other.orbit_radius, t),
-                world_from_view_rot: self.world_from_view_rot.slerp(other.world_from_view_rot, t),
-                fov_y: egui::lerp(self.fov_y..=other.fov_y, t),
-                // A slerp would technically be nicer for eye_up, but it only really
-                // matters if the user starts interacting half-way through the lerp,
-                // and even then it's not a big deal.
-                eye_up: self.eye_up.lerp(other.eye_up, t).normalize_or_zero(),
-                velocity: self.velocity.lerp(other.velocity, t),
-                ignore_input: false,
-            }
-        }
-    }
-
-    /// World-direction we are looking at
-    fn fwd(&self) -> Vec3 {
-        self.world_from_view_rot * -Vec3::Z // view-coordinates are RUB
-    }
-
-    /// Only valid if we have an up-vector set.
-    ///
-    /// `[-tau/4, +tau/4]`
-    fn pitch(&self) -> Option<f32> {
-        if self.eye_up == Vec3::ZERO {
-            None
-        } else {
-            Some(self.fwd().dot(self.eye_up).clamp(-1.0, 1.0).asin())
-        }
     }
 
     /// Returns `true` if interaction occurred.
