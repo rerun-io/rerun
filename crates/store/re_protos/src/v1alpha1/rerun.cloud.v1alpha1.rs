@@ -317,7 +317,11 @@ impl ::prost::Name for CreateIndexRequest {
     }
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct CreateIndexResponse {}
+pub struct CreateIndexResponse {
+    /// Optional debug information about the index-creation task
+    #[prost(message, optional, tag = "2")]
+    pub debug_info: ::core::option::Option<DebugInfo>,
+}
 impl ::prost::Name for CreateIndexResponse {
     const NAME: &'static str = "CreateIndexResponse";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
@@ -1441,6 +1445,23 @@ impl ::prost::Name for LanceTable {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.LanceTable".into()
+    }
+}
+/// Optional debug info
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DebugInfo {
+    /// The amount of memory used by the task or service call in bytes
+    #[prost(uint64, optional, tag = "1")]
+    pub memory_used: ::core::option::Option<u64>,
+}
+impl ::prost::Name for DebugInfo {
+    const NAME: &'static str = "DebugInfo";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DebugInfo".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DebugInfo".into()
     }
 }
 /// Error codes for application level errors
