@@ -318,7 +318,7 @@ py-lint-non-sdk = { cmd = "mypy --config-file rerun_py/.non_sdk_mypy.ini --insta
 # Until we resolve nbqa config issue keep aligned with nb-strip dirs below
 py-lint-nb-rerun = { cmd = "nbqa mypy examples/python scripts/ tests/python/ docs/snippets/ --config rerun_py/pyproject.toml  ", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
 # Need to run this in env with rerun installed
-py-lint-rerun = "mypy --config-file rerun_py/pyproject.toml --install-types --non-interactive --no-warn-unused-ignore"
+py-lint-rerun = { cmd = "mypy --config-file rerun_py/pyproject.toml --install-types --non-interactive --no-warn-unused-ignore", env = { PYTHONPATH = "cli_py/:$PYTHONPATH" } }
 py-lint = { depends-on = ["py-lint-non-sdk", "py-lint-rerun", "py-lint-nb-rerun"] }
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
@@ -420,7 +420,7 @@ py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-
 
 # Build an installable wheel.
 # The wheel will contain the rerun executable including the web viewer.
-py-build-wheel = { cmd = "cp target_pixi/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
+py-build-wheel = { cmd = "cp target_pixi/release/rerun$EXECUTABLE_EXTENSION cli_py/rerun_cli/ && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",
 ] }
 
@@ -680,6 +680,7 @@ numpy = ">=2" # Rerun still needs numpy <2. Enforce this outside of the pypi dep
 # This is very similar to `pixi run py-build`, and dispatches to maturin by way of PEP621.
 # However, pixi doesn't know how to track the rust dependencies of the python package, so
 # you still need to `pixi run py-build` in the correct environment if you change the rust code.
+rerun-cli = { path = "cli_py", editable = true }
 rerun-sdk = { path = "rerun_py", editable = true }
 
 # The same applies to the notebook.

@@ -12,12 +12,12 @@ fn main() {
         #[expect(clippy::unwrap_used)]
         let rerun_bin = std::env::current_dir()
             .unwrap()
-            .join("rerun_sdk/rerun_cli/rerun.exe");
+            .join("rerun_cli/rerun_cli/rerun.exe");
 
         #[cfg(not(target_os = "windows"))]
         let rerun_bin = std::env::current_dir()
             .expect("std::env::current_dir() failed")
-            .join("rerun_sdk/rerun_cli/rerun");
+            .join("rerun_cli/rerun_cli/rerun");
 
         if !rerun_bin.exists() {
             eprintln!("ERROR: Expected to find `rerun` at `{rerun_bin:?}`.");

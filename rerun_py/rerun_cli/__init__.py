@@ -22,7 +22,7 @@ import os
 import pathlib
 import sys
 
-real_path = pathlib.Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
+real_path = pathlib.Path(__file__).parent.parent.parent.joinpath("cli_py").resolve()
 
 print(f"DEV ENVIRONMENT DETECTED! Re-importing rerun from: {real_path}", file=sys.stderr)
 

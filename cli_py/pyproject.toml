@@ -1,0 +1,40 @@
+[project]
+classifiers = [
+  "Programming Language :: Rust",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+  "Development Status :: 3 - Alpha",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Scientific/Engineering :: Visualization",
+]
+description = "The Rerun CLI"
+dynamic = ["version"]
+keywords = ["computer-vision", "logging", "rerun"]
+name = "rerun-cli"
+requires-python = ">=3.10"
+
+[[project.authors]]
+email = "opensource@rerun.io"
+name = "Rerun.io"
+
+[project.license]
+text = "MIT OR Apache-2.0"
+
+[project.urls]
+documentation = "https://www.rerun.io/docs"
+homepage = "https://www.rerun.io"
+repository = "https://github.com/rerun-io/rerun"
+
+[project.scripts]
+rerun = "rerun_cli.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "rerun_cli/__init__.py"
+variable = "__version__"
+
+[tool.hatch.metadata]
+allow-direct-references = true
