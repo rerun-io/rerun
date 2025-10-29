@@ -396,7 +396,7 @@ def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool)
         subprocess.check_output(["taplo", "fmt"])
 
 
-DRY_RUN_PUBLISHED_CRATE_PATH: set[str] = set()
+DRY_RUN_PUBLISHED_CRATE_PATH: set[Path] = set()
 
 
 def is_already_published(version: str, crate: Crate, dry_run: bool) -> bool:
