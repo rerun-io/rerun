@@ -15,7 +15,11 @@ use crate::catalog::{
 use crate::utils::{get_tokio_runtime, wait_for_future};
 
 /// Client for a remote Rerun catalog server.
-#[pyclass(name = "CatalogClientInternal")] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(  // NOLINT: ignore[py-cls-eq] non-trivial implementation
+    name = "CatalogClientInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
+
 pub struct PyCatalogClientInternal {
     origin: re_uri::Origin,
 
