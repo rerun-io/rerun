@@ -1028,14 +1028,13 @@ fn query_and_resolve_tree_transform_at_entity(
 mod tests {
     use std::sync::{Arc, OnceLock};
 
+    use super::*;
     use re_chunk_store::{
         Chunk, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle, GarbageCollectionOptions,
         PerStoreChunkSubscriber, RowId,
     };
     use re_log_types::{StoreId, TimePoint, Timeline};
     use re_types::{archetypes, datatypes};
-
-    use super::*;
 
     #[derive(Debug, Clone, Copy)]
     enum StaticTestFlavor {
@@ -2293,6 +2292,109 @@ mod tests {
                 );
             }
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_source_and_targe_frames_basic() -> Result<(), Box<dyn std::error::Error>> {
+        let mut entity_db = new_entity_db_with_subscriber_registered();
+        let mut cache = TransformResolutionCache::default();
+
+        let timeline = Timeline::new_sequence("t");
+        let timeline_name = *timeline.name();
+
+        entity_db.add_chunk(&Arc::new(
+            Chunk::builder(EntityPath::from("my_entity"))
+                .with_archetype_auto_row(
+                    [(timeline, 1)],
+                    &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0]),
+                )
+                .with_archetype_auto_row(
+                    [(timeline, 2)],
+                    &archetypes::Transform3D::from_translation([2.0, 0.0, 0.0])
+                        .with_source_frame("frame0"),
+                )
+                .with_archetype_auto_row(
+                    [(timeline, 3)],
+                    &archetypes::Transform3D::from_translation([3.0, 0.0, 0.0])
+                        .with_target_frame("frame1"),
+                )
+                .with_archetype_auto_row(
+                    [(timeline, 4)],
+                    &archetypes::Transform3D::from_translation([4.0, 0.0, 0.0])
+                        .with_source_frame("frame2")
+                        .with_target_frame("frame3"),
+                )
+                .build()?,
+        ))?;
+
+        apply_store_subscriber_events(&mut cache, &entity_db);
+
+        let timeline_transforms = cache.transforms_for_timeline(*timeline.name());
+
+        let transforms_implicit_frame = timeline_transforms
+            .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                "my_entity",
+            )))
+            .unwrap();
+
+        // Nothing we add over time affects the implicit frame whose relationship is set at frame 1
+        for t in [1, 2, 3, 4, 5] {
+            assert_eq!(
+                transforms_implicit_frame
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
+                Some(SourceToTargetTransform {
+                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: Affine3A::from_translation(glam::Vec3::new(1.0, 0.0, 0.0)),
+                })
+            );
+        }
+
+        let transforms_frame0 = timeline_transforms
+            .frame_transforms(TransformFrameIdHash::from_str("frame0"))
+            .unwrap();
+        assert_eq!(
+            transforms_frame0
+                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
+            None
+        );
+        assert_eq!(
+            transforms_frame0
+                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 2)),
+            Some(SourceToTargetTransform {
+                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                transform: Affine3A::from_translation(glam::Vec3::new(2.0, 0.0, 0.0)),
+            })
+        );
+        assert_eq!(
+            transforms_frame0
+                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
+            Some(SourceToTargetTransform {
+                target: TransformFrameIdHash::from_str("frame1"),
+                transform: Affine3A::from_translation(glam::Vec3::new(3.0, 0.0, 0.0)),
+            })
+        );
+        assert_eq!(
+            transforms_frame0
+                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 4)),
+            Some(SourceToTargetTransform {
+                target: TransformFrameIdHash::from_str("frame1"),
+                transform: Affine3A::from_translation(glam::Vec3::new(3.0, 0.0, 0.0)),
+            })
+        );
+
+        assert_eq!(
+            timeline_transforms.frame_transforms(TransformFrameIdHash::from_str("custom_frame1")),
+            None
+        ); // frame1 is never a source, only a target.
+        let transforms_frame2 = timeline_transforms
+            .frame_transforms(TransformFrameIdHash::from_str("frame2"))
+            .unwrap();
+        assert_eq!(
+            timeline_transforms.frame_transforms(TransformFrameIdHash::from_str("custom_frame3")),
+            None
+        ); // frame3 is never a source, only a target.
 
         Ok(())
     }
