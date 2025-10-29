@@ -1054,8 +1054,6 @@ class SourceFile:
             if "NOLINT" in line:
                 # Check for NOLINT: ignore[<code>] format
                 if "NOLINT: ignore[" in line:
-                    import re
-
                     match = re.search(r"NOLINT: ignore\[([^\]]+)\]", line)
                     if match:
                         code = match.group(1)
