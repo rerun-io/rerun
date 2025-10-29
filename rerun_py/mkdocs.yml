@@ -20,12 +20,13 @@ plugins:
   - search # https://squidfunk.github.io/mkdocs-material/setup/setting-up-site-search/
   - mkdocstrings: # https://mkdocstrings.github.io/usage/#global-options
       custom_templates: docs/templates # Override the function template.
+      enable_inventory: true # Let others cross reference our docs.
       handlers:
         python:
           paths: ["rerun_sdk", "."] # Lookup python modules relative to this path
           import: # Cross-references for python and numpy
             - https://arrow.apache.org/docs/objects.inv
-            - https://docs.python.org/3/objects.inv
+            - https://docs.python.org/3.10/objects.inv
             - https://numpy.org/doc/stable/objects.inv
             - https://ipython.readthedocs.io/en/stable/objects.inv
             - https://datafusion.apache.org/python/objects.inv
