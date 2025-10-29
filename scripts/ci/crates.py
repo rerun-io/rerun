@@ -396,19 +396,7 @@ def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool)
         subprocess.check_output(["taplo", "fmt"])
 
 
-# When in dry run mode, we don't want to query `crates.io` to check if a given crate has been published yet because:
-# - It takes time at the beginning of the run (which introduces friction when iterating)
-# - It's incorrect, aka we don't really publish things, so `crates.io` doesn't know about what we "fake-publish"
-#
-# Instead, we use this global variable to keep track of the crates we pretend we have published so far.
-DRY_RUN_PUBLISHED_CRATE_PATH: set[Path] = set()
-
-
-def is_already_published(version: str, crate: Crate, dry_run: bool) -> bool:
-    if dry_run:
-        global DRY_RUN_PUBLISHED_CRATE_PATH
-        return crate.path in DRY_RUN_PUBLISHED_CRATE_PATH
-
+def is_already_published(version: str, crate: Crate) -> bool:
     crate_name = crate.manifest["package"]["name"]
     resp = requests.get(
         f"https://crates.io/api/v1/crates/{crate_name}",
@@ -487,16 +475,12 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], d
                 capture=True,
             )
 
-            if dry_run:
-                global DRY_RUN_PUBLISHED_CRATE_PATH
-                DRY_RUN_PUBLISHED_CRATE_PATH.add(crate.path)
-
-            if not is_already_published(version, crate, dry_run):
+            if not dry_run and not is_already_published(version, crate):
                 # Theoretically this shouldn't be needed… but sometimes it is.
                 print(f"{datetime.now()}  {R}Waiting for {name} to become available…")
                 time.sleep(2)  # give crates.io some time to index the new crate
                 num_retries = 0
-                while not is_already_published(version, crate, dry_run):
+                while not is_already_published(version, crate):
                     time.sleep(3)
                     num_retries += 1
                     if num_retries > 10:
@@ -530,7 +514,7 @@ def publish_unpublished_crates_in_parallel(
     print(f"{datetime.now()} Collecting unpublished crates…")
     unpublished_crates: dict[str, Crate] = {}
     for name, crate in all_crates.items():
-        if is_already_published(version, crate, dry_run):
+        if is_already_published(version, crate):
             print(f"{datetime.now()} {G}Already published{X} {B}{name}{X}@{B}{version}{X}")
         else:
             unpublished_crates[name] = crate
