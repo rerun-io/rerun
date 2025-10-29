@@ -14,6 +14,7 @@ use crate::utils::wait_for_future;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::QueryExpression;
 use re_datafusion::query_from_query_expression;
+use re_log::external::log::warn;
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::EntryKind;
 use re_protos::headers::RerunHeadersInjectorExt as _;
@@ -266,12 +267,16 @@ impl ConnectionHandle {
                     .ok_or(PyValueError::new_err("Unable to find EntryId for table"))?;
                 let schema = stream.schema();
 
-                // TODO(tsaucer) this is not ideal because it is dropping errors that originate in
-                // pyarrow. Since the errors occur during streaming, we cannot let this method
-                // fail without doing a collect operation.
-                let stream = futures::stream::iter(
-                    stream.map(move |rb| rb.unwrap_or(RecordBatch::new_empty(Arc::clone(&schema)))),
-                );
+                // Since the errors occur during streaming, we cannot let this method
+                // fail without doing a collect operation. Instead, we log a warning to
+                // the user.
+                let stream = futures::stream::iter(stream.filter_map(move |rb| match rb {
+                    Ok(rb) => Some(rb),
+                    Err(err) => {
+                        warn!("write_table input stream contains an error. {err}");
+                        None
+                    }
+                }));
 
                 self.client()
                     .await?
