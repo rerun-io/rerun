@@ -71,6 +71,9 @@ pub trait HarnessExt<'h> {
     // Get the position of a node in the UI by its label.
     fn get_panel_position(&mut self, label: &str) -> egui::Rect;
 
+    // Click at a position in the UI.
+    fn click_at(&mut self, pos: egui::Pos2);
+
     // Drag-and-drop functions based on position
     fn drag_at(&mut self, pos: egui::Pos2);
     fn hover_at(&mut self, pos: egui::Pos2);
@@ -300,6 +303,18 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
 
     fn get_panel_position(&mut self, label: &str) -> egui::Rect {
         self.get_by_role_and_label(Role::Pane, label).rect()
+    }
+
+    fn click_at(&mut self, pos: egui::Pos2) {
+        for pressed in [true, false] {
+            self.event(egui::Event::PointerButton {
+                pos,
+                button: PointerButton::Primary,
+                pressed,
+                modifiers: Modifiers::NONE,
+            });
+        }
+        self.run();
     }
 
     fn drag_at(&mut self, pos: egui::Pos2) {
