@@ -938,7 +938,7 @@ fn query_and_resolve_tree_transform_at_entity(
 
     let target = results
         .component_mono_quiet::<components::TransformFrameId>(
-            archetypes::Transform3D::descriptor_target_frames().component,
+            archetypes::Transform3D::descriptor_target_frame().component,
         )
         .map_or_else(
             || {

@@ -3130,17 +3130,17 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
-                        name: "source_frames",
-                        display_name: "Source frames",
+                        name: "source_frame",
+                        display_name: "Source frame",
                         component_type: "rerun.components.TransformFrameId".into(),
-                        docstring_md: "The frames this transform transforms from.\n\nThe entity at which the transform relationship of any given source frame is specified musn't change over time.\nE.g. if you specified the source \"robot_arm\" on an entity named \"my_transforms\", you may not log transforms\nwith the source \"robot_arm\" on any other entity than \"my_transforms\".\nAn exception to this rule is static time - you may first mention a source on one entity statically and later on\nanother one temporally.\n\nIf not specified, this is set to the implicit transform frame of the current entity path.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame?speculative-link).",
+                        docstring_md: "⚠\u{fe0f} Experimental ⚠\u{fe0f}: The frame this transform transforms from.\n\nThe entity at which the transform relationship of any given source frame is specified musn't change over time.\nE.g. if you specified the source \"robot_arm\" on an entity named \"my_transforms\", you may not log transforms\nwith the source \"robot_arm\" on any other entity than \"my_transforms\".\nAn exception to this rule is static time - you may first mention a source on one entity statically and later on\nanother one temporally.\n\nIf not specified, this is set to the implicit transform frame of the current entity path.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame?speculative-link).",
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
-                        name: "target_frames",
-                        display_name: "Target frames",
+                        name: "target_frame",
+                        display_name: "Target frame",
                         component_type: "rerun.components.TransformFrameId".into(),
-                        docstring_md: "The frames this transform transforms to.\n\nIf not specified, this is set to the implicit transform frame of the current entity path's parent.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame?speculative-link).",
+                        docstring_md: "⚠\u{fe0f} Experimental ⚠\u{fe0f}: The frame this transform transforms to.\n\nIf not specified, this is set to the implicit transform frame of the current entity path's parent.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame?speculative-link).",
                         is_required: false,
                     },
                     ArchetypeFieldReflection {

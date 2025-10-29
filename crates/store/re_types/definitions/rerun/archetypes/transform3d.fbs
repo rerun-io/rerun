@@ -45,7 +45,7 @@ table Transform3D (
 
   // --- transform frame
 
-  /// The frames this transform transforms from.
+  /// ⚠️ Experimental ⚠️: The frame this transform transforms from.
   ///
   /// The entity at which the transform relationship of any given source frame is specified musn't change over time.
   /// E.g. if you specified the source "robot_arm" on an entity named "my_transforms", you may not log transforms
@@ -57,15 +57,17 @@ table Transform3D (
   /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
   ///
   /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
-  source_frames: [rerun.components.TransformFrameId] ("attr.rerun.component_optional", nullable, order: 2000);
+  // TODO(RR-2777): Mark as stable when we're ready for it.
+  source_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", nullable, order: 2000);
 
-  /// The frames this transform transforms to.
+  /// ⚠️ Experimental ⚠️: The frame this transform transforms to.
   ///
   /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
   /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
   ///
   /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
-  target_frames: [rerun.components.TransformFrameId] ("attr.rerun.component_optional", nullable, order: 2100);
+  // TODO(RR-2777): Mark as stable when we're ready for it.
+  target_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", nullable, order: 2100);
 
   // --- visual representation
 

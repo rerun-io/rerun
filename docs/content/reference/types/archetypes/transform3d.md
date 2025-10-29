@@ -24,8 +24,8 @@ For transforms that affect only a single entity and do not propagate along the e
 * `scale`: [`Scale3D`](../components/scale3d.md)
 * `mat3x3`: [`TransformMat3x3`](../components/transform_mat3x3.md)
 * `relation`: [`TransformRelation`](../components/transform_relation.md)
-* `source_frames`: [`TransformFrameId`](../components/transform_frame_id.md)
-* `target_frames`: [`TransformFrameId`](../components/transform_frame_id.md)
+* `source_frame`: [`TransformFrameId`](../components/transform_frame_id.md)
+* `target_frame`: [`TransformFrameId`](../components/transform_frame_id.md)
 * `axis_length`: [`AxisLength`](../components/axis_length.md)
 
 

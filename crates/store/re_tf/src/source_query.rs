@@ -42,7 +42,7 @@ pub fn query_sources_in_extended_bounds(
     let fallback_source = TransformFrameIdHash::from_entity_path(entity_path);
 
     if aspects.contains(TransformAspect::Frame) {
-        let source_frame_component = archetypes::Transform3D::descriptor_source_frames().component;
+        let source_frame_component = archetypes::Transform3D::descriptor_source_frame().component;
         let result = entity_db.storage_engine().cache().range(
             &RangeQuery::new(timeline, AbsoluteTimeRange::new(min_time, max_time))
                 .include_extended_bounds(true), // Need to add extended bounds so we know the last known value.
@@ -91,7 +91,7 @@ pub fn query_source_frames_in_static_chunk(
 
     // We only care about static time, so unlike on temporal chunks, we can just check the source frame list directly from the chunk if any.
     if aspects.contains(TransformAspect::Frame) {
-        let source_frame_component = archetypes::Transform3D::descriptor_source_frames().component;
+        let source_frame_component = archetypes::Transform3D::descriptor_source_frame().component;
         if let Some(sources) = chunk.iter_slices::<String>(source_frame_component).next() {
             let sources: IntSet<_> = sources
                 .into_iter()
@@ -133,7 +133,7 @@ mod tests {
             Chunk::builder(entity_path_static.clone())
                 .with_archetype_auto_row(
                     TimePoint::STATIC,
-                    &archetypes::Transform3D::update_fields().with_source_frames(["frame0"]),
+                    &archetypes::Transform3D::update_fields().with_source_frame("frame0"),
                 )
                 .build()?,
         ))?;
@@ -142,16 +142,17 @@ mod tests {
             Chunk::builder(entity_path_dynamic.clone())
                 .with_archetype_auto_row(
                     [(timeline, 10)],
-                    &archetypes::Transform3D::update_fields().with_source_frames(["frame1"]),
+                    &archetypes::Transform3D::update_fields().with_source_frame("frame1"),
                 )
                 .with_archetype_auto_row(
                     [(timeline, 20)],
+                    // TODO(RR-2799): Allow multiple sources for a single entit. Using `with_many_source_frame` is a bit of a hack to get there.
                     &archetypes::Transform3D::update_fields()
-                        .with_source_frames(["frame2", "frame3"]),
+                        .with_many_source_frame(["frame2", "frame3"]),
                 )
                 .with_archetype_auto_row(
                     [(timeline, 30)],
-                    &archetypes::Transform3D::update_fields().with_source_frames(["frame4"]),
+                    &archetypes::Transform3D::update_fields().with_source_frame("frame4"),
                 )
                 .build()?,
         ))?;
@@ -251,7 +252,9 @@ mod tests {
         let chunk = Chunk::builder(entity_path.clone())
             .with_archetype_auto_row(
                 TimePoint::STATIC,
-                &archetypes::Transform3D::update_fields().with_source_frames(["frame1", "frame2"]),
+                // TODO(RR-2799): Allow multiple sources for a single entit. Using `with_many_source_frame` is a bit of a hack to get there.
+                &archetypes::Transform3D::update_fields()
+                    .with_many_source_frame(["frame1", "frame2"]),
             )
             .build()?;
 
