@@ -3,106 +3,164 @@ title: Blueprints
 order: 600
 ---
 
-## Blueprints and recordings
+## What are Blueprints?
 
-<!-- source: Rerun Design System/Documentation schematics -->
-<img src="https://static.rerun.io/6e2095a0ffa4f093deb59848b7c294581ded4678_blueprints_and_recordings.png" width="550px">
+When you work with the Rerun Viewer, understanding blueprints is important if you want to build consistency around your Viewer experience.
 
-When you are working with the Rerun viewer, there are two separate pieces that
-combine to produce what you see: the "recording" and the "blueprint."
+*For a video overview, check out the [Blueprints video](https://www.youtube.com/embed/kxbkbFVAsBo?si=k2JPz3RbhR1--pcw) on YouTube.*
 
--   The recording provides the actual data you are visualizing.
--   The blueprint is the configuration that determines how the data from the
-    recording is displayed.
+<iframe width="560" height="315" src="https://www.youtube.com/embed/kxbkbFVAsBo?si=k2JPz3RbhR1--pcw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
-Both of these pieces are crucial—without the recording there is nothing to
-show, and without the blueprint there is no way to show it. Even if you have
-used Rerun before without explicitly loading a blueprint, the Viewer was
-actually creating one for you. Without a blueprint, there is literally nothing
-for the Viewer to display.
 
-## Loose coupling
+A way to think about the Rerun View is that
 
-The blueprint and the recording are only loosely coupled. Rerun uses the
-[application ID](apps-and-recordings.md) to determine whether a blueprint and a
-recording should be used together, but they are not directly linked beyond that.
+-   **The recording** provides the actual data you are visualizing
+-   **The blueprint** determines how that data is displayed
 
-This means that either can be changed independently of the other. Keeping the
-blueprint constant while changing the recording will allow you to compare
-different datasets using a consistent set of views. On the other hand, changing
-the blueprint while keeping a recording constant will allow you to view the same
-data in different ways.
+Both pieces are crucial. Without a recording there is nothing to show. Without a blueprint there is no way to show it. Even when you use Rerun without explicitly loading a blueprint, the Viewer creates one automatically for you.
 
-## What the blueprint controls
+## What Blueprints Control
 
-Every aspect of what the Viewer displays is controlled by the blueprint. This
-includes the type and content of the different views, the organization and
-layout of the different containers, and the configuration and styling properties
-of the individual data visualizers (see [Visualizers and Overrides](visualizers-and-overrides.md)
-for more details).
+Blueprints give you complete control over the Viewer's layout and configuration:
 
-In general, if you can modify an aspect of how something looks through the
-viewer, you are actually modifying the blueprint. (Note that while there may be
-some exceptions to this rule at the moment, the intent is to eventually migrate
-all state to the blueprint.)
+-   **Panel visibility**: Whether panels like the blueprint panel, selection panel, and time panel are expanded or collapsed
+-   **Layout structure**: How views are arranged using containers (Grid, Horizontal, Vertical, Tabs)
+-   **View types and configuration**: What kind of views display your data (2D/3D spatial, maps, charts, text logs, etc.) and their specific settings
+-   **Visual properties**: Styling like backgrounds, colors, zoom levels, time ranges, and visual bounds
 
-## Current, default, and heuristics blueprints
+In general, if you can modify an aspect of how something looks through the Viewer, you are actually modifying the blueprint.
 
-<!-- source: Rerun Design System/Documentation schematics -->
-<img src="https://static.rerun.io/fe1fcf086752f5d7cdd64b195fb3a6cb99c50737_current_default_heuristic.png" width="550px">
+## Application IDs: Binding Blueprints to Data
 
-Blueprints may originate from multiple sources.
+The [Application ID](apps-and-recordings.md) is how blueprints connect to your data. This is a critical concept:
 
-- The "current blueprint" for a given application ID is the one that is used by the Viewer to display data at any given time. It is updated for each change made to the visualization within the viewer, and may be saved to a blueprint file at any time.
-- The "default blueprint" is a snapshot that is set or updated when a blueprint is received from code or loaded from a file. The current blueprint may be reset to default blueprint at any time by using the "reset" button in the blueprint panel's header.
-- The "heuristic blueprint" is an automatically-produced blueprint based on the recording data. When no default blueprint is available, the heuristic blueprint is used when resetting the current blueprint. It is also possible to reset to the heuristic blueprint in the selection panel after selecting an application.
+**All recordings that share the same Application ID will use the same blueprint.**
 
-## What is a blueprint
+This loose coupling between blueprints and recordings means:
+-   You can keep the blueprint constant while changing the recording to compare different datasets with consistent views
+-   You can change the blueprint while keeping a recording constant to view the same data in different ways
+-   When you save blueprint changes in the Viewer, those changes apply to all recordings with that Application ID
 
-Under the hood, the blueprint is just data. It is represented by a
-[time-series ECS](./entity-component.md), just like a recording. The only
-difference is that it uses a specific set of blueprint archetypes and a special
-blueprint timeline. Note that even though the blueprint may be sent over the
-same connection, blueprint data is kept in an isolated store and is not mixed
-with your recording data.
+Think of the Application ID as the "key" that binds a blueprint to a specific type of recording. If you want recordings to share the same layout, give them the same Application ID.
 
-Although the Rerun APIs for working with blueprint may look different from the
-regular logging APIs, they are really just syntactic sugar for logging a
-collection of blueprint-specific archetypes to a separate blueprint stream.
+## Reset Behavior: Heuristic vs Default
 
-Furthermore, when you make any change to the Viewer in the UI, what is actually
-happening is the Viewer is creating a new blueprint event and adding it to the
-end of the blueprint timeline in the blueprint store.
+The Viewer provides two types of blueprint reset, accessible from the blueprint panel:
 
-## Viewer operation
+<picture>
+  <img src="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/1200w.png">
+</picture>
 
-Outside of caching that exists primarily for performance reasons, the viewer
-persists very little state frame-to-frame. The goal is for the output of the
-Viewer to be a deterministic function of the blueprint and the recording.
+### Reset to Heuristic Blueprint
+This generates a new blueprint automatically based on your current data. The Viewer analyzes what you've logged and creates an appropriate layout using built-in heuristics. This is useful when you want to start fresh and let Rerun figure out a reasonable layout.
 
-Every frame, the Viewer starts with a minimal context of an "active" blueprint,
-and an "active" recording. The Viewer then uses the current revision on the
-blueprint timeline to query the container and view archetypes from the
-blueprint store. The view archetypes, in turn, specify the paths types
-that need to be queried from the recording store in order to render the views.
+### Reset to Default Blueprint
+This returns to your programmatically specified blueprint (sent from code) or a saved blueprint file (`.rbl`). If you've sent a blueprint using `rr.send_blueprint()` or loaded a `.rbl` file, this becomes your "default." The reset button in the blueprint panel will restore this default whenever you need it.
 
-Any user interactions that modify the blueprint are queued and written back to
-the blueprint using the next revision on the blueprint timeline.
+When no default blueprint has been set, the reset button will use the heuristic blueprint instead.
 
-## Blueprint architecture motivation
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/fe1fcf086752f5d7cdd64b195fb3a6cb99c50737_current_default_heuristic.png">
+  <img src="https://static.rerun.io/fe1fcf086752f5d7cdd64b195fb3a6cb99c50737_current_default_heuristic.png" width="550px" alt="Current, default, and heuristic blueprints">
+</picture>
 
-Although this architecture adds some complexity and indirection, the fact that
-the Viewer stores all of its meaningful frame-to-frame state in a structured
-blueprint data-store has several advantages:
+## Three Ways to Work with Blueprints
 
--   Anything you modify in the Viewer can be saved and shared as a blueprint.
--   A blueprint can be produced programmatically using just the Rerun SDK without
-    a dependency on the Viewer libraries.
--   The blueprint is capable of representing any data that a recording can
-    represent. This means that blueprint-sourced data
-    [overrides](visualizers-and-overrides.md#Per-entity-component-override) are
-    just as expressive as any logged data.
--   The blueprint is actually stored as a full time-series, simplifying future
-    implementations of things like snapshots and undo/redo mechanisms.
--   Debugging tools for inspecting generic Rerun data can be used to inspect
-    internal blueprint state.
+There are three complementary approaches to creating and modifying blueprints:
+
+### 1. Interactively
+Modify blueprints directly in the Viewer UI:
+-   Drag and drop views to rearrange them
+-   Add new views or containers with the "+" button
+-   Split views horizontally, vertically, or into grids
+-   Change container types (Grid, Horizontal, Vertical, Tabs)
+-   Rename views and containers
+-   Show, hide, or remove elements
+
+This is the fastest way to experiment with layouts. See [Configure the Viewer](../getting-started/configure-the-viewer.md) for a complete guide.
+
+### 2. Save and Load Files
+Save your blueprint configuration to `.rbl` files:
+-   Use "Save blueprint..." from the file menu to save your current layout
+-   Load blueprints with "Open..." or by dragging `.rbl` files into the Viewer
+-   Share blueprint files with teammates to ensure everyone sees data the same way
+-   Reuse blueprints across sessions and different recordings (with the same Application ID)
+
+Blueprint files are portable and can be version-controlled alongside your code.
+
+### 3. Programmatically
+Write blueprint code that configures the Viewer automatically:
+-   Define layouts in Python using `rerun.blueprint` APIs
+-   Send blueprints with `rr.send_blueprint()` or via `default_blueprint` parameter
+-   Generate layouts dynamically based on your data
+-   Perfect for creating consistent views for specific debugging scenarios
+
+For example, you might send different blueprints automatically based on detected issues in your application (e.g., a robot enters an error state and surfaces the correct blueprint to help you debug that)
+
+```python
+import rerun.blueprint as rrb
+
+if robot_error:
+    # Show diagnostic views for debugging
+    blueprint = rrb.Grid(
+        rrb.Spatial3DView(name="Robot View", origin="/world/robot"),
+        rrb.TextLogView(name="Error Logs", origin="/diagnostics"),
+        rrb.TimeSeriesView(name="Sensor Data", origin="/sensors"),
+    )
+    rr.send_blueprint(blueprint, make_active=True)
+```
+
+See [Configure the Viewer](../getting-started/configure-the-viewer.md#programmatic-blueprints) for detailed examples.
+
+## Common Use Cases
+
+### Debugging Specific Scenarios
+Create blueprints optimized for diagnosing particular issues. For example, when debugging robot perception, you might want a blueprint that shows:
+-   The camera view in 2D
+-   The 3D world with detected objects
+-   Detection confidence scores in a time series chart
+-   Error logs in a text panel
+
+### Sharing Layouts with Teams
+Save a blueprint file and share it with your team. Everyone loading that blueprint with matching recordings will see the data the same way, making it easier to discuss findings and collaborate.
+
+### Templating for Different Data Types
+Create different blueprint templates for different types of recordings. For example:
+-   A blueprint for autonomous vehicle data that focuses on map views and sensor fusion
+-   A blueprint for robotics manipulation that emphasizes joint angles and gripper cameras
+-   A blueprint for computer vision that shows side-by-side comparisons of different models
+
+### Dynamic Viewer Configuration
+Generate blueprints programmatically based on runtime conditions. For instance, automatically create one view per detected anomaly, or adjust the layout based on how many data sources are active.
+
+## Blueprint Architecture
+
+Under the hood, blueprints are just data. They are structured using the same [Entity Component System](./entity-component.md) as your recordings, but with blueprint-specific archetypes and a separate blueprint timeline. This architecture provides several advantages:
+
+-   **Anything you modify in the Viewer can be saved and shared** as a blueprint file
+-   **Blueprints can be produced programmatically** using just the Rerun SDK without depending on the Viewer
+-   **Blueprint data is fully expressive**, enabling [blueprint overrides](visualizers-and-overrides.md#per-entity-component-override) that are as powerful as logged data
+-   **The full time-series nature** simplifies future features like snapshots and undo/redo
+-   **Debugging tools for Rerun data** can inspect blueprint state just like recording data
+
+### Viewer Operation
+
+The Viewer is designed to be deterministic. Every frame, the Viewer:
+1. Takes the active blueprint and active recording
+2. Queries container and view archetypes from the blueprint at the current blueprint timeline revision
+3. Uses those view specifications to query the data needed from the recording
+4. Renders the results
+5. Queues any user interactions as new blueprint events on the blueprint timeline
+
+This means the Viewer output is a deterministic function of the blueprint and the recording, with minimal persisted state between frames.
+
+## Next Steps
+
+-   **Learn to use blueprints**: See [Configure the Viewer](../getting-started/configure-the-viewer.md) for hands-on tutorials covering interactive, file-based, and programmatic workflows
+-   **Understand the UI**: Check the [Blueprint Panel Reference](../reference/viewer/blueprint.md) for details on UI controls
+-   **Customize visualizations**: Learn about [Visualizers and Overrides](visualizers-and-overrides.md) for advanced per-entity customization
+-   **Explore the API**: Browse the [Blueprint API Reference](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) for programmatic control (Python)
