@@ -695,6 +695,32 @@ where
         Ok(response)
     }
 
+    pub async fn get_entry_id(
+        &mut self,
+        entry_name: &str,
+        entry_kind: Option<EntryKind>,
+    ) -> Result<Option<EntryId>, ApiError> {
+        self.inner()
+            .find_entries(FindEntriesRequest {
+                filter: Some(EntryFilter {
+                    id: None,
+                    name: Some(entry_name.to_owned()),
+                    entry_kind: entry_kind.map(|kind| kind.into()),
+                }),
+            })
+            .await
+            .map_err(|err| ApiError::tonic(err, "/FindEntries failed"))?
+            .into_inner()
+            .entries
+            .first()
+            .and_then(|entry| entry.id)
+            .map(|id| {
+                EntryId::try_from(id)
+                    .map_err(|err| ApiError::serialization(err, "/FindEntries failed"))
+            })
+            .transpose()
+    }
+
     pub async fn write_table(
         &mut self,
         stream: impl Stream<Item = RecordBatch> + Send + 'static,
