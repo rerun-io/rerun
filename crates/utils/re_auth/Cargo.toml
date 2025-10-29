@@ -35,6 +35,7 @@ async-trait.workspace = true
 http.workspace = true
 jsonwebtoken.workspace = true
 saturating_cast.workspace = true
+serde_with = { workspace = true, features = ["macros", "alloc"] }
 thiserror.workspace = true
 tokio.workspace = true
 tonic.workspace = true
@@ -61,3 +62,4 @@ ehttp = { workspace = true, optional = true, features = ["json"] }
 
 [dev-dependencies]
 rand = { workspace = true, features = ["std", "std_rng"] }
+serde_json.workspace = true
