@@ -1,4 +1,4 @@
-# Data processing status example
+## Data processing status example
 
 The purpose of this example is to demonstrate how one would set up a data flow where you are incrementally
 processing partitions within a dataset. The general concept is that you have two tables that you will use,
@@ -13,7 +13,7 @@ a time. The details of how you select which partitions to process are up to the 
 
 The code below produces a few lines of status output and then displays both the results and status tables.
 
-## Setup
+### Setup
 
 This example assumes you have started the OSS server using the dataset example located in the test
 asset directory. From the rerun repository you can start this using the following command.
