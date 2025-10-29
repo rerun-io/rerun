@@ -39,9 +39,11 @@ class Server:
 
     def __init__(
         self,
-        address: str | None = None,
-        port: int | None = None,
+        *,
+        address: str = "0.0.0.0",
+        port: int = 51234,
         datasets: dict[str, PathLike[str]] | None = None,
+        tables: dict[str, PathLike[str]] | None = None,
     ) -> None:
         """
         Create a new Rerun server instance and start it.
@@ -53,18 +55,22 @@ class Server:
         ----------
         address:
             The address to bind the server to.
-            Defaults to `"0.0.0.0"`.
         port:
             The port to bind the server to.
-            Defaults to `51234`.
         datasets:
             Optional dictionary mapping dataset names to their file paths.
             These datasets will be loaded and available when the server starts.
+        tables:
+            Optional dictionary mapping table names to lance file paths,
+            which will be loaded and made available when the server starts.
 
         """
 
         self._internal = ServerInternal(
-            address=address, port=port, datasets={name: str(path) for name, path in (datasets or {}).items()}
+            address=address,
+            port=port,
+            datasets={name: str(path) for name, path in (datasets or {}).items()},
+            tables={name: str(path) for name, path in (tables or {}).items()},
         )
 
     def client(self) -> CatalogClient:
@@ -105,7 +111,7 @@ class Server:
         """
         return self._internal.is_running()
 
-    def stop(self) -> None:
+    def shutdown(self) -> None:
         """
         Stop the server.
 
@@ -127,4 +133,8 @@ class Server:
         self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
     ) -> None:
         """Exit the context manager, shutting down the server."""
+        self._internal.shutdown()
+
+    def __del__(self) -> None:
+        """Ensure the server is gracefully shut down when the instance is deleted."""
         self._internal.shutdown()

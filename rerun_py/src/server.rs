@@ -20,35 +20,23 @@ pub struct PyServerInternal {
 #[pymethods]
 impl PyServerInternal {
     #[new]
-    #[pyo3(signature = (address=None, port=None, datasets=None))]
+    #[pyo3(signature = (address="0.0.0.0", port=51234, datasets=None, tables=None))]
     pub fn new(
         py: Python<'_>,
-        address: Option<String>,
-        port: Option<u16>,
+        address: &str,
+        port: u16,
         datasets: Option<&Bound<'_, PyDict>>,
+        tables: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<Self> {
-        let datasets = datasets
-            .map(|dict| {
-                dict.iter()
-                    .filter_map(|(k, v)| {
-                        let name = k.downcast::<PyString>().ok()?;
-                        let path = v.extract::<&str>().ok()?;
-
-                        Some(re_server::NamedPath {
-                            name: Some(name.to_string_lossy().to_string()),
-                            path: std::path::PathBuf::from(path),
-                        })
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default();
+        let datasets = extract_named_paths(datasets);
+        let tables = extract_named_paths(tables);
 
         // we can re-use the CLI argument to construct the server
         let args = ServerArgs {
-            addr: address.unwrap_or("0.0.0.0".to_owned()),
-            port: port.unwrap_or(51234),
+            addr: address.to_owned(),
+            port,
             datasets,
-            tables: vec![],
+            tables,
         };
 
         let address = SocketAddr::new(
@@ -70,17 +58,10 @@ impl PyServerInternal {
         })
     }
 
-    /// Get the server's connection address.
-    ///
-    /// Returns the address that clients can use to connect to this server,
-    /// formatted as a `rerun+http://` URL.
     pub fn address(&self) -> String {
         format!("rerun+http://{}", self.address)
     }
 
-    /// Shutdown the server, blocking until it has fully stopped.
-    ///
-    /// If the server is not running, raises a `ValueError`.
     pub fn shutdown(&mut self, py: Python<'_>) -> PyResult<()> {
         if let Some(handle) = self.handle.take() {
             crate::utils::wait_for_future(py, async {
@@ -94,10 +75,26 @@ impl PyServerInternal {
         }
     }
 
-    /// Check if the server is currently running.
     pub fn is_running(&self) -> bool {
         self.handle.is_some()
     }
+}
+
+fn extract_named_paths(dict: Option<&Bound<'_, PyDict>>) -> Vec<re_server::NamedPath> {
+    dict.map(|dict| {
+        dict.iter()
+            .filter_map(|(k, v)| {
+                let name = k.downcast::<PyString>().ok()?;
+                let path = v.extract::<&str>().ok()?;
+
+                Some(re_server::NamedPath {
+                    name: Some(name.to_string_lossy().to_string()),
+                    path: std::path::PathBuf::from(path),
+                })
+            })
+            .collect::<Vec<_>>()
+    })
+    .unwrap_or_default()
 }
 
 /// Register the `rerun.server` module.

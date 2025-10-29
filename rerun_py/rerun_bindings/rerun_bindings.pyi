@@ -1936,56 +1936,29 @@ class ServerInternal:
 
     def __init__(
         self,
-        address: str | None = None,
-        port: int | None = None,
+        *,
+        address: str = "0.0.0.0",
+        port: int = 51234,
         datasets: dict[str, str] | None = None,
+        tables: dict[str, str] | None = None,
     ) -> None:
         """
         Create and start a Rerun server.
 
         Parameters
         ----------
-        address : str | None
-            The address to bind the server to. Defaults to "0.0.0.0".
-        port : int | None
-            The port to bind the server to. Defaults to 51234.
+        address : str
+            The address to bind the server to.
+        port : int
+            The port to bind the server to.
         datasets : dict[str, str] | None
             Optional dictionary mapping dataset names to their file paths.
+        tables : dict[str, str] | None
+            Optional dictionary mapping table names to lance file paths,
+            which will be loaded and made available when the server starts.
 
         """
 
-    def address(self) -> str:
-        """
-        Get the server's connection address.
-
-        Returns the address that clients can use to connect to this server,
-        formatted as a `rerun+http://` URL.
-
-        Returns
-        -------
-        str
-            The connection URL in the format `rerun+http://address:port`.
-
-        """
-
-    def shutdown(self) -> None:
-        """
-        Shutdown the server, blocking until it has fully stopped.
-
-        Raises
-        ------
-        ValueError
-            If the server is not running or has already been shut down.
-
-        """
-
-    def is_running(self) -> bool:
-        """
-        Check if the server is currently running.
-
-        Returns
-        -------
-        bool
-            True if the server is running, False otherwise.
-
-        """
+    def address(self) -> str: ...
+    def shutdown(self) -> None: ...
+    def is_running(self) -> bool: ...
