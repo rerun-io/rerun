@@ -3,6 +3,7 @@ mod common;
 mod dataset_schema;
 mod entries_table;
 mod fetch_chunks;
+mod indexes;
 mod query_dataset;
 mod register_partition;
 #[cfg(feature = "lance")]
@@ -63,6 +64,9 @@ define_redap_tests! {
     entries_table::list_entries_table,
     fetch_chunks::multi_dataset_fetch_chunk_completeness,
     fetch_chunks::simple_dataset_fetch_chunk_snapshot,
+    indexes::column_doesnt_exist,
+    indexes::index_lifecycle,
+    indexes::dataset_doesnt_exist,
     query_dataset::query_dataset_should_fail,
     query_dataset::query_empty_dataset,
     query_dataset::query_simple_dataset,
