@@ -3,13 +3,13 @@
 
 from __future__ import annotations
 
-from datafusion import col, functions as F, DataFrame
+import tempfile
 from datetime import datetime
 from pathlib import Path
-from rerun.catalog import CatalogClient, DatasetEntry
-from typing import List
+
 import pyarrow as pa
-import tempfile
+from datafusion import DataFrame, col, functions as F
+from rerun.catalog import CatalogClient, DatasetEntry
 
 CATALOG = "rerun+http://localhost:51234"
 DATASET_NAME = "dataset"
@@ -17,9 +17,8 @@ DATASET_NAME = "dataset"
 STATUS_TABLE_NAME = "status"
 RESULTS_TABLE_NAME = "results"
 
-def create_table(
-        client: CatalogClient, directory: Path, table_name: str, schema: pa.Schema
-) -> DataFrame:
+
+def create_table(client: CatalogClient, directory: Path, table_name: str, schema: pa.Schema) -> DataFrame:
     """
     Create a lance table at a specified location and return its DataFrame.
 
@@ -32,44 +31,38 @@ def create_table(
 
     return client.create_table_entry(table_name, schema, url).df()
 
+
 def create_status_table(client: CatalogClient, directory: Path) -> DataFrame:
     """Create the status table."""
-    schema = pa.schema(
-        [
-            ("rerun_partition_id", pa.utf8()),
-            ("is_complete", pa.bool_()),
-            ("update_time", pa.timestamp(unit="ms")),
-        ]
-    )
+    schema = pa.schema([
+        ("rerun_partition_id", pa.utf8()),
+        ("is_complete", pa.bool_()),
+        ("update_time", pa.timestamp(unit="ms")),
+    ])
     return create_table(client, directory, STATUS_TABLE_NAME, schema)
+
 
 def create_results_table(client: CatalogClient, directory: Path) -> DataFrame:
     """Create the results table."""
-    schema = pa.schema(
-        [
-            ("rerun_partition_id", pa.utf8()),
-            ("first_log_time", pa.timestamp(unit="ns")),
-            ("last_log_time", pa.timestamp(unit="ns")),
-            ("first_position_obj1", pa.list_(pa.float32(), 3)),
-            ("first_position_obj2", pa.list_(pa.float32(), 3)),
-            ("first_position_obj3", pa.list_(pa.float32(), 3)),
-        ]
-    )
+    schema = pa.schema([
+        ("rerun_partition_id", pa.utf8()),
+        ("first_log_time", pa.timestamp(unit="ns")),
+        ("last_log_time", pa.timestamp(unit="ns")),
+        ("first_position_obj1", pa.list_(pa.float32(), 3)),
+        ("first_position_obj2", pa.list_(pa.float32(), 3)),
+        ("first_position_obj3", pa.list_(pa.float32(), 3)),
+    ])
     return create_table(client, directory, RESULTS_TABLE_NAME, schema)
 
-def find_missing_partitions(
-        partition_table: DataFrame, status_table: DataFrame
-) -> List[str]:
+
+def find_missing_partitions(partition_table: DataFrame, status_table: DataFrame) -> list[str]:
     """Query the status table for partitions that have not processed."""
     status_table = status_table.filter(col("is_complete"))
-    partitions = partition_table.join(
-        status_table, on="rerun_partition_id", how="anti"
-    ).collect()
+    partitions = partition_table.join(status_table, on="rerun_partition_id", how="anti").collect()
     return [str(r) for rss in partitions for rs in rss for r in rs]
 
-def process_partitions(
-        client: CatalogClient, dataset: DatasetEntry, partition_list: list[str]
-) -> None:
+
+def process_partitions(client: CatalogClient, dataset: DatasetEntry, partition_list: list[str]) -> None:
     """
     Example code for processing some partitions within a dataset.
 
@@ -88,11 +81,7 @@ def process_partitions(
         update_time=[datetime.now()] * len(partition_list),
     )
 
-    df = (
-        dataset.dataframe_query_view(index="time_1", contents="/**")
-        .filter_partition_id(*partition_list)
-        .df()
-    )
+    df = dataset.dataframe_query_view(index="time_1", contents="/**").filter_partition_id(*partition_list).df()
 
     df = df.aggregate(
         "rerun_partition_id",
@@ -122,16 +111,12 @@ def process_partitions(
     client.append_to_table(
         STATUS_TABLE_NAME,
         rerun_partition_id=partition_list,
-        is_complete=[True]
-                    * len(
-            partition_list
-        ),  # Add the `True` value to prevent this from processing again
+        is_complete=[True] * len(partition_list),  # Add the `True` value to prevent this from processing again
         update_time=[datetime.now()] * len(partition_list),
     )
 
 
 def main(temp_path: Path) -> None:
-
     client = CatalogClient(CATALOG)
     dataset = client.get_dataset(name=DATASET_NAME)
 
@@ -140,18 +125,13 @@ def main(temp_path: Path) -> None:
 
     # TODO(tsaucer) replace with partition table query
     partition_table = (
-        dataset.dataframe_query_view(index="time_1", contents="/**")
-        .df()
-        .select("rerun_partition_id")
-        .distinct()
+        dataset.dataframe_query_view(index="time_1", contents="/**").df().select("rerun_partition_id").distinct()
     )
 
     missing_partitions = None
     while missing_partitions is None or len(missing_partitions) != 0:
         missing_partitions = find_missing_partitions(partition_table, status_table)
-        print(
-            f"{len(missing_partitions)} of {partition_table.count()} partitions have not processed."
-        )
+        print(f"{len(missing_partitions)} of {partition_table.count()} partitions have not processed.")
 
         if len(missing_partitions) > 0:
             process_partitions(client, dataset, missing_partitions[0:3])
