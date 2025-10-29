@@ -75,7 +75,7 @@ def _sanitize_dependency_graph(dependency_graph: dict[_T, list[_T]]):
             elif neighbor in rec_stack:
                 # Found cycle - extract and display it
                 cycle_start = path.index(neighbor)
-                cycle = path[cycle_start:] + [neighbor]
+                cycle = [*path[cycle_start:], neighbor]
                 raise ValueError(f"cycle detected: {' -> '.join(map(str, cycle))}")
 
         path.pop()
