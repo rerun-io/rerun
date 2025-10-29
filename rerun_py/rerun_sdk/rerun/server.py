@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import socket
 from typing import TYPE_CHECKING
 
 from rerun_bindings import ServerInternal
@@ -41,7 +42,7 @@ class Server:
         self,
         *,
         address: str = "0.0.0.0",
-        port: int = 51234,
+        port: int | None = None,
         datasets: dict[str, PathLike[str]] | None = None,
         tables: dict[str, PathLike[str]] | None = None,
     ) -> None:
@@ -56,7 +57,7 @@ class Server:
         address:
             The address to bind the server to.
         port:
-            The port to bind the server to.
+            The port to bind the server to, or `None` to select a random available port.
         datasets:
             Optional dictionary mapping dataset names to their file paths.
             These datasets will be loaded and available when the server starts.
@@ -66,9 +67,18 @@ class Server:
 
         """
 
+        # Select a random open port if none is specified
+        resolved_port: int
+        if port is None:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("", 0))
+                resolved_port = s.getsockname()[1]
+        else:
+            resolved_port = port
+
         self._internal = ServerInternal(
             address=address,
-            port=port,
+            port=resolved_port,
             datasets={name: str(path) for name, path in (datasets or {}).items()},
             tables={name: str(path) for name, path in (tables or {}).items()},
         )
