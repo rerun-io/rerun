@@ -14,12 +14,12 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pytest
-from rerun.catalog import CatalogClient
 from rerun.server import Server
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from rerun.catalog import CatalogClient
     from rerun_bindings import DatasetEntry
 
 
