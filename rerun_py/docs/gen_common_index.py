@@ -260,6 +260,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "components.Scale3D",
             "datatypes.Quaternion",
             "datatypes.RotationAxisAngle",
+            "archetypes.CoordinateFrame",
         ],
         gen_page=False,
     ),
