@@ -8352,12 +8352,15 @@ version = "0.27.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
+ "comfy-table",
  "half",
  "insta",
  "itertools 0.14.0",
- "re_format_arrow",
  "re_log",
  "re_tracing",
+ "re_tuid",
+ "re_types_core",
+ "serde_json",
  "thiserror 2.0.17",
 ]
 
@@ -8479,7 +8482,6 @@ dependencies = [
  "re_byte_size",
  "re_error",
  "re_format",
- "re_format_arrow",
  "re_log",
  "re_log_types",
  "re_sorbet",
@@ -8723,7 +8725,6 @@ dependencies = [
  "re_arrow_util",
  "re_chunk",
  "re_chunk_store",
- "re_format_arrow",
  "re_log",
  "re_log_types",
  "re_query",
@@ -8880,19 +8881,6 @@ dependencies = [
  "half",
  "itertools 0.14.0",
  "num-traits",
-]
-
-[[package]]
-name = "re_format_arrow"
-version = "0.27.0-alpha.1+dev"
-dependencies = [
- "arrow",
- "comfy-table",
- "itertools 0.14.0",
- "re_arrow_util",
- "re_tuid",
- "re_types_core",
- "serde_json",
 ]
 
 [[package]]
@@ -9335,7 +9323,6 @@ dependencies = [
  "prost-types 0.14.1",
  "re_arrow_util",
  "re_chunk",
- "re_format_arrow",
  "re_log_types",
  "re_protos",
  "re_sdk",
@@ -9568,7 +9555,6 @@ dependencies = [
  "itertools 0.14.0",
  "nohash-hasher",
  "re_arrow_util",
- "re_format_arrow",
  "re_log",
  "re_log_types",
  "re_tracing",
@@ -9803,7 +9789,6 @@ dependencies = [
  "half",
  "itertools 0.14.0",
  "nohash-hasher",
- "re_arrow_util",
  "re_byte_size",
  "re_case",
  "re_error",
@@ -10578,6 +10563,7 @@ dependencies = [
  "puffin",
  "rayon",
  "re_analytics",
+ "re_arrow_util",
  "re_auth",
  "re_build_info",
  "re_build_tools",
@@ -10591,7 +10577,6 @@ dependencies = [
  "re_entity_db",
  "re_error",
  "re_format",
- "re_format_arrow",
  "re_grpc_server",
  "re_log",
  "re_log_encoding",
@@ -10686,7 +10671,6 @@ dependencies = [
  "re_chunk_store",
  "re_dataframe",
  "re_datafusion",
- "re_format_arrow",
  "re_grpc_client",
  "re_grpc_server",
  "re_log",
