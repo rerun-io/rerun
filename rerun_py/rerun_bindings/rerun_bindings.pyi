@@ -7,6 +7,8 @@ from enum import Enum
 from typing import Any, Self
 
 import datafusion as dfn
+import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 from rerun.catalog import CatalogClient
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
@@ -1619,6 +1621,47 @@ class TableInsertMode:
 
     def __int__(self) -> int:
         """int(self)"""  # noqa: D400
+
+class _IndexValuesLikeInternal:
+    """
+    A Python wrapper for testing [`IndexValuesLike`] extraction functionality.
+
+    This wrapper allows testing the `extract_bound` functionality by providing
+    a Python-accessible interface to create and convert index values.
+    """
+
+    def __init__(self, values: IndexValuesLike) -> None:
+        """
+        Create a new `IndexValuesLike` from a Python object.
+
+        Parameters
+        ----------
+        values : IndexValuesLike
+            A PyArrow Array, NumPy array of int64/datetime64, or ChunkedArray.
+
+        """
+
+    def to_index_values(self) -> npt.NDArray[np.int64]:
+        """
+        Get the extracted index values.
+
+        Returns
+        -------
+        npt.NDArray[np.int64]
+            The extracted index values as a list of integers.
+
+        """
+
+    def len(self) -> int:
+        """
+        Get the number of unique index values.
+
+        Returns
+        -------
+        int
+            The number of unique index values.
+
+        """
 
 class DataframeQueryView:
     """View into a remote dataset acting as DataFusion table provider."""

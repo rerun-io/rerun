@@ -246,7 +246,7 @@ impl PyIndexValuesLike {
     ///
     /// Parameters
     /// ----------
-    /// obj : Any
+    /// obj : IndexValuesLike
     ///     A PyArrow Array, NumPy array of int64/datetime64, or ChunkedArray.
     #[new]
     fn new(obj: Bound<'_, PyAny>) -> PyResult<Self> {
@@ -259,7 +259,7 @@ impl PyIndexValuesLike {
     ///
     /// Returns
     /// -------
-    /// list[int]
+    /// npt.NDArray[np.int64]
     ///     The extracted index values as a list of integers.
     fn to_index_values(&self) -> Vec<i64> {
         self.values
