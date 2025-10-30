@@ -7,7 +7,7 @@ Rerun, at its core, is a database. As such, you can always get your data back in
 
 This can be achieved in three different ways, depending on your needs:
 * using the dataframe API, currently available in [Python](https://ref.rerun.io/docs/python/stable/common/dataframe/) and [Rust](https://docs.rs/rerun/latest/rerun/dataframe/index.html),
-* using the [blueprint API](../concepts/blueprint.md) to configure a [dataframe view](types/views/dataframe_view.md) from code,
+* using the [blueprint API](../concepts/blueprints.md) to configure a [dataframe view](types/views/dataframe_view.md) from code,
 * or simply by setting up [dataframe view](types/views/dataframe_view.md) manually in the UI.
 
 This page is meant as a reference to get you up and running with these different solutions as quickly as possible.

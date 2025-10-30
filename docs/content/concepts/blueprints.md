@@ -107,7 +107,7 @@ import rerun.blueprint as rrb
 if robot_error:
     # Show diagnostic views for debugging
     blueprint = rrb.Grid(
-        rrb.Spatial3DView(name="Robot View", origin="/world/robot"),
+        rrb.Spatial3DView(name="Robot view", origin="/world/robot"),
         rrb.TextLogView(name="Error Logs", origin="/diagnostics"),
         rrb.TimeSeriesView(name="Sensor Data", origin="/sensors"),
     )
@@ -161,6 +161,6 @@ This means the Viewer output is a deterministic function of the blueprint and th
 ## Next steps
 
 -   **Learn to use blueprints**: See [Configure the Viewer](../getting-started/configure-the-viewer.md) for hands-on tutorials covering interactive, file-based, and programmatic workflows
--   **Understand the UI**: Check the [Blueprint Panel Reference](../reference/viewer/blueprint.md) for details on UI controls
+-   **Understand the UI**: Check the [Blueprint Panel Reference](../reference/viewer/blueprints.md) for details on UI controls
 -   **Customize visualizations**: Learn about [Visualizers and Overrides](visualizers-and-overrides.md) for advanced per-entity customization
 -   **Explore the API**: Browse the [Blueprint API Reference](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) for programmatic control (Python)

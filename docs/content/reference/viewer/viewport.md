@@ -13,7 +13,7 @@ You can grab the title of any view to dock it to different parts of the viewport
 </picture>
 
 
-Clicking on the title of a view has the same effect as selecting it in the [blueprint panel](blueprint.md)
+Clicking on the title of a view has the same effect as selecting it in the [blueprint panel](blueprints.md)
 and will show additional information and settings in the [selection panel](selection.md).
 
 For more information on how to navigate within a specific view, hover its help icon in the top right corner.
