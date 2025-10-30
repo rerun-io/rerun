@@ -448,10 +448,10 @@ impl LayerRegistry {
 
             if chosen.is_none() {
                 // fallbacks (if any)
-                if let Fallback::Global(id) = &self.fallback {
-                    if self.msg_factories.contains_key(id) {
-                        chosen = Some(id.clone());
-                    }
+                if let Fallback::Global(id) = &self.fallback
+                    && self.msg_factories.contains_key(id)
+                {
+                    chosen = Some(id.clone());
                 }
             }
 

@@ -106,23 +106,20 @@ impl<'py> FromPyObject<'py> for IndexValuesLike<'py> {
 
         // Check if this is a numpy array with datetime64 dtype
         // First check if it has a dtype attribute to see if it's a numpy array
-        if let Ok(dtype) = obj.getattr("dtype") {
-            if let Ok(dtype_str) = dtype.str() {
-                if let Ok(dtype_string) = dtype_str.extract::<String>() {
-                    // Check if it's a datetime64 array
-                    if dtype_string.starts_with("datetime64") {
-                        // Convert datetime64 to nanoseconds, then view as int64
-                        let converted_array = obj
-                            .call_method1("astype", ("datetime64[ns]",))?
-                            .call_method0("view")?
-                            .call_method1("astype", ("int64",))?;
+        if let Ok(dtype) = obj.getattr("dtype")
+            && let Ok(dtype_str) = dtype.str()
+            && let Ok(dtype_string) = dtype_str.extract::<String>()
+        {
+            // Check if it's a datetime64 array
+            if dtype_string.starts_with("datetime64") {
+                // Convert datetime64 to nanoseconds, then view as int64
+                let converted_array = obj
+                    .call_method1("astype", ("datetime64[ns]",))?
+                    .call_method0("view")?
+                    .call_method1("astype", ("int64",))?;
 
-                        if let Ok(i64_array) =
-                            converted_array.extract::<numpy::PyArrayLike1<'py, i64>>()
-                        {
-                            return Ok(Self::NumPy(i64_array));
-                        }
-                    }
+                if let Ok(i64_array) = converted_array.extract::<numpy::PyArrayLike1<'py, i64>>() {
+                    return Ok(Self::NumPy(i64_array));
                 }
             }
         }
