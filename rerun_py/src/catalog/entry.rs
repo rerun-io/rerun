@@ -137,11 +137,7 @@ impl PyEntry {
     pub fn url(&self, py: Python<'_>) -> String {
         let client = self.client.borrow(py);
         let client_url = client.url();
-        let separator = if client_url.ends_with('/') {
-            ""
-        } else {
-            "/"
-        };
+        let separator = if client_url.ends_with('/') { "" } else { "/" };
         format!("{}{}entry/{}", client_url, separator, self.id)
     }
 
