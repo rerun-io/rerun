@@ -6,7 +6,7 @@ use arrow::pyarrow::PyArrowType;
 use numpy::PyArrayMethods as _;
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
-use pyo3::{Bound, FromPyObject, PyAny, PyResult};
+use pyo3::{Bound, FromPyObject, PyAny, PyResult, pyclass, pymethods};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sorbet::{ColumnDescriptor, ColumnSelector, ComponentColumnSelector, TimeColumnSelector};
@@ -182,5 +182,65 @@ impl IndexValuesLike<'_> {
                 }
             }
         }
+    }
+}
+
+/// A Python wrapper for testing [`IndexValuesLike`] extraction functionality.
+///
+/// This wrapper allows testing the `extract_bound` functionality by providing
+/// a Python-accessible interface to create and convert index values.
+#[pyclass(
+    frozen,
+    name = "_IndexValuesLikeInternal",
+    module = "rerun_bindings.rerun_bindings",
+    hash,
+    eq
+)]
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct PyIndexValuesLike {
+    // Store the converted values instead of the lifetime-bound enum
+    values: BTreeSet<re_chunk_store::TimeInt>,
+}
+
+#[pymethods]
+impl PyIndexValuesLike {
+    /// Create a new `IndexValuesLike` from a Python object.
+    ///
+    /// Parameters
+    /// ----------
+    /// obj : Any
+    ///     A PyArrow Array, NumPy array of int64/datetime64, or ChunkedArray.
+    #[new]
+    fn new(obj: Bound<'_, PyAny>) -> PyResult<Self> {
+        let index_values_like = IndexValuesLike::extract_bound(&obj)?;
+        let values = index_values_like.to_index_values()?;
+        Ok(Self { values })
+    }
+
+    /// Get the extracted index values.
+    ///
+    /// Returns
+    /// -------
+    /// list[int]
+    ///     The extracted index values as a list of integers.
+    fn to_index_values(&self) -> Vec<i64> {
+        self.values
+            .iter()
+            .map(|time_int| time_int.as_i64())
+            .collect()
+    }
+
+    /// Get the number of unique values.
+    ///
+    /// Returns
+    /// -------
+    /// int
+    ///     The number of unique index values.
+    fn len(&self) -> usize {
+        self.values.len()
+    }
+
+    fn __repr__(&self) -> String {
+        format!("IndexValuesLike({} values)", self.values.len())
     }
 }
