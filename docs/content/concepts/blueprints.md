@@ -12,7 +12,7 @@ When you work with the Rerun Viewer, understanding blueprints is important if yo
 <iframe width="560" height="315" src="https://www.youtube.com/embed/kxbkbFVAsBo?si=k2JPz3RbhR1--pcw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 
-A way to think about the Rerun View is that
+A way to think about the Rerun Viewer is that
 
 -   **The recording** provides the actual data you are visualizing
 -   **The blueprint** determines how that data is displayed
