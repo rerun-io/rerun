@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import pathlib
-import tempfile
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
 from datafusion import DataFrameWriteOptions, InsertOp, SessionContext, col, functions as f
-from rerun.catalog import EntryKind
+from rerun.catalog import EntryKind, TableInsertMode
 
 if TYPE_CHECKING:
     from .conftest import ServerInstance
@@ -272,44 +270,64 @@ def test_datafusion_write_table(server_instance: ServerInstance) -> None:
     assert ctx.table(table_name).count() == smaller_count
 
 
-def test_create_table(server_instance: ServerInstance) -> None:
-    table_name = "created_table"
+def test_client_write_table(server_instance: ServerInstance) -> None:
+    table_name = "simple_datatypes"
+    ctx: SessionContext = server_instance.client.ctx
 
-    original_schema = pa.schema([("int64", pa.int64()), ("float32", pa.float32()), ("utf8", pa.utf8())])
+    df_prior = ctx.table(table_name)
+    original_count = df_prior.count()
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = pathlib.Path(temp_dir).as_uri()
+    schema = pa.schema([("id", pa.int32()), ("bool_col", pa.bool_()), ("double_col", pa.float64())])
 
-        table_entry = server_instance.client.create_table_entry(table_name, original_schema, temp_path)
-        df = table_entry.df()
+    batch1 = pa.RecordBatch.from_pydict(
+        {"id": [1, 2, 3], "bool_col": [True, False, None], "double_col": [10.5, 20.3, 15.7]}, schema=schema
+    )
 
-        returned_schema = df.schema().remove_metadata()
+    batch2 = pa.RecordBatch.from_pydict(
+        {"id": [4, 5, 6], "bool_col": [True, None, False], "double_col": [30.2, 25.8, 18.9]}, schema=schema
+    )
 
-        assert returned_schema == original_schema
+    batch3 = pa.RecordBatch.from_pydict(
+        {"id": [7, 8, 9], "bool_col": [True, True, False], "double_col": [22.4, 28.1, 31.5]}, schema=schema
+    )
+
+    # Test with a record batch reader
+    reader = pa.RecordBatchReader.from_batches(schema, [batch1, batch2, batch3])
+    server_instance.client.write_table(table_name, reader, TableInsertMode.APPEND)
+    final_count = ctx.table(table_name).count()
+    assert final_count == original_count + 9
+
+    # Test with a list of list of record batches, like a collect() will give you
+    server_instance.client.write_table(table_name, [[batch1, batch2], [batch3]], TableInsertMode.APPEND)
+    final_count = ctx.table(table_name).count()
+    assert final_count == original_count + 18
+
+    # Test with a list of record batches
+    server_instance.client.write_table(table_name, [batch1, batch2, batch3], TableInsertMode.APPEND)
+    final_count = ctx.table(table_name).count()
+    assert final_count == original_count + 27
+
+    # Test with a single record batch
+    server_instance.client.write_table(table_name, batch1, TableInsertMode.APPEND)
+    final_count = ctx.table(table_name).count()
+    assert final_count == original_count + 30
+
+    # Test overwrite method
+    server_instance.client.write_table(table_name, batch1, TableInsertMode.OVERWRITE)
+    final_count = ctx.table(table_name).count()
+    assert final_count == 3
 
 
-def test_create_table_from_dataset(server_instance: ServerInstance) -> None:
-    table_name = "dataset_to_table"
+def test_client_append_to_table(server_instance: ServerInstance) -> None:
+    table_name = "simple_datatypes"
+    ctx: SessionContext = server_instance.client.ctx
 
-    df = server_instance.dataset.dataframe_query_view(index="time_1", contents="/**").df()
-    original_schema = df.schema()
+    original_rows = ctx.table(table_name).count()
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = pathlib.Path(temp_dir).as_uri()
+    server_instance.client.append_to_table(table_name, id=3, bool_col=True, double_col=2.0)
+    assert ctx.table(table_name).count() == original_rows + 1
 
-        table_entry = server_instance.client.create_table_entry(table_name, original_schema, temp_path)
-        df = table_entry.df()
-
-        # Due to https://github.com/lancedb/lance/issues/2304 we cannot
-        # directly compare the returned schema. Verify we at least
-        # get back the same columns and metadata
-
-        returned_schema = df.schema()
-        for field in returned_schema:
-            assert original_schema.field(field.name) is not None
-        for field in original_schema:
-            assert returned_schema.field(field.name) is not None
-
-        for returned_field in returned_schema:
-            original_field = original_schema.field(returned_field.name)
-            assert returned_field.metadata == original_field.metadata
+    server_instance.client.append_to_table(
+        table_name, id=[3, 4, 5], bool_col=[False, True, None], double_col=[2.0, None, 1.0]
+    )
+    assert ctx.table(table_name).count() == original_rows + 4
