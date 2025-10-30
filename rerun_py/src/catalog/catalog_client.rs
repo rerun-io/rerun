@@ -115,6 +115,12 @@ impl PyCatalogClientInternal {
         })
     }
 
+    /// Get the URL of the catalog (a `rerun+http` URL).
+    #[getter]
+    pub fn url(&self) -> String {
+        self.origin.to_string()
+    }
+
     /// Get a list of all entries in the catalog.
     fn all_entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyEntry>>> {
         let connection = self_.borrow(py).connection.clone();
