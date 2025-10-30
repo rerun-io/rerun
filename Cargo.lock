@@ -8547,7 +8547,6 @@ dependencies = [
 name = "re_component_fallbacks"
 version = "0.27.0-alpha.1+dev"
 dependencies = [
- "egui",
  "re_log_types",
  "re_types",
  "re_viewer_context",

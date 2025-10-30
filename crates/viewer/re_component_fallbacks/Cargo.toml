@@ -22,5 +22,3 @@ all-features = true
 re_log_types.workspace = true
 re_types.workspace = true
 re_viewer_context.workspace = true
-
-egui.workspace = true # Needed to retrieve properties (colors, strokes etc.) from egui style.
