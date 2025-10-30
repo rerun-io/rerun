@@ -11,7 +11,7 @@ use pyo3::{
 };
 use re_server::{self, Args as ServerArgs};
 
-#[pyclass(name = "ServerInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(name = "ServerInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq], non-trivial implementation
 pub struct PyServerInternal {
     handle: Option<re_server::ServerHandle>,
     address: SocketAddr,
