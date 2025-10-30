@@ -9080,6 +9080,7 @@ version = "0.27.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "backtrace",
+ "crossbeam",
  "itertools 0.14.0",
  "memory-stats",
  "nohash-hasher",
@@ -9125,7 +9126,6 @@ dependencies = [
  "opentelemetry_sdk",
  "parking_lot",
  "prometheus-client",
- "re_memory",
  "serde",
  "serde_json",
  "tokio",
@@ -10679,6 +10679,7 @@ dependencies = [
  "re_protos",
  "re_redap_client",
  "re_sdk",
+ "re_server",
  "re_sorbet",
  "re_tuid",
  "re_uri",

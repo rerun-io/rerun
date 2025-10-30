@@ -1939,3 +1939,40 @@ class NotFoundError(Exception):
 
 class AlreadyExistsError(Exception):
     """Raised when trying to create a resource that already exists."""
+
+class _ServerInternal:
+    """
+    Internal Rerun server instance.
+
+    This is the low-level binding to the Rust server implementation.
+    Users should typically use `rerun.server.Server` instead.
+    """
+
+    def __init__(
+        self,
+        *,
+        address: str = "0.0.0.0",
+        port: int = 51234,
+        datasets: dict[str, str] | None = None,
+        tables: dict[str, str] | None = None,
+    ) -> None:
+        """
+        Create and start a Rerun server.
+
+        Parameters
+        ----------
+        address : str
+            The address to bind the server to.
+        port : int
+            The port to bind the server to.
+        datasets : dict[str, str] | None
+            Optional dictionary mapping dataset names to their file paths.
+        tables : dict[str, str] | None
+            Optional dictionary mapping table names to lance file paths,
+            which will be loaded and made available when the server starts.
+
+        """
+
+    def address(self) -> str: ...
+    def shutdown(self) -> None: ...
+    def is_running(self) -> bool: ...
