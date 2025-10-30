@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use base64::{Engine as _, engine::general_purpose};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
-use serde_with::{serde_as, OneOrMany, formats::PreferOne};
+use serde_with::{OneOrMany, formats::PreferOne, serde_as};
 
 use crate::{Error, Jwt};
 
@@ -204,83 +204,6 @@ fn generate_secret_key(mut rng: impl rand::Rng, length: usize) -> Vec<u8> {
     (0..length).map(|_| rng.random::<u8>()).collect()
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_audience_deserialize_single_string() {
-        let json = r#"{
-            "iss": "test",
-            "sub": "user123",
-            "aud": "redap",
-            "exp": 1234567890,
-            "iat": 1234567890
-        }"#;
-
-        let claims: RedapClaims = serde_json::from_str(json).unwrap();
-        assert_eq!(claims.aud, vec!["redap"]);
-    }
-
-    #[test]
-    fn test_audience_deserialize_array() {
-        let json = r#"{
-            "iss": "test",
-            "sub": "user123",
-            "aud": ["redap", "other-service"],
-            "exp": 1234567890,
-            "iat": 1234567890
-        }"#;
-
-        let claims: RedapClaims = serde_json::from_str(json).unwrap();
-        assert_eq!(claims.aud, vec!["redap", "other-service"]);
-    }
-
-    #[test]
-    fn test_audience_deserialize_empty_array() {
-        let json = r#"{
-            "iss": "test",
-            "sub": "user123",
-            "aud": [],
-            "exp": 1234567890,
-            "iat": 1234567890
-        }"#;
-
-        let claims: RedapClaims = serde_json::from_str(json).unwrap();
-        assert_eq!(claims.aud, Vec::<String>::new());
-    }
-
-    #[test]
-    fn test_audience_serialize_single() {
-        let claims = RedapClaims {
-            iss: "test".to_owned(),
-            sub: "user123".to_owned(),
-            aud: vec!["redap".to_owned()],
-            exp: 1234567890,
-            iat: 1234567890,
-        };
-
-        let json = serde_json::to_value(&claims).unwrap();
-        // When there's exactly one audience, it should serialize as a string
-        assert_eq!(json["aud"], serde_json::json!("redap"));
-    }
-
-    #[test]
-    fn test_audience_serialize_multiple() {
-        let claims = RedapClaims {
-            iss: "test".to_owned(),
-            sub: "user123".to_owned(),
-            aud: vec!["redap".to_owned(), "other".to_owned()],
-            exp: 1234567890,
-            iat: 1234567890,
-        };
-
-        let json = serde_json::to_value(&claims).unwrap();
-        // When there are multiple audiences, it should serialize as an array
-        assert_eq!(json["aud"], serde_json::json!(["redap", "other"]));
-    }
-}
-
 impl RedapProvider {
     /// Create an authentication provider from a secret key.
     pub fn from_secret_key(secret_key: SecretKey) -> Self {
@@ -407,5 +330,82 @@ impl RedapProvider {
         }
 
         Ok(token_data.claims)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_audience_deserialize_single_string() {
+        let json = r#"{
+            "iss": "test",
+            "sub": "user123",
+            "aud": "redap",
+            "exp": 1234567890,
+            "iat": 1234567890
+        }"#;
+
+        let claims: RedapClaims = serde_json::from_str(json).unwrap();
+        assert_eq!(claims.aud, vec!["redap"]);
+    }
+
+    #[test]
+    fn test_audience_deserialize_array() {
+        let json = r#"{
+            "iss": "test",
+            "sub": "user123",
+            "aud": ["redap", "other-service"],
+            "exp": 1234567890,
+            "iat": 1234567890
+        }"#;
+
+        let claims: RedapClaims = serde_json::from_str(json).unwrap();
+        assert_eq!(claims.aud, vec!["redap", "other-service"]);
+    }
+
+    #[test]
+    fn test_audience_deserialize_empty_array() {
+        let json = r#"{
+            "iss": "test",
+            "sub": "user123",
+            "aud": [],
+            "exp": 1234567890,
+            "iat": 1234567890
+        }"#;
+
+        let claims: RedapClaims = serde_json::from_str(json).unwrap();
+        assert_eq!(claims.aud, Vec::<String>::new());
+    }
+
+    #[test]
+    fn test_audience_serialize_single() {
+        let claims = RedapClaims {
+            iss: "test".to_owned(),
+            sub: "user123".to_owned(),
+            aud: vec!["redap".to_owned()],
+            exp: 1234567890,
+            iat: 1234567890,
+        };
+
+        let json = serde_json::to_value(&claims).unwrap();
+        // When there's exactly one audience, it should serialize as a string
+        assert_eq!(json["aud"], serde_json::json!("redap"));
+    }
+
+    #[test]
+    fn test_audience_serialize_multiple() {
+        let claims = RedapClaims {
+            iss: "test".to_owned(),
+            sub: "user123".to_owned(),
+            aud: vec!["redap".to_owned(), "other".to_owned()],
+            exp: 1234567890,
+            iat: 1234567890,
+        };
+
+        let json = serde_json::to_value(&claims).unwrap();
+        // When there are multiple audiences, it should serialize as an array
+        assert_eq!(json["aud"], serde_json::json!(["redap", "other"]));
     }
 }
