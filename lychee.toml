@@ -150,6 +150,7 @@ exclude = [
   'https://vimeo.com/', # Gives 403 forbidden on CI.
   'https://www.npmjs.com/*', # Gives 403 forbidden on CI.
   'https://www.reddit.com/', # Gives 403 forbidden on CI.
+  'https://www.shadertoy.com/', # 403 on CI
   'https://www.tensorflow.org/', # tensorflow.org apparently blocks CI.
 
   # Need GitHub login.
