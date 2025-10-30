@@ -19,7 +19,7 @@ pub struct HarnessOptions {
 pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
     let window_size = options.window_size.unwrap_or(egui::vec2(1024.0, 768.0));
 
-    re_ui::testing::new_harness(re_ui::testing::TestOptions::Rendering3D, window_size).build_eframe(
+    re_ui::testing::new_harness(re_ui::testing::TestOptions::Rendering3D, window_size).with_max_steps(200).build_eframe(
         |cc| {
             cc.egui_ctx.set_os(egui::os::OperatingSystem::Nix);
             customize_eframe_and_setup_renderer(cc).expect("Failed to customize eframe");

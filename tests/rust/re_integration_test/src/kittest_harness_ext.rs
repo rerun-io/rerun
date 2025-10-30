@@ -313,8 +313,8 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
                 pressed,
                 modifiers: Modifiers::NONE,
             });
+            self.run();
         }
-        self.run();
     }
 
     fn drag_at(&mut self, pos: egui::Pos2) {
