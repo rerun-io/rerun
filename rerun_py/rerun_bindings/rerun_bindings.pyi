@@ -374,15 +374,13 @@ class RecordingView:
 
     def using_index_values(self, values: IndexValuesLike) -> RecordingView:
         """
-        Replace the index in the view with the provided values.
+        Create a new view that contains the provided index values.
+
+        If they exist in the original data they are selected, otherwise empty rows are added to the view.
 
         The output view will always have the same number of rows as the provided values, even if
         those rows are empty. Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
         to populate these rows with the most recent data.
-
-        This requires index values to be a precise match. Index values in Rerun are
-        represented as i64 sequence counts or nanoseconds. This API does not expose an interface
-        in floating point seconds, as the numerical conversion would risk false mismatches.
 
         Parameters
         ----------
@@ -1746,15 +1744,13 @@ class DataframeQueryView:
 
     def using_index_values(self, values: IndexValuesLike) -> Self:
         """
-        Replace the index in the view with the provided values.
+        Create a new view that contains the provided index values.
+
+        If they exist in the original data they are selected, otherwise empty rows are added to the view.
 
         The output view will always have the same number of rows as the provided values, even if
         those rows are empty. Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
         to populate these rows with the most recent data.
-
-        This requires index values to be a precise match. Index values in Rerun are
-        represented as i64 sequence counts or nanoseconds. This API does not expose an interface
-        in floating point seconds, as the numerical conversion would risk false mismatches.
 
         Parameters
         ----------
