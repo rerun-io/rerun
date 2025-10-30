@@ -1,6 +1,5 @@
 use std::any::Any;
 use std::fmt::Debug;
-use std::hash::Hash;
 use std::sync::Arc;
 
 use arrow::array::{ArrayRef, BooleanArray, ListArray, as_list_array};
@@ -15,7 +14,7 @@ use datafusion::logical_expr::{
 ///
 /// Note that a filter UDF is only a _building block_ towards creating a final expression for
 /// datafusion. See [`super::Filter::as_filter_expression`] in its implementation for more details.
-pub trait FilterUdf: Any + Clone + Debug + Send + Sync + Hash + PartialEq + Eq {
+pub trait FilterUdf: Any + Clone + Debug + Send + Sync {
     /// The scalar datafusion type signature for this UDF.
     ///
     /// The list version will automatically be accepted as well, see `FilterUdfWrapper::signature`.
@@ -91,7 +90,7 @@ pub trait FilterUdf: Any + Clone + Debug + Send + Sync + Hash + PartialEq + Eq {
 /// This serves two purposes:
 /// 1) Allow blanket implementation of [`ScalarUDFImpl`] (orphan rule)
 /// 2) Cache the [`Signature`] (needed for [`ScalarUDFImpl::signature`])
-#[derive(Debug, Eq, PartialEq, Hash, Clone)]
+#[derive(Debug)]
 struct FilterUdfWrapper<T: FilterUdf> {
     inner: T,
     signature: Signature,
