@@ -249,8 +249,9 @@ impl PyIndexValuesLike {
     /// obj : IndexValuesLike
     ///     A PyArrow Array, NumPy array of int64/datetime64, or ChunkedArray.
     #[new]
-    fn new(obj: Bound<'_, PyAny>) -> PyResult<Self> {
-        let index_values_like = IndexValuesLike::extract_bound(&obj)?;
+    #[pyo3(text_signature = "(self, values)")]
+    fn new(values: Bound<'_, PyAny>) -> PyResult<Self> {
+        let index_values_like = IndexValuesLike::extract_bound(&values)?;
         let values = index_values_like.to_index_values()?;
         Ok(Self { values })
     }
