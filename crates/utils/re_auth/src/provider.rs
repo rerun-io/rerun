@@ -2,7 +2,6 @@ use std::time::Duration;
 
 use base64::{Engine as _, engine::general_purpose};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
-use serde_with::{OneOrMany, formats::PreferOne, serde_as};
 
 use crate::{Error, Jwt};
 
@@ -74,7 +73,6 @@ impl std::fmt::Debug for SecretKey {
     }
 }
 
-#[serde_as]
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct RedapClaims {
     /// The issuer of the token.
@@ -89,7 +87,10 @@ pub struct RedapClaims {
     ///
     /// Most of the time this will be the storage node.
     /// Per RFC 7519, this can be either a single string or an array of strings.
-    #[serde_as(as = "OneOrMany<_, PreferOne>")]
+    #[serde(
+        deserialize_with = "deser_string_or_vec",
+        serialize_with = "ser_string_or_vec"
+    )]
     pub aud: Vec<String>,
 
     /// Expiry time of the token.
@@ -332,6 +333,42 @@ impl RedapProvider {
         Ok(token_data.claims)
     }
 }
+
+// ---
+
+/// Deserializes either a string of an array of strings into an array of strings.
+fn deser_string_or_vec<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(serde::Deserialize)]
+    #[serde(untagged)]
+    enum StringOrVec {
+        One(String),
+        Many(Vec<String>),
+    }
+
+    use serde::Deserialize as _;
+    match StringOrVec::deserialize(deserializer)? {
+        StringOrVec::One(s) => Ok(vec![s]),
+        StringOrVec::Many(v) => Ok(v),
+    }
+}
+
+/// Serializes an array of strings into either a single string if unary, or into an array of strings otherwise.
+fn ser_string_or_vec<S>(value: &Vec<String>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    use serde::Serialize as _;
+    if value.len() == 1 {
+        serializer.serialize_str(&value[0])
+    } else {
+        value.serialize(serializer)
+    }
+}
+
+// ---
 
 #[cfg(test)]
 mod tests {

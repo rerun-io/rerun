@@ -35,7 +35,6 @@ async-trait.workspace = true
 http.workspace = true
 jsonwebtoken.workspace = true
 saturating_cast.workspace = true
-serde_with = { workspace = true, features = ["macros", "alloc"] }
 thiserror.workspace = true
 tokio.workspace = true
 tonic.workspace = true
