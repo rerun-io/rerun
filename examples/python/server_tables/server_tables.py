@@ -6,10 +6,12 @@ from __future__ import annotations
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 import pyarrow as pa
 from datafusion import DataFrame, col, functions as F
 from rerun.catalog import CatalogClient, DatasetEntry
+from rerun.utilities.datafusion.collect import collect_to_string_list
 
 CATALOG = "rerun+http://localhost:51234"
 DATASET_NAME = "dataset"
@@ -58,8 +60,12 @@ def create_results_table(client: CatalogClient, directory: Path) -> DataFrame:
 def find_missing_partitions(partition_table: DataFrame, status_table: DataFrame) -> list[str]:
     """Query the status table for partitions that have not processed."""
     status_table = status_table.filter(col("is_complete"))
-    partitions = partition_table.join(status_table, on="rerun_partition_id", how="anti").collect()
-    return [str(r) for rss in partitions for rs in rss for r in rs]
+    partitions = partition_table.join(status_table, on="rerun_partition_id", how="anti")
+
+    partition_list = collect_to_string_list(partitions, "rerun_partition_id")
+
+    # This cast is to satisfy mypy type checking. It is not strictly necessary.
+    return cast("list[str]", partition_list)
 
 
 def process_partitions(client: CatalogClient, dataset: DatasetEntry, partition_list: list[str]) -> None:
