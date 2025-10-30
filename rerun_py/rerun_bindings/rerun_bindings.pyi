@@ -1630,38 +1630,9 @@ class _IndexValuesLikeInternal:
     a Python-accessible interface to create and convert index values.
     """
 
-    def __init__(self, values: IndexValuesLike) -> None:
-        """
-        Create a new `IndexValuesLike` from a Python object.
-
-        Parameters
-        ----------
-        values : IndexValuesLike
-            A PyArrow Array, NumPy array of int64/datetime64, or ChunkedArray.
-
-        """
-
-    def to_index_values(self) -> npt.NDArray[np.int64]:
-        """
-        Get the extracted index values.
-
-        Returns
-        -------
-        npt.NDArray[np.int64]
-            The extracted index values as a list of integers.
-
-        """
-
-    def len(self) -> int:
-        """
-        Get the number of unique index values.
-
-        Returns
-        -------
-        int
-            The number of unique index values.
-
-        """
+    def __init__(self, values: IndexValuesLike) -> None: ...
+    def to_index_values(self) -> npt.NDArray[np.int64]: ...
+    def len(self) -> int: ...
 
 class DataframeQueryView:
     """View into a remote dataset acting as DataFusion table provider."""
