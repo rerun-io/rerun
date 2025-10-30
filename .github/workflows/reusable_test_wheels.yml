@@ -90,11 +90,6 @@ jobs:
               target="aarch64-apple-darwin"
               container="null"
               ;;
-            macos-x64)
-              runner="macos-13-large" # This is an Intel vm, see https://docs.github.com/en/actions/using-github-hosted-runners/about-larger-runners/about-larger-runners#about-macos-larger-runners
-              target="x86_64-apple-darwin"
-              container="null"
-              ;;
             *) echo "Invalid platform" && exit 1 ;;
           esac
           echo "runner=$runner" >> "$GITHUB_OUTPUT"
