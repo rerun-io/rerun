@@ -58,10 +58,10 @@ fn setup_store() -> (EntityDb, Vec<ChunkStoreEvent>) {
 fn transform_resolution_cache_query(c: &mut Criterion) {
     let (entity_db, events) = setup_store();
 
-    c.bench_function("build_from_entitydb", |b| {
+    c.bench_function("build_from_entity_db", |b| {
         b.iter(|| {
             let mut cache = TransformResolutionCache::default();
-            cache.process_store_events(&entity_db, events.iter());
+            cache.process_store_events(events.iter());
             cache
         });
     });
@@ -73,7 +73,7 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
         b.iter_batched(
             || {
                 let mut cache = TransformResolutionCache::default();
-                cache.process_store_events(&entity_db, events.iter());
+                cache.process_store_events(events.iter());
                 cache
             },
             |mut cold_cache| {
@@ -90,7 +90,7 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
     });
 
     let mut warm_cache = TransformResolutionCache::default();
-    warm_cache.process_store_events(&entity_db, events.iter());
+    warm_cache.process_store_events(events.iter());
     warm_cache
         .transforms_for_timeline(query.timeline())
         .frame_transforms(queried_frame)

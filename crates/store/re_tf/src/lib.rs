@@ -139,7 +139,7 @@
 //!
 
 mod component_type_info;
-mod source_query;
+mod entity_to_source_frame_tracking;
 mod transform_aspect;
 mod transform_forest;
 mod transform_queries;

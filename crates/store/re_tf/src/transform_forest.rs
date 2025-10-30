@@ -809,10 +809,7 @@ mod tests {
     fn test_simple_entity_hierarchy() {
         let test_scene = entity_hierarchy_test_scene();
         let mut transform_cache = TransformResolutionCache::default();
-        transform_cache.add_chunks(
-            &test_scene,
-            test_scene.storage_engine().store().iter_chunks(),
-        );
+        transform_cache.add_chunks(test_scene.storage_engine().store().iter_chunks());
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
         let transform_forest = TransformForest::new(&test_scene, &mut transform_cache, &query);
@@ -944,7 +941,7 @@ mod tests {
             .unwrap();
 
         let mut transform_cache = TransformResolutionCache::default();
-        transform_cache.add_chunks(&entity_db, entity_db.storage_engine().store().iter_chunks());
+        transform_cache.add_chunks(entity_db.storage_engine().store().iter_chunks());
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
         let transform_forest = TransformForest::new(&entity_db, &mut transform_cache, &query);
