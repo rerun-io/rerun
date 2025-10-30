@@ -185,13 +185,14 @@ impl PyCatalogClientInternal {
             .map(|details| {
                 let id = Py::new(py, PyEntryId::from(details.id))?;
 
+                let table_entry = connection.read_table(py, details.id)?;
+                let table = PyTableEntry::new(&table_entry);
+
                 let entry = PyEntry {
                     client: self_.clone_ref(py),
                     id,
                     details,
                 };
-
-                let table = PyTableEntry::default();
 
                 Py::new(py, (table, entry))
             })
@@ -277,13 +278,13 @@ impl PyCatalogClientInternal {
 
         let table_entry = connection.read_table(py, id.borrow(py).id)?;
 
+        let table = PyTableEntry::new(&table_entry);
+
         let entry = PyEntry {
             client,
             id,
             details: table_entry.details,
         };
-
-        let table = PyTableEntry::default();
 
         Py::new(py, (table, entry))
     }
@@ -328,13 +329,13 @@ impl PyCatalogClientInternal {
 
         let entry_id = Py::new(py, PyEntryId::from(table_entry.details.id))?;
 
+        let table = PyTableEntry::new(&table_entry);
+
         let entry = PyEntry {
             client: self_.clone_ref(py),
             id: entry_id,
             details: table_entry.details,
         };
-
-        let table = PyTableEntry::default();
 
         Py::new(py, (table, entry))
     }

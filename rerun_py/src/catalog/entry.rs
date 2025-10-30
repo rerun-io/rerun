@@ -2,10 +2,9 @@ use std::str::FromStr as _;
 
 use pyo3::{Py, PyErr, PyResult, Python, exceptions::PyTypeError, pyclass, pymethods};
 
+use crate::catalog::PyCatalogClientInternal;
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::{EntryKind, ext::EntryDetails};
-
-use crate::catalog::PyCatalogClientInternal;
 
 /// A unique identifier for an entry in the catalog.
 #[pyclass(eq, name = "EntryId")]
@@ -125,19 +124,6 @@ impl PyEntry {
     #[getter]
     pub fn name(&self) -> String {
         self.details.name.clone()
-    }
-
-    /// The entry's URL
-    #[getter]
-    pub fn url(&self, py: Python<'_>) -> String {
-        let client = self.client.borrow(py);
-        let client_url = client.url();
-        let separator = if client_url.ends_with('/') {
-            ""
-        } else {
-            "/"
-        };
-        format!("{}{}entry/{}", client_url, separator, self.id)
     }
 
     /// The catalog client that this entry belongs to.
