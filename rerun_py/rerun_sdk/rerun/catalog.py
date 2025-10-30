@@ -7,22 +7,21 @@ import pyarrow as pa
 from pyarrow import RecordBatch, RecordBatchReader
 from rerun_bindings import (
     AlreadyExistsError as AlreadyExistsError,
-    AnyColumn as AnyColumn,
-    AnyComponentColumn as AnyComponentColumn,
     CatalogClientInternal,
     DataframeQueryView as DataframeQueryView,
     DatasetEntry as DatasetEntry,
     Entry as Entry,
     EntryId as EntryId,
     EntryKind as EntryKind,
-    IndexValuesLike as IndexValuesLike,
     NotFoundError as NotFoundError,
     TableEntry as TableEntry,
     TableInsertMode as TableInsertMode,
     Task as Task,
     VectorDistanceMetric as VectorDistanceMetric,
+)
+from rerun_bindings.types import (
+    IndexValuesLike as IndexValuesLike,
     VectorDistanceMetricLike as VectorDistanceMetricLike,
-    ViewContentsLike as ViewContentsLike,
 )
 
 from .error_utils import RerunIncompatibleDependencyVersionError, RerunMissingDependencyError

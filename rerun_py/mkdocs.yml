@@ -18,6 +18,7 @@ theme:
 
 plugins:
   - search # https://squidfunk.github.io/mkdocs-material/setup/setting-up-site-search/
+  - autorefs
   - mkdocstrings: # https://mkdocstrings.github.io/usage/#global-options
       custom_templates: docs/templates # Override the function template.
       enable_inventory: true # Let others cross reference our docs.

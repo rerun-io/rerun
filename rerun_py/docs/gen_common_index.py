@@ -421,8 +421,6 @@ SECTION_TABLE: Final[list[Section]] = [
         show_submodules=True,
         class_list=[
             "AlreadyExistsError",
-            "AnyColumn",
-            "AnyComponentColumn",
             "DataframeQueryView",
             "DatasetEntry",
             "CatalogClient",
@@ -435,7 +433,6 @@ SECTION_TABLE: Final[list[Section]] = [
             "Task",
             "VectorDistanceMetric",
             "VectorDistanceMetricLike",
-            "ViewContentsLike",
         ],
     ),
     Section(
