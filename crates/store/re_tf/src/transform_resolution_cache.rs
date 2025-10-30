@@ -81,12 +81,15 @@ impl PerEntityAffectedSources {
 
 impl std::ops::Deref for PerEntityAffectedSources {
     type Target = IntMap<EntityPath, EntityToAffectedSources>;
+
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for PerEntityAffectedSources {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
@@ -691,7 +694,7 @@ impl TransformResolutionCache {
     /// This needs to be called once per frame prior to any transform propagation.
     /// (which is done by [`crate::TransformForest`])
     ///
-    /// This will internally...
+    /// This will internally…
     /// * keep track of which source frames are influenced by which entity
     /// * invalidate cache entries if needed (may happen conservatively - potentially invalidating more than needed)
     /// * create empty entries for where transforms may change over time (may happen conservatively - creating more entries than needed)
@@ -725,7 +728,7 @@ impl TransformResolutionCache {
 
     /// Adds chunks to the transform cache.
     ///
-    /// This will internally...
+    /// This will internally…
     /// * keep track of which source frames are influenced by which entity
     /// * invalidate cache entries if needed (may happen conservatively - potentially invalidating more than needed)
     /// * create empty entries for where transforms may change over time (may happen conservatively - creating more entries than needed)
@@ -801,7 +804,7 @@ impl TransformResolutionCache {
                     frame_transforms
                         .remove_events_in_range(changed_range.clone(), &mut moved_events);
                 }
-                // ...and add them to the new sources!
+                // …and add them to the new sources!
                 for new_source_frame in sources {
                     per_timeline
                         .per_source_frame_transforms

@@ -103,6 +103,7 @@ impl EntityToAffectedSources {
         }))
     }
 }
+
 fn debug_panic_for_empty_ranges() {
     debug_assert!(
         false,
