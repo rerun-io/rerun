@@ -2,6 +2,7 @@
 
 mod absolute_time_range;
 mod active_tab;
+mod angular_speed;
 mod apply_latest_at;
 mod auto_layout;
 mod auto_layout_ext;
@@ -64,6 +65,7 @@ mod zoom_level;
 
 pub use self::absolute_time_range::AbsoluteTimeRange;
 pub use self::active_tab::ActiveTab;
+pub use self::angular_speed::AngularSpeed;
 pub use self::apply_latest_at::ApplyLatestAt;
 pub use self::auto_layout::AutoLayout;
 pub use self::auto_views::AutoViews;

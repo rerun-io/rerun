@@ -34,7 +34,7 @@ pub(crate) use pinhole::Pinhole;
 
 // TODO(#8265): Used in tests, shouldn't be needed if it's part of blueprint.
 #[doc(hidden)]
-pub use eye::{Eye, ViewEye};
+pub use eye::{Eye, EyeState};
 
 // ---
 

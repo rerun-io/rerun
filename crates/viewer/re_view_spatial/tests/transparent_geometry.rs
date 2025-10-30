@@ -5,7 +5,7 @@ use re_renderer::Color32;
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
 use re_types::{AsComponents, RowId, archetypes, components::FillMode};
-use re_view_spatial::{SpatialView3D, SpatialViewState, ViewEye};
+use re_view_spatial::{EyeState, SpatialView3D, SpatialViewState};
 use re_viewer_context::{RecommendedView, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -67,7 +67,7 @@ fn test_transparent_geometry<A: AsComponents>(
 
                     let orientation =
                         camera_orientation.load(std::sync::atomic::Ordering::Acquire) as f32;
-                    view_state.state_3d.view_eye = Some(ViewEye::new_orbital(
+                    view_state.state_3d.eye_state = Some(EyeState::new_orbital(
                         glam::Vec3::ZERO,
                         3.5,
                         glam::Quat::from_affine3(

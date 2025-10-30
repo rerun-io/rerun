@@ -2,9 +2,9 @@ use egui::{NumExt as _, WidgetText, emath::OrderedFloat, text::TextWrapping};
 use macaw::BoundingBox;
 
 use re_format::format_f32;
+use re_log_types::EntityPath;
 use re_types::{
     blueprint::{archetypes::EyeControls3D, components::VisualBounds2D},
-    components::ViewCoordinates,
     image::ImageKind,
 };
 use re_ui::UiExt as _;
@@ -53,6 +53,9 @@ pub struct ImageCounts {
 #[derive(Clone, Default)]
 pub struct SpatialViewState {
     pub bounding_boxes: SceneBoundingBoxes,
+
+    /// Currently to pass the space origin to fallbacks we have to use this state.
+    pub space_origin: Option<EntityPath>,
 
     /// Number of images per image kind processed last frame.
     pub image_counts_last_frame: ImageCounts,
@@ -132,13 +135,7 @@ impl SpatialViewState {
     }
 
     // Say the name out loud. It is fun!
-    pub fn view_eye_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        ctx: &ViewerContext<'_>,
-        scene_view_coordinates: Option<ViewCoordinates>,
-        view_id: ViewId,
-    ) {
+    pub fn view_eye_ui(&mut self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>, view_id: ViewId) {
         let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
@@ -153,23 +150,7 @@ impl SpatialViewState {
             .clicked()
         {
             self.bounding_boxes.smoothed = self.bounding_boxes.current;
-            self.state_3d.reset_camera(
-                &self.bounding_boxes,
-                scene_view_coordinates,
-                ctx,
-                &eye_property,
-            );
-        }
-
-        {
-            let mut spin = self.state_3d.spin();
-            if ui
-                .re_checkbox(&mut spin, "Spin")
-                .on_hover_text("Spin camera around the orbit center")
-                .changed()
-            {
-                self.state_3d.set_spin(ui.ctx(), spin);
-            }
+            self.state_3d.reset_eye(ctx, &eye_property);
         }
     }
 

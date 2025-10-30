@@ -58,6 +58,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <AngularSpeed as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Angular speed, used for rotation speed for example.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(AngularSpeed::default().to_arrow()?),
+                datatype: AngularSpeed::arrow_datatype(),
+                verify_arrow_array: AngularSpeed::verify_arrow_array,
+            },
+        ),
+        (
             <ApplyLatestAt as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether empty cells in a dataframe should be filled with a latest-at query.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -3458,6 +3468,34 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "position",
+                        display_name: "Position",
+                        component_type: "rerun.components.Position3D".into(),
+                        docstring_md: "The cameras current position.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "look_target",
+                        display_name: "Look target",
+                        component_type: "rerun.components.Position3D".into(),
+                        docstring_md: "The position the camera is currently looking at.\n\nIf this is an orbital camera, this also is the center it orbits around.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "spin_speed",
+                        display_name: "Spin speed",
+                        component_type: "rerun.blueprint.components.AngularSpeed".into(),
+                        docstring_md: "What speed, if any, the camera should spin around the eye-up axis when in orbit mode.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "eye_up",
+                        display_name: "Eye up",
+                        component_type: "rerun.components.Vector3D".into(),
+                        docstring_md: "The up-axis of the eye itself, in world-space.\n\nInitially, the up-axis of the eye will be the same as the up-axis of the scene (or +Z if\nthe scene has no up axis defined).\n\nA zero vector is valid and will result in 3 degrees of freedom.",
+                        is_required: false,
+                    },
                     ArchetypeFieldReflection {
                         name: "kind",
                         display_name: "Kind",
