@@ -68,7 +68,17 @@ def cargo(
         cmd = [CARGO_PATH, *args.split()]
     else:
         cmd = [CARGO_PATH, f"+{cargo_version}", *args.split()]
-    # print(f"> {subprocess.list2cmdline(cmd)}")
+
+    # Create and print a sanitized copy of the command
+    sanitized_cmd = cmd.copy()
+    try:
+        token_idx = sanitized_cmd.index("--token")
+        if token_idx + 1 < len(sanitized_cmd):
+            sanitized_cmd[token_idx + 1] = "***"
+    except ValueError:
+        pass
+    print(f"{datetime.now()} > CWD={cwd} cargo {subprocess.list2cmdline(sanitized_cmd[1:])}")
+
     if not dry_run:
         stderr = subprocess.STDOUT if capture else None
         subprocess.check_output(cmd, cwd=cwd, env=env, stderr=stderr)
@@ -436,7 +446,7 @@ def parse_retry_delay_secs(error_message: str) -> float | None:
     return (retry_after - datetime.now(timezone.utc)).total_seconds() * MAX_PUBLISH_WORKERS
 
 
-def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -> None:
+def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], dry_run: bool) -> None:
     package = crate.manifest["package"]
     name = package["name"]
 
@@ -448,6 +458,11 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
         # TODO(#11199): remove this hack
         publish_cmd += " --allow-dirty"
 
+    # This is a bit redundant given that we don't run the command in dry runs, but it allows setting `dry_run=False`
+    # bellow for testing purposes.
+    if dry_run:
+        publish_cmd += " --dry-run"
+
     print(f"{datetime.now()} {G}Publishing{X} {B}{name}{X}…")
     retry_attempts = 5
     while True:
@@ -456,11 +471,11 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
                 publish_cmd,
                 cwd=crate.path,
                 env=env,
-                dry_run=False,
+                dry_run=dry_run,
                 capture=True,
             )
 
-            if not is_already_published(version, crate):
+            if not dry_run and not is_already_published(version, crate):
                 # Theoretically this shouldn't be needed… but sometimes it is.
                 print(f"{datetime.now()}  {R}Waiting for {name} to become available…")
                 time.sleep(2)  # give crates.io some time to index the new crate
@@ -492,7 +507,9 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
                 raise
 
 
-def publish_unpublished_crates_in_parallel(all_crates: dict[str, Crate], version: str, token: str) -> None:
+def publish_unpublished_crates_in_parallel(
+    all_crates: dict[str, Crate], version: str, token: str, dry_run: bool
+) -> None:
     # filter all_crates for any that are already published
     print(f"{datetime.now()} Collecting unpublished crates…")
     unpublished_crates: dict[str, Crate] = {}
@@ -508,6 +525,15 @@ def publish_unpublished_crates_in_parallel(all_crates: dict[str, Crate], version
     for name, crate in unpublished_crates.items():
         dependencies = []
         for dependency in crate_deps(crate.manifest):
+            # IMPORTANT: we must ignore dev-dependencies.
+            #
+            # As per the Cargo book, `dev-dependencies` are ignored by crates.io (contrary to `build-dependencies`).
+            # https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html
+            #
+            # Also, Cargo allows circular dependencies via `dev-dependencies`, but our publishing logic requires a DAG.
+            if dependency.kind == DependencyKind.DEV:
+                continue
+
             if dependency.name in unpublished_crates:
                 dependencies.append(dependency.name)
         dependency_graph[name] = dependencies
@@ -515,10 +541,18 @@ def publish_unpublished_crates_in_parallel(all_crates: dict[str, Crate], version
     # walk the dependency graph in parallel and publish each crate
     print(f"{datetime.now()} Publishing {len(unpublished_crates)} crates…")
     env = {**os.environ.copy(), "RERUN_IS_PUBLISHING_CRATES": "yes"}
+
+    # The max token parameter attempts to model `crates.io` rate limiting. In dry run mode, we don't want to wait so
+    # we seed the rate limiter with plenty of tokens.
+    if dry_run:
+        max_token = 1e3
+    else:
+        max_token = 30
+
     DAG(dependency_graph).walk_parallel(
-        lambda name: publish_crate(unpublished_crates[name], token, version, env),
+        lambda name: publish_crate(unpublished_crates[name], token, version, env, dry_run),
         # 30 tokens per minute (burst limit in crates.io)
-        rate_limiter=RateLimiter(max_tokens=30, refill_interval_sec=60),
+        rate_limiter=RateLimiter(max_tokens=max_token, refill_interval_sec=60),
         # publishing already uses all cores, don't start too many publishes at once
         num_workers=min(MAX_PUBLISH_WORKERS, cpu_count()),
     )
@@ -538,8 +572,7 @@ def publish(dry_run: bool, token: str) -> None:
         ctx.publish(name, version)
     ctx.finish()
 
-    if not dry_run:
-        publish_unpublished_crates_in_parallel(crates, version, token)
+    publish_unpublished_crates_in_parallel(crates, version, token, dry_run)
 
 
 def get_latest_published_version(crate_name: str, skip_prerelease: bool = False) -> str | None:

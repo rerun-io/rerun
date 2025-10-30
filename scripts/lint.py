@@ -599,11 +599,12 @@ def lint_workspace_lints(cargo_file_content: str) -> str | None:
 # -----------------------------------------------------------------------------
 
 
-def lint_pyclass_eq(lines_in: list[str]) -> tuple[list[str], list[int]]:
-    """Only for Rust files. Check that #[pyclass(...)] declarations include 'eq'."""
+def lint_pyclass_requirements(lines_in: list[str]) -> tuple[list[str], list[int], list[str]]:
+    """Only for Rust files. Check that #[pyclass(...)] declarations include 'eq' and the correct module."""
 
     errors: list[str] = []
     error_linenumbers: list[int] = []
+    error_codes: list[str] = []
 
     i = 0
     while i < len(lines_in):
@@ -628,35 +629,47 @@ def lint_pyclass_eq(lines_in: list[str]) -> tuple[list[str], list[int]]:
 
             # Check if 'eq' is present in the pyclass declaration
             # Look for 'eq' as a standalone parameter (not part of another word)
-            if not re.search(r"\beq\b", pyclass_content):
+            # First remove comments to avoid false matches in comments
+            pyclass_content_no_comments = re.sub(r"//.*", "", pyclass_content)
+            if not re.search(r"\beq\b", pyclass_content_no_comments):
                 errors.append(
                     f"{original_line_nr}: #[pyclass(...)] should include 'eq' parameter for Python equality support"
                 )
                 error_linenumbers.append(original_line_nr)
+                error_codes.append("py-cls-eq")
+
+            # Check if the correct module is specified
+            expected_module = 'module = "rerun_bindings.rerun_bindings"'
+            if expected_module not in pyclass_content:
+                errors.append(
+                    f"{original_line_nr}: #[pyclass(...)] should include 'module = \"rerun_bindings.rerun_bindings\"' parameter"
+                )
+                error_linenumbers.append(original_line_nr)
+                error_codes.append("py-cls-mod")
 
             # Move the index to after the pyclass declaration
             i = j
         else:
             i += 1
 
-    return errors, error_linenumbers
+    return errors, error_linenumbers, error_codes
 
 
-def test_lint_pyclass_eq() -> None:
-    """Test the lint_pyclass_eq function with various pyclass declarations."""
+def test_lint_pyclass_requirements() -> None:
+    """Test the lint_pyclass_requirements function with various pyclass declarations."""
 
     should_pass = [
-        # Simple pyclass with eq
-        "#[pyclass(eq)]",
-        # Multiple parameters including eq
-        "#[pyclass(frozen, eq, hash)]",
+        # Simple pyclass with eq and module
+        '#[pyclass(eq, module = "rerun_bindings.rerun_bindings")]',
+        # Multiple parameters including eq and module
+        '#[pyclass(frozen, eq, hash, module = "rerun_bindings.rerun_bindings")]',
         # eq in different position
-        "#[pyclass(eq, frozen)]",
-        # Multi-line pyclass with eq
-        "#[pyclass(\n    frozen,\n    eq,\n    hash\n)]",
+        '#[pyclass(eq, frozen, module = "rerun_bindings.rerun_bindings")]',
+        # Multi-line pyclass with eq and module
+        '#[pyclass(\n    frozen,\n    eq,\n    hash,\n    module = "rerun_bindings.rerun_bindings"\n)]',
         # eq at the end
-        "#[pyclass(frozen, hash, eq)]",
-        # With module specification
+        '#[pyclass(frozen, hash, eq, module = "rerun_bindings.rerun_bindings")]',
+        # With module specification and eq
         '#[pyclass(eq, module = "rerun_bindings.rerun_bindings")]',
         # Complex real-world example
         """#[pyclass(
@@ -666,17 +679,25 @@ def test_lint_pyclass_eq() -> None:
             name = "IndexColumnDescriptor",
             module = "rerun_bindings.rerun_bindings"
         )]""",
+        # With name parameter
+        '#[pyclass(eq, name = "MyClass", module = "rerun_bindings.rerun_bindings")]',
     ]
 
     should_error = [
         # Missing eq parameter
-        "#[pyclass(frozen)]",
+        '#[pyclass(frozen, module = "rerun_bindings.rerun_bindings")]',
         # Multiple parameters but no eq
-        "#[pyclass(frozen, hash)]",
+        '#[pyclass(frozen, hash, module = "rerun_bindings.rerun_bindings")]',
         # With module but no eq
         '#[pyclass(module = "rerun_bindings.rerun_bindings")]',
+        # With eq but no module
+        "#[pyclass(eq, frozen)]",
+        # Missing both eq and module
+        "#[pyclass(frozen)]",
         # Multi-line without eq
-        "#[pyclass(\n    frozen,\n    hash\n)]",
+        '#[pyclass(\n    frozen,\n    hash,\n    module = "rerun_bindings.rerun_bindings"\n)]',
+        # Multi-line without module
+        "#[pyclass(\n    frozen,\n    eq,\n    hash\n)]",
         # Complex example without eq
         """#[pyclass(
             frozen,
@@ -684,18 +705,27 @@ def test_lint_pyclass_eq() -> None:
             name = "IndexColumnDescriptor",
             module = "rerun_bindings.rerun_bindings"
         )]""",
+        # Complex example without module
+        """#[pyclass(
+            frozen,
+            eq,
+            hash,
+            name = "IndexColumnDescriptor"
+        )]""",
+        # Wrong module name
+        '#[pyclass(eq, module = "wrong_module")]',
     ]
 
     # Test cases that should pass (no errors)
     for test_case in should_pass:
         lines = test_case.split("\n")
-        errors, _ = lint_pyclass_eq(lines)
+        errors, _, _ = lint_pyclass_requirements(lines)
         assert len(errors) == 0, f'expected "{test_case}" to pass, but got errors: {errors}'
 
     # Test cases that should fail (produce errors)
     for test_case in should_error:
         lines = test_case.split("\n")
-        errors, _ = lint_pyclass_eq(lines)
+        errors, _, _ = lint_pyclass_requirements(lines)
         assert len(errors) > 0, f'expected "{test_case}" to fail, but got no errors'
 
 
@@ -1016,17 +1046,45 @@ class SourceFile:
         self.content = "".join(self.lines)
 
         # gather lines with a `NOLINT` marker
-        self.nolints = set()
+        # nolints is a dict from code to set of line numbers
+        # None key is used for unqualified NOLINT
+        self.nolints: dict[str | None, set[int]] = {}
         is_in_nolint_block = False
         for i, line in enumerate(self.lines):
             if "NOLINT" in line:
-                self.nolints.add(i)
+                # Check for NOLINT: ignore[<code>] format
+                if "NOLINT: ignore[" in line:
+                    match = re.search(r"NOLINT: ignore\[([^\]]+)\]", line)
+                    if match:
+                        code = match.group(1)
+                        if code not in self.nolints:
+                            self.nolints[code] = set()
+                        self.nolints[code].add(i)
+                    else:
+                        # Fallback to unqualified NOLINT if parsing fails
+                        if None not in self.nolints:
+                            self.nolints[None] = set()
+                        self.nolints[None].add(i)
+                else:
+                    # Unqualified NOLINT
+                    if None not in self.nolints:
+                        self.nolints[None] = set()
+                    self.nolints[None].add(i)
 
             if "NOLINT_START" in line:
+                # Check if this is trying to use the ignore[code] format with NOLINT_START
+                if "NOLINT_START: ignore[" in line:
+                    raise NotImplementedError(
+                        f"NOLINT_START: ignore[<code>] format is not implemented yet. "
+                        f"Found at line {i + 1}: {line.strip()}"
+                    )
                 is_in_nolint_block = True
 
             if is_in_nolint_block:
-                self.nolints.add(i)
+                # NOLINT_START/END blocks are always unqualified
+                if None not in self.nolints:
+                    self.nolints[None] = set()
+                self.nolints[None].add(i)
                 if "NOLINT_END" in line:
                     is_in_nolint_block = False
 
@@ -1039,22 +1097,36 @@ class SourceFile:
             self._update_content()
             print(f"{self.path} fixed.")
 
-    def should_ignore(self, from_line: int, to_line: int | None = None) -> bool:
+    def should_ignore(self, from_line: int, to_line: int | None = None, code: str | None = None) -> bool:
         """
         Determines if we should ignore a violation.
 
         NOLINT might be on the same line(s) as the violation or the previous line.
+
+        Args:
+            from_line: Starting line number (1-based)
+            to_line: Ending line number (1-based), defaults to from_line
+            code: Specific error code to check for (e.g., 'py-cls-eq'),
+                  or None to check for unqualified NOLINT
+
         """
 
         if to_line is None:
             to_line = from_line
-        return any(i in self.nolints for i in range(from_line - 1, to_line + 1))
 
-    def should_ignore_index(self, start_idx: int, end_idx: int | None = None) -> bool:
+        line_range = range(from_line - 1, to_line + 1)
+
+        # Check for specific code if provided
+        if code in self.nolints:
+            return any(i in self.nolints[code] for i in line_range)
+        return False
+
+    def should_ignore_index(self, start_idx: int, end_idx: int | None = None, code: str | None = None) -> bool:
         """Same as `should_ignore` but takes 0-based indices instead of line numbers."""
         return self.should_ignore(
             _index_to_line_nr(self.content, start_idx),
             _index_to_line_nr(self.content, end_idx) if end_idx is not None else None,
+            code,
         )
 
     def error(self, message: str, *, line_nr: int | None = None, index: int | None = None) -> str:
@@ -1103,13 +1175,16 @@ def lint_file(filepath: str, args: Any) -> int:
             print(source.error(error))
         num_errors += len(errors)
 
-        # Check for pyclass eq parameter in rerun_py Rust files
+        # Check for pyclass requirements (eq and module) in rerun_py Rust files
         if filepath.startswith("./rerun_py/") and filepath.endswith(".rs"):
-            pyclass_errors, error_lines = lint_pyclass_eq(source.lines)
+            pyclass_errors, error_lines, error_codes = lint_pyclass_requirements(source.lines)
             valid_errors = 0
-            for error, line_number in zip(pyclass_errors, error_lines, strict=False):
-                if not source.should_ignore(line_number):
-                    print(source.error(error))
+            for error, line_number, error_code in zip(pyclass_errors, error_lines, error_codes, strict=True):
+                if not source.should_ignore(line_number, code=error_code):
+                    print(
+                        source.error(error)
+                        + f"\n\tUnqualified NOLINT not allowed for pyclass lints. Use `NOLINT: ignore[{error_code}]` instead."
+                    )
                     valid_errors += 1
             num_errors += valid_errors
 
@@ -1184,7 +1259,7 @@ def main() -> None:
     test_split_words()
     test_lint_line()
     test_lint_vertical_spacing()
-    test_lint_pyclass_eq()
+    test_lint_pyclass_requirements()
     test_is_emoji()
 
     parser = argparse.ArgumentParser(description="Lint code with custom linter.")
