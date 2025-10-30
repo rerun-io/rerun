@@ -4,7 +4,7 @@ use re_types::TransformFrameIdHash;
 use std::collections::BTreeMap;
 use vec1::smallvec_v1::SmallVec1;
 
-/// Datastructures for tracking which transform relationships are specified by an any given moment in time.
+/// Datastructures for tracking which transform relationships are specified by any moment in time for a given entity.
 /// Transform relationships are keyed by their source frame, thus the only thing we ever track is the [`TransformFrameIdHash`] of sources.
 ///
 /// Since, except for static time, we don't allow sources to be mentioned by several different entities over time, we do not have to
@@ -13,7 +13,7 @@ use vec1::smallvec_v1::SmallVec1;
 /// The list of frame id hashes can never be empty.
 /// If a clear or empty array is logged, we insert the implicit frame again since this is what we always fall back to.
 #[derive(Clone)]
-pub struct AffectedSources {
+pub struct EntityToAffectedSources {
     /// Tracks start times of the ranges over which a set of source ranges is affected.
     ///
     /// This list can never be empty.
@@ -27,8 +27,8 @@ pub struct AffectedSources {
     pub all_sources: IntSet<TransformFrameIdHash>,
 }
 
-impl AffectedSources {
-    /// Creates a new instance of [`AffectedSources`] and inserts the implicit frame derived from the entity path at static time.
+impl EntityToAffectedSources {
+    /// Creates a new instance of [`EntityToAffectedSources`] and inserts the implicit frame derived from the entity path at static time.
     pub fn new(entity_path: &EntityPath) -> Self {
         let fallback_source_frame = TransformFrameIdHash::from_entity_path(entity_path);
 
@@ -73,13 +73,14 @@ impl AffectedSources {
             return itertools::Either::Left(std::iter::empty());
         };
 
-        let mut relevant_range_start_iterator = self
-            .range_starts
-            .range(*first_time..=sub_range.max)
-            .peekable();
+        let mut relevant_range_start_iterator = self.range_starts.range(*first_time..).peekable();
 
         itertools::Either::Right(std::iter::from_fn(move || {
             let (start_time, sources) = relevant_range_start_iterator.next()?;
+            if *start_time > sub_range.max {
+                return None;
+            }
+
             let range = if let Some((end_time, _)) = relevant_range_start_iterator.peek() {
                 *start_time..**end_time
             } else {
@@ -89,6 +90,121 @@ impl AffectedSources {
             Some((range, sources))
         }))
     }
+}
 
-    // TODO: above deserves its own unit test.
+mod tests {
+    use crate::entity_to_source_frame_tracking::EntityToAffectedSources;
+    use itertools::Itertools as _;
+    use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
+    use re_types::TransformFrameIdHash;
+    use vec1::smallvec_v1::SmallVec1;
+
+    fn make_smallvec(values: &[TransformFrameIdHash]) -> SmallVec1<[TransformFrameIdHash; 1]> {
+        SmallVec1::try_from_slice(values).unwrap()
+    }
+
+    #[test]
+    fn test_iterating_affected_source_ranges() {
+        let entity_path = EntityPath::parse_forgiving("/my/path");
+        let mut affected_sources = EntityToAffectedSources::new(&entity_path);
+
+        assert_eq!(
+            affected_sources
+                .iter_ranges(AbsoluteTimeRange::new(TimeInt::MIN, TimeInt::MAX))
+                .collect_vec(),
+            vec![(
+                TimeInt::STATIC..TimeInt::MAX,
+                &make_smallvec(&[TransformFrameIdHash::from_entity_path(&entity_path)])
+            )]
+        );
+
+        affected_sources.insert_range(
+            TimeInt::new_temporal(0),
+            make_smallvec(&[
+                TransformFrameIdHash::from_str("frame0"),
+                TransformFrameIdHash::from_str("frame1"),
+            ]),
+        );
+        affected_sources.insert_range(
+            TimeInt::new_temporal(10),
+            make_smallvec(&[TransformFrameIdHash::from_str("frame2")]),
+        );
+        affected_sources.insert_range(
+            TimeInt::new_temporal(20),
+            make_smallvec(&[
+                TransformFrameIdHash::from_str("frame3"),
+                TransformFrameIdHash::from_str("frame0"),
+            ]),
+        );
+
+        // All the possible ranges that we can get back from queries:
+        let range_result0 = (
+            TimeInt::STATIC..TimeInt::new_temporal(0),
+            &make_smallvec(&[TransformFrameIdHash::from_entity_path(&entity_path)]),
+        );
+        let range_result1 = (
+            TimeInt::new_temporal(0)..TimeInt::new_temporal(10),
+            &make_smallvec(&[
+                TransformFrameIdHash::from_str("frame0"),
+                TransformFrameIdHash::from_str("frame1"),
+            ]),
+        );
+        let range_result2 = (
+            TimeInt::new_temporal(10)..TimeInt::new_temporal(20),
+            &make_smallvec(&[TransformFrameIdHash::from_str("frame2")]),
+        );
+        let range_result4 = (
+            TimeInt::new_temporal(20)..TimeInt::MAX,
+            &make_smallvec(&[
+                TransformFrameIdHash::from_str("frame3"),
+                TransformFrameIdHash::from_str("frame0"),
+            ]),
+        );
+
+        assert_eq!(
+            affected_sources
+                .iter_ranges(AbsoluteTimeRange::new(TimeInt::MIN, TimeInt::MAX))
+                .collect_vec(),
+            [
+                &range_result0,
+                &range_result1,
+                &range_result2,
+                &range_result4
+            ]
+            .into_iter()
+            .cloned()
+            .collect_vec()
+        );
+        assert_eq!(
+            affected_sources
+                .iter_ranges(AbsoluteTimeRange::new(
+                    TimeInt::new_temporal(0),
+                    TimeInt::new_temporal(10)
+                ))
+                .collect_vec(),
+            vec![range_result1.clone(), range_result2.clone()]
+        );
+        assert_eq!(
+            affected_sources
+                .iter_ranges(AbsoluteTimeRange::new(
+                    TimeInt::new_temporal(2),
+                    TimeInt::new_temporal(3)
+                ))
+                .collect_vec(),
+            vec![range_result1.clone()]
+        );
+
+        assert_eq!(
+            affected_sources
+                .iter_ranges(AbsoluteTimeRange::new(
+                    TimeInt::new_temporal(2),
+                    TimeInt::new_temporal(13)
+                ))
+                .collect_vec(),
+            [&range_result1, &range_result2]
+                .into_iter()
+                .cloned()
+                .collect_vec()
+        );
+    }
 }

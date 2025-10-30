@@ -1,4 +1,4 @@
-use crate::entity_to_source_frame_tracking::AffectedSources;
+use crate::entity_to_source_frame_tracking::EntityToAffectedSources;
 use crate::{
     TransformFrameIdHash,
     transform_aspect::TransformAspect,
@@ -13,7 +13,7 @@ use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::external::re_types_core::ArrowString;
-use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, TimelineName};
+use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types::{
     Archetype as _, ArchetypeName,
     archetypes::{self},
@@ -66,18 +66,18 @@ pub struct SourceToTargetTransform {
 
 // TODO: document
 #[derive(Default, Clone)]
-struct PerEntityAffectedSources(IntMap<EntityPath, AffectedSources>);
+struct PerEntityAffectedSources(IntMap<EntityPath, EntityToAffectedSources>);
 
 impl PerEntityAffectedSources {
-    fn get_or_create_for(&mut self, entity_path: &EntityPath) -> &mut AffectedSources {
+    fn get_or_create_for(&mut self, entity_path: &EntityPath) -> &mut EntityToAffectedSources {
         self.0
             .entry(entity_path.clone())
-            .or_insert_with(|| AffectedSources::new(entity_path))
+            .or_insert_with(|| EntityToAffectedSources::new(entity_path))
     }
 }
 
 impl std::ops::Deref for PerEntityAffectedSources {
-    type Target = IntMap<EntityPath, AffectedSources>;
+    type Target = IntMap<EntityPath, EntityToAffectedSources>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -661,7 +661,7 @@ impl TransformResolutionCache {
                 .or_insert_with(|| {
                     sources_affected_by_this_entity_for_first_time
                         .insert(TransformFrameIdHash::from_entity_path(entity_path));
-                    AffectedSources::new(entity_path)
+                    EntityToAffectedSources::new(entity_path)
                 });
 
             // First, update the list of when which source is "active" for this entity in case this chunk mentions any sources.
@@ -787,7 +787,7 @@ impl TransformResolutionCache {
             .get_or_create_for(entity_path);
 
         // Note down that for these source frames we have potentially static transforms.
-        let mut changed_static_source_frames = false;
+        let changed_static_source_frames;
         let source_frames = source_frames_in_static_chunk(chunk);
         let source_frames =
             active_source_array_from_string_slice(entity_path, &source_frames.unwrap_or_default());
