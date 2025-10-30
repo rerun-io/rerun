@@ -20,7 +20,7 @@ pub struct PyServerInternal {
 #[pymethods]
 impl PyServerInternal {
     #[new]
-    #[pyo3(signature = (address="0.0.0.0", port=51234, datasets=None, tables=None))]
+    #[pyo3(signature = (*, address="0.0.0.0", port=51234, datasets=None, tables=None))]
     pub fn new(
         py: Python<'_>,
         address: &str,
