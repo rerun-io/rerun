@@ -197,4 +197,7 @@ pub mod external {
 
     #[cfg(feature = "sdk")]
     pub use re_types::external::*;
+
+    #[cfg(feature = "oss_server")]
+    pub use ::re_server;
 }

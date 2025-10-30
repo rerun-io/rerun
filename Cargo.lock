@@ -10679,6 +10679,7 @@ dependencies = [
  "re_protos",
  "re_redap_client",
  "re_sdk",
+ "re_server",
  "re_sorbet",
  "re_tuid",
  "re_uri",
