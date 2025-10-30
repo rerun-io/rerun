@@ -20,6 +20,7 @@ use re_types::{
     components::{self},
 };
 use std::collections::{BTreeMap, BTreeSet, hash_map::Entry};
+use std::ops::Range;
 use vec1::smallvec_v1::SmallVec1;
 
 /// Resolves all transform relationship defining components to affine transforms for fast lookup.
@@ -64,7 +65,9 @@ pub struct SourceToTargetTransform {
     pub transform: Affine3A,
 }
 
-// TODO: document
+/// Maps entity paths to [`EntityToAffectedSources`] datastructures.
+///
+/// See [`EntityToAffectedSources`] for details.
 #[derive(Default, Clone)]
 struct PerEntityAffectedSources(IntMap<EntityPath, EntityToAffectedSources>);
 
@@ -94,7 +97,10 @@ impl std::ops::DerefMut for PerEntityAffectedSources {
 /// Includes any static transforms that may apply globally.
 /// Therefore, this can't be trivially constructed.
 pub struct CachedTransformsForTimeline {
-    /// TODO: I owe you a new comment.
+    /// Maps entity paths to [`EntityToAffectedSources`] datastructures.
+    ///
+    /// This allows us to keep track of which incoming (or removed) transform events on entities apply to which
+    /// source-transform at which time.
     per_entity_affected_sources: PerEntityAffectedSources,
 
     /// Transforms information for each source frame to a target frame over time.
@@ -195,7 +201,7 @@ impl CachedTransformsForTimeline {
             }
         }
 
-        // Removing clears from `self.per_source_frame_transforms` is not critical since left over cache entries won't change out comes.
+        // Removing clears from `self.per_source_frame_transforms` is not critical since leftover cache entries won't change outcomes.
     }
 
     /// Returns all transforms for a given source frame.
@@ -286,9 +292,9 @@ type PinholeProjectionMap = BTreeMap<TimeInt, TransformEntry<ResolvedPinholeProj
 ///
 /// Incorporates any static transforms that may apply to this entity.
 ///
-/// Time points are conservative: it can happen that we generate new entries despite no change
+/// Time points are conservative: it can happen that we generate new events (==cache slots) despite no change
 /// occurring for this source frame.
-/// However, we mustn't ever note down timepoints at which no update for a given source frame was described.
+/// However, we mustn't ever note down timepoints at which the given source frame is not "active" on its entity.
 /// Doing so would mean that queries using [`re_query`] yield information about a _different_ source
 /// which we then can't add to the cache entries of the current source.
 #[derive(Clone, Debug, PartialEq)]
@@ -433,7 +439,7 @@ impl TransformsForSourceFrame {
         }
     }
 
-    fn new_static() -> Self {
+    fn new_empty() -> Self {
         Self {
             #[cfg(debug_assertions)]
             timeline: None,
@@ -453,6 +459,95 @@ impl TransformsForSourceFrame {
         self.pinhole_projections
             .get_or_insert(Default::default())
             .insert(time, TransformEntry::new_cleared(entity_path.clone()));
+    }
+
+    /// Removes all events in a given range and writes them to `destination`.
+    fn remove_events_in_range(&mut self, range: Range<TimeInt>, destination: &mut Self) {
+        let Self {
+            #[cfg(debug_assertions)]
+                timeline: _,
+            frame_transforms,
+            pose_transforms,
+            pinhole_projections,
+        } = self;
+
+        let Self {
+            #[cfg(debug_assertions)]
+                timeline: _,
+            frame_transforms: dst_frame_transforms,
+            pose_transforms: dst_pose_transforms,
+            pinhole_projections: dst_pinhole_projections,
+        } = destination;
+
+        frame_transforms.retain(|time, transform| {
+            if !range.contains(time) {
+                return true;
+            }
+            dst_frame_transforms.insert(*time, transform.clone());
+            false
+        });
+
+        if let Some(pose_transforms) = pose_transforms {
+            let dst_pose_transforms = dst_pose_transforms.get_or_insert_default();
+
+            pose_transforms.retain(|time, transform| {
+                if !range.contains(time) {
+                    return true;
+                }
+                dst_pose_transforms.insert(*time, transform.clone());
+                false
+            });
+        }
+
+        if let Some(pinhole_projections) = pinhole_projections {
+            let dst_pinhole_projections = dst_pinhole_projections.get_or_insert_default();
+
+            pinhole_projections.retain(|time, transform| {
+                if !range.contains(time) {
+                    return true;
+                }
+                dst_pinhole_projections.insert(*time, transform.clone());
+                false
+            });
+        }
+    }
+
+    fn insert_all_events_of(&mut self, other: &Self) {
+        let Self {
+            #[cfg(debug_assertions)]
+                timeline: _,
+            frame_transforms,
+            pose_transforms,
+            pinhole_projections,
+        } = self;
+
+        let Self {
+            #[cfg(debug_assertions)]
+                timeline: _,
+            frame_transforms: src_frame_transforms,
+            pose_transforms: src_pose_transforms,
+            pinhole_projections: src_pinhole_projections,
+        } = other;
+
+        frame_transforms.extend(
+            src_frame_transforms
+                .iter()
+                .map(|(time, transform)| (*time, transform.clone())),
+        );
+        if let Some(src_pose_transforms) = src_pose_transforms {
+            pose_transforms.get_or_insert_default().extend(
+                src_pose_transforms
+                    .iter()
+                    .map(|(time, transform)| (*time, transform.clone())),
+            );
+        }
+        if let Some(src_pinhole_projections) = src_pinhole_projections {
+            pinhole_projections.get_or_insert_default().extend(
+                src_pinhole_projections
+                    .iter()
+                    .map(|(time, transform)| (*time, transform.clone())),
+            );
+        }
     }
 
     #[inline]
@@ -476,7 +571,7 @@ impl TransformsForSourceFrame {
                 let transform = query_and_resolve_tree_transform_at_entity(
                     &frame_transform.entity_path,
                     entity_db,
-                    // Do NOT use the original query since that may give us information about a different source frame!
+                    // Do NOT use the original query time since that may give us information about a different source frame!
                     &LatestAtQuery::new(query.timeline(), *time_of_last_update_to_this_source),
                 );
 
@@ -645,7 +740,6 @@ impl TransformResolutionCache {
         debug_assert!(!chunk.is_static());
 
         let entity_path = chunk.entity_path();
-        let fallback_sources = [TransformFrameIdHash::from_entity_path(entity_path)];
 
         for (timeline, time_column) in chunk.timelines() {
             let per_timeline = self.per_timeline.entry(*timeline).or_insert_with(|| {
@@ -673,20 +767,36 @@ impl TransformResolutionCache {
                         .filter(|source| !affected_sources.all_sources.contains(source)),
                 );
 
-                // TODO: If there were already transforms but there was no source frame before, we have to act!
-                // I.e. detect frame splitting etc.
+                let (changed_range, previous_sources) =
+                    affected_sources.insert_range_start(start_time, sources.clone());
 
-                let previous_sources = affected_sources.insert_range(start_time, sources.clone()); // TODO(andreas): annoying clone just for the error message.
-                if let Some(previous_sources) = previous_sources
-                    && previous_sources.as_slice() != fallback_sources
-                {
-                    // TODO(andreas): Why not support this?
-                    re_log::error_once!(
-                        "Changing source frames after the fact is not yet supported. Tried changing source frames for entity {entity_path:?} from {:?} to {:?} at time {:?}",
-                        previous_sources,
-                        &sources,
-                        &start_time
-                    );
+                // Since (by convention) only this entity can affect `previous_sources`, we have to drop all their events in the `changed_range`!
+                let mut moved_events = TransformsForSourceFrame::new_empty();
+                for previous_source_frame in &previous_sources {
+                    let Some(frame_transforms) = per_timeline
+                        .per_source_frame_transforms
+                        .get_mut(previous_source_frame)
+                    else {
+                        // No events on this source, so nothing to remove!
+                        continue;
+                    };
+                    // Since (by convention) only this entity can affect `previous_sources`, we have to move all their events in the `changed_range` to the new range.
+                    frame_transforms
+                        .remove_events_in_range(changed_range.clone(), &mut moved_events);
+                }
+                // ...and add them to the new sources!
+                for new_source_frame in sources {
+                    per_timeline
+                        .per_source_frame_transforms
+                        .entry(new_source_frame)
+                        .or_insert_with(|| {
+                            TransformsForSourceFrame::new(
+                                new_source_frame,
+                                *timeline,
+                                &self.static_timeline,
+                            )
+                        })
+                        .insert_all_events_of(&moved_events);
                 }
             }
 
@@ -786,25 +896,40 @@ impl TransformResolutionCache {
             .per_entity_affected_sources
             .get_or_create_for(entity_path);
 
-        // Note down that for these source frames we have potentially static transforms.
-        let changed_static_source_frames;
+        // Note down that for these source frames we may have new static transforms.
         let source_frames = source_frames_in_static_chunk(chunk);
         let source_frames =
             active_source_array_from_string_slice(entity_path, &source_frames.unwrap_or_default());
         {
-            let previous_sources =
-                affected_sources.insert_range(TimeInt::STATIC, source_frames.clone());
-            changed_static_source_frames = previous_sources.as_ref() != Some(&source_frames);
+            let (changed_range, previous_sources) =
+                affected_sources.insert_range_start(TimeInt::STATIC, source_frames.clone());
+            debug_assert_eq!(changed_range, TimeInt::STATIC..TimeInt::STATIC);
 
-            if let Some(previous_sources) = previous_sources
-                && previous_sources.as_slice() != &fallback_sources
+            if previous_sources != source_frames
+                && previous_sources.as_slice() != fallback_sources.as_slice()
             {
-                // TODO(andreas): Why not support this?
-                re_log::error_once!(
-                    "Changing source frames after the fact is not yet supported. Tried changing source frames for entity {entity_path:?} from {:?} to {:?} at static time",
-                    previous_sources,
-                    &source_frames,
-                );
+                for per_timeline_transforms in &mut self.per_timeline.values_mut() {
+                    // Propagate the new static sources to `entity_source_ranges` on all timelines.
+                    per_timeline_transforms
+                        .per_entity_affected_sources
+                        .get_or_create_for(entity_path)
+                        .insert_range_start(TimeInt::STATIC, source_frames.clone());
+
+                    // Invalidate the static status on the previous sources.
+                    for previous_source_frame in &previous_sources {
+                        if let Some(frame_transform) = per_timeline_transforms
+                            .per_source_frame_transforms
+                            .get_mut(previous_source_frame)
+                        {
+                            frame_transform.insert_invalidated_transform_events(
+                                aspects,
+                                TimeInt::STATIC,
+                                || std::iter::once(TimeInt::STATIC),
+                                entity_path,
+                            );
+                        }
+                    }
+                }
             }
         }
         debug_assert_eq!(
@@ -812,16 +937,6 @@ impl TransformResolutionCache {
             1,
             "There should be only information about the static source frame"
         );
-
-        // Propagate the potentially new static sources to `entity_source_ranges` on all timelines.
-        if changed_static_source_frames {
-            for per_timeline_transforms in &mut self.per_timeline.values_mut() {
-                per_timeline_transforms
-                    .per_entity_affected_sources
-                    .get_or_create_for(entity_path)
-                    .insert_range(TimeInt::STATIC, source_frames.clone());
-            }
-        }
 
         // Adding a static transform invalidates affected source frames on ALL timelines, since the resulting transforms at all times may be different now.
         // TODO(andreas): This is too conservative for long recordings - we should know when a static transform is fully "shadowed", so we don't have to invalidate as aggressively.
@@ -831,7 +946,7 @@ impl TransformResolutionCache {
             self.static_timeline
                 .per_source_frame_transforms
                 .entry(source_frame)
-                .or_insert_with(TransformsForSourceFrame::new_static)
+                .or_insert_with(TransformsForSourceFrame::new_empty)
                 .insert_invalidated_transform_events(
                     aspects,
                     TimeInt::STATIC,
@@ -2406,8 +2521,15 @@ mod tests {
         Ok(())
     }
 
+    #[derive(Debug, Clone, Copy)]
+    enum SourceTargetChangesOverTimeTestMode {
+        SingleChunk,
+        MultipleChunksInOrder,
+        MultipleChunksReverseOrder,
+    }
+
     fn test_single_source_and_target_over_time(
-        multiple_chunks: bool,
+        mode: SourceTargetChangesOverTimeTestMode,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = new_entity_db_with_subscriber_registered();
         let mut cache = TransformResolutionCache::default();
@@ -2441,16 +2563,27 @@ mod tests {
             )
             .build()?;
 
-        if multiple_chunks {
-            for row_idx in 0..chunk.num_rows() {
-                entity_db.add_chunk(&Arc::new(
-                    chunk.row_sliced(row_idx, 1).with_id(ChunkId::new()),
-                ))?;
+        match mode {
+            SourceTargetChangesOverTimeTestMode::SingleChunk => {
+                entity_db.add_chunk(&Arc::new(chunk))?;
                 apply_store_subscriber_events(&mut cache, &entity_db);
             }
-        } else {
-            entity_db.add_chunk(&Arc::new(chunk))?;
-            apply_store_subscriber_events(&mut cache, &entity_db);
+            SourceTargetChangesOverTimeTestMode::MultipleChunksInOrder => {
+                for row_idx in 0..chunk.num_rows() {
+                    entity_db.add_chunk(&Arc::new(
+                        chunk.row_sliced(row_idx, 1).with_id(ChunkId::new()),
+                    ))?;
+                    apply_store_subscriber_events(&mut cache, &entity_db);
+                }
+            }
+            SourceTargetChangesOverTimeTestMode::MultipleChunksReverseOrder => {
+                for row_idx in (0..chunk.num_rows()).rev() {
+                    entity_db.add_chunk(&Arc::new(
+                        chunk.row_sliced(row_idx, 1).with_id(ChunkId::new()),
+                    ))?;
+                    apply_store_subscriber_events(&mut cache, &entity_db);
+                }
+            }
         }
 
         let timeline_transforms = cache.transforms_for_timeline(*timeline.name());
@@ -2549,13 +2682,23 @@ mod tests {
     #[test]
     fn test_single_source_and_target_over_time_single_chunk()
     -> Result<(), Box<dyn std::error::Error>> {
-        test_single_source_and_target_over_time(false)
+        test_single_source_and_target_over_time(SourceTargetChangesOverTimeTestMode::SingleChunk)
     }
 
     #[test]
-    fn test_single_source_and_target_over_time_multiple_chunks()
+    fn test_single_source_and_target_over_time_multiple_chunks_in_order()
     -> Result<(), Box<dyn std::error::Error>> {
-        test_single_source_and_target_over_time(true)
+        test_single_source_and_target_over_time(
+            SourceTargetChangesOverTimeTestMode::MultipleChunksInOrder,
+        )
+    }
+
+    #[test]
+    fn test_single_source_and_target_over_time_multiple_chunks_reverse_order()
+    -> Result<(), Box<dyn std::error::Error>> {
+        test_single_source_and_target_over_time(
+            SourceTargetChangesOverTimeTestMode::MultipleChunksReverseOrder,
+        )
     }
 
     #[test]

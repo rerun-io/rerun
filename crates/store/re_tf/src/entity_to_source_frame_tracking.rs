@@ -2,6 +2,7 @@ use nohash_hasher::IntSet;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
 use re_types::TransformFrameIdHash;
 use std::collections::BTreeMap;
+use std::ops::Range;
 use vec1::smallvec_v1::SmallVec1;
 
 /// Datastructures for tracking which transform relationships are specified by any moment in time for a given entity.
@@ -45,31 +46,42 @@ impl EntityToAffectedSources {
 
     /// Insert a new range-start for a set of sources.
     ///
-    /// Returns previous ranges that were set at exactly this time if any.
-    pub fn insert_range(
+    /// Every time the start of a range is inserted, an existing range gets split in two!
+    /// The return value is the range previously not using `new_sources` but now is.
+    pub fn insert_range_start(
         &mut self,
         start_time: TimeInt,
-        sources: SmallVec1<[TransformFrameIdHash; 1]>,
-    ) -> Option<SmallVec1<[TransformFrameIdHash; 1]>> {
-        self.all_sources.extend(sources.iter().copied());
-        self.range_starts.insert(start_time, sources)
+        new_sources: SmallVec1<[TransformFrameIdHash; 1]>,
+    ) -> (Range<TimeInt>, SmallVec1<[TransformFrameIdHash; 1]>) {
+        self.all_sources.extend(new_sources.iter().copied());
+
+        let split_range_sources = self
+            .range_starts
+            .range(..=start_time)
+            .next_back()
+            .map(|(_split_range_start, sources)| sources.clone())
+            .unwrap_or_else(|| {
+                debug_panic_for_empty_ranges();
+                new_sources.clone()
+            });
+        let split_range_end = self
+            .range_starts
+            .range(start_time.inc()..)
+            .next()
+            .map_or(TimeInt::MAX, |(t, _)| *t);
+
+        self.range_starts.insert(start_time, new_sources);
+
+        (start_time..split_range_end, split_range_sources.clone())
     }
 
     /// Within a subrange, iterates over all ranges it touches. With each range, it specifies which sources are affected therein.
     pub fn iter_ranges(
         &self,
         sub_range: AbsoluteTimeRange,
-    ) -> impl Iterator<
-        Item = (
-            std::ops::Range<TimeInt>,
-            &SmallVec1<[TransformFrameIdHash; 1]>,
-        ),
-    > {
+    ) -> impl Iterator<Item = (Range<TimeInt>, &SmallVec1<[TransformFrameIdHash; 1]>)> {
         let Some((first_time, _)) = self.range_starts.range(..=sub_range.min).next_back() else {
-            debug_assert!(
-                false,
-                "We always insert an element at static time, so a latest-at style query should always yield something"
-            );
+            debug_panic_for_empty_ranges();
             return itertools::Either::Left(std::iter::empty());
         };
 
@@ -91,7 +103,14 @@ impl EntityToAffectedSources {
         }))
     }
 }
+fn debug_panic_for_empty_ranges() {
+    debug_assert!(
+        false,
+        "We always insert an element at static time, so a latest-at style query should always yield something"
+    );
+}
 
+#[cfg(test)]
 mod tests {
     use crate::entity_to_source_frame_tracking::EntityToAffectedSources;
     use itertools::Itertools as _;
@@ -101,6 +120,64 @@ mod tests {
 
     fn make_smallvec(values: &[TransformFrameIdHash]) -> SmallVec1<[TransformFrameIdHash; 1]> {
         SmallVec1::try_from_slice(values).unwrap()
+    }
+
+    #[test]
+    fn test_insert_range_start() {
+        let entity_path = EntityPath::parse_forgiving("/my/path");
+        let fallback_source_frame = TransformFrameIdHash::from_entity_path(&entity_path);
+        let mut affected_sources = EntityToAffectedSources::new(&entity_path);
+
+        // Add at the start.
+        assert_eq!(
+            affected_sources.insert_range_start(
+                TimeInt::new_temporal(0),
+                make_smallvec(&[TransformFrameIdHash::from_str("frame0")])
+            ),
+            (
+                TimeInt::new_temporal(0)..TimeInt::MAX,
+                make_smallvec(&[fallback_source_frame])
+            )
+        );
+
+        // Add at the end.
+        assert_eq!(
+            affected_sources.insert_range_start(
+                TimeInt::new_temporal(100),
+                make_smallvec(&[
+                    TransformFrameIdHash::from_str("frame1"),
+                    TransformFrameIdHash::from_str("frame2")
+                ])
+            ),
+            (
+                TimeInt::new_temporal(100)..TimeInt::MAX,
+                make_smallvec(&[TransformFrameIdHash::from_str("frame0")])
+            )
+        );
+
+        // Add in between.
+        assert_eq!(
+            affected_sources.insert_range_start(
+                TimeInt::new_temporal(50),
+                make_smallvec(&[TransformFrameIdHash::from_str("frame3")])
+            ),
+            (
+                TimeInt::new_temporal(50)..TimeInt::new_temporal(100),
+                make_smallvec(&[TransformFrameIdHash::from_str("frame0")])
+            )
+        );
+
+        // Override the one in between.
+        assert_eq!(
+            affected_sources.insert_range_start(
+                TimeInt::new_temporal(50),
+                make_smallvec(&[TransformFrameIdHash::from_str("frame4")])
+            ),
+            (
+                TimeInt::new_temporal(50)..TimeInt::new_temporal(100),
+                make_smallvec(&[TransformFrameIdHash::from_str("frame3")])
+            )
+        );
     }
 
     #[test]
@@ -118,18 +195,18 @@ mod tests {
             )]
         );
 
-        affected_sources.insert_range(
+        affected_sources.insert_range_start(
             TimeInt::new_temporal(0),
             make_smallvec(&[
                 TransformFrameIdHash::from_str("frame0"),
                 TransformFrameIdHash::from_str("frame1"),
             ]),
         );
-        affected_sources.insert_range(
+        affected_sources.insert_range_start(
             TimeInt::new_temporal(10),
             make_smallvec(&[TransformFrameIdHash::from_str("frame2")]),
         );
-        affected_sources.insert_range(
+        affected_sources.insert_range_start(
             TimeInt::new_temporal(20),
             make_smallvec(&[
                 TransformFrameIdHash::from_str("frame3"),
