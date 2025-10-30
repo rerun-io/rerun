@@ -31,7 +31,7 @@ use crate::utils::py_rerun_warn_cstr;
 /// included in the view, as determined by the `row_id` column. This will
 /// generally be the last value logged, as row_ids are guaranteed to be
 /// monotonically increasing when data is sent from a single process.
-#[pyclass(name = "RecordingView", module = "rerun_bindings.rerun_bindings")] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(name = "RecordingView", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 #[derive(Clone)]
 pub struct PyRecordingView {
     pub(crate) recording: PyRecordingHandle,
@@ -493,15 +493,13 @@ impl PyRecordingView {
     }
 
     #[expect(rustdoc::private_doc_tests)]
-    /// Replace the index in the view with the provided values.
+    /// Create a new view that contains the provided index values.
+    ///
+    /// If they exist in the original data they are selected, otherwise empty rows are added to the view.
     ///
     /// The output view will always have the same number of rows as the provided values, even if
     /// those rows are empty. Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
     /// to populate these rows with the most recent data.
-    ///
-    /// This requires index values to be a precise match. Index values in Rerun are
-    /// represented as i64 sequence counts or nanoseconds. This API does not expose an interface
-    /// in floating point seconds, as the numerical conversion would risk false mismatches.
     ///
     /// Parameters
     /// ----------
