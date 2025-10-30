@@ -29,12 +29,12 @@ pub fn concat_polymorphic_batches(batches: &[RecordBatch]) -> arrow::error::Resu
 
             let md_merged = schema_builder.metadata_mut();
             for (k, v) in batch.schema_ref().metadata() {
-                if let Some(previous) = md_merged.insert(k.clone(), v.clone()) {
-                    if previous != *v {
-                        return Err(arrow::error::ArrowError::SchemaError(format!(
-                            "incompatible schemas cannot be merged (conflicting metadata for {k:?})"
-                        )));
-                    }
+                if let Some(previous) = md_merged.insert(k.clone(), v.clone())
+                    && previous != *v
+                {
+                    return Err(arrow::error::ArrowError::SchemaError(format!(
+                        "incompatible schemas cannot be merged (conflicting metadata for {k:?})"
+                    )));
                 }
             }
         }

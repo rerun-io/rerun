@@ -77,13 +77,13 @@ impl Mesh3D {
             return Err(Mesh3DError::PositionsAreNotTriangles(num_vertices));
         }
 
-        if let Some(normals) = &self.vertex_normals {
-            if normals.array.len() != num_vertices {
-                return Err(Mesh3DError::MismatchedPositionsNormals(
-                    num_vertices,
-                    normals.array.len(),
-                ));
-            }
+        if let Some(normals) = &self.vertex_normals
+            && normals.array.len() != num_vertices
+        {
+            return Err(Mesh3DError::MismatchedPositionsNormals(
+                num_vertices,
+                normals.array.len(),
+            ));
         }
 
         Ok(())
