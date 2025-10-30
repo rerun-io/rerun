@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
@@ -7,6 +8,16 @@ from datafusion import col, functions as f
 
 if TYPE_CHECKING:
     from .conftest import ServerInstance
+
+
+def test_urls(server_instance: ServerInstance) -> None:
+    """Tests the url property on the catalog and dataset."""
+
+    catalog = server_instance.dataset.catalog
+    assert re.match("^rerun\\+http://localhost:[0-9]+$", catalog.url)
+
+    # Dataset also has a manifest_url looking like "memory:///[0-9a-zA-Z]+"
+    assert re.match("^rerun\\+http://localhost:[0-9]+/entry/[0-9a-zA-Z]+$", server_instance.dataset.url)
 
 
 def test_df_count(server_instance: ServerInstance) -> None:
