@@ -1935,7 +1935,6 @@ class ServerInternal:
     """
 
     def __init__(
-        self,
         *,
         address: str = "0.0.0.0",
         port: int = 51234,
