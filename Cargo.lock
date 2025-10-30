@@ -8549,10 +8549,7 @@ dependencies = [
 name = "re_component_fallbacks"
 version = "0.27.0-alpha.1+dev"
 dependencies = [
- "egui",
- "insta",
  "re_log_types",
- "re_test_context",
  "re_types",
  "re_viewer_context",
 ]
@@ -10172,6 +10169,7 @@ dependencies = [
  "emath",
  "glam",
  "image",
+ "insta",
  "itertools 0.14.0",
  "jiff",
  "js-sys",
