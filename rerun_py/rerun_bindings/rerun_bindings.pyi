@@ -1284,6 +1284,10 @@ class Entry:
         """The entry's name."""
 
     @property
+    def url(self) -> str:
+        """The entry's URL."""
+
+    @property
     def catalog(self) -> CatalogClient:
         """The catalog client that this entry belongs to."""
 
@@ -1864,6 +1868,11 @@ class CatalogClientInternal:
 
     @staticmethod
     def datafusion_major_version() -> int: ...
+
+    # ---
+
+    @property
+    def url(self) -> str: ...
 
     # ---
 
