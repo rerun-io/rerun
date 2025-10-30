@@ -354,15 +354,15 @@ pub struct Transform3D {
     /// Specifies the relation this transform establishes between this entity and its parent.
     pub relation: Option<SerializedComponentBatch>,
 
-    /// ⚠️ Experimental ⚠️: The frame this transform transforms from.
+    /// ⚠ Experimental ⚠: The frame this transform transforms from.
     ///
     /// The entity at which the transform relationship of any given source frame is specified musn't change over time.
-    /// E.g. if you specified the source "robot_arm" on an entity named "my_transforms", you may not log transforms
+    /// E.g. if you specified the source `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
     /// with the source "robot_arm" on any other entity than "my_transforms".
     /// An exception to this rule is static time - you may first mention a source on one entity statically and later on
     /// another one temporally.
     ///
-    /// ⚠️ This also affects the source frame of [archetype.Pinhole] & [archetype.PoseTransforms3D].
+    /// ⚠ This also affects the source frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole] & [archetypes.PoseTransforms3D].
     ///
     /// If not specified, this is set to the implicit transform frame of the current entity path.
     /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
@@ -370,9 +370,9 @@ pub struct Transform3D {
     /// To set the frame an entity is part of see [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
     pub source_frame: Option<SerializedComponentBatch>,
 
-    /// ⚠️ Experimental ⚠️: The frame this transform transforms to.
+    /// ⚠ Experimental ⚠: The frame this transform transforms to.
     ///
-    /// ⚠️ This also affects the target frame of [archetype.Pinhole].
+    /// ⚠ This also affects the target frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole].
     ///
     /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
     /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
@@ -920,15 +920,15 @@ impl Transform3D {
         self
     }
 
-    /// ⚠️ Experimental ⚠️: The frame this transform transforms from.
+    /// ⚠ Experimental ⚠: The frame this transform transforms from.
     ///
     /// The entity at which the transform relationship of any given source frame is specified musn't change over time.
-    /// E.g. if you specified the source "robot_arm" on an entity named "my_transforms", you may not log transforms
+    /// E.g. if you specified the source `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
     /// with the source "robot_arm" on any other entity than "my_transforms".
     /// An exception to this rule is static time - you may first mention a source on one entity statically and later on
     /// another one temporally.
     ///
-    /// ⚠️ This also affects the source frame of [archetype.Pinhole] & [archetype.PoseTransforms3D].
+    /// ⚠ This also affects the source frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole] & [archetypes.PoseTransforms3D].
     ///
     /// If not specified, this is set to the implicit transform frame of the current entity path.
     /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
@@ -956,9 +956,9 @@ impl Transform3D {
         self
     }
 
-    /// ⚠️ Experimental ⚠️: The frame this transform transforms to.
+    /// ⚠ Experimental ⚠: The frame this transform transforms to.
     ///
-    /// ⚠️ This also affects the target frame of [archetype.Pinhole].
+    /// ⚠ This also affects the target frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole].
     ///
     /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
     /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.

@@ -344,24 +344,24 @@ class Transform3D(Transform3DExt, Archetype):
         relation:
             Specifies the relation this transform establishes between this entity and its parent.
         source_frame:
-            ⚠️ Experimental ⚠️: The frame this transform transforms from.
+            ⚠ Experimental ⚠: The frame this transform transforms from.
 
             The entity at which the transform relationship of any given source frame is specified musn't change over time.
-            E.g. if you specified the source "robot_arm" on an entity named "my_transforms", you may not log transforms
+            E.g. if you specified the source `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
             with the source "robot_arm" on any other entity than "my_transforms".
             An exception to this rule is static time - you may first mention a source on one entity statically and later on
             another one temporally.
 
-            ⚠️ This also affects the source frame of [archetype.Pinhole] & [archetype.PoseTransforms3D].
+            ⚠ This also affects the source frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole] & [archetypes.PoseTransforms3D].
 
             If not specified, this is set to the implicit transform frame of the current entity path.
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
 
             To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
         target_frame:
-            ⚠️ Experimental ⚠️: The frame this transform transforms to.
+            ⚠ Experimental ⚠: The frame this transform transforms to.
 
-            ⚠️ This also affects the target frame of [archetype.Pinhole].
+            ⚠ This also affects the target frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
 
             If not specified, this is set to the implicit transform frame of the current entity path's parent.
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
@@ -440,24 +440,24 @@ class Transform3D(Transform3DExt, Archetype):
         relation:
             Specifies the relation this transform establishes between this entity and its parent.
         source_frame:
-            ⚠️ Experimental ⚠️: The frame this transform transforms from.
+            ⚠ Experimental ⚠: The frame this transform transforms from.
 
             The entity at which the transform relationship of any given source frame is specified musn't change over time.
-            E.g. if you specified the source "robot_arm" on an entity named "my_transforms", you may not log transforms
+            E.g. if you specified the source `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
             with the source "robot_arm" on any other entity than "my_transforms".
             An exception to this rule is static time - you may first mention a source on one entity statically and later on
             another one temporally.
 
-            ⚠️ This also affects the source frame of [archetype.Pinhole] & [archetype.PoseTransforms3D].
+            ⚠ This also affects the source frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole] & [archetypes.PoseTransforms3D].
 
             If not specified, this is set to the implicit transform frame of the current entity path.
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
 
             To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
         target_frame:
-            ⚠️ Experimental ⚠️: The frame this transform transforms to.
+            ⚠ Experimental ⚠: The frame this transform transforms to.
 
-            ⚠️ This also affects the target frame of [archetype.Pinhole].
+            ⚠ This also affects the target frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
 
             If not specified, this is set to the implicit transform frame of the current entity path's parent.
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
@@ -588,15 +588,15 @@ class Transform3D(Transform3DExt, Archetype):
         default=None,
         converter=components.TransformFrameIdBatch._converter,  # type: ignore[misc]
     )
-    # ⚠️ Experimental ⚠️: The frame this transform transforms from.
+    # ⚠ Experimental ⚠: The frame this transform transforms from.
     #
     # The entity at which the transform relationship of any given source frame is specified musn't change over time.
-    # E.g. if you specified the source "robot_arm" on an entity named "my_transforms", you may not log transforms
+    # E.g. if you specified the source `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
     # with the source "robot_arm" on any other entity than "my_transforms".
     # An exception to this rule is static time - you may first mention a source on one entity statically and later on
     # another one temporally.
     #
-    # ⚠️ This also affects the source frame of [archetype.Pinhole] & [archetype.PoseTransforms3D].
+    # ⚠ This also affects the source frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole] & [archetypes.PoseTransforms3D].
     #
     # If not specified, this is set to the implicit transform frame of the current entity path.
     # This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
@@ -610,9 +610,9 @@ class Transform3D(Transform3DExt, Archetype):
         default=None,
         converter=components.TransformFrameIdBatch._converter,  # type: ignore[misc]
     )
-    # ⚠️ Experimental ⚠️: The frame this transform transforms to.
+    # ⚠ Experimental ⚠: The frame this transform transforms to.
     #
-    # ⚠️ This also affects the target frame of [archetype.Pinhole].
+    # ⚠ This also affects the target frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
     #
     # If not specified, this is set to the implicit transform frame of the current entity path's parent.
     # This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
