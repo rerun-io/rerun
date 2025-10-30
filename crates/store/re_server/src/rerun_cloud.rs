@@ -25,7 +25,7 @@ use re_protos::{
         ScanPartitionTableResponse, ScanTableResponse,
         ext::{
             self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
-            CreateTableEntryResponse, DataSource, DatasetDetails, LanceTable, ProviderDetails as _,
+            CreateTableEntryResponse, DataSource, DatasetDetails, LanceTable, ProviderDetails,
             ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
             UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
         },
@@ -1206,10 +1206,18 @@ impl RerunCloudService for RerunCloudHandler {
             return Err(tonic::Status::invalid_argument("Missing provider details"));
         };
         #[cfg_attr(not(feature = "lance"), expect(unused_variables))]
-        let lance_table = LanceTable::try_from_any(&provider_details)?
-            .table_url
-            .to_file_path()
-            .map_err(|()| tonic::Status::invalid_argument("Invalid lance table path"))?;
+        let lance_table = {
+            let ProviderDetails::LanceTable(table) =
+                ProviderDetails::try_from_any(&provider_details)?
+            else {
+                return Err(tonic::Status::invalid_argument("Invalid provider details"));
+            };
+
+            table
+                .table_url
+                .to_file_path()
+                .map_err(|()| tonic::Status::invalid_argument("Invalid lance table path"))?
+        };
 
         #[cfg(feature = "lance")]
         let entry_id = {
@@ -1406,11 +1414,19 @@ impl RerunCloudService for RerunCloudHandler {
 
         let request: CreateTableEntryRequest = request.into_inner().try_into()?;
         let table_name = &request.name;
-        let provider_details = LanceTable::try_from_any(&request.provider_details)?;
+        let provider_details = ProviderDetails::try_from_any(&request.provider_details)?;
+        let table_url = match provider_details {
+            ProviderDetails::LanceTable(table) => table.table_url,
+            ProviderDetails::SystemTable(_) => {
+                return Err(tonic::Status::invalid_argument(
+                    "System table does not provide a URL",
+                ));
+            }
+        };
         let schema = Arc::new(request.schema);
 
         let table = store
-            .create_table_entry(table_name, &provider_details.table_url, schema)
+            .create_table_entry(table_name, &table_url, schema)
             .await?;
 
         Ok(Response::new(CreateTableEntryResponse { table }.into()))

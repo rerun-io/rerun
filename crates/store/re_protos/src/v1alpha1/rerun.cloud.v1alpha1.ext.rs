@@ -1,3 +1,4 @@
+use prost::Name;
 use std::sync::Arc;
 
 use arrow::array::{
@@ -1149,12 +1150,44 @@ impl TryFrom<crate::cloud::v1alpha1::TableEntry> for TableEntry {
 
 // --- ProviderDetails ---
 
-pub trait ProviderDetails {
-    fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError>;
+#[derive(Debug, Clone)]
+pub enum ProviderDetails {
+    SystemTable(SystemTable),
+    LanceTable(LanceTable),
+}
 
-    fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError>
-    where
-        Self: Sized;
+impl ProviderDetails {
+    pub fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError> {
+        match self {
+            Self::SystemTable(table) => {
+                let as_proto: crate::cloud::v1alpha1::SystemTable = table.clone().into();
+                Ok(prost_types::Any::from_msg(&as_proto)?)
+            }
+            Self::LanceTable(table) => {
+                let as_proto: crate::cloud::v1alpha1::LanceTable = table.clone().into();
+                Ok(prost_types::Any::from_msg(&as_proto)?)
+            }
+        }
+    }
+
+    pub fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError> {
+        if any.type_url == crate::cloud::v1alpha1::LanceTable::type_url() {
+            let as_proto = any.to_msg::<crate::cloud::v1alpha1::LanceTable>()?;
+            let table = LanceTable::try_from(as_proto)?;
+            Ok(Self::LanceTable(table))
+        } else if any.type_url == crate::cloud::v1alpha1::SystemTable::type_url() {
+            let as_proto = any.to_msg::<crate::cloud::v1alpha1::SystemTable>()?;
+            let table = SystemTable::try_from(as_proto)?;
+            Ok(Self::SystemTable(table))
+        } else {
+            Err(TypeConversionError::InvalidField {
+                package_name: "rerun.cloud.v1alpha1",
+                type_name: "ProviderDetails",
+                field_name: "",
+                reason: "enum value unspecified".to_owned(),
+            })
+        }
+    }
 }
 
 // --- SystemTable ---
@@ -1182,18 +1215,6 @@ impl From<SystemTable> for crate::cloud::v1alpha1::SystemTable {
     }
 }
 
-impl ProviderDetails for SystemTable {
-    fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError> {
-        let as_proto: crate::cloud::v1alpha1::SystemTable = self.clone().into();
-        Ok(prost_types::Any::from_msg(&as_proto)?)
-    }
-
-    fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError> {
-        let as_proto = any.to_msg::<crate::cloud::v1alpha1::SystemTable>()?;
-        Ok(as_proto.try_into()?)
-    }
-}
-
 // --- LanceTable ---
 
 #[derive(Debug, Clone)]
@@ -1216,18 +1237,6 @@ impl From<LanceTable> for crate::cloud::v1alpha1::LanceTable {
         Self {
             table_url: value.table_url.to_string(),
         }
-    }
-}
-
-impl ProviderDetails for LanceTable {
-    fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError> {
-        let as_proto: crate::cloud::v1alpha1::LanceTable = self.clone().into();
-        Ok(prost_types::Any::from_msg(&as_proto)?)
-    }
-
-    fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError> {
-        let as_proto = any.to_msg::<crate::cloud::v1alpha1::LanceTable>()?;
-        Ok(as_proto.try_into()?)
     }
 }
 
