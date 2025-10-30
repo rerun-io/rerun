@@ -161,7 +161,9 @@ pub async fn login(options: LoginOptions<'_>) -> Result<(), Error> {
     let auth = wait_for_browser_response(&server, nonce, &p)?;
 
     // 4. Deserialize credentials
-    let credentials = Credentials::from_auth_response(auth.into())?;
+    #[expect(unsafe_code)]
+    // SAFETY: Credentials come from the auth API
+    let credentials = unsafe { Credentials::from_auth_response(auth.into())? };
     let credentials = credentials.ensure_stored()?;
 
     p.finish_and_clear();

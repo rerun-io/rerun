@@ -8374,6 +8374,7 @@ dependencies = [
  "ehttp",
  "http",
  "indicatif",
+ "js-sys",
  "jsonwebtoken",
  "rand 0.9.2",
  "re_log",
@@ -8386,6 +8387,8 @@ dependencies = [
  "tonic",
  "tower",
  "url",
+ "wasm-bindgen",
+ "web-sys",
  "webbrowser",
 ]
 
@@ -10157,6 +10160,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "arrow",
+ "base64 0.22.1",
  "bytemuck",
  "cfg-if",
  "crossbeam",
