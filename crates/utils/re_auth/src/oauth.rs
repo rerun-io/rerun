@@ -77,7 +77,8 @@ pub async fn refresh_credentials(
     );
 
     let response = api::refresh(&credentials.refresh_token).await?;
-    let credentials = Credentials::from_auth_response(response)?;
+    #[allow(unsafe_code)] // misusing does not cause UB, only a bad day
+    let credentials = unsafe { Credentials::from_auth_response(response)? };
     let credentials = credentials
         .ensure_stored()
         .map_err(|err| CredentialsRefreshError::Store(err.0))?;
@@ -189,7 +190,7 @@ pub struct Credentials {
     access_token: AccessToken,
 }
 
-pub(crate) struct InMemoryCredentials(Credentials);
+pub struct InMemoryCredentials(Credentials);
 
 #[derive(Debug, thiserror::Error)]
 #[error("failed to store credentials: {0}")]
@@ -207,7 +208,10 @@ impl Credentials {
     /// Deserializes credentials from an authentication response.
     ///
     /// Assumes the credentials are valid and not expired.
-    pub(crate) fn from_auth_response(
+    // Note: Misusing this will not cause UB, but we're still marking it unsafe
+    // to ensure it is not used lightly.
+    #[expect(unsafe_code)]
+    pub unsafe fn from_auth_response(
         res: api::AuthenticationResponse,
     ) -> Result<InMemoryCredentials, MalformedTokenError> {
         // SAFETY: The token comes from a trusted source, which is the authentication API.

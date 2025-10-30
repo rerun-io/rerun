@@ -111,6 +111,7 @@ tokio = { workspace = true, optional = true }
 ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
+base64.workspace = true
 bytemuck.workspace = true
 cfg-if.workspace = true
 crossbeam.workspace = true
@@ -161,10 +162,12 @@ wasm-bindgen-futures.workspace = true
 #     For details see https://github.com/rerun-io/rerun/issues/8766
 wasm-bindgen = "=0.2.100" # ⚠️ read above notice before touching this!
 web-sys = { workspace = true, features = [
+  "Crypto",
   "History",
   "Location",
   "PopStateEvent",
   "Storage",
+  "StorageEvent",
   "Url",
   "UrlSearchParams",
   "Window",
