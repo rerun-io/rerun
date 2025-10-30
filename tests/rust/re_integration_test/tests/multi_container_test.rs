@@ -150,13 +150,15 @@ pub async fn test_multi_container_drag_single_view() {
     let mut harness = make_multi_view_test_harness();
     add_containers_recursive(&mut harness, None, 2, 4, 0);
 
-    harness.drag_nth_label("3D view 0", 0);
+    harness.blueprint_tree().drag_label("3D view 0");
     harness.snapshot_app("multi_container_drag_single_view_1");
 
-    harness.hover_nth_label("Vertical container", 1);
+    harness
+        .blueprint_tree()
+        .hover_nth_label("Vertical container", 1);
     harness.snapshot_app("multi_container_drag_single_view_2");
 
-    harness.drop_nth_label("2D view 9", 0);
+    harness.blueprint_tree().drop_nth_label("2D view 9", 0);
     harness.snapshot_app("multi_container_drag_single_view_3");
 }
 
@@ -166,30 +168,42 @@ pub async fn test_multi_container_drag_container() {
     let mut harness = make_multi_view_test_harness();
     add_containers_recursive(&mut harness, None, 2, 4, 0);
 
-    harness.drag_nth_label("Vertical container", 0);
+    harness
+        .blueprint_tree()
+        .drag_nth_label("Vertical container", 0);
     harness.snapshot_app("multi_container_drag_container_1");
 
     // Hovering the same kind of container should be disallowed
-    harness.hover_nth_label("Vertical container", 1);
+    harness
+        .blueprint_tree()
+        .hover_nth_label("Vertical container", 1);
     harness.snapshot_app("multi_container_drag_container_2");
 
     // Hovering a different kind of container should be allowed
-    harness.hover_nth_label("Horizontal container", 1);
+    harness
+        .blueprint_tree()
+        .hover_nth_label("Horizontal container", 1);
     harness.snapshot_app("multi_container_drag_container_3");
 
     // Hover a bit over root container to drop before it.
     // It should be disallowed to drop an item before the root container.
-    let root_container = harness.get_nth_label("Viewport (Grid container)", 0);
-    let upper_edge = root_container.rect().center_top();
-    harness.event(egui::Event::PointerMoved(upper_edge));
-    harness.run_ok();
+    let upper_edge = harness
+        .blueprint_tree()
+        .get_label("Viewport (Grid container)")
+        .rect()
+        .center_top();
+    harness.hover_at(upper_edge);
     harness.snapshot_app("multi_container_drag_container_4");
 
     // Hovering the root container otherwise should be allowed
-    harness.hover_nth_label("Viewport (Grid container)", 0);
+    harness
+        .blueprint_tree()
+        .hover_label("Viewport (Grid container)");
     harness.snapshot_app("multi_container_drag_container_5");
 
-    harness.drop_nth_label("Viewport (Grid container)", 0);
+    harness
+        .blueprint_tree()
+        .drop_label("Viewport (Grid container)");
     harness.snapshot_app("multi_container_drag_container_6");
 }
 
@@ -237,7 +251,9 @@ pub async fn test_multi_change_container_type() {
     add_containers_recursive(&mut harness, None, 1, 2, 0);
     harness.set_selection_panel_opened(true);
 
-    harness.click_nth_label("Vertical container", 0);
+    harness
+        .blueprint_tree()
+        .click_nth_label("Vertical container", 0);
     harness.snapshot_app("change_container_type_1");
 
     harness.change_dropdown_value("Container kind", "Horizontal");
@@ -260,7 +276,7 @@ pub async fn test_simplify_container_hierarchy() {
     harness.snapshot_app("simplify_container_hierarchy_2");
 
     harness.set_selection_panel_opened(true);
-    harness.click_nth_label("Horizontal container", 0);
+    harness.blueprint_tree().click_label("Horizontal container");
     harness.click_label("Simplify hierarchy");
     harness.snapshot_app("simplify_container_hierarchy_3");
 }
@@ -279,11 +295,13 @@ pub async fn test_simplify_root_hierarchy() {
     // Only add content to the first child, leave the second child empty
     add_views_to_container(&mut harness, Some(child_cid_1), 2, 0);
 
-    harness.click_nth_label("Viewport (Grid container)", 0);
+    harness
+        .blueprint_tree()
+        .click_label("Viewport (Grid container)");
     harness.snapshot_app("simplify_root_hierarchy_2");
 
     harness.set_selection_panel_opened(true);
-    harness.click_label("Simplify hierarchy");
+    harness.selection_panel().click_label("Simplify hierarchy");
     harness.snapshot_app("simplify_root_hierarchy_3");
 }
 
@@ -294,6 +312,7 @@ pub async fn test_drag_view_to_other_view_right() {
 
     let target_pos = harness.get_panel_position("2D view 1").right_center() + vec2(-50.0, 0.0);
 
+    // Drag the view panel widget
     harness.drag_nth_label("3D view 4", 1);
     harness.hover_at(target_pos);
     harness.snapshot_app("drag_view_to_other_view_right_1");
@@ -309,6 +328,7 @@ pub async fn test_drag_view_to_other_view_left() {
 
     let target_pos = harness.get_panel_position("2D view 1").left_center() + vec2(50.0, 0.0);
 
+    // Drag the view panel widget
     harness.drag_nth_label("3D view 4", 1);
     harness.hover_at(target_pos);
     harness.snapshot_app("drag_view_to_other_view_left_1");
@@ -324,6 +344,7 @@ pub async fn test_drag_view_to_other_view_center() {
 
     let target_pos = harness.get_panel_position("2D view 1").center();
 
+    // Drag the view panel widget
     harness.drag_nth_label("3D view 4", 1);
     harness.hover_at(target_pos);
     harness.snapshot_app("drag_view_to_other_view_center_1");
@@ -339,6 +360,7 @@ pub async fn test_drag_view_to_other_view_top() {
 
     let target_pos = harness.get_panel_position("2D view 1").center_top() + vec2(0.0, 50.0);
 
+    // Drag the view panel widget
     harness.drag_nth_label("3D view 4", 1);
     harness.hover_at(target_pos);
     harness.snapshot_app("drag_view_to_other_view_top_1");
@@ -354,6 +376,7 @@ pub async fn test_drag_view_to_other_view_bottom() {
 
     let target_pos = harness.get_panel_position("2D view 1").center_bottom() + vec2(0.0, -50.0);
 
+    // Drag the view panel widget
     harness.drag_nth_label("3D view 4", 1);
     harness.hover_at(target_pos);
     harness.snapshot_app("drag_view_to_other_view_bottom_1");

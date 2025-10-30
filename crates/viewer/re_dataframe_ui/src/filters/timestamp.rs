@@ -15,7 +15,6 @@
 //! - We ignore the time zone hint and use instead our global [`TimestampFormat`] for display.
 
 use std::fmt::{Display, Formatter};
-use std::hash::Hash;
 use std::str::FromStr as _;
 
 use arrow::array::{ArrayRef, BooleanArray};
@@ -33,7 +32,7 @@ use re_ui::{DesignTokens, SyntaxHighlighting, UiExt as _};
 
 use super::{Filter, FilterError, FilterUdf, FilterUiAction, TimestampFormatted, parse_timestamp};
 
-#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, Copy, PartialEq, Eq)]
 enum TimestampFilterKind {
     #[default]
     Today,
@@ -46,7 +45,7 @@ enum TimestampFilterKind {
     Between,
 }
 
-#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, Hash, strum::VariantArray)]
+#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, strum::VariantArray)]
 pub enum TimestampOperator {
     #[default]
     Is,
@@ -65,7 +64,7 @@ impl Display for TimestampOperator {
 /// A filter for [`arrow::datatypes::DataType::Timestamp`] columns.
 ///
 /// This represents both the filter itself, and the state of the corresponding UI.
-#[derive(Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Default, PartialEq)]
 pub struct TimestampFilter {
     /// The kind of temporal filter to use.
     kind: TimestampFilterKind,
@@ -434,8 +433,6 @@ impl std::fmt::Debug for EditableTimestamp {
     }
 }
 
-impl Eq for EditableTimestamp {}
-
 impl PartialEq for EditableTimestamp {
     fn eq(&self, other: &Self) -> bool {
         let Self {
@@ -457,16 +454,6 @@ impl PartialEq for EditableTimestamp {
             // equal, the error _should_ be equal as well, and we don't care much if it isn't.
             Err(_) => other.resolved_timestamp.is_err(),
         }
-    }
-}
-
-impl Hash for EditableTimestamp {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.timestamp_string.hash(state);
-        self.resolved_timestamp
-            .as_ref()
-            .map_err(|err| err.to_string())
-            .hash(state);
     }
 }
 
@@ -597,7 +584,7 @@ fn format_timestamp(timestamp: Timestamp, timestamp_format: TimestampFormat) -> 
 /// Helper to resolve a [`TimestampFilter`] and actually perform the filtering.
 ///
 /// IMPORTANT: this ignores the `TimestampOperator`, because it is applied outside of the UDF.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ResolvedTimestampFilter {
     All,
 

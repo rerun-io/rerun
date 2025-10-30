@@ -83,7 +83,7 @@ impl SelectionPanel {
             // area
             ui.add_space(-ui.spacing().item_spacing.y);
 
-            egui::ScrollArea::both()
+            let r = egui::ScrollArea::both()
                 .auto_shrink([false; 2])
                 .show(ui, |ui| {
                     ui.add_space(ui.spacing().item_spacing.y);
@@ -91,6 +91,7 @@ impl SelectionPanel {
                         self.contents(ctx, viewport, view_states, ui);
                     });
                 });
+            r.state
         });
 
         // run modals (these are noop if the modals are not active)
@@ -119,7 +120,7 @@ impl SelectionPanel {
 
         if selection.len() == 1 {
             for item in selection.iter_items() {
-                list_item::list_item_scope(ui, item, |ui| {
+                let res = list_item::list_item_scope(ui, item, |ui| {
                     item_heading_with_breadcrumbs(ctx, viewport, ui, item);
 
                     self.item_ui(
@@ -131,9 +132,12 @@ impl SelectionPanel {
                         UiLayout::SelectionPanel,
                     );
                 });
+                res.response.widget_info(|| {
+                    egui::WidgetInfo::labeled(egui::WidgetType::Panel, true, "_selection_panel")
+                });
             }
         } else {
-            list_item::list_item_scope(ui, "selections_panel", |ui| {
+            let response = list_item::list_item_scope(ui, "selections_panel", |ui| {
                 ui.list_item()
                     .with_height(tokens.title_bar_height())
                     .interactive(false)
@@ -150,6 +154,9 @@ impl SelectionPanel {
                     ui.add_space(4.0);
                     item_title_list_item(ctx, viewport, ui, item);
                 }
+            });
+            response.response.widget_info(|| {
+                WidgetInfo::labeled(egui::WidgetType::Panel, true, "_selection_panel")
             });
         }
     }

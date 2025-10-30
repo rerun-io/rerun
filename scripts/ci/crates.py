@@ -525,14 +525,11 @@ def publish_unpublished_crates_in_parallel(
     for name, crate in unpublished_crates.items():
         dependencies = []
         for dependency in crate_deps(crate.manifest):
-            # IMPORTANT: we must ignore dev-dependencies.
-            #
-            # As per the Cargo book, `dev-dependencies` are ignored by crates.io (contrary to `build-dependencies`).
+            # NOTE: we _could_ theoretically ignore dev-dependencies here, as per the cargo book:
             # https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html
             #
-            # Also, Cargo allows circular dependencies via `dev-dependencies`, but our publishing logic requires a DAG.
-            if dependency.kind == DependencyKind.DEV:
-                continue
+            # However, we historically had a `dev-dependency` cycle which caused endless headaches. So we're now
+            # disallowing _any_ cycles.
 
             if dependency.name in unpublished_crates:
                 dependencies.append(dependency.name)
@@ -556,6 +553,36 @@ def publish_unpublished_crates_in_parallel(
         # publishing already uses all cores, don't start too many publishes at once
         num_workers=min(MAX_PUBLISH_WORKERS, cpu_count()),
     )
+
+
+def check_dependency_tree() -> None:
+    root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text(encoding="utf-8"))
+
+    print("Collecting publishable crates…")
+    workspace_crates = get_workspace_crates(root)
+
+    ctx = Context()
+    crates = get_sorted_publishable_crates(ctx, workspace_crates)
+
+    dependency_graph: dict[str, list[str]] = {}
+    for name, crate in crates.items():
+        print(name)
+        dependencies = []
+        for dependency in crate_deps(crate.manifest):
+            if dependency.name in crates:
+                dependencies.append(dependency.name)
+        dependency_graph[name] = dependencies
+
+    try:
+        # This runs a dependency graph sanitization and raises an exception on fail
+        _dag = DAG(dependency_graph)
+    except Exception as e:
+        from pprint import pprint
+
+        print("Full dependency graph:")
+        pprint(dependency_graph)
+
+        raise e
 
 
 def publish(dry_run: bool, token: str) -> None:
@@ -782,12 +809,16 @@ def main() -> None:
         "check-publish-flags", help="Check if any publish=true crates depend on publish=false crates."
     )
 
+    cmds_parser.add_parser("check-dependency-tree", help="Check that our dependency tree doesn't have any cycles.")
+
     args = parser.parse_args()
 
     if args.cmd == "check-git-branch-name":
         check_git_branch_name()
     if args.cmd == "check-publish-flags":
         check_publish_flags()
+    if args.cmd == "check-dependency-tree":
+        check_dependency_tree()
     if args.cmd == "get-version":
         print_version(args.target, args.finalize, args.pre_id, args.skip_prerelease)
     if args.cmd == "version":
