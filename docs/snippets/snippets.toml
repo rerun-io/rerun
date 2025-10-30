@@ -111,16 +111,16 @@ backwards_check = [
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 [opt_out.run]
-"./__init__" = [ # That init file is to make mypy happy.
+"./__init__" = [# That init file is to make mypy happy.
   "py",
   "cpp",
   "rust",
 ]
-"concepts/explicit_recording" = [ # python-specific check
+"concepts/explicit_recording" = [# python-specific check
   "cpp",
   "rust",
 ]
-"concepts/how_helix_was_logged" = [ # pseudo-code
+"concepts/how_helix_was_logged" = [# pseudo-code
   "py",
   "cpp",
   "rust",
@@ -130,22 +130,22 @@ backwards_check = [
   "cpp", # Not implemented for C++
   "rust", # Requires context (an RRD file to be exported by the user)
 ]
-"concepts/static/log_static" = [ # pseudo-code
+"concepts/static/log_static" = [# pseudo-code
   "py",
   "cpp",
   "rust",
 ]
-"concepts/static/log_temporal_10x" = [ # pseudo-code
+"concepts/static/log_temporal_10x" = [# pseudo-code
   "py",
   "cpp",
   "rust",
 ]
-"concepts/static/send_static" = [ # pseudo-code
+"concepts/static/send_static" = [# pseudo-code
   "py",
   "cpp",
   "rust",
 ]
-"concepts/static/log_static_10x" = [ # pseudo-code
+"concepts/static/log_static_10x" = [# pseudo-code
   "py",
   "cpp",
   "rust",
@@ -162,7 +162,7 @@ backwards_check = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
-"concepts/app-model" = [ # Uses a non-standard logging workflow
+"concepts/app-model" = [# Uses a non-standard logging workflow
   "py",
   "cpp",
   "rust",
@@ -202,6 +202,11 @@ backwards_check = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
+"archetypes/transform3d_hierarchy_frames" = [
+  # TODO(RR-2685): Sample is incomplete. Implement cross language once we can have flat entity path hierarchy.
+  "cpp",
+  "rust",
+]
 "archetypes/video_stream_synthetic" = [
   "cpp", # Not implemented
   "rust", # Not implemented
@@ -211,52 +216,52 @@ backwards_check = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
-"migration/log_line" = [ # Not a complete example -- just a single log line
+"migration/log_line" = [# Not a complete example -- just a single log line
   "cpp",
   "rust",
   "py",
 ]
-"reference/dataframe_query" = [ # No output
+"reference/dataframe_query" = [# No output
   "cpp",
   "rust",
   "py",
 ]
-"reference/dataframe_save_blueprint" = [ # No output
+"reference/dataframe_save_blueprint" = [# No output
   "cpp",
   "rust",
   "py",
 ]
-"reference/dataframe_view_query" = [ # No output
+"reference/dataframe_view_query" = [# No output
   "cpp",
   "rust",
   "py",
 ]
-"reference/dataframe_view_query_external" = [ # No output
+"reference/dataframe_view_query_external" = [# No output
   "cpp",
   "rust",
   "py",
 ]
-"tutorials/custom-application-id" = [ # Not a complete examples
+"tutorials/custom-application-id" = [# Not a complete examples
   "cpp",
   "rust",
   "py",
 ]
-"tutorials/custom-recording-id" = [ # Not a complete examples
+"tutorials/custom-recording-id" = [# Not a complete examples
   "cpp",
   "rust",
   "py",
 ]
-"tutorials/default-off-session" = [ # Not a complete examples
+"tutorials/default-off-session" = [# Not a complete examples
   "cpp",
   "rust",
   "py",
 ]
-"tutorials/log-file" = [ # Not a complete examples
+"tutorials/log-file" = [# Not a complete examples
   "cpp",
   "rust",
   "py",
 ]
-"tutorials/timelines_example" = [ # Not a complete examples
+"tutorials/timelines_example" = [# Not a complete examples
   "cpp",
   "rust",
   "py",
@@ -288,7 +293,7 @@ backwards_check = [
 # You should only ever use this if the test cannot yet be implemented in a way that yields the right
 # data, but you still want to check whether the test runs properly and outputs _something_.
 [opt_out.compare]
-"./__init__" = [ # That init file is to make mypy happy.
+"./__init__" = [# That init file is to make mypy happy.
   "py",
   "cpp",
   "rust",
@@ -319,7 +324,7 @@ backwards_check = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
-quick_start = [ # These examples don't have exactly the same implementation.
+quick_start = [# These examples don't have exactly the same implementation.
   "cpp",
   "py",
   "rust",
@@ -327,35 +332,35 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "archetypes/arrows3d_simple" = [
   "py", # Python has different colors. TODO(emilk): fix that
 ]
-"archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
+"archetypes/bar_chart" = [# On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",
 ]
-"archetypes/ellipsoids3d_simple" = [ # TODO(#3206): examples use different RNGs
+"archetypes/ellipsoids3d_simple" = [# TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
 ]
-"archetypes/pinhole_simple" = [ # TODO(#3206): examples use different RNGs
+"archetypes/pinhole_simple" = [# TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
 ]
-"archetypes/points2d_random" = [ # TODO(#3206): examples use different RNGs
+"archetypes/points2d_random" = [# TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
 ]
-"archetypes/points3d_random" = [ # TODO(#3206): examples use different RNGs
+"archetypes/points3d_random" = [# TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
 ]
-"archetypes/tensor_simple" = [ # TODO(#3206): examples use different RNGs
+"archetypes/tensor_simple" = [# TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
 ]
-"archetypes/text_log_integration" = [ # The entity path will differ because the integrations work differently
+"archetypes/text_log_integration" = [# The entity path will differ because the integrations work differently
   "cpp",
   "py",
   "rust",
