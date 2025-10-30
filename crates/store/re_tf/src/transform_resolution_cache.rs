@@ -8,7 +8,7 @@ use crate::{
 };
 use ahash::HashMap;
 use glam::Affine3A;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
@@ -160,8 +160,6 @@ impl CachedTransformsForTimeline {
                     );
                     continue;
                 };
-
-                dbg!(time);
 
                 // Insert clears into the per-source datastructures.
                 for source in sources {
@@ -843,7 +841,7 @@ impl TransformResolutionCache {
                             if let Some(cleared_times) =
                                 per_timeline.recursive_clears.get(&ancestor)
                             {
-                                for cleared_time in cleared_times.iter() {
+                                for cleared_time in cleared_times {
                                     if time_range.contains(cleared_time) {
                                         frame_transforms.add_clear(*cleared_time, entity_path);
                                     }
@@ -1090,8 +1088,7 @@ fn debug_panic_missing_source_transforms_for_update_on_entity(
     // There was no actual transform change for this source frame after all.
     if cfg!(debug_assertions) {
         panic!(
-            "DEBUG ASSERTION: Internally inconsistent state: entity {:?} had updates for source frame {:?} but no transforms for that source frame were found. Please report this as a bug.",
-            entity_path, source,
+            "DEBUG ASSERTION: Internally inconsistent state: entity {entity_path:?} had updates for source frame {source:?} but no transforms for that source frame were found. Please report this as a bug."
         );
     }
 }
@@ -1209,7 +1206,7 @@ pub fn iter_source_frames_in_chunk(
     chunk: &Chunk,
     timeline: TimelineName,
 ) -> impl Iterator<Item = (TimeInt, Vec<ArrowString>)> {
-    // TODO(RR-2627, RR-2680): Custom source is not supported yet for Pinhole & Poses.
+    // TODO(RR-2627, RR-2680): Custom source is not supported yet for Pinhole & Poses, we instead use whatever is on `Transform3D`.
     let source_frame_component = archetypes::Transform3D::descriptor_source_frame().component;
 
     itertools::izip!(
@@ -1224,7 +1221,7 @@ pub fn iter_source_frames_in_chunk(
 pub fn source_frames_in_static_chunk(chunk: &Chunk) -> Option<Vec<ArrowString>> {
     debug_assert!(chunk.is_static());
 
-    // TODO(RR-2627, RR-2680): Custom source is not supported yet for Pinhole & Poses.
+    // TODO(RR-2627, RR-2680): Custom source is not supported yet for Pinhole & Poses, we instead use whatever is on `Transform3D`.
     let source_frame_component = archetypes::Transform3D::descriptor_source_frame().component;
 
     chunk.iter_slices::<String>(source_frame_component).next()
@@ -2700,6 +2697,13 @@ mod tests {
             SourceTargetChangesOverTimeTestMode::MultipleChunksReverseOrder,
         )
     }
+
+    #[test]
+    fn test_static_source_frames() {
+        // TODO:
+    }
+
+    // TODO(andreas): We're missing tests for more corner cases involving source frames and (recursive) clears.
 
     #[test]
     fn test_gc() -> Result<(), Box<dyn std::error::Error>> {

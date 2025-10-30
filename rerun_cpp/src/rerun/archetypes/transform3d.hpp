@@ -327,6 +327,8 @@ namespace rerun::archetypes {
         /// An exception to this rule is static time - you may first mention a source on one entity statically and later on
         /// another one temporally.
         ///
+        /// ⚠\u{fe0f} This also affects the source frame of [archetype.Pinhole] & [archetype.PoseTransforms3D].
+        ///
         /// If not specified, this is set to the implicit transform frame of the current entity path.
         /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
         ///
@@ -334,6 +336,8 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> source_frame;
 
         /// ⚠\u{fe0f} Experimental ⚠\u{fe0f}: The frame this transform transforms to.
+        ///
+        /// ⚠\u{fe0f} This also affects the target frame of [archetype.Pinhole].
         ///
         /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
         /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
@@ -903,6 +907,8 @@ namespace rerun::archetypes {
         /// An exception to this rule is static time - you may first mention a source on one entity statically and later on
         /// another one temporally.
         ///
+        /// ⚠\u{fe0f} This also affects the source frame of [archetype.Pinhole] & [archetype.PoseTransforms3D].
+        ///
         /// If not specified, this is set to the implicit transform frame of the current entity path.
         /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
         ///
@@ -926,6 +932,8 @@ namespace rerun::archetypes {
         }
 
         /// ⚠\u{fe0f} Experimental ⚠\u{fe0f}: The frame this transform transforms to.
+        ///
+        /// ⚠\u{fe0f} This also affects the target frame of [archetype.Pinhole].
         ///
         /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
         /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.

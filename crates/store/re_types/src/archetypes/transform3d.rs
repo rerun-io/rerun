@@ -362,6 +362,8 @@ pub struct Transform3D {
     /// An exception to this rule is static time - you may first mention a source on one entity statically and later on
     /// another one temporally.
     ///
+    /// ⚠️ This also affects the source frame of [archetype.Pinhole] & [archetype.PoseTransforms3D].
+    ///
     /// If not specified, this is set to the implicit transform frame of the current entity path.
     /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
     ///
@@ -369,6 +371,8 @@ pub struct Transform3D {
     pub source_frame: Option<SerializedComponentBatch>,
 
     /// ⚠️ Experimental ⚠️: The frame this transform transforms to.
+    ///
+    /// ⚠️ This also affects the target frame of [archetype.Pinhole].
     ///
     /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
     /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
@@ -924,6 +928,8 @@ impl Transform3D {
     /// An exception to this rule is static time - you may first mention a source on one entity statically and later on
     /// another one temporally.
     ///
+    /// ⚠️ This also affects the source frame of [archetype.Pinhole] & [archetype.PoseTransforms3D].
+    ///
     /// If not specified, this is set to the implicit transform frame of the current entity path.
     /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
     ///
@@ -951,6 +957,8 @@ impl Transform3D {
     }
 
     /// ⚠️ Experimental ⚠️: The frame this transform transforms to.
+    ///
+    /// ⚠️ This also affects the target frame of [archetype.Pinhole].
     ///
     /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
     /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.

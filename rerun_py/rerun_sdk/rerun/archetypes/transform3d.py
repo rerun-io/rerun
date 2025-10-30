@@ -352,12 +352,16 @@ class Transform3D(Transform3DExt, Archetype):
             An exception to this rule is static time - you may first mention a source on one entity statically and later on
             another one temporally.
 
+            ⚠️ This also affects the source frame of [archetype.Pinhole] & [archetype.PoseTransforms3D].
+
             If not specified, this is set to the implicit transform frame of the current entity path.
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
 
             To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
         target_frame:
             ⚠️ Experimental ⚠️: The frame this transform transforms to.
+
+            ⚠️ This also affects the target frame of [archetype.Pinhole].
 
             If not specified, this is set to the implicit transform frame of the current entity path's parent.
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
@@ -444,12 +448,16 @@ class Transform3D(Transform3DExt, Archetype):
             An exception to this rule is static time - you may first mention a source on one entity statically and later on
             another one temporally.
 
+            ⚠️ This also affects the source frame of [archetype.Pinhole] & [archetype.PoseTransforms3D].
+
             If not specified, this is set to the implicit transform frame of the current entity path.
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
 
             To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
         target_frame:
             ⚠️ Experimental ⚠️: The frame this transform transforms to.
+
+            ⚠️ This also affects the target frame of [archetype.Pinhole].
 
             If not specified, this is set to the implicit transform frame of the current entity path's parent.
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
@@ -588,6 +596,8 @@ class Transform3D(Transform3DExt, Archetype):
     # An exception to this rule is static time - you may first mention a source on one entity statically and later on
     # another one temporally.
     #
+    # ⚠️ This also affects the source frame of [archetype.Pinhole] & [archetype.PoseTransforms3D].
+    #
     # If not specified, this is set to the implicit transform frame of the current entity path.
     # This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
     #
@@ -601,6 +611,8 @@ class Transform3D(Transform3DExt, Archetype):
         converter=components.TransformFrameIdBatch._converter,  # type: ignore[misc]
     )
     # ⚠️ Experimental ⚠️: The frame this transform transforms to.
+    #
+    # ⚠️ This also affects the target frame of [archetype.Pinhole].
     #
     # If not specified, this is set to the implicit transform frame of the current entity path's parent.
     # This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
