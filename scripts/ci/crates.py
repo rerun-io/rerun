@@ -484,9 +484,7 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], d
                     time.sleep(3)
                     num_retries += 1
                     if num_retries > 10:
-                        print(
-                            f"{R}We published{X} {B}{name}{X} but it was never made available. Continuing anyway."
-                        )
+                        print(f"{R}We published{X} {B}{name}{X} but it was never made available. Continuing anyway.")
                         return
 
             print(f"{G}Published{X} {B}{name}{X}@{B}{version}{X}")
@@ -511,7 +509,7 @@ def publish_unpublished_crates_in_parallel(
     all_crates: dict[str, Crate], version: str, token: str, dry_run: bool
 ) -> None:
     # filter all_crates for any that are already published
-    print(f"Collecting unpublished crates…")
+    print("Collecting unpublished crates…")
     unpublished_crates: dict[str, Crate] = {}
     for name, crate in all_crates.items():
         if is_already_published(version, crate):
@@ -520,7 +518,7 @@ def publish_unpublished_crates_in_parallel(
             unpublished_crates[name] = crate
 
     # collect dependency graph (adjacency list of `crate -> dependencies`)
-    print(f"Building dependency graph…")
+    print("Building dependency graph…")
     dependency_graph: dict[str, list[str]] = {}
     for name, crate in unpublished_crates.items():
         dependencies = []
