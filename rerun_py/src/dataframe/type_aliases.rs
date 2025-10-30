@@ -83,15 +83,53 @@ impl AnyComponentColumn {
 
 /// A type alias for index values.
 ///
-/// This can be any numpy-compatible array of integers, or a [`pa.Int64Array`][]
-#[derive(FromPyObject)]
+/// This can be any numpy-compatible array of integers, datetime64, or a [`pa.Int64Array`][]
 pub enum IndexValuesLike<'py> {
     PyArrow(PyArrowType<ArrayData>),
     NumPy(numpy::PyArrayLike1<'py, i64>),
 
     // Catch all to support ChunkedArray and other types
-    #[pyo3(transparent)]
     CatchAll(Bound<'py, PyAny>),
+}
+
+impl<'py> FromPyObject<'py> for IndexValuesLike<'py> {
+    fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
+        // Try PyArrow first
+        if let Ok(pyarrow) = obj.extract::<PyArrowType<ArrayData>>() {
+            return Ok(Self::PyArrow(pyarrow));
+        }
+
+        // Try numpy i64 array
+        if let Ok(numpy) = obj.extract::<numpy::PyArrayLike1<'py, i64>>() {
+            return Ok(Self::NumPy(numpy));
+        }
+
+        // Check if this is a numpy array with datetime64 dtype
+        // First check if it has a dtype attribute to see if it's a numpy array
+        if let Ok(dtype) = obj.getattr("dtype") {
+            if let Ok(dtype_str) = dtype.str() {
+                if let Ok(dtype_string) = dtype_str.extract::<String>() {
+                    // Check if it's a datetime64 array
+                    if dtype_string.starts_with("datetime64") {
+                        // Convert datetime64 to nanoseconds, then view as int64
+                        let converted_array = obj
+                            .call_method1("astype", ("datetime64[ns]",))?
+                            .call_method0("view")?
+                            .call_method1("astype", ("int64",))?;
+
+                        if let Ok(i64_array) =
+                            converted_array.extract::<numpy::PyArrayLike1<'py, i64>>()
+                        {
+                            return Ok(Self::NumPy(i64_array));
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fall back to catch all
+        Ok(Self::CatchAll(obj.clone()))
+    }
 }
 
 impl IndexValuesLike<'_> {
@@ -177,7 +215,7 @@ impl IndexValuesLike<'_> {
                         Ok(values)
                     }
                     Err(err) => Err(PyTypeError::new_err(format!(
-                        "IndexValuesLike must be a pyarrow.Array, pyarrow.ChunkedArray, or numpy.ndarray. {err}"
+                        "IndexValuesLike must be a pyarrow.Array, pyarrow.ChunkedArray, numpy.ndarray of int64, or numpy.ndarray of datetime64. {err}"
                     ))),
                 }
             }
