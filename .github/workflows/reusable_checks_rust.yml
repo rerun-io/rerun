@@ -92,7 +92,7 @@ jobs:
         run: pixi run check-backwards-compatibility
 
       - name: Check dependency tree (no cycles)
-        run: pixi run python scripts/ci/crates.py --check-dependency-tree
+        run: pixi run python scripts/ci/crates.py check-dependency-tree
 
   rs-tests:
     name: Test on Linux
