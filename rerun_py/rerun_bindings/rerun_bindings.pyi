@@ -1926,7 +1926,7 @@ class NotFoundError(Exception):
 class AlreadyExistsError(Exception):
     """Raised when trying to create a resource that already exists."""
 
-class ServerInternal:
+class _ServerInternal:
     """
     Internal Rerun server instance.
 

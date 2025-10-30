@@ -3,7 +3,7 @@ from __future__ import annotations
 import socket
 from typing import TYPE_CHECKING
 
-from rerun_bindings import ServerInternal
+from rerun_bindings import _ServerInternal
 
 from .catalog import CatalogClient
 
@@ -77,7 +77,7 @@ class Server:
         else:
             resolved_port = port
 
-        self._internal = ServerInternal(
+        self._internal = _ServerInternal(
             address=address,
             port=resolved_port,
             datasets={name: str(path) for name, path in (datasets or {}).items()},
