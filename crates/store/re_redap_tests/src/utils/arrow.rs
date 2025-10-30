@@ -83,9 +83,9 @@ pub trait RecordBatchExt {
 
 impl RecordBatchExt for arrow::array::RecordBatch {
     fn format_snapshot(&self, transposed: bool) -> String {
-        re_format_arrow::format_record_batch_opts(
+        re_arrow_util::format_record_batch_opts(
             self,
-            &re_format_arrow::RecordBatchFormatOpts {
+            &re_arrow_util::RecordBatchFormatOpts {
                 transposed,
                 width: Some(800),
                 include_metadata: false,
