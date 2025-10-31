@@ -8,7 +8,9 @@ use connection_registry::ClientCredentialsError;
 
 pub use self::{
     connection_client::GenericConnectionClient,
-    connection_registry::{ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle},
+    connection_registry::{
+        ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle, Credentials,
+    },
     grpc::{
         RedapClient, channel, fetch_chunks_response_to_chunk_and_partition_id,
         stream_blueprint_and_partition_from_server,

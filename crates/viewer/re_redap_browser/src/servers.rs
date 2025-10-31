@@ -6,7 +6,6 @@ use std::task::Poll;
 use datafusion::prelude::{SessionContext, col, lit};
 use egui::{Frame, Margin, RichText};
 
-use re_auth::Jwt;
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_log_types::{EntityPathPart, EntryId};
 use re_protos::cloud::v1alpha1::{EntryKind, ScanPartitionTableResponse};
@@ -120,14 +119,14 @@ impl Server {
             self.title_ui(self.origin.host.to_string(), ctx, ui, |ui| {
                 if let Some(conn_err) = err.as_client_credentials_error() {
                     let message = if conn_err.is_missing_token() {
-                        "This server requires a token to access its data."
+                        "This server requires authentication to access its data."
                     } else {
-                        "The provided token is invalid for this server."
+                        "The provided credentials are invalid for this server."
                     };
                     let edit_message = if conn_err.is_missing_token() {
-                        "Add a token"
+                        "Add credentials"
                     } else {
-                        "Edit token"
+                        "Edit credentials"
                     };
                     Alert::warning().show(ui, |ui| {
                         ui.vertical(|ui| {
@@ -326,7 +325,7 @@ pub enum Command {
     /// Add a server with an optional JWT token.
     ///
     /// If the token is None, this does *not* remove an existing token.
-    AddServer(re_uri::Origin, Option<Jwt>),
+    AddServer(re_uri::Origin, Option<re_redap_client::Credentials>),
 
     /// Remove a server and its token.
     RemoveServer(re_uri::Origin),
@@ -397,9 +396,9 @@ impl RedapServers {
                     .open(ServerModalMode::Edit(origin), connection_registry);
             }
 
-            Command::AddServer(origin, jwt) => {
-                if let Some(token) = jwt {
-                    connection_registry.set_token(&origin, token);
+            Command::AddServer(origin, credentials) => {
+                if let Some(credentials) = credentials {
+                    connection_registry.set_credentials(&origin, credentials);
                 }
                 if !self.servers.contains_key(&origin) {
                     self.servers.insert(
@@ -423,7 +422,7 @@ impl RedapServers {
 
             Command::RemoveServer(origin) => {
                 self.servers.remove(&origin);
-                connection_registry.remove_token(&origin);
+                connection_registry.remove_credentials(&origin);
             }
 
             Command::RefreshCollection(origin) => {

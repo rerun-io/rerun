@@ -77,7 +77,8 @@ pub async fn refresh_credentials(
     );
 
     let response = api::refresh(&credentials.refresh_token).await?;
-    #[allow(unsafe_code)] // misusing does not cause UB, only a bad day
+    #[expect(unsafe_code)]
+    // SAFETY: credentials come from a trusted source
     let credentials = unsafe { Credentials::from_auth_response(response)? };
     let credentials = credentials
         .ensure_stored()
@@ -208,8 +209,15 @@ impl Credentials {
     /// Deserializes credentials from an authentication response.
     ///
     /// Assumes the credentials are valid and not expired.
-    // Note: Misusing this will not cause UB, but we're still marking it unsafe
-    // to ensure it is not used lightly.
+    ///
+    /// # Safety
+    ///
+    /// Misusing this will not cause UB, but we're still marking it unsafe
+    /// to ensure it is not used lightly.
+    ///
+    /// The authentication response must come from a trusted source, such
+    /// as the authentication API.
+    ///
     #[expect(unsafe_code)]
     pub unsafe fn from_auth_response(
         res: api::AuthenticationResponse,
