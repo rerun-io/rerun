@@ -1323,11 +1323,11 @@ mod tests {
     use arrow::compute::concat_batches;
     use insta::assert_snapshot;
 
+    use re_arrow_util::format_record_batch;
     use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimePoint};
     use re_chunk_store::{
         AbsoluteTimeRange, ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression, TimeInt,
     };
-    use re_format_arrow::format_record_batch;
     use re_log_types::{
         EntityPath, Timeline, build_frame_nr, build_log_time,
         example_components::{MyColor, MyLabel, MyPoint, MyPoints},
@@ -1348,7 +1348,7 @@ mod tests {
         #[inline]
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let width = 200;
-            re_format_arrow::format_record_batch_with_width(&self.0, Some(width), f.sign_minus())
+            re_arrow_util::format_record_batch_with_width(&self.0, Some(width), f.sign_minus())
                 .fmt(f)
         }
     }

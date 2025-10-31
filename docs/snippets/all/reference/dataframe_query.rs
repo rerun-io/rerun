@@ -3,7 +3,7 @@
 use rerun::{
     ChunkStoreConfig,
     dataframe::{QueryEngine, QueryExpression, SparseFillStrategy, TimelineName},
-    external::re_format_arrow::format_record_batch,
+    external::re_arrow_util::format_record_batch,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

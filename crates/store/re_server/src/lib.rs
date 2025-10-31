@@ -6,7 +6,7 @@ mod server;
 mod store;
 
 pub use self::{
-    entrypoint::Args,
+    entrypoint::{Args, NamedPath},
     rerun_cloud::{RerunCloudHandler, RerunCloudHandlerBuilder, RerunCloudHandlerSettings},
     server::{Server, ServerBuilder, ServerError, ServerHandle},
 };

@@ -270,6 +270,20 @@ impl UnitChunkShared {
         list_array.is_valid(0).then(|| list_array.value(0))
     }
 
+    /// Like `component_batch_raw`, but also returns `None` if the batch is empty.
+    #[inline]
+    pub fn non_empty_component_batch_raw(
+        &self,
+        component: ComponentIdentifier,
+    ) -> Option<(Option<RowId>, ArrowArrayRef)> {
+        let batch = self.component_batch_raw(component)?;
+        if batch.is_empty() {
+            None
+        } else {
+            Some((self.row_id(), batch))
+        }
+    }
+
     /// Returns the deserialized data for the specified component.
     ///
     /// Returns an error if the data cannot be deserialized.

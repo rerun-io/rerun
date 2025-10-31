@@ -10,10 +10,14 @@ use nohash_hasher::IntSet;
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
+use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::ext::{LanceTable, ProviderDetails as _, TableInsertMode};
+use re_protos::cloud::v1alpha1::ext::{
+    CreateTableEntryRequest, CreateTableEntryResponse, LanceTable, ProviderDetails as _,
+    TableInsertMode,
+};
 use re_protos::{
     cloud::v1alpha1::{
         DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
@@ -751,16 +755,20 @@ impl RerunCloudService for RerunCloudHandler {
         let entry_id = get_entry_id_from_headers(&store, &request)?;
 
         let request = request.into_inner();
-        if !request.columns.is_empty() {
-            return Err(tonic::Status::unimplemented(
-                "scan_partition_table: column projection not implemented",
-            ));
-        }
 
         let dataset = store.dataset(entry_id)?;
-        let record_batch = dataset.partition_table().map_err(|err| {
+        let mut record_batch = dataset.partition_table().map_err(|err| {
             tonic::Status::internal(format!("Unable to read partition table: {err:#}"))
         })?;
+
+        // project columns
+        if !request.columns.is_empty() {
+            record_batch = record_batch
+                .project_columns(request.columns.iter().map(|s| s.as_str()))
+                .map_err(|err| {
+                    tonic::Status::invalid_argument(format!("Unable to project columns: {err:#}"))
+                })?;
+        }
 
         let stream = futures::stream::once(async move {
             Ok(ScanPartitionTableResponse {
@@ -808,15 +816,18 @@ impl RerunCloudService for RerunCloudHandler {
         let entry_id = get_entry_id_from_headers(&store, &request)?;
 
         let request = request.into_inner();
-        if !request.columns.is_empty() {
-            return Err(tonic::Status::unimplemented(
-                "scan_partition_table: column projection not implemented",
-            ));
-        }
 
         let dataset = store.dataset(entry_id)?;
+        let mut record_batch = dataset.dataset_manifest()?;
 
-        let record_batch = dataset.dataset_manifest()?;
+        // project columns
+        if !request.columns.is_empty() {
+            record_batch = record_batch
+                .project_columns(request.columns.iter().map(|s| s.as_str()))
+                .map_err(|err| {
+                    tonic::Status::invalid_argument(format!("Unable to project columns: {err:#}"))
+                })?;
+        }
 
         let stream = futures::stream::once(async move {
             Ok(ScanDatasetManifestResponse {
@@ -1310,6 +1321,24 @@ impl RerunCloudService for RerunCloudHandler {
         Err(tonic::Status::unimplemented(
             "do_global_maintenance not implemented",
         ))
+    }
+
+    async fn create_table_entry(
+        &self,
+        request: Request<re_protos::cloud::v1alpha1::CreateTableEntryRequest>,
+    ) -> Result<Response<re_protos::cloud::v1alpha1::CreateTableEntryResponse>, Status> {
+        let mut store = self.store.write().await;
+
+        let request: CreateTableEntryRequest = request.into_inner().try_into()?;
+        let table_name = &request.name;
+        let provider_details = LanceTable::try_from_any(&request.provider_details)?;
+        let schema = Arc::new(request.schema);
+
+        let table = store
+            .create_table_entry(table_name, &provider_details.table_url, schema)
+            .await?;
+
+        Ok(Response::new(CreateTableEntryResponse { table }.into()))
     }
 }
 
