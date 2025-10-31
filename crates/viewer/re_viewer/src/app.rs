@@ -13,10 +13,11 @@ use re_log_types::{
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
+use re_types::blueprint::components::PlayState;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint, PlayState,
+    ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint,
     RecordingOrTable, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _,
     TableStore, TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError,
     command_channel,
