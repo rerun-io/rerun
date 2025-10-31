@@ -2,15 +2,18 @@ use egui::PointerButton;
 use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable as _;
 
-// A section of the viewer, e.g. the "Blueprint" or "Recording" panel. Every query and action in a section
-// only affects the children of the section.
+/// A section of the viewer, e.g. the "Blueprint" or "Recording" panel. Every query and action in a section
+/// only affects the children of the section.
 pub struct ViewerSection<'a, 'h> {
     pub harness: &'a mut egui_kittest::Harness<'h, re_viewer::App>,
     pub section_label: Option<&'a str>,
 }
 
 impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
-    // Returns the root node of the section.
+    /// Returns the root node of the section.
+    ///
+    /// # Panics
+    /// Panics if the section label is not found.
     pub fn root<'n>(&'n self) -> egui_kittest::Node<'n>
     where
         'a: 'n,
@@ -22,7 +25,10 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
             .get_by_role_and_label(Role::Pane, section_label)
     }
 
-    // Returns the only node with the given label.
+    /// Returns the only node with the given label.
+    ///
+    /// # Panics
+    /// Panics if there are zero or multiple nodes with the given label.
     pub fn get_label<'n>(&'n self, label: &'n str) -> egui_kittest::Node<'n>
     where
         'a: 'n,
@@ -30,7 +36,10 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
         self.root().get_by_label(label)
     }
 
-    // Returns the nth node with the given label.
+    /// Returns the nth node with the given label.
+    ///
+    /// # Panics
+    /// Panics if there are fewer such nodes than `index`.
     pub fn get_nth_label<'n>(&'n self, label: &'n str, index: usize) -> egui_kittest::Node<'n>
     where
         'a: 'n,
@@ -44,68 +53,120 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
         nodes.swap_remove(index)
     }
 
+    /// Clicks the only node with the given label.
+    ///
+    /// # Panics
+    /// Panics if there are zero or multiple nodes with the given label.
     pub fn click_label(&mut self, label: &str) {
         self.root().get_by_label(label).click();
         self.harness.run();
     }
 
+    /// Right-clicks the only node with the given label.
+    ///
+    /// # Panics
+    /// Panics if there are zero or multiple nodes with the given label.
     pub fn right_click_label(&mut self, label: &str) {
         self.root().get_by_label(label).click_secondary();
         self.harness.run();
     }
 
+    /// Clicks the nth node with the given label.
+    ///
+    /// # Panics
+    /// Panics if there are fewer such nodes than `index`.
     pub fn click_nth_label(&mut self, label: &str, index: usize) {
         self.get_nth_label(label, index).click();
         self.harness.run();
     }
 
+    /// Right-clicks the nth node with the given label.
+    ///
+    /// # Panics
+    /// Panics if there are fewer such nodes than `index`.
     pub fn right_click_nth_label(&mut self, label: &str, index: usize) {
         self.get_nth_label(label, index).click_secondary();
         self.harness.run();
     }
 
+    /// Clicks the only node with the given label using modifiers.
+    ///
+    /// # Panics
+    /// Panics if there are zero or multiple nodes with the given label.
     pub fn click_label_modifiers(&mut self, label: &str, modifiers: egui::Modifiers) {
         self.root().get_by_label(label).click_modifiers(modifiers);
         self.harness.run();
     }
 
+    /// Clicks the only node with the label that contains the given text.
+    ///
+    /// # Panics
+    /// Panics if there are zero or multiple nodes with the given label.
     pub fn click_label_contains(&mut self, label: &str) {
         self.root().get_by_label_contains(label).click();
         self.harness.run();
     }
 
+    /// Starts dragging the nth node with the given label.
+    ///
+    /// # Panics
+    /// Panics if there are fewer such nodes than `index`.
     pub fn drag_nth_label(&mut self, label: &str, index: usize) {
         self.drag_label_inner(label, Some(index));
     }
 
+    /// Starts dragging the only node with the given label.
+    ///
+    /// # Panics
+    /// Panics if there are zero or multiple nodes with the given label.
     pub fn drag_label(&mut self, label: &str) {
         self.drag_label_inner(label, None);
     }
 
-    pub fn drop_nth_label(&mut self, label: &str, index: usize) {
-        self.drop_label_inner(label, Some(index));
-    }
-
+    /// Ends dragging over the only node with the given label.
+    ///
+    /// # Panics
+    /// Panics if there are zero or multiple nodes with the given label.
     pub fn drop_label(&mut self, label: &str) {
         self.drop_label_inner(label, None);
     }
 
+    /// Ends dragging over the nth node with the given label.
+    ///
+    /// # Panics
+    /// Panics if there are fewer such nodes than `index`.
+    pub fn drop_nth_label(&mut self, label: &str, index: usize) {
+        self.drop_label_inner(label, Some(index));
+    }
+
+    /// Hover over the only node with the given label.
+    ///
+    /// # Panics
+    /// Panics if there are zero or multiple nodes with the given label.
     pub fn hover_label(&mut self, label: &str) {
         self.get_label(label).hover();
         self.harness.run();
     }
 
+    /// Hover over the nth node with the given label.
+    ///
+    /// # Panics
+    /// Panics if there are fewer such nodes than `index`.
     pub fn hover_nth_label(&mut self, label: &str, index: usize) {
         self.get_nth_label(label, index).hover();
         self.harness.run();
     }
 
+    /// Hover over the only node with the label that contains the given text.
+    ///
+    /// # Panics
+    /// Panics if there are zero or multiple nodes with the given label.
     pub fn hover_label_contains(&mut self, label: &str) {
         self.root().get_by_label_contains(label).hover();
         self.harness.run();
     }
 
-    // Helper function to get the node with the given label
+    /// Helper function to get the node with the given label
     fn get_nth_label_inner<'n>(
         &'n self,
         label: &'n str,
@@ -121,6 +182,7 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
         }
     }
 
+    /// Helper function to start dragging the node with the given label
     fn drag_label_inner(&mut self, label: &str, index: Option<usize>) {
         let node = self.get_nth_label_inner(label, index);
 
@@ -144,6 +206,7 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
         }
     }
 
+    /// Helper function to end dragging the node with the given label
     pub fn drop_label_inner(&mut self, label: &str, index: Option<usize>) {
         let node = self.get_nth_label_inner(label, index);
         let event = egui::Event::PointerButton {

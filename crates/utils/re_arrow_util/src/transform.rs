@@ -748,7 +748,7 @@ mod test {
     impl<T: Array + Clone + 'static> std::fmt::Display for DisplayRB<T> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let rb = wrap_in_record_batch(Arc::new(self.0.clone()));
-            write!(f, "{}", re_format_arrow::format_record_batch(&rb))
+            write!(f, "{}", crate::format_record_batch(&rb))
         }
     }
 
