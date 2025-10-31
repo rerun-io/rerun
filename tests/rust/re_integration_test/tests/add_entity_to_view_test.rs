@@ -1,3 +1,6 @@
+use egui::accesskit::Role;
+use egui_kittest::kittest::NodeT as _;
+use egui_kittest::kittest::Queryable as _;
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
@@ -103,6 +106,27 @@ fn add_views_to_container(
     });
 }
 
+fn get_origin(harness: &mut egui_kittest::Harness<'_, re_viewer::App>) -> String {
+    harness
+        .selection_panel()
+        .root()
+        .get_by_label("Space origin")
+        .parent()
+        .expect("Space origin label should have a parent")
+        .get_by_role(Role::TextInput)
+        .value()
+        .expect("No value found for space origin")
+}
+
+fn get_entity_path_filter(harness: &mut egui_kittest::Harness<'_, re_viewer::App>) -> String {
+    harness
+        .selection_panel()
+        .root()
+        .get_by_role(Role::MultilineTextInput)
+        .value()
+        .expect("No value found for multiline text input")
+}
+
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_add_entity_to_view_boxes3d() {
     let mut harness = make_multi_view_test_harness();
@@ -111,16 +135,19 @@ pub async fn test_add_entity_to_view_boxes3d() {
     harness.right_click_label("Viewport (Grid container)");
     harness.click_label("Expand all");
 
-    harness.right_click_nth_label("boxes3d", 1);
+    harness.blueprint_tree().right_click_label("boxes3d");
     harness.snapshot_app("add_entity_to_view_boxes3d_1");
 
     harness.hover_label_contains("Add to new view");
     harness.snapshot_app("add_entity_to_view_boxes3d_2");
 
-    harness.click_nth_label("3D", 0);
+    harness.click_label("3D");
     harness.snapshot_app("add_entity_to_view_boxes3d_3");
 
-    harness.right_click_nth_label("/", 2);
+    assert_eq!("/", get_origin(&mut harness));
+    assert_eq!("+ /boxes3d/**", get_entity_path_filter(&mut harness));
+
+    harness.blueprint_tree().right_click_label("/");
     harness.snapshot_app("add_entity_to_view_boxes3d_4");
 
     harness.click_label("Remove");
@@ -136,16 +163,19 @@ pub async fn test_add_entity_to_view_boxes2d() {
     harness.right_click_label("Viewport (Grid container)");
     harness.click_label("Expand all");
 
-    harness.right_click_nth_label("boxes2d", 1);
+    harness.blueprint_tree().right_click_label("boxes2d");
     harness.snapshot_app("add_entity_to_view_boxes2d_1");
 
     harness.hover_label_contains("Add to new view");
     harness.snapshot_app("add_entity_to_view_boxes2d_2");
 
-    harness.click_nth_label("2D", 0);
+    harness.click_label("2D");
     harness.snapshot_app("add_entity_to_view_boxes2d_3");
 
-    harness.right_click_nth_label("/", 2);
+    assert_eq!("/", get_origin(&mut harness));
+    assert_eq!("+ /boxes2d/**", get_entity_path_filter(&mut harness));
+
+    harness.blueprint_tree().right_click_label("/");
     harness.snapshot_app("add_entity_to_view_boxes2d_4");
 
     harness.click_label("Remove");
@@ -161,17 +191,22 @@ pub async fn test_add_entity_to_view_bar_chart() {
     harness.right_click_label("Viewport (Grid container)");
     harness.click_label("Expand all");
 
-    harness.right_click_nth_label("bar_chart", 1);
+    harness.blueprint_tree().right_click_label("bar_chart");
     harness.snapshot_app("add_entity_to_view_bar_chart_1");
 
     harness.hover_label_contains("Add to new view");
     harness.snapshot_app("add_entity_to_view_bar_chart_2");
 
-    harness.click_nth_label("Bar chart", 0);
+    harness.click_label("Bar chart");
     harness.snapshot_app("add_entity_to_view_bar_chart_3");
 
     // When adding a bar chart, to a new view, the origin is set to the entity path
-    harness.right_click_nth_label("bar_chart", 3);
+    assert_eq!(get_origin(&mut harness), "/bar_chart");
+    assert_eq!(get_entity_path_filter(&mut harness), "+ /bar_chart/**");
+
+    harness
+        .blueprint_tree()
+        .right_click_nth_label("bar_chart", 1);
     harness.snapshot_app("add_entity_to_view_bar_chart_4");
 
     harness.click_label("Remove");
@@ -187,17 +222,22 @@ pub async fn test_add_entity_to_view_text_log() {
     harness.right_click_label("Viewport (Grid container)");
     harness.click_label("Expand all");
 
-    harness.right_click_nth_label("text_log", 1);
+    harness.blueprint_tree().right_click_label("text_log");
     harness.snapshot_app("add_entity_to_view_text_log_1");
 
     harness.hover_label_contains("Add to new view");
     harness.snapshot_app("add_entity_to_view_text_log_2");
 
-    harness.click_nth_label("Text log", 0);
+    harness.click_label("Text log");
     harness.snapshot_app("add_entity_to_view_text_log_3");
 
     // When adding a text log, to a new view, the origin is set to the entity path
-    harness.right_click_nth_label("text_log", 3);
+    assert_eq!(get_origin(&mut harness), "/text_log");
+    assert_eq!(get_entity_path_filter(&mut harness), "+ /text_log/**");
+
+    harness
+        .blueprint_tree()
+        .right_click_nth_label("text_log", 1);
     harness.snapshot_app("add_entity_to_view_text_log_4");
 
     harness.click_label("Remove");
@@ -213,7 +253,7 @@ pub async fn test_add_entity_to_view_tensor() {
     harness.right_click_label("Viewport (Grid container)");
     harness.click_label("Expand all");
 
-    harness.right_click_nth_label("tensor", 1);
+    harness.blueprint_tree().right_click_label("tensor");
     harness.snapshot_app("add_entity_to_view_tensor_1");
 
     harness.hover_label_contains("Add to new view");
@@ -223,7 +263,10 @@ pub async fn test_add_entity_to_view_tensor() {
     harness.snapshot_app("add_entity_to_view_tensor_3");
 
     // When adding a text log, to a new view, the origin is set to the entity path
-    harness.right_click_nth_label("tensor", 3);
+    assert_eq!(get_origin(&mut harness), "/tensor");
+    assert_eq!(get_entity_path_filter(&mut harness), "+ /tensor/**");
+
+    harness.blueprint_tree().right_click_nth_label("tensor", 1);
     harness.snapshot_app("add_entity_to_view_tensor_4");
 
     harness.click_label("Remove");
