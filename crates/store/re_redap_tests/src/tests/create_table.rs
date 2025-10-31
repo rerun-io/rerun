@@ -2,7 +2,7 @@ use crate::SchemaExt as _;
 use arrow::datatypes::{DataType, Field, Schema};
 use re_protos::cloud::v1alpha1::GetTableSchemaRequest;
 use re_protos::cloud::v1alpha1::ext::{
-    CreateTableEntryRequest, EntryDetails, LanceTable, ProviderDetails as _,
+    CreateTableEntryRequest, EntryDetails, LanceTable, ProviderDetails,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use std::collections::HashMap;
@@ -21,7 +21,7 @@ pub async fn create_table_entry(service: impl RerunCloudService) {
 
     let table_url =
         url::Url::from_directory_path(tmp_dir.path()).expect("create url from tmp directory");
-    let provider_details = LanceTable { table_url }
+    let provider_details = ProviderDetails::LanceTable(LanceTable { table_url })
         .try_as_any()
         .expect("convert provider details to any");
 
