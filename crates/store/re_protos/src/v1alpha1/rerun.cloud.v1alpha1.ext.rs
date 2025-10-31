@@ -1,4 +1,4 @@
-use prost::Name;
+use prost::Name as _;
 use std::sync::Arc;
 
 use arrow::array::{

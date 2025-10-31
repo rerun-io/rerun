@@ -1411,20 +1411,22 @@ impl RerunCloudService for RerunCloudHandler {
 
         let request: CreateTableEntryRequest = request.into_inner().try_into()?;
         let table_name = &request.name;
+
+        let schema = Arc::new(request.schema);
+
         let provider_details = ProviderDetails::try_from_any(&request.provider_details)?;
-        let table_url = match provider_details {
-            ProviderDetails::LanceTable(table) => table.table_url,
+        let table = match provider_details {
+            ProviderDetails::LanceTable(table) => {
+                store
+                    .create_table_entry(table_name, &table.table_url, schema)
+                    .await?
+            }
             ProviderDetails::SystemTable(_) => {
                 return Err(tonic::Status::invalid_argument(
-                    "System table does not provide a URL",
+                    "Creating system tables is not supported",
                 ));
             }
         };
-        let schema = Arc::new(request.schema);
-
-        let table = store
-            .create_table_entry(table_name, &table_url, schema)
-            .await?;
 
         Ok(Response::new(CreateTableEntryResponse { table }.into()))
     }
