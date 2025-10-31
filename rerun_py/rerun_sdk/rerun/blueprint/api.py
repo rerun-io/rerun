@@ -442,6 +442,8 @@ class SelectionPanel(Panel):
 class TimePanel(Panel):
     """The state of the time panel."""
 
+    time: int | None
+
     def __init__(
         self,
         *,
