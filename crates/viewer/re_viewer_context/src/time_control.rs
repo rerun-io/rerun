@@ -155,7 +155,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
     }
 
     fn set_play_state(&self, play_state: PlayState) {
-        self.save_blueprint_component(
+        self.save_static_blueprint_component(
             time_panel_blueprint_entity_path(),
             &TimePanelBlueprint::descriptor_play_state(),
             &play_state,

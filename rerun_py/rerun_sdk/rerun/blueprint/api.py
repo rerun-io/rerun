@@ -514,6 +514,8 @@ class TimePanel(Panel):
             self.time = to_nanos(duration_cursor)
         elif timestamp_cursor is not None:
             self.time = to_nanos_since_epoch(timestamp_cursor)
+        else:
+            self.time = None
 
         self.playback_speed = playback_speed
         self.fps = fps
@@ -528,15 +530,17 @@ class TimePanel(Panel):
             timeline=self.timeline,
             playback_speed=self.playback_speed,
             fps=self.fps,
-            play_state=self.play_state,
             loop_mode=self.loop_mode,
             time_selection=self.time_selection,
         )
 
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
 
-        if hasattr(self, "time"):
-            static_arch = TimePanelBlueprint(time=self.time)
+        if self.time is not None or self.play_state is not None:
+            static_arch = TimePanelBlueprint(
+                time=self.time,
+                play_state=self.play_state,
+            )
 
             stream.log(self.blueprint_path(), static_arch, static=True)
 
