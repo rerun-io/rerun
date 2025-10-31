@@ -93,8 +93,8 @@ impl DatasetPartitionUri {
     /// Returns [`Self`] without any (optional) `?query` or `#fragment`.
     pub fn without_query_and_fragment(mut self) -> Self {
         let Self {
-            origin: _,       // Mandatory
-            dataset_id: _,   // Mandatory
+            origin: _,     // Mandatory
+            dataset_id: _, // Mandatory
             segment_id: _, // Mandatory
             time_range,
             fragment,
@@ -109,8 +109,8 @@ impl DatasetPartitionUri {
     /// Returns [`Self`] without any (optional) `#fragment`.
     pub fn without_fragment(mut self) -> Self {
         let Self {
-            origin: _,       // Mandatory
-            dataset_id: _,   // Mandatory
+            origin: _,     // Mandatory
+            dataset_id: _, // Mandatory
             segment_id: _, // Mandatory
             time_range: _,
             fragment,
