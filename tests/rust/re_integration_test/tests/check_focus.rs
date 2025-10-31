@@ -1,3 +1,4 @@
+use egui_kittest::kittest::Queryable as _;
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
@@ -7,7 +8,11 @@ use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;
 
 fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
-    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        window_size: Some(egui::vec2(1024.0, 768.0)),
+        max_steps: Some(200),
+        step_dt: Some(1.0 / 60.0),
+    });
     harness.init_recording();
 
     // Log some data
@@ -63,18 +68,22 @@ fn setup_single_view_blueprint(harness: &mut egui_kittest::Harness<'_, re_viewer
 }
 
 #[tokio::test(flavor = "multi_thread")]
-pub async fn test_foo() {
+pub async fn test_check_focus() {
     let mut harness = make_test_harness();
     setup_single_view_blueprint(&mut harness);
 
+    // Make the left panel wider
     let centerline = harness.get_panel_position("Text view 0").left_center();
     let target_pos = centerline + egui::vec2(100.0, 0.0);
     harness.drag_at(centerline);
+    harness.snapshot_app("check_focus_1");
     harness.hover_at(target_pos);
+    harness.snapshot_app("check_focus_2");
     harness.drop_at(target_pos);
+    harness.snapshot_app("check_focus_3");
 
-    // One of the boxes is a bit left to the center
-    let pixel_of_a_box = harness.get_panel_position("3D view 1").center() + egui::vec2(-0.0, 10.0);
+    // One of the boxes is at the center of the view
+    let pixel_of_a_box = harness.get_panel_position("3D view 1").center();
 
     // Hover over the box
     harness.hover_at(pixel_of_a_box);
@@ -82,21 +91,35 @@ pub async fn test_foo() {
     // Let the app render. This will run the picking logic which needs the GPU
     // and lets the app find the hovered box.
     harness.render().expect("Cannot render app");
-    harness.run_steps(50);
+    harness.run();
+    harness.snapshot_app("check_focus_4");
 
-    // Double click on the box
+    // Double click on the box, see how it expands the view
     harness.click_at(pixel_of_a_box);
     harness.click_at(pixel_of_a_box);
+    harness.snapshot_app("check_focus_5");
 
+    // Scroll down to see the second view stays collapsed
     harness.blueprint_tree().hover_label("3D view 1");
     harness.event(egui::Event::MouseWheel {
         unit: egui::MouseWheelUnit::Page,
         delta: egui::vec2(0.0, -1.0),
         modifiers: egui::Modifiers::NONE,
     });
+    harness.snapshot_app("check_focus_6");
 
-    harness.blueprint_tree().click_label("boxes3d");
-    harness.blueprint_tree().click_label("boxes3d");
+    // Double click the entity on the streams tree and see all views expand
+    harness.streams_tree().hover_label("boxes3d");
+    harness.streams_tree().click_label("boxes3d");
+    harness.streams_tree().click_label("boxes3d");
+    harness.snapshot_app("check_focus_7");
 
-    harness.snapshot_app("xtemp");
+    // Scroll down to see the second view is entirely expanded
+    harness.blueprint_tree().hover_label("3D view 1");
+    harness.event(egui::Event::MouseWheel {
+        unit: egui::MouseWheelUnit::Page,
+        delta: egui::vec2(0.0, -1.0),
+        modifiers: egui::Modifiers::NONE,
+    });
+    harness.snapshot_app("check_focus_8");
 }
