@@ -264,7 +264,7 @@ impl Telemetry {
             // Everything is generically typed, which is why this is such a nightmare to do.
             macro_rules! handle_format {
                 ($format:ident) => {{
-                    let layer = layer.event_format(tracing_subscriber::fmt::format().$format());
+                    let layer = layer.$format();
                     if log_test_output {
                         layer.with_test_writer().boxed()
                     } else {
