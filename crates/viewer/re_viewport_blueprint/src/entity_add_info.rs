@@ -71,15 +71,16 @@ pub fn create_entity_add_info(
 ) -> IntMap<EntityPath, EntityAddInfo> {
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();
 
-    // TODO(andreas): This should be state that is already available because it's part of the view's state.
-    let class = view.class(ctx.view_class_registry());
-    let visualizable_entities = class.determine_visualizable_entities(
-        ctx.maybe_visualizable_entities_per_visualizer,
-        ctx.recording(),
-        &ctx.view_class_registry()
-            .new_visualizer_collection(view.class_identifier()),
-        &view.space_origin,
-    );
+    // Use pre-computed visualizable entities from the context to avoid recomputation.
+    // This was previously computed in app_state.rs and is now shared across the frame.
+    let Some(visualizable_entities) = ctx.visualizable_entities_per_view.get(&view.id) else {
+        // This should not happen in normal operation - if it does, something is wrong with the frame setup
+        re_log::error_once!(
+            "visualizable_entities not found for view {:?} - this is a bug",
+            view.id
+        );
+        return meta_data; // Return empty metadata
+    };
 
     tree.visit_children_recursively(|entity_path| {
         let can_add: CanAddToView =
