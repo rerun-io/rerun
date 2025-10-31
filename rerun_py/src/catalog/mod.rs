@@ -33,7 +33,7 @@ pub use self::{
     dataset_entry::PyDatasetEntry,
     entry::{PyEntry, PyEntryId, PyEntryKind},
     errors::to_py_err,
-    table_entry::PyTableEntry,
+    table_entry::{PyTableEntry, PyTableInsertMode},
     task::{PyTask, PyTasks},
 };
 
@@ -46,6 +46,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyEntry>()?;
     m.add_class::<PyDatasetEntry>()?;
     m.add_class::<PyTableEntry>()?;
+    m.add_class::<PyTableInsertMode>()?;
     m.add_class::<PyTask>()?;
     m.add_class::<PyTasks>()?;
     m.add_class::<PyDataFusionTable>()?;
@@ -67,7 +68,12 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
 // from the legacy server API)
 
 /// The type of distance metric to use for vector index and search.
-#[pyclass(name = "VectorDistanceMetric", eq, eq_int)]
+#[pyclass(
+    name = "VectorDistanceMetric",
+    eq,
+    eq_int,
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone, Debug, PartialEq)]
 enum PyVectorDistanceMetric {
     L2,

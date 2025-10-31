@@ -1,4 +1,4 @@
-use egui::{Response, Ui};
+use egui::{Response, Ui, WidgetInfo, WidgetType};
 use smallvec::SmallVec;
 
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
@@ -157,6 +157,10 @@ impl BlueprintTree {
                                 root_container,
                             );
                         }
+                    })
+                    .response
+                    .widget_info(|| {
+                        WidgetInfo::labeled(WidgetType::Panel, true, "_blueprint_tree")
                     });
 
                     let empty_space_response =

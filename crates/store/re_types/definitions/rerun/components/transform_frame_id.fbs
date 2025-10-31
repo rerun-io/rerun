@@ -10,6 +10,7 @@ namespace rerun.components;
 /// frames represented by that entity path and its parent path,
 /// **not** the transform frame that the entity path may be using.
 // TODO(RR-2486): Reference `CoordinateFrame` & `FrameTransform` once they exist.
+// TODO(RR-2698): Explain implicit transform frames in more detail.
 table TransformFrameId (
   "attr.docs.unreleased",
   "attr.rerun.state": "unstable",

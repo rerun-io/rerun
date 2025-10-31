@@ -10,9 +10,10 @@ use arrow::{
 use comfy_table::{Cell, Row, Table, presets};
 use itertools::{Either, Itertools as _};
 
-use re_arrow_util::{ArrowArrayDowncastRef as _, format_field_datatype};
 use re_tuid::Tuid;
 use re_types_core::Loggable as _;
+
+use crate::{ArrowArrayDowncastRef as _, format_field_datatype};
 
 // ---
 

@@ -1161,6 +1161,49 @@ impl ::prost::Name for CreateDatasetEntryResponse {
         "/rerun.cloud.v1alpha1.CreateDatasetEntryResponse".into()
     }
 }
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CreateTableEntryRequest {
+    /// Name of the dataset entry to create.
+    ///
+    /// The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
+    /// with the same name already exists, the request will fail. Entry names ending with `__manifest` are reserved.
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// Information about the table to register.
+    ///
+    /// This must be encoded message of one one of the following supported types:
+    /// - LanceTable
+    #[prost(message, optional, tag = "2")]
+    pub provider_details: ::core::option::Option<::prost_types::Any>,
+    /// Schema of the table to create
+    #[prost(message, optional, tag = "3")]
+    pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
+}
+impl ::prost::Name for CreateTableEntryRequest {
+    const NAME: &'static str = "CreateTableEntryRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.CreateTableEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.CreateTableEntryRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CreateTableEntryResponse {
+    #[prost(message, optional, tag = "1")]
+    pub table: ::core::option::Option<TableEntry>,
+}
+impl ::prost::Name for CreateTableEntryResponse {
+    const NAME: &'static str = "CreateTableEntryResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.CreateTableEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.CreateTableEntryResponse".into()
+    }
+}
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ReadDatasetEntryRequest {}
 impl ::prost::Name for ReadDatasetEntryRequest {
@@ -1852,6 +1895,25 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        pub async fn create_table_entry(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CreateTableEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateTableEntryResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/CreateTableEntry",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "CreateTableEntry",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         /// Fetch metadata about a specific dataset.
         ///
         /// This endpoint requires the standard dataset headers.
@@ -2405,6 +2467,10 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::CreateDatasetEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::CreateDatasetEntryResponse>, tonic::Status>;
+        async fn create_table_entry(
+            &self,
+            request: tonic::Request<super::CreateTableEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateTableEntryResponse>, tonic::Status>;
         /// Fetch metadata about a specific dataset.
         ///
         /// This endpoint requires the standard dataset headers.
@@ -2895,6 +2961,48 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = CreateDatasetEntrySvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/CreateTableEntry" => {
+                    #[allow(non_camel_case_types)]
+                    struct CreateTableEntrySvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::CreateTableEntryRequest>
+                        for CreateTableEntrySvc<T>
+                    {
+                        type Response = super::CreateTableEntryResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::CreateTableEntryRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::create_table_entry(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = CreateTableEntrySvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

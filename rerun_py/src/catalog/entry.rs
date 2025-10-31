@@ -7,7 +7,7 @@ use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::{EntryKind, ext::EntryDetails};
 
 /// A unique identifier for an entry in the catalog.
-#[pyclass(eq, name = "EntryId")]
+#[pyclass(eq, name = "EntryId", module = "rerun_bindings.rerun_bindings")]
 #[derive(Clone, PartialEq, Eq)]
 pub struct PyEntryId {
     pub id: EntryId,
@@ -41,7 +41,12 @@ impl From<EntryId> for PyEntryId {
 // ---
 
 /// The kinds of entries that can be stored in the catalog.
-#[pyclass(name = "EntryKind", eq, eq_int)]
+#[pyclass(
+    name = "EntryKind",
+    eq,
+    eq_int,
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, strum_macros::EnumIter)]
 pub enum PyEntryKind {
     #[pyo3(name = "DATASET")]
@@ -103,7 +108,7 @@ impl From<PyEntryKind> for EntryKind {
 // ---
 
 /// An entry in the catalog.
-#[pyclass(name = "Entry", subclass)] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(name = "Entry", subclass, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyEntry {
     pub client: Py<PyCatalogClientInternal>,
 
