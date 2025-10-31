@@ -319,12 +319,10 @@ pub trait ChunkComponentSlicer {
     type Item<'a>;
 
     fn slice<'a>(
-        // TODO(#10460): A reference to component descriptor should be enough since the returned iterator doesn't depend on it being alive.
-        // However, I wasn't able to get this idea across to the borrow checker.
         component: ComponentIdentifier,
         array: &'a dyn ArrowArray,
         component_spans: impl Iterator<Item = Span<usize>> + 'a,
-    ) -> impl Iterator<Item = Self::Item<'a>> + 'a;
+    ) -> impl Iterator<Item = Self::Item<'a>>;
 }
 
 /// The actual implementation of `impl_native_type!`, so that we don't have to work in a macro.
@@ -357,7 +355,7 @@ macro_rules! impl_native_type {
                 component: ComponentIdentifier,
                 array: &'a dyn ArrowArray,
                 component_spans: impl Iterator<Item = Span<usize>> + 'a,
-            ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
+            ) -> impl Iterator<Item = Self::Item<'a>> {
                 slice_as_native::<$arrow_primitive_type, $native_type>(
                     component,
                     array,
@@ -432,7 +430,7 @@ macro_rules! impl_array_native_type {
                 component: ComponentIdentifier,
                 array: &'a dyn ArrowArray,
                 component_spans: impl Iterator<Item = Span<usize>> + 'a,
-            ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
+            ) -> impl Iterator<Item = Self::Item<'a>> {
                 slice_as_array_native::<N, $arrow_primitive_type, $native_type>(
                     component,
                     array,
@@ -560,7 +558,7 @@ macro_rules! impl_buffer_native_type {
                 component: ComponentIdentifier,
                 array: &'a dyn ArrowArray,
                 component_spans: impl Iterator<Item = Span<usize>> + 'a,
-            ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
+            ) -> impl Iterator<Item = Self::Item<'a>> {
                 slice_as_buffer_native::<$primitive_type, $native_type>(
                     component,
                     array,
@@ -579,7 +577,7 @@ impl ChunkComponentSlicer for &[u8] {
         component: ComponentIdentifier,
         array: &'a dyn ArrowArray,
         component_spans: impl Iterator<Item = Span<usize>> + 'a,
-    ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
+    ) -> impl Iterator<Item = Self::Item<'a>> {
         slice_as_u8(component, array, component_spans)
     }
 }
@@ -669,7 +667,7 @@ macro_rules! impl_array_list_native_type {
                 component: ComponentIdentifier,
                 array: &'a dyn ArrowArray,
                 component_spans: impl Iterator<Item = Span<usize>> + 'a,
-            ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
+            ) -> impl Iterator<Item = Self::Item<'a>> {
                 slice_as_array_list_native::<N, $primitive_type, $native_type>(
                     component,
                     array,
@@ -701,7 +699,7 @@ impl ChunkComponentSlicer for String {
         component: ComponentIdentifier,
         array: &'a dyn ArrowArray,
         component_spans: impl Iterator<Item = Span<usize>> + 'a,
-    ) -> impl Iterator<Item = Vec<ArrowString>> + 'a {
+    ) -> impl Iterator<Item = Vec<ArrowString>> {
         let Some(utf8_array) = array.downcast_array_ref::<ArrowStringArray>() else {
             error_on_downcast_failure(component, "ArrowStringArray", array.data_type());
             return Either::Left(std::iter::empty());
@@ -729,7 +727,7 @@ impl ChunkComponentSlicer for bool {
         component: ComponentIdentifier,
         array: &'a dyn ArrowArray,
         component_spans: impl Iterator<Item = Span<usize>> + 'a,
-    ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
+    ) -> impl Iterator<Item = Self::Item<'a>> {
         let Some(values) = array.downcast_array_ref::<ArrowBooleanArray>() else {
             error_on_downcast_failure(component, "ArrowBooleanArray", array.data_type());
             return Either::Left(std::iter::empty());
