@@ -423,17 +423,17 @@ impl ::prost::Name for InvertedIndex {
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct VectorIvfPqIndex {
-    /// num_partitions is deprecated. Use target_partition_num_rows instead
+    /// num_segments is deprecated. Use target_segment_num_rows instead
     /// TODO(RR-2798): Remove in 0.6
     #[prost(uint32, optional, tag = "1")]
-    pub num_partitions: ::core::option::Option<u32>,
+    pub num_segments: ::core::option::Option<u32>,
     #[prost(uint32, optional, tag = "2")]
     pub num_sub_vectors: ::core::option::Option<u32>,
     #[prost(enumeration = "VectorDistanceMetric", tag = "3")]
     pub distance_metrics: i32,
     /// Target size of the IVF segment in rows
     #[prost(uint32, optional, tag = "4")]
-    pub target_partition_num_rows: ::core::option::Option<u32>,
+    pub target_segment_num_rows: ::core::option::Option<u32>,
 }
 impl ::prost::Name for VectorIvfPqIndex {
     const NAME: &'static str = "VectorIvfPqIndex";
@@ -747,7 +747,7 @@ pub struct FetchChunksRequest {
     /// Information about the chunks to fetch. These dataframes have to include the following columns:
     /// * `chunk_id` - Chunk unique identifier
     /// * `segment_id` - segment this chunk belongs to. Currently needed as we pass this metadata back and forth
-    /// * `partition_layer` - specific segment layer. Currently needed as we pass this metadata back and forth
+    /// * `segment_layer` - specific segment layer. Currently needed as we pass this metadata back and forth
     /// * `chunk_key` - chunk location details
     #[prost(message, repeated, tag = "1")]
     pub chunk_infos: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::DataframePart>,
@@ -2028,7 +2028,7 @@ pub mod rerun_cloud_service_client {
         /// this endpoint, check out `ScanPartitionTable`.
         ///
         /// This endpoint requires the standard dataset headers.
-        pub async fn get_partition_table_schema(
+        pub async fn get_segment_table_schema(
             &mut self,
             request: impl tonic::IntoRequest<super::GetPartitionTableSchemaRequest>,
         ) -> std::result::Result<
@@ -2054,7 +2054,7 @@ pub mod rerun_cloud_service_client {
         /// The data will follow the schema returned by `GetPartitionTableSchema`.
         ///
         /// This endpoint requires the standard dataset headers.
-        pub async fn scan_partition_table(
+        pub async fn scan_segment_table(
             &mut self,
             request: impl tonic::IntoRequest<super::ScanPartitionTableRequest>,
         ) -> std::result::Result<
@@ -2510,7 +2510,7 @@ pub mod rerun_cloud_service_server {
         /// this endpoint, check out `ScanPartitionTable`.
         ///
         /// This endpoint requires the standard dataset headers.
-        async fn get_partition_table_schema(
+        async fn get_segment_table_schema(
             &self,
             request: tonic::Request<super::GetPartitionTableSchemaRequest>,
         ) -> std::result::Result<
@@ -2527,7 +2527,7 @@ pub mod rerun_cloud_service_server {
         /// The data will follow the schema returned by `GetPartitionTableSchema`.
         ///
         /// This endpoint requires the standard dataset headers.
-        async fn scan_partition_table(
+        async fn scan_segment_table(
             &self,
             request: tonic::Request<super::ScanPartitionTableRequest>,
         ) -> std::result::Result<tonic::Response<Self::ScanPartitionTableStream>, tonic::Status>;
@@ -3245,10 +3245,8 @@ pub mod rerun_cloud_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as RerunCloudService>::get_partition_table_schema(
-                                    &inner, request,
-                                )
-                                .await
+                                <T as RerunCloudService>::get_segment_table_schema(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
@@ -3292,8 +3290,7 @@ pub mod rerun_cloud_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as RerunCloudService>::scan_partition_table(&inner, request)
-                                    .await
+                                <T as RerunCloudService>::scan_segment_table(&inner, request).await
                             };
                             Box::pin(fut)
                         }

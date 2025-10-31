@@ -166,7 +166,7 @@ impl ConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn get_dataset_partition_ids(
+    pub fn get_dataset_segment_ids(
         &self,
         py: Python<'_>,
         entry_id: EntryId,
@@ -177,7 +177,7 @@ impl ConnectionHandle {
                 Ok(self
                     .client()
                     .await?
-                    .get_dataset_partition_ids(entry_id)
+                    .get_dataset_segment_ids(entry_id)
                     .await
                     .map_err(to_py_err)?
                     .iter()
@@ -621,7 +621,7 @@ impl ConnectionHandle {
             query: Some(query.into()),
             scan_parameters: Some(
                 ScanParameters {
-                    columns: vec!["chunk_partition_id".to_owned(), "chunk_id".to_owned()],
+                    columns: vec!["chunk_segment_id".to_owned(), "chunk_id".to_owned()],
                     ..Default::default()
                 }
                 .into(),

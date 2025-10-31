@@ -37,7 +37,7 @@ use re_redap_client::ConnectionClient;
 use re_sorbet::{ColumnDescriptor, ColumnSelector};
 
 use crate::dataframe_query_common::{
-    align_record_batch_to_schema, group_chunk_infos_by_partition_id, prepend_string_column_schema,
+    align_record_batch_to_schema, group_chunk_infos_by_segment_id, prepend_string_column_schema,
 };
 
 /// This parameter sets the back pressure that either the streaming provider
@@ -167,7 +167,7 @@ impl PartitionStreamExec {
         table_schema: &SchemaRef,
         sort_index: Option<Index>,
         projection: Option<&Vec<usize>>,
-        num_partitions: usize,
+        num_segments: usize,
         chunk_info_batches: Arc<Vec<RecordBatch>>,
         mut query_expression: QueryExpression,
         client: ConnectionClient,
@@ -201,7 +201,7 @@ impl PartitionStreamExec {
             .iter()
             .any(|f| f.name().as_str() == ScanPartitionTableResponse::FIELD_PARTITION_ID)
         {
-            let partition_col = Arc::new(Column::new(
+            let segment_col = Arc::new(Column::new(
                 ScanPartitionTableResponse::FIELD_PARTITION_ID,
                 0,
             )) as Arc<dyn PhysicalExpr>;
@@ -218,7 +218,7 @@ impl PartitionStreamExec {
                 .map(|expr| Arc::new(expr) as Arc<dyn PhysicalExpr>);
 
             let mut physical_ordering = vec![PhysicalSortExpr::new(
-                partition_col,
+                segment_col,
                 SortOptions::new(false, true),
             )];
             if let Some(col_expr) = order_col {
@@ -238,30 +238,30 @@ impl PartitionStreamExec {
         let eq_properties =
             EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), orderings);
 
-        let partition_in_output_schema = projection.map(|p| p.contains(&0)).unwrap_or(false);
+        let segment_in_output_schema = projection.map(|p| p.contains(&0)).unwrap_or(false);
 
-        let output_partitioning = if partition_in_output_schema {
+        let output_segmenting = if segment_in_output_schema {
             Partitioning::Hash(
                 vec![Arc::new(Column::new(
                     ScanPartitionTableResponse::FIELD_PARTITION_ID,
                     0,
                 ))],
-                num_partitions,
+                num_segments,
             )
         } else {
-            Partitioning::UnknownPartitioning(num_partitions)
+            Partitioning::UnknownPartitioning(num_segments)
         };
 
         let props = PlanProperties::new(
             eq_properties,
-            output_partitioning,
+            output_segmenting,
             EmissionType::Incremental,
             Boundedness::Bounded,
         );
 
-        let chunk_info = group_chunk_infos_by_partition_id(&chunk_info_batches)?;
+        let chunk_info = group_chunk_infos_by_segment_id(&chunk_info_batches)?;
 
-        let worker_runtime = Arc::new(CpuRuntime::try_new(num_partitions)?);
+        let worker_runtime = Arc::new(CpuRuntime::try_new(num_segments)?);
 
         Ok(Self {
             props,
@@ -269,7 +269,7 @@ impl PartitionStreamExec {
             chunk_info,
             query_expression,
             projected_schema,
-            target_partitions: num_partitions,
+            target_partitions: num_segments,
             worker_runtime,
             client,
         })
@@ -334,20 +334,20 @@ async fn chunk_store_cpu_worker_thread(
     projected_schema: Arc<Schema>,
 ) -> Result<(), DataFusionError> {
     let mut current_stores: Option<(String, ChunkStoreHandle, QueryHandle<StorageEngine>)> = None;
-    while let Some(chunks_and_partition_ids) = input_channel.recv().await {
-        let chunks_and_partition_ids =
-            chunks_and_partition_ids.map_err(|err| exec_datafusion_err!("{err}"))?;
+    while let Some(chunks_and_segment_ids) = input_channel.recv().await {
+        let chunks_and_segment_ids =
+            chunks_and_segment_ids.map_err(|err| exec_datafusion_err!("{err}"))?;
 
-        for (chunk, segment_id) in chunks_and_partition_ids {
+        for (chunk, segment_id) in chunks_and_segment_ids {
             let segment_id = segment_id
                 .ok_or_else(|| exec_datafusion_err!("Received chunk without a segment id"))?;
 
-            if let Some((current_partition, _, query_handle)) = &current_stores {
+            if let Some((current_segment, _, query_handle)) = &current_stores {
                 // When we change segments, flush the outputs
-                if current_partition != &segment_id {
+                if current_segment != &segment_id {
                     while send_next_row(
                         query_handle,
-                        current_partition.as_str(),
+                        current_segment.as_str(),
                         &projected_schema,
                         &output_channel,
                     )
@@ -383,10 +383,10 @@ async fn chunk_store_cpu_worker_thread(
     }
 
     // Flush out remaining of last segment
-    if let Some((final_partition, _, query_handle)) = &mut current_stores.as_mut() {
+    if let Some((final_segment, _, query_handle)) = &mut current_stores.as_mut() {
         while send_next_row(
             query_handle,
-            final_partition,
+            final_segment,
             &projected_schema,
             &output_channel,
         )
@@ -406,7 +406,7 @@ async fn chunk_store_cpu_worker_thread(
 /// `chunk_infos` is a list of batches with chunk information where each batch has info for
 /// a *single segment*. We also expect these to be previously sorted by segment id, otherwise
 /// our suggestion to the query planner that inputs are sorted by segment id will be incorrect.
-/// See `group_chunk_infos_by_partition_id` and `execute` for more details.
+/// See `group_chunk_infos_by_segment_id` and `execute` for more details.
 #[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_stream_io_loop(
     mut client: ConnectionClient,
@@ -436,12 +436,12 @@ async fn chunk_stream_io_loop(
 
         // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
         // and the app layer (Arrow).
-        let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_partition_id(
+        let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
             fetch_chunks_response_stream,
         );
 
-        while let Some(chunk_and_partition_id) = chunk_stream.next().await {
-            if output_channel.send(chunk_and_partition_id).await.is_err() {
+        while let Some(chunk_and_segment_id) = chunk_stream.next().await {
+            if output_channel.send(chunk_and_segment_id).await.is_err() {
                 break;
             }
         }

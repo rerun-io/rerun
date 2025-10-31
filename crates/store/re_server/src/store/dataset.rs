@@ -55,7 +55,7 @@ impl Dataset {
     /// Returns the segments from the given list of id.
     ///
     /// As per our proto conventions, all segments are returned if none is listed.
-    pub fn partitions_from_ids<'a>(
+    pub fn segments_from_ids<'a>(
         &'a self,
         segment_ids: &'a [PartitionId],
     ) -> Result<impl Iterator<Item = (&'a PartitionId, &'a Segment)>, Error> {
@@ -119,10 +119,10 @@ impl Dataset {
         self.segments.keys().cloned()
     }
 
-    pub fn partition_table(&self) -> Result<RecordBatch, Error> {
+    pub fn segment_table(&self) -> Result<RecordBatch, Error> {
         let row_count = self.segments.len();
 
-        let mut all_partition_properties = Vec::with_capacity(row_count);
+        let mut all_segment_properties = Vec::with_capacity(row_count);
 
         let mut segment_ids = Vec::with_capacity(row_count);
         let mut layer_names = Vec::with_capacity(row_count);
@@ -136,7 +136,7 @@ impl Dataset {
             let mut layer_names_row = Vec::with_capacity(layer_count);
             let mut storage_urls_row = Vec::with_capacity(layer_count);
 
-            let mut current_partition_properties = BTreeMap::default();
+            let mut current_segment_properties = BTreeMap::default();
 
             for (layer_name, layer) in segment.iter_layers() {
                 layer_names_row.push(layer_name.to_owned());
@@ -152,7 +152,7 @@ impl Dataset {
                 // last registered layer wins. The code below achieves this by virtual of the
                 // layers being iterated in registration order.
                 for (col_idx, field) in layer_properties.schema().fields().iter().enumerate() {
-                    current_partition_properties.insert(
+                    current_segment_properties.insert(
                         Arc::clone(field),
                         Arc::clone(layer_properties.column(col_idx)),
                     );
@@ -161,13 +161,13 @@ impl Dataset {
 
             let properties_batch = RecordBatch::try_new_with_options(
                 Arc::new(Schema::new_with_metadata(
-                    current_partition_properties
+                    current_segment_properties
                         .keys()
                         .map(Arc::clone)
                         .collect::<Fields>(),
                     Default::default(),
                 )),
-                current_partition_properties.into_values().collect(),
+                current_segment_properties.into_values().collect(),
                 // There should always be exactly one row, one per segment. Also, we must specify
                 // it anyway for the cases where there are no properties at all (so arrow is unable
                 // to infer the row count).
@@ -175,7 +175,7 @@ impl Dataset {
             )
             .map_err(Error::failed_to_extract_properties)?;
 
-            all_partition_properties.push(properties_batch);
+            all_segment_properties.push(properties_batch);
 
             segment_ids.push(segment_id.to_string());
             layer_names.push(layer_names_row);
@@ -186,7 +186,7 @@ impl Dataset {
         }
 
         let properties_record_batch =
-            re_arrow_util::concat_polymorphic_batches(all_partition_properties.as_slice())
+            re_arrow_util::concat_polymorphic_batches(all_segment_properties.as_slice())
                 .map_err(Error::failed_to_extract_properties)?;
 
         let base_record_batch = ScanPartitionTableResponse::create_dataframe(
@@ -313,7 +313,7 @@ impl Dataset {
 
         let layer_name = layer_name.unwrap_or(DataSource::DEFAULT_LAYER);
 
-        let mut new_partition_ids = BTreeSet::default();
+        let mut new_segment_ids = BTreeSet::default();
 
         for (store_id, chunk_store) in contents {
             if !store_id.is_recording() {
@@ -329,9 +329,9 @@ impl Dataset {
                 on_duplicate,
             )?;
 
-            new_partition_ids.insert(segment_id);
+            new_segment_ids.insert(segment_id);
         }
 
-        Ok(new_partition_ids)
+        Ok(new_segment_ids)
     }
 }

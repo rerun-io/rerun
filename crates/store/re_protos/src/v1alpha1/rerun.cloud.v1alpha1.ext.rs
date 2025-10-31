@@ -180,8 +180,8 @@ impl QueryDatasetResponse {
     // These columns are guaranteed to be returned by `QueryDataset`. Additional columns may also be
     // returned.
     pub const FIELD_CHUNK_ID: &str = "chunk_id";
-    pub const FIELD_CHUNK_PARTITION_ID: &str = "chunk_partition_id";
-    pub const FIELD_CHUNK_LAYER_NAME: &str = "rerun_partition_layer";
+    pub const FIELD_CHUNK_PARTITION_ID: &str = "chunk_segment_id";
+    pub const FIELD_CHUNK_LAYER_NAME: &str = "rerun_segment_layer";
     pub const FIELD_CHUNK_KEY: &str = "chunk_key";
     pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
     pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
@@ -196,7 +196,7 @@ impl QueryDatasetResponse {
         )
     }
 
-    pub fn field_chunk_partition_id() -> FieldRef {
+    pub fn field_chunk_segment_id() -> FieldRef {
         lazy_field_ref!(
             Field::new(Self::FIELD_CHUNK_PARTITION_ID, DataType::Utf8, false).with_metadata(
                 [("rerun:kind".to_owned(), "control".to_owned())]
@@ -241,7 +241,7 @@ impl QueryDatasetResponse {
     pub fn fields() -> Vec<FieldRef> {
         vec![
             Self::field_chunk_id(),
-            Self::field_chunk_partition_id(),
+            Self::field_chunk_segment_id(),
             Self::field_chunk_layer_name(),
             Self::field_chunk_key(),
             Self::field_chunk_entity_path(),
@@ -260,7 +260,7 @@ impl QueryDatasetResponse {
 
     pub fn create_dataframe(
         chunk_ids: Vec<re_chunk::ChunkId>,
-        chunk_partition_ids: Vec<String>,
+        chunk_segment_ids: Vec<String>,
         chunk_layer_names: Vec<String>,
         chunk_keys: Vec<&[u8]>,
         chunk_entity_paths: Vec<String>,
@@ -272,7 +272,7 @@ impl QueryDatasetResponse {
             chunk_ids
                 .to_arrow()
                 .expect("to_arrow for ChunkIds never fails"),
-            Arc::new(StringArray::from(chunk_partition_ids)),
+            Arc::new(StringArray::from(chunk_segment_ids)),
             Arc::new(StringArray::from(chunk_layer_names)),
             Arc::new(BinaryArray::from(chunk_keys)),
             Arc::new(StringArray::from(chunk_entity_paths)),
@@ -310,8 +310,8 @@ impl FetchChunksRequest {
         QueryDatasetResponse::field_chunk_id()
     }
 
-    pub fn field_chunk_partition_id() -> FieldRef {
-        QueryDatasetResponse::field_chunk_partition_id()
+    pub fn field_chunk_segment_id() -> FieldRef {
+        QueryDatasetResponse::field_chunk_segment_id()
     }
 
     pub fn field_chunk_layer_name() -> FieldRef {
@@ -325,7 +325,7 @@ impl FetchChunksRequest {
     pub fn fields() -> Vec<FieldRef> {
         vec![
             Self::field_chunk_id(),
-            Self::field_chunk_partition_id(),
+            Self::field_chunk_segment_id(),
             Self::field_chunk_layer_name(),
             Self::field_chunk_key(),
         ]
@@ -1393,9 +1393,9 @@ impl GetDatasetSchemaResponse {
 // --- RegisterWithDatasetResponse ---
 
 impl RegisterWithDatasetResponse {
-    pub const PARTITION_ID: &str = "rerun_partition_id";
-    pub const PARTITION_LAYER: &str = "rerun_partition_layer";
-    pub const PARTITION_TYPE: &str = "rerun_partition_type";
+    pub const PARTITION_ID: &str = "rerun_segment_id";
+    pub const PARTITION_LAYER: &str = "rerun_segment_layer";
+    pub const PARTITION_TYPE: &str = "rerun_segment_type";
     pub const STORAGE_URL: &str = "rerun_storage_url";
     pub const TASK_ID: &str = "rerun_task_id";
 
@@ -1413,8 +1413,8 @@ impl RegisterWithDatasetResponse {
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
         segment_ids: Vec<String>,
-        partition_layers: Vec<String>,
-        partition_types: Vec<String>,
+        segment_layers: Vec<String>,
+        segment_types: Vec<String>,
         storage_urls: Vec<String>,
         task_ids: Vec<String>,
     ) -> arrow::error::Result<RecordBatch> {
@@ -1422,8 +1422,8 @@ impl RegisterWithDatasetResponse {
         let schema = Arc::new(Self::schema());
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(segment_ids)),
-            Arc::new(StringArray::from(partition_layers)),
-            Arc::new(StringArray::from(partition_types)),
+            Arc::new(StringArray::from(segment_layers)),
+            Arc::new(StringArray::from(segment_types)),
             Arc::new(StringArray::from(storage_urls)),
             Arc::new(StringArray::from(task_ids)),
         ];
@@ -1440,7 +1440,7 @@ impl RegisterWithDatasetResponse {
 #[derive(Debug)]
 pub struct RegisterWithDatasetTaskDescriptor {
     pub segment_id: PartitionId,
-    pub partition_type: DataSourceKind,
+    pub segment_type: DataSourceKind,
     pub storage_url: url::Url,
     pub task_id: TaskId,
 }
@@ -1448,7 +1448,7 @@ pub struct RegisterWithDatasetTaskDescriptor {
 // --- ScanPartitionTableResponse --
 
 impl ScanPartitionTableResponse {
-    pub const FIELD_PARTITION_ID: &str = "rerun_partition_id";
+    pub const FIELD_PARTITION_ID: &str = "rerun_segment_id";
 
     /// Layer names for this segment, one per layer.
     ///
@@ -1470,7 +1470,7 @@ impl ScanPartitionTableResponse {
     /// Total size in bytes for this segment.
     pub const FIELD_SIZE_BYTES: &str = "rerun_size_bytes";
 
-    pub fn field_partition_id() -> FieldRef {
+    pub fn field_segment_id() -> FieldRef {
         lazy_field_ref!(Field::new(Self::FIELD_PARTITION_ID, DataType::Utf8, false))
     }
 
@@ -1518,7 +1518,7 @@ impl ScanPartitionTableResponse {
     // tests in `dataplatform`)
     pub fn fields() -> Vec<FieldRef> {
         vec![
-            Self::field_partition_id(),
+            Self::field_segment_id(),
             Self::field_layer_names(),
             Self::field_storage_urls(),
             Self::field_last_updated_at(),
@@ -1591,7 +1591,7 @@ impl ScanPartitionTableResponse {
 
 impl ScanDatasetManifestResponse {
     pub const FIELD_LAYER_NAME: &str = "rerun_layer_name";
-    pub const FIELD_PARTITION_ID: &str = "rerun_partition_id";
+    pub const FIELD_PARTITION_ID: &str = "rerun_segment_id";
     pub const FIELD_STORAGE_URL: &str = "rerun_storage_url";
     pub const FIELD_LAYER_TYPE: &str = "rerun_layer_type";
 
@@ -1608,7 +1608,7 @@ impl ScanDatasetManifestResponse {
         lazy_field_ref!(Field::new(Self::FIELD_LAYER_NAME, DataType::Utf8, false))
     }
 
-    pub fn field_partition_id() -> FieldRef {
+    pub fn field_segment_id() -> FieldRef {
         lazy_field_ref!(Field::new(Self::FIELD_PARTITION_ID, DataType::Utf8, false))
     }
 
@@ -1655,7 +1655,7 @@ impl ScanDatasetManifestResponse {
     pub fn fields() -> Vec<FieldRef> {
         vec![
             Self::field_layer_name(),
-            Self::field_partition_id(),
+            Self::field_segment_id(),
             Self::field_storage_url(),
             Self::field_layer_type(),
             Self::field_registration_time(),
@@ -1919,8 +1919,8 @@ pub enum IndexProperties {
         base_tokenizer: String,
     },
     VectorIvfPq {
-        num_partitions: Option<usize>,
-        target_partition_num_rows: Option<usize>,
+        num_segments: Option<usize>,
+        target_segment_num_rows: Option<usize>,
         num_sub_vectors: usize,
         metric: VectorDistanceMetric,
     },
@@ -1938,20 +1938,20 @@ impl std::fmt::Display for IndexProperties {
                 "Inverted {{ store_position: {store_position}, base_tokenizer: {base_tokenizer} }}"
             ),
             Self::VectorIvfPq {
-                num_partitions,
-                target_partition_num_rows,
+                num_segments,
+                target_segment_num_rows,
                 num_sub_vectors,
                 metric,
             } => {
-                if let Some(target_partition_num_rows) = target_partition_num_rows {
+                if let Some(target_segment_num_rows) = target_segment_num_rows {
                     return write!(
                         f,
-                        "VectorIvfPq {{ target_partition_num_rows: {target_partition_num_rows}, num_sub_vectors: {num_sub_vectors}, metric: {metric:?} }}"
+                        "VectorIvfPq {{ target_segment_num_rows: {target_segment_num_rows}, num_sub_vectors: {num_sub_vectors}, metric: {metric:?} }}"
                     );
-                } else if let Some(num_partitions) = num_partitions {
+                } else if let Some(num_segments) = num_segments {
                     return write!(
                         f,
-                        "VectorIvfPq {{ num_partitions: {num_partitions}, num_sub_vectors: {num_sub_vectors}, metric: {metric:?} }}"
+                        "VectorIvfPq {{ num_segments: {num_segments}, num_sub_vectors: {num_sub_vectors}, metric: {metric:?} }}"
                     );
                 } else {
                     write!(
@@ -1986,15 +1986,15 @@ impl From<IndexProperties> for crate::cloud::v1alpha1::IndexProperties {
                 )),
             },
             IndexProperties::VectorIvfPq {
-                num_partitions,
-                target_partition_num_rows,
+                num_segments,
+                target_segment_num_rows,
                 num_sub_vectors,
                 metric,
             } => Self {
                 props: Some(crate::cloud::v1alpha1::index_properties::Props::Vector(
                     crate::cloud::v1alpha1::VectorIvfPqIndex {
-                        num_partitions: num_partitions.map(|n| n as u32),
-                        target_partition_num_rows: target_partition_num_rows.map(|n| n as u32),
+                        num_segments: num_segments.map(|n| n as u32),
+                        target_segment_num_rows: target_segment_num_rows.map(|n| n as u32),
                         num_sub_vectors: Some(num_sub_vectors as u32),
                         distance_metrics: metric.into(),
                     },
@@ -2123,7 +2123,7 @@ mod tests {
     #[test]
     fn test_query_dataset_response_create_dataframe() {
         let chunk_ids = vec![re_chunk::ChunkId::new(), re_chunk::ChunkId::new()];
-        let chunk_partition_id = vec!["partition_id_1".to_owned(), "partition_id_2".to_owned()];
+        let chunk_segment_id = vec!["segment_id_1".to_owned(), "segment_id_2".to_owned()];
         let chunk_layer_names = vec!["layer1".to_owned(), "layer2".to_owned()];
         let chunk_keys = vec![b"key1".to_byte_slice(), b"key2".to_byte_slice()];
         let chunk_entity_paths = vec!["/".to_owned(), "/".to_owned()];
@@ -2131,7 +2131,7 @@ mod tests {
 
         QueryDatasetResponse::create_dataframe(
             chunk_ids,
-            chunk_partition_id,
+            chunk_segment_id,
             chunk_layer_names,
             chunk_keys,
             chunk_entity_paths,
@@ -2142,7 +2142,7 @@ mod tests {
 
     /// Ensure `crate_dataframe` implementation is consistent with `schema()`
     #[test]
-    fn test_scan_partition_table_response_create_dataframe() {
+    fn test_scan_segment_table_response_create_dataframe() {
         let segment_ids = vec!["1".to_owned(), "2".to_owned()];
         let layer_names = vec![vec!["a".to_owned(), "b".to_owned()], vec!["c".to_owned()]];
         let storage_urls = vec![vec!["d".to_owned(), "e".to_owned()], vec!["f".to_owned()]];

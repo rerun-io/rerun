@@ -8,8 +8,8 @@ mod dataframe_query_provider;
 mod dataframe_query_provider_wasm;
 mod dataset_manifest;
 mod grpc_streaming_provider;
-mod partition_table;
 mod search_provider;
+mod segment_table;
 mod table_entry_provider;
 mod wasm_compat;
 
@@ -20,6 +20,6 @@ pub(crate) use dataframe_query_provider::PartitionStreamExec;
 #[cfg(target_arch = "wasm32")]
 pub(crate) use dataframe_query_provider_wasm::PartitionStreamExec;
 pub use dataset_manifest::DatasetManifestProvider;
-pub use partition_table::PartitionTableProvider;
 pub use search_provider::SearchResultsTableProvider;
+pub use segment_table::PartitionTableProvider;
 pub use table_entry_provider::TableEntryTableProvider;

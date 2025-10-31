@@ -1328,10 +1328,10 @@ class DatasetEntry(Entry):
     def blueprint_dataset(self) -> DatasetEntry | None:
         """The associated blueprint dataset, if any."""
 
-    def default_blueprint_partition_id(self) -> str | None:
+    def default_blueprint_segment_id(self) -> str | None:
         """The default blueprint segment ID for this dataset, if any."""
 
-    def set_default_blueprint_partition_id(self, segment_id: str | None) -> None:
+    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None:
         """
         Set the default blueprint segment ID for this dataset.
 
@@ -1341,16 +1341,16 @@ class DatasetEntry(Entry):
     def schema(self) -> Schema:
         """Return the schema of the data contained in the dataset."""
 
-    def partition_ids(self) -> list[str]:
-        """Returns a list of segments IDs for the dataset."""
+    def segment_ids(self) -> list[str]:
+        """Returns a list of segment IDs for the dataset."""
 
-    def partition_table(self) -> DataFusionTable:
+    def segment_table(self) -> DataFusionTable:
         """Return the segment table as a Datafusion table provider."""
 
     def manifest(self) -> DataFusionTable:
         """Return the dataset manifest as a Datafusion table provider."""
 
-    def partition_url(
+    def segment_url(
         self,
         segment_id: str,
         timeline: str | None = None,
@@ -1380,11 +1380,11 @@ class DatasetEntry(Entry):
         --------
         # With ticks
         >>> start_tick, end_time = 0, 10
-        >>> dataset.partition_url("some_id", "log_tick", start_tick, end_time)
+        >>> dataset.segment_url("some_id", "log_tick", start_tick, end_time)
 
         # With timestamps
         >>> start_time, end_time = datetime.now() - timedelta(seconds=4), datetime.now()
-        >>> dataset.partition_url("some_id", "real_time", start_time, end_time)
+        >>> dataset.segment_url("some_id", "real_time", start_time, end_time)
 
         Returns
         -------
@@ -1460,7 +1460,7 @@ class DatasetEntry(Entry):
 
         """
 
-    def download_partition(self, segment_id: str) -> Recording:
+    def download_segment(self, segment_id: str) -> Recording:
         """Download a segment from the dataset."""
 
     def dataframe_query_view(
@@ -1531,8 +1531,8 @@ class DatasetEntry(Entry):
         *,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         time_index: IndexColumnSelector,
-        num_partitions: int | None = None,
-        target_partition_num_rows: int | None = None,
+        num_segments: int | None = None,
+        target_segment_num_rows: int | None = None,
         num_sub_vectors: int = 16,
         distance_metric: VectorDistanceMetric | str = ...,
     ) -> IndexingResult:
@@ -1554,12 +1554,12 @@ class DatasetEntry(Entry):
             The component column to create the index on.
         time_index : IndexColumnSelector
             Which timeline this index will map to.
-        num_partitions : int | None
+        num_segments : int | None
             The number of segments to create for the index.
-            (Deprecated, use target_partition_num_rows instead)
-        target_partition_num_rows : int | None
+            (Deprecated, use target_segment_num_rows instead)
+        target_segment_num_rows : int | None
             The target size (in number of rows) for each segment.
-            Defaults to 4096 if neither this nor num_partitions is specified.
+            Defaults to 4096 if neither this nor num_segments is specified.
         num_sub_vectors : int
             The number of sub-vectors to use when building the index.
         distance_metric : VectorDistanceMetricLike
@@ -1635,7 +1635,7 @@ class _IndexValuesLikeInternal:
 class DataframeQueryView:
     """View into a remote dataset acting as DataFusion table provider."""
 
-    def filter_partition_id(self, segment_id: str, *args: Iterable[str]) -> Self:
+    def filter_segment_id(self, segment_id: str, *args: Iterable[str]) -> Self:
         """Filter by one or more segment ids. All segment ids are included if not specified."""
 
     def filter_range_sequence(self, start: int, end: int) -> Self:

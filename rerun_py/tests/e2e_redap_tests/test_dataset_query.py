@@ -24,14 +24,14 @@ def test_component_filtering(server_instance: ServerInstance) -> None:
         dataset.dataframe_query_view(index="time_1", contents="/**")
         .filter_is_not_null(component_path)
         .df()
-        .collect_partitioned()
+        .collect_segmented()
     )
 
     filter_on_dataframe = (
         dataset.dataframe_query_view(index="time_1", contents="/**")
         .df()
         .filter(col(component_path).is_not_null())
-        .collect_partitioned()
+        .collect_segmented()
     )
 
     for outer in filter_on_dataframe:
@@ -42,7 +42,7 @@ def test_component_filtering(server_instance: ServerInstance) -> None:
     assert filter_on_query == filter_on_dataframe
 
 
-def test_partition_ordering(server_instance: ServerInstance) -> None:
+def test_segment_ordering(server_instance: ServerInstance) -> None:
     dataset = server_instance.dataset
 
     for time_index in ["time_1", "time_2", "time_3"]:
@@ -50,31 +50,31 @@ def test_partition_ordering(server_instance: ServerInstance) -> None:
             dataset.dataframe_query_view(index=time_index, contents="/**")
             .fill_latest_at()
             .df()
-            .select("rerun_partition_id", time_index)
-            .execute_stream_partitioned()
+            .select("rerun_segment_id", time_index)
+            .execute_stream_segmented()
         )
 
-        prior_partition_ids = set()
+        prior_segment_ids = set()
         for rb_reader in streams:
-            prior_partition = ""
+            prior_segment = ""
             prior_timestamp = 0
             for rb in iter(rb_reader):
                 rb = rb.to_pyarrow()
                 for idx in range(rb.num_rows):
-                    partition = rb[0][idx].as_py()
+                    segment = rb[0][idx].as_py()
 
                     # Nanosecond timestamps cannot be converted using `as_py()`
                     timestamp = rb[1][idx]
                     timestamp = timestamp.value if hasattr(timestamp, "value") else timestamp.as_py()
 
-                    assert partition >= prior_partition
-                    if partition == prior_partition and timestamp is not None:
+                    assert segment >= prior_segment
+                    if segment == prior_segment and timestamp is not None:
                         assert timestamp >= prior_timestamp
                     else:
-                        assert partition not in prior_partition_ids
-                        prior_partition_ids.add(partition)
+                        assert segment not in prior_segment_ids
+                        prior_segment_ids.add(segment)
 
-                    prior_partition = partition
+                    prior_segment = segment
                     if timestamp is not None:
                         prior_timestamp = timestamp
 
@@ -85,8 +85,8 @@ def test_tables_to_arrow_reader(server_instance: ServerInstance) -> None:
     for rb in dataset.dataframe_query_view(index="time_1", contents="/**").to_arrow_reader():
         assert rb.num_rows > 0
 
-    for partition_batch in dataset.partition_table().to_arrow_reader():
-        assert partition_batch.num_rows > 0
+    for segment_batch in dataset.segment_table().to_arrow_reader():
+        assert segment_batch.num_rows > 0
 
     for table_entry in server_instance.client.table_entries()[0].to_arrow_reader():
         assert table_entry.num_rows > 0

@@ -39,10 +39,10 @@ pub(crate) struct PartitionStreamExec {
     props: PlanProperties,
     chunk_info_batches: Arc<Vec<RecordBatch>>,
 
-    /// Describes the chunks per partition, derived from `chunk_info_batches`.
+    /// Describes the chunks per segment, derived from `chunk_info_batches`.
     /// We keep both around so that we only have to process once, but we may
     /// reuse multiple times in theory. We may also need to recompute if the
-    /// user asks for a different target partition. These are generally not
+    /// user asks for a different target segment. These are generally not
     /// too large.
     chunk_info: Arc<BTreeMap<String, Vec<RecordBatch>>>,
     query_expression: QueryExpression,
@@ -82,7 +82,7 @@ impl DataframePartitionStream {
             fetch_chunks_response_stream,
         );
 
-        // Note: using partition id as the store id, shouldn't really
+        // Note: using segment id as the store id, shouldn't really
         // matter since this is just a temporary store.
         let store_id = StoreId::random(StoreKind::Recording, segment_id);
         let store = ChunkStore::new_handle(store_id, Default::default());
@@ -101,9 +101,9 @@ impl DataframePartitionStream {
                 let (chunk, received_partition_id) = chunk_and_partition_id;
 
                 let received_partition_id = received_partition_id
-                    .ok_or_else(|| exec_datafusion_err!("Received chunk without a partition id"))?;
+                    .ok_or_else(|| exec_datafusion_err!("Received chunk without a segment id"))?;
                 if received_partition_id != segment_id {
-                    return exec_err!("Unexpected partition id: {received_partition_id}");
+                    return exec_err!("Unexpected segment id: {received_partition_id}");
                 }
 
                 store
@@ -153,7 +153,7 @@ impl Stream for DataframePartitionStream {
                 .as_mut()
                 .expect("current_query should be Some");
 
-            // If the following returns none, we have exhausted that rerun partition id
+            // If the following returns none, we have exhausted that rerun segment id
             match create_next_row(query, segment_id, &this.projected_schema)? {
                 Some(rb) => return Poll::Ready(Some(Ok(rb))),
                 None => this.current_query = None,
@@ -367,7 +367,7 @@ impl ExecutionPlan for PartitionStreamExec {
     #[tracing::instrument(level = "info", skip_all)]
     fn execute(
         &self,
-        partition: usize,
+        segment: usize,
         _context: Arc<TaskContext>,
     ) -> datafusion::common::Result<SendableRecordBatchStream> {
         let random_state = ahash::RandomState::with_seeds(0, 0, 0, 0);
@@ -376,7 +376,7 @@ impl ExecutionPlan for PartitionStreamExec {
             .keys()
             .filter(|segment_id| {
                 let hash_value = segment_id.hash_one(&random_state) as usize;
-                hash_value % self.target_partitions == partition
+                hash_value % self.target_partitions == segment
             })
             .cloned()
             .collect::<Vec<_>>();

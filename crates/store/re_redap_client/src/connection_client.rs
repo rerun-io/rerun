@@ -250,12 +250,12 @@ where
     }
 
     //TODO(ab): accept entry name
-    pub async fn get_partition_table_schema(
+    pub async fn get_segment_table_schema(
         &mut self,
         entry_id: EntryId,
     ) -> Result<ArrowSchema, ApiError> {
         self.inner()
-            .get_partition_table_schema(
+            .get_segment_table_schema(
                 tonic::Request::new(GetPartitionTableSchemaRequest {})
                     .with_entry_id(entry_id)
                     .map_err(|err| {
@@ -278,7 +278,7 @@ where
 
     /// Get a list of segment IDs for the given dataset entry ID.
     //TODO(ab): is there a way—and a reason—to not collect and instead return a stream?
-    pub async fn get_dataset_partition_ids(
+    pub async fn get_dataset_segment_ids(
         &mut self,
         entry_id: EntryId,
     ) -> Result<Vec<PartitionId>, ApiError> {
@@ -286,7 +286,7 @@ where
 
         let mut stream = self
             .inner()
-            .scan_partition_table(
+            .scan_segment_table(
                 tonic::Request::new(ScanPartitionTableRequest {
                     columns: vec![COLUMN_NAME.to_owned()],
                 })
@@ -321,7 +321,7 @@ where
                     )
                 })?;
 
-            let partition_id_col = record_batch.column_by_name(COLUMN_NAME).ok_or_else(|| {
+            let segment_id_col = record_batch.column_by_name(COLUMN_NAME).ok_or_else(|| {
                 let err = missing_column!(ScanPartitionTableResponse, COLUMN_NAME);
                 ApiError::serialization(
                     err,
@@ -329,7 +329,7 @@ where
                 )
             })?;
 
-            let partition_id_array = partition_id_col
+            let segment_id_array = segment_id_col
                 .try_downcast_array_ref::<arrow::array::StringArray>()
                 .map_err(|err| {
                     ApiError::serialization(
@@ -339,7 +339,7 @@ where
                 })?;
 
             segment_ids.extend(
-                partition_id_array
+                segment_id_array
                     .iter()
                     .filter_map(|opt| opt.map(|s| PartitionId::new(s.to_owned()))),
             );
@@ -377,7 +377,7 @@ where
 
     /// Fetches all chunks for a specified segment. You can include/exclude static/temporal chunks.
     /// TODO(zehiko) We should also expose query and fetch separately
-    pub async fn fetch_partition_chunks(
+    pub async fn fetch_segment_chunks(
         &mut self,
         dataset_id: EntryId,
         segment_id: PartitionId,
@@ -515,8 +515,8 @@ where
                 })
         };
 
-        let partition_id_column = get_string_array(RegisterWithDatasetResponse::PARTITION_ID)?;
-        let partition_type_column = DataSourceKind::many_from_arrow(
+        let segment_id_column = get_string_array(RegisterWithDatasetResponse::PARTITION_ID)?;
+        let segment_type_column = DataSourceKind::many_from_arrow(
             response
                 .column_by_name(RegisterWithDatasetResponse::PARTITION_TYPE)
                 .ok_or_else(|| {
@@ -534,12 +534,12 @@ where
         let task_id_column = get_string_array(RegisterWithDatasetResponse::TASK_ID)?;
 
         itertools::izip!(
-            partition_id_column,
-            partition_type_column,
+            segment_id_column,
+            segment_type_column,
             storage_url_column,
             task_id_column,
         )
-        .map(|(segment_id, partition_type, storage_url, task_id)| {
+        .map(|(segment_id, segment_type, storage_url, task_id)| {
             Ok(RegisterWithDatasetTaskDescriptor {
                 segment_id: PartitionId::new(
                     segment_id
@@ -552,7 +552,7 @@ where
                         })?
                         .to_owned(),
                 ),
-                partition_type,
+                segment_type,
                 storage_url: url::Url::parse(storage_url.ok_or_else(|| {
                     let err = missing_field!(RegisterWithDatasetResponse, "storage_url");
                     ApiError::serialization(err, "missing field in /RegisterWithDataset response")

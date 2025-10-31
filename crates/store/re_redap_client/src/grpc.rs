@@ -181,7 +181,7 @@ pub(crate) async fn client(
 // instead. Because of how the server performs the computation, this will very likely work out well
 // in practice.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn fetch_chunks_response_to_chunk_and_partition_id<S>(
+pub fn fetch_chunks_response_to_chunk_and_segment_id<S>(
     response: S,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, ApiError>>
 where
@@ -237,7 +237,7 @@ where
 
 // This code path happens to be shared between native and web, but we don't have a Tokio runtime on web!
 #[cfg(target_arch = "wasm32")]
-pub fn fetch_chunks_response_to_chunk_and_partition_id<S>(
+pub fn fetch_chunks_response_to_chunk_and_segment_id<S>(
     response: S,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, ApiError>>
 where
@@ -288,7 +288,7 @@ where
 ///
 /// A key advantage of this approach is that it ensures that the default blueprint is always in sync
 /// with the server's version.
-pub async fn stream_blueprint_and_partition_from_server(
+pub async fn stream_blueprint_and_segment_from_server(
     mut client: ConnectionClient,
     tx: re_smart_channel::Sender<DataSourceMessage>,
     uri: re_uri::DatasetPartitionUri,
@@ -300,7 +300,7 @@ pub async fn stream_blueprint_and_partition_from_server(
 
     let recording_store_id = uri.store_id();
 
-    if let Some((blueprint_dataset, blueprint_partition)) =
+    if let Some((blueprint_dataset, blueprint_segment)) =
         dataset_entry.dataset_details.default_bluprint()
     {
         re_log::debug!("Streaming blueprint dataset {blueprint_dataset}");
@@ -319,12 +319,12 @@ pub async fn stream_blueprint_and_partition_from_server(
             is_partial: false,
         };
 
-        stream_partition_from_server(
+        stream_segment_from_server(
             &mut client,
             blueprint_store_info,
             &tx,
             blueprint_dataset,
-            blueprint_partition,
+            blueprint_segment,
             None,
             re_uri::Fragment::default(),
             on_msg.as_deref(),
@@ -365,7 +365,7 @@ pub async fn stream_blueprint_and_partition_from_server(
         is_partial: time_range.is_some(),
     };
 
-    stream_partition_from_server(
+    stream_segment_from_server(
         &mut client,
         store_info,
         &tx,
@@ -382,7 +382,7 @@ pub async fn stream_blueprint_and_partition_from_server(
 
 /// Low-level function to stream data as a chunk store from a server.
 #[expect(clippy::too_many_arguments)]
-async fn stream_partition_from_server(
+async fn stream_segment_from_server(
     client: &mut ConnectionClient,
     store_info: StoreInfo,
     tx: &re_smart_channel::Sender<DataSourceMessage>,
@@ -395,7 +395,7 @@ async fn stream_partition_from_server(
     let exclude_static_data = false;
     let exclude_temporal_data = true;
     let static_chunk_stream = client
-        .fetch_partition_chunks(
+        .fetch_segment_chunks(
             dataset_id,
             segment_id.clone(),
             exclude_static_data,
@@ -407,7 +407,7 @@ async fn stream_partition_from_server(
     let exclude_static_data = true;
     let exclude_temporal_data = false;
     let temporal_chunk_stream = client
-        .fetch_partition_chunks(
+        .fetch_segment_chunks(
             dataset_id,
             segment_id,
             exclude_static_data,
@@ -492,15 +492,15 @@ async fn stream_partition_from_server(
 
     // TODO(#10229): this looks to be converting back and forth?
 
-    let static_chunk_stream = fetch_chunks_response_to_chunk_and_partition_id(static_chunk_stream);
+    let static_chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(static_chunk_stream);
     let temporal_chunk_stream =
-        fetch_chunks_response_to_chunk_and_partition_id(temporal_chunk_stream);
+        fetch_chunks_response_to_chunk_and_segment_id(temporal_chunk_stream);
 
     let mut chunk_stream = static_chunk_stream.chain(temporal_chunk_stream);
 
     while let Some(chunks) = chunk_stream.next().await {
         for chunk in chunks? {
-            let (chunk, _partition_id) = chunk;
+            let (chunk, _segment_id) = chunk;
 
             if tx
                 .send(

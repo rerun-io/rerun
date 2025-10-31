@@ -25,7 +25,7 @@ use re_protos::{
     common::v1alpha1::ext::DatasetHandle,
     headers::RerunHeadersInjectorExt as _,
 };
-use re_redap_client::fetch_chunks_response_to_chunk_and_partition_id;
+use re_redap_client::fetch_chunks_response_to_chunk_and_segment_id;
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 
 use crate::dataframe::{AnyComponentColumn, PyIndexColumnSelector, PyRecording, PySchema};
@@ -98,7 +98,7 @@ impl PyDatasetEntry {
     }
 
     /// The default blueprint segment ID for this dataset, if any.
-    fn default_blueprint_partition_id(self_: PyRef<'_, Self>) -> Option<String> {
+    fn default_blueprint_segment_id(self_: PyRef<'_, Self>) -> Option<String> {
         self_
             .dataset_details
             .default_blueprint
@@ -110,7 +110,7 @@ impl PyDatasetEntry {
     ///
     /// Pass `None` to clear the bluprint. This fails if the change cannot be made to the remote server.
     #[pyo3(signature = (segment_id))]
-    fn set_default_blueprint_partition_id(
+    fn set_default_blueprint_segment_id(
         mut self_: PyRefMut<'_, Self>,
         py: Python<'_>,
         segment_id: Option<String>,
@@ -140,12 +140,12 @@ impl PyDatasetEntry {
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
-        connection.get_dataset_partition_ids(self_.py(), dataset_id)
+        connection.get_dataset_segment_ids(self_.py(), dataset_id)
     }
 
     /// Return the segment table as a Datafusion table provider.
     #[instrument(skip_all)]
-    fn partition_table(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
+    fn segment_table(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
@@ -160,7 +160,7 @@ impl PyDatasetEntry {
         #[expect(clippy::string_add)]
         Ok(PyDataFusionTable {
             client: super_.client.clone_ref(self_.py()),
-            name: super_.name() + "_partition_table",
+            name: super_.name() + "_segment_table",
             provider,
         })
     }
@@ -209,11 +209,11 @@ impl PyDatasetEntry {
     /// --------
     /// # With ticks
     /// >>> start_tick, end_time = 0, 10
-    /// >>> dataset.partition_url("some_id", "log_tick", start_tick, end_time)
+    /// >>> dataset.segment_url("some_id", "log_tick", start_tick, end_time)
     ///
     /// # With timestamps
     /// >>> start_time, end_time = datetime.now() - timedelta(seconds=4), datetime.now()
-    /// >>> dataset.partition_url("some_id", "real_time", start_time, end_time)
+    /// >>> dataset.segment_url("some_id", "real_time", start_time, end_time)
     ///
     /// Returns
     /// -------
@@ -221,7 +221,7 @@ impl PyDatasetEntry {
     ///     The URL for the given segment.
     ///
     #[pyo3(signature = (segment_id, timeline=None, start=None, end=None))]
-    fn partition_url(
+    fn segment_url(
         self_: PyRef<'_, Self>,
         py: Python<'_>,
         segment_id: String,
@@ -416,7 +416,7 @@ impl PyDatasetEntry {
 
     /// Download a segment from the dataset.
     #[instrument(skip(self_), err)]
-    fn download_partition(self_: PyRef<'_, Self>, segment_id: String) -> PyResult<PyRecording> {
+    fn download_segment(self_: PyRef<'_, Self>, segment_id: String) -> PyResult<PyRecording> {
         let super_ = self_.as_super();
         let catalog_client = super_.client.borrow(self_.py());
         let connection = catalog_client.connection();
@@ -429,7 +429,7 @@ impl PyDatasetEntry {
             let exclude_static_data = false;
             let exclude_temporal_data = false;
             let response_stream = client
-                .fetch_partition_chunks(
+                .fetch_segment_chunks(
                     dataset_id,
                     segment_id.clone().into(),
                     exclude_static_data,
@@ -439,20 +439,19 @@ impl PyDatasetEntry {
                 .await
                 .map_err(to_py_err)?;
 
-            let mut chunks_stream =
-                fetch_chunks_response_to_chunk_and_partition_id(response_stream);
+            let mut chunks_stream = fetch_chunks_response_to_chunk_and_segment_id(response_stream);
 
             let store_id = StoreId::new(StoreKind::Recording, dataset_name, segment_id.clone());
             let mut store = ChunkStore::new(store_id, Default::default());
 
             while let Some(chunks) = chunks_stream.next().await {
                 for chunk in chunks.map_err(to_py_err)? {
-                    let (chunk, chunk_partition_id) = chunk;
+                    let (chunk, chunk_segment_id) = chunk;
 
-                    if Some(&segment_id) != chunk_partition_id.as_ref() {
+                    if Some(&segment_id) != chunk_segment_id.as_ref() {
                         re_log::warn!(
                             expected = segment_id,
-                            got = chunk_partition_id,
+                            got = chunk_segment_id,
                             "unexpected segment ID in chunk stream, this is a bug"
                         );
                     }
@@ -618,12 +617,12 @@ impl PyDatasetEntry {
     ///     The component column to create the index on.
     /// time_index : IndexColumnSelector
     ///     Which timeline this index will map to.
-    /// num_partitions : int | None
+    /// num_segments : int | None
     ///     The number of segments to create for the index.
-    ///     (Deprecated, use target_partition_num_rows instead)
-    /// target_partition_num_rows : int | None
+    ///     (Deprecated, use target_segment_num_rows instead)
+    /// target_segment_num_rows : int | None
     ///     The target size (in number of rows) for each segment.
-    ///     Defaults to 4096 if neither this nor num_partitions is specified.
+    ///     Defaults to 4096 if neither this nor num_segments is specified.
     /// num_sub_vectors : int
     ///     The number of sub-vectors to use when building the index.
     /// distance_metric : VectorDistanceMetricLike
@@ -632,8 +631,8 @@ impl PyDatasetEntry {
         *,
         column,
         time_index,
-        num_partitions = None,
-        target_partition_num_rows = None,
+        num_segments = None,
+        target_segment_num_rows = None,
         num_sub_vectors = 16,
         distance_metric = VectorDistanceMetricLike::VectorDistanceMetric(crate::catalog::PyVectorDistanceMetric::Cosine),
     ))]
@@ -642,9 +641,9 @@ impl PyDatasetEntry {
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
         time_index: PyIndexColumnSelector,
-        // TODO(RR-2798): Remove num_partitions since deprecated
-        num_partitions: Option<usize>,
-        target_partition_num_rows: Option<usize>,
+        // TODO(RR-2798): Remove num_segments since deprecated
+        num_segments: Option<usize>,
+        target_segment_num_rows: Option<usize>,
         num_sub_vectors: usize,
         distance_metric: VectorDistanceMetricLike,
     ) -> PyResult<PyIndexingResult> {
@@ -660,25 +659,23 @@ impl PyDatasetEntry {
         let distance_metric: re_protos::cloud::v1alpha1::VectorDistanceMetric =
             distance_metric.try_into()?;
 
-        let (num_partitions, target_partition_num_rows) = match (
-            num_partitions,
-            target_partition_num_rows,
-        ) {
-            // num_partitions is deprecated
+        let (num_segments, target_segment_num_rows) = match (num_segments, target_segment_num_rows)
+        {
+            // num_segments is deprecated
             (Some(n), None) => {
                 re_log::warn!(
-                    "The 'num_partitions' parameter is deprecated. Please use 'target_partition_num_rows' instead."
+                    "The 'num_segments' parameter is deprecated. Please use 'target_segment_num_rows' instead."
                 );
                 (Some(n), None)
             }
-            // target_partition_num_rows is preferred
+            // target_segment_num_rows is preferred
             (None, Some(s)) => (None, Some(s)),
-            // If neither is set, default target_partition_num_rows to 4096
+            // If neither is set, default target_segment_num_rows to 4096
             (None, None) => (None, Some(4096)),
             // If both are set it's an error
             (Some(_), Some(_)) => {
                 return Err(PyValueError::new_err(
-                    "Cannot specify both num_partitions and target_partition_num_rows.",
+                    "Cannot specify both num_segments and target_segment_num_rows.",
                 ));
             }
         };
@@ -686,8 +683,8 @@ impl PyDatasetEntry {
         // Otherwise
 
         let properties = IndexProperties::VectorIvfPq {
-            num_partitions,
-            target_partition_num_rows,
+            num_segments,
+            target_segment_num_rows,
             num_sub_vectors,
             metric: distance_metric,
         };

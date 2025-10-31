@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from syrupy import SnapshotAssertion
 
 
-def test_partition_ids(server_instance: ServerInstance, snapshot: SnapshotAssertion) -> None:
+def test_segment_ids(server_instance: ServerInstance, snapshot: SnapshotAssertion) -> None:
     """Test that we can successfully collect information about segments."""
     client = server_instance.client
 
@@ -17,7 +17,6 @@ def test_partition_ids(server_instance: ServerInstance, snapshot: SnapshotAssert
     tasks.wait(timeout_secs=50)
 
     assert (
-        ds.partition_table().df().drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_partition_id")
-        == snapshot
+        ds.segment_table().df().drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_segment_id") == snapshot
     )
     assert sorted(ds.segment_ids()) == snapshot

@@ -392,46 +392,44 @@ pub fn align_record_batch_to_schema(
     )?)
 }
 
-/// We need to create `num_partitions` of segment stream outputs, each of
-/// which will be fed from multiple `rerun_partition_id` sources. The partitioning
-/// output is a hash of the `rerun_partition_id`. We will reuse some of the
-/// underlying execution code from `DataFusion`'s `RepartitionExec` to compute
-/// these segment IDs, just to be certain they match partitioning generated
+/// We need to create `num_segments` of segment stream outputs, each of
+/// which will be fed from multiple `rerun_segment_id` sources. The segmenting
+/// output is a hash of the `rerun_segment_id`. We will reuse some of the
+/// underlying execution code from `DataFusion`'s `ResegmentExec` to compute
+/// these segment IDs, just to be certain they match segmenting generated
 /// from sources other than Rerun gRPC services.
 /// This function will do the relevant grouping of chunk infos by chunk's segment id
 /// and we will eventually fire individual queries for each group. Partitions must be ordered,
 /// see `PartitionStreamExec::try_new` for more details.
 #[tracing::instrument(level = "trace", skip_all)]
-pub(crate) fn group_chunk_infos_by_partition_id(
+pub(crate) fn group_chunk_infos_by_segment_id(
     chunk_info_batches: &Arc<Vec<RecordBatch>>,
 ) -> Result<Arc<BTreeMap<String, Vec<RecordBatch>>>, DataFusionError> {
     let mut results = BTreeMap::new();
 
     for batch in chunk_info_batches.as_ref() {
         let segment_ids = batch
-            .column_by_name("chunk_partition_id")
+            .column_by_name("chunk_segment_id")
             .ok_or(exec_datafusion_err!(
-                "Unable to find chunk_partition_id column"
+                "Unable to find chunk_segment_id column"
             ))?
             .as_any()
             .downcast_ref::<StringArray>()
-            .ok_or(exec_datafusion_err!(
-                "chunk_partition_id must be string type"
-            ))?;
+            .ok_or(exec_datafusion_err!("chunk_segment_id must be string type"))?;
 
         // group rows by segment ID
-        let mut partition_rows: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+        let mut segment_rows: BTreeMap<String, Vec<usize>> = BTreeMap::new();
         for (row_idx, segment_id) in segment_ids.iter().enumerate() {
             let pid = segment_id.ok_or(exec_datafusion_err!(
-                "Found null segment_id in chunk_partition_id column at row {row_idx}"
+                "Found null segment_id in chunk_segment_id column at row {row_idx}"
             ))?;
-            partition_rows
+            segment_rows
                 .entry(pid.to_owned())
                 .or_default()
                 .push(row_idx);
         }
 
-        for (segment_id, row_indices) in partition_rows {
+        for (segment_id, row_indices) in segment_rows {
             if row_indices.is_empty() {
                 continue;
             }
@@ -440,12 +438,12 @@ pub(crate) fn group_chunk_infos_by_partition_id(
             let indices = arrow::array::UInt32Array::from(
                 row_indices.iter().map(|&i| i as u32).collect::<Vec<_>>(),
             );
-            let partition_batch = arrow::compute::take_record_batch(batch, &indices)?;
+            let segment_batch = arrow::compute::take_record_batch(batch, &indices)?;
 
             results
                 .entry(segment_id)
                 .or_insert_with(Vec::new)
-                .push(partition_batch);
+                .push(segment_batch);
         }
     }
 
@@ -526,7 +524,7 @@ mod tests {
     fn test_batches_grouping() {
         let schema = Arc::new(Schema::new_with_metadata(
             vec![
-                Field::new("chunk_partition_id", DataType::Utf8, false),
+                Field::new("chunk_segment_id", DataType::Utf8, false),
                 Field::new("chunk_id", DataType::FixedSizeBinary(32), false),
             ],
             HashMap::default(),
@@ -574,7 +572,7 @@ mod tests {
 
         let chunk_info_batches = Arc::new(vec![batch1, batch2]);
 
-        let grouped = group_chunk_infos_by_partition_id(&chunk_info_batches).unwrap();
+        let grouped = group_chunk_infos_by_segment_id(&chunk_info_batches).unwrap();
 
         assert_eq!(grouped.len(), 4);
 

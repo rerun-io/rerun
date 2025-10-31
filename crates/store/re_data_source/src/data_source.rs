@@ -250,19 +250,19 @@ impl LogDataSource {
 
                 let connection_registry = connection_registry.clone();
                 let uri_clone = uri.clone();
-                let stream_partition = async move {
+                let stream_segment = async move {
                     let client = connection_registry
                         .client(uri_clone.origin.clone())
                         .await
                         .map_err(|err| ApiError::connection(err, "failed to connect to server"))?;
-                    re_redap_client::stream_blueprint_and_partition_from_server(
+                    re_redap_client::stream_blueprint_and_segment_from_server(
                         client, tx, uri_clone, on_msg,
                     )
                     .await
                 };
 
                 spawn_future(async move {
-                    if let Err(err) = stream_partition.await {
+                    if let Err(err) = stream_segment.await {
                         re_log::warn!("Error while streaming: {}", re_error::format_ref(&err));
                     }
                 });

@@ -105,7 +105,7 @@ impl PyDataframeQueryView {
 impl PyDataframeQueryView {
     /// Filter by one or more segment ids. All segment ids are included if not specified.
     #[pyo3(signature = (segment_id, *args))]
-    fn filter_partition_id<'py>(
+    fn filter_segment_id<'py>(
         &self,
         py: Python<'py>,
         segment_id: String,

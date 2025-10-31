@@ -10,8 +10,8 @@ pub use self::{
     connection_client::GenericConnectionClient,
     connection_registry::{ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle},
     grpc::{
-        RedapClient, channel, fetch_chunks_response_to_chunk_and_partition_id,
-        stream_blueprint_and_partition_from_server,
+        RedapClient, channel, fetch_chunks_response_to_chunk_and_segment_id,
+        stream_blueprint_and_segment_from_server,
     },
 };
 

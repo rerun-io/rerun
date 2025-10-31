@@ -57,7 +57,7 @@ impl GrpcStreamToTable for PartitionTableProvider {
         Ok(Arc::new(
             make_future_send(async move {
                 client
-                    .get_partition_table_schema(dataset_id)
+                    .get_segment_table_schema(dataset_id)
                     .await
                     .map_err(|err| {
                         DataFusionError::External(
@@ -83,7 +83,7 @@ impl GrpcStreamToTable for PartitionTableProvider {
 
         let mut client = self.client.clone();
 
-        make_future_send(async move { Ok(client.inner().scan_partition_table(request).await) })
+        make_future_send(async move { Ok(client.inner().scan_segment_table(request).await) })
             .await?
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }
