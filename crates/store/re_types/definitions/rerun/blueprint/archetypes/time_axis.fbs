@@ -11,7 +11,7 @@ table TimeAxis (
 
     /// How should the horizontal/X/time axis be linked across multiple plots?
     ///
-    /// Linking with global will ignore all the other options.
+    /// Linking with global will ignore `view_range`.
     link: rerun.blueprint.components.LinkAxis ("attr.rerun.component_optional", nullable, order: 2300);
 
     /// The view range of the horizontal/X/time axis.

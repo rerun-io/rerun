@@ -1,8 +1,12 @@
 use re_log_types::AbsoluteTimeRange;
-use re_types::components::AggregationPolicy;
+use re_types::{
+    blueprint::{archetypes::TimeAxis, components::LinkAxis},
+    components::AggregationPolicy,
+};
 use re_viewer_context::{
     ViewContext, ViewQuery, ViewerContext, external::re_entity_db::InstancePath,
 };
+use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 use crate::{
     PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs,
@@ -26,21 +30,34 @@ pub fn determine_time_per_pixel(
     1.0 / pixels_per_time.max(f64::EPSILON)
 }
 
-pub fn determine_time_range(ctx: &ViewContext<'_>) -> AbsoluteTimeRange {
-    let time_axis = re_viewport_blueprint::ViewProperty::from_archetype::<
-        re_types::blueprint::archetypes::TimeAxis,
-    >(
+pub fn determine_time_range(
+    ctx: &ViewContext<'_>,
+) -> Result<AbsoluteTimeRange, ViewPropertyQueryError> {
+    let time_axis = ViewProperty::from_archetype::<TimeAxis>(
         ctx.viewer_ctx.blueprint_db(),
         ctx.viewer_ctx.blueprint_query,
         ctx.view_id,
     );
 
-    let view_time_range = time_axis
+    let link_x_axis =
+        time_axis.component_or_fallback::<LinkAxis>(ctx, TimeAxis::descriptor_link().component)?;
+
+    let time_range_property = match link_x_axis {
+        LinkAxis::Independent => &time_axis,
+        LinkAxis::LinkToGlobal => &ViewProperty::from_archetype::<TimeAxis>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query(),
+            re_viewer_context::GLOBAL_VIEW_ID,
+        ),
+    };
+
+    let view_time_range = time_range_property
         .component_or_empty::<re_types::blueprint::components::TimeRange>(
             re_types::blueprint::archetypes::TimeAxis::descriptor_view_range().component,
         )
         .ok()
         .flatten();
+
     let current_time = ctx
         .viewer_ctx
         .time_ctrl
@@ -48,7 +65,7 @@ pub fn determine_time_range(ctx: &ViewContext<'_>) -> AbsoluteTimeRange {
         .unwrap_or(re_log_types::TimeInt::ZERO)
         .into();
 
-    view_time_range
+    Ok(view_time_range
         .map(|range| {
             AbsoluteTimeRange::new(
                 range.start.start_boundary_time(current_time),
@@ -56,7 +73,7 @@ pub fn determine_time_range(ctx: &ViewContext<'_>) -> AbsoluteTimeRange {
             )
         })
         // If we don't have an overridden time range, we want to show everything.
-        .unwrap_or(AbsoluteTimeRange::EVERYTHING)
+        .unwrap_or(AbsoluteTimeRange::EVERYTHING))
 }
 
 // We have a bunch of raw points, and now we need to group them into individual series.

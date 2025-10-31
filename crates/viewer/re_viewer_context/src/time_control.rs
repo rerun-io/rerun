@@ -840,23 +840,22 @@ impl TimeControl {
         command: &TimeControlCommand,
     ) -> NeedsRepaint {
         match command {
+            // TODO(isse): Changing the highlighted range should technically cause a repaint. But this causes issues
+            // because right now the selection panel wants to clear the range if it's some each frame, and maybe set
+            // it again at later point.
+            //
+            // This is (right now) always caused by hovering on something, so the mouse movement will cause repaints
+            // in all current cases.
+            //
+            // A better fix for this would be to collect all time commands before handling them, and for highlight
+            // ranges only keep the last one. And requesting a repaint here again.
             TimeControlCommand::HighlightRange(range) => {
-                if self.highlighted_range != Some(*range) {
-                    self.highlighted_range = Some(*range);
-
-                    NeedsRepaint::Yes
-                } else {
-                    NeedsRepaint::No
-                }
+                self.highlighted_range = Some(*range);
+                NeedsRepaint::No
             }
             TimeControlCommand::ClearHighlightedRange => {
-                if self.highlighted_range.is_some() {
-                    self.highlighted_range = None;
-
-                    NeedsRepaint::Yes
-                } else {
-                    NeedsRepaint::No
-                }
+                self.highlighted_range = None;
+                NeedsRepaint::No
             }
             TimeControlCommand::ResetActiveTimeline => {
                 if let Some(blueprint_ctx) = blueprint_ctx {
