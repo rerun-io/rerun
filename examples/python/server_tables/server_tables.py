@@ -3,17 +3,20 @@
 
 from __future__ import annotations
 
+import argparse
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import pyarrow as pa
 from datafusion import DataFrame, col, functions as F
-from rerun.catalog import CatalogClient, DatasetEntry
+from rerun.server import Server
 from rerun.utilities.datafusion.collect import collect_to_string_list
 
-CATALOG = "rerun+http://localhost:51234"
+if TYPE_CHECKING:
+    from rerun.catalog import CatalogClient, DatasetEntry
+
 DATASET_NAME = "dataset"
 
 STATUS_TABLE_NAME = "status"
@@ -122,36 +125,46 @@ def process_partitions(client: CatalogClient, dataset: DatasetEntry, partition_l
     )
 
 
-def main(temp_path: Path) -> None:
-    client = CatalogClient(CATALOG)
-    dataset = client.get_dataset(name=DATASET_NAME)
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Process some partitions in a dataset.")
+    parser.add_argument("--temp-dir", type=str, default=None, help="Temporary directory to store tables.")
+    args = parser.parse_args()
+    temp_dir = args.temp_dir
+    if args.temp_dir is not None:
+        run_example(Path(temp_dir))
+    else:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            run_example(temp_path)
 
-    status_table = create_status_table(client, temp_path)
-    results_table = create_results_table(client, temp_path)
 
-    # TODO(tsaucer) replace with partition table query
-    partition_table = (
-        dataset.dataframe_query_view(index="time_1", contents="/**").df().select("rerun_partition_id").distinct()
-    )
+def run_example(temp_path: Path) -> None:
+    root_path = Path(__file__).parent.parent.parent.parent.resolve()
+    with Server(datasets={DATASET_NAME: root_path / "tests/assets/rrd/dataset"}) as srv:
+        client = srv.client()
+        dataset = client.get_dataset(name=DATASET_NAME)
 
-    missing_partitions = None
-    while missing_partitions is None or len(missing_partitions) != 0:
-        missing_partitions = find_missing_partitions(partition_table, status_table)
-        print(f"{len(missing_partitions)} of {partition_table.count()} partitions have not processed.")
+        status_table = create_status_table(client, temp_path)
+        results_table = create_results_table(client, temp_path)
 
-        if len(missing_partitions) > 0:
-            process_partitions(client, dataset, missing_partitions[0:3])
+        partition_table = dataset.partition_table().df().select("rerun_partition_id").distinct()
 
-    # Show the final results
-    print("Results table:")
-    results_table.show()
+        missing_partitions = None
+        while missing_partitions is None or len(missing_partitions) != 0:
+            missing_partitions = find_missing_partitions(partition_table, status_table)
+            print(f"{len(missing_partitions)} of {partition_table.count()} partitions have not processed.")
 
-    # Show the final status table
-    print("Final status table:")
-    status_table.show()
+            if len(missing_partitions) > 0:
+                process_partitions(client, dataset, missing_partitions[0:3])
+
+        # Show the final results
+        print("Results table:")
+        results_table.show()
+
+        # Show the final status table
+        print("Final status table:")
+        status_table.show()
 
 
 if __name__ == "__main__":
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
-        main(temp_path)
+    main()

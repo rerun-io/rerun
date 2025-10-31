@@ -16,22 +16,24 @@ and status tables.
 
 ### Setup
 
-This example assumes you have started the OSS server using the dataset example located in the test
-asset directory. From the rerun repository you can start this using the following command.
+This example will launch the OSS server which will run on `localhost` with a random port.
 
-```bash
-rerun server --dataset tests/assets/rrd/dataset
-```
-
-The example will create a temporary directory. It will not persist after this notebook has been executed,
+The example will also create a temporary directory. It will not persist after this script has been executed,
 so you will need to restart your server if you want to run the example multiple times. If you prefer
 to persist the created table, you can change the remove the `with tempfile.TemporaryDirectory()` line and
 instead set a specific location for your files.
 
 ### Running
 
-With the server running, run the following command
+Run the following commands
 
 ```bash
+pip install -e examples/python/server_tables
 python examples/python/server_tables/server_tables.py
+```
+
+or to run it from pixi
+
+```bash
+pixi run -e examples server_tables
 ```

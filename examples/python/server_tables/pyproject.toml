@@ -2,10 +2,10 @@
 name = "server_tables"
 version = "0.1.0"
 readme = "README.md"
-dependencies = ["rerun-sdk", "datafusion==50.0.0"]
+dependencies = ["rerun-sdk", "datafusion==50.1"]
 
 [project.scripts]
-dataframe_query = "server_tables:main"
+server_tables = "server_tables:main"
 
 [build-system]
 requires = ["hatchling"]
