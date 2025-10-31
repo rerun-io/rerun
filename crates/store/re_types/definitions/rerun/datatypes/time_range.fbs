@@ -3,7 +3,8 @@ namespace rerun.datatypes;
 /// Two [datatypes.TimeInt] describing a range of time.
 struct AbsoluteTimeRange (
   "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
-  "attr.rust.override_crate": "re_types_core"
+  "attr.rust.override_crate": "re_types_core",
+  "attr.docs.unreleased"
 ) {
   /// Start of the range.
   min: TimeInt (order: 100);

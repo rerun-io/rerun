@@ -26,8 +26,8 @@ Struct {
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `AbsoluteTimeRange`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1AbsoluteTimeRange.html)
- * 🐍 [Python API docs for `AbsoluteTimeRange`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.AbsoluteTimeRange)
- * 🦀 [Rust API docs for `AbsoluteTimeRange`](https://docs.rs/rerun/latest/rerun/datatypes/struct.AbsoluteTimeRange.html)
+ * 🌊 [C++ API docs for `AbsoluteTimeRange`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1AbsoluteTimeRange.html?speculative-link)
+ * 🐍 [Python API docs for `AbsoluteTimeRange`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.AbsoluteTimeRange)
+ * 🦀 [Rust API docs for `AbsoluteTimeRange`](https://docs.rs/rerun/latest/rerun/datatypes/struct.AbsoluteTimeRange.html?speculative-link)
 
 
