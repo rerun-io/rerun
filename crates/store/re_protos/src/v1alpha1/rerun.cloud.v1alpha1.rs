@@ -54,7 +54,7 @@ pub struct DataSource {
     /// Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
     #[prost(string, optional, tag = "1")]
     pub storage_url: ::core::option::Option<::prost::alloc::string::String>,
-    /// / Which Partition Layer should this data source be registered to?
+    /// / Which Segment Layer should this data source be registered to?
     /// /
     /// / Defaults to `base` if unspecified.
     #[prost(string, optional, tag = "3")]
@@ -431,7 +431,7 @@ pub struct VectorIvfPqIndex {
     pub num_sub_vectors: ::core::option::Option<u32>,
     #[prost(enumeration = "VectorDistanceMetric", tag = "3")]
     pub distance_metrics: i32,
-    /// Target size of the IVF partition in rows
+    /// Target size of the IVF segment in rows
     #[prost(uint32, optional, tag = "4")]
     pub target_partition_num_rows: ::core::option::Option<u32>,
 }
@@ -574,10 +574,10 @@ impl ::prost::Name for BTreeIndexQuery {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryDatasetRequest {
-    /// Client can specify what partitions are queried. If left unspecified (empty list),
-    /// all partitions will be queried.
+    /// Client can specify what segments are queried. If left unspecified (empty list),
+    /// all segments will be queried.
     #[prost(message, repeated, tag = "2")]
-    pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
+    pub segment_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
     /// Client can specify specific chunk ids to include. If left unspecified (empty list),
     /// all chunks that match other query parameters will be included.
     #[prost(message, repeated, tag = "3")]
@@ -746,8 +746,8 @@ impl ::prost::Name for QueryRange {
 pub struct FetchChunksRequest {
     /// Information about the chunks to fetch. These dataframes have to include the following columns:
     /// * `chunk_id` - Chunk unique identifier
-    /// * `partition_id` - partition this chunk belongs to. Currently needed as we pass this metadata back and forth
-    /// * `partition_layer` - specific partition layer. Currently needed as we pass this metadata back and forth
+    /// * `segment_id` - segment this chunk belongs to. Currently needed as we pass this metadata back and forth
+    /// * `partition_layer` - specific segment layer. Currently needed as we pass this metadata back and forth
     /// * `chunk_key` - chunk location details
     #[prost(message, repeated, tag = "1")]
     pub chunk_infos: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::DataframePart>,
@@ -1405,7 +1405,7 @@ pub struct DatasetDetails {
     /// The blueprint dataset associated with this dataset (if any).
     #[prost(message, optional, tag = "3")]
     pub blueprint_dataset: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-    /// The partition of the blueprint dataset corresponding to the default blueprint (if any).
+    /// The segment of the blueprint dataset corresponding to the default blueprint (if any).
     #[prost(message, optional, tag = "4")]
     pub default_blueprint: ::core::option::Option<super::super::common::v1alpha1::PartitionId>,
 }
@@ -1974,7 +1974,7 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Register new partitions with the Dataset.
+        /// Register new segments with the Dataset.
         ///
         /// This endpoint requires the standard dataset headers.
         pub async fn register_with_dataset(
@@ -1996,9 +1996,9 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Write chunks to one or more partitions.
+        /// Write chunks to one or more segments.
         ///
-        /// The partition ID for each individual chunk is extracted from their metadata (`rerun:partition_id`).
+        /// The segment ID for each individual chunk is extracted from their metadata (`rerun:segment_id`).
         ///
         /// This endpoint requires the standard dataset headers.
         pub async fn write_chunks(
@@ -2020,11 +2020,11 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.client_streaming(req, path, codec).await
         }
-        /// Returns the schema of the partition table.
+        /// Returns the schema of the segment table.
         ///
         /// This is not to be confused with the schema of the dataset itself. For that, refer to `GetDatasetSchema`.
         ///
-        /// To inspect the data of the partition table, which is guaranteed to match the schema returned by
+        /// To inspect the data of the segment table, which is guaranteed to match the schema returned by
         /// this endpoint, check out `ScanPartitionTable`.
         ///
         /// This endpoint requires the standard dataset headers.
@@ -2049,7 +2049,7 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Inspect the contents of the partition table.
+        /// Inspect the contents of the segment table.
         ///
         /// The data will follow the schema returned by `GetPartitionTableSchema`.
         ///
@@ -2130,7 +2130,7 @@ pub mod rerun_cloud_service_client {
         }
         /// Returns the schema of the dataset.
         ///
-        /// This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
+        /// This is the union of all the schemas from all the underlying segments. It will contain all the indexes,
         /// entities and components present in the dataset.
         ///
         /// This endpoint requires the standard dataset headers.
@@ -2206,7 +2206,7 @@ pub mod rerun_cloud_service_client {
         /// those chunks (the actual data).
         ///
         /// These Rerun-native queries include:
-        /// * Filtering by specific partition and chunk IDs.
+        /// * Filtering by specific segment and chunk IDs.
         /// * Latest-at, range and dataframe queries.
         /// * Arbitrary Lance filters.
         ///
@@ -2486,27 +2486,27 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::ReadTableEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::ReadTableEntryResponse>, tonic::Status>;
-        /// Register new partitions with the Dataset.
+        /// Register new segments with the Dataset.
         ///
         /// This endpoint requires the standard dataset headers.
         async fn register_with_dataset(
             &self,
             request: tonic::Request<super::RegisterWithDatasetRequest>,
         ) -> std::result::Result<tonic::Response<super::RegisterWithDatasetResponse>, tonic::Status>;
-        /// Write chunks to one or more partitions.
+        /// Write chunks to one or more segments.
         ///
-        /// The partition ID for each individual chunk is extracted from their metadata (`rerun:partition_id`).
+        /// The segment ID for each individual chunk is extracted from their metadata (`rerun:segment_id`).
         ///
         /// This endpoint requires the standard dataset headers.
         async fn write_chunks(
             &self,
             request: tonic::Request<tonic::Streaming<super::WriteChunksRequest>>,
         ) -> std::result::Result<tonic::Response<super::WriteChunksResponse>, tonic::Status>;
-        /// Returns the schema of the partition table.
+        /// Returns the schema of the segment table.
         ///
         /// This is not to be confused with the schema of the dataset itself. For that, refer to `GetDatasetSchema`.
         ///
-        /// To inspect the data of the partition table, which is guaranteed to match the schema returned by
+        /// To inspect the data of the segment table, which is guaranteed to match the schema returned by
         /// this endpoint, check out `ScanPartitionTable`.
         ///
         /// This endpoint requires the standard dataset headers.
@@ -2522,7 +2522,7 @@ pub mod rerun_cloud_service_server {
                 Item = std::result::Result<super::ScanPartitionTableResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// Inspect the contents of the partition table.
+        /// Inspect the contents of the segment table.
         ///
         /// The data will follow the schema returned by `GetPartitionTableSchema`.
         ///
@@ -2560,7 +2560,7 @@ pub mod rerun_cloud_service_server {
         ) -> std::result::Result<tonic::Response<Self::ScanDatasetManifestStream>, tonic::Status>;
         /// Returns the schema of the dataset.
         ///
-        /// This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
+        /// This is the union of all the schemas from all the underlying segments. It will contain all the indexes,
         /// entities and components present in the dataset.
         ///
         /// This endpoint requires the standard dataset headers.
@@ -2599,7 +2599,7 @@ pub mod rerun_cloud_service_server {
         /// those chunks (the actual data).
         ///
         /// These Rerun-native queries include:
-        /// * Filtering by specific partition and chunk IDs.
+        /// * Filtering by specific segment and chunk IDs.
         /// * Latest-at, range and dataframe queries.
         /// * Arbitrary Lance filters.
         ///

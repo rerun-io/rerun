@@ -59,7 +59,7 @@ impl InMemoryStore {
         &self,
         chunk_keys: &[ChunkKey],
     ) -> Result<Vec<(StoreId, Arc<Chunk>)>, Error> {
-        // sort keys per dataset, partition, layer
+        // sort keys per dataset, segment, layer
         let mut chunk_key_index: HashMap<
             &EntryId,
             HashMap<&PartitionId, HashMap<&str, Vec<&ChunkKey>>>,
@@ -69,7 +69,7 @@ impl InMemoryStore {
             chunk_key_index
                 .entry(&chunk_key.dataset_id)
                 .or_default()
-                .entry(&chunk_key.partition_id)
+                .entry(&chunk_key.segment_id)
                 .or_default()
                 .entry(&chunk_key.layer_name)
                 .or_default()
@@ -81,22 +81,22 @@ impl InMemoryStore {
         for (dataset_id, partition_index) in chunk_key_index {
             let dataset = self.dataset(*dataset_id)?;
 
-            for (partition_id, layer_index) in partition_index {
-                let partition = dataset.partition(partition_id)?;
+            for (segment_id, layer_index) in partition_index {
+                let segment = dataset.segment(segment_id)?;
 
                 let store_id = StoreId::new(
                     StoreKind::Recording,
                     dataset_id.to_string(),
-                    partition_id.id.as_str(),
+                    segment_id.id.as_str(),
                 );
 
                 for (layer_name, chunk_keys) in layer_index {
-                    let store_handle = partition
+                    let store_handle = segment
                         .layer(layer_name)
                         .ok_or_else(|| {
                             Error::LayerNameNotFound(
                                 layer_name.to_owned(),
-                                partition_id.clone(),
+                                segment_id.clone(),
                                 *dataset_id,
                             )
                         })?

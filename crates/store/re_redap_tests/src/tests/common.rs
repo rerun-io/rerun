@@ -108,7 +108,7 @@ async fn register_with_dataset(
             .iter()
             .flatten()
             .map(|s| TaskId { id: s.to_owned() })
-            .unique() // dups are possible because of batching partitions per task
+            .unique() // dups are possible because of batching segments per task
             .collect::<Vec<_>>()
     };
 
@@ -188,21 +188,15 @@ impl LayerType {
         }
     }
 
-    fn into_recording(
-        self,
-        tuid_prefix: TuidPrefix,
-        partition_id: &str,
-    ) -> anyhow::Result<TempPath> {
+    fn into_recording(self, tuid_prefix: TuidPrefix, segment_id: &str) -> anyhow::Result<TempPath> {
         match self {
-            Self::Simple { entities } => {
-                create_simple_recording(tuid_prefix, partition_id, entities)
-            }
+            Self::Simple { entities } => create_simple_recording(tuid_prefix, segment_id, entities),
 
-            Self::Nasty { entities } => create_nasty_recording(tuid_prefix, partition_id, entities),
+            Self::Nasty { entities } => create_nasty_recording(tuid_prefix, segment_id, entities),
 
             Self::Properties { properties } => create_recording_with_properties(
                 tuid_prefix,
-                partition_id,
+                segment_id,
                 // TODO(ab): avoid this annoying conversion (this requires a change to
                 // `create_recording_with_properties` which needs to be propagated to
                 // `dataplatform`.
@@ -216,25 +210,25 @@ impl LayerType {
 }
 
 pub struct LayerDefinition {
-    pub partition_id: &'static str,
+    pub segment_id: &'static str,
     pub layer_name: Option<&'static str>,
     pub layer_type: LayerType,
 }
 
 impl LayerDefinition {
     /// A simple layer with the provided entities
-    pub fn simple(partition_id: &'static str, entities: &'static [&'static str]) -> Self {
+    pub fn simple(segment_id: &'static str, entities: &'static [&'static str]) -> Self {
         Self {
-            partition_id,
+            segment_id,
             layer_name: None,
             layer_type: LayerType::simple(entities),
         }
     }
 
     /// A layer with a nasty chunk representation for the provided entities.
-    pub fn nasty(partition_id: &'static str, entities: &'static [&'static str]) -> Self {
+    pub fn nasty(segment_id: &'static str, entities: &'static [&'static str]) -> Self {
         Self {
-            partition_id,
+            segment_id,
             layer_name: None,
             layer_type: LayerType::nasty(entities),
         }
@@ -242,11 +236,11 @@ impl LayerDefinition {
 
     /// A layer with just the provided properties.
     pub fn properties(
-        partition_id: &'static str,
+        segment_id: &'static str,
         properties: impl IntoIterator<Item = (String, Box<dyn AsComponents>)>,
     ) -> Self {
         Self {
-            partition_id,
+            segment_id,
             layer_name: None,
             layer_type: LayerType::properties(properties),
         }
@@ -296,7 +290,7 @@ impl DataSourcesDefinition {
                             .layer_type
                             .into_recording(
                                 tuid_prefix.saturating_add(tuid_prefix_increment as _),
-                                layer.partition_id,
+                                layer.segment_id,
                             )
                             .unwrap(),
                     )

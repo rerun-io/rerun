@@ -7,7 +7,7 @@ use crate::store::Error;
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct ChunkKey {
     pub chunk_id: ChunkId,
-    pub partition_id: PartitionId,
+    pub segment_id: PartitionId,
     pub layer_name: String,
     pub dataset_id: EntryId,
 }

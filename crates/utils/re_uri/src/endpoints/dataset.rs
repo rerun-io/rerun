@@ -5,9 +5,9 @@ use crate::{Error, Fragment, Origin, RedapUri, TimeSelection};
 /// URI pointing at the data underlying a dataset.
 ///
 /// Currently, the following format is supported:
-/// `<origin>/dataset/$DATASET_ID/data?partition_id=$PARTITION_ID&time_range=$TIME_RANGE`
+/// `<origin>/dataset/$DATASET_ID/data?segment_id=$PARTITION_ID&time_range=$TIME_RANGE`
 ///
-/// `partition_id` is currently mandatory, and `time_range` is optional.
+/// `segment_id` is currently mandatory, and `time_range` is optional.
 /// In the future we will add richer queries.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DatasetPartitionUri {
@@ -16,7 +16,7 @@ pub struct DatasetPartitionUri {
 
     // Query parameters: these affect what data is returned.
     /// Currently mandatory.
-    pub partition_id: String,
+    pub segment_id: String,
     pub time_range: Option<TimeSelection>,
 
     // Fragment parameters: these affect what the viewer focuses on:
@@ -28,7 +28,7 @@ impl std::fmt::Display for DatasetPartitionUri {
         let Self {
             origin,
             dataset_id,
-            partition_id,
+            segment_id,
             time_range,
             fragment,
         } = self;
@@ -37,7 +37,7 @@ impl std::fmt::Display for DatasetPartitionUri {
 
         // ?query:
         {
-            write!(f, "?partition_id={partition_id}")?;
+            write!(f, "?segment_id={segment_id}")?;
         }
         if let Some(time_range) = time_range {
             write!(f, "&time_range={time_range}")?;
@@ -55,13 +55,13 @@ impl std::fmt::Display for DatasetPartitionUri {
 
 impl DatasetPartitionUri {
     pub fn new(origin: Origin, dataset_id: re_tuid::Tuid, url: &url::Url) -> Result<Self, Error> {
-        let mut partition_id = None;
+        let mut segment_id = None;
         let mut time_range = None;
 
         for (key, value) in url.query_pairs() {
             match key.as_ref() {
-                "partition_id" => {
-                    partition_id = Some(value.to_string());
+                "segment_id" => {
+                    segment_id = Some(value.to_string());
                 }
                 "time_range" => {
                     time_range = Some(value.parse::<TimeSelection>()?);
@@ -72,7 +72,7 @@ impl DatasetPartitionUri {
             }
         }
 
-        let Some(partition_id) = partition_id else {
+        let Some(segment_id) = segment_id else {
             return Err(Error::MissingPartitionId);
         };
 
@@ -84,7 +84,7 @@ impl DatasetPartitionUri {
         Ok(Self {
             origin,
             dataset_id,
-            partition_id,
+            segment_id,
             time_range,
             fragment,
         })
@@ -95,7 +95,7 @@ impl DatasetPartitionUri {
         let Self {
             origin: _,       // Mandatory
             dataset_id: _,   // Mandatory
-            partition_id: _, // Mandatory
+            segment_id: _, // Mandatory
             time_range,
             fragment,
         } = &mut self;
@@ -111,7 +111,7 @@ impl DatasetPartitionUri {
         let Self {
             origin: _,       // Mandatory
             dataset_id: _,   // Mandatory
-            partition_id: _, // Mandatory
+            segment_id: _, // Mandatory
             time_range: _,
             fragment,
         } = &mut self;
@@ -125,7 +125,7 @@ impl DatasetPartitionUri {
         StoreId::new(
             re_log_types::StoreKind::Recording,
             self.dataset_id.to_string(),
-            self.partition_id.clone(),
+            self.segment_id.clone(),
         )
     }
 }

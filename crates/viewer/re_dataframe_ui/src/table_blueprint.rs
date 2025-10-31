@@ -60,13 +60,13 @@ impl SortBy {
     }
 }
 
-/// Information required to generate a partition link column.
+/// Information required to generate a segment link column.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PartitionLinksSpec {
     /// Name of the column to generate.
     pub column_name: String,
 
-    /// Name of the existing column containing the partition id.
+    /// Name of the existing column containing the segment id.
     pub partition_id_column_name: String,
 
     /// Origin to use for the links.
@@ -76,13 +76,13 @@ pub struct PartitionLinksSpec {
     pub dataset_id: EntryId,
 }
 
-/// Information required to generate a partition link column.
+/// Information required to generate a segment link column.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EntryLinksSpec {
     /// Name of the column to generate.
     pub column_name: String,
 
-    /// Name of the existing column containing the partition id.
+    /// Name of the existing column containing the segment id.
     pub entry_id_column_name: String,
 
     /// Origin to use for the links.

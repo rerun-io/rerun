@@ -21,10 +21,10 @@ pub enum Error {
     #[error("Entry id '{0}' not found")]
     EntryIdNotFound(EntryId),
 
-    #[error("Partition '{0}' not found in dataset '{1}'")]
+    #[error("Segment '{0}' not found in dataset '{1}'")]
     PartitionIdNotFound(PartitionId, EntryId),
 
-    #[error("Layer '{0}' not found in partition '{1}' of dataset '{2}'")]
+    #[error("Layer '{0}' not found in segment '{1}' of dataset '{2}'")]
     LayerNameNotFound(String, PartitionId, EntryId),
 
     #[error("Layer '{0}' already exists")]

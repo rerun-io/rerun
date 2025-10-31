@@ -47,8 +47,8 @@ impl ViewerOpenUrlDescription {
             },
 
             ViewerOpenUrl::RedapDatasetPartition(uri) => Self {
-                category: "Partition",
-                target_short: Some(uri.partition_id.clone()),
+                category: "Segment",
+                target_short: Some(uri.segment_id.clone()),
             },
 
             ViewerOpenUrl::RedapProxy(_) => Self {

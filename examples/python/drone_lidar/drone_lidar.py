@@ -84,25 +84,25 @@ def compute_partitions(
     times: npt.NDArray[np.float64],
 ) -> tuple[typing.Sequence[float], typing.Sequence[np.uintp]]:
     """
-    Compute partitions given possibly repeating times.
+    Compute segments given possibly repeating times.
 
     This function returns two arrays:
     - Non-repeating times: a filtered version of `times` where repeated times are removed.
     - Partitions: an array of integers where each element indicates the number of elements for the corresponding time
       values in the original `times` array.
 
-    By construction, both arrays should have the same length, and the sum of all elements in `partitions` should be
+    By construction, both arrays should have the same length, and the sum of all elements in `segments` should be
     equal to the length of `times`.
     """
 
     change_indices = (np.argwhere(times != np.concatenate([times[1:], np.array([np.nan])])).T + 1).reshape(-1)
-    partitions = np.concatenate([[change_indices[0]], np.diff(change_indices)])
+    segments = np.concatenate([[change_indices[0]], np.diff(change_indices)])
     non_repeating_times = times[change_indices - 1]
 
-    assert np.sum(partitions) == len(times)
-    assert len(non_repeating_times) == len(partitions)
+    assert np.sum(segments) == len(times)
+    assert len(non_repeating_times) == len(segments)
 
-    return non_repeating_times, partitions  # type: ignore[return-value]
+    return non_repeating_times, segments  # type: ignore[return-value]
 
 
 def log_lidar_data() -> None:
@@ -113,13 +113,13 @@ def log_lidar_data() -> None:
     positions = np.column_stack((points.X / 1000.0, points.Y / 1000.0, points.Z / 1000.0))
     times = las_data.gps_time
 
-    non_repeating_times, partitions = compute_partitions(times)
+    non_repeating_times, segments = compute_partitions(times)
 
-    # log all positions at once using the computed partitions
+    # log all positions at once using the computed segments
     rr.send_columns(
         "/lidar",
         [rr.TimeColumn("time", duration=non_repeating_times)],
-        rr.Points3D.columns(positions=positions).partition(partitions),
+        rr.Points3D.columns(positions=positions).partition(segments),
     )
 
     rr.log(

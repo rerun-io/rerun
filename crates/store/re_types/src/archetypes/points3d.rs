@@ -114,7 +114,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     let colors = [0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF];
 ///     let radii = [0.05, 0.01, 0.2, 0.1, 0.3];
 ///
-///     // Partition our data as expected across the 5 timesteps.
+///     // Segment our data as expected across the 5 timesteps.
 ///     let position = rerun::Points3D::update_fields()
 ///         .with_positions(positions)
 ///         .columns([2, 4, 4, 3, 4])?;

@@ -61,7 +61,7 @@ impl GrpcStreamToTable for PartitionTableProvider {
                     .await
                     .map_err(|err| {
                         DataFusionError::External(
-                            format!("Couldn't get partition table schema: {err}").into(),
+                            format!("Couldn't get segment table schema: {err}").into(),
                         )
                     })
             })

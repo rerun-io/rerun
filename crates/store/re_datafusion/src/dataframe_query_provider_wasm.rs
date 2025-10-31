@@ -63,7 +63,7 @@ pub struct DataframePartitionStream {
 impl DataframePartitionStream {
     async fn get_chunk_store_for_single_rerun_partition(
         &mut self,
-        partition_id: &str,
+        segment_id: &str,
     ) -> Result<ChunkStoreHandle, DataFusionError> {
         let chunk_infos = self.chunk_infos.iter().map(Into::into).collect::<Vec<_>>();
         let fetch_chunks_request = FetchChunksRequest { chunk_infos };
@@ -84,7 +84,7 @@ impl DataframePartitionStream {
 
         // Note: using partition id as the store id, shouldn't really
         // matter since this is just a temporary store.
-        let store_id = StoreId::random(StoreKind::Recording, partition_id);
+        let store_id = StoreId::random(StoreKind::Recording, segment_id);
         let store = ChunkStore::new_handle(store_id, Default::default());
 
         while let Some(chunks_and_partition_ids) = chunk_stream.next().await {
@@ -102,7 +102,7 @@ impl DataframePartitionStream {
 
                 let received_partition_id = received_partition_id
                     .ok_or_else(|| exec_datafusion_err!("Received chunk without a partition id"))?;
-                if received_partition_id != partition_id {
+                if received_partition_id != segment_id {
                     return exec_err!("Unexpected partition id: {received_partition_id}");
                 }
 
@@ -130,13 +130,13 @@ impl Stream for DataframePartitionStream {
             }
 
             while this.current_query.is_none() {
-                let Some(partition_id) = this.remaining_partition_ids.pop() else {
+                let Some(segment_id) = this.remaining_partition_ids.pop() else {
                     return Poll::Ready(None);
                 };
 
                 let runtime = Handle::current();
                 let store = runtime.block_on(
-                    this.get_chunk_store_for_single_rerun_partition(partition_id.as_str()),
+                    this.get_chunk_store_for_single_rerun_partition(segment_id.as_str()),
                 )?;
 
                 let query_engine = QueryEngine::new(store.clone(), QueryCache::new_handle(store));
@@ -144,17 +144,17 @@ impl Stream for DataframePartitionStream {
                 let query = query_engine.query(this.query_expression.clone());
 
                 if query.num_rows() > 0 {
-                    this.current_query = Some((partition_id, query));
+                    this.current_query = Some((segment_id, query));
                 }
             }
 
-            let (partition_id, query) = this
+            let (segment_id, query) = this
                 .current_query
                 .as_mut()
                 .expect("current_query should be Some");
 
             // If the following returns none, we have exhausted that rerun partition id
-            match create_next_row(query, partition_id, &this.projected_schema)? {
+            match create_next_row(query, segment_id, &this.projected_schema)? {
                 Some(rb) => return Poll::Ready(Some(Ok(rb))),
                 None => this.current_query = None,
             }
@@ -264,7 +264,7 @@ impl PartitionStreamExec {
 #[tracing::instrument(level = "trace", skip_all)]
 fn create_next_row(
     query_handle: &QueryHandle<StorageEngine>,
-    partition_id: &str,
+    segment_id: &str,
     target_schema: &Arc<Schema>,
 ) -> Result<Option<RecordBatch>, DataFusionError> {
     let query_schema = Arc::clone(query_handle.schema());
@@ -284,7 +284,7 @@ fn create_next_row(
 
     let num_rows = next_row[0].len();
     let pid_array =
-        Arc::new(StringArray::from(vec![partition_id.to_owned(); num_rows])) as Arc<dyn Array>;
+        Arc::new(StringArray::from(vec![segment_id.to_owned(); num_rows])) as Arc<dyn Array>;
 
     let mut arrays = Vec::with_capacity(num_fields + 1);
     arrays.push(pid_array);
@@ -374,8 +374,8 @@ impl ExecutionPlan for PartitionStreamExec {
         let mut remaining_partition_ids = self
             .chunk_info
             .keys()
-            .filter(|partition_id| {
-                let hash_value = partition_id.hash_one(&random_state) as usize;
+            .filter(|segment_id| {
+                let hash_value = segment_id.hash_one(&random_state) as usize;
                 hash_value % self.target_partitions == partition
             })
             .cloned()

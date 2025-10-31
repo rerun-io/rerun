@@ -177,7 +177,7 @@ pub(crate) async fn client(
 /// Converts a `FetchChunksStream` stream into a stream of `Chunk`s.
 //
 // TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
-// TODO(cmc): we should compute contiguous runs of the same partition here, and return a `(String, Vec<Chunk>)`
+// TODO(cmc): we should compute contiguous runs of the same segment here, and return a `(String, Vec<Chunk>)`
 // instead. Because of how the server performs the computation, this will very likely work out well
 // in practice.
 #[cfg(not(target_arch = "wasm32"))]
@@ -203,7 +203,7 @@ where
                 r.chunks
                     .into_iter()
                     .map(|arrow_msg| {
-                        let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
+                        let segment_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
 
                         use re_log_encoding::ToApplication as _;
                         let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
@@ -222,7 +222,7 @@ where
                             },
                         )?;
 
-                        Ok((chunk, partition_id))
+                        Ok((chunk, segment_id))
                     })
                     .collect::<Result<Vec<_>, _>>()
             })
@@ -255,7 +255,7 @@ where
         resp.chunks
             .into_iter()
             .map(|arrow_msg| {
-                let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
+                let segment_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
 
                 use re_log_encoding::ToApplication as _;
                 let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
@@ -273,13 +273,13 @@ where
                         )
                     })?;
 
-                Ok((chunk, partition_id))
+                Ok((chunk, segment_id))
             })
             .collect::<Result<Vec<_>, _>>()
     })
 }
 
-/// Canonical way to ingest partition data from a Rerun data platform server, dealing with
+/// Canonical way to ingest segment data from a Rerun data platform server, dealing with
 /// server-stored blueprints if any.
 ///
 /// The current strategy currently consists of _always_ downloading the blueprint first and setting
@@ -352,7 +352,7 @@ pub async fn stream_blueprint_and_partition_from_server(
     let re_uri::DatasetPartitionUri {
         origin: _,
         dataset_id,
-        partition_id,
+        segment_id,
         time_range,
         fragment,
     } = uri;
@@ -370,7 +370,7 @@ pub async fn stream_blueprint_and_partition_from_server(
         store_info,
         &tx,
         dataset_id.into(),
-        partition_id.into(),
+        segment_id.into(),
         time_range,
         fragment,
         on_msg.as_deref(),
@@ -387,7 +387,7 @@ async fn stream_partition_from_server(
     store_info: StoreInfo,
     tx: &re_smart_channel::Sender<DataSourceMessage>,
     dataset_id: EntryId,
-    partition_id: PartitionId,
+    segment_id: PartitionId,
     time_range: Option<TimeSelection>,
     fragment: re_uri::Fragment,
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
@@ -397,7 +397,7 @@ async fn stream_partition_from_server(
     let static_chunk_stream = client
         .fetch_partition_chunks(
             dataset_id,
-            partition_id.clone(),
+            segment_id.clone(),
             exclude_static_data,
             exclude_temporal_data,
             None,
@@ -409,7 +409,7 @@ async fn stream_partition_from_server(
     let temporal_chunk_stream = client
         .fetch_partition_chunks(
             dataset_id,
-            partition_id,
+            segment_id,
             exclude_static_data,
             exclude_temporal_data,
             time_range.clone().map(|time_range| {

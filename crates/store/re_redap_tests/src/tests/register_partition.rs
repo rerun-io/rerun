@@ -57,7 +57,7 @@ pub async fn register_and_scan_simple_dataset_with_properties(service: impl Reru
                 "my_partition_id1",
                 [prop(
                     "text_log",
-                    re_types::archetypes::TextLog::new("i'm partition 1"),
+                    re_types::archetypes::TextLog::new("i'm segment 1"),
                 )],
             )
             .layer_name("props"),
@@ -66,7 +66,7 @@ pub async fn register_and_scan_simple_dataset_with_properties(service: impl Reru
                 [
                     prop(
                         "text_log",
-                        re_types::archetypes::TextLog::new("i'm partition 2"),
+                        re_types::archetypes::TextLog::new("i'm segment 2"),
                     ),
                     prop("points", re_types::archetypes::Points2D::new([(0.0, 1.0)])),
                 ],
@@ -85,7 +85,7 @@ pub async fn register_and_scan_simple_dataset_with_properties(service: impl Reru
     scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple_with_properties").await;
 }
 
-/// This test checks that the registration order takes precedence to resolve a partition's
+/// This test checks that the registration order takes precedence to resolve a segment's
 /// properties.
 ///
 /// Note: this is not great. We should probably use the "regular" Rerun way for that (aka row id

@@ -31,7 +31,7 @@ int main() {
     auto times = rerun::Collection{10s, 11s, 12s, 13s, 14s};
     auto time_column = rerun::TimeColumn::from_durations("time", std::move(times));
 
-    // Partition our data as expected across the 5 timesteps.
+    // Segment our data as expected across the 5 timesteps.
     auto position = rerun::Points3D().with_positions(positions).columns({2, 4, 4, 3, 4});
     auto color_and_radius = rerun::Points3D().with_colors(colors).with_radii(radii).columns();
 

@@ -276,7 +276,7 @@ where
             })
     }
 
-    /// Get a list of partition IDs for the given dataset entry ID.
+    /// Get a list of segment IDs for the given dataset entry ID.
     //TODO(ab): is there a way—and a reason—to not collect and instead return a stream?
     pub async fn get_dataset_partition_ids(
         &mut self,
@@ -299,7 +299,7 @@ where
             .map_err(|err| ApiError::tonic(err, "/ScanPartitionTable failed"))?
             .into_inner();
 
-        let mut partition_ids = Vec::new();
+        let mut segment_ids = Vec::new();
 
         while let Some(resp) = stream.next().await {
             let record_batch: RecordBatch = resp
@@ -338,14 +338,14 @@ where
                     )
                 })?;
 
-            partition_ids.extend(
+            segment_ids.extend(
                 partition_id_array
                     .iter()
                     .filter_map(|opt| opt.map(|s| PartitionId::new(s.to_owned()))),
             );
         }
 
-        Ok(partition_ids)
+        Ok(segment_ids)
     }
 
     //TODO(ab): accept entry name
@@ -375,18 +375,18 @@ where
             })
     }
 
-    /// Fetches all chunks for a specified partition. You can include/exclude static/temporal chunks.
+    /// Fetches all chunks for a specified segment. You can include/exclude static/temporal chunks.
     /// TODO(zehiko) We should also expose query and fetch separately
     pub async fn fetch_partition_chunks(
         &mut self,
         dataset_id: EntryId,
-        partition_id: PartitionId,
+        segment_id: PartitionId,
         exclude_static_data: bool,
         exclude_temporal_data: bool,
         query: Option<re_protos::cloud::v1alpha1::Query>,
     ) -> Result<FetchChunksResponseStream, ApiError> {
         let query_request = QueryDatasetRequest {
-            partition_ids: vec![partition_id.into()],
+            segment_ids: vec![segment_id.into()],
             chunk_ids: vec![],
             entity_paths: vec![],
             select_all_entity_paths: true,
@@ -539,12 +539,12 @@ where
             storage_url_column,
             task_id_column,
         )
-        .map(|(partition_id, partition_type, storage_url, task_id)| {
+        .map(|(segment_id, partition_type, storage_url, task_id)| {
             Ok(RegisterWithDatasetTaskDescriptor {
-                partition_id: PartitionId::new(
-                    partition_id
+                segment_id: PartitionId::new(
+                    segment_id
                         .ok_or_else(|| {
-                            let err = missing_field!(RegisterWithDatasetResponse, "partition_id");
+                            let err = missing_field!(RegisterWithDatasetResponse, "segment_id");
                             ApiError::serialization(
                                 err,
                                 "missing field in /RegisterWithDataset response",

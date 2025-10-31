@@ -25,10 +25,10 @@ def partition_url(
     timeline_name: str | None = None,
 ) -> Expr:
     """
-    Compute the URL for a partition within a dataset.
+    Compute the URL for a segment within a dataset.
 
     This is a Rerun focused DataFusion function that will create a DataFusion
-    expression for the partition URL.
+    expression for the segment URL.
 
     To manually invoke the underlying UDF, see `partition_url_udf` or
     `partition_url_with_timeref_udf`.
@@ -38,12 +38,12 @@ def partition_url(
     dataset:
         The input Rerun Dataset.
     partition_id_col:
-        The column containing the partition ID. If not provided, it will assume
+        The column containing the segment ID. If not provided, it will assume
         a default value of `rerun_partition_id`. You may pass either a DataFusion
         expression or a string column name.
     timestamp_col:
         If this parameter is passed in, generate a URL that will jump to a
-        specific timestamp within the partition.
+        specific timestamp within the segment.
     timeline_name:
         When used in combination with `timestamp_col`, this specifies which timeline
         to seek along. By default this will use the same string as timestamp_col.
@@ -72,10 +72,10 @@ def partition_url(
 
 def partition_url_udf(dataset: DatasetEntry) -> ScalarUDF:
     """
-    Create a UDF to the URL for a partition within a Dataset.
+    Create a UDF to the URL for a segment within a Dataset.
 
     This function will generate a UDF that expects one column of input,
-    a string containing the Partition ID.
+    a string containing the Segment ID.
     """
     if not HAS_DATAFUSION:
         raise RerunMissingDependencyError("datafusion", "datafusion")
@@ -92,10 +92,10 @@ def partition_url_udf(dataset: DatasetEntry) -> ScalarUDF:
 
 def partition_url_with_timeref_udf(dataset: DatasetEntry, timeline_name: str) -> ScalarUDF:
     """
-    Create a UDF to the URL for a partition within a Dataset with timestamp.
+    Create a UDF to the URL for a segment within a Dataset with timestamp.
 
     This function will generate a UDF that expects two columns of input,
-    a string containing the Partition ID and the timestamp in nanoseconds.
+    a string containing the Segment ID and the timestamp in nanoseconds.
     """
     if not HAS_DATAFUSION:
         raise RerunMissingDependencyError("datafusion", "datafusion")

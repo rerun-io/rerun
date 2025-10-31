@@ -326,7 +326,7 @@ impl Chunk {
             );
         }
 
-        // Handle edge case: recording time on partition properties should ignore start time.
+        // Handle edge case: recording time on segment properties should ignore start time.
         if entity_path == &EntityPath::properties() {
             // We're going to filter out some components on both lhs and rhs.
             // Therefore, it's important that we first check that the number of components is the same.

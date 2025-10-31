@@ -146,7 +146,7 @@ impl SmartChannelSource {
             // We only show things we know are very-soon-to-be recordings:
             Self::File(path) => Some(path.to_string_lossy().into_owned()),
             Self::RrdHttpStream { url, .. } => Some(url.clone()),
-            Self::RedapGrpcStream { uri, .. } => Some(uri.partition_id.clone()),
+            Self::RedapGrpcStream { uri, .. } => Some(uri.segment_id.clone()),
 
             Self::RrdWebEventListener
             | Self::JsChannel { .. }

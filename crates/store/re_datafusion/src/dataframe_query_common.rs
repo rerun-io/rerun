@@ -61,7 +61,7 @@ impl DataframeQueryTableProvider {
         connection: ConnectionRegistryHandle,
         dataset_id: EntryId,
         query_expression: &QueryExpression,
-        partition_ids: &[impl AsRef<str> + Sync],
+        segment_ids: &[impl AsRef<str> + Sync],
     ) -> Result<Self, DataFusionError> {
         use futures::StreamExt as _;
 
@@ -109,7 +109,7 @@ impl DataframeQueryTableProvider {
         let query = query_from_query_expression(query_expression);
 
         let dataset_query = QueryDatasetRequest {
-            partition_ids: partition_ids
+            segment_ids: segment_ids
                 .iter()
                 .map(|id| id.as_ref().to_owned().into())
                 .collect(),
@@ -392,13 +392,13 @@ pub fn align_record_batch_to_schema(
     )?)
 }
 
-/// We need to create `num_partitions` of partition stream outputs, each of
+/// We need to create `num_partitions` of segment stream outputs, each of
 /// which will be fed from multiple `rerun_partition_id` sources. The partitioning
 /// output is a hash of the `rerun_partition_id`. We will reuse some of the
 /// underlying execution code from `DataFusion`'s `RepartitionExec` to compute
-/// these partition IDs, just to be certain they match partitioning generated
+/// these segment IDs, just to be certain they match partitioning generated
 /// from sources other than Rerun gRPC services.
-/// This function will do the relevant grouping of chunk infos by chunk's partition id
+/// This function will do the relevant grouping of chunk infos by chunk's segment id
 /// and we will eventually fire individual queries for each group. Partitions must be ordered,
 /// see `PartitionStreamExec::try_new` for more details.
 #[tracing::instrument(level = "trace", skip_all)]
@@ -408,7 +408,7 @@ pub(crate) fn group_chunk_infos_by_partition_id(
     let mut results = BTreeMap::new();
 
     for batch in chunk_info_batches.as_ref() {
-        let partition_ids = batch
+        let segment_ids = batch
             .column_by_name("chunk_partition_id")
             .ok_or(exec_datafusion_err!(
                 "Unable to find chunk_partition_id column"
@@ -419,11 +419,11 @@ pub(crate) fn group_chunk_infos_by_partition_id(
                 "chunk_partition_id must be string type"
             ))?;
 
-        // group rows by partition ID
+        // group rows by segment ID
         let mut partition_rows: BTreeMap<String, Vec<usize>> = BTreeMap::new();
-        for (row_idx, partition_id) in partition_ids.iter().enumerate() {
-            let pid = partition_id.ok_or(exec_datafusion_err!(
-                "Found null partition_id in chunk_partition_id column at row {row_idx}"
+        for (row_idx, segment_id) in segment_ids.iter().enumerate() {
+            let pid = segment_id.ok_or(exec_datafusion_err!(
+                "Found null segment_id in chunk_partition_id column at row {row_idx}"
             ))?;
             partition_rows
                 .entry(pid.to_owned())
@@ -431,7 +431,7 @@ pub(crate) fn group_chunk_infos_by_partition_id(
                 .push(row_idx);
         }
 
-        for (partition_id, row_indices) in partition_rows {
+        for (segment_id, row_indices) in partition_rows {
             if row_indices.is_empty() {
                 continue;
             }
@@ -443,7 +443,7 @@ pub(crate) fn group_chunk_infos_by_partition_id(
             let partition_batch = arrow::compute::take_record_batch(batch, &indices)?;
 
             results
-                .entry(partition_id)
+                .entry(segment_id)
                 .or_insert_with(Vec::new)
                 .push(partition_batch);
         }

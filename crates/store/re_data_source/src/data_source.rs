@@ -322,9 +322,9 @@ mod tests {
             "www.foo.zip/blueprint.rbl",
         ];
         let grpc = [
-            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid",
-            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@1230ms..1m12s",
-            "rerun+http://example.com/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid",
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=pid",
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=pid&time_range=timeline@1230ms..1m12s",
+            "rerun+http://example.com/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=pid",
         ];
 
         let proxy = [

@@ -80,7 +80,7 @@ impl From<RegisterWithDatasetRequest> for crate::cloud::v1alpha1::RegisterWithDa
 
 #[derive(Debug, Clone)]
 pub struct QueryDatasetRequest {
-    pub partition_ids: Vec<crate::common::v1alpha1::ext::PartitionId>,
+    pub segment_ids: Vec<crate::common::v1alpha1::ext::PartitionId>,
     pub chunk_ids: Vec<re_chunk::ChunkId>,
     pub entity_paths: Vec<EntityPath>,
     pub select_all_entity_paths: bool,
@@ -94,7 +94,7 @@ pub struct QueryDatasetRequest {
 impl Default for QueryDatasetRequest {
     fn default() -> Self {
         Self {
-            partition_ids: vec![],
+            segment_ids: vec![],
             chunk_ids: vec![],
             entity_paths: vec![],
             select_all_entity_paths: true,
@@ -110,7 +110,7 @@ impl Default for QueryDatasetRequest {
 impl From<QueryDatasetRequest> for crate::cloud::v1alpha1::QueryDatasetRequest {
     fn from(value: QueryDatasetRequest) -> Self {
         Self {
-            partition_ids: value.partition_ids.into_iter().map(Into::into).collect(),
+            segment_ids: value.segment_ids.into_iter().map(Into::into).collect(),
             chunk_ids: value
                 .chunk_ids
                 .into_iter()
@@ -132,8 +132,8 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
 
     fn try_from(value: crate::cloud::v1alpha1::QueryDatasetRequest) -> Result<Self, Self::Error> {
         Ok(Self {
-            partition_ids: value
-                .partition_ids
+            segment_ids: value
+                .segment_ids
                 .into_iter()
                 .map(TryInto::try_into)
                 .collect::<Result<Vec<_>, _>>()?,
@@ -1412,16 +1412,16 @@ impl RegisterWithDatasetResponse {
 
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
-        partition_ids: Vec<String>,
+        segment_ids: Vec<String>,
         partition_layers: Vec<String>,
         partition_types: Vec<String>,
         storage_urls: Vec<String>,
         task_ids: Vec<String>,
     ) -> arrow::error::Result<RecordBatch> {
-        let row_count = partition_ids.len();
+        let row_count = segment_ids.len();
         let schema = Arc::new(Self::schema());
         let columns: Vec<ArrayRef> = vec![
-            Arc::new(StringArray::from(partition_ids)),
+            Arc::new(StringArray::from(segment_ids)),
             Arc::new(StringArray::from(partition_layers)),
             Arc::new(StringArray::from(partition_types)),
             Arc::new(StringArray::from(storage_urls)),
@@ -1439,7 +1439,7 @@ impl RegisterWithDatasetResponse {
 //TODO(ab): this should be an actual grpc message, returned by `RegisterWithDataset` instead of a dataframe
 #[derive(Debug)]
 pub struct RegisterWithDatasetTaskDescriptor {
-    pub partition_id: PartitionId,
+    pub segment_id: PartitionId,
     pub partition_type: DataSourceKind,
     pub storage_url: url::Url,
     pub task_id: TaskId,
@@ -1450,24 +1450,24 @@ pub struct RegisterWithDatasetTaskDescriptor {
 impl ScanPartitionTableResponse {
     pub const FIELD_PARTITION_ID: &str = "rerun_partition_id";
 
-    /// Layer names for this partition, one per layer.
+    /// Layer names for this segment, one per layer.
     ///
     /// Should have the same length as [`Self::FIELD_STORAGE_URLS`].
     pub const FIELD_LAYER_NAMES: &str = "rerun_layer_names";
 
-    /// Storage URLs for this partition, one per layer.
+    /// Storage URLs for this segment, one per layer.
     ///
     /// Should have the same length as [`Self::FIELD_LAYER_NAMES`].
     pub const FIELD_STORAGE_URLS: &str = "rerun_storage_urls";
 
-    /// Keeps track of the most recent time any layer belonging to this partition was updated in any
+    /// Keeps track of the most recent time any layer belonging to this segment was updated in any
     /// way.
     pub const FIELD_LAST_UPDATED_AT: &str = "rerun_last_updated_at";
 
-    /// Total number of chunks for this partition.
+    /// Total number of chunks for this segment.
     pub const FIELD_NUM_CHUNKS: &str = "rerun_num_chunks";
 
-    /// Total size in bytes for this partition.
+    /// Total size in bytes for this segment.
     pub const FIELD_SIZE_BYTES: &str = "rerun_size_bytes";
 
     pub fn field_partition_id() -> FieldRef {
@@ -1533,14 +1533,14 @@ impl ScanPartitionTableResponse {
 
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
-        partition_ids: Vec<String>,
+        segment_ids: Vec<String>,
         layer_names: Vec<Vec<String>>,
         storage_urls: Vec<Vec<String>>,
         last_updated_at: Vec<i64>,
         num_chunks: Vec<u64>,
         size_bytes: Vec<u64>,
     ) -> arrow::error::Result<RecordBatch> {
-        let row_count = partition_ids.len();
+        let row_count = segment_ids.len();
         let schema = Arc::new(Self::schema());
 
         let mut layer_names_builder =
@@ -1564,7 +1564,7 @@ impl ScanPartitionTableResponse {
         }
 
         let columns: Vec<ArrayRef> = vec![
-            Arc::new(StringArray::from(partition_ids)),
+            Arc::new(StringArray::from(segment_ids)),
             Arc::new(layer_names_builder.finish()),
             Arc::new(urls_builder.finish()),
             Arc::new(TimestampNanosecondArray::from(last_updated_at)),
@@ -1673,7 +1673,7 @@ impl ScanDatasetManifestResponse {
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
         layer_names: Vec<String>,
-        partition_ids: Vec<String>,
+        segment_ids: Vec<String>,
         storage_urls: Vec<String>,
         layer_types: Vec<String>,
         registration_times: Vec<i64>,
@@ -1682,7 +1682,7 @@ impl ScanDatasetManifestResponse {
         size_bytes: Vec<u64>,
         schema_sha256s: Vec<[u8; 32]>,
     ) -> arrow::error::Result<RecordBatch> {
-        let row_count = partition_ids.len();
+        let row_count = segment_ids.len();
         let schema = Arc::new(Self::schema());
 
         let mut schema_sha256_builder = FixedSizeBinaryBuilder::with_capacity(row_count, 32);
@@ -1692,7 +1692,7 @@ impl ScanDatasetManifestResponse {
 
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(layer_names)),
-            Arc::new(StringArray::from(partition_ids)),
+            Arc::new(StringArray::from(segment_ids)),
             Arc::new(StringArray::from(storage_urls)),
             Arc::new(StringArray::from(layer_types)),
             Arc::new(TimestampNanosecondArray::from(registration_times)),
@@ -2143,7 +2143,7 @@ mod tests {
     /// Ensure `crate_dataframe` implementation is consistent with `schema()`
     #[test]
     fn test_scan_partition_table_response_create_dataframe() {
-        let partition_ids = vec!["1".to_owned(), "2".to_owned()];
+        let segment_ids = vec!["1".to_owned(), "2".to_owned()];
         let layer_names = vec![vec!["a".to_owned(), "b".to_owned()], vec!["c".to_owned()]];
         let storage_urls = vec![vec!["d".to_owned(), "e".to_owned()], vec!["f".to_owned()]];
         let last_updated_at = vec![1, 2];
@@ -2151,7 +2151,7 @@ mod tests {
         let size_bytes = vec![1, 2];
 
         ScanPartitionTableResponse::create_dataframe(
-            partition_ids,
+            segment_ids,
             layer_names,
             storage_urls,
             last_updated_at,
@@ -2165,7 +2165,7 @@ mod tests {
     #[test]
     fn test_scan_dataset_manifest_response_create_dataframe() {
         let layer_name = vec!["a".to_owned()];
-        let partition_id = vec!["1".to_owned()];
+        let segment_id = vec!["1".to_owned()];
         let storage_url = vec!["d".to_owned()];
         let layer_type = vec!["c".to_owned()];
         let registration_time = vec![1];
@@ -2176,7 +2176,7 @@ mod tests {
 
         ScanDatasetManifestResponse::create_dataframe(
             layer_name,
-            partition_id,
+            segment_id,
             storage_url,
             layer_type,
             registration_time,

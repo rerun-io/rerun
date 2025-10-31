@@ -747,7 +747,7 @@ mod tests {
         );
 
         // DatasetPartitionUri
-        let url = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?partition_id=pid");
+        let url = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?segment_id=pid");
         assert_eq!(
             ViewerOpenUrl::from_str(&url).unwrap(),
             ViewerOpenUrl::RedapDatasetPartition(url.parse().unwrap())
@@ -965,7 +965,7 @@ mod tests {
 
         // originating from Redap gRPC stream.
         let entry_id = EntryId::new();
-        let uri = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?partition_id=pid");
+        let uri = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?segment_id=pid");
         let id = add_store(
             &mut store_hub,
             Some(SmartChannelSource::RedapGrpcStream {
@@ -1051,7 +1051,7 @@ mod tests {
         );
 
         let entry_id = EntryId::new();
-        let uri = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?partition_id=pid");
+        let uri = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?segment_id=pid");
         assert_eq!(
             ViewerOpenUrl::RedapDatasetPartition(uri.parse().unwrap())
                 .sharable_url(None)
@@ -1131,7 +1131,7 @@ mod tests {
 
         assert_eq!(
             ViewerOpenUrl::RedapDatasetPartition(
-                "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae?partition_id=pid"
+                "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae?segment_id=pid"
                     .parse()
                     .unwrap()
             )

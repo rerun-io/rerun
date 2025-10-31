@@ -24,8 +24,8 @@ pub struct SorbetSchema {
     /// Which entity is this chunk for?
     pub entity_path: Option<EntityPath>,
 
-    /// The partition id that this chunk belongs to.
-    pub partition_id: Option<String>,
+    /// The segment id that this chunk belongs to.
+    pub segment_id: Option<String>,
 
     /// The heap size of this batch in bytes, if known.
     pub heap_size_bytes: Option<u64>,
@@ -62,10 +62,10 @@ impl SorbetSchema {
         ("rerun:entity_path".to_owned(), entity_path.to_string())
     }
 
-    pub fn partition_id_metadata(partition_id: impl AsRef<str>) -> (String, String) {
+    pub fn partition_id_metadata(segment_id: impl AsRef<str>) -> (String, String) {
         (
-            "rerun:partition_id".to_owned(),
-            partition_id.as_ref().to_owned(),
+            "rerun:segment_id".to_owned(),
+            segment_id.as_ref().to_owned(),
         )
     }
 
@@ -75,7 +75,7 @@ impl SorbetSchema {
             chunk_id,
             entity_path,
             heap_size_bytes,
-            partition_id,
+            segment_id,
             timestamps,
         } = self;
 
@@ -86,7 +86,7 @@ impl SorbetSchema {
             )),
             chunk_id.as_ref().map(Self::chunk_id_metadata),
             entity_path.as_ref().map(Self::entity_path_metadata),
-            partition_id.as_ref().map(Self::partition_id_metadata),
+            segment_id.as_ref().map(Self::partition_id_metadata),
             heap_size_bytes.as_ref().map(|heap_size_bytes| {
                 (
                     "rerun:heap_size_bytes".to_owned(),
@@ -164,7 +164,7 @@ impl SorbetSchema {
             None
         };
 
-        let partition_id = metadata.get("rerun:partition_id").map(|s| s.to_owned());
+        let segment_id = metadata.get("rerun:segment_id").map(|s| s.to_owned());
 
         // Verify version
         if let Some(batch_version) = metadata.get(Self::METADATA_KEY_VERSION)
@@ -180,7 +180,7 @@ impl SorbetSchema {
             columns,
             chunk_id,
             entity_path,
-            partition_id,
+            segment_id,
             heap_size_bytes,
             timestamps: TimestampMetadata::parse_record_batch_metadata(metadata),
         })

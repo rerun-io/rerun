@@ -572,7 +572,7 @@ impl ConnectionHandle {
         py: Python<'_>,
         dataset_id: EntryId,
         query_expression: &QueryExpression,
-        partition_ids: &[impl AsRef<str> + Sync],
+        segment_ids: &[impl AsRef<str> + Sync],
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
         use tokio_stream::StreamExt as _;
 
@@ -605,7 +605,7 @@ impl ConnectionHandle {
         let query = query_from_query_expression(query_expression);
 
         let request = QueryDatasetRequest {
-            partition_ids: partition_ids
+            segment_ids: segment_ids
                 .iter()
                 .map(|id| id.as_ref().to_owned().into())
                 .collect(),

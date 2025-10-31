@@ -147,7 +147,7 @@ export type ViewerEvent =
 export type ViewerEventBase = {
   application_id: string;
   recording_id: string;
-  partition_id?: string;
+  segment_id?: string;
 }
 
 /**

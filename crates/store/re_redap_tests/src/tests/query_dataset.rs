@@ -49,7 +49,7 @@ pub async fn query_simple_dataset(service: impl RerunCloudService) {
         (QueryDatasetRequest::default(), "default"),
         (
             QueryDatasetRequest {
-                partition_ids: vec!["my_partition_id3".into()],
+                segment_ids: vec!["my_partition_id3".into()],
                 ..Default::default()
             },
             "single_partition",

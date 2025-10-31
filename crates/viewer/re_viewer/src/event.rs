@@ -26,7 +26,7 @@ pub struct ViewerEvent {
     #[serde(with = "serde::recording_id")]
     pub recording_id: RecordingId,
 
-    pub partition_id: Option<String>,
+    pub segment_id: Option<String>,
 
     #[serde(flatten)]
     pub kind: ViewerEventKind,
@@ -35,13 +35,13 @@ pub struct ViewerEvent {
 impl ViewerEvent {
     #[inline]
     fn from_db_and_kind(db: &EntityDb, kind: ViewerEventKind) -> Self {
-        let partition_id = db.data_source.as_ref().and_then(|ds| {
+        let segment_id = db.data_source.as_ref().and_then(|ds| {
             if let SmartChannelSource::RedapGrpcStream {
-                uri: re_uri::DatasetPartitionUri { partition_id, .. },
+                uri: re_uri::DatasetPartitionUri { segment_id, .. },
                 ..
             } = ds
             {
-                Some(partition_id.clone())
+                Some(segment_id.clone())
             } else {
                 None
             }
@@ -50,7 +50,7 @@ impl ViewerEvent {
         Self {
             application_id: db.application_id().clone(),
             recording_id: db.recording_id().clone(),
-            partition_id,
+            segment_id,
             kind,
         }
     }

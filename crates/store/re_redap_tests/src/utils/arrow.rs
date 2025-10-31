@@ -29,7 +29,7 @@ pub trait RecordBatchExt {
 
     /// Sort property columns lexicographically.
     ///
-    /// This is useful because there is no guarantee on property ordering in partition tables and
+    /// This is useful because there is no guarantee on property ordering in segment tables and
     /// dataset manifest.
     ///
     /// Well, in practice there is no guarantee at all, but the base columns have a consistent,

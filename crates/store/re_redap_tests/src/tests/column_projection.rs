@@ -41,7 +41,7 @@ async fn test_column_projections<T>(
             [
                 prop(
                     "text_log",
-                    re_types::archetypes::TextLog::new("i'm partition 1"),
+                    re_types::archetypes::TextLog::new("i'm segment 1"),
                 ),
                 prop(
                     "points",

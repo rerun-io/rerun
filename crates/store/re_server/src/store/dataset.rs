@@ -16,12 +16,12 @@ use re_protos::{
     common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
 };
 
-use crate::store::{Error, InMemoryStore, Layer, Partition};
+use crate::store::{Error, InMemoryStore, Layer, Segment};
 
 pub struct Dataset {
     id: EntryId,
     name: String,
-    partitions: HashMap<PartitionId, Partition>,
+    segments: HashMap<PartitionId, Segment>,
 
     created_at: jiff::Timestamp,
     updated_at: jiff::Timestamp,
@@ -32,7 +32,7 @@ impl Dataset {
         Self {
             id,
             name,
-            partitions: HashMap::default(),
+            segments: HashMap::default(),
             created_at: jiff::Timestamp::now(),
             updated_at: jiff::Timestamp::now(),
         }
@@ -46,31 +46,31 @@ impl Dataset {
         &self.name
     }
 
-    pub fn partition(&self, partition_id: &PartitionId) -> Result<&Partition, Error> {
-        self.partitions
-            .get(partition_id)
-            .ok_or_else(|| Error::PartitionIdNotFound(partition_id.clone(), self.id))
+    pub fn segment(&self, segment_id: &PartitionId) -> Result<&Segment, Error> {
+        self.segments
+            .get(segment_id)
+            .ok_or_else(|| Error::PartitionIdNotFound(segment_id.clone(), self.id))
     }
 
-    /// Returns the partitions from the given list of id.
+    /// Returns the segments from the given list of id.
     ///
-    /// As per our proto conventions, all partitions are returned if none is listed.
+    /// As per our proto conventions, all segments are returned if none is listed.
     pub fn partitions_from_ids<'a>(
         &'a self,
-        partition_ids: &'a [PartitionId],
-    ) -> Result<impl Iterator<Item = (&'a PartitionId, &'a Partition)>, Error> {
-        if partition_ids.is_empty() {
-            Ok(Either::Left(self.partitions.iter()))
+        segment_ids: &'a [PartitionId],
+    ) -> Result<impl Iterator<Item = (&'a PartitionId, &'a Segment)>, Error> {
+        if segment_ids.is_empty() {
+            Ok(Either::Left(self.segments.iter()))
         } else {
-            // Validate that all partition IDs exist
-            for id in partition_ids {
-                if !self.partitions.contains_key(id) {
+            // Validate that all segment IDs exist
+            for id in segment_ids {
+                if !self.segments.contains_key(id) {
                     return Err(Error::PartitionIdNotFound(id.clone(), self.id));
                 }
             }
 
-            Ok(Either::Right(partition_ids.iter().filter_map(|id| {
-                self.partitions.get(id).map(|partition| (id, partition))
+            Ok(Either::Right(segment_ids.iter().filter_map(|id| {
+                self.segments.get(id).map(|segment| (id, segment))
             })))
         }
     }
@@ -106,41 +106,41 @@ impl Dataset {
     }
 
     pub fn iter_layers(&self) -> impl Iterator<Item = &Layer> {
-        self.partitions
+        self.segments
             .values()
-            .flat_map(|partition| partition.iter_layers().map(|(_, layer)| layer))
+            .flat_map(|segment| segment.iter_layers().map(|(_, layer)| layer))
     }
 
     pub fn schema(&self) -> arrow::error::Result<Schema> {
         Schema::try_merge(self.iter_layers().map(|layer| layer.schema()))
     }
 
-    pub fn partition_ids(&self) -> impl Iterator<Item = PartitionId> {
-        self.partitions.keys().cloned()
+    pub fn segment_ids(&self) -> impl Iterator<Item = PartitionId> {
+        self.segments.keys().cloned()
     }
 
     pub fn partition_table(&self) -> Result<RecordBatch, Error> {
-        let row_count = self.partitions.len();
+        let row_count = self.segments.len();
 
         let mut all_partition_properties = Vec::with_capacity(row_count);
 
-        let mut partition_ids = Vec::with_capacity(row_count);
+        let mut segment_ids = Vec::with_capacity(row_count);
         let mut layer_names = Vec::with_capacity(row_count);
         let mut storage_urls = Vec::with_capacity(row_count);
         let mut last_updated_at = Vec::with_capacity(row_count);
         let mut num_chunks = Vec::with_capacity(row_count);
         let mut size_bytes = Vec::with_capacity(row_count);
 
-        for (partition_id, partition) in &self.partitions {
-            let layer_count = partition.layer_count();
+        for (segment_id, segment) in &self.segments {
+            let layer_count = segment.layer_count();
             let mut layer_names_row = Vec::with_capacity(layer_count);
             let mut storage_urls_row = Vec::with_capacity(layer_count);
 
             let mut current_partition_properties = BTreeMap::default();
 
-            for (layer_name, layer) in partition.iter_layers() {
+            for (layer_name, layer) in segment.iter_layers() {
                 layer_names_row.push(layer_name.to_owned());
-                storage_urls_row.push(format!("memory:///{}/{partition_id}/{layer_name}", self.id));
+                storage_urls_row.push(format!("memory:///{}/{segment_id}/{layer_name}", self.id));
 
                 let layer_properties = layer
                     .compute_properties()
@@ -148,7 +148,7 @@ impl Dataset {
 
                 // Accumulate properties.
                 //
-                // The semantics for the layer to partition property propagation is that the
+                // The semantics for the layer to segment property propagation is that the
                 // last registered layer wins. The code below achieves this by virtual of the
                 // layers being iterated in registration order.
                 for (col_idx, field) in layer_properties.schema().fields().iter().enumerate() {
@@ -168,7 +168,7 @@ impl Dataset {
                     Default::default(),
                 )),
                 current_partition_properties.into_values().collect(),
-                // There should always be exactly one row, one per partition. Also, we must specify
+                // There should always be exactly one row, one per segment. Also, we must specify
                 // it anyway for the cases where there are no properties at all (so arrow is unable
                 // to infer the row count).
                 &RecordBatchOptions::default().with_row_count(Some(1)),
@@ -177,12 +177,12 @@ impl Dataset {
 
             all_partition_properties.push(properties_batch);
 
-            partition_ids.push(partition_id.to_string());
+            segment_ids.push(segment_id.to_string());
             layer_names.push(layer_names_row);
             storage_urls.push(storage_urls_row);
-            last_updated_at.push(partition.last_updated_at().as_nanosecond() as i64);
-            num_chunks.push(partition.num_chunks());
-            size_bytes.push(partition.size_bytes());
+            last_updated_at.push(segment.last_updated_at().as_nanosecond() as i64);
+            num_chunks.push(segment.num_chunks());
+            size_bytes.push(segment.size_bytes());
         }
 
         let properties_record_batch =
@@ -190,7 +190,7 @@ impl Dataset {
                 .map_err(Error::failed_to_extract_properties)?;
 
         let base_record_batch = ScanPartitionTableResponse::create_dataframe(
-            partition_ids,
+            segment_ids,
             layer_names,
             storage_urls,
             last_updated_at,
@@ -205,9 +205,9 @@ impl Dataset {
     }
 
     pub fn dataset_manifest(&self) -> Result<RecordBatch, Error> {
-        let row_count = self.partitions.values().map(|p| p.layer_count()).sum();
+        let row_count = self.segments.values().map(|p| p.layer_count()).sum();
         let mut layer_names = Vec::with_capacity(row_count);
-        let mut partition_ids = Vec::with_capacity(row_count);
+        let mut segment_ids = Vec::with_capacity(row_count);
         let mut storage_urls = Vec::with_capacity(row_count);
         let mut layer_types = Vec::with_capacity(row_count);
         let mut registration_times = Vec::with_capacity(row_count);
@@ -218,19 +218,17 @@ impl Dataset {
 
         let mut properties = Vec::with_capacity(row_count);
 
-        for (layer_name, partition_id, layer) in
-            self.partitions
-                .iter()
-                .flat_map(|(partition_id, partition)| {
-                    let partition_id = partition_id.to_string();
-                    partition
-                        .iter_layers()
-                        .map(move |(layer_name, layer)| (layer_name, partition_id.clone(), layer))
-                })
+        for (layer_name, segment_id, layer) in
+            self.segments.iter().flat_map(|(segment_id, segment)| {
+                let segment_id = segment_id.to_string();
+                segment
+                    .iter_layers()
+                    .map(move |(layer_name, layer)| (layer_name, segment_id.clone(), layer))
+            })
         {
             layer_names.push(layer_name.to_owned());
-            storage_urls.push(format!("memory:///{}/{partition_id}/{layer_name}", self.id));
-            partition_ids.push(partition_id);
+            storage_urls.push(format!("memory:///{}/{segment_id}/{layer_name}", self.id));
+            segment_ids.push(segment_id);
             layer_types.push(layer.layer_type().to_owned());
             registration_times.push(layer.registration_time().as_nanosecond() as i64);
             last_updated_at.push(layer.last_updated_at().as_nanosecond() as i64);
@@ -251,7 +249,7 @@ impl Dataset {
 
         let base_record_batch = ScanDatasetManifestResponse::create_dataframe(
             layer_names,
-            partition_ids,
+            segment_ids,
             storage_urls,
             layer_types,
             registration_times,
@@ -273,34 +271,35 @@ impl Dataset {
 
     pub fn layer_store_handle(
         &self,
-        partition_id: &PartitionId,
+        segment_id: &PartitionId,
         layer_name: &str,
     ) -> Option<&ChunkStoreHandle> {
-        self.partitions
-            .get(partition_id)
-            .and_then(|partition| partition.layer(layer_name))
+        self.segments
+            .get(segment_id)
+            .and_then(|segment| segment.layer(layer_name))
             .map(|layer| layer.store_handle())
     }
 
     pub fn add_layer(
         &mut self,
-        partition_id: PartitionId,
+        segment_id: PartitionId,
         layer_name: String,
         store_handle: ChunkStoreHandle,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<(), Error> {
-        re_log::debug!(?partition_id, ?layer_name, "add_layer");
+        re_log::debug!(?segment_id, ?layer_name, "add_layer");
 
-        self.partitions
-            .entry(partition_id)
-            .or_default()
-            .insert_layer(layer_name, Layer::new(store_handle), on_duplicate)?;
+        self.segments.entry(segment_id).or_default().insert_layer(
+            layer_name,
+            Layer::new(store_handle),
+            on_duplicate,
+        )?;
 
         self.updated_at = jiff::Timestamp::now();
         Ok(())
     }
 
-    /// Load a RRD using its recording id as partition id.
+    /// Load a RRD using its recording id as segment id.
     pub fn load_rrd(
         &mut self,
         path: &Path,
@@ -321,16 +320,16 @@ impl Dataset {
                 continue;
             }
 
-            let partition_id = PartitionId::new(store_id.recording_id().to_string());
+            let segment_id = PartitionId::new(store_id.recording_id().to_string());
 
             self.add_layer(
-                partition_id.clone(),
+                segment_id.clone(),
                 layer_name.to_owned(),
                 chunk_store,
                 on_duplicate,
             )?;
 
-            new_partition_ids.insert(partition_id);
+            new_partition_ids.insert(segment_id);
         }
 
         Ok(new_partition_ids)

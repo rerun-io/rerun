@@ -373,8 +373,8 @@ fn dataset_entry_ui(
     let item_response = if !displayed_partitions.is_empty() {
         list_item
             .show_hierarchical_with_children(ui, id, true, list_item_content, |ui| {
-                for partition in displayed_partitions {
-                    match partition {
+                for segment in displayed_partitions {
+                    match segment {
                         PartitionData::Loading { receiver } => receiver_ui(ctx, ui, receiver, true),
 
                         PartitionData::Loaded { entity_db } => {
@@ -638,11 +638,11 @@ fn receiver_ui(
     response.context_menu(|ui| {
         let url = ViewerOpenUrl::from_data_source(receiver).and_then(|url| url.sharable_url(None));
         if ui
-            .add_enabled(url.is_ok(), egui::Button::new("Copy link to partition"))
+            .add_enabled(url.is_ok(), egui::Button::new("Copy link to segment"))
             .on_disabled_hover_text(if let Err(err) = url.as_ref() {
-                format!("Can't copy a link to this partition: {err}")
+                format!("Can't copy a link to this segment: {err}")
             } else {
-                "Can't copy a link to this partition".to_owned()
+                "Can't copy a link to this segment".to_owned()
             })
             .clicked()
             && let Ok(url) = url
@@ -651,7 +651,7 @@ fn receiver_ui(
                 .send_system(SystemCommand::CopyViewerUrl(url));
         }
 
-        if ui.button("Copy partition name").clicked() {
+        if ui.button("Copy segment name").clicked() {
             re_log::info!("Copied {name:?} to clipboard");
             ui.ctx().copy_text(name);
         }

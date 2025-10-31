@@ -119,7 +119,7 @@ def specimen_many_rows_with_mismatched_instance_count() -> None:
     )
     batch_size = int(np.sum(positions_partitions))
 
-    # Shuffle the color partitions to induce the mismatch
+    # Shuffle the color segments to induce the mismatch
     colors_partitions = positions_partitions.copy()
     np.random.shuffle(colors_partitions)
 

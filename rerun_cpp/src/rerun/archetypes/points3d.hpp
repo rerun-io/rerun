@@ -112,7 +112,7 @@ namespace rerun::archetypes {
     ///     auto times = rerun::Collection{10s, 11s, 12s, 13s, 14s};
     ///     auto time_column = rerun::TimeColumn::from_durations("time", std::move(times));
     ///
-    ///     // Partition our data as expected across the 5 timesteps.
+    ///     // Segment our data as expected across the 5 timesteps.
     ///     auto position = rerun::Points3D().with_positions(positions).columns({2, 4, 4, 3, 4});
     ///     auto color_and_radius = rerun::Points3D().with_colors(colors).with_radii(radii).columns();
     ///
@@ -254,8 +254,10 @@ namespace rerun::archetypes {
         Points3D& operator=(Points3D&& other) = default;
 
         explicit Points3D(Collection<rerun::components::Position3D> _positions)
-            : positions(ComponentBatch::from_loggable(std::move(_positions), Descriptor_positions)
-                            .value_or_throw()) {}
+            : positions(
+                  ComponentBatch::from_loggable(std::move(_positions), Descriptor_positions)
+                      .value_or_throw()
+              ) {}
 
         /// Update only some specific fields of a `Points3D`.
         static Points3D update_fields() {
@@ -307,7 +309,8 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_show_labels` should
         /// be used when logging a single row's worth of data.
-        Points3D with_many_show_labels(const Collection<rerun::components::ShowLabels>& _show_labels
+        Points3D with_many_show_labels(
+            const Collection<rerun::components::ShowLabels>& _show_labels
         ) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                               .value_or_throw();
@@ -331,7 +334,8 @@ namespace rerun::archetypes {
         /// with `class_id`).
         /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
         /// detected skeleton.
-        Points3D with_keypoint_ids(const Collection<rerun::components::KeypointId>& _keypoint_ids
+        Points3D with_keypoint_ids(
+            const Collection<rerun::components::KeypointId>& _keypoint_ids
         ) && {
             keypoint_ids = ComponentBatch::from_loggable(_keypoint_ids, Descriptor_keypoint_ids)
                                .value_or_throw();

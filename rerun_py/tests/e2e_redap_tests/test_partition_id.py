@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 
 def test_partition_ids(server_instance: ServerInstance, snapshot: SnapshotAssertion) -> None:
-    """Test that we can successfully collect information about partitions."""
+    """Test that we can successfully collect information about segments."""
     client = server_instance.client
 
     ds = client.create_dataset("test_dataset")
@@ -20,4 +20,4 @@ def test_partition_ids(server_instance: ServerInstance, snapshot: SnapshotAssert
         ds.partition_table().df().drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_partition_id")
         == snapshot
     )
-    assert sorted(ds.partition_ids()) == snapshot
+    assert sorted(ds.segment_ids()) == snapshot

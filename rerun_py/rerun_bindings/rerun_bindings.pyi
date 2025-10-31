@@ -516,7 +516,7 @@ class Recording:
         monotonically increasing when data is sent from a single process.
 
         If `None` is passed as the index, the view will contain only static columns (among those
-        specified) and no index columns. It will also contain a single row per partition.
+        specified) and no index columns. It will also contain a single row per segment.
 
         Parameters
         ----------
@@ -1329,11 +1329,11 @@ class DatasetEntry(Entry):
         """The associated blueprint dataset, if any."""
 
     def default_blueprint_partition_id(self) -> str | None:
-        """The default blueprint partition ID for this dataset, if any."""
+        """The default blueprint segment ID for this dataset, if any."""
 
-    def set_default_blueprint_partition_id(self, partition_id: str | None) -> None:
+    def set_default_blueprint_partition_id(self, segment_id: str | None) -> None:
         """
-        Set the default blueprint partition ID for this dataset.
+        Set the default blueprint segment ID for this dataset.
 
         Pass `None` to clear the bluprint. This fails if the change cannot be made to the remote server.
         """
@@ -1342,38 +1342,38 @@ class DatasetEntry(Entry):
         """Return the schema of the data contained in the dataset."""
 
     def partition_ids(self) -> list[str]:
-        """Returns a list of partitions IDs for the dataset."""
+        """Returns a list of segments IDs for the dataset."""
 
     def partition_table(self) -> DataFusionTable:
-        """Return the partition table as a Datafusion table provider."""
+        """Return the segment table as a Datafusion table provider."""
 
     def manifest(self) -> DataFusionTable:
         """Return the dataset manifest as a Datafusion table provider."""
 
     def partition_url(
         self,
-        partition_id: str,
+        segment_id: str,
         timeline: str | None = None,
         start: datetime | int | None = None,
         end: datetime | int | None = None,
     ) -> str:
         """
-        Return the URL for the given partition.
+        Return the URL for the given segment.
 
         Parameters
         ----------
-        partition_id: str
-            The ID of the partition to get the URL for.
+        segment_id: str
+            The ID of the segment to get the URL for.
 
         timeline: str | None
             The name of the timeline to display.
 
         start: int | datetime | None
-            The start time for the partition.
+            The start time for the segment.
             Integer for ticks, or datetime/nanoseconds for timestamps.
 
         end: int | datetime | None
-            The end time for the partition.
+            The end time for the segment.
             Integer for ticks, or datetime/nanoseconds for timestamps.
 
         Examples
@@ -1389,7 +1389,7 @@ class DatasetEntry(Entry):
         Returns
         -------
         str
-            The URL for the given partition.
+            The URL for the given segment.
 
         """
 
@@ -1413,8 +1413,8 @@ class DatasetEntry(Entry):
 
         Returns
         -------
-        partition_id: str
-            The partition ID of the registered RRD.
+        segment_id: str
+            The segment ID of the registered RRD.
 
         """
 
@@ -1460,8 +1460,8 @@ class DatasetEntry(Entry):
 
         """
 
-    def download_partition(self, partition_id: str) -> Recording:
-        """Download a partition from the dataset."""
+    def download_partition(self, segment_id: str) -> Recording:
+        """Download a segment from the dataset."""
 
     def dataframe_query_view(
         self,
@@ -1487,7 +1487,7 @@ class DatasetEntry(Entry):
         monotonically increasing when data is sent from a single process.
 
         If `None` is passed as the index, the view will contain only static columns (among those
-        specified) and no index columns. It will also contain a single row per partition.
+        specified) and no index columns. It will also contain a single row per segment.
 
         Parameters
         ----------
@@ -1555,10 +1555,10 @@ class DatasetEntry(Entry):
         time_index : IndexColumnSelector
             Which timeline this index will map to.
         num_partitions : int | None
-            The number of partitions to create for the index.
+            The number of segments to create for the index.
             (Deprecated, use target_partition_num_rows instead)
         target_partition_num_rows : int | None
-            The target size (in number of rows) for each partition.
+            The target size (in number of rows) for each segment.
             Defaults to 4096 if neither this nor num_partitions is specified.
         num_sub_vectors : int
             The number of sub-vectors to use when building the index.
@@ -1635,8 +1635,8 @@ class _IndexValuesLikeInternal:
 class DataframeQueryView:
     """View into a remote dataset acting as DataFusion table provider."""
 
-    def filter_partition_id(self, partition_id: str, *args: Iterable[str]) -> Self:
-        """Filter by one or more partition ids. All partition ids are included if not specified."""
+    def filter_partition_id(self, segment_id: str, *args: Iterable[str]) -> Self:
+        """Filter by one or more segment ids. All segment ids are included if not specified."""
 
     def filter_range_sequence(self, start: int, end: int) -> Self:
         """

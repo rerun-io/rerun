@@ -279,10 +279,10 @@ impl ExecutionPlan for TableEntryWriterExec {
 
     fn execute(
         &self,
-        partition: usize,
+        segment: usize,
         context: Arc<TaskContext>,
     ) -> DataFusionResult<SendableRecordBatchStream> {
-        let inner = self.child.execute(partition, context)?;
+        let inner = self.child.execute(segment, context)?;
 
         let stream = RecordBatchGrpcOutputStream::new(
             inner,

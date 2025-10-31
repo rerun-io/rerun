@@ -48,31 +48,31 @@ service RerunCloudService {
 
   /* Write data */
 
-  // Register new partitions with the Dataset.
+  // Register new segments with the Dataset.
   //
   // This endpoint requires the standard dataset headers.
   rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (RegisterWithDatasetResponse) {}
 
-  // Write chunks to one or more partitions.
+  // Write chunks to one or more segments.
   //
-  // The partition ID for each individual chunk is extracted from their metadata (`rerun:partition_id`).
+  // The segment ID for each individual chunk is extracted from their metadata (`rerun:segment_id`).
   //
   // This endpoint requires the standard dataset headers.
   rpc WriteChunks(stream WriteChunksRequest) returns (WriteChunksResponse) {}
 
   /* Query schemas */
 
-  // Returns the schema of the partition table.
+  // Returns the schema of the segment table.
   //
   // This is not to be confused with the schema of the dataset itself. For that, refer to `GetDatasetSchema`.
   //
-  // To inspect the data of the partition table, which is guaranteed to match the schema returned by
+  // To inspect the data of the segment table, which is guaranteed to match the schema returned by
   // this endpoint, check out `ScanPartitionTable`.
   //
   // This endpoint requires the standard dataset headers.
   rpc GetPartitionTableSchema(GetPartitionTableSchemaRequest) returns (GetPartitionTableSchemaResponse) {}
 
-  // Inspect the contents of the partition table.
+  // Inspect the contents of the segment table.
   //
   // The data will follow the schema returned by `GetPartitionTableSchema`.
   //
@@ -96,7 +96,7 @@ service RerunCloudService {
 
   // Returns the schema of the dataset.
   //
-  // This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
+  // This is the union of all the schemas from all the underlying segments. It will contain all the indexes,
   // entities and components present in the dataset.
   //
   // This endpoint requires the standard dataset headers.
@@ -123,7 +123,7 @@ service RerunCloudService {
   // those chunks (the actual data).
   //
   // These Rerun-native queries include:
-  // * Filtering by specific partition and chunk IDs.
+  // * Filtering by specific segment and chunk IDs.
   // * Latest-at, range and dataframe queries.
   // * Arbitrary Lance filters.
   //
@@ -220,7 +220,7 @@ message DataSource {
   // Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
   optional string storage_url = 1;
 
-  /// Which Partition Layer should this data source be registered to?
+  /// Which Segment Layer should this data source be registered to?
   ///
   /// Defaults to `base` if unspecified.
   optional string layer = 3;
@@ -396,7 +396,7 @@ message VectorIvfPqIndex {
 
   VectorDistanceMetric distance_metrics = 3;
 
-  // Target size of the IVF partition in rows
+  // Target size of the IVF segment in rows
   optional uint32 target_partition_num_rows = 4;
 }
 
@@ -461,8 +461,8 @@ message BTreeIndexQuery {
 }
 
 message QueryDatasetRequest {
-  // Client can specify what partitions are queried. If left unspecified (empty list),
-  // all partitions will be queried.
+  // Client can specify what segments are queried. If left unspecified (empty list),
+  // all segments will be queried.
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
 
   // Client can specify specific chunk ids to include. If left unspecified (empty list),
@@ -587,8 +587,8 @@ message QueryRange {
 message FetchChunksRequest {
   // Information about the chunks to fetch. These dataframes have to include the following columns:
   // * `chunk_id` - Chunk unique identifier
-  // * `partition_id` - partition this chunk belongs to. Currently needed as we pass this metadata back and forth
-  // * `partition_layer` - specific partition layer. Currently needed as we pass this metadata back and forth
+  // * `segment_id` - segment this chunk belongs to. Currently needed as we pass this metadata back and forth
+  // * `partition_layer` - specific segment layer. Currently needed as we pass this metadata back and forth
   // * `chunk_key` - chunk location details
   repeated rerun.common.v1alpha1.DataframePart chunk_infos = 1;
 }
@@ -903,7 +903,7 @@ message DatasetDetails {
   // The blueprint dataset associated with this dataset (if any).
   optional rerun.common.v1alpha1.EntryId blueprint_dataset = 3;
 
-  // The partition of the blueprint dataset corresponding to the default blueprint (if any).
+  // The segment of the blueprint dataset corresponding to the default blueprint (if any).
   optional rerun.common.v1alpha1.PartitionId default_blueprint = 4;
 }
 

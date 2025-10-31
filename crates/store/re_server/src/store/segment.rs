@@ -8,14 +8,14 @@ use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use crate::store::{Error, Layer};
 
 #[derive(Clone)]
-pub struct Partition {
-    /// The layers of this partition.
+pub struct Segment {
+    /// The layers of this segment.
     layers: HashMap<String, Layer>,
 
     last_updated_at: jiff::Timestamp,
 }
 
-impl Default for Partition {
+impl Default for Segment {
     fn default() -> Self {
         Self {
             layers: HashMap::default(),
@@ -24,7 +24,7 @@ impl Default for Partition {
     }
 }
 
-impl Partition {
+impl Segment {
     pub fn from_layer_data(layer_name: &str, chunk_store_handle: ChunkStoreHandle) -> Self {
         Self {
             layers: vec![(layer_name.to_owned(), Layer::new(chunk_store_handle))]
@@ -41,7 +41,7 @@ impl Partition {
     /// Iterate over layers.
     ///
     /// Layers are iterated in (registration time, layer name) order, as per how they should appear
-    /// in the partition table.
+    /// in the segment table.
     pub fn iter_layers(&self) -> impl Iterator<Item = (&str, &Layer)> {
         self.layers
             .iter()
@@ -77,7 +77,7 @@ impl Partition {
                     self.last_updated_at = jiff::Timestamp::now();
                 }
                 IfDuplicateBehavior::Skip => {
-                    re_log::info!("Ignoring layer '{layer_name}': already exists in partition");
+                    re_log::info!("Ignoring layer '{layer_name}': already exists in segment");
                 }
                 IfDuplicateBehavior::Error => {
                     return Err(Error::LayerAlreadyExists(layer_name));

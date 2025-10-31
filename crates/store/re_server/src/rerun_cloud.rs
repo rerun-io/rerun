@@ -106,24 +106,24 @@ impl RerunCloudHandler {
         }
     }
 
-    /// Returns all the chunk stores of the specified dataset and partitions ids. If `partition_ids`
-    /// is empty, return stores of all partitions.
+    /// Returns all the chunk stores of the specified dataset and segments ids. If `segment_ids`
+    /// is empty, return stores of all segments.
     ///
-    /// Returns (partition id, layer name, store) tuples.
+    /// Returns (segment id, layer name, store) tuples.
     async fn get_chunk_stores(
         &self,
         dataset_id: EntryId,
-        partition_ids: &[PartitionId],
+        segment_ids: &[PartitionId],
     ) -> Result<Vec<(PartitionId, String, ChunkStoreHandle)>, tonic::Status> {
         let store = self.store.read().await;
         let dataset = store.dataset(dataset_id)?;
 
         Ok(dataset
-            .partitions_from_ids(partition_ids)?
-            .flat_map(|(partition_id, partition)| {
-                partition.iter_layers().map(|(layer_name, layer)| {
+            .partitions_from_ids(segment_ids)?
+            .flat_map(|(segment_id, segment)| {
+                segment.iter_layers().map(|(layer_name, layer)| {
                     (
-                        partition_id.clone(),
+                        segment_id.clone(),
                         layer_name.to_owned(),
                         layer.store_handle().clone(),
                     )
@@ -534,7 +534,7 @@ impl RerunCloudService for RerunCloudHandler {
             on_duplicate,
         } = request.into_inner().try_into()?;
 
-        let mut partition_ids: Vec<String> = vec![];
+        let mut segment_ids: Vec<String> = vec![];
         let mut partition_layers: Vec<String> = vec![];
         let mut partition_types: Vec<String> = vec![];
         let mut storage_urls: Vec<String> = vec![];
@@ -565,8 +565,8 @@ impl RerunCloudService for RerunCloudHandler {
             if let Ok(rrd_path) = storage_url.to_file_path() {
                 let new_partition_ids = dataset.load_rrd(&rrd_path, Some(&layer), on_duplicate)?;
 
-                for partition_id in new_partition_ids {
-                    partition_ids.push(partition_id.to_string());
+                for segment_id in new_partition_ids {
+                    segment_ids.push(segment_id.to_string());
                     partition_layers.push(layer.clone());
                     partition_types.push("rrd".to_owned());
                     // TODO(RR-2289): this should probably be a memory address
@@ -577,7 +577,7 @@ impl RerunCloudService for RerunCloudHandler {
         }
 
         let record_batch = RegisterWithDatasetResponse::create_dataframe(
-            partition_ids,
+            segment_ids,
             partition_layers,
             partition_types,
             storage_urls,
@@ -615,13 +615,13 @@ impl RerunCloudService for RerunCloudHandler {
                     tonic::Status::internal(format!("Could not decode chunk: {err:#}"))
                 })?;
 
-            let partition_id: PartitionId = chunk_batch
+            let segment_id: PartitionId = chunk_batch
                 .schema()
                 .metadata()
-                .get("rerun:partition_id")
+                .get("rerun:segment_id")
                 .ok_or_else(|| {
                     tonic::Status::invalid_argument(
-                        "Received chunk without 'rerun.partition_id' metadata",
+                        "Received chunk without 'rerun.segment_id' metadata",
                     )
                 })?
                 .clone()
@@ -632,10 +632,10 @@ impl RerunCloudService for RerunCloudHandler {
             })?);
 
             chunk_stores
-                .entry(partition_id.clone())
+                .entry(segment_id.clone())
                 .or_insert_with(|| {
                     ChunkStore::new(
-                        StoreId::new(StoreKind::Recording, entry_id.to_string(), partition_id.id),
+                        StoreId::new(StoreKind::Recording, entry_id.to_string(), segment_id.id),
                         InMemoryStore::chunk_store_config(),
                     )
                 })
@@ -727,7 +727,7 @@ impl RerunCloudService for RerunCloudHandler {
         let entry_id = get_entry_id_from_headers(&store, &request)?;
         let dataset = store.dataset(entry_id)?;
         let record_batch = dataset.partition_table().map_err(|err| {
-            tonic::Status::internal(format!("Unable to read partition table: {err:#}"))
+            tonic::Status::internal(format!("Unable to read segment table: {err:#}"))
         })?;
 
         Ok(tonic::Response::new(GetPartitionTableSchemaResponse {
@@ -758,7 +758,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         let dataset = store.dataset(entry_id)?;
         let mut record_batch = dataset.partition_table().map_err(|err| {
-            tonic::Status::internal(format!("Unable to read partition table: {err:#}"))
+            tonic::Status::internal(format!("Unable to read segment table: {err:#}"))
         })?;
 
         // project columns
@@ -902,7 +902,7 @@ impl RerunCloudService for RerunCloudHandler {
         let entry_id = get_entry_id_from_headers(&*self.store.read().await, &request)?;
 
         let re_protos::cloud::v1alpha1::QueryDatasetRequest {
-            partition_ids,
+            segment_ids,
             entity_paths,
             select_all_entity_paths,
 
@@ -925,12 +925,12 @@ impl RerunCloudService for RerunCloudHandler {
             ));
         }
 
-        let partition_ids = partition_ids
+        let segment_ids = segment_ids
             .into_iter()
             .map(PartitionId::try_from)
             .collect::<Result<Vec<_>, _>>()?;
 
-        let chunk_stores = self.get_chunk_stores(entry_id, &partition_ids).await?;
+        let chunk_stores = self.get_chunk_stores(entry_id, &segment_ids).await?;
 
         if chunk_stores.is_empty() {
             let stream = futures::stream::iter([{
@@ -945,7 +945,7 @@ impl RerunCloudService for RerunCloudHandler {
         }
 
         let stream = futures::stream::iter(chunk_stores.into_iter().map(
-            move |(partition_id, layer_name, store_handle)| {
+            move |(segment_id, layer_name, store_handle)| {
                 let num_chunks = store_handle.read().num_chunks();
 
                 let mut chunk_ids = Vec::with_capacity(num_chunks);
@@ -989,14 +989,14 @@ impl RerunCloudService for RerunCloudHandler {
                         timeline_data.2.push(None);
                     }
 
-                    chunk_partition_ids.push(partition_id.id.clone());
+                    chunk_partition_ids.push(segment_id.id.clone());
                     chunk_ids.push(chunk.id());
                     chunk_entity_path.push(chunk.entity_path().to_string());
                     chunk_is_static.push(chunk.is_static());
                     chunk_keys.push(
                         ChunkKey {
                             chunk_id: chunk.id(),
-                            partition_id: partition_id.clone(),
+                            segment_id: segment_id.clone(),
                             layer_name: layer_name.clone(),
                             dataset_id: entry_id,
                         }

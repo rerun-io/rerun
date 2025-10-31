@@ -187,13 +187,13 @@ mod tests {
     #[test]
     fn test_dataset_data_url_to_address() {
         let url =
-            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid";
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=pid";
         let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetPartitionUri {
             origin,
             dataset_id,
-            partition_id,
+            segment_id,
             time_range,
             fragment,
         }) = address
@@ -208,20 +208,20 @@ mod tests {
             dataset_id,
             "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
         );
-        assert_eq!(partition_id, "pid");
+        assert_eq!(segment_id, "pid");
         assert_eq!(time_range, None);
         assert_eq!(fragment, Default::default());
     }
 
     #[test]
     fn test_dataset_data_url_with_fragment() {
-        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid#selection=/some/entity[#42]";
+        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=pid#selection=/some/entity[#42]";
         let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetPartitionUri {
             origin,
             dataset_id,
-            partition_id,
+            segment_id,
             time_range,
             fragment,
         }) = address
@@ -236,7 +236,7 @@ mod tests {
             dataset_id,
             "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
         );
-        assert_eq!(partition_id, "pid");
+        assert_eq!(segment_id, "pid");
         assert_eq!(time_range, None);
         assert_eq!(
             fragment,
@@ -253,13 +253,13 @@ mod tests {
 
     #[test]
     fn test_dataset_data_url_with_broken_fragment() {
-        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid#focus=/some/entity[#42]";
+        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=pid#focus=/some/entity[#42]";
         let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetPartitionUri {
             origin,
             dataset_id,
-            partition_id,
+            segment_id,
             time_range,
             fragment,
         }) = address
@@ -274,20 +274,20 @@ mod tests {
             dataset_id,
             "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
         );
-        assert_eq!(partition_id, "pid");
+        assert_eq!(segment_id, "pid");
         assert_eq!(time_range, None);
         assert_eq!(fragment, Fragment::default());
     }
 
     #[test]
     fn test_dataset_data_url_time_range_sequence_to_address() {
-        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@100..200";
+        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=pid&time_range=timeline@100..200";
         let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetPartitionUri {
             origin,
             dataset_id,
-            partition_id,
+            segment_id,
             time_range,
             fragment,
         }) = address
@@ -302,7 +302,7 @@ mod tests {
             dataset_id,
             "1830B33B45B963E7774455beb91701ae".parse().unwrap()
         );
-        assert_eq!(partition_id, "pid");
+        assert_eq!(segment_id, "pid");
         assert_eq!(
             time_range,
             Some(TimeSelection {
@@ -315,13 +315,13 @@ mod tests {
 
     #[test]
     fn test_dataset_data_url_time_range_timepoint_to_address() {
-        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=log_time@2022-01-01T00:00:03.123456789Z..2022-01-01T00:00:13.123456789Z";
+        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=pid&time_range=log_time@2022-01-01T00:00:03.123456789Z..2022-01-01T00:00:13.123456789Z";
         let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetPartitionUri {
             origin,
             dataset_id,
-            partition_id,
+            segment_id,
             time_range,
             fragment,
         }) = address
@@ -336,7 +336,7 @@ mod tests {
             dataset_id,
             "1830B33B45B963E7774455beb91701ae".parse().unwrap()
         );
-        assert_eq!(partition_id, "pid");
+        assert_eq!(segment_id, "pid");
         assert_eq!(
             time_range,
             Some(TimeSelection {
@@ -353,15 +353,15 @@ mod tests {
     #[test]
     fn test_dataset_data_url_time_range_temporal() {
         for url in [
-            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@1.23s..72s",
-            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@1230ms..1m12s",
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=pid&time_range=timeline@1.23s..72s",
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=pid&time_range=timeline@1230ms..1m12s",
         ] {
             let address: RedapUri = url.parse().unwrap();
 
             let RedapUri::DatasetData(DatasetPartitionUri {
                 origin,
                 dataset_id,
-                partition_id,
+                segment_id,
                 time_range,
                 fragment,
             }) = address
@@ -376,7 +376,7 @@ mod tests {
                 dataset_id,
                 "1830B33B45B963E7774455beb91701ae".parse().unwrap()
             );
-            assert_eq!(partition_id, "pid");
+            assert_eq!(segment_id, "pid");
             assert_eq!(
                 time_range,
                 Some(TimeSelection {

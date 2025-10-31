@@ -139,7 +139,7 @@ mod tests {
         harness.run();
         harness.snapshot("open_url_modal__no_url");
 
-        *url.lock() = "rerun://sandbox.redap.rerun.io:443/dataset/185998CF5EF38BF27f3e5ede1ca9a1a2?partition_id=ILIAD_5e938e3b_2023_07_28_10h_25m_47s".to_owned();
+        *url.lock() = "rerun://sandbox.redap.rerun.io:443/dataset/185998CF5EF38BF27f3e5ede1ca9a1a2?segment_id=ILIAD_5e938e3b_2023_07_28_10h_25m_47s".to_owned();
         harness.run();
         harness.snapshot("open_url_modal__valid_url");
 

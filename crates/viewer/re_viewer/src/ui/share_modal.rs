@@ -424,7 +424,7 @@ mod tests {
             re_uri::DatasetPartitionUri {
                 origin: origin.clone(),
                 dataset_id,
-                partition_id: "partition_id".to_owned(),
+                segment_id: "segment_id".to_owned(),
                 time_range: None,
                 fragment: re_uri::Fragment::default(),
             },
@@ -448,7 +448,7 @@ mod tests {
             re_uri::DatasetPartitionUri {
                 origin: origin.clone(),
                 dataset_id,
-                partition_id: "partition_id".to_owned(),
+                segment_id: "segment_id".to_owned(),
                 time_range: Some(re_uri::TimeSelection {
                     timeline,
                     range: re_log_types::AbsoluteTimeRange::new(0, 1000),

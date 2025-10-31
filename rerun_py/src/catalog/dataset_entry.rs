@@ -97,7 +97,7 @@ impl PyDatasetEntry {
         Some(Py::new(py, (dataset, entry))).transpose()
     }
 
-    /// The default blueprint partition ID for this dataset, if any.
+    /// The default blueprint segment ID for this dataset, if any.
     fn default_blueprint_partition_id(self_: PyRef<'_, Self>) -> Option<String> {
         self_
             .dataset_details
@@ -106,21 +106,21 @@ impl PyDatasetEntry {
             .map(ToString::to_string)
     }
 
-    /// Set the default blueprint partition ID for this dataset.
+    /// Set the default blueprint segment ID for this dataset.
     ///
     /// Pass `None` to clear the bluprint. This fails if the change cannot be made to the remote server.
-    #[pyo3(signature = (partition_id))]
+    #[pyo3(signature = (segment_id))]
     fn set_default_blueprint_partition_id(
         mut self_: PyRefMut<'_, Self>,
         py: Python<'_>,
-        partition_id: Option<String>,
+        segment_id: Option<String>,
     ) -> PyResult<()> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(py).connection().clone();
         let dataset_id = super_.details.id;
 
         let mut dataset_details = self_.dataset_details.clone();
-        dataset_details.default_blueprint = partition_id.map(Into::into);
+        dataset_details.default_blueprint = segment_id.map(Into::into);
 
         let result = connection.update_dataset(py, dataset_id, dataset_details)?;
 
@@ -134,8 +134,8 @@ impl PyDatasetEntry {
         Self::fetch_schema(&self_)
     }
 
-    /// Returns a list of partitions IDs for the dataset.
-    fn partition_ids(self_: PyRef<'_, Self>) -> PyResult<Vec<String>> {
+    /// Returns a list of segments IDs for the dataset.
+    fn segment_ids(self_: PyRef<'_, Self>) -> PyResult<Vec<String>> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
@@ -143,7 +143,7 @@ impl PyDatasetEntry {
         connection.get_dataset_partition_ids(self_.py(), dataset_id)
     }
 
-    /// Return the partition table as a Datafusion table provider.
+    /// Return the segment table as a Datafusion table provider.
     #[instrument(skip_all)]
     fn partition_table(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
         let super_ = self_.as_super();
@@ -187,22 +187,22 @@ impl PyDatasetEntry {
         })
     }
 
-    /// Return the URL for the given partition.
+    /// Return the URL for the given segment.
     ///
     /// Parameters
     /// ----------
-    /// partition_id: str
-    ///     The ID of the partition to get the URL for.
+    /// segment_id: str
+    ///     The ID of the segment to get the URL for.
     ///
     /// timeline: str | None
     ///     The name of the timeline to display.
     ///
     /// start: int | datetime | None
-    ///     The start time for the partition.
+    ///     The start time for the segment.
     ///     Integer for ticks, or datetime/nanoseconds for timestamps.
     ///
     /// end: int | datetime | None
-    ///     The end time for the partition.
+    ///     The end time for the segment.
     ///     Integer for ticks, or datetime/nanoseconds for timestamps.
     ///
     /// Examples
@@ -218,13 +218,13 @@ impl PyDatasetEntry {
     /// Returns
     /// -------
     /// str
-    ///     The URL for the given partition.
+    ///     The URL for the given segment.
     ///
-    #[pyo3(signature = (partition_id, timeline=None, start=None, end=None))]
+    #[pyo3(signature = (segment_id, timeline=None, start=None, end=None))]
     fn partition_url(
         self_: PyRef<'_, Self>,
         py: Python<'_>,
-        partition_id: String,
+        segment_id: String,
         timeline: Option<&str>,
         start: Option<Bound<'_, PyAny>>,
         end: Option<Bound<'_, PyAny>>,
@@ -262,7 +262,7 @@ impl PyDatasetEntry {
         Ok(re_uri::DatasetPartitionUri {
             origin: connection.origin().clone(),
             dataset_id: super_.details.id.id,
-            partition_id,
+            segment_id,
 
             time_range,
             //TODO(ab): add support for this
@@ -289,8 +289,8 @@ impl PyDatasetEntry {
     ///
     /// Returns
     /// -------
-    /// partition_id: str
-    ///     The partition ID of the registered RRD.
+    /// segment_id: str
+    ///     The segment ID of the registered RRD.
     #[pyo3(signature = (recording_uri, *, recording_layer = "base".to_owned(), timeout_secs = 60))]
     #[pyo3(
         text_signature = "(self, /, recording_uri, *, recording_layer = 'base', timeout_secs = 60)"
@@ -321,7 +321,7 @@ impl PyDatasetEntry {
 
         connection.wait_for_tasks(self_.py(), vec![task_descriptor.task_id], register_timeout)?;
 
-        Ok(task_descriptor.partition_id.id)
+        Ok(task_descriptor.segment_id.id)
     }
 
     /// Register all RRDs under a given prefix to the dataset and return a handle to the tasks.
@@ -391,7 +391,7 @@ impl PyDatasetEntry {
         recording_layers = vec![],
     ))]
     #[pyo3(text_signature = "(self, /, recording_uris, *, recording_layers = [])")]
-    // TODO(ab): it might be useful to return partition ids directly since we have them
+    // TODO(ab): it might be useful to return segment ids directly since we have them
     fn register_batch(
         self_: PyRef<'_, Self>,
         recording_uris: Vec<String>,
@@ -414,9 +414,9 @@ impl PyDatasetEntry {
         ))
     }
 
-    /// Download a partition from the dataset.
+    /// Download a segment from the dataset.
     #[instrument(skip(self_), err)]
-    fn download_partition(self_: PyRef<'_, Self>, partition_id: String) -> PyResult<PyRecording> {
+    fn download_partition(self_: PyRef<'_, Self>, segment_id: String) -> PyResult<PyRecording> {
         let super_ = self_.as_super();
         let catalog_client = super_.client.borrow(self_.py());
         let connection = catalog_client.connection();
@@ -431,7 +431,7 @@ impl PyDatasetEntry {
             let response_stream = client
                 .fetch_partition_chunks(
                     dataset_id,
-                    partition_id.clone().into(),
+                    segment_id.clone().into(),
                     exclude_static_data,
                     exclude_temporal_data,
                     None,
@@ -442,18 +442,18 @@ impl PyDatasetEntry {
             let mut chunks_stream =
                 fetch_chunks_response_to_chunk_and_partition_id(response_stream);
 
-            let store_id = StoreId::new(StoreKind::Recording, dataset_name, partition_id.clone());
+            let store_id = StoreId::new(StoreKind::Recording, dataset_name, segment_id.clone());
             let mut store = ChunkStore::new(store_id, Default::default());
 
             while let Some(chunks) = chunks_stream.next().await {
                 for chunk in chunks.map_err(to_py_err)? {
                     let (chunk, chunk_partition_id) = chunk;
 
-                    if Some(&partition_id) != chunk_partition_id.as_ref() {
+                    if Some(&segment_id) != chunk_partition_id.as_ref() {
                         re_log::warn!(
-                            expected = partition_id,
+                            expected = segment_id,
                             got = chunk_partition_id,
-                            "unexpected partition ID in chunk stream, this is a bug"
+                            "unexpected segment ID in chunk stream, this is a bug"
                         );
                     }
                     store
@@ -496,7 +496,7 @@ impl PyDatasetEntry {
     /// monotonically increasing when data is sent from a single process.
     ///
     /// If `None` is passed as the index, the view will contain only static columns (among those
-    /// specified) and no index columns. It will also contain a single row per partition.
+    /// specified) and no index columns. It will also contain a single row per segment.
     ///
     /// Parameters
     /// ----------
@@ -619,10 +619,10 @@ impl PyDatasetEntry {
     /// time_index : IndexColumnSelector
     ///     Which timeline this index will map to.
     /// num_partitions : int | None
-    ///     The number of partitions to create for the index.
+    ///     The number of segments to create for the index.
     ///     (Deprecated, use target_partition_num_rows instead)
     /// target_partition_num_rows : int | None
-    ///     The target size (in number of rows) for each partition.
+    ///     The target size (in number of rows) for each segment.
     ///     Defaults to 4096 if neither this nor num_partitions is specified.
     /// num_sub_vectors : int
     ///     The number of sub-vectors to use when building the index.

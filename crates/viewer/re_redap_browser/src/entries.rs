@@ -250,7 +250,7 @@ async fn fetch_dataset_details(
     let table_provider = PartitionTableProvider::new(client, id)
         .into_provider()
         .await
-        .map_err(|err| ApiError::internal(err, "failed creating partition table provider"))?;
+        .map_err(|err| ApiError::internal(err, "failed creating segment table provider"))?;
 
     Ok((result, table_provider))
 }
