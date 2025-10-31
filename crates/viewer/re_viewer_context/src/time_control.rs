@@ -26,11 +26,11 @@ pub fn time_panel_blueprint_entity_path() -> EntityPath {
 trait TimeBlueprintExt {
     fn set_time(&self, time: impl Into<TimeInt>);
 
-    fn get_time(&self) -> Option<TimeInt>;
+    fn time(&self) -> Option<TimeInt>;
 
     fn set_timeline(&self, timeline: TimelineName);
 
-    fn get_timeline(&self) -> Option<TimelineName>;
+    fn timeline(&self) -> Option<TimelineName>;
 
     /// Replaces the current timeline with the automatic one.
     fn clear_timeline(&self);
@@ -41,19 +41,19 @@ trait TimeBlueprintExt {
     fn clear_time(&self);
 
     fn set_playback_speed(&self, playback_speed: f64);
-    fn get_playback_speed(&self) -> Option<f64>;
+    fn playback_speed(&self) -> Option<f64>;
 
     fn set_fps(&self, fps: f64);
-    fn get_fps(&self) -> Option<f64>;
+    fn fps(&self) -> Option<f64>;
 
     fn set_play_state(&self, play_state: PlayState);
-    fn get_play_state(&self) -> Option<PlayState>;
+    fn play_state(&self) -> Option<PlayState>;
 
     fn set_loop_mode(&self, loop_mode: LoopMode);
-    fn get_loop_mode(&self) -> Option<LoopMode>;
+    fn loop_mode(&self) -> Option<LoopMode>;
 
     fn set_time_selection(&self, time_range: AbsoluteTimeRange);
-    fn get_time_selection(&self) -> Option<AbsoluteTimeRange>;
+    fn time_selection(&self) -> Option<AbsoluteTimeRange>;
     fn clear_time_selection(&self);
 }
 
@@ -67,7 +67,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
         );
     }
 
-    fn get_time(&self) -> Option<TimeInt> {
+    fn time(&self) -> Option<TimeInt> {
         let (_, time) = self
             .current_blueprint()
             .latest_at_component_quiet::<re_types::blueprint::components::TimeInt>(
@@ -88,7 +88,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
         self.clear_time();
     }
 
-    fn get_timeline(&self) -> Option<TimelineName> {
+    fn timeline(&self) -> Option<TimelineName> {
         let (_, timeline) = self
             .current_blueprint()
             .latest_at_component_quiet::<re_types::blueprint::components::TimelineName>(
@@ -122,7 +122,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
         );
     }
 
-    fn get_playback_speed(&self) -> Option<f64> {
+    fn playback_speed(&self) -> Option<f64> {
         let (_, playback_speed) = self
             .current_blueprint()
             .latest_at_component_quiet::<re_types::blueprint::components::PlaybackSpeed>(
@@ -142,7 +142,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
         );
     }
 
-    fn get_fps(&self) -> Option<f64> {
+    fn fps(&self) -> Option<f64> {
         let (_, fps) = self
             .current_blueprint()
             .latest_at_component_quiet::<re_types::blueprint::components::Fps>(
@@ -162,7 +162,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
         );
     }
 
-    fn get_play_state(&self) -> Option<PlayState> {
+    fn play_state(&self) -> Option<PlayState> {
         let (_, play_state) = self
             .current_blueprint()
             .latest_at_component_quiet::<PlayState>(
@@ -182,7 +182,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
         );
     }
 
-    fn get_loop_mode(&self) -> Option<LoopMode> {
+    fn loop_mode(&self) -> Option<LoopMode> {
         let (_, loop_mode) = self
             .current_blueprint()
             .latest_at_component_quiet::<LoopMode>(
@@ -207,7 +207,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
         );
     }
 
-    fn get_time_selection(&self) -> Option<AbsoluteTimeRange> {
+    fn time_selection(&self) -> Option<AbsoluteTimeRange> {
         let (_, time_range) = self
             .current_blueprint()
             .latest_at_component_quiet::<re_types::blueprint::components::AbsoluteTimeRange>(
@@ -481,7 +481,7 @@ impl TimeControl {
         blueprint_ctx: &impl BlueprintContext,
         times_per_timeline: Option<&TimesPerTimeline>,
     ) {
-        if let Some(timeline) = blueprint_ctx.get_timeline() {
+        if let Some(timeline) = blueprint_ctx.timeline() {
             if matches!(self.timeline, ActiveTimeline::Auto(_))
                 || timeline.as_str() != self.timeline().name().as_str()
             {
@@ -496,7 +496,7 @@ impl TimeControl {
             self.select_valid_timeline(times_per_timeline);
         }
 
-        if let Some(time) = blueprint_ctx.get_time() {
+        if let Some(time) = blueprint_ctx.time() {
             if self.time_int() != Some(time) {
                 self.states
                     .entry(*self.timeline().name())
@@ -524,13 +524,13 @@ impl TimeControl {
             );
         }
 
-        if let Some(new_play_state) = blueprint_ctx.get_play_state()
+        if let Some(new_play_state) = blueprint_ctx.play_state()
             && new_play_state != self.play_state()
         {
             self.set_play_state(times_per_timeline, new_play_state, Some(blueprint_ctx));
         }
 
-        if let Some(new_loop_mode) = blueprint_ctx.get_loop_mode() {
+        if let Some(new_loop_mode) = blueprint_ctx.loop_mode() {
             self.loop_mode = new_loop_mode;
 
             if self.loop_mode != LoopMode::Off {
@@ -547,7 +547,7 @@ impl TimeControl {
             }
         }
 
-        if let Some(playback_speed) = blueprint_ctx.get_playback_speed() {
+        if let Some(playback_speed) = blueprint_ctx.playback_speed() {
             self.speed = playback_speed as f32;
         }
 
@@ -555,11 +555,11 @@ impl TimeControl {
 
         // Update the last paused time if we are paused.
         if let Some(state) = self.states.get_mut(self.timeline.name()) {
-            if let Some(fps) = blueprint_ctx.get_fps() {
+            if let Some(fps) = blueprint_ctx.fps() {
                 state.fps = fps as f32;
             }
 
-            if let Some(new_time_selection) = blueprint_ctx.get_time_selection() {
+            if let Some(new_time_selection) = blueprint_ctx.time_selection() {
                 state.loop_selection = Some(new_time_selection.into());
             }
 
@@ -1077,7 +1077,7 @@ impl TimeControl {
         blueprint_ctx: Option<&impl BlueprintContext>,
     ) {
         if let Some(blueprint_ctx) = blueprint_ctx
-            && Some(play_state) != blueprint_ctx.get_play_state()
+            && Some(play_state) != blueprint_ctx.play_state()
         {
             blueprint_ctx.set_play_state(play_state);
         }
