@@ -5,13 +5,14 @@ use std::sync::Arc;
 use arrow::array::{RecordBatch, RecordBatchOptions};
 use arrow::datatypes::{Fields, Schema};
 use itertools::Either;
+
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_log_types::{EntryId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
         EntryKind, ScanDatasetManifestResponse, ScanPartitionTableResponse,
-        ext::{DataSource, DatasetEntry, EntryDetails},
+        ext::{DataSource, DatasetDetails, DatasetEntry, EntryDetails},
     },
     common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
 };
@@ -21,6 +22,9 @@ use crate::store::{Error, InMemoryStore, Layer, Partition};
 pub struct Dataset {
     id: EntryId,
     name: String,
+    store_kind: StoreKind,
+    details: DatasetDetails,
+
     partitions: HashMap<PartitionId, Partition>,
 
     created_at: jiff::Timestamp,
@@ -28,10 +32,12 @@ pub struct Dataset {
 }
 
 impl Dataset {
-    pub fn new(id: EntryId, name: String) -> Self {
+    pub fn new(id: EntryId, name: String, store_kind: StoreKind, details: DatasetDetails) -> Self {
         Self {
             id,
             name,
+            store_kind,
+            details,
             partitions: HashMap::default(),
             created_at: jiff::Timestamp::now(),
             updated_at: jiff::Timestamp::now(),
@@ -95,11 +101,11 @@ impl Dataset {
                 updated_at: self.updated_at,
             },
 
-            dataset_details: Default::default(),
+            dataset_details: self.details.clone(),
 
             handle: DatasetHandle {
                 id: Some(self.id),
-                store_kind: StoreKind::Recording,
+                store_kind: self.store_kind,
                 url: url::Url::parse(&format!("memory:///{}", self.id)).expect("valid url"),
             },
         }

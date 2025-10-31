@@ -14,10 +14,6 @@ use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::ext::{
-    CreateTableEntryRequest, CreateTableEntryResponse, LanceTable, ProviderDetails as _,
-    TableInsertMode,
-};
 use re_protos::{
     cloud::v1alpha1::{
         DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
@@ -28,8 +24,9 @@ use re_protos::{
         RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
         ScanPartitionTableResponse, ScanTableResponse,
         ext::{
-            self, CreateDatasetEntryResponse, DataSource, ReadDatasetEntryResponse,
-            ReadTableEntryResponse,
+            self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
+            CreateTableEntryResponse, DataSource, DatasetDetails, LanceTable, ProviderDetails as _,
+            ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
         },
         rerun_cloud_service_server::RerunCloudService,
     },
@@ -422,6 +419,8 @@ impl RerunCloudService for RerunCloudHandler {
         Ok(tonic::Response::new(response))
     }
 
+    //TODO: test entry id override
+    //TODO: test duplicate entry name/id
     async fn create_dataset_entry(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::CreateDatasetEntryRequest>,
@@ -429,12 +428,35 @@ impl RerunCloudService for RerunCloudHandler {
         tonic::Response<re_protos::cloud::v1alpha1::CreateDatasetEntryResponse>,
         tonic::Status,
     > {
-        let dataset_name: String = request.into_inner().try_into()?;
+        let CreateDatasetEntryRequest {
+            name: dataset_name,
+            id: dataset_id,
+        } = request.into_inner().try_into()?;
 
         let mut store = self.store.write().await;
-        let dataset = store.create_dataset(&dataset_name).map_err(|err| {
-            tonic::Status::internal(format!("Failed to create dataset entry: {err:#}"))
-        })?;
+
+        let dataset_id = dataset_id.unwrap_or_else(EntryId::new);
+        let blueprint_dataset_id = EntryId::new();
+        let blueprint_dataset_name = format!("__bp_{dataset_id}");
+
+        store.create_dataset(
+            &blueprint_dataset_name,
+            Some(blueprint_dataset_id),
+            StoreKind::Blueprint,
+            None,
+        )?;
+
+        let dataset_details = DatasetDetails {
+            blueprint_dataset: Some(blueprint_dataset_id),
+            default_blueprint: None,
+        };
+
+        let dataset = store.create_dataset(
+            &dataset_name,
+            Some(dataset_id),
+            StoreKind::Recording,
+            Some(dataset_details),
+        )?;
 
         let dataset_entry = dataset.as_dataset_entry();
 

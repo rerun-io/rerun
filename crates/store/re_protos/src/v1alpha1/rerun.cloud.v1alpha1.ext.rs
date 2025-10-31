@@ -649,16 +649,37 @@ impl From<DatasetEntry> for crate::cloud::v1alpha1::DatasetEntry {
 
 // --- CreateDatasetEntryRequest ---
 
-impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryRequest> for String {
+pub struct CreateDatasetEntryRequest {
+    /// Entry name (must be unique in catalog).
+    pub name: String,
+
+    /// Override, use at your own risk.
+    pub id: Option<EntryId>,
+}
+
+impl From<CreateDatasetEntryRequest> for crate::cloud::v1alpha1::CreateDatasetEntryRequest {
+    fn from(value: CreateDatasetEntryRequest) -> Self {
+        Self {
+            name: Some(value.name),
+            id: value.id.map(Into::into),
+        }
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryRequest> for CreateDatasetEntryRequest {
     type Error = TypeConversionError;
 
     fn try_from(
         value: crate::cloud::v1alpha1::CreateDatasetEntryRequest,
     ) -> Result<Self, Self::Error> {
-        Ok(value.name.ok_or(missing_field!(
-            crate::cloud::v1alpha1::CreateDatasetEntryRequest,
-            "name"
-        ))?)
+        Ok(Self {
+            name: value.name.ok_or(missing_field!(
+                crate::cloud::v1alpha1::CreateDatasetEntryRequest,
+                "name"
+            ))?,
+
+            id: value.id.map(TryInto::try_into).transpose()?,
+        })
     }
 }
 
