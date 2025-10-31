@@ -1,4 +1,3 @@
-use egui_kittest::kittest::Queryable as _;
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
