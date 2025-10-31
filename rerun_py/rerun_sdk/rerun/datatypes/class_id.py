@@ -46,10 +46,12 @@ class ClassId:
 
 if TYPE_CHECKING:
     ClassIdLike = ClassId | int
+    """A type alias for any ClassId-like object."""
 else:
     ClassIdLike = Any
 
 ClassIdArrayLike = ClassId | Sequence[ClassIdLike] | int | npt.ArrayLike
+"""A type alias for any ClassId-like array object."""
 
 
 class ClassIdBatch(BaseBatch[ClassIdArrayLike]):

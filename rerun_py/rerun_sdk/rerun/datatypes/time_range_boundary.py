@@ -58,7 +58,9 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     TimeRangeBoundaryLike = TimeRangeBoundary | None | datatypes.TimeInt
+    """A type alias for any TimeRangeBoundary-like object."""
     TimeRangeBoundaryArrayLike = TimeRangeBoundary | None | datatypes.TimeInt | Sequence[TimeRangeBoundaryLike]
+    """A type alias for any TimeRangeBoundary-like array object."""
 else:
     TimeRangeBoundaryLike = Any
     TimeRangeBoundaryArrayLike = Any

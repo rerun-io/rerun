@@ -47,10 +47,12 @@ if TYPE_CHECKING:
     SelectedColumnsLike = (
         SelectedColumns | Sequence[blueprint_datatypes.ComponentColumnSelectorLike | datatypes.Utf8Like]
     )
+    """A type alias for any SelectedColumns-like object."""
 else:
     SelectedColumnsLike = Any
 
 SelectedColumnsArrayLike = SelectedColumns | Sequence[SelectedColumnsLike]
+"""A type alias for any SelectedColumns-like array object."""
 
 
 class SelectedColumnsBatch(BaseBatch[SelectedColumnsArrayLike]):

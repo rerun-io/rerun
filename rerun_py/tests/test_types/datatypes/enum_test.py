@@ -66,12 +66,15 @@ EnumTestLike = (
     | Literal["Back", "Down", "Forward", "Left", "Right", "Up", "back", "down", "forward", "left", "right", "up"]
     | int
 )
+"""A type alias for any EnumTest-like object."""
+
 EnumTestArrayLike = (
     EnumTest
     | Literal["Back", "Down", "Forward", "Left", "Right", "Up", "back", "down", "forward", "left", "right", "up"]
     | int
     | Sequence[EnumTestLike]
 )
+"""A type alias for any EnumTest-like array object."""
 
 
 class EnumTestBatch(BaseBatch[EnumTestArrayLike]):

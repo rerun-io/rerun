@@ -37,10 +37,12 @@ class Bool:
 
 if TYPE_CHECKING:
     BoolLike = Bool | bool
+    """A type alias for any Bool-like object."""
 else:
     BoolLike = Any
 
 BoolArrayLike = Bool | Sequence[BoolLike]
+"""A type alias for any Bool-like array object."""
 
 
 class BoolBatch(BaseBatch[BoolArrayLike]):

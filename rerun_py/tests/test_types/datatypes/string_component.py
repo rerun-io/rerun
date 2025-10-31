@@ -37,7 +37,10 @@ class StringComponent:
 
 
 StringComponentLike = StringComponent
+"""A type alias for any StringComponent-like object."""
+
 StringComponentArrayLike = StringComponent | Sequence[StringComponentLike]
+"""A type alias for any StringComponent-like array object."""
 
 
 class StringComponentBatch(BaseBatch[StringComponentArrayLike]):

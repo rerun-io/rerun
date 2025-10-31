@@ -69,10 +69,12 @@ class Utf8Pair(Utf8PairExt):
 
 if TYPE_CHECKING:
     Utf8PairLike = Utf8Pair | tuple[datatypes.Utf8Like, datatypes.Utf8Like]
+    """A type alias for any Utf8Pair-like object."""
 else:
     Utf8PairLike = Any
 
 Utf8PairArrayLike = Utf8Pair | Sequence[Utf8PairLike] | npt.NDArray[np.str_]
+"""A type alias for any Utf8Pair-like array object."""
 
 
 class Utf8PairBatch(BaseBatch[Utf8PairArrayLike]):

@@ -75,10 +75,12 @@ class ClassDescriptionMapElem(ClassDescriptionMapElemExt):
 
 if TYPE_CHECKING:
     ClassDescriptionMapElemLike = ClassDescriptionMapElem | datatypes.ClassDescriptionLike
+    """A type alias for any ClassDescriptionMapElem-like object."""
 else:
     ClassDescriptionMapElemLike = Any
 
 ClassDescriptionMapElemArrayLike = ClassDescriptionMapElem | Sequence[ClassDescriptionMapElemLike]
+"""A type alias for any ClassDescriptionMapElem-like array object."""
 
 
 class ClassDescriptionMapElemBatch(BaseBatch[ClassDescriptionMapElemArrayLike]):

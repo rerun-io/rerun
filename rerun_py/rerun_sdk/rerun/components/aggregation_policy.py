@@ -91,6 +91,8 @@ AggregationPolicyLike = (
     ]
     | int
 )
+"""A type alias for any AggregationPolicy-like object."""
+
 AggregationPolicyArrayLike = (
     AggregationPolicy
     | Literal[
@@ -110,6 +112,7 @@ AggregationPolicyArrayLike = (
     | int
     | Sequence[AggregationPolicyLike]
 )
+"""A type alias for any AggregationPolicy-like array object."""
 
 
 class AggregationPolicyBatch(BaseBatch[AggregationPolicyArrayLike], ComponentBatchMixin):

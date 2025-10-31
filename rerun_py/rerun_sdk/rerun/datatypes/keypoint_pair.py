@@ -67,10 +67,12 @@ class KeypointPair(KeypointPairExt):
 
 if TYPE_CHECKING:
     KeypointPairLike = KeypointPair | Sequence[datatypes.KeypointIdLike]
+    """A type alias for any KeypointPair-like object."""
 else:
     KeypointPairLike = Any
 
 KeypointPairArrayLike = KeypointPair | Sequence[KeypointPairLike]
+"""A type alias for any KeypointPair-like array object."""
 
 
 class KeypointPairBatch(BaseBatch[KeypointPairArrayLike]):

@@ -53,10 +53,12 @@ class KeypointId:
 
 if TYPE_CHECKING:
     KeypointIdLike = KeypointId | int
+    """A type alias for any KeypointId-like object."""
 else:
     KeypointIdLike = Any
 
 KeypointIdArrayLike = KeypointId | Sequence[KeypointIdLike] | int | npt.ArrayLike
+"""A type alias for any KeypointId-like array object."""
 
 
 class KeypointIdBatch(BaseBatch[KeypointIdArrayLike]):

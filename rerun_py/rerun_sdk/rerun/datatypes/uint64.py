@@ -46,10 +46,12 @@ class UInt64:
 
 if TYPE_CHECKING:
     UInt64Like = UInt64 | int
+    """A type alias for any UInt64-like object."""
 else:
     UInt64Like = Any
 
 UInt64ArrayLike = UInt64 | Sequence[UInt64Like] | int | npt.NDArray[np.uint64]
+"""A type alias for any UInt64-like array object."""
 
 
 class UInt64Batch(BaseBatch[UInt64ArrayLike]):

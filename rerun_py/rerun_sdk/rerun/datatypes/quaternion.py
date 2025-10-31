@@ -48,9 +48,12 @@ class Quaternion(QuaternionExt):
 
 
 QuaternionLike = Quaternion
+"""A type alias for any Quaternion-like object."""
+
 QuaternionArrayLike = (
     Quaternion | Sequence[QuaternionLike] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[float]]
 )
+"""A type alias for any Quaternion-like array object."""
 
 
 class QuaternionBatch(BaseBatch[QuaternionArrayLike]):

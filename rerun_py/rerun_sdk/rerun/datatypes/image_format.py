@@ -111,7 +111,10 @@ class ImageFormat(ImageFormatExt):
 
 
 ImageFormatLike = ImageFormat
+"""A type alias for any ImageFormat-like object."""
+
 ImageFormatArrayLike = ImageFormat | Sequence[ImageFormatLike]
+"""A type alias for any ImageFormat-like array object."""
 
 
 class ImageFormatBatch(BaseBatch[ImageFormatArrayLike]):

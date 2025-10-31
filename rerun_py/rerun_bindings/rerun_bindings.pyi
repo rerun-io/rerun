@@ -14,10 +14,11 @@ from rerun.catalog import CatalogClient
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .types import (
-    AnyColumn,
-    AnyComponentColumn,
-    IndexValuesLike,
-    ViewContentsLike,
+    AnyColumn as AnyColumn,
+    AnyComponentColumn as AnyComponentColumn,
+    IndexValuesLike as IndexValuesLike,
+    VectorDistanceMetricLike as VectorDistanceMetricLike,
+    ViewContentsLike as ViewContentsLike,
 )
 
 class IndexColumnDescriptor:

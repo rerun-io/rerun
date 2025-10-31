@@ -80,10 +80,12 @@ class Mat3x3(Mat3x3Ext):
 
 if TYPE_CHECKING:
     Mat3x3Like = Mat3x3 | npt.ArrayLike
+    """A type alias for any Mat3x3-like object."""
 else:
     Mat3x3Like = Any
 
 Mat3x3ArrayLike = Mat3x3 | Sequence[Mat3x3Like] | npt.ArrayLike
+"""A type alias for any Mat3x3-like array object."""
 
 
 class Mat3x3Batch(BaseBatch[Mat3x3ArrayLike]):

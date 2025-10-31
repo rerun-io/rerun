@@ -48,12 +48,14 @@ class UVec2D(UVec2DExt):
 
 if TYPE_CHECKING:
     UVec2DLike = UVec2D | npt.NDArray[Any] | npt.ArrayLike | Sequence[int]
+    """A type alias for any UVec2D-like object."""
 else:
     UVec2DLike = Any
 
 UVec2DArrayLike = (
     UVec2D | Sequence[UVec2DLike] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[int]] | Sequence[int]
 )
+"""A type alias for any UVec2D-like array object."""
 
 
 class UVec2DBatch(BaseBatch[UVec2DArrayLike]):

@@ -41,10 +41,12 @@ class Utf8:
 
 if TYPE_CHECKING:
     Utf8Like = Utf8 | str
+    """A type alias for any Utf8-like object."""
 else:
     Utf8Like = Any
 
 Utf8ArrayLike = Utf8 | Sequence[Utf8Like] | str | Sequence[str] | npt.ArrayLike
+"""A type alias for any Utf8-like array object."""
 
 
 class Utf8Batch(BaseBatch[Utf8ArrayLike]):

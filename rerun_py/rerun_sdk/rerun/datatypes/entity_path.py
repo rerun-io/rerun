@@ -41,10 +41,12 @@ class EntityPath:
 
 if TYPE_CHECKING:
     EntityPathLike = EntityPath | str
+    """A type alias for any EntityPath-like object."""
 else:
     EntityPathLike = Any
 
 EntityPathArrayLike = EntityPath | Sequence[EntityPathLike] | Sequence[str]
+"""A type alias for any EntityPath-like array object."""
 
 
 class EntityPathBatch(BaseBatch[EntityPathArrayLike]):

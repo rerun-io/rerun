@@ -70,10 +70,12 @@ if TYPE_CHECKING:
     from .. import datatypes
 
     ClassDescriptionLike = ClassDescription | datatypes.AnnotationInfoLike
+    """A type alias for any ClassDescription-like object."""
 else:
     ClassDescriptionLike = Any
 
 ClassDescriptionArrayLike = ClassDescription | Sequence[ClassDescriptionLike]
+"""A type alias for any ClassDescription-like array object."""
 
 
 class ClassDescriptionBatch(BaseBatch[ClassDescriptionArrayLike]):

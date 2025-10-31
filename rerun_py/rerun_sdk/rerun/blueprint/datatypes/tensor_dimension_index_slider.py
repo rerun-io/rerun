@@ -66,12 +66,14 @@ class TensorDimensionIndexSlider(TensorDimensionIndexSliderExt):
 
 if TYPE_CHECKING:
     TensorDimensionIndexSliderLike = TensorDimensionIndexSlider | int
+    """A type alias for any TensorDimensionIndexSlider-like object."""
 else:
     TensorDimensionIndexSliderLike = Any
 
 TensorDimensionIndexSliderArrayLike = (
     TensorDimensionIndexSlider | Sequence[TensorDimensionIndexSliderLike] | npt.ArrayLike
 )
+"""A type alias for any TensorDimensionIndexSlider-like array object."""
 
 
 class TensorDimensionIndexSliderBatch(BaseBatch[TensorDimensionIndexSliderArrayLike]):

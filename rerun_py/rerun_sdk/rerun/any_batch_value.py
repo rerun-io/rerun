@@ -10,7 +10,7 @@ from pyarrow import ArrowInvalid
 from rerun._baseclasses import ComponentDescriptor
 
 from ._baseclasses import ComponentBatchLike, ComponentColumn
-from .error_utils import catch_and_log_exceptions, strict_mode
+from .error_utils import catch_and_log_exceptions, strict_mode as strict_mode
 
 ANY_VALUE_TYPE_REGISTRY: dict[ComponentDescriptor, Any] = {}
 

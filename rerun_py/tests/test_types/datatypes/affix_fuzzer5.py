@@ -44,7 +44,10 @@ class AffixFuzzer5:
 
 
 AffixFuzzer5Like = AffixFuzzer5
+"""A type alias for any AffixFuzzer5-like object."""
+
 AffixFuzzer5ArrayLike = AffixFuzzer5 | Sequence[AffixFuzzer5Like]
+"""A type alias for any AffixFuzzer5-like array object."""
 
 
 class AffixFuzzer5Batch(BaseBatch[AffixFuzzer5ArrayLike]):

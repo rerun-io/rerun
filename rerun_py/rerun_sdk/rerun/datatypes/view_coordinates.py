@@ -80,10 +80,12 @@ class ViewCoordinates(ViewCoordinatesExt):
 
 if TYPE_CHECKING:
     ViewCoordinatesLike = ViewCoordinates | npt.ArrayLike
+    """A type alias for any ViewCoordinates-like object."""
 else:
     ViewCoordinatesLike = Any
 
 ViewCoordinatesArrayLike = ViewCoordinates | Sequence[ViewCoordinatesLike] | npt.ArrayLike
+"""A type alias for any ViewCoordinates-like array object."""
 
 
 class ViewCoordinatesBatch(BaseBatch[ViewCoordinatesArrayLike]):

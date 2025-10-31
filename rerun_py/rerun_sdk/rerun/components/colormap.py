@@ -152,6 +152,8 @@ ColormapLike = (
     ]
     | int
 )
+"""A type alias for any Colormap-like object."""
+
 ColormapArrayLike = (
     Colormap
     | Literal[
@@ -177,6 +179,7 @@ ColormapArrayLike = (
     | int
     | Sequence[ColormapLike]
 )
+"""A type alias for any Colormap-like array object."""
 
 
 class ColormapBatch(BaseBatch[ColormapArrayLike], ComponentBatchMixin):

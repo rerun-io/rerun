@@ -42,7 +42,10 @@ class FlattenedScalar:
 
 
 FlattenedScalarLike = FlattenedScalar
+"""A type alias for any FlattenedScalar-like object."""
+
 FlattenedScalarArrayLike = FlattenedScalar | Sequence[FlattenedScalarLike]
+"""A type alias for any FlattenedScalar-like array object."""
 
 
 class FlattenedScalarBatch(BaseBatch[FlattenedScalarArrayLike]):

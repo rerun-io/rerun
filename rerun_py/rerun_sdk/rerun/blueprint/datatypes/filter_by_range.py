@@ -62,7 +62,10 @@ class FilterByRange(FilterByRangeExt):
 
 
 FilterByRangeLike = FilterByRange
+"""A type alias for any FilterByRange-like object."""
+
 FilterByRangeArrayLike = FilterByRange | Sequence[FilterByRangeLike]
+"""A type alias for any FilterByRange-like array object."""
 
 
 class FilterByRangeBatch(BaseBatch[FilterByRangeArrayLike]):

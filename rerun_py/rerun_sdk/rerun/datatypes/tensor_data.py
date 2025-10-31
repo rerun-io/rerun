@@ -75,10 +75,12 @@ class TensorData(TensorDataExt):
 
 if TYPE_CHECKING:
     TensorDataLike = TensorData | npt.ArrayLike
+    """A type alias for any TensorData-like object."""
 else:
     TensorDataLike = Any
 
 TensorDataArrayLike = TensorData | Sequence[TensorDataLike] | npt.ArrayLike
+"""A type alias for any TensorData-like array object."""
 
 
 class TensorDataBatch(BaseBatch[TensorDataArrayLike]):

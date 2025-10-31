@@ -65,10 +65,12 @@ class KeyValuePairs(KeyValuePairsExt, ComponentMixin):
 
 if TYPE_CHECKING:
     KeyValuePairsLike = KeyValuePairs | dict[str, str]
+    """A type alias for any KeyValuePairs-like object."""
 else:
     KeyValuePairsLike = Any
 
 KeyValuePairsArrayLike = KeyValuePairs | Sequence[KeyValuePairsLike] | dict[str, str] | Sequence[dict[str, str]]
+"""A type alias for any KeyValuePairs-like array object."""
 
 
 class KeyValuePairsBatch(BaseBatch[KeyValuePairsArrayLike], ComponentBatchMixin):

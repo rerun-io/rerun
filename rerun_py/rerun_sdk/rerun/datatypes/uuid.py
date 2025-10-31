@@ -59,6 +59,7 @@ class Uuid(UuidExt):
 
 if TYPE_CHECKING:
     UuidLike = Uuid | npt.NDArray[Any] | npt.ArrayLike | Sequence[int] | bytes
+    """A type alias for any Uuid-like object."""
 else:
     UuidLike = Any
 
@@ -71,6 +72,7 @@ UuidArrayLike = (
     | Sequence[int]
     | Sequence[bytes]
 )
+"""A type alias for any Uuid-like array object."""
 
 
 class UuidBatch(BaseBatch[UuidArrayLike]):

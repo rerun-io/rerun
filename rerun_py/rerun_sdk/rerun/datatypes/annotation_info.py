@@ -91,10 +91,12 @@ class AnnotationInfo(AnnotationInfoExt):
 
 if TYPE_CHECKING:
     AnnotationInfoLike = AnnotationInfo | int | tuple[int, str] | tuple[int, str, datatypes.Rgba32Like]
+    """A type alias for any AnnotationInfo-like object."""
 else:
     AnnotationInfoLike = Any
 
 AnnotationInfoArrayLike = AnnotationInfo | Sequence[AnnotationInfoLike]
+"""A type alias for any AnnotationInfo-like array object."""
 
 
 class AnnotationInfoBatch(BaseBatch[AnnotationInfoArrayLike]):

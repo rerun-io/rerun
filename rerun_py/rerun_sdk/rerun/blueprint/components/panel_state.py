@@ -55,12 +55,15 @@ class PanelState(Enum):
 
 
 PanelStateLike = PanelState | Literal["Collapsed", "Expanded", "Hidden", "collapsed", "expanded", "hidden"] | int
+"""A type alias for any PanelState-like object."""
+
 PanelStateArrayLike = (
     PanelState
     | Literal["Collapsed", "Expanded", "Hidden", "collapsed", "expanded", "hidden"]
     | int
     | Sequence[PanelStateLike]
 )
+"""A type alias for any PanelState-like array object."""
 
 
 class PanelStateBatch(BaseBatch[PanelStateArrayLike], ComponentBatchMixin):
