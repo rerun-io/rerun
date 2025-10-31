@@ -615,16 +615,16 @@ impl DesignTokens {
         6.0
     }
 
-    pub fn window_corner_radius(&self) -> f32 {
-        6.0
+    pub fn window_corner_radius(&self) -> u8 {
+        6
     }
 
-    pub fn normal_corner_radius(&self) -> f32 {
-        6.0
+    pub fn normal_corner_radius(&self) -> u8 {
+        6
     }
 
-    pub fn small_corner_radius(&self) -> f32 {
-        4.0
+    pub fn small_corner_radius(&self) -> u8 {
+        4
     }
 
     pub fn table_cell_margin(&self, table_style: TableStyle) -> Margin {
