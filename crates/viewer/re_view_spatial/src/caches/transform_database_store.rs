@@ -6,7 +6,7 @@ use re_entity_db::EntityDb;
 use re_tf::TransformResolutionCache;
 use re_viewer_context::{Cache, CacheMemoryReport};
 
-/// Stores a [`re_tf::TransformResolutionCache`] for each recording.
+/// Stores a [`TransformResolutionCache`] for each recording.
 ///
 /// Ensures that the cache stays up to date.
 #[derive(Default)]
