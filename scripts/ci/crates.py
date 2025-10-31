@@ -502,7 +502,9 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], d
                 retry_attempts -= 1
                 time.sleep(retry_delay + 1)
             else:
-                print(f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}\n\nNo remaining retry attempts; aborting publish")
+                print(
+                    f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}\n\nNo remaining retry attempts; aborting publish"
+                )
                 raise
 
 
