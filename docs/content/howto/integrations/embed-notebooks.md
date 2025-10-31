@@ -105,7 +105,7 @@ For a more complete example, see [callbacks.ipynb](https://github.com/rerun-io/r
 
 ## Working with blueprints
 
-[Blueprints](../visualization/configure-viewer-through-code.md) can also be used with `notebook_show()` by providing a `blueprint`
+[Blueprints](../../getting-started/configure-the-viewer.md#programmatic-blueprints) can also be used with `notebook_show()` by providing a `blueprint`
 parameter.
 
 For example

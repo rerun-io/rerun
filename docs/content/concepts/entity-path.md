@@ -55,7 +55,7 @@ Path hierarchy plays an important role in a number of different functions within
  * With the [Transform System](spaces-and-transforms.md) the `transform` component logged to any entity always describes
 the relationship between that entity and its direct parent.
  * When resolving the meaning of [`ClassId`](../reference/types/components/class_id.md) and [`KeypointId`](../reference/types/components/keypoint_id.md) components, Rerun uses the [Annotation Context](annotation-context.md) from the nearest ancestor in the hierarchy.
- * When adding data to [Blueprints](../reference/viewer/blueprint.md), it is common to add a path and all of its descendants.
+ * When adding data to [Blueprints](../reference/viewer/blueprints.md), it is common to add a path and all of its descendants.
  * When using `rr.log("entity/path", rr.Clear(recursive=True))`, it marks an entity *and all of its descendants* as being cleared.
  * In the future, it will also be possible to use path-hierarchy to set default-values for descendants
    ([#1158](https://github.com/rerun-io/rerun/issues/1158)).

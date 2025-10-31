@@ -17,7 +17,7 @@ This section explains the process by which logged data is used to produce a visu
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viscomp-base/02d6fe87db0d33b6e9e4dc2d647b3c473e6ce50b/1200w.png">
 </picture>
 
-In the Rerun viewer, visualizations happen within _views_, which are defined by their [_blueprint_](blueprint.md).
+In the Rerun viewer, visualizations happen within _views_, which are defined by their [_blueprint_](blueprints.md).
 
 The first step for a view to display its content is to determine which entities are involved.
 This is determined by the [entity query](../reference/entity-queries.md), which is part of the view blueprint.

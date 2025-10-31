@@ -7,7 +7,7 @@ Rerun, at its core, is a database. As such, you can always get your data back in
 
 This can be achieved in three different ways, depending on your needs:
 * using the dataframe API, currently available in [Python](https://ref.rerun.io/docs/python/stable/common/dataframe/) and [Rust](https://docs.rs/rerun/latest/rerun/dataframe/index.html),
-* using the [blueprint API](../concepts/blueprint.md) to configure a [dataframe view](types/views/dataframe_view.md) from code,
+* using the [blueprint API](../concepts/blueprints.md) to configure a [dataframe view](types/views/dataframe_view.md) from code,
 * or simply by setting up [dataframe view](types/views/dataframe_view.md) manually in the UI.
 
 This page is meant as a reference to get you up and running with these different solutions as quickly as possible.
@@ -64,7 +64,7 @@ Check out the blueprint API and `log_file_from_path` references to learn more:
 * [🦀 Rust `log_file_from_path`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log_file_from_path)
 * [🌊 C++ `log_file_from_path`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a20798d7ea74cce5c8174e5cacd0a2c47)
 
-You can learn more in our [dedicated page about blueprint re-use](../howto/visualization/reuse-blueprints.md).
+You can learn more about saving and loading blueprints in [Configure the Viewer](../getting-started/configure-the-viewer.md#save-and-load-blueprint-files).
 
 
 ### Setting up dataframe view manually in the UI
