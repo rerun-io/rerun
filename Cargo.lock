@@ -8352,12 +8352,15 @@ version = "0.27.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
+ "comfy-table",
  "half",
  "insta",
  "itertools 0.14.0",
- "re_format_arrow",
  "re_log",
  "re_tracing",
+ "re_tuid",
+ "re_types_core",
+ "serde_json",
  "thiserror 2.0.17",
 ]
 
@@ -8479,7 +8482,6 @@ dependencies = [
  "re_byte_size",
  "re_error",
  "re_format",
- "re_format_arrow",
  "re_log",
  "re_log_types",
  "re_sorbet",
@@ -8547,10 +8549,7 @@ dependencies = [
 name = "re_component_fallbacks"
 version = "0.27.0-alpha.1+dev"
 dependencies = [
- "egui",
- "insta",
  "re_log_types",
- "re_test_context",
  "re_types",
  "re_viewer_context",
 ]
@@ -8723,7 +8722,6 @@ dependencies = [
  "re_arrow_util",
  "re_chunk",
  "re_chunk_store",
- "re_format_arrow",
  "re_log",
  "re_log_types",
  "re_query",
@@ -8880,19 +8878,6 @@ dependencies = [
  "half",
  "itertools 0.14.0",
  "num-traits",
-]
-
-[[package]]
-name = "re_format_arrow"
-version = "0.27.0-alpha.1+dev"
-dependencies = [
- "arrow",
- "comfy-table",
- "itertools 0.14.0",
- "re_arrow_util",
- "re_tuid",
- "re_types_core",
- "serde_json",
 ]
 
 [[package]]
@@ -9096,6 +9081,7 @@ version = "0.27.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "backtrace",
+ "crossbeam",
  "itertools 0.14.0",
  "memory-stats",
  "nohash-hasher",
@@ -9141,7 +9127,6 @@ dependencies = [
  "opentelemetry_sdk",
  "parking_lot",
  "prometheus-client",
- "re_memory",
  "serde",
  "serde_json",
  "tokio",
@@ -9336,7 +9321,6 @@ dependencies = [
  "prost-types 0.14.1",
  "re_arrow_util",
  "re_chunk",
- "re_format_arrow",
  "re_log_types",
  "re_protos",
  "re_sdk",
@@ -9569,7 +9553,6 @@ dependencies = [
  "itertools 0.14.0",
  "nohash-hasher",
  "re_arrow_util",
- "re_format_arrow",
  "re_log",
  "re_log_types",
  "re_tracing",
@@ -9804,7 +9787,6 @@ dependencies = [
  "half",
  "itertools 0.14.0",
  "nohash-hasher",
- "re_arrow_util",
  "re_byte_size",
  "re_case",
  "re_error",
@@ -10074,6 +10056,7 @@ dependencies = [
  "serde",
  "smallvec",
  "thiserror 2.0.17",
+ "vec1",
 ]
 
 [[package]]
@@ -10187,6 +10170,7 @@ dependencies = [
  "emath",
  "glam",
  "image",
+ "insta",
  "itertools 0.14.0",
  "jiff",
  "js-sys",
@@ -10578,6 +10562,7 @@ dependencies = [
  "puffin",
  "rayon",
  "re_analytics",
+ "re_arrow_util",
  "re_auth",
  "re_build_info",
  "re_build_tools",
@@ -10591,7 +10576,6 @@ dependencies = [
  "re_entity_db",
  "re_error",
  "re_format",
- "re_format_arrow",
  "re_grpc_server",
  "re_log",
  "re_log_encoding",
@@ -10686,7 +10670,6 @@ dependencies = [
  "re_chunk_store",
  "re_dataframe",
  "re_datafusion",
- "re_format_arrow",
  "re_grpc_client",
  "re_grpc_server",
  "re_log",
@@ -10697,6 +10680,7 @@ dependencies = [
  "re_protos",
  "re_redap_client",
  "re_sdk",
+ "re_server",
  "re_sorbet",
  "re_tuid",
  "re_uri",

@@ -9,17 +9,17 @@ use tower::{Layer, Service};
 /// Client-side async auth layer (replaces `Interceptor`)
 #[derive(Clone)]
 pub struct AuthDecorator {
-    provider: Arc<dyn CredentialsProvider + Send + Sync>,
+    provider: Option<Arc<dyn CredentialsProvider + Send + Sync>>,
 }
 
 impl AuthDecorator {
-    pub fn new(provider: Arc<dyn CredentialsProvider + Send + Sync>) -> Self {
+    pub fn new(provider: Option<Arc<dyn CredentialsProvider + Send + Sync>>) -> Self {
         Self { provider }
     }
 
     pub fn from_token(token: Jwt) -> Self {
         Self {
-            provider: Arc::new(StaticCredentialsProvider::new(token)),
+            provider: Some(Arc::new(StaticCredentialsProvider::new(token))),
         }
     }
 }
@@ -37,7 +37,7 @@ impl<S> Layer<S> for AuthDecorator {
 
 #[derive(Debug, Clone)]
 pub struct AuthService<S> {
-    provider: Arc<dyn CredentialsProvider + Send + Sync>,
+    provider: Option<Arc<dyn CredentialsProvider + Send + Sync>>,
     inner: S,
 }
 
@@ -67,33 +67,39 @@ where
         Box::pin(async move {
             let mut req = req;
 
-            match provider.get_token().await {
-                Ok(Some(jwt)) => {
-                    let token = jwt.0.trim();
+            if let Some(provider) = provider {
+                match provider.get_token().await {
+                    Ok(Some(jwt)) => {
+                        let token = jwt.0.trim();
 
-                    match format!("{TOKEN_PREFIX}{token}")
-                        .parse::<http::HeaderValue>()
-                        .map_err(|err: InvalidHeaderValue| {
-                            re_log::debug!("malformed token '{token}': {err}");
-                            err
-                        }) {
-                        Ok(token) => {
-                            req.headers_mut().insert(AUTHORIZATION_KEY, token);
+                        match format!("{TOKEN_PREFIX}{token}")
+                            .parse::<http::HeaderValue>()
+                            .map_err(|err: InvalidHeaderValue| {
+                                re_log::debug!("malformed token '{token}': {err}");
+                                err
+                            }) {
+                            Ok(token) => {
+                                req.headers_mut().insert(AUTHORIZATION_KEY, token);
 
-                            crate::wasm_compat::make_future_send_on_wasm(inner.call(req))
-                                .await
-                                .map_err(|err| err.into())
+                                crate::wasm_compat::make_future_send_on_wasm(inner.call(req))
+                                    .await
+                                    .map_err(|err| err.into())
+                            }
+                            Err(err) => Err(err.into()),
                         }
-                        Err(err) => Err(err.into()),
                     }
+
+                    // will probably turn into a 403
+                    Ok(None) => crate::wasm_compat::make_future_send_on_wasm(inner.call(req))
+                        .await
+                        .map_err(|err| err.into()),
+
+                    Err(err) => Err(err.into()),
                 }
-
-                // will probably turn into a 403
-                Ok(None) => crate::wasm_compat::make_future_send_on_wasm(inner.call(req))
+            } else {
+                crate::wasm_compat::make_future_send_on_wasm(inner.call(req))
                     .await
-                    .map_err(|err| err.into()),
-
-                Err(err) => Err(err.into()),
+                    .map_err(|err| err.into())
             }
         })
     }

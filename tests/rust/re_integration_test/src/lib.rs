@@ -54,7 +54,10 @@ impl TestServer {
             port: self.port,
             scheme: re_uri::Scheme::RerunHttp,
         };
-        ConnectionRegistry::new().client(origin).await
+        // TODO(jan): We don't use CLI credentials in tests, it would be nice to test at some point.
+        ConnectionRegistry::new_without_stored_credentials()
+            .client(origin)
+            .await
     }
 
     pub async fn add_test_data(&self) {
