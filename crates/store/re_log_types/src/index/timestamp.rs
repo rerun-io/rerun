@@ -181,24 +181,33 @@ impl Timestamp {
 
                 let is_today = zoned.date() == jiff::Timestamp::now().to_zoned(tz.clone()).date();
 
-                let formatted = if timestamp_format.hide_today_date() && is_today {
+                let formatted = if timestamp_format.short()
+                    || (timestamp_format.hide_today_date() && is_today)
+                {
                     zoned.strftime("%H:%M:%S").to_string()
                 } else {
                     zoned.strftime("%Y-%m-%d %H:%M:%S").to_string()
                 };
 
-                let suffix = match timestamp_format.kind() {
-                    TimestampFormatKind::LocalTimezone => tz.to_offset(timestamp).to_string(),
-                    TimestampFormatKind::LocalTimezoneImplicit => String::new(),
-                    TimestampFormatKind::Utc | TimestampFormatKind::SecondsSinceUnixEpoch => {
-                        "Z".to_owned()
+                let nanos = if timestamp_format.short() {
+                    String::new()
+                } else {
+                    format_fractional_nanos(zoned.subsec_nanosecond())
+                };
+
+                let suffix = if timestamp_format.short() {
+                    String::new()
+                } else {
+                    match timestamp_format.kind() {
+                        TimestampFormatKind::LocalTimezone => tz.to_offset(timestamp).to_string(),
+                        TimestampFormatKind::LocalTimezoneImplicit => String::new(),
+                        TimestampFormatKind::Utc | TimestampFormatKind::SecondsSinceUnixEpoch => {
+                            "Z".to_owned()
+                        }
                     }
                 };
 
-                format!(
-                    "{formatted}{}{suffix}",
-                    format_fractional_nanos(zoned.subsec_nanosecond())
-                )
+                format!("{formatted}{nanos}{suffix}",)
             }
         }
     }

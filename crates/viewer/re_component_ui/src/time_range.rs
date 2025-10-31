@@ -4,7 +4,7 @@ use re_types::{
     blueprint::components::TimeRange,
     datatypes::{TimeInt, TimeRangeBoundary},
 };
-use re_ui::{TimeDragValue, UiExt as _};
+use re_ui::{TimeDragValue, UiExt as _, list_item::LabelContent};
 use re_viewer_context::MaybeMutRef;
 
 pub fn time_range_multiline_edit_or_view_ui(
@@ -83,12 +83,23 @@ pub fn time_range_multiline_edit_or_view_ui(
         }),
     );
 
-    let mut response = response_x | response_y;
+    let (text, on_hover) = current_range_label(ctx, current_time, time_type, value, false);
+
+    let mut response_z = ui
+        .list_item()
+        .interactive(false)
+        .show_hierarchical(ui, LabelContent::new(text));
+
+    if let Some(on_hover) = on_hover {
+        response_z = response_z.on_hover_text(on_hover);
+    }
+
+    let mut response = response_x | response_y | response_z;
     if any_edit {
         response.mark_changed();
     }
 
-    response | current_range_ui(ctx, ui, current_time, time_type, value)
+    response
 }
 
 pub fn time_range_singleline_view_ui(
@@ -114,34 +125,54 @@ pub fn time_range_singleline_view_ui(
 
     let time_type = ctx.time_ctrl.time_type();
 
-    current_range_ui(ctx, ui, current_time, time_type, value)
+    let (text, on_hover) = current_range_label(ctx, current_time, time_type, value, true);
+
+    let res = ui.label(text);
+
+    if let Some(on_hover) = on_hover {
+        res.on_hover_text(on_hover)
+    } else {
+        res
+    }
 }
 
-fn current_range_ui(
+/// Returns (label text, on hover text).
+fn current_range_label(
     ctx: &re_viewer_context::ViewerContext<'_>,
-    ui: &mut egui::Ui,
     current_time: TimeInt,
     time_type: TimeType,
     time_range: &TimeRange,
-) -> egui::Response {
+    short_date: bool,
+) -> (String, Option<String>) {
     if time_range.start == TimeRangeBoundary::Infinite
         && time_range.end == TimeRangeBoundary::Infinite
     {
-        ui.label("Entire timeline")
+        ("Entire timeline".to_owned(), None)
     } else if time_range.start == TimeRangeBoundary::AT_CURSOR
         && time_range.end == TimeRangeBoundary::AT_CURSOR
     {
-        let current_time = time_type.format(current_time, ctx.app_options().timestamp_format);
-        ui.label(format!("At {} = {current_time}", ctx.time_ctrl.timeline().name())).on_hover_text("Does not perform a latest-at query, shows only data logged at exactly the current time cursor position.")
+        let current_time = time_type.format(
+            current_time,
+            ctx.app_options().timestamp_format.with_short(short_date),
+        );
+        (format!("At {} = {current_time}", ctx.time_ctrl.timeline().name()),
+
+            Some("Does not perform a latest-at query, shows only data logged at exactly the current time cursor position.".to_owned()))
     } else {
         let absolute_range = AbsoluteTimeRange::from_relative_time_range(time_range, current_time);
-        let from_formatted =
-            time_type.format(absolute_range.min(), ctx.app_options().timestamp_format);
-        let to_formatted =
-            time_type.format(absolute_range.max(), ctx.app_options().timestamp_format);
+        let from_formatted = time_type.format(
+            absolute_range.min(),
+            ctx.app_options().timestamp_format.with_short(short_date),
+        );
+        let to_formatted = time_type.format(
+            absolute_range.max(),
+            ctx.app_options().timestamp_format.with_short(short_date),
+        );
 
-        ui.label(format!("{from_formatted} to {to_formatted}"))
-            .on_hover_text("Showing data in this range (inclusive).")
+        (
+            format!("{from_formatted} to {to_formatted}"),
+            Some("Showing data in this range (inclusive).".to_owned()),
+        )
     }
 }
 
