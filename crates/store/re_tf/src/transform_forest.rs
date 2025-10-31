@@ -47,16 +47,6 @@ pub struct TransformInfo {
 }
 
 impl TransformInfo {
-    // TODO: Do we need this? did we connect roots to themselves?
-    // fn new_root(root: TransformFrameIdHash) -> Self {
-    //     Self {
-    //         root,
-    //         target_from_source: glam::Affine3A::IDENTITY,
-    //         target_from_instances: SmallVec1::new(glam::Affine3A::IDENTITY),
-    //         target_from_archetype: Default::default(),
-    //     }
-    // }
-
     /// Returns the root frame of the tree this transform belongs to.
     ///
     /// This is **not** necessarily the transform's target frame.
@@ -247,6 +237,13 @@ impl TransformForest {
         let transforms = transform_cache.transforms_for_timeline(query.timeline());
 
         let mut unprocessed_sources: IntSet<_> = transforms.all_sources_frames().collect();
+
+        // We also have to add implicit frame ids for all entities in the entity _tree_.
+        // That's more than just the entity paths that have things logged on since there might be arbitrary steps without any data.
+        entity_db.tree().visit_children_recursively(|entity_path| {
+            unprocessed_sources.insert(TransformFrameIdHash::from_entity_path(entity_path));
+        });
+
         let mut transform_stack = Vec::new();
 
         let mut forest = Self {
@@ -261,6 +258,7 @@ impl TransformForest {
                 entity_db,
                 query,
                 current_frame,
+                transform_cache,
                 transforms,
                 &mut unprocessed_sources,
                 &mut transform_stack,
@@ -282,7 +280,7 @@ impl TransformForest {
     /// Each stack in the transform is a parent item of the item before it.
     fn add_stack_of_transforms(
         &mut self,
-        transform_cache: &TransformResolutionCache,
+        cache: &TransformResolutionCache,
         transform_stack: &mut Vec<(TransformFrameIdHash, TransformsAtEntity)>, // TODO: we could be clever and track `TransformFrameIdHash` by walking. But it's rather convenient!
     ) {
         re_tracing::profile_function!();
@@ -339,9 +337,10 @@ impl TransformForest {
             let mut root_from_current_frame = root_from_target
                 * transforms
                     .target_from_source
+                    // Identity here means we're self-referencing. That's fine since we want roots to refer to themselves in our look-up table.
                     .map_or(glam::Affine3A::IDENTITY, |target_from_source| {
                         target_from_source.transform
-                    }); // Identity if this is an implicit connection.
+                    });
 
             // Did we encounter a pinhole and need to create a new subspace?
             if let Some(pinhole_projection) = transforms.pinhole_projection {
@@ -383,9 +382,9 @@ impl TransformForest {
             debug_assert!(
                 previous_transform.is_none(),
                 "Root from frame relationship was added already for {:?}. Now targeting {:?}, previously {:?}",
-                transform_cache.lookup_frame_id(current_frame),
-                transform_cache.lookup_frame_id(root_frame),
-                previous_transform.and_then(|f| transform_cache.lookup_frame_id(f.root))
+                cache.lookup_frame_id(current_frame),
+                cache.lookup_frame_id(root_frame),
+                previous_transform.and_then(|f| cache.lookup_frame_id(f.root))
             );
 
             root_from_target = root_from_current_frame;
@@ -398,7 +397,8 @@ impl TransformForest {
 fn walk_towards_parent(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
-    mut current_frame: TransformFrameIdHash,
+    current_frame: TransformFrameIdHash,
+    cache: &TransformResolutionCache,
     transforms: &CachedTransformsForTimeline,
     unprocessed_sources: &mut IntSet<TransformFrameIdHash>,
     transform_stack: &mut Vec<(TransformFrameIdHash, TransformsAtEntity)>,
@@ -410,24 +410,46 @@ fn walk_towards_parent(
         "Didn't process the last transform stack fully."
     );
 
-    while unprocessed_sources.remove(&current_frame) {
+    let mut next_frame = Some(current_frame);
+    while let Some(current_frame) = next_frame
+        && unprocessed_sources.remove(&current_frame)
+    {
         // We either already processed this frame, or we reached the end of our path if this source is not in the list of unprocessed frames.
-        let transforms = transforms_at(current_frame, entity_db, query, transforms);
+        let mut transforms = transforms_at(current_frame, entity_db, query, transforms);
 
-        // No information how to get to the target can still happen if there's only pose transform information (and maybe pinhole).
-        let next_target = transforms
-            .target_from_source
-            .as_ref()
-            .map(|target_from_source| target_from_source.target);
-        transform_stack.push((current_frame, transforms));
-
-        if let Some(next_target) = next_target {
-            current_frame = next_target;
-        } else {
-            // TODO: Keep walking for implicit relationships.
-            break;
+        // Maybe there's an implicit connection that we have to fill in?
+        if transforms.target_from_source.is_none()
+            && let Some(parent) = implicit_transform_parent(current_frame, cache)
+        {
+            // TODO: not having this still makes tests pass. Means tests are insufficient.
+            transforms.target_from_source = Some(SourceToTargetTransform {
+                target: parent,
+                transform: glam::Affine3A::IDENTITY,
+            });
         }
+
+        next_frame = transforms.target_from_source.as_ref().map(|r| r.target);
+
+        // No matter the previous outcome, we push the transform information we got about this frame onto the stack
+        // since we want something for every source we process.
+        transform_stack.push((current_frame, transforms));
     }
+}
+
+/// If `frame` is an implicit transform frame and has a parent, return said parent.
+fn implicit_transform_parent(
+    frame: TransformFrameIdHash,
+    cache: &TransformResolutionCache,
+) -> Option<TransformFrameIdHash> {
+    debug_assert!(
+        &cache.lookup_frame_id(frame).is_some(),
+        "Frame id hash {frame:?} is not known to the cache at all."
+    );
+
+    // TODO(andreas): this _looks_ quite inefficient (citation needed)
+    Some(TransformFrameIdHash::from_entity_path(
+        &cache.lookup_frame_id(frame)?.as_entity_path()?.parent()?,
+    ))
 }
 
 impl TransformForest {
