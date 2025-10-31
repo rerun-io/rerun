@@ -14,7 +14,7 @@ mod times_per_timeline;
 mod versioned_instance_path;
 
 pub use self::{
-    entity_db::{DEFAULT_GC_TIME_BUDGET, EntityDb},
+    entity_db::{DEFAULT_GC_TIME_BUDGET, EntityDb, PreparedArrowChunk},
     entity_tree::EntityTree,
     ingestion_statistics::{IngestionStatistics, LatencySnapshot, LatencyStats},
     instance_path::{InstancePath, InstancePathHash},
