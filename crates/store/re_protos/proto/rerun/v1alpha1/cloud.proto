@@ -33,6 +33,8 @@ service RerunCloudService {
 
   rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
 
+  rpc CreateTableEntry(CreateTableEntryRequest) returns (CreateTableEntryResponse) {}
+
   // Fetch metadata about a specific dataset.
   //
   // This endpoint requires the standard dataset headers.
@@ -269,7 +271,13 @@ message GetPartitionTableSchemaResponse {
 message ScanPartitionTableRequest {
   // A list of column names to be projected server-side.
   //
-  // All of them if left empty.
+  // If empty, all columns are returned.
+  //
+  // If not empty, the returned `RecordBatch` are guaranteed to only have the requested column, in the order they were
+  // requested.
+  //
+  // If a projected column does not exist, or is projected more than once, the `ScanPartitionTable` call will fail with
+  // an `InvalidArgument` error.
   repeated string columns = 3;
 
   reserved 1;
@@ -293,7 +301,13 @@ message GetDatasetManifestSchemaResponse {
 message ScanDatasetManifestRequest {
   // A list of column names to be projected server-side.
   //
-  // All of them if left empty.
+  // If empty, all columns are returned.
+  //
+  // If not empty, the returned `RecordBatch` are guaranteed to only have the requested column, in the order they were
+  // requested.
+  //
+  // If a projected column does not exist, or is projected more than once, the `ScanDatasetManifest` call will fail with
+  // an `InvalidArgument` error.
   repeated string columns = 3;
 }
 
@@ -332,6 +346,9 @@ message CreateIndexRequest {
 message CreateIndexResponse {
   reserved 1;
   reserved "data";
+
+  // Optional debug information about the index-creation task
+  DebugInfo debug_info = 2;
 }
 
 message IndexConfig {
@@ -371,9 +388,16 @@ message InvertedIndex {
 }
 
 message VectorIvfPqIndex {
+  // num_partitions is deprecated. Use target_partition_num_rows instead
+  // TODO(RR-2798): Remove in 0.6
   optional uint32 num_partitions = 1;
+
   optional uint32 num_sub_vectors = 2;
+
   VectorDistanceMetric distance_metrics = 3;
+
+  // Target size of the IVF partition in rows
+  optional uint32 target_partition_num_rows = 4;
 }
 
 enum VectorDistanceMetric {
@@ -749,6 +773,29 @@ message CreateDatasetEntryResponse {
   DatasetEntry dataset = 1;
 }
 
+// CreateTableEntry
+
+message CreateTableEntryRequest {
+  // Name of the dataset entry to create.
+  //
+  // The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
+  // with the same name already exists, the request will fail. Entry names ending with `__manifest` are reserved.
+  string name = 1;
+
+  // Information about the table to register.
+  //
+  // This must be encoded message of one one of the following supported types:
+  // - LanceTable
+  google.protobuf.Any provider_details = 2;
+
+  // Schema of the table to create
+  rerun.common.v1alpha1.Schema schema = 3;
+}
+
+message CreateTableEntryResponse {
+  TableEntry table = 1;
+}
+
 // ReadDatasetEntry
 
 message ReadDatasetEntryRequest {
@@ -900,4 +947,10 @@ message SystemTable {
 message LanceTable {
   // The URL of the Lance table.
   string table_url = 1;
+}
+
+// Optional debug info
+message DebugInfo {
+  // The amount of memory used by the task or service call in bytes
+  optional uint64 memory_used = 1;
 }

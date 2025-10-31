@@ -106,7 +106,7 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
 pub async fn test_origin_keypoint_3d() {
     let mut harness = make_test_harness();
 
-    harness.right_click_nth_label("3D view", 0);
+    harness.blueprint_tree().right_click_label("3D view");
     harness.click_label("Expand all");
 
     harness.right_click_at(harness.get_by_label("keypoint").rect().left_center());
@@ -119,7 +119,7 @@ pub async fn test_origin_keypoint_3d() {
 pub async fn test_origin_keypoint_2d() {
     let mut harness = make_test_harness();
 
-    harness.right_click_nth_label("3D view", 0);
+    harness.blueprint_tree().right_click_label("3D view");
     harness.click_label("Expand all");
 
     harness.right_click_at(harness.get_by_label("keypoint").rect().left_center());
@@ -133,7 +133,7 @@ pub async fn test_origin_keypoint_2d() {
 pub async fn test_origin_image_3d() {
     let mut harness = make_test_harness();
 
-    harness.right_click_nth_label("3D view", 0);
+    harness.blueprint_tree().right_click_label("3D view");
     harness.click_label("Expand all");
 
     // Close the selection panel before clicking on the image entity
@@ -141,7 +141,8 @@ pub async fn test_origin_image_3d() {
     // the main thread. We are in a tokio test and it will crash.
     harness.set_selection_panel_opened(false);
 
-    harness.right_click_nth_label("image", 0);
+    // harness.right_click_nth_label("image", 0);
+    harness.blueprint_tree().right_click_label("image");
     harness.hover_label_contains("Add to new view");
     harness.click_label("3D");
     harness.set_selection_panel_opened(true);
@@ -152,7 +153,7 @@ pub async fn test_origin_image_3d() {
 pub async fn test_origin_image_2d() {
     let mut harness = make_test_harness();
 
-    harness.right_click_nth_label("3D view", 0);
+    harness.blueprint_tree().right_click_label("3D view");
     harness.click_label("Expand all");
 
     // Close the selection panel before clicking on the image entity
@@ -160,7 +161,8 @@ pub async fn test_origin_image_2d() {
     // the main thread. We are in a tokio test and it will crash.
     harness.set_selection_panel_opened(false);
 
-    harness.right_click_nth_label("image", 0);
+    // harness.right_click_nth_label("image", 0);
+    harness.blueprint_tree().right_click_label("image");
     harness.hover_label_contains("Add to new view");
     harness.click_label("2D");
     harness.set_selection_panel_opened(true);
@@ -171,10 +173,11 @@ pub async fn test_origin_image_2d() {
 pub async fn test_origin_camera_3d() {
     let mut harness = make_test_harness();
 
-    harness.right_click_nth_label("3D view", 0);
+    harness.blueprint_tree().right_click_label("3D view");
     harness.click_label("Expand all");
 
-    harness.right_click_nth_label("camera", 0);
+    // harness.right_click_nth_label("camera", 0);
+    harness.blueprint_tree().right_click_label("camera");
     harness.hover_label_contains("Add to new view");
     harness.click_label("3D");
     harness.snapshot_app("origin_camera_3d");
@@ -184,10 +187,11 @@ pub async fn test_origin_camera_3d() {
 pub async fn test_origin_camera_2d() {
     let mut harness = make_test_harness();
 
-    harness.right_click_nth_label("3D view", 0);
+    harness.blueprint_tree().right_click_label("3D view");
     harness.click_label("Expand all");
 
-    harness.right_click_nth_label("camera", 0);
+    // harness.right_click_nth_label("camera", 0);
+    harness.blueprint_tree().right_click_label("camera");
     harness.hover_label_contains("Add to new view");
     harness.click_label("2D");
     harness.snapshot_app("origin_camera_2d");
@@ -197,10 +201,11 @@ pub async fn test_origin_camera_2d() {
 pub async fn test_origin_world_3d() {
     let mut harness = make_test_harness();
 
-    harness.right_click_nth_label("3D view", 0);
+    harness.blueprint_tree().right_click_label("3D view");
     harness.click_label("Expand all");
 
-    harness.right_click_nth_label("world", 0);
+    // harness.right_click_nth_label("world", 0);
+    harness.blueprint_tree().right_click_label("world");
     harness.hover_label_contains("Add to new view");
     harness.click_label("3D");
     harness.snapshot_app("origin_world_3d");
@@ -210,10 +215,11 @@ pub async fn test_origin_world_3d() {
 pub async fn test_origin_world_2d() {
     let mut harness = make_test_harness();
 
-    harness.right_click_nth_label("3D view", 0);
+    harness.blueprint_tree().right_click_label("3D view");
     harness.click_label("Expand all");
 
-    harness.right_click_nth_label("world", 0);
+    // harness.right_click_nth_label("world", 0);
+    harness.blueprint_tree().right_click_label("world");
     harness.hover_label_contains("Add to new view");
     harness.click_label("2D");
     harness.snapshot_app("origin_world_2d");
@@ -223,10 +229,11 @@ pub async fn test_origin_world_2d() {
 pub async fn test_origin_root_3d() {
     let mut harness = make_test_harness();
 
-    harness.right_click_nth_label("3D view", 0);
+    harness.blueprint_tree().right_click_label("3D view");
     harness.click_label("Expand all");
 
-    harness.right_click_nth_label("/ (root)", 0);
+    // harness.right_click_nth_label("/ (root)", 0);
+    harness.blueprint_tree().right_click_label("/ (root)");
     harness.hover_label_contains("Add to new view");
     harness.click_label("3D");
     harness.snapshot_app("origin_root_3d");
@@ -236,10 +243,11 @@ pub async fn test_origin_root_3d() {
 pub async fn test_origin_root_2d() {
     let mut harness = make_test_harness();
 
-    harness.right_click_nth_label("3D view", 0);
+    harness.blueprint_tree().right_click_label("3D view");
     harness.click_label("Expand all");
 
-    harness.right_click_nth_label("/ (root)", 0);
+    // harness.right_click_nth_label("/ (root)", 0);
+    harness.blueprint_tree().right_click_label("/ (root)");
     harness.hover_label_contains("Add to new view");
     harness.click_label("2D");
     harness.snapshot_app("origin_root_2d");
