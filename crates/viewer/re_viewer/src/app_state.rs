@@ -35,10 +35,10 @@ const WATERMARK: bool = false; // Nice for recording media material
 #[cfg(feature = "testing")]
 pub type TestHookFn = Box<dyn FnOnce(&ViewerContext<'_>)>;
 
+// TODO(#11737): Remove the serde derives since almost everything is skipped.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct AppState {
-    // TODO(isse): Just serialize app options since we skip everything else.
     /// Global options for the whole viewer.
     pub(crate) app_options: AppOptions,
 
