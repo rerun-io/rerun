@@ -9156,6 +9156,7 @@ dependencies = [
  "re_log_types",
  "re_sorbet",
  "re_tuid",
+ "re_types_core",
  "serde",
  "thiserror 2.0.17",
  "tonic",
@@ -10645,6 +10646,7 @@ name = "rerun_py"
 version = "0.27.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "bytes",
  "chrono",
  "comfy-table",
  "crossbeam",
