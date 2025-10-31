@@ -14,6 +14,7 @@ use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::external::re_types_core::ArrowString;
 use re_log_types::{EntityPath, TimeInt, TimelineName};
+use re_types::components::TransformFrameId;
 use re_types::{
     Archetype as _, ArchetypeName,
     archetypes::{self},
@@ -212,6 +213,11 @@ impl CachedTransformsForTimeline {
         source_frame: TransformFrameIdHash,
     ) -> Option<&mut TransformsForSourceFrame> {
         self.per_source_frame_transforms.get_mut(&source_frame)
+    }
+
+    /// All source frames for which we have connects to a target.
+    pub fn all_sources_frames(&self) -> impl Iterator<Item = TransformFrameIdHash> {
+        self.per_source_frame_transforms.keys().copied()
     }
 }
 
