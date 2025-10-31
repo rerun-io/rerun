@@ -1197,6 +1197,13 @@ impl ProviderDetails {
             })
         }
     }
+
+    pub fn type_url(&self) -> String {
+        match self {
+            Self::SystemTable(_) => crate::cloud::v1alpha1::SystemTable::type_url(),
+            Self::LanceTable(_) => crate::cloud::v1alpha1::LanceTable::type_url(),
+        }
+    }
 }
 
 // --- SystemTable ---
