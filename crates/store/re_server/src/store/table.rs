@@ -77,11 +77,6 @@ impl Table {
     }
 
     pub fn as_table_entry(&self) -> TableEntry {
-        let provider_details = self
-            .provider_details
-            .try_as_any()
-            .expect("provider_details should always be valid");
-
         TableEntry {
             details: EntryDetails {
                 id: self.id,
@@ -91,7 +86,7 @@ impl Table {
                 updated_at: self.updated_at,
             },
 
-            provider_details,
+            provider_details: self.provider_details.clone(),
         }
     }
 

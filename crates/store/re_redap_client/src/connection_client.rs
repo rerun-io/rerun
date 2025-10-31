@@ -588,16 +588,14 @@ where
     ) -> Result<TableEntry, ApiError> {
         let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
             name,
-            provider_details: ProviderDetails::LanceTable(LanceTable { table_url: url })
-                .try_as_any()
-                .map_err(|err| {
-                    ApiError::serialization(err, "failed building /RegisterTable request")
-                })?,
+            provider_details: ProviderDetails::LanceTable(LanceTable { table_url: url }),
         };
 
         let response: RegisterTableResponse = self
             .inner()
-            .register_table(tonic::Request::new(request.into()))
+            .register_table(tonic::Request::new(request.try_into().map_err(|err| {
+                ApiError::serialization(err, "failed building /RegisterTable request")
+            })?))
             .await
             .map_err(|err| ApiError::tonic(err, "/RegisterTable failed"))?
             .into_inner()
@@ -754,9 +752,7 @@ where
     ) -> Result<TableEntry, ApiError> {
         let provider_details = ProviderDetails::LanceTable(LanceTable {
             table_url: url.clone(),
-        })
-        .try_as_any()
-        .map_err(|err| ApiError::serialization(err, "/CreateTable failed"))?;
+        });
         let request = CreateTableEntryRequest {
             name: name.to_owned(),
             schema: schema.as_ref().clone(),

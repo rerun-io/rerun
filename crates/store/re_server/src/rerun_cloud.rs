@@ -550,7 +550,7 @@ impl RerunCloudService for RerunCloudHandler {
             ReadTableEntryResponse {
                 table_entry: table.as_table_entry(),
             }
-            .into(),
+            .try_into()?,
         ))
     }
 
@@ -1237,7 +1237,7 @@ impl RerunCloudService for RerunCloudHandler {
             .as_table_entry();
 
         let response = RegisterTableResponse {
-            table_entry: Some(table_entry.into()),
+            table_entry: Some(table_entry.try_into()?),
         };
 
         Ok(response.into())
@@ -1414,8 +1414,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         let schema = Arc::new(request.schema);
 
-        let provider_details = ProviderDetails::try_from_any(&request.provider_details)?;
-        let table = match provider_details {
+        let table = match &request.provider_details {
             ProviderDetails::LanceTable(table) => {
                 store
                     .create_table_entry(table_name, &table.table_url, schema)
@@ -1428,7 +1427,9 @@ impl RerunCloudService for RerunCloudHandler {
             }
         };
 
-        Ok(Response::new(CreateTableEntryResponse { table }.into()))
+        Ok(Response::new(
+            CreateTableEntryResponse { table }.try_into()?,
+        ))
     }
 }
 

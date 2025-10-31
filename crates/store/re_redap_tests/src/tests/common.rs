@@ -73,11 +73,9 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
         );
         let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
             name: table_name.to_owned(),
-            provider_details: provider_details
-                .try_as_any()
-                .expect("Unable to create LanceTable as provider details"),
+            provider_details,
         };
-        let request = tonic::Request::new(request.into());
+        let request = tonic::Request::new(request.try_into().expect("Failed to convert request"));
 
         self.register_table(request)
             .await
