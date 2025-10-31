@@ -32,7 +32,6 @@ on:
           - linux-x64
           - windows-x64
           - macos-arm64
-          - macos-x64
         description: "Platform to build for"
         required: true
       CONCURRENCY:
@@ -103,12 +102,6 @@ jobs:
             macos-arm64)
               runner="macos-15" # Small runners, because building rerun_c is fast
               target="aarch64-apple-darwin"
-              container="null"
-              lib_name="librerun_c.a"
-              ;;
-            macos-x64)
-              runner="macos-15" # Small runners, because building rerun_c is fast
-              target="x86_64-apple-darwin"
               container="null"
               lib_name="librerun_c.a"
               ;;
