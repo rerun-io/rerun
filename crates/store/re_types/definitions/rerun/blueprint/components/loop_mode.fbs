@@ -2,7 +2,7 @@ namespace rerun.blueprint.components;
 
 // ---
 
-/// How the time should loop.
+/// If playing, whether and how the playback time should loop.
 enum LoopMode: ubyte (
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "Copy, PartialEq, Eq",

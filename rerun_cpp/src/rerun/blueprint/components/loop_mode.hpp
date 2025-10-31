@@ -20,7 +20,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: How the time should loop.
+    /// **Component**: If playing, whether and how the playback time should loop.
     enum class LoopMode : uint8_t {
 
         /// Looping is off.

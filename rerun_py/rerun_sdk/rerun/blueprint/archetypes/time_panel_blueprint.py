@@ -59,7 +59,7 @@ class TimePanelBlueprint(Archetype):
         play_state:
             If the time is currently paused, playing, or following.
 
-            Defaults to playing.
+            Defaults to either playing or following, depending on the data source.
         loop_mode:
             How the time should loop. A selection loop only works if there is also a `time_selection` passed.
 
@@ -138,7 +138,7 @@ class TimePanelBlueprint(Archetype):
         play_state:
             If the time is currently paused, playing, or following.
 
-            Defaults to playing.
+            Defaults to either playing or following, depending on the data source.
         loop_mode:
             How the time should loop. A selection loop only works if there is also a `time_selection` passed.
 
@@ -227,7 +227,7 @@ class TimePanelBlueprint(Archetype):
     )
     # If the time is currently paused, playing, or following.
     #
-    # Defaults to playing.
+    # Defaults to either playing or following, depending on the data source.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

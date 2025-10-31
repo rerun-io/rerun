@@ -43,7 +43,7 @@ pub struct TimePanelBlueprint {
 
     /// If the time is currently paused, playing, or following.
     ///
-    /// Defaults to playing.
+    /// Defaults to either playing or following, depending on the data source.
     pub play_state: Option<SerializedComponentBatch>,
 
     /// How the time should loop. A selection loop only works if there is also a `time_selection` passed.
@@ -406,7 +406,7 @@ impl TimePanelBlueprint {
 
     /// If the time is currently paused, playing, or following.
     ///
-    /// Defaults to playing.
+    /// Defaults to either playing or following, depending on the data source.
     #[inline]
     pub fn with_play_state(
         mut self,

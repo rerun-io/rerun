@@ -44,7 +44,7 @@ namespace rerun::blueprint::archetypes {
 
         /// If the time is currently paused, playing, or following.
         ///
-        /// Defaults to playing.
+        /// Defaults to either playing or following, depending on the data source.
         std::optional<ComponentBatch> play_state;
 
         /// How the time should loop. A selection loop only works if there is also a `time_selection` passed.
@@ -154,7 +154,7 @@ namespace rerun::blueprint::archetypes {
 
         /// If the time is currently paused, playing, or following.
         ///
-        /// Defaults to playing.
+        /// Defaults to either playing or following, depending on the data source.
         TimePanelBlueprint with_play_state(
             const rerun::blueprint::components::PlayState& _play_state
         ) && {

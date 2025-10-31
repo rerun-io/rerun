@@ -10,14 +10,14 @@ enum PlayState: ubyte (
   "attr.rust.tuple_struct"
 ) {
   /// Invalid value. Won't show up in generated types.
-	Invalid = 0,
+  Invalid = 0,
 
-	/// Time doesn't move.
-	Paused,
+  /// Time doesn't move.
+  Paused,
 
-	/// Time move steadily.
-	Playing (default),
+  /// Time move steadily.
+  Playing (default),
 
-	/// Follow the latest available data.
-	Following,
+  /// Follow the latest available data.
+  Following,
 }

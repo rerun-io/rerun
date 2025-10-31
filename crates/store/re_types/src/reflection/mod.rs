@@ -270,7 +270,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <LoopMode as Component>::name(),
             ComponentReflection {
-                docstring_md: "How the time should loop.",
+                docstring_md: "If playing, whether and how the playback time should loop.",
                 deprecation_summary: None,
                 custom_placeholder: Some(LoopMode::default().to_arrow()?),
                 datatype: LoopMode::arrow_datatype(),
@@ -3956,7 +3956,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "play_state",
                         display_name: "Play state",
                         component_type: "rerun.blueprint.components.PlayState".into(),
-                        docstring_md: "If the time is currently paused, playing, or following.\n\nDefaults to playing.",
+                        docstring_md: "If the time is currently paused, playing, or following.\n\nDefaults to either playing or following, depending on the data source.",
                         is_required: false,
                     },
                     ArchetypeFieldReflection {

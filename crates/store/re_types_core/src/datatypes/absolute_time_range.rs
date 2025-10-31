@@ -21,13 +21,13 @@ use crate::{ComponentBatch as _, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: A 64-bit number describing either nanoseconds OR sequence numbers.
+/// **Datatype**: Two [`datatypes::TimeInt`][crate::datatypes::TimeInt] describing a range of time.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AbsoluteTimeRange {
     /// Start of the range.
     pub min: crate::datatypes::TimeInt,
 
-    /// End of the range.
+    /// End of the range (inclusive).
     pub max: crate::datatypes::TimeInt,
 }
 

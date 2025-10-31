@@ -24,7 +24,7 @@ __all__ = ["AbsoluteTimeRange", "AbsoluteTimeRangeArrayLike", "AbsoluteTimeRange
 
 @define(init=False)
 class AbsoluteTimeRange(AbsoluteTimeRangeExt):
-    """**Datatype**: A 64-bit number describing either nanoseconds OR sequence numbers."""
+    """**Datatype**: Two [`datatypes.TimeInt`][rerun.datatypes.TimeInt] describing a range of time."""
 
     # __init__ can be found in absolute_time_range_ext.py
 
@@ -34,7 +34,7 @@ class AbsoluteTimeRange(AbsoluteTimeRangeExt):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     max: datatypes.TimeInt = field()
-    # End of the range.
+    # End of the range (inclusive).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

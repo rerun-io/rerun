@@ -43,7 +43,7 @@ table TimePanelBlueprint (
 
   /// If the time is currently paused, playing, or following.
   ///
-  /// Defaults to playing.
+  /// Defaults to either playing or following, depending on the data source.
   play_state: rerun.blueprint.components.PlayState ("attr.rerun.component_optional", nullable, order: 2400);
 
   /// How the time should loop. A selection loop only works if there is also a `time_selection` passed.

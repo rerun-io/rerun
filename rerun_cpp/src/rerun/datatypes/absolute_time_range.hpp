@@ -16,12 +16,12 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::datatypes {
-    /// **Datatype**: A 64-bit number describing either nanoseconds OR sequence numbers.
+    /// **Datatype**: Two `datatypes::TimeInt` describing a range of time.
     struct AbsoluteTimeRange {
         /// Start of the range.
         rerun::datatypes::TimeInt min;
 
-        /// End of the range.
+        /// End of the range (inclusive).
         rerun::datatypes::TimeInt max;
 
       public:

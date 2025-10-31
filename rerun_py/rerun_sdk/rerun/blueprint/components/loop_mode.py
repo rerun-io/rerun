@@ -22,7 +22,7 @@ from enum import Enum
 
 
 class LoopMode(Enum):
-    """**Component**: How the time should loop."""
+    """**Component**: If playing, whether and how the playback time should loop."""
 
     Off = 1
     """Looping is off."""
