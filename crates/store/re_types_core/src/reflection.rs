@@ -224,6 +224,8 @@ pub fn generic_placeholder_for_datatype(
             ))
         }
 
+        DataType::Decimal32(_, _) => Arc::new(array::Decimal32Array::from_iter([0])),
+        DataType::Decimal64(_, _) => Arc::new(array::Decimal64Array::from_iter([0])),
         DataType::Decimal128(_, _) => Arc::new(array::Decimal128Array::from_iter([0])),
 
         DataType::Decimal256(_, _) => Arc::new(array::Decimal256Array::from_iter([
