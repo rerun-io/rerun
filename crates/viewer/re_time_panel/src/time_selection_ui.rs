@@ -1,9 +1,11 @@
 use egui::{Color32, CursorIcon, Id, NumExt as _, Rect};
 
-use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType};
+use re_log_types::{
+    AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType, TimestampFormat,
+};
 use re_types::blueprint::components::LoopMode;
-use re_ui::UiExt as _;
-use re_viewer_context::{TimeControl, TimeControlCommand};
+use re_ui::{UiExt as _, list_item};
+use re_viewer_context::{TimeControl, TimeControlCommand, ViewerContext};
 
 use super::time_ranges_ui::TimeRangesUi;
 
@@ -54,6 +56,7 @@ pub fn collapsed_loop_selection_ui(
 }
 
 pub fn loop_selection_ui(
+    ctx: &ViewerContext<'_>,
     time_ctrl: &TimeControl,
     time_ranges_ui: &TimeRangesUi,
     ui: &egui::Ui,
@@ -138,18 +141,44 @@ pub fn loop_selection_ui(
                     Rect::from_x_y_ranges(rect.right()..=rect.right(), rect.y_range())
                         .expand(interact_radius);
 
+                let time_type = time_ctrl.time_type();
+
                 // Check middle first, so that the edges "wins" (are on top)
                 let middle_response = ui
                     .interact(rect, middle_id, egui::Sense::click_and_drag())
-                    .on_hover_and_drag_cursor(CursorIcon::Move);
+                    .on_hover_and_drag_cursor(CursorIcon::Move)
+                    .on_hover_ui_at_pointer(|ui| {
+                        TimeLoopPart::Middle.tooltip_ui(
+                            ui,
+                            time_type,
+                            selected_range,
+                            ctx.app_options().timestamp_format,
+                        );
+                    });
 
                 let left_response = ui
                     .interact(left_edge_rect, left_edge_id, egui::Sense::drag())
-                    .on_hover_and_drag_cursor(CursorIcon::ResizeWest);
+                    .on_hover_and_drag_cursor(CursorIcon::ResizeWest)
+                    .on_hover_ui_at_pointer(|ui| {
+                        TimeLoopPart::Beginning.tooltip_ui(
+                            ui,
+                            time_type,
+                            selected_range,
+                            ctx.app_options().timestamp_format,
+                        );
+                    });
 
                 let right_response = ui
                     .interact(right_edge_rect, right_edge_id, egui::Sense::drag())
-                    .on_hover_and_drag_cursor(CursorIcon::ResizeEast);
+                    .on_hover_and_drag_cursor(CursorIcon::ResizeEast)
+                    .on_hover_ui_at_pointer(|ui| {
+                        TimeLoopPart::End.tooltip_ui(
+                            ui,
+                            time_type,
+                            selected_range,
+                            ctx.app_options().timestamp_format,
+                        );
+                    });
 
                 if left_response.dragged() {
                     drag_right_loop_selection_edge(
@@ -203,6 +232,42 @@ pub fn loop_selection_ui(
             time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
             ui.ctx().set_dragged_id(right_edge_id);
         }
+    }
+}
+
+/// What part of the time loop selection is the user hovering?
+#[derive(Clone, Copy, Debug, Hash)]
+enum TimeLoopPart {
+    Beginning,
+    Middle,
+    End,
+}
+
+impl TimeLoopPart {
+    pub fn tooltip_ui(
+        &self,
+        ui: &mut egui::Ui,
+        time_type: TimeType,
+        range: AbsoluteTimeRangeF,
+        timestamp_format: TimestampFormat,
+    ) {
+        let range = range.to_int();
+        list_item::list_item_scope(ui, self, |ui| {
+            ui.list_item_flat_noninteractive(
+                list_item::PropertyContent::new("Start")
+                    .value_text(time_type.format(range.min, timestamp_format)),
+            );
+            ui.list_item_flat_noninteractive(
+                list_item::PropertyContent::new("Stop")
+                    .value_text(time_type.format(range.max, timestamp_format)),
+            );
+
+            let length = i64::try_from(range.abs_length()).unwrap_or(i64::MAX);
+            ui.list_item_flat_noninteractive(
+                list_item::PropertyContent::new("Length")
+                    .value_text(format_duration(time_type, length.into())),
+            );
+        });
     }
 }
 
