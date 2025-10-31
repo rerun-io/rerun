@@ -352,7 +352,10 @@ impl TimeRangesUi {
     /// In effect, this will automatically choose the snap-radius based on zoom level.
     pub fn snapped_time_from_x(&self, ui: &egui::Ui, pointer_x: f32) -> Option<TimeReal> {
         // TODO(emilk): coarser snapping if some modifier is held down
-        let aim_radius = ui.input(|i| i.aim_radius());
+        let mut aim_radius = ui.input(|i| i.aim_radius());
+        if ui.input(|i| i.modifiers.shift) {
+            aim_radius *= 15.0;
+        }
         let min_time = self.time_from_x_f32(pointer_x - aim_radius);
         let max_time = self.time_from_x_f32(pointer_x + aim_radius);
         if let (Some(min_time), Some(max_time)) = (min_time, max_time) {

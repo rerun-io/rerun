@@ -1902,7 +1902,10 @@ fn time_marker_ui(
             time_commands.push(TimeControlCommand::SetTime(time));
             time_commands.push(TimeControlCommand::Pause);
 
-            x = pointer_pos.x; // avoid frame-delay
+            // Avoid frame-delay:
+            x = time_ranges_ui
+                .x_from_time_f32(time)
+                .unwrap_or(pointer_pos.x);
         }
 
         ui.paint_time_cursor(
