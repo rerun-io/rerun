@@ -110,7 +110,7 @@ pub async fn test_collapse_stream_entity() {
     let mut harness = make_test_harness();
     setup_single_view_blueprint(&mut harness);
 
-    harness.right_click_nth_label("txt/", 0);
+    harness.streams_tree().right_click_label("txt/");
     harness.snapshot_app("collapse_stream_entity_1");
 
     harness.click_label("Collapse all");
@@ -122,7 +122,7 @@ pub async fn test_collapse_stream_root() {
     let mut harness = make_test_harness();
     setup_single_view_blueprint(&mut harness);
 
-    harness.right_click_nth_label("/", 0);
+    harness.streams_tree().right_click_label("/");
     harness.snapshot_app("collapse_stream_root_1");
 
     harness.click_label("Collapse all");
