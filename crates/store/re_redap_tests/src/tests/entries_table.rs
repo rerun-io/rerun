@@ -77,7 +77,7 @@ pub async fn list_entries_table(service: impl RerunCloudService) {
 
     assert_eq!(batch.schema().fields(), schema.fields());
 
-    let batch = batch.filtered_columns(&["name", "entry_kind"]);
+    let batch = batch.project_columns(&["name", "entry_kind"]);
 
     insta::assert_snapshot!(format!("entries_table_data"), batch.format_snapshot(false));
 }

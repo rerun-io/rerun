@@ -42,6 +42,51 @@ class RateLimiter:
 _T = TypeVar("_T", bound=Hashable)
 
 
+def _sanitize_dependency_graph(dependency_graph: dict[_T, list[_T]]) -> None:
+    """
+    Sanitize the dependency graph.
+
+    This checks the following thing:
+    - make sure all the listed dependencies exist in the graph
+    - make sure the graph is acyclic
+    """
+
+    # Check for missing dependencies
+
+    all_dependencies = set.union(*[set(deps) for deps in dependency_graph.values()])
+    missing_dependencies = all_dependencies - dependency_graph.keys()
+    print(missing_dependencies)
+    assert len(missing_dependencies) == 0, f"these dependencies are missing: {missing_dependencies}"
+
+    # Check for cycles using DFS
+    visited = set()
+    rec_stack = set()
+    path = []
+
+    def find_cycle(node: _T) -> bool:
+        visited.add(node)
+        rec_stack.add(node)
+        path.append(node)
+
+        for neighbor in dependency_graph.get(node, []):
+            if neighbor not in visited:
+                if find_cycle(neighbor):
+                    return True
+            elif neighbor in rec_stack:
+                # Found cycle - extract and display it
+                cycle_start = path.index(neighbor)
+                cycle = [*path[cycle_start:], neighbor]
+                raise ValueError(f"cycle detected: {' -> '.join(map(str, cycle))}")
+
+        path.pop()
+        rec_stack.remove(node)
+        return False
+
+    for node in dependency_graph:
+        if node not in visited:
+            find_cycle(node)
+
+
 class DAG(Generic[_T]):
     def __init__(self, dependency_graph: dict[_T, list[_T]]) -> None:
         """
@@ -49,6 +94,8 @@ class DAG(Generic[_T]):
 
         The `dependency_graph` _must not_ contain any cycles.
         """
+
+        _sanitize_dependency_graph(dependency_graph)
 
         self._graph = dependency_graph
 

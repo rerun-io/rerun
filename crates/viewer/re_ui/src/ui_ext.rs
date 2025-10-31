@@ -645,7 +645,7 @@ pub trait UiExt {
         &mut self,
         id_salt: impl std::hash::Hash,
         content: impl FnOnce(&mut egui::Ui) -> R,
-    ) -> R {
+    ) -> egui::InnerResponse<R> {
         list_item::list_item_scope(self.ui_mut(), id_salt, content)
     }
 
@@ -687,7 +687,7 @@ pub trait UiExt {
                 id,
                 default_open,
                 list_item::LabelContent::new(label),
-                |ui| list_item::list_item_scope(ui, id, children_ui),
+                |ui| list_item::list_item_scope(ui, id, children_ui).inner,
             )
             .body_response
             .map(|r| r.inner)

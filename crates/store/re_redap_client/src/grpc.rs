@@ -99,7 +99,7 @@ pub type RedapClientInner = re_auth::client::AuthService<
 #[cfg(target_arch = "wasm32")]
 pub(crate) async fn client(
     origin: Origin,
-    credentials: Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>,
+    credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
 ) -> Result<RedapClient, ApiError> {
     let channel = channel(origin).await?;
 
@@ -151,7 +151,7 @@ pub type RedapClient = RerunCloudServiceClient<RedapClientInner>;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) async fn client(
     origin: Origin,
-    credentials: Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>,
+    credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
 ) -> Result<RedapClient, ApiError> {
     let channel = channel(origin).await?;
 

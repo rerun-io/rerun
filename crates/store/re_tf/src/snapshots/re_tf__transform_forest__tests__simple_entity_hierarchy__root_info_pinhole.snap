@@ -5,9 +5,9 @@ expression: "pretty_print_transform_frame_ids_in(transform_forest.root_info(Tran
 Some(
     Pinhole(
         PinholeTreeRoot {
-            parent_tree_root: rerun_tf#/,
+            parent_tree_root: tf#/,
             pinhole_projection: ResolvedPinholeProjection {
-                target: rerun_tf#/top,
+                target: tf#/top,
                 image_from_camera: PinholeProjection(
                     Mat3x3(
                         [

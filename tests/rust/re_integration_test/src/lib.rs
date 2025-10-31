@@ -2,12 +2,15 @@
 
 mod kittest_harness_ext;
 mod test_data;
+mod viewer_section;
 
 pub use kittest_harness_ext::HarnessExt;
 use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistry};
 use re_server::ServerHandle;
 use re_uri::external::url::Host;
 use std::net::TcpListener;
+// pub use viewer_section::GetSection;
+pub use viewer_section::ViewerSection;
 
 pub struct TestServer {
     server_handle: Option<ServerHandle>,
@@ -51,7 +54,10 @@ impl TestServer {
             port: self.port,
             scheme: re_uri::Scheme::RerunHttp,
         };
-        ConnectionRegistry::new().client(origin).await
+        // TODO(jan): We don't use CLI credentials in tests, it would be nice to test at some point.
+        ConnectionRegistry::new_without_stored_credentials()
+            .client(origin)
+            .await
     }
 
     pub async fn add_test_data(&self) {

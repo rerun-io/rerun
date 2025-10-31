@@ -208,6 +208,12 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
         },
     );
 
+    // CoordinateFrame
+    registry.register_component_fallback_provider(
+        archetypes::CoordinateFrame::descriptor_frame_id().component,
+        |ctx| components::TransformFrameId::from_entity_path(ctx.target_entity_path),
+    );
+
     // Cylinders3D
     registry.register_component_fallback_provider(
         archetypes::Cylinders3D::descriptor_show_labels().component,

@@ -99,9 +99,9 @@ impl CompareCommand {
         }
 
         fn format_chunk(chunk: &Chunk) -> String {
-            re_format_arrow::format_record_batch_opts(
+            re_arrow_util::format_record_batch_opts(
                 &chunk.to_record_batch().expect("Cannot fail in practice"),
-                &re_format_arrow::RecordBatchFormatOpts {
+                &re_arrow_util::RecordBatchFormatOpts {
                     transposed: false,
                     width: Some(800),
                     include_metadata: true,

@@ -5,6 +5,7 @@ This document describes the technical architecture of Rerun.
 ## See also
 
 -   [`BUILD.md`](BUILD.md)
+-   [`TESTING.md`](TESTING.md)
 -   [`rerun_py/README.md`](rerun_py/README.md) - build instructions for Python SDK
 -   [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 -   [`CODE_STYLE.md`](CODE_STYLE.md)
@@ -98,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/80d8e18346e420d94e7609ffe03fa7fdd56299bd/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/80d8e18346e420d94e7609ffe03fa7fdd56299bd/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/80d8e18346e420d94e7609ffe03fa7fdd56299bd/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/80d8e18346e420d94e7609ffe03fa7fdd56299bd/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/80d8e18346e420d94e7609ffe03fa7fdd56299bd/1200w.png">
+  <img src="https://static.rerun.io/crates/6c9a072dd87630c7fb0085b09d46168c5fd4249c/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/6c9a072dd87630c7fb0085b09d46168c5fd4249c/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/6c9a072dd87630c7fb0085b09d46168c5fd4249c/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/6c9a072dd87630c7fb0085b09d46168c5fd4249c/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/6c9a072dd87630c7fb0085b09d46168c5fd4249c/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -189,7 +190,6 @@ Update instructions:
 | --------------- | --------------------------------------------------------------------------------------------- |
 | re_chunk        | A chunk of Rerun data, encoded using Arrow. Used for logging, transport, storage and compute. |
 | re_chunk_store  | An in-memory time series database for Rerun log data, based on Apache Arrow.                  |
-| re_format_arrow | Formatting of Apache Arrow tables.                                                            |
 | re_log_types    | The basic building blocks of the Rerun data types and tables.                                 |
 | re_sorbet       | Rerun arrow metadata and record batch definitions.                                            |
 | re_types_core   | The core traits and types that power Rerun's data model.                                      |

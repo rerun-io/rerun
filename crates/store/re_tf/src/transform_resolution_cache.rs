@@ -1069,7 +1069,7 @@ mod tests {
         final_static_chunk: Chunk,
         regular_chunk: Chunk,
         flavor: StaticTestFlavor,
-    ) -> EntityDb {
+    ) -> Result<EntityDb, Box<dyn std::error::Error>> {
         // Print the flavor to its shown on test failure.
         println!("{flavor:?}");
 
@@ -1077,32 +1077,32 @@ mod tests {
 
         match flavor {
             StaticTestFlavor::StaticThenRegular { update_inbetween } => {
-                entity_db.add_chunk(&Arc::new(final_static_chunk)).unwrap();
+                entity_db.add_chunk(&Arc::new(final_static_chunk))?;
                 if update_inbetween {
                     apply_store_subscriber_events(cache, &entity_db);
                 }
-                entity_db.add_chunk(&Arc::new(regular_chunk)).unwrap();
+                entity_db.add_chunk(&Arc::new(regular_chunk))?;
             }
 
             StaticTestFlavor::RegularThenStatic { update_inbetween } => {
-                entity_db.add_chunk(&Arc::new(regular_chunk)).unwrap();
+                entity_db.add_chunk(&Arc::new(regular_chunk))?;
                 if update_inbetween {
                     apply_store_subscriber_events(cache, &entity_db);
                 }
-                entity_db.add_chunk(&Arc::new(final_static_chunk)).unwrap();
+                entity_db.add_chunk(&Arc::new(final_static_chunk))?;
             }
 
             StaticTestFlavor::PriorStaticThenRegularThenStatic { update_inbetween } => {
-                entity_db.add_chunk(&Arc::new(prior_static_chunk)).unwrap();
-                entity_db.add_chunk(&Arc::new(regular_chunk)).unwrap();
+                entity_db.add_chunk(&Arc::new(prior_static_chunk))?;
+                entity_db.add_chunk(&Arc::new(regular_chunk))?;
                 if update_inbetween {
                     apply_store_subscriber_events(cache, &entity_db);
                 }
-                entity_db.add_chunk(&Arc::new(final_static_chunk)).unwrap();
+                entity_db.add_chunk(&Arc::new(final_static_chunk))?;
             }
         }
 
-        entity_db
+        Ok(entity_db)
     }
 
     fn new_entity_db_with_subscriber_registered() -> EntityDb {
@@ -1115,31 +1115,27 @@ mod tests {
     }
 
     #[test]
-    fn test_transforms_per_timeline_access() {
+    fn test_transforms_per_timeline_access() -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = new_entity_db_with_subscriber_registered();
         let mut cache = TransformResolutionCache::default();
 
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
         let chunk0 = Chunk::builder(EntityPath::from("with_transform"))
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 [(timeline, 1)],
                 &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
             )
-            .build()
-            .unwrap();
+            .build()?;
         let chunk1 = Chunk::builder(EntityPath::from("without_transform"))
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 [(timeline, 1)],
                 // Anything that doesn't have components the transform cache is interested in.
                 &archetypes::Points3D::new([[1.0, 2.0, 3.0]]),
             )
-            .build()
-            .unwrap();
-        entity_db.add_chunk(&Arc::new(chunk0)).unwrap();
-        entity_db.add_chunk(&Arc::new(chunk1)).unwrap();
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk0))?;
+        entity_db.add_chunk(&Arc::new(chunk1))?;
 
         apply_store_subscriber_events(&mut cache, &entity_db);
         let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
@@ -1167,40 +1163,36 @@ mod tests {
         assert_eq!(transforms.frame_transforms.len(), 1);
         assert_eq!(transforms.pose_transforms, None);
         assert_eq!(transforms.pinhole_projections, None);
+
+        Ok(())
     }
 
     #[test]
-    fn test_static_tree_transforms() {
+    fn test_static_tree_transforms() -> Result<(), Box<dyn std::error::Error>> {
         for flavor in &ALL_STATIC_TEST_FLAVOURS {
             // Log a few tree transforms at different times.
             let timeline = Timeline::new_sequence("t");
             let prior_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
-                .with_archetype(
-                    RowId::new(),
+                .with_archetype_auto_row(
                     TimePoint::default(),
                     // Make sure only translation is logged (no null arrays for everything else).
                     &archetypes::Transform3D::update_fields()
                         .with_translation([123.0, 234.0, 345.0]),
                 )
-                .build()
-                .unwrap();
+                .build()?;
             let final_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
-                .with_archetype(
-                    RowId::new(),
+                .with_archetype_auto_row(
                     TimePoint::default(),
                     // Make sure only translation is logged (no null arrays for everything else).
                     &archetypes::Transform3D::update_fields().with_translation([1.0, 2.0, 3.0]),
                 )
-                .build()
-                .unwrap();
+                .build()?;
             let regular_chunk = Chunk::builder(EntityPath::from("my_entity"))
-                .with_archetype(
-                    RowId::new(),
+                .with_archetype_auto_row(
                     [(timeline, 1)],
                     &archetypes::Transform3D::update_fields().with_scale([123.0, 234.0, 345.0]),
                 )
-                .build()
-                .unwrap();
+                .build()?;
 
             let mut cache = TransformResolutionCache::default();
             let entity_db = static_test_setup_store(
@@ -1209,7 +1201,7 @@ mod tests {
                 final_static_chunk,
                 regular_chunk,
                 *flavor,
-            );
+            )?;
 
             // Check that the transform cache has the expected transforms.
             apply_store_subscriber_events(&mut cache, &entity_db);
@@ -1270,39 +1262,35 @@ mod tests {
                 })
             );
         }
+
+        Ok(())
     }
 
     #[test]
-    fn test_static_pose_transforms() {
+    fn test_static_pose_transforms() -> Result<(), Box<dyn std::error::Error>> {
         for flavor in &ALL_STATIC_TEST_FLAVOURS {
             // Log a few tree transforms at different times.
             let timeline = Timeline::new_sequence("t");
             let prior_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
-                .with_archetype(
-                    RowId::new(),
+                .with_archetype_auto_row(
                     TimePoint::default(),
                     &archetypes::InstancePoses3D::new().with_translations([[321.0, 234.0, 345.0]]),
                 )
-                .build()
-                .unwrap();
+                .build()?;
             let final_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
-                .with_archetype(
-                    RowId::new(),
+                .with_archetype_auto_row(
                     TimePoint::default(),
                     &archetypes::InstancePoses3D::new()
                         .with_translations([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]),
                 )
-                .build()
-                .unwrap();
+                .build()?;
             let regular_chunk = Chunk::builder(EntityPath::from("my_entity"))
-                .with_archetype(
-                    RowId::new(),
+                .with_archetype_auto_row(
                     [(timeline, 1)],
                     // Add a splatted scale.
                     &archetypes::InstancePoses3D::new().with_scales([[10.0, 20.0, 30.0]]),
                 )
-                .build()
-                .unwrap();
+                .build()?;
 
             let mut cache = TransformResolutionCache::default();
             let entity_db = static_test_setup_store(
@@ -1311,7 +1299,7 @@ mod tests {
                 final_static_chunk,
                 regular_chunk,
                 *flavor,
-            );
+            )?;
 
             // Check that the transform cache has the expected transforms.
             apply_store_subscriber_events(&mut cache, &entity_db);
@@ -1385,10 +1373,12 @@ mod tests {
                 ])
             );
         }
+
+        Ok(())
     }
 
     #[test]
-    fn test_static_pinhole_projection() {
+    fn test_static_pinhole_projection() -> Result<(), Box<dyn std::error::Error>> {
         for flavor in &ALL_STATIC_TEST_FLAVOURS {
             let image_from_camera_prior =
                 components::PinholeProjection::from_focal_length_and_principal_point(
@@ -1404,29 +1394,20 @@ mod tests {
             // Static pinhole, non-static view coordinates.
             let timeline = Timeline::new_sequence("t");
             let prior_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
-                .with_archetype(
-                    RowId::new(),
+                .with_archetype_auto_row(
                     TimePoint::default(),
                     &archetypes::Pinhole::new(image_from_camera_prior).with_resolution([1.0, 1.0]),
                 )
-                .build()
-                .unwrap();
+                .build()?;
             let final_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
-                .with_archetype(
-                    RowId::new(),
+                .with_archetype_auto_row(
                     TimePoint::default(),
                     &archetypes::Pinhole::new(image_from_camera_final).with_resolution([2.0, 2.0]),
                 )
-                .build()
-                .unwrap();
+                .build()?;
             let regular_chunk = Chunk::builder(EntityPath::from("my_entity"))
-                .with_archetype(
-                    RowId::new(),
-                    [(timeline, 1)],
-                    &archetypes::ViewCoordinates::BLU(),
-                )
-                .build()
-                .unwrap();
+                .with_archetype_auto_row([(timeline, 1)], &archetypes::ViewCoordinates::BLU())
+                .build()?;
 
             let mut cache = TransformResolutionCache::default();
             let entity_db = static_test_setup_store(
@@ -1435,7 +1416,7 @@ mod tests {
                 final_static_chunk,
                 regular_chunk,
                 *flavor,
-            );
+            )?;
 
             // Check that the transform cache has the expected transforms.
             apply_store_subscriber_events(&mut cache, &entity_db);
@@ -1500,10 +1481,12 @@ mod tests {
                 })
             );
         }
+
+        Ok(())
     }
 
     #[test]
-    fn test_static_view_coordinates_projection() {
+    fn test_static_view_coordinates_projection() -> Result<(), Box<dyn std::error::Error>> {
         for flavor in &ALL_STATIC_TEST_FLAVOURS {
             let image_from_camera =
                 components::PinholeProjection::from_focal_length_and_principal_point(
@@ -1514,29 +1497,17 @@ mod tests {
             // Static view coordinates, non-static pinhole.
             let timeline = Timeline::new_sequence("t");
             let prior_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
-                .with_archetype(
-                    RowId::new(),
-                    TimePoint::default(),
-                    &archetypes::ViewCoordinates::BRU(),
-                )
-                .build()
-                .unwrap();
+                .with_archetype_auto_row(TimePoint::default(), &archetypes::ViewCoordinates::BRU())
+                .build()?;
             let final_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
-                .with_archetype(
-                    RowId::new(),
-                    TimePoint::default(),
-                    &archetypes::ViewCoordinates::BLU(),
-                )
-                .build()
-                .unwrap();
+                .with_archetype_auto_row(TimePoint::default(), &archetypes::ViewCoordinates::BLU())
+                .build()?;
             let regular_chunk = Chunk::builder(EntityPath::from("my_entity"))
-                .with_archetype(
-                    RowId::new(),
+                .with_archetype_auto_row(
                     [(timeline, 1)],
                     &archetypes::Pinhole::new(image_from_camera),
                 )
-                .build()
-                .unwrap();
+                .build()?;
 
             let mut cache = TransformResolutionCache::default();
             let entity_db = static_test_setup_store(
@@ -1545,7 +1516,7 @@ mod tests {
                 final_static_chunk,
                 regular_chunk,
                 *flavor,
-            );
+            )?;
 
             // Check that the transform cache has the expected transforms.
             apply_store_subscriber_events(&mut cache, &entity_db);
@@ -1586,39 +1557,33 @@ mod tests {
                 })
             );
         }
+
+        Ok(())
     }
 
     #[test]
-    fn test_tree_transforms() {
+    fn test_tree_transforms() -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = new_entity_db_with_subscriber_registered();
         let mut cache = TransformResolutionCache::default();
 
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 [(timeline, 1)],
                 &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
             )
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 [(timeline, 3)],
                 &archetypes::Transform3D::update_fields().with_scale([1.0, 2.0, 3.0]),
             )
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 [(timeline, 4)],
                 &archetypes::Transform3D::from_rotation(glam::Quat::from_rotation_x(1.0)),
             )
-            .with_archetype(
-                RowId::new(),
-                [(timeline, 5)],
-                &archetypes::Transform3D::clear_fields(),
-            )
-            .build()
-            .unwrap();
-        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+            .with_archetype_auto_row([(timeline, 5)], &archetypes::Transform3D::clear_fields())
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
 
         // Check that the transform cache has the expected transforms.
         apply_store_subscriber_events(&mut cache, &entity_db);
@@ -1680,18 +1645,19 @@ mod tests {
                 transform: Affine3A::IDENTITY, // Empty transform is treated as connected with identity.
             })
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_pose_transforms_instance_poses_only() {
+    fn test_pose_transforms_instance_poses_only() -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = new_entity_db_with_subscriber_registered();
         let mut cache = TransformResolutionCache::default();
 
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 [(timeline, 1)],
                 &archetypes::InstancePoses3D::new().with_translations([
                     [1.0, 2.0, 3.0],
@@ -1699,22 +1665,19 @@ mod tests {
                     [7.0, 8.0, 9.0],
                 ]),
             )
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 [(timeline, 3)],
                 // Less instances, and a splatted scale.
                 &archetypes::InstancePoses3D::new()
                     .with_translations([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
                     .with_scales([[2.0, 3.0, 4.0]]),
             )
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 [(timeline, 4)],
                 &archetypes::InstancePoses3D::clear_fields(),
             )
-            .build()
-            .unwrap();
-        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
 
         // Check that the transform cache has the expected transforms.
         apply_store_subscriber_events(&mut cache, &entity_db);
@@ -1776,18 +1739,19 @@ mod tests {
             transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 123)),
             Some(&PoseTransformArchetypeMap::default())
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_mixing_instance_poses() {
+    fn test_mixing_instance_poses() -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = new_entity_db_with_subscriber_registered();
         let mut cache = TransformResolutionCache::default();
 
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 [(timeline, 1)],
                 &archetypes::InstancePoses3D::new().with_translations([
                     [1.0, 2.0, 3.0],
@@ -1795,15 +1759,13 @@ mod tests {
                     [7.0, 8.0, 9.0],
                 ]),
             )
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 [(timeline, 2)],
                 // Add some "base offset", but only for the first two items.
                 &archetypes::Boxes3D::update_fields()
                     .with_centers([[10.0, 0.0, 0.0], [0.0, 100.0, 0.0]]),
             )
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 [(timeline, 3)],
                 // Rotate the box by 90 degrees around the Y axis.
                 &archetypes::Boxes3D::update_fields().with_rotation_axis_angles([
@@ -1813,9 +1775,8 @@ mod tests {
                     ),
                 ]),
             )
-            .build()
-            .unwrap();
-        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
 
         // Check that the transform cache has the expected transforms.
         apply_store_subscriber_events(&mut cache, &entity_db);
@@ -1874,8 +1835,7 @@ mod tests {
                         Affine3A::from_translation(glam::Vec3::new(11.0, 2.0, 3.0)),
                         Affine3A::from_translation(glam::Vec3::new(4.0, 105.0, 6.0)),
                         Affine3A::from_translation(glam::Vec3::new(7.0, 108.0, 9.0)), // Affected by the last box center which is still splatted.
-                    ])
-                    .unwrap()
+                    ])?
                 )]),
                 instance_from_poses: vec![
                     Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
@@ -1927,10 +1887,12 @@ mod tests {
             expected,
             query_result[2]
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_pinhole_projections() {
+    fn test_pinhole_projections() -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = new_entity_db_with_subscriber_registered();
         let mut cache = TransformResolutionCache::default();
 
@@ -1943,25 +1905,15 @@ mod tests {
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 [(timeline, 1)],
                 &archetypes::Pinhole::new(image_from_camera),
             )
-            .with_archetype(
-                RowId::new(),
-                [(timeline, 3)],
-                &archetypes::ViewCoordinates::BLU(),
-            )
+            .with_archetype_auto_row([(timeline, 3)], &archetypes::ViewCoordinates::BLU())
             // Clear out the pinhole projection (this should yield nothing then for the remaining view coordinates.)
-            .with_archetype(
-                RowId::new(),
-                [(timeline, 4)],
-                &archetypes::Pinhole::clear_fields(),
-            )
-            .build()
-            .unwrap();
-        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+            .with_archetype_auto_row([(timeline, 4)], &archetypes::Pinhole::clear_fields())
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
 
         // Check that the transform cache has the expected transforms.
         apply_store_subscriber_events(&mut cache, &entity_db);
@@ -2012,30 +1964,29 @@ mod tests {
             transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline, 123)),
             None
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_out_of_order_updates() {
+    fn test_out_of_order_updates() -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = new_entity_db_with_subscriber_registered();
         let mut cache = TransformResolutionCache::default();
 
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 [(timeline, 1)],
                 &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
             )
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 [(timeline, 3)],
                 // Note that this doesn't clear anything that could be inserted at time 2.
                 &archetypes::Transform3D::update_fields().with_translation([2.0, 3.0, 4.0]),
             )
-            .build()
-            .unwrap();
-        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
 
         // Check that the transform cache has the expected transforms.
         apply_store_subscriber_events(&mut cache, &entity_db);
@@ -2066,14 +2017,12 @@ mod tests {
         // Add a transform between the two that invalidates the one at time stamp 3.
         let timeline = Timeline::new_sequence("t");
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 [(timeline, 2)],
                 &archetypes::Transform3D::update_fields().with_scale([-1.0, -2.0, -3.0]),
             )
-            .build()
-            .unwrap();
-        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
 
         // Check that the transform cache has the expected changed transforms.
         apply_store_subscriber_events(&mut cache, &entity_db);
@@ -2115,10 +2064,12 @@ mod tests {
                 ),
             })
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_clear_non_recursive() {
+    fn test_clear_non_recursive() -> Result<(), Box<dyn std::error::Error>> {
         for clear_in_separate_chunk in [false, true] {
             println!("clear_in_separate_chunk: {clear_in_separate_chunk}");
 
@@ -2130,13 +2081,11 @@ mod tests {
 
             let path = EntityPath::from("ent");
             let mut chunk = Chunk::builder(path.clone())
-                .with_archetype(
-                    RowId::new(),
+                .with_archetype_auto_row(
                     [(timeline, 1)],
                     &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
                 )
-                .with_archetype(
-                    RowId::new(),
+                .with_archetype_auto_row(
                     [(timeline, 3)],
                     &archetypes::Transform3D::from_translation([3.0, 4.0, 5.0]),
                 );
@@ -2147,9 +2096,7 @@ mod tests {
                     &archetypes::Clear::new(false),
                 );
             }
-            entity_db
-                .add_chunk(&Arc::new(chunk.build().unwrap()))
-                .unwrap();
+            entity_db.add_chunk(&Arc::new(chunk.build()?))?;
 
             if clear_in_separate_chunk {
                 // If we're putting the clear in a separate chunk, we can try warming the cache and see whether we get the right transforms.
@@ -2184,9 +2131,8 @@ mod tests {
                         [(timeline, 2)],
                         &archetypes::Clear::new(false),
                     )
-                    .build()
-                    .unwrap();
-                entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+                    .build()?;
+                entity_db.add_chunk(&Arc::new(chunk))?;
             }
 
             // Check transforms AFTER we apply the clear.
@@ -2220,10 +2166,12 @@ mod tests {
                 );
             }
         }
+
+        Ok(())
     }
 
     #[test]
-    fn test_clear_recursive() {
+    fn test_clear_recursive() -> Result<(), Box<dyn std::error::Error>> {
         for (clear_in_separate_chunk, update_after_each_chunk) in
             [(false, false), (false, true), (true, false), (true, true)]
         {
@@ -2236,11 +2184,11 @@ mod tests {
 
             let timeline = Timeline::new_sequence("t");
 
-            let mut parent_chunk = Chunk::builder(EntityPath::from("parent")).with_archetype(
-                RowId::new(),
-                [(timeline, 1)],
-                &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
-            );
+            let mut parent_chunk = Chunk::builder(EntityPath::from("parent"))
+                .with_archetype_auto_row(
+                    [(timeline, 1)],
+                    &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
+                );
             if !clear_in_separate_chunk {
                 parent_chunk = parent_chunk.with_archetype(
                     RowId::new(),
@@ -2248,21 +2196,17 @@ mod tests {
                     &archetypes::Clear::new(true),
                 );
             }
-            entity_db
-                .add_chunk(&Arc::new(parent_chunk.build().unwrap()))
-                .unwrap();
+            entity_db.add_chunk(&Arc::new(parent_chunk.build()?))?;
             if update_after_each_chunk {
                 apply_store_subscriber_events(&mut cache, &entity_db);
             }
 
-            let child_chunk = Chunk::builder(EntityPath::from("parent/child")).with_archetype(
-                RowId::new(),
-                [(timeline, 1)],
-                &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
-            );
-            entity_db
-                .add_chunk(&Arc::new(child_chunk.build().unwrap()))
-                .unwrap();
+            let child_chunk = Chunk::builder(EntityPath::from("parent/child"))
+                .with_archetype_auto_row(
+                    [(timeline, 1)],
+                    &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
+                );
+            entity_db.add_chunk(&Arc::new(child_chunk.build()?))?;
             if update_after_each_chunk {
                 apply_store_subscriber_events(&mut cache, &entity_db);
             }
@@ -2270,9 +2214,8 @@ mod tests {
             if clear_in_separate_chunk {
                 let chunk = Chunk::builder(EntityPath::from("parent"))
                     .with_archetype(RowId::new(), [(timeline, 2)], &archetypes::Clear::new(true))
-                    .build()
-                    .unwrap();
-                entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+                    .build()?;
+                entity_db.add_chunk(&Arc::new(chunk))?;
                 if update_after_each_chunk {
                     apply_store_subscriber_events(&mut cache, &entity_db);
                 }
@@ -2302,36 +2245,34 @@ mod tests {
                 );
             }
         }
+
+        Ok(())
     }
 
     #[test]
-    fn test_gc() {
+    fn test_gc() -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = new_entity_db_with_subscriber_registered();
         let mut cache = TransformResolutionCache::default();
 
         let timeline = Timeline::new_sequence("t");
         let chunk = Chunk::builder(EntityPath::from("my_entity0"))
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 [(timeline, 1)],
                 &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
             )
-            .build()
-            .unwrap();
-        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
 
         // Apply some updates to the transform before GC pass.
         apply_store_subscriber_events(&mut cache, &entity_db);
 
         let chunk = Chunk::builder(EntityPath::from("my_entity1"))
-            .with_archetype(
-                RowId::new(),
+            .with_archetype_auto_row(
                 [(timeline, 2)],
                 &archetypes::Transform3D::from_translation([4.0, 5.0, 6.0]),
             )
-            .build()
-            .unwrap();
-        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
 
         // Don't apply updates for this chunk.
 
@@ -2352,20 +2293,21 @@ mod tests {
                 .clone(),
             cache.static_timeline.per_source_frame_transforms
         );
+
+        Ok(())
     }
 
     // Tests GCing a recursive clear.
     #[test]
-    fn test_gc_recursive_clear() {
+    fn test_gc_recursive_clear() -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = new_entity_db_with_subscriber_registered();
         let mut cache = TransformResolutionCache::default();
 
         let timeline = Timeline::new_sequence("t");
         let chunk = Chunk::builder(EntityPath::from("my_recursive_clear"))
             .with_archetype(RowId::new(), [(timeline, 1)], &archetypes::Clear::new(true))
-            .build()
-            .unwrap();
-        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
 
         // Apply some updates to the transform before GC pass.
         apply_store_subscriber_events(&mut cache, &entity_db);
@@ -2386,5 +2328,7 @@ mod tests {
                 .recursive_clears
                 .is_empty(),
         );
+
+        Ok(())
     }
 }

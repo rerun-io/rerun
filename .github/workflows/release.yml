@@ -221,10 +221,7 @@ jobs:
               - [ ] Update the [google colab notebooks](https://colab.research.google.com/drive/1R9I7s4o6wydQC_zkybqaSRFTtlEaked_) to install this version and re-execute the notebook.
               - [ ] Release a new version of gradio (@oxkitsune, @jprochazk)
               - [ ] Merge the Release PR
-
-          A few hours after the GitHub release is created, `regro-cf-autotick-bot` will create a
-          [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls).
-          Make sure Jeremy is on top of it!
+              - [ ] (A few hours later) Check on the [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls) (ping Antoine, Nick and/or Jeremy in necessary)
 
           - [ ] Tests
             - [ ] Windows
@@ -350,9 +347,8 @@ jobs:
           git push --force origin refs/heads/${{ github.ref_name }}:refs/heads/latest
           git push --force origin refs/heads/${{ github.ref_name }}:refs/heads/docs-latest
 
-  github-release:
-    name: "GitHub Release"
-    if: inputs.release-type == 'rc' || inputs.release-type == 'final'
+  tag-release:
+    name: "Tag Release"
     needs:
       [
         version,
@@ -379,14 +375,34 @@ jobs:
           version="${{ needs.version.outputs.git_tag }}"
           commit="${{ needs.version.outputs.release-commit }}"
 
+          git tag $version $commit
+          git push origin $version
+
+  github-release:
+    name: "GitHub Release"
+    if: inputs.release-type == 'rc' || inputs.release-type == 'final'
+    needs: [tag-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RERUN_BOT_TOKEN }}
+
+      - name: Create GH release
+        env:
+          GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
+        run: |
+          version="${{ needs.version.outputs.git_tag }}"
+          commit="${{ needs.version.outputs.release-commit }}"
+
           if [ ${{ inputs.release-type }} = "final" ]; then
             pre_arg=""
           else
             pre_arg="--prerelease"
           fi
 
-          git tag $version $commit
-          git push origin $version
           gh release create $version --verify-tag --draft --title $version $pre_arg
 
       - name: Create comment

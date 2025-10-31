@@ -38,6 +38,9 @@ fn trim_backtrace(mut stack: &str) -> &str {
 
 fn backtrace_to_string(backtrace: &backtrace::Backtrace) -> String {
     if backtrace.frames().is_empty() {
+        re_log::warn_once!(
+            "Empty backtrtace found - you probably have `debug = false` in your Cargo.toml"
+        );
         return "[empty backtrace]".to_owned();
     }
 

@@ -10,7 +10,12 @@ use re_redap_client::ConnectionClient;
 
 use crate::utils::get_tokio_runtime;
 
-#[pyclass(frozen, eq, name = "DataFusionCatalog")]
+#[pyclass(
+    frozen,
+    eq,
+    name = "DataFusionCatalog",
+    module = "rerun_bindings.rerun_bindings"
+)]
 pub(crate) struct PyDataFusionCatalogProvider {
     pub provider: Arc<RedapCatalogProvider>,
 }

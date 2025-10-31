@@ -24,6 +24,10 @@ impl Origin {
         }
     }
 
+    pub fn is_localhost(&self) -> bool {
+        is_host_localhost(&self.host)
+    }
+
     /// Converts the [`Origin`] to a URL that starts with either `http` or `https`.
     ///
     /// This is the URL to connect to. An ip of "0.0.0.0" will be shown as "127.0.0.1".
@@ -145,11 +149,15 @@ fn is_host_unspecified(host: &url::Host) -> bool {
 fn is_origin_localhost(origin: &url::Origin) -> bool {
     match origin {
         url::Origin::Opaque(_) => false,
-        url::Origin::Tuple(_, host, _) => match host {
-            url::Host::Domain(domain) => domain == "localhost",
-            url::Host::Ipv4(ip) => ip.is_loopback() || ip.is_unspecified(),
-            url::Host::Ipv6(ip) => ip.is_loopback() || ip.is_unspecified(),
-        },
+        url::Origin::Tuple(_, host, _) => is_host_localhost(host),
+    }
+}
+
+fn is_host_localhost(host: &url::Host) -> bool {
+    match host {
+        url::Host::Domain(domain) => domain == "localhost",
+        url::Host::Ipv4(ip) => ip.is_loopback() || ip.is_unspecified(),
+        url::Host::Ipv6(ip) => ip.is_loopback() || ip.is_unspecified(),
     }
 }
 

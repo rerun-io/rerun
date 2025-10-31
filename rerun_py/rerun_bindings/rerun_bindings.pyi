@@ -7,6 +7,8 @@ from enum import Enum
 from typing import Any, Self
 
 import datafusion as dfn
+import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 from rerun.catalog import CatalogClient
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
@@ -374,15 +376,13 @@ class RecordingView:
 
     def using_index_values(self, values: IndexValuesLike) -> RecordingView:
         """
-        Replace the index in the view with the provided values.
+        Create a new view that contains the provided index values.
+
+        If they exist in the original data they are selected, otherwise empty rows are added to the view.
 
         The output view will always have the same number of rows as the provided values, even if
         those rows are empty. Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
         to populate these rows with the most recent data.
-
-        This requires index values to be a precise match. Index values in Rerun are
-        represented as i64 sequence counts or nanoseconds. This API does not expose an interface
-        in floating point seconds, as the numerical conversion would risk false mismatches.
 
         Parameters
         ----------
@@ -1313,6 +1313,8 @@ class Entry:
         """
 
 class DatasetEntry(Entry):
+    """A dataset entry in the catalog."""
+
     @property
     def manifest_url(self) -> str:
         """Return the dataset manifest URL."""
@@ -1529,11 +1531,41 @@ class DatasetEntry(Entry):
         *,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         time_index: IndexColumnSelector,
-        num_partitions: int = 5,
+        num_partitions: int | None = None,
+        target_partition_num_rows: int | None = None,
         num_sub_vectors: int = 16,
         distance_metric: VectorDistanceMetric | str = ...,
-    ) -> None:
-        """Create a vector index on the given column."""
+    ) -> IndexingResult:
+        """
+        Create a vector index on the given column.
+
+        This will enable indexing and build the vector index over all existing values
+        in the specified component column.
+
+        Results can be retrieved using the `search_vector` API, which will include
+        the time-point on the indexed timeline.
+
+        Only one index can be created per component column -- executing this a second
+        time for the same component column will replace the existing index.
+
+        Parameters
+        ----------
+        column : AnyComponentColumn
+            The component column to create the index on.
+        time_index : IndexColumnSelector
+            Which timeline this index will map to.
+        num_partitions : int | None
+            The number of partitions to create for the index.
+            (Deprecated, use target_partition_num_rows instead)
+        target_partition_num_rows : int | None
+            The target size (in number of rows) for each partition.
+            Defaults to 4096 if neither this nor num_partitions is specified.
+        num_sub_vectors : int
+            The number of sub-vectors to use when building the index.
+        distance_metric : VectorDistanceMetricLike
+            The distance metric to use for the index. ("L2", "Cosine", "Dot", "Hamming")
+
+        """
 
     def search_fts(
         self,
@@ -1576,7 +1608,33 @@ class TableEntry(Entry):
     def to_arrow_reader(self) -> pa.RecordBatchReader:
         """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
 
+class TableInsertMode:
+    """The modes of operation when writing tables."""
+
+    APPEND: TableInsertMode
+    OVERWRITE: TableInsertMode
+
+    def __str__(self, /) -> str:
+        """Return str(self)."""
+
+    def __int__(self) -> int:
+        """int(self)"""  # noqa: D400
+
+class _IndexValuesLikeInternal:
+    """
+    A Python wrapper for testing [`IndexValuesLike`] extraction functionality.
+
+    This wrapper allows testing the `extract_bound` functionality by providing
+    a Python-accessible interface to create and convert index values.
+    """
+
+    def __init__(self, values: IndexValuesLike) -> None: ...
+    def to_index_values(self) -> npt.NDArray[np.int64]: ...
+    def len(self) -> int: ...
+
 class DataframeQueryView:
+    """View into a remote dataset acting as DataFusion table provider."""
+
     def filter_partition_id(self, partition_id: str, *args: Iterable[str]) -> Self:
         """Filter by one or more partition ids. All partition ids are included if not specified."""
 
@@ -1700,15 +1758,13 @@ class DataframeQueryView:
 
     def using_index_values(self, values: IndexValuesLike) -> Self:
         """
-        Replace the index in the view with the provided values.
+        Create a new view that contains the provided index values.
+
+        If they exist in the original data they are selected, otherwise empty rows are added to the view.
 
         The output view will always have the same number of rows as the provided values, even if
         those rows are empty. Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
         to populate these rows with the most recent data.
-
-        This requires index values to be a precise match. Index values in Rerun are
-        represented as i64 sequence counts or nanoseconds. This API does not expose an interface
-        in floating point seconds, as the numerical conversion would risk false mismatches.
 
         Parameters
         ----------
@@ -1743,6 +1799,23 @@ class DataframeQueryView:
     def to_arrow_reader(self) -> pa.RecordBatchReader:
         """Convert this view to a [`pyarrow.RecordBatchReader`][]."""
 
+class IndexingResult:
+    """Indexing operation status result."""
+
+    def debug_info(self) -> dict[str, Any] | None:
+        """
+        Get debug information about the indexing operation.
+
+        The exact contents of debug information may vary depending on the indexing operation performed
+        and the server implementation.
+
+        Returns
+        -------
+        Optional[dict]
+            A dictionary containing debug information, or `None` if no debug information is available
+
+        """
+
 # TODO(ab): internal object, we need auto-gen stubs for these.
 class CatalogClientInternal:
     def __init__(self, addr: str, token: str | None = None) -> None: ...
@@ -1773,7 +1846,9 @@ class CatalogClientInternal:
 
     def create_dataset(self, name: str) -> DatasetEntry: ...
     def register_table(self, name: str, url: str) -> TableEntry: ...
+    def write_table(self, name: str, batches: pa.RecordBatchReader, insert_mode: TableInsertMode) -> None: ...
     def ctx(self) -> dfn.SessionContext: ...
+    def create_table_entry(self, name: str, schema: pa.Schema, url: str) -> TableEntry: ...
 
     # ---
 
@@ -1860,3 +1935,40 @@ class NotFoundError(Exception):
 
 class AlreadyExistsError(Exception):
     """Raised when trying to create a resource that already exists."""
+
+class _ServerInternal:
+    """
+    Internal Rerun server instance.
+
+    This is the low-level binding to the Rust server implementation.
+    Users should typically use `rerun.server.Server` instead.
+    """
+
+    def __init__(
+        self,
+        *,
+        address: str = "0.0.0.0",
+        port: int = 51234,
+        datasets: dict[str, str] | None = None,
+        tables: dict[str, str] | None = None,
+    ) -> None:
+        """
+        Create and start a Rerun server.
+
+        Parameters
+        ----------
+        address : str
+            The address to bind the server to.
+        port : int
+            The port to bind the server to.
+        datasets : dict[str, str] | None
+            Optional dictionary mapping dataset names to their file paths.
+        tables : dict[str, str] | None
+            Optional dictionary mapping table names to lance file paths,
+            which will be loaded and made available when the server starts.
+
+        """
+
+    def address(self) -> str: ...
+    def shutdown(self) -> None: ...
+    def is_running(self) -> bool: ...

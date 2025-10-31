@@ -93,13 +93,15 @@ class Mesh3DExt:
             albedo_texture = _to_numpy(albedo_texture)
 
             if len(albedo_texture.shape) != 3:
-                _send_warning_or_raise("Bad albedo texture shape: {albedo_texture.shape}")
+                _send_warning_or_raise(f"Bad albedo texture shape: {albedo_texture.shape}, expected 3 dimensions")
             else:
                 h = albedo_texture.shape[0]
                 w = albedo_texture.shape[1]
                 c = albedo_texture.shape[2]
                 if c not in (3, 4):
-                    _send_warning_or_raise("Bad albedo texture shape: {albedo_texture.shape}")
+                    _send_warning_or_raise(
+                        f"Bad albedo texture shape: {albedo_texture.shape}, expected 3 or 4 channels"
+                    )
                 else:
                     color_model = ColorModel.RGB if c == 3 else ColorModel.RGBA
                     try:

@@ -3,6 +3,7 @@
 mod arrays;
 mod batches;
 mod compare;
+mod format;
 mod format_data_type;
 
 pub mod transform;
@@ -10,6 +11,10 @@ pub mod transform;
 pub use self::arrays::*;
 pub use self::batches::*;
 pub use self::compare::*;
+pub use self::format::{
+    RecordBatchFormatOpts, format_record_batch, format_record_batch_opts,
+    format_record_batch_with_width,
+};
 pub use self::format_data_type::*;
 
 // ----------------------------------------------------------------

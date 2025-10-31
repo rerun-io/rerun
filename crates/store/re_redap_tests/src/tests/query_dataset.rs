@@ -182,7 +182,7 @@ async fn query_dataset_snapshot(
         .iter()
         .map(|f| f.name().as_str())
         .collect::<Vec<_>>();
-    let required_chunk_info = merged_chunk_info.filtered_columns(&required_column_names);
+    let required_chunk_info = merged_chunk_info.project_columns(&required_column_names);
 
     insta::assert_snapshot!(
         format!("{snapshot_name}_schema"),
@@ -191,7 +191,7 @@ async fn query_dataset_snapshot(
 
     // these columns are not stable, so we cannot snapshot them
     let filtered_chunk_info = required_chunk_info
-        .unfiltered_columns(&[QueryDatasetResponse::FIELD_CHUNK_KEY])
+        .remove_columns(&[QueryDatasetResponse::FIELD_CHUNK_KEY])
         .auto_sort_rows()
         .unwrap();
 

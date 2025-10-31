@@ -331,7 +331,7 @@ async fn scan_partition_table_and_snapshot(
         ScanPartitionTableResponse::FIELD_LAST_UPDATED_AT,
     ];
     let filtered_batch = batch
-        .unfiltered_columns(&unstable_column_names)
+        .remove_columns(&unstable_column_names)
         .auto_sort_rows()
         .unwrap()
         .sort_property_columns();
@@ -423,7 +423,7 @@ async fn scan_dataset_manifest_and_snapshot(
         ScanDatasetManifestResponse::FIELD_REGISTRATION_TIME,
     ];
     let filtered_batch = batch
-        .unfiltered_columns(&unstable_column_names)
+        .remove_columns(&unstable_column_names)
         .auto_sort_rows()
         .unwrap()
         .sort_property_columns();

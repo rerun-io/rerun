@@ -67,7 +67,7 @@ pub struct Tuid {
 impl Tuid {
     /// We give an actual name to [`Tuid`], and inject that name into the Arrow datatype extensions,
     /// as a hack so that we can compactly format them when printing Arrow data to the terminal.
-    /// Check out `re_format_arrow` for context.
+    /// Check out `re_arrow_util::format` for context.
     pub const ARROW_EXTENSION_NAME: &'static str = "rerun.datatypes.TUID";
 }
 
