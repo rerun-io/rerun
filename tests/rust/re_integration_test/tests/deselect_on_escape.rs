@@ -1,5 +1,3 @@
-use egui::Modifiers;
-
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
