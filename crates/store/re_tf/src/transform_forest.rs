@@ -281,6 +281,8 @@ impl TransformForest {
                     // Nowhere to walk from here. If source is a built-in transform frame we keep walking towards the entity-root!
                     // TODO: do that. Have to lookup underlying entity path for that. Efficiently ideally ;-)
 
+                    let mut root_from_parent = glam::Affine3A::IDENTITY;
+
                     // Is this a new root frame or are we connecting to an existing one?
                     let top_of_stack_target_frame = top_of_stack_transform
                         .target_from_source
@@ -292,6 +294,7 @@ impl TransformForest {
                         root_from_frame.get(&top_of_stack_target_frame)
                     {
                         debug_assert!(roots.contains_key(&root_from_frame.root));
+                        root_from_parent = root_from_frame.target_from_source;
                         root_from_frame.root
                     } else {
                         // `top_of_stack_target_frame` doesn't connect up to a root yet. So it has to be a new root!
@@ -302,8 +305,6 @@ impl TransformForest {
                         );
                         top_of_stack_target_frame
                     };
-
-                    let mut root_from_parent = glam::Affine3A::IDENTITY;
 
                     while let Some((current_frame, transforms)) = transform_stack.pop() {
                         let mut root_from_current_frame = root_from_parent
