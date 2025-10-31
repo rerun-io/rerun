@@ -7,6 +7,8 @@ from enum import Enum
 from typing import Any, Self
 
 import datafusion as dfn
+import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 from rerun.catalog import CatalogClient
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
@@ -374,15 +376,13 @@ class RecordingView:
 
     def using_index_values(self, values: IndexValuesLike) -> RecordingView:
         """
-        Replace the index in the view with the provided values.
+        Create a new view that contains the provided index values.
+
+        If they exist in the original data they are selected, otherwise empty rows are added to the view.
 
         The output view will always have the same number of rows as the provided values, even if
         those rows are empty. Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
         to populate these rows with the most recent data.
-
-        This requires index values to be a precise match. Index values in Rerun are
-        represented as i64 sequence counts or nanoseconds. This API does not expose an interface
-        in floating point seconds, as the numerical conversion would risk false mismatches.
 
         Parameters
         ----------
@@ -1620,6 +1620,18 @@ class TableInsertMode:
     def __int__(self) -> int:
         """int(self)"""  # noqa: D400
 
+class _IndexValuesLikeInternal:
+    """
+    A Python wrapper for testing [`IndexValuesLike`] extraction functionality.
+
+    This wrapper allows testing the `extract_bound` functionality by providing
+    a Python-accessible interface to create and convert index values.
+    """
+
+    def __init__(self, values: IndexValuesLike) -> None: ...
+    def to_index_values(self) -> npt.NDArray[np.int64]: ...
+    def len(self) -> int: ...
+
 class DataframeQueryView:
     """View into a remote dataset acting as DataFusion table provider."""
 
@@ -1746,15 +1758,13 @@ class DataframeQueryView:
 
     def using_index_values(self, values: IndexValuesLike) -> Self:
         """
-        Replace the index in the view with the provided values.
+        Create a new view that contains the provided index values.
+
+        If they exist in the original data they are selected, otherwise empty rows are added to the view.
 
         The output view will always have the same number of rows as the provided values, even if
         those rows are empty. Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
         to populate these rows with the most recent data.
-
-        This requires index values to be a precise match. Index values in Rerun are
-        represented as i64 sequence counts or nanoseconds. This API does not expose an interface
-        in floating point seconds, as the numerical conversion would risk false mismatches.
 
         Parameters
         ----------
@@ -1925,3 +1935,40 @@ class NotFoundError(Exception):
 
 class AlreadyExistsError(Exception):
     """Raised when trying to create a resource that already exists."""
+
+class _ServerInternal:
+    """
+    Internal Rerun server instance.
+
+    This is the low-level binding to the Rust server implementation.
+    Users should typically use `rerun.server.Server` instead.
+    """
+
+    def __init__(
+        self,
+        *,
+        address: str = "0.0.0.0",
+        port: int = 51234,
+        datasets: dict[str, str] | None = None,
+        tables: dict[str, str] | None = None,
+    ) -> None:
+        """
+        Create and start a Rerun server.
+
+        Parameters
+        ----------
+        address : str
+            The address to bind the server to.
+        port : int
+            The port to bind the server to.
+        datasets : dict[str, str] | None
+            Optional dictionary mapping dataset names to their file paths.
+        tables : dict[str, str] | None
+            Optional dictionary mapping table names to lance file paths,
+            which will be loaded and made available when the server starts.
+
+        """
+
+    def address(self) -> str: ...
+    def shutdown(self) -> None: ...
+    def is_running(self) -> bool: ...

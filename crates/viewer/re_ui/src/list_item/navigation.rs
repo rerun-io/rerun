@@ -111,16 +111,16 @@ impl ListItemNavigation {
                 }
             }
 
-            if let Some(previous) = navigation.previous_item {
-                if i.consume_key(Modifiers::NONE, egui::Key::ArrowUp) {
-                    focus_item = Some(previous);
-                }
+            if let Some(previous) = navigation.previous_item
+                && i.consume_key(Modifiers::NONE, egui::Key::ArrowUp)
+            {
+                focus_item = Some(previous);
             }
 
-            if let Some(next) = navigation.next_item {
-                if i.consume_key(Modifiers::NONE, egui::Key::ArrowDown) {
-                    focus_item = Some(next);
-                }
+            if let Some(next) = navigation.next_item
+                && i.consume_key(Modifiers::NONE, egui::Key::ArrowDown)
+            {
+                focus_item = Some(next);
             }
         });
 
@@ -145,11 +145,11 @@ impl ListItemNavigation {
                 state.set_open(false);
                 state.store(ctx);
             }
-        } else if let Some(expand_item) = expand_item {
-            if let Some(mut state) = CollapsingState::load(ctx, expand_item) {
-                state.set_open(true);
-                state.store(ctx);
-            }
+        } else if let Some(expand_item) = expand_item
+            && let Some(mut state) = CollapsingState::load(ctx, expand_item)
+        {
+            state.set_open(true);
+            state.store(ctx);
         }
     }
 }

@@ -258,6 +258,9 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // viewer
     crate::viewer::register(py, m)?;
 
+    // server
+    crate::server::register(py, m)?;
+
     Ok(())
 }
 
