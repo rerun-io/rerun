@@ -81,7 +81,7 @@ jobs:
               container="'rerunio/ci_docker:0.16.0'"
               ;;
             windows-x64)
-              runner="windows-latest-8-cores"
+              runner="windows-latest-16-cores"
               target="x86_64-pc-windows-msvc"
               container="null"
               ;;

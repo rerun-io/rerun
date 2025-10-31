@@ -17,11 +17,10 @@ pub fn parse_timestamp(
     // second since epoch special case
     //
 
-    if timestamp_format.kind() == TimestampFormatKind::SecondsSinceUnixEpoch {
-        if let Some(timestamp) = re_log_types::Timestamp::parse_with_format(value, timestamp_format)
-        {
-            return jiff::Timestamp::from_nanosecond(timestamp.nanos_since_epoch() as _);
-        }
+    if timestamp_format.kind() == TimestampFormatKind::SecondsSinceUnixEpoch
+        && let Some(timestamp) = re_log_types::Timestamp::parse_with_format(value, timestamp_format)
+    {
+        return jiff::Timestamp::from_nanosecond(timestamp.nanos_since_epoch() as _);
     }
 
     //
