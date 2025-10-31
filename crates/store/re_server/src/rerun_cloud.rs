@@ -15,8 +15,7 @@ use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::ext::{
-    CreateTableEntryRequest, CreateTableEntryResponse, LanceTable, ProviderDetails as _,
-    TableInsertMode,
+    CreateTableEntryRequest, CreateTableEntryResponse, ProviderDetails, TableInsertMode,
 };
 use re_protos::{
     cloud::v1alpha1::{
@@ -498,7 +497,7 @@ impl RerunCloudService for RerunCloudHandler {
             ReadTableEntryResponse {
                 table_entry: table.as_table_entry(),
             }
-            .into(),
+            .try_into()?,
         ))
     }
 
@@ -1131,10 +1130,15 @@ impl RerunCloudService for RerunCloudHandler {
             return Err(tonic::Status::invalid_argument("Missing provider details"));
         };
         #[cfg_attr(not(feature = "lance"), expect(unused_variables))]
-        let lance_table = LanceTable::try_from_any(&provider_details)?
-            .table_url
-            .to_file_path()
-            .map_err(|()| tonic::Status::invalid_argument("Invalid lance table path"))?;
+        let lance_table = match ProviderDetails::try_from_any(&provider_details) {
+            Ok(ProviderDetails::LanceTable(lance_table)) => lance_table.table_url,
+            Ok(ProviderDetails::SystemTable(_)) => Err(Status::invalid_argument(
+                "System tables cannot be registered",
+            ))?,
+            Err(err) => return Err(err.into()),
+        }
+        .to_file_path()
+        .map_err(|()| tonic::Status::invalid_argument("Invalid lance table path"))?;
 
         #[cfg(feature = "lance")]
         let entry_id = {
@@ -1157,7 +1161,7 @@ impl RerunCloudService for RerunCloudHandler {
             .as_table_entry();
 
         let response = RegisterTableResponse {
-            table_entry: Some(table_entry.into()),
+            table_entry: Some(table_entry.try_into()?),
         };
 
         Ok(response.into())
@@ -1331,14 +1335,25 @@ impl RerunCloudService for RerunCloudHandler {
 
         let request: CreateTableEntryRequest = request.into_inner().try_into()?;
         let table_name = &request.name;
-        let provider_details = LanceTable::try_from_any(&request.provider_details)?;
+
         let schema = Arc::new(request.schema);
 
-        let table = store
-            .create_table_entry(table_name, &provider_details.table_url, schema)
-            .await?;
+        let table = match &request.provider_details {
+            ProviderDetails::LanceTable(table) => {
+                store
+                    .create_table_entry(table_name, &table.table_url, schema)
+                    .await?
+            }
+            ProviderDetails::SystemTable(_) => {
+                return Err(tonic::Status::invalid_argument(
+                    "Creating system tables is not supported",
+                ));
+            }
+        };
 
-        Ok(Response::new(CreateTableEntryResponse { table }.into()))
+        Ok(Response::new(
+            CreateTableEntryResponse { table }.try_into()?,
+        ))
     }
 }
 

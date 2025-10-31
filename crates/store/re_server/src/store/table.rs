@@ -14,9 +14,10 @@ use lance::{
     dataset::{WriteMode, WriteParams},
 };
 use re_log_types::EntryId;
+use re_protos::cloud::v1alpha1::ext::{LanceTable, ProviderDetails};
 use re_protos::cloud::v1alpha1::{
     EntryKind,
-    ext::{EntryDetails, ProviderDetails as _, SystemTable, TableEntry},
+    ext::{EntryDetails, TableEntry},
 };
 use std::sync::Arc;
 
@@ -36,7 +37,7 @@ pub struct Table {
     created_at: jiff::Timestamp,
     updated_at: jiff::Timestamp,
 
-    system_table: Option<SystemTable>,
+    provider_details: ProviderDetails,
 }
 
 impl Table {
@@ -45,7 +46,7 @@ impl Table {
         name: String,
         table: TableType,
         created_at: Option<jiff::Timestamp>,
-        system_table: Option<SystemTable>,
+        provider_details: ProviderDetails,
     ) -> Self {
         Self {
             id,
@@ -53,7 +54,7 @@ impl Table {
             table,
             created_at: created_at.unwrap_or_else(jiff::Timestamp::now),
             updated_at: jiff::Timestamp::now(),
-            system_table,
+            provider_details,
         }
     }
 
@@ -76,11 +77,6 @@ impl Table {
     }
 
     pub fn as_table_entry(&self) -> TableEntry {
-        let provider_details = match &self.system_table {
-            Some(s) => s.try_as_any().expect("system_table should always be valid"),
-            None => Default::default(),
-        };
-
         TableEntry {
             details: EntryDetails {
                 id: self.id,
@@ -90,7 +86,7 @@ impl Table {
                 updated_at: self.updated_at,
             },
 
-            provider_details,
+            provider_details: self.provider_details.clone(),
         }
     }
 
@@ -217,13 +213,16 @@ impl Table {
                 .map_err(|err| DataFusionError::External(err.into()))?,
         );
         let created_at = Some(jiff::Timestamp::now());
+        let provider_details = LanceTable {
+            table_url: url.clone(),
+        };
 
         Ok(Self::new(
             id,
             name.to_owned(),
             TableType::LanceDataset(ds),
             created_at,
-            None,
+            ProviderDetails::LanceTable(provider_details),
         ))
     }
 
