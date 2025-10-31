@@ -44,12 +44,27 @@ impl Dataset {
         }
     }
 
+    #[inline]
     pub fn id(&self) -> EntryId {
         self.id
     }
 
+    #[inline]
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    #[inline]
+    pub fn store_kind(&self) -> StoreKind {
+        self.store_kind
+    }
+
+    #[inline]
+    pub fn entry_kind(&self) -> EntryKind {
+        match self.store_kind() {
+            StoreKind::Recording => EntryKind::Dataset,
+            StoreKind::Blueprint => EntryKind::BlueprintDataset,
+        }
     }
 
     pub fn partition(&self, partition_id: &PartitionId) -> Result<&Partition, Error> {
@@ -85,7 +100,7 @@ impl Dataset {
         EntryDetails {
             id: self.id,
             name: self.name.clone(),
-            kind: EntryKind::Dataset,
+            kind: self.entry_kind(),
             created_at: self.created_at,
             updated_at: self.updated_at,
         }
@@ -96,7 +111,7 @@ impl Dataset {
             details: EntryDetails {
                 id: self.id,
                 name: self.name.clone(),
-                kind: EntryKind::Dataset,
+                kind: self.entry_kind(),
                 created_at: self.created_at,
                 updated_at: self.updated_at,
             },

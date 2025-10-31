@@ -248,6 +248,7 @@ impl RerunCloudHandler {
         &self,
         entry_id: Option<EntryId>,
         name: Option<String>,
+        store_kind: Option<StoreKind>,
     ) -> Result<Vec<EntryDetails>, Status> {
         let store = self.store.read().await;
 
@@ -276,6 +277,9 @@ impl RerunCloudHandler {
         };
 
         Ok(dataset_iter
+            .filter(|dataset| {
+                store_kind.is_none_or(|store_kind| dataset.store_kind() == store_kind)
+            })
             .map(Dataset::as_entry_details)
             .map(Into::into)
             .collect())
@@ -381,10 +385,32 @@ impl RerunCloudService for RerunCloudHandler {
             })?;
 
         let entries = match kind {
-            Some(EntryKind::Dataset) => self.find_datasets(entry_id, name).await?,
+            Some(EntryKind::Dataset) => {
+                self.find_datasets(entry_id, name, Some(StoreKind::Recording))
+                    .await?
+            }
+
+            Some(EntryKind::BlueprintDataset) => {
+                self.find_datasets(entry_id, name, Some(StoreKind::Blueprint))
+                    .await?
+            }
+
             Some(EntryKind::Table) => self.find_tables(entry_id, name).await?,
+
+            Some(EntryKind::DatasetView | EntryKind::TableView) => {
+                return Err(Status::unimplemented(
+                    "find_entries: dataset and table views are not supported",
+                ));
+            }
+
+            Some(EntryKind::Unspecified) => {
+                return Err(Status::invalid_argument(
+                    "find_entries: entry kind unspecified",
+                ));
+            }
+
             None => {
-                let mut datasets = match self.find_datasets(entry_id, name.clone()).await {
+                let mut datasets = match self.find_datasets(entry_id, name.clone(), None).await {
                     Ok(datasets) => datasets,
                     Err(err) => {
                         if err.code() == Code::NotFound {
@@ -407,11 +433,6 @@ impl RerunCloudService for RerunCloudHandler {
                 datasets.extend(tables);
                 datasets
             }
-            _ => {
-                return Err(Status::unimplemented(
-                    "find_entries: only datasets and tables are implemented",
-                ));
-            }
         };
 
         let response = re_protos::cloud::v1alpha1::FindEntriesResponse { entries };
@@ -419,8 +440,6 @@ impl RerunCloudService for RerunCloudHandler {
         Ok(tonic::Response::new(response))
     }
 
-    //TODO: test entry id override
-    //TODO: test duplicate entry name/id
     async fn create_dataset_entry(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::CreateDatasetEntryRequest>,

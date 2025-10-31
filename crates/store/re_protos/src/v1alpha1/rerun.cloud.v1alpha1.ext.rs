@@ -649,6 +649,7 @@ impl From<DatasetEntry> for crate::cloud::v1alpha1::DatasetEntry {
 
 // --- CreateDatasetEntryRequest ---
 
+#[derive(Debug, Clone)]
 pub struct CreateDatasetEntryRequest {
     /// Entry name (must be unique in catalog).
     pub name: String,
