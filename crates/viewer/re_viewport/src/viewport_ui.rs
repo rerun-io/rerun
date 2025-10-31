@@ -231,7 +231,6 @@ impl ViewportUi {
                 }
             }
         });
-
         self.blueprint.set_maximized(maximized, ctx);
     }
 

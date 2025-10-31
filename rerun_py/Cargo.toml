@@ -57,7 +57,6 @@ re_chunk.workspace = true
 re_chunk_store.workspace = true
 re_dataframe.workspace = true
 re_datafusion.workspace = true
-re_format_arrow.workspace = true
 re_redap_client.workspace = true
 re_grpc_client.workspace = true
 re_grpc_server = { workspace = true, optional = true }
@@ -71,6 +70,7 @@ re_tuid.workspace = true
 re_uri.workspace = true
 re_video.workspace = true
 re_web_viewer_server = { workspace = true, optional = true }
+re_server = { workspace = true, features = ["lance"] }
 
 arrow = { workspace = true, features = ["pyarrow"] }
 chrono.workspace = true #TODO(#9317): migrate to jiff

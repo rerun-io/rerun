@@ -71,7 +71,6 @@ re_data_source = { path = "crates/store/re_data_source", version = "=0.27.0-alph
 re_dataframe = { path = "crates/store/re_dataframe", version = "=0.27.0-alpha.1", default-features = false }
 re_datafusion = { path = "crates/store/re_datafusion", version = "=0.27.0-alpha.1", default-features = false }
 re_entity_db = { path = "crates/store/re_entity_db", version = "=0.27.0-alpha.1", default-features = false }
-re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.27.0-alpha.1", default-features = false }
 re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.27.0-alpha.1", default-features = false }
 re_grpc_server = { path = "crates/store/re_grpc_server", version = "=0.27.0-alpha.1", default-features = false }
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.27.0-alpha.1", default-features = false }
@@ -272,7 +271,7 @@ macaw = "0.30.0"
 mcap = "0.23.3"
 memmap2 = "0.9.8"
 memory-stats = "1.2"
-mimalloc = "0.1.48"
+mimalloc = { version = "0.1.48", features = ["v3"] }
 mime_guess2 = "2.3" # infer MIME type by file extension, and map mime to file extension
 mint = "0.5.9"
 natord = "1.0.9"
@@ -465,7 +464,6 @@ debug = false
 "re_dev_tools".debug = true
 "re_entity_db".debug = true
 "re_error".debug = true
-"re_format_arrow".debug = true
 "re_format".debug = true
 "re_grpc_client".debug = true
 "re_grpc_server".debug = true

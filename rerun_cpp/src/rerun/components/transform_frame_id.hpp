@@ -27,6 +27,13 @@ namespace rerun::components {
     struct TransformFrameId {
         rerun::datatypes::Utf8 value;
 
+      public: // START of extensions from transform_frame_id_ext.cpp:
+        TransformFrameId(std::string_view path_) : value(std::string(path_)) {}
+
+        TransformFrameId(const char* path_) : value(std::string(path_)) {}
+
+        // END of extensions from transform_frame_id_ext.cpp, start of generated code:
+
       public:
         TransformFrameId() = default;
 

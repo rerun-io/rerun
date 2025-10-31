@@ -14,7 +14,7 @@
 # - python scripts/check_env.py
 # - pixi run check-env
 
-[project]
+[workspace]
 name = "rerun"
 authors = ["rerun.io <opensource@rerun.io>"]
 channels = ["conda-forge"]

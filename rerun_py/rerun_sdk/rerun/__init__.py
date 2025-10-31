@@ -28,6 +28,7 @@ from . import (
     catalog as catalog,
     dataframe as dataframe,
     experimental as experimental,
+    server as server,
 )
 from ._baseclasses import (
     ComponentBatchLike as ComponentBatchLike,
@@ -79,6 +80,7 @@ from .archetypes import (
     Boxes3D as Boxes3D,
     Capsules3D as Capsules3D,
     Clear as Clear,
+    CoordinateFrame as CoordinateFrame,
     Cylinders3D as Cylinders3D,
     DepthImage as DepthImage,
     Ellipsoids3D as Ellipsoids3D,

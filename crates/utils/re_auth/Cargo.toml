@@ -61,3 +61,4 @@ ehttp = { workspace = true, optional = true, features = ["json"] }
 
 [dev-dependencies]
 rand = { workspace = true, features = ["std", "std_rng"] }
+serde_json.workspace = true

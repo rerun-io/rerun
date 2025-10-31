@@ -1,21 +1,31 @@
+use arrow::datatypes::Schema;
+use arrow::ffi_stream::ArrowArrayStreamReader;
+use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
-    Py, PyAny, PyResult, Python,
+    Bound, Py, PyAny, PyResult, Python,
     exceptions::{PyLookupError, PyRuntimeError},
     pyclass, pymethods,
     types::PyAnyMethods as _,
 };
 use re_datafusion::{DEFAULT_CATALOG_NAME, get_all_catalog_names};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
+use std::sync::Arc;
 
 use crate::catalog::datafusion_catalog::PyDataFusionCatalogProvider;
+use crate::catalog::table_entry::PyTableInsertMode;
 use crate::catalog::{
     ConnectionHandle, PyDatasetEntry, PyEntry, PyEntryId, PyRerunHtmlTable, PyTableEntry, to_py_err,
 };
 use crate::utils::{get_tokio_runtime, wait_for_future};
+use arrow::pyarrow::FromPyArrow as _;
 
 /// Client for a remote Rerun catalog server.
-#[pyclass(name = "CatalogClientInternal")] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(  // NOLINT: ignore[py-cls-eq] non-trivial implementation
+    name = "CatalogClientInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
+
 pub struct PyCatalogClientInternal {
     origin: re_uri::Origin,
 
@@ -331,6 +341,51 @@ impl PyCatalogClientInternal {
         let table = PyTableEntry::default();
 
         Py::new(py, (table, entry))
+    }
+
+    fn create_table_entry(
+        self_: Py<Self>,
+        py: Python<'_>,
+        name: String,
+        schema: PyArrowType<Schema>,
+        url: String,
+    ) -> PyResult<Py<PyTableEntry>> {
+        let connection = self_.borrow_mut(py).connection.clone();
+
+        let url = url
+            .parse::<url::Url>()
+            .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
+
+        let schema = Arc::new(schema.0);
+        let table_entry = connection.create_table_entry(py, name, schema, &url)?;
+
+        let entry_id = Py::new(py, PyEntryId::from(table_entry.details.id))?;
+
+        let entry = PyEntry {
+            client: self_.clone_ref(py),
+            id: entry_id,
+            details: table_entry.details,
+        };
+
+        let table = PyTableEntry::default();
+
+        Py::new(py, (table, entry))
+    }
+
+    fn write_table(
+        self_: Py<Self>,
+        py: Python<'_>,
+        name: String,
+        batches: &Bound<'_, PyAny>,
+        insert_mode: PyTableInsertMode,
+    ) -> PyResult<()> {
+        let connection = self_.borrow_mut(py).connection.clone();
+
+        let stream = ArrowArrayStreamReader::from_pyarrow_bound(batches)?;
+
+        connection.write_table(py, name, stream, insert_mode)?;
+
+        Ok(())
     }
 
     // ---

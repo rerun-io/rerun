@@ -181,13 +181,20 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     // Experimental features
     //
 
-    // Currently, the wasm target does not have any experimental features. If/when that changes,
-    // move the conditional compilation flag to the respective checkbox code.
-    #[cfg(not(target_arch = "wasm32"))]
-    // Currently there are no experimental features
-    if false {
+    //#[cfg(not(target_arch = "wasm32"))]
+    if true {
         separator_with_some_space(ui);
         ui.strong("Experimental features");
+
+        ui.re_checkbox(
+            &mut app_options.experimental_coordinate_frame_display_and_override,
+            "Display coordinate frames",
+        )
+        .on_hover_ui(|ui| {
+            ui.markdown_ui(
+                "Every entity is associated with a coordinate frame id. Enabling this shows them in 2D & 3D views and allows blueprint overrides for them.",
+            );
+        });
     }
 }
 

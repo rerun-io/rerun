@@ -62,24 +62,6 @@ pub fn into_arrow_ref(array: impl Array + 'static) -> ArrayRef {
     std::sync::Arc::new(array)
 }
 
-/// Repartitions a [`ListArray`] according to the specified `lengths`, ignoring previous partitioning.
-///
-/// The specified `lengths` must sum to the total length underlying values (i.e. the child array).
-///
-/// The validity of the values is ignored.
-#[inline]
-pub fn repartition_list_array(
-    list_array: ListArray,
-    lengths: impl IntoIterator<Item = usize>,
-) -> arrow::error::Result<ListArray> {
-    let (field, _offsets, values, _nulls) = list_array.into_parts();
-
-    let offsets = OffsetBuffer::from_lengths(lengths);
-    let nulls = None;
-
-    ListArray::try_new(field, offsets, values, nulls)
-}
-
 /// Returns true if the given `list_array` is semantically empty.
 ///
 /// Semantic emptiness is defined as either one of these:

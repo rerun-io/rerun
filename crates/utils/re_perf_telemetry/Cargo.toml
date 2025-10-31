@@ -44,7 +44,6 @@ tracy = ["dep:tracing-tracy"]
 
 
 [dependencies]
-re_memory.workspace = true
 
 # External
 ahash.workspace = true

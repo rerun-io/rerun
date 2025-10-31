@@ -5,6 +5,7 @@ use egui::{
     Color32, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText,
     Shape, Ui, Vec2, pos2, scroll_area::ScrollSource,
 };
+use egui::{WidgetInfo, WidgetType};
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::guess_instance_path_icon;
@@ -476,6 +477,8 @@ impl TimePanel {
 
         let timeline_rect = {
             let top = ui.min_rect().bottom();
+            ui.response()
+                .widget_info(|| WidgetInfo::labeled(WidgetType::Panel, true, "_streams_tree"));
 
             let size = egui::vec2(self.prev_col_width, DesignTokens::list_item_height());
             ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::LEFT), |ui| {

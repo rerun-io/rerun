@@ -127,6 +127,17 @@ impl ChunkBuilder {
         self.with_serialized_batches(row_id, timepoint, batches)
     }
 
+    /// Add a row's worth of data by destructuring an archetype into component columns, using an automatically generated row ID.
+    #[inline]
+    pub fn with_archetype_auto_row(
+        self,
+        timepoint: impl Into<TimePoint>,
+        as_components: &dyn AsComponents,
+    ) -> Self {
+        let batches = as_components.as_serialized_batches();
+        self.with_serialized_batches(RowId::new(), timepoint, batches)
+    }
+
     /// Add the serialized value of a single component to the chunk.
     pub fn with_component<Component: re_types_core::Component>(
         self,

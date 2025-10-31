@@ -2,12 +2,15 @@
 
 mod kittest_harness_ext;
 mod test_data;
+mod viewer_section;
 
 pub use kittest_harness_ext::HarnessExt;
 use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistry};
 use re_server::ServerHandle;
 use re_uri::external::url::Host;
 use std::net::TcpListener;
+// pub use viewer_section::GetSection;
+pub use viewer_section::ViewerSection;
 
 pub struct TestServer {
     server_handle: Option<ServerHandle>,

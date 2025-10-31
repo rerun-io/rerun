@@ -127,7 +127,7 @@ struct Options {
 
 impl Options {
     fn format_record_batch(&self, full_batch: &RecordBatch) -> impl std::fmt::Display {
-        let format_options = re_format_arrow::RecordBatchFormatOpts {
+        let format_options = re_arrow_util::RecordBatchFormatOpts {
             transposed: self.transposed,
             width: None, // terminal width
             include_metadata: true,
@@ -140,9 +140,9 @@ impl Options {
 
         if self.verbose <= 2 {
             let empty_batch = full_batch.slice(0, 0);
-            re_format_arrow::format_record_batch_opts(&empty_batch, &format_options)
+            re_arrow_util::format_record_batch_opts(&empty_batch, &format_options)
         } else {
-            re_format_arrow::format_record_batch_opts(full_batch, &format_options)
+            re_arrow_util::format_record_batch_opts(full_batch, &format_options)
         }
     }
 }

@@ -33,6 +33,8 @@ service RerunCloudService {
 
   rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
 
+  rpc CreateTableEntry(CreateTableEntryRequest) returns (CreateTableEntryResponse) {}
+
   // Fetch metadata about a specific dataset.
   //
   // This endpoint requires the standard dataset headers.
@@ -769,6 +771,29 @@ message CreateDatasetEntryRequest {
 
 message CreateDatasetEntryResponse {
   DatasetEntry dataset = 1;
+}
+
+// CreateTableEntry
+
+message CreateTableEntryRequest {
+  // Name of the dataset entry to create.
+  //
+  // The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
+  // with the same name already exists, the request will fail. Entry names ending with `__manifest` are reserved.
+  string name = 1;
+
+  // Information about the table to register.
+  //
+  // This must be encoded message of one one of the following supported types:
+  // - LanceTable
+  google.protobuf.Any provider_details = 2;
+
+  // Schema of the table to create
+  rerun.common.v1alpha1.Schema schema = 3;
+}
+
+message CreateTableEntryResponse {
+  TableEntry table = 1;
 }
 
 // ReadDatasetEntry

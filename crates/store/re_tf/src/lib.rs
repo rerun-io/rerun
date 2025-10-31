@@ -26,7 +26,7 @@
 //! TODO(RR-2486): Link to respective archetype.
 //!
 //! However, by default, it points to an implicit, entity-derived transform frame.
-//! The name of the implicit transform frames is the entity path, prefixed with `rerun_tf#`, e.g. `rerun_tf#/world/robot/arm`.
+//! The name of the implicit transform frames is the entity path, prefixed with `tf#`, e.g. `tf#/world/robot/arm`.
 //!
 //! Entity derived transform frames automatically have an identity transform relationship
 //! to their respective parent (unless overwritten by e.g. [`re_types::archetypes::Transform3D`]).
@@ -43,14 +43,14 @@
 //! shown to the left that is associated with individual entities on the right:
 //! ```text
 //!                ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐                                    ┌──────────────────┐
-//!                       rerun_tf#world       ◀ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│      world       │
+//!                          tf#world          ◀ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│      world       │
 //!                └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘                                    └──────────────────┘
 //!                              │                                                            │
 //!                              │                                                            │
 //!                              │                                                            │
 //!                              │                                                            │
 //!                ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐                                    ┌──────────────────┐
-//!                    rerun_tf#world/robot     ◀ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │   world/robot    │
+//!                    tf#world/robot           ◀ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │   world/robot    │
 //!                └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘                                    └──────────────────┘
 //!                              Λ                                                            Λ
 //!                             ╱ ╲                                                          ╱ ╲
@@ -60,7 +60,7 @@
 //!                ╱                           ╲                                  ╱                       ╲
 //!               ╱                             ╲                                ╱                         ╲
 //! ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐ ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐        ┌──────────────────┐      ┌──────────────────┐
-//!   rerun_tf#world/robot/left    rerun_tf#world/robot/right          │ world/robot/left │      │world/robot/right │
+//!      tf#world/robot/left           tf#world/robot/right            │ world/robot/left │      │world/robot/right │
 //! └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘ └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘        └──────────────────┘      └──────────────────┘
 //!               ▲                             ▲                                │                         │
 //!               │
@@ -72,17 +72,17 @@
 //! For example, let's say we log a manual transform relationship between two new frames called `robot_frame`
 //! and `left_frame`, associate them with `world/robot` and `world/robot/left` respectively.
 //! That would create two unconnected trees, but this can be handled by specifying another
-//! relationship from `robot_frame` to `rerun_tf#world/robot`, leading to this setup:
+//! relationship from `robot_frame` to `tf#world/robot`, leading to this setup:
 //! ```text
 //!                                     ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐                                   ┌──────────────────┐
-//!                                            rerun_tf#world      ◀ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│      world       │
+//!                                               tf#world         ◀ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│      world       │
 //!                                     └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘                                   └──────────────────┘
 //!                                                   │                                                           │
 //!         ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐                                 │
 //!                                                   │                                                           │
 //!         ▼                                         │                         │                                 │
 //! ┌ ─ ─ ─ ─ ─ ─ ─ ┐                   ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐                                   ┌──────────────────┐
-//!    robot_frame   ───────────────────    rerun_tf#world/robot                └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │   world/robot    │
+//!    robot_frame   ───────────────────       tf#world/robot                   └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │   world/robot    │
 //! └ ─ ─ ─ ─ ─ ─ ─ ┘                   └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘                                   └──────────────────┘
 //!         │                                         Λ                                                           Λ
 //!         │                                        ╱ ╲                                                         ╱ ╲
@@ -92,7 +92,7 @@
 //!         │                           ╱                           ╲                                 ╱                       ╲
 //!         │                          ╱                             ╲                               ╱                         ╲
 //! ┌ ─ ─ ─ ─ ─ ─ ─ ┐    ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐ ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐       ┌──────────────────┐      ┌──────────────────┐
-//!    left_frame          rerun_tf#world/robot/left    rerun_tf#world/robot/right         │ world/robot/left │      │world/robot/right │
+//!    left_frame             tf#world/robot/left           tf#world/robot/right           │ world/robot/left │      │world/robot/right │
 //! └ ─ ─ ─ ─ ─ ─ ─ ┘    └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘ └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘       └──────────────────┘      └──────────────────┘
 //!         ▲                                                        ▲                               │                         │
 //!         │                                                        │
