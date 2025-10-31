@@ -12,8 +12,8 @@ use re_chunk_store::{
     ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
-    AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, EntityPath, EntityPathHash, LogMsg,
-    RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
+    AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, ArrowMsg, EntityPath, EntityPathHash,
+    LogMsg, RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
 };
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
@@ -554,16 +554,8 @@ impl EntityDb {
             }
 
             LogMsg::ArrowMsg(_, arrow_msg) => {
-                self.last_modified_at = web_time::Instant::now();
-
-                let chunk_batch = re_sorbet::ChunkBatch::try_from(&arrow_msg.batch)
-                    .map_err(re_chunk::ChunkError::from)?;
-                let mut chunk = re_chunk::Chunk::from_chunk_batch(&chunk_batch)?;
-                chunk.sort_if_unsorted();
-                self.add_chunk_with_timestamp_metadata(
-                    &Arc::new(chunk),
-                    &chunk_batch.sorbet_schema().timestamps,
-                )?
+                let prepared = PreparedArrowChunk::from_arrow_msg(arrow_msg)?;
+                self.add_prepared_arrow_chunk(&prepared)?
             }
 
             LogMsg::BlueprintActivationCommand(_) => {
@@ -573,6 +565,16 @@ impl EntityDb {
         };
 
         Ok(store_events)
+    }
+
+    /// Add arrow chunk that has already been converted off of the hot path.
+    pub fn add_prepared_arrow_chunk(
+        &mut self,
+        prepared: &PreparedArrowChunk,
+    ) -> Result<Vec<ChunkStoreEvent>, Error> {
+        self.last_modified_at = web_time::Instant::now();
+
+        self.add_chunk_with_timestamp_metadata(&prepared.chunk, &prepared.timestamps)
     }
 
     pub fn add_chunk(&mut self, chunk: &Arc<Chunk>) -> Result<Vec<ChunkStoreEvent>, Error> {
@@ -876,6 +878,29 @@ impl EntityDb {
         }
 
         Ok(new_db)
+    }
+}
+
+/// A chunk decoded from an [`ArrowMsg`] that is ready to be inserted into an [`EntityDb`].
+#[derive(Clone)]
+pub struct PreparedArrowChunk {
+    pub chunk: Arc<Chunk>,
+    pub timestamps: re_sorbet::TimestampMetadata,
+}
+
+impl PreparedArrowChunk {
+    pub fn from_arrow_msg(arrow_msg: &ArrowMsg) -> Result<Self, Error> {
+        re_tracing::profile_function!();
+
+        let chunk_batch = re_sorbet::ChunkBatch::try_from(&arrow_msg.batch)
+            .map_err(re_chunk::ChunkError::from)?;
+        let mut chunk = re_chunk::Chunk::from_chunk_batch(&chunk_batch)?;
+        chunk.sort_if_unsorted();
+
+        Ok(Self {
+            chunk: Arc::new(chunk),
+            timestamps: chunk_batch.sorbet_schema().timestamps.clone(),
+        })
     }
 }
 

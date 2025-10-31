@@ -176,6 +176,10 @@ fn decode_and_stream(
 ) {
     re_tracing::profile_function!(filepath.display().to_string());
 
+    // Parallel batches for better performance
+    const BATCH_SIZE: usize = 100;
+    let mut batch = Vec::with_capacity(BATCH_SIZE);
+
     for msg in msgs {
         let msg = match msg {
             Ok(msg) => msg,
@@ -185,58 +189,117 @@ fn decode_and_stream(
             }
         };
 
-        let msg = if forced_application_id.is_some() || forced_recording_id.is_some() {
-            match msg {
-                re_log_types::LogMsg::SetStoreInfo(set_store_info) => {
-                    let mut store_id = set_store_info.info.store_id.clone();
-                    if let Some(forced_application_id) = forced_application_id {
-                        store_id = store_id.with_application_id(forced_application_id.clone());
-                    }
-                    if let Some(forced_recording_id) = forced_recording_id {
-                        store_id = store_id.with_recording_id(forced_recording_id.clone());
-                    }
+        batch.push(msg);
 
-                    re_log_types::LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
-                        info: re_log_types::StoreInfo {
-                            store_id,
-                            ..set_store_info.info
-                        },
-                        ..set_store_info
-                    })
-                }
+        // Process batch when full
+        if batch.len() >= BATCH_SIZE
+            && !process_and_send_batch(&mut batch, tx, forced_application_id, forced_recording_id)
+        {
+            return; // Channel closed
+        }
+    }
 
-                re_log_types::LogMsg::ArrowMsg(mut store_id, arrow_msg) => {
-                    if let Some(forced_application_id) = forced_application_id {
-                        store_id = store_id.with_application_id(forced_application_id.clone());
-                    }
-                    if let Some(forced_recording_id) = forced_recording_id {
-                        store_id = store_id.with_recording_id(forced_recording_id.clone());
-                    }
+    // Process remaining messages
+    if !batch.is_empty() {
+        process_and_send_batch(&mut batch, tx, forced_application_id, forced_recording_id);
+    }
+}
 
-                    re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg)
-                }
+#[cfg(not(target_arch = "wasm32"))]
+fn process_and_send_batch(
+    batch: &mut Vec<re_log_types::LogMsg>,
+    tx: &std::sync::mpsc::Sender<crate::LoadedData>,
+    forced_application_id: Option<&ApplicationId>,
+    forced_recording_id: Option<&String>,
+) -> bool {
+    use rayon::prelude::*;
 
-                re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
-                    let mut blueprint_id = blueprint_activation_command.blueprint_id.clone();
-                    if let Some(forced_application_id) = forced_application_id {
-                        blueprint_id =
-                            blueprint_id.with_application_id(forced_application_id.clone());
-                    }
-                    re_log_types::LogMsg::BlueprintActivationCommand(
-                        re_log_types::BlueprintActivationCommand {
-                            blueprint_id,
-                            ..blueprint_activation_command
-                        },
-                    )
-                }
-            }
-        } else {
-            msg
-        };
+    // Process messages in parallel
+    let processed: Vec<_> = batch
+        .par_drain(..)
+        .map(|msg| transform_message(msg, forced_application_id, forced_recording_id))
+        .collect();
 
+    // Send in order
+    for msg in processed {
         let data = LoadedData::LogMsg(RrdLoader::name(&RrdLoader), msg);
         if tx.send(data).is_err() {
-            break; // The other end has decided to hang up, not our problem.
+            return false; // The other end has decided to hang up
+        }
+    }
+
+    true
+}
+
+#[cfg(target_arch = "wasm32")]
+fn process_and_send_batch(
+    batch: &mut Vec<re_log_types::LogMsg>,
+    tx: &std::sync::mpsc::Sender<crate::LoadedData>,
+    forced_application_id: Option<&ApplicationId>,
+    forced_recording_id: Option<&String>,
+) -> bool {
+    // No threads available on WASM so process sequentially.
+    for msg in batch.drain(..) {
+        let msg = transform_message(msg, forced_application_id, forced_recording_id);
+        let data = LoadedData::LogMsg(RrdLoader::name(&RrdLoader), msg);
+        if tx.send(data).is_err() {
+            return false; // The other end has decided to hang up
+        }
+    }
+
+    true
+}
+
+fn transform_message(
+    msg: re_log_types::LogMsg,
+    forced_application_id: Option<&ApplicationId>,
+    forced_recording_id: Option<&String>,
+) -> re_log_types::LogMsg {
+    if forced_application_id.is_none() && forced_recording_id.is_none() {
+        return msg;
+    }
+
+    match msg {
+        re_log_types::LogMsg::SetStoreInfo(set_store_info) => {
+            let mut store_id = set_store_info.info.store_id.clone();
+            if let Some(forced_application_id) = forced_application_id {
+                store_id = store_id.with_application_id(forced_application_id.clone());
+            }
+            if let Some(forced_recording_id) = forced_recording_id {
+                store_id = store_id.with_recording_id(forced_recording_id.clone());
+            }
+
+            re_log_types::LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
+                info: re_log_types::StoreInfo {
+                    store_id,
+                    ..set_store_info.info
+                },
+                ..set_store_info
+            })
+        }
+
+        re_log_types::LogMsg::ArrowMsg(mut store_id, arrow_msg) => {
+            if let Some(forced_application_id) = forced_application_id {
+                store_id = store_id.with_application_id(forced_application_id.clone());
+            }
+            if let Some(forced_recording_id) = forced_recording_id {
+                store_id = store_id.with_recording_id(forced_recording_id.clone());
+            }
+
+            re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg)
+        }
+
+        re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
+            let mut blueprint_id = blueprint_activation_command.blueprint_id.clone();
+            if let Some(forced_application_id) = forced_application_id {
+                blueprint_id = blueprint_id.with_application_id(forced_application_id.clone());
+            }
+            re_log_types::LogMsg::BlueprintActivationCommand(
+                re_log_types::BlueprintActivationCommand {
+                    blueprint_id,
+                    ..blueprint_activation_command
+                },
+            )
         }
     }
 }

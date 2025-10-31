@@ -8,7 +8,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use re_chunk::{Chunk, RowId};
 use re_log_encoding::Encoder;
 use re_log_types::{
-    entity_path, LogMsg, NonMinI64, StoreId, StoreKind, TimeInt, TimePoint, Timeline,
+    LogMsg, NonMinI64, StoreId, StoreKind, TimeInt, TimePoint, Timeline, entity_path,
 };
 use re_types::archetypes::Points2D;
 use std::sync::mpsc;
@@ -45,7 +45,10 @@ fn generate_messages(count: usize) -> Vec<LogMsg> {
             .build()
             .unwrap();
 
-        messages.push(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg().unwrap()));
+        messages.push(LogMsg::ArrowMsg(
+            store_id.clone(),
+            chunk.to_arrow_msg().unwrap(),
+        ));
     }
 
     messages
@@ -70,7 +73,7 @@ fn encode_messages(messages: &[LogMsg]) -> Vec<u8> {
     bytes
 }
 
-/// Benchmark loading from file contents (parallel processing)
+/// Benchmark loading from file (parallel processing)
 fn benchmark_load_from_file_contents(c: &mut Criterion) {
     let messages = generate_messages(NUM_MESSAGES);
     let encoded = encode_messages(&messages);
@@ -116,10 +119,7 @@ fn benchmark_message_processing_batches(c: &mut Criterion) {
             let mut batch = messages.clone();
             let loader = RrdLoader;
             for msg in batch.drain(..) {
-                let data = re_data_loader::LoadedData::LogMsg(
-                    loader.name(),
-                    msg,
-                );
+                let data = re_data_loader::LoadedData::LogMsg(loader.name(), msg);
                 let _ = tx.send(data);
             }
             while rx.try_recv().is_ok() {}
@@ -151,10 +151,7 @@ fn benchmark_message_processing_batches(c: &mut Criterion) {
 
                         let loader = RrdLoader;
                         for msg in processed {
-                            let data = re_data_loader::LoadedData::LogMsg(
-                                loader.name(),
-                                msg,
-                            );
+                            let data = re_data_loader::LoadedData::LogMsg(loader.name(), msg);
                             let _ = tx.send(data);
                         }
 
