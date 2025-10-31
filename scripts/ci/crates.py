@@ -77,7 +77,7 @@ def cargo(
             sanitized_cmd[token_idx + 1] = "***"
     except ValueError:
         pass
-    print(f"{datetime.now()} > CWD={cwd} cargo {subprocess.list2cmdline(sanitized_cmd[1:])}")
+    print(f"> CWD={cwd} cargo {subprocess.list2cmdline(sanitized_cmd[1:])}")
 
     if not dry_run:
         stderr = subprocess.STDOUT if capture else None
@@ -463,7 +463,7 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], d
     if dry_run:
         publish_cmd += " --dry-run"
 
-    print(f"{datetime.now()} {G}Publishing{X} {B}{name}{X}…")
+    print(f"{G}Publishing{X} {B}{name}{X}…")
     retry_attempts = 5
     while True:
         try:
@@ -477,19 +477,17 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], d
 
             if not dry_run and not is_already_published(version, crate):
                 # Theoretically this shouldn't be needed… but sometimes it is.
-                print(f"{datetime.now()}  {R}Waiting for {name} to become available…")
+                print(f"{R}Waiting for {name} to become available…")
                 time.sleep(2)  # give crates.io some time to index the new crate
                 num_retries = 0
                 while not is_already_published(version, crate):
                     time.sleep(3)
                     num_retries += 1
                     if num_retries > 10:
-                        print(
-                            f"{datetime.now()} {R}We published{X} {B}{name}{X} but it was never made available. Continuing anyway."
-                        )
+                        print(f"{R}We published{X} {B}{name}{X} but it was never made available. Continuing anyway.")
                         return
 
-            print(f"{datetime.now()} {G}Published{X} {B}{name}{X}@{B}{version}{X}")
+            print(f"{G}Published{X} {B}{name}{X}@{B}{version}{X}")
 
             break
         except subprocess.CalledProcessError as e:
@@ -498,12 +496,12 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], d
             # for any other error, retry after 6 seconds
             retry_delay = 1 + (parse_retry_delay_secs(error_message) or 5.0)
             if retry_attempts > 0:
-                print(f"{datetime.now()} {R}Failed to publish{X} {B}{name}{X}, retrying in {retry_delay} seconds…")
+                print(f"{R}Failed to publish{X} {B}{name}{X}, retrying in {retry_delay} seconds…")
                 retry_attempts -= 1
                 retry_delay *= 1.5  # some backoff
                 time.sleep(retry_delay + 1)
             else:
-                print(f"{datetime.now()} {R}Failed to publish{X} {B}{name}{X}:\n{error_message}")
+                print(f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}")
                 raise
 
 
@@ -511,16 +509,16 @@ def publish_unpublished_crates_in_parallel(
     all_crates: dict[str, Crate], version: str, token: str, dry_run: bool
 ) -> None:
     # filter all_crates for any that are already published
-    print(f"{datetime.now()} Collecting unpublished crates…")
+    print("Collecting unpublished crates…")
     unpublished_crates: dict[str, Crate] = {}
     for name, crate in all_crates.items():
         if is_already_published(version, crate):
-            print(f"{datetime.now()} {G}Already published{X} {B}{name}{X}@{B}{version}{X}")
+            print(f"{G}Already published{X} {B}{name}{X}@{B}{version}{X}")
         else:
             unpublished_crates[name] = crate
 
     # collect dependency graph (adjacency list of `crate -> dependencies`)
-    print(f"{datetime.now()} Building dependency graph…")
+    print("Building dependency graph…")
     dependency_graph: dict[str, list[str]] = {}
     for name, crate in unpublished_crates.items():
         dependencies = []
@@ -536,7 +534,7 @@ def publish_unpublished_crates_in_parallel(
         dependency_graph[name] = dependencies
 
     # walk the dependency graph in parallel and publish each crate
-    print(f"{datetime.now()} Publishing {len(unpublished_crates)} crates…")
+    print(f"Publishing {len(unpublished_crates)} crates…")
     env = {**os.environ.copy(), "RERUN_IS_PUBLISHING_CRATES": "yes"}
 
     # The max token parameter attempts to model `crates.io` rate limiting. In dry run mode, we don't want to wait so
