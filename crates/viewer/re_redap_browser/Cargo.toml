@@ -39,4 +39,6 @@ egui.workspace = true
 futures.workspace = true
 itertools.workspace = true
 serde.workspace = true
+thiserror.workspace = true
 url.workspace = true
+webbrowser.workspace = true

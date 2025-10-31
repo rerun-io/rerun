@@ -9319,7 +9319,9 @@ dependencies = [
  "re_uri",
  "re_viewer_context",
  "serde",
+ "thiserror 2.0.17",
  "url",
+ "webbrowser",
 ]
 
 [[package]]

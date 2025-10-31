@@ -71,8 +71,6 @@ pub struct AppState {
     pub(crate) open_url_modal: crate::ui::OpenUrlModal,
     #[serde(skip)]
     pub(crate) share_modal: crate::ui::ShareModal,
-    #[serde(skip)]
-    pub(crate) login_modal: crate::ui::LoginModal,
 
     /// Test-only: single-shot callback to run at the end of the frame. Used in integration tests
     /// to interact with the `ViewerContext`.
@@ -125,7 +123,6 @@ impl Default for AppState {
             redap_servers: Default::default(),
             open_url_modal: Default::default(),
             share_modal: Default::default(),
-            login_modal: Default::default(),
             navigation: Default::default(),
             view_states: Default::default(),
             selection_state: Default::default(),

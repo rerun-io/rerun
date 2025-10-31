@@ -421,7 +421,6 @@ fn panel_buttons_r2l(
     let rec_cfg = store_hub
         .active_store_id()
         .and_then(|id| app.state.time_controls.get(id));
-    app.state.login_modal.button_ui(ui);
     app.state.share_modal.button_ui(
         ui,
         store_hub,

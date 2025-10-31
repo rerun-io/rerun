@@ -1,12 +1,16 @@
-use std::str::FromStr as _;
-
+use egui::RichText;
+use re_auth::Jwt;
 use re_redap_client::ConnectionRegistryHandle;
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
 use re_viewer_context::{DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _};
+use std::str::FromStr as _;
 
 use crate::{context::Context, servers::Command};
+
+mod login_flow;
+use login_flow::{LoginFlow, LoginFlowResult, action_button};
 
 /// Should the modal edit an existing server or add a new one?
 pub enum ServerModalMode {
@@ -20,13 +24,45 @@ pub enum ServerModalMode {
     Edit(re_uri::Origin),
 }
 
+enum CredentialsState {
+    Token(String),
+    Login(LoginFlow),
+    LoggedIn(String),
+    Error(String),
+}
+
+impl CredentialsState {
+    #[expect(clippy::needless_pass_by_value)]
+    fn with_token(token: String) -> Self {
+        Self::Token(token.trim().to_owned())
+    }
+
+    fn empty_token() -> Self {
+        Self::Token(String::new())
+    }
+
+    fn login_flow(ui: &mut egui::Ui) -> Self {
+        match LoginFlow::open(ui) {
+            Ok(flow) => Self::Login(flow),
+            Err(err) => Self::Error(err),
+        }
+    }
+
+    fn try_from_stored() -> Option<Self> {
+        re_auth::oauth::load_credentials()
+            .ok()
+            .flatten()
+            .map(|credentials| Self::LoggedIn(credentials.user().email.clone()))
+    }
+}
+
 pub struct ServerModal {
     modal: ModalHandler,
 
     mode: ServerModalMode,
     scheme: Scheme,
     host: String,
-    token: String,
+    credentials: Option<CredentialsState>,
     port: u16,
 }
 
@@ -37,7 +73,7 @@ impl Default for ServerModal {
             mode: ServerModalMode::Add,
             scheme: Scheme::Rerun,
             host: String::new(),
-            token: String::new(),
+            credentials: None,
             port: 443,
         }
     }
@@ -46,20 +82,34 @@ impl Default for ServerModal {
 impl ServerModal {
     pub fn open(&mut self, mode: ServerModalMode, connection_registry: &ConnectionRegistryHandle) {
         *self = match mode {
-            ServerModalMode::Add => Default::default(),
+            ServerModalMode::Add => {
+                let credentials = CredentialsState::try_from_stored();
+
+                Self {
+                    mode: ServerModalMode::Add,
+                    credentials,
+                    ..Default::default()
+                }
+            }
             ServerModalMode::Edit(origin) => {
-                let token = connection_registry
-                    .token(&origin)
-                    .map(|t| t.to_string())
-                    .unwrap_or_default();
                 let re_uri::Origin { scheme, host, port } = origin.clone();
+
+                let credentials = connection_registry.credentials(&origin);
+                let credentials = match credentials {
+                    Some(re_redap_client::Credentials::Token(token)) => {
+                        Some(CredentialsState::Token(token.to_string()))
+                    }
+                    Some(re_redap_client::Credentials::Stored) | None => {
+                        CredentialsState::try_from_stored()
+                    }
+                };
 
                 Self {
                     modal: Default::default(),
                     mode: ServerModalMode::Edit(origin),
                     scheme,
                     host: host.to_string(),
-                    token,
+                    credentials,
                     port,
                 }
             }
@@ -86,22 +136,8 @@ impl ServerModal {
                     "The dataplatform is very experimental and not generally \
                 available yet. Proceed with caution!",
                 );
-                ui.label("Scheme:");
 
-                egui::ComboBox::new("scheme", "")
-                    .selected_text(if self.scheme == Scheme::RerunHttp {
-                        "http"
-                    } else {
-                        "https"
-                    })
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.scheme, Scheme::RerunHttps, "https");
-                        ui.selectable_value(&mut self.scheme, Scheme::RerunHttp, "http");
-                    });
-
-                ui.add_space(14.0);
-
-                let host_label_response = ui.label("Host name:");
+                ui.label("URL:");
                 let mut host = url::Host::parse(&self.host);
 
                 if host.is_err()
@@ -124,46 +160,133 @@ impl ServerModal {
                     }
                 }
 
-                ui.scope(|ui| {
-                    // make field red if host is invalid
-                    if host.is_err() {
-                        ui.style_invalid_field();
-                    }
-                    ui.add(egui::TextEdit::singleline(&mut self.host).lock_focus(false))
-                        .labelled_by(host_label_response.id);
-                    self.host = self.host.trim().to_owned();
+                ui.horizontal(|ui| {
+                    egui::ComboBox::new("scheme", "")
+                        .selected_text(if self.scheme == Scheme::RerunHttp {
+                            "http"
+                        } else {
+                            "https"
+                        })
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.scheme, Scheme::RerunHttps, "https");
+                            ui.selectable_value(&mut self.scheme, Scheme::RerunHttp, "http");
+                        });
+
+                    ui.scope(|ui| {
+                        // make field red if host is invalid
+                        if host.is_err() {
+                            ui.style_invalid_field();
+                        }
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.host)
+                                .lock_focus(false)
+                                .hint_text("Host name")
+                                .desired_width(200.0),
+                        );
+                        self.host = self.host.trim().to_owned();
+                    });
+
+                    ui.add(egui::DragValue::new(&mut self.port));
                 });
 
                 ui.add_space(14.0);
 
-                ui.label("Token (optional, will be stored in clear text):");
-                let token = ui
-                    .scope(|ui| {
-                        let token = (!self.token.is_empty())
-                            .then(|| re_auth::Jwt::try_from(self.token.clone()))
-                            .transpose();
+                ui.label("Authenticate:");
+                ui.scope(|ui| match &mut self.credentials {
+                    None => {
+                        ui.horizontal(|ui| {
+                            if action_button(ui, &mut true, None, "Login", "Login") {
+                                self.credentials = Some(CredentialsState::login_flow(ui));
+                            }
 
-                        if token.is_err() {
-                            ui.style_invalid_field();
+                            ui.add_space(6.0);
+                            ui.label("or");
+                            ui.add_space(6.0);
+
+                            if ui
+                                .link(RichText::new("Add a token").strong().underline())
+                                .clicked()
+                            {
+                                self.credentials = Some(CredentialsState::empty_token());
+                            }
+                        });
+                    }
+                    Some(CredentialsState::Token(token)) => {
+                        let mut token = token.clone();
+                        let mut close = false;
+
+                        ui.horizontal(|ui| {
+                            let jwt = (!token.is_empty())
+                                .then(|| re_auth::Jwt::try_from(token.clone()))
+                                .transpose();
+
+                            if jwt.is_err() {
+                                ui.style_invalid_field();
+                            }
+
+                            ui.add(
+                                egui::TextEdit::singleline(&mut token)
+                                    .hint_text("Token (will be stored in plain text)")
+                                    .code_editor(),
+                            );
+
+                            if ui
+                                .small_icon_button(&re_ui::icons::CLOSE, "Clear login status")
+                                .on_hover_text("Clear login status")
+                                .clicked()
+                            {
+                                close = true;
+                            }
+                        });
+
+                        if close {
+                            self.credentials = None;
+                        } else {
+                            self.credentials = Some(CredentialsState::with_token(token));
                         }
+                    }
+                    Some(CredentialsState::Login(flow)) => {
+                        if let Some(result) = flow.ui(ui, global_ctx.command_sender) {
+                            match result {
+                                LoginFlowResult::Success(credentials) => {
+                                    self.credentials = Some(CredentialsState::LoggedIn(
+                                        credentials.user().email.clone(),
+                                    ));
+                                }
+                                LoginFlowResult::Failure(err) => {
+                                    self.credentials = Some(CredentialsState::Error(err));
+                                }
+                            }
+                        }
+                    }
+                    Some(CredentialsState::Error(err)) => {
+                        ui.error_label(err.clone());
+                    }
+                    Some(CredentialsState::LoggedIn(email)) => {
+                        let email = email.clone();
+                        ui.scope(|ui| {
+                            ui.horizontal(|ui| {
+                                ui.label("Continue as ");
+                                ui.label(RichText::new(email).strong().underline());
 
-                        ui.add(egui::TextEdit::singleline(&mut self.token));
-                        self.token = self.token.trim().to_owned();
+                                ui.add_space(6.0);
+                                ui.label("or");
+                                ui.add_space(6.0);
 
-                        token
-                    })
-                    .inner;
+                                if ui.link(RichText::new("Add a token").underline()).clicked() {
+                                    self.credentials = Some(CredentialsState::Token(String::new()));
+                                }
 
-                ui.add_space(14.0);
-
-                let port_label_response = ui.label("Port:");
-                ui.add(egui::DragValue::new(&mut self.port))
-                    .labelled_by(port_label_response.id);
-
-                let origin = host.map(|host| re_uri::Origin {
-                    scheme: self.scheme,
-                    host,
-                    port: self.port,
+                                if ui
+                                    .small_icon_button(&re_ui::icons::CLOSE, "Clear login status")
+                                    .on_hover_text("Clear login status")
+                                    .clicked()
+                                {
+                                    self.credentials = None;
+                                }
+                            });
+                        });
+                    }
                 });
 
                 ui.add_space(24.0);
@@ -173,10 +296,29 @@ impl ServerModal {
                     ServerModalMode::Edit(_) => "Save",
                 };
 
+                let origin = host.map(|host| re_uri::Origin {
+                    scheme: self.scheme,
+                    host,
+                    port: self.port,
+                });
+
+                let credentials = match &self.credentials {
+                    Some(CredentialsState::Token(token)) => Jwt::try_from(token.clone())
+                        .map(re_redap_client::Credentials::Token)
+                        .map(Some)
+                        // error is reported in the UI above
+                        .map_err(|_err| ()),
+                    Some(CredentialsState::LoggedIn(_)) => {
+                        Ok(Some(re_redap_client::Credentials::Stored))
+                    }
+                    Some(CredentialsState::Login(_) | CredentialsState::Error(_)) => Err(()),
+                    None => Ok(None),
+                };
+
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let button_width = ui.tokens().modal_button_width;
 
-                    if let (Ok(origin), Ok(token)) = (origin, token) {
+                    if let (Ok(origin), Ok(credentials)) = (origin, credentials) {
                         let save_button_response = ui.add(
                             egui::Button::new(save_text).min_size(egui::vec2(button_width, 0.0)),
                         );
@@ -191,7 +333,7 @@ impl ServerModal {
                                     .ok();
                             }
                             ctx.command_sender
-                                .send(Command::AddServer(origin.clone(), token))
+                                .send(Command::AddServer(origin.clone(), credentials))
                                 .ok();
                             global_ctx.command_sender.send_system(
                                 SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(origin)),
