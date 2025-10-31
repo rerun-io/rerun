@@ -1,3 +1,12 @@
+use std::collections::{BTreeMap, BTreeSet, hash_map::Entry};
+use std::ops::Range;
+
+use ahash::HashMap;
+use glam::Affine3A;
+use itertools::Itertools as _;
+use nohash_hasher::{IntMap, IntSet};
+use vec1::smallvec_v1::SmallVec1;
+
 use crate::entity_to_source_frame_tracking::EntityToAffectedSources;
 use crate::{
     TransformFrameIdHash,
@@ -6,10 +15,7 @@ use crate::{
         query_and_resolve_instance_poses_at_entity, query_and_resolve_pinhole_projection_at_entity,
     },
 };
-use ahash::HashMap;
-use glam::Affine3A;
-use itertools::Itertools as _;
-use nohash_hasher::{IntMap, IntSet};
+
 use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::external::re_types_core::ArrowString;
@@ -20,9 +26,6 @@ use re_types::{
     archetypes::{self},
     components::{self},
 };
-use std::collections::{BTreeMap, BTreeSet, hash_map::Entry};
-use std::ops::Range;
-use vec1::smallvec_v1::SmallVec1;
 
 /// Resolves all transform relationship defining components to affine transforms for fast lookup.
 ///
@@ -39,6 +42,7 @@ use vec1::smallvec_v1::SmallVec1;
 pub struct TransformResolutionCache {
     per_timeline: HashMap<TimelineName, CachedTransformsForTimeline>,
     static_timeline: CachedTransformsForTimeline,
+    frame_id_lookup_table: IntMap<TransformFrameIdHash, TransformFrameId>,
 }
 
 impl Default for TransformResolutionCache {
@@ -52,6 +56,7 @@ impl Default for TransformResolutionCache {
                 per_source_frame_transforms: Default::default(),
                 recursive_clears: Default::default(), // Unused for static timeline.
             },
+            frame_id_lookup_table: Default::default(),
         }
     }
 }
@@ -682,9 +687,18 @@ impl TransformsForSourceFrame {
 }
 
 impl TransformResolutionCache {
-    /// Accesses the transform component tracking data for a given timeline.
+    /// Looks up a frame ID by its hash.
     ///
-    /// Returns `None` if the timeline doesn't have any transforms at all.
+    /// Returns `None` if the frame id hash was never encountered.
+    #[inline]
+    pub fn lookup_frame_id(
+        &self,
+        frame_id_hash: TransformFrameIdHash,
+    ) -> Option<&TransformFrameId> {
+        self.frame_id_lookup_table.get(&frame_id_hash)
+    }
+
+    /// Accesses the transform component tracking data for a given timeline.
     #[inline]
     pub fn transforms_for_timeline(
         &mut self,
@@ -760,12 +774,41 @@ impl TransformResolutionCache {
         }
     }
 
+    fn ensure_frame_ids_are_known(&mut self, chunk: &Chunk) {
+        // Implicit frames.
+        let entity_path = chunk.entity_path();
+        self.frame_id_lookup_table
+            .entry(TransformFrameIdHash::from_entity_path(entity_path))
+            .or_insert_with(|| TransformFrameId::from_entity_path(entity_path));
+        if let Some(parent) = entity_path.parent() {
+            self.frame_id_lookup_table
+                .entry(TransformFrameIdHash::from_entity_path(&parent))
+                .or_insert_with(|| TransformFrameId::from_entity_path(&parent));
+        }
+
+        // TODO(RR-2627, RR-2680): Custom source is not supported yet for Pinhole & Poses, we instead use whatever is on `Transform3D`.
+        let source_frame_component = archetypes::Transform3D::descriptor_source_frame().component;
+        let target_frame_component = archetypes::Transform3D::descriptor_target_frame().component;
+        for frame_id_strings in chunk
+            .iter_slices::<String>(source_frame_component)
+            .chain(chunk.iter_slices::<String>(target_frame_component))
+        {
+            for frame_id_string in frame_id_strings {
+                let frame_id_hash = TransformFrameIdHash::from_str(frame_id_string.as_str());
+                self.frame_id_lookup_table
+                    .entry(frame_id_hash)
+                    .or_insert_with(|| TransformFrameId::new(frame_id_string.as_str()));
+            }
+        }
+    }
+
     fn add_temporal_chunk(&mut self, chunk: &Chunk, aspects: TransformAspect) {
         re_tracing::profile_function!();
 
         debug_assert!(!chunk.is_static());
 
         let entity_path = chunk.entity_path();
+        self.ensure_frame_ids_are_known(chunk);
 
         for (timeline, time_column) in chunk.timelines() {
             let per_timeline = self.per_timeline.entry(*timeline).or_insert_with(|| {
@@ -913,6 +956,8 @@ impl TransformResolutionCache {
         re_tracing::profile_function!();
 
         debug_assert!(chunk.is_static());
+
+        self.ensure_frame_ids_are_known(chunk);
 
         let entity_path = chunk.entity_path();
         let fallback_sources = [TransformFrameIdHash::from_entity_path(entity_path)];
