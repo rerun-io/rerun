@@ -206,13 +206,14 @@ pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.svg");
 
 pub const GITHUB: Icon = icon_from_path!("../data/icons/github.svg");
 
+// Notifications:
 pub const INFO: Icon = icon_from_path!("../data/icons/info.svg");
 pub const WARNING: Icon = icon_from_path!("../data/icons/warn.svg");
 pub const ERROR: Icon = icon_from_path!("../data/icons/error.svg");
 pub const SUCCESS: Icon = icon_from_path!("../data/icons/success.svg");
 pub const VIDEO_ERROR: Icon = icon_from_path!("../data/icons/video_error.svg");
 
-// drag and drop icons
+// Drag and drop:
 pub const DND_ADD_NEW: Icon = icon_from_path!("../data/icons/dnd_add_new.svg");
 pub const DND_ADD_TO_EXISTING: Icon = icon_from_path!("../data/icons/dnd_add_to_existing.svg");
 pub const DND_MOVE: Icon = icon_from_path!("../data/icons/dnd_move.svg");
@@ -224,13 +225,16 @@ pub const BREADCRUMBS_SEPARATOR: Icon = icon_from_path!("../data/icons/breadcrum
 pub const SEARCH: Icon = icon_from_path!("../data/icons/search.svg");
 pub const SETTINGS: Icon = icon_from_path!("../data/icons/settings.svg");
 
-/// Shortcut icons
+// Shortcuts:
 pub const LEFT_MOUSE_CLICK: Icon = icon_from_path!("../data/icons/lmc.svg");
+pub const CENTER_MOUSE_CLICK: Icon = icon_from_path!("../data/icons/scroll.svg"); // TODO: an icon
 pub const RIGHT_MOUSE_CLICK: Icon = icon_from_path!("../data/icons/rmc.svg");
 pub const SCROLL: Icon = icon_from_path!("../data/icons/scroll.svg");
 pub const SHIFT: Icon = icon_from_path!("../data/icons/shift.svg");
 pub const CONTROL: Icon = icon_from_path!("../data/icons/control.svg");
 pub const COMMAND: Icon = icon_from_path!("../data/icons/command.svg");
 pub const OPTION: Icon = icon_from_path!("../data/icons/option.svg");
+
+// Action buttons:
 pub const COPY: Icon = icon_from_path!("../data/icons/copy.svg");
 pub const DOWNLOAD: Icon = icon_from_path!("../data/icons/download.svg");

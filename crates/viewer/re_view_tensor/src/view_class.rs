@@ -522,7 +522,7 @@ fn paint_axis_names(
     let text_color = ui.visuals().text_color();
 
     let rounding = tokens.normal_corner_radius();
-    let inner_margin = rounding;
+    let inner_margin = rounding as f32;
     let outer_margin = 8.0;
 
     let rect = rect.shrink(outer_margin + inner_margin);
