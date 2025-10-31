@@ -263,7 +263,7 @@ impl ViewClass for TimeSeriesView {
 
     fn selection_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        viewer_ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         _space_origin: &EntityPath,
@@ -272,12 +272,36 @@ impl ViewClass for TimeSeriesView {
         let state = state.downcast_mut::<TimeSeriesViewState>()?;
 
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state);
+            let ctx = self.view_context(viewer_ctx, view_id, state);
             view_property_ui::<PlotBackground>(&ctx, ui);
             view_property_ui::<PlotLegend>(&ctx, ui);
-            view_property_ui::<TimeAxis>(&ctx, ui);
+
+            let link_x_axis = ViewProperty::from_archetype::<TimeAxis>(
+                ctx.blueprint_db(),
+                ctx.blueprint_query(),
+                view_id,
+            )
+            .component_or_fallback::<LinkAxis>(&ctx, TimeAxis::descriptor_link().component)?;
+
+            match link_x_axis {
+                LinkAxis::Independent => {
+                    view_property_ui::<TimeAxis>(&ctx, ui);
+                }
+                LinkAxis::LinkToGlobal => {
+                    re_view::view_property_ui_with_override::<TimeAxis>(
+                        &ctx,
+                        ui,
+                        TimeAxis::descriptor_view_range().component,
+                        re_viewer_context::GLOBAL_VIEW_ID,
+                    );
+                }
+            }
+
             view_property_ui::<ScalarAxis>(&ctx, ui);
-        });
+
+            Ok::<(), ViewSystemExecutionError>(())
+        })
+        .inner?;
 
         Ok(())
     }
@@ -512,8 +536,10 @@ impl ViewClass for TimeSeriesView {
 
         let time_axis =
             ViewProperty::from_archetype::<TimeAxis>(blueprint_db, ctx.blueprint_query, view_id);
+
         let link_x_axis = time_axis
             .component_or_fallback::<LinkAxis>(&view_ctx, TimeAxis::descriptor_link().component)?;
+
         let x_zoom_lock = **time_axis.component_or_fallback::<LockRangeDuringZoom>(
             &view_ctx,
             TimeAxis::descriptor_zoom_lock().component,
@@ -522,9 +548,34 @@ impl ViewClass for TimeSeriesView {
         let view_current_time =
             re_types::datatypes::TimeInt(current_time.unwrap_or_default().at_least(timeline_start));
 
-        let view_time_range = time_axis
+        let query_result;
+        // If we globally link the x-axis it will ignore this view's time range property and use
+        // `GLOBAL_VIEW_ID's` time range property instead.
+        let (time_range_property, time_range_ctx) = match link_x_axis {
+            LinkAxis::Independent => (&time_axis, &view_ctx),
+            LinkAxis::LinkToGlobal => {
+                query_result = re_viewer_context::DataQueryResult::default();
+
+                (
+                    &ViewProperty::from_archetype::<TimeAxis>(
+                        ctx.blueprint_db(),
+                        ctx.blueprint_query,
+                        re_viewer_context::GLOBAL_VIEW_ID,
+                    ),
+                    &re_viewer_context::ViewContext {
+                        viewer_ctx: ctx,
+                        view_id: re_viewer_context::GLOBAL_VIEW_ID,
+                        view_class_identifier: Self::identifier(),
+                        view_state: state,
+                        query_result: &query_result,
+                    },
+                )
+            }
+        };
+
+        let view_time_range = time_range_property
             .component_or_fallback::<re_types::blueprint::components::TimeRange>(
-                &view_ctx,
+                time_range_ctx,
                 TimeAxis::descriptor_view_range().component,
             )?;
 
@@ -780,41 +831,8 @@ impl ViewClass for TimeSeriesView {
 
             if is_resetting {
                 scalar_axis.reset_blueprint_component(ctx, ScalarAxis::descriptor_range());
-                time_axis.reset_blueprint_component(ctx, TimeAxis::descriptor_view_range());
-
-                match link_x_axis {
-                    LinkAxis::Independent => {}
-                    LinkAxis::LinkToGlobal => {
-                        // Also reset the globally linked transform to fallbacks.
-                        ui.memory_mut(|mem| {
-                            let shared_transform = mem.data.get_temp_mut_or_insert_with(
-                                egui::Id::new(timeline.name()),
-                                || transform,
-                            );
-
-                            let view_ctx = self.view_context(ctx, view_id, state);
-                            let view_time_range = re_viewer_context::typed_fallback_for::<
-                                re_types::blueprint::components::TimeRange,
-                            >(
-                                &time_axis.query_context(&view_ctx),
-                                TimeAxis::descriptor_view_range().component,
-                            );
-                            let x_range = resolve_time_range(&view_time_range);
-
-                            let y_range = re_viewer_context::typed_fallback_for::<Range1D>(
-                                &scalar_axis.query_context(&view_ctx),
-                                ScalarAxis::descriptor_range().component,
-                            );
-
-                            let bounds = egui_plot::PlotBounds::from_min_max(
-                                [x_range.start(), y_range.start()],
-                                [x_range.end(), y_range.end()],
-                            );
-                            *shared_transform =
-                                egui_plot::PlotTransform::new(*transform.frame(), bounds, false);
-                        });
-                    }
-                }
+                time_range_property
+                    .reset_blueprint_component(ctx, TimeAxis::descriptor_view_range());
 
                 ui.ctx().request_repaint(); // Make sure we get another frame with the view reset.
             } else {
@@ -843,46 +861,11 @@ impl ViewClass for TimeSeriesView {
                 if let Some(hover_pos) = response.hover_pos()
                     && (move_delta != egui::Vec2::ZERO || zoom_delta != egui::Vec2::ONE)
                 {
-                    let apply_to_transform = |transform: &mut egui_plot::PlotTransform| {
-                        transform.translate_bounds((-move_delta.x as f64, -move_delta.y as f64));
+                    transform.translate_bounds((-move_delta.x as f64, -move_delta.y as f64));
 
-                        transform.zoom(zoom_delta, hover_pos);
-                    };
-
-                    match link_x_axis {
-                        LinkAxis::Independent => {
-                            apply_to_transform(&mut transform);
-                        }
-                        LinkAxis::LinkToGlobal => {
-                            ui.memory_mut(|mem| {
-                                let shared_transform = mem.data.get_temp_mut_or_insert_with(
-                                    egui::Id::new(timeline.name()),
-                                    || transform,
-                                );
-
-                                apply_to_transform(shared_transform);
-                            });
-                        }
-                    }
+                    transform.zoom(zoom_delta, hover_pos);
 
                     transform_changed = true;
-                }
-
-                match link_x_axis {
-                    LinkAxis::Independent => {}
-                    LinkAxis::LinkToGlobal => ui.memory_mut(|mem| {
-                        let shared_transform = mem
-                            .data
-                            .get_temp_mut_or_insert_with(egui::Id::new(timeline.name()), || {
-                                transform
-                            });
-
-                        if transform.bounds() != shared_transform.bounds() {
-                            transform = *shared_transform;
-
-                            transform_changed = true;
-                        }
-                    }),
                 }
 
                 if transform_changed {
@@ -904,7 +887,7 @@ impl ViewClass for TimeSeriesView {
                         });
 
                     if new_x_range != x_range && view_time_range != new_view_time_range {
-                        time_axis.save_blueprint_component(
+                        time_range_property.save_blueprint_component(
                             ctx,
                             &TimeAxis::descriptor_view_range(),
                             &new_view_time_range,

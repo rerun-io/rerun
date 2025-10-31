@@ -53,7 +53,7 @@ pub use self::{
     app_options::AppOptions,
     async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend},
     blueprint_helpers::{BlueprintContext, blueprint_timeline, blueprint_timepoint_for_writes},
-    blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, ViewId},
+    blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId},
     cache::{
         Cache, CacheMemoryReport, CacheMemoryReportItem, Caches, ImageDecodeCache, ImageStatsCache,
         SharablePlayableVideoStream, TensorStatsCache, VideoAssetCache, VideoStreamCache,

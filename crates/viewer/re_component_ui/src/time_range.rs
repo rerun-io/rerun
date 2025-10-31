@@ -5,7 +5,7 @@ use re_types::{
     datatypes::{TimeInt, TimeRangeBoundary},
 };
 use re_ui::{TimeDragValue, UiExt as _, list_item::LabelContent};
-use re_viewer_context::MaybeMutRef;
+use re_viewer_context::{MaybeMutRef, TimeControlCommand};
 
 pub fn time_range_multiline_edit_or_view_ui(
     ctx: &re_viewer_context::ViewerContext<'_>,
@@ -99,6 +99,11 @@ pub fn time_range_multiline_edit_or_view_ui(
         response.mark_changed();
     }
 
+    if ui.rect_contains_pointer(response.rect) {
+        let absolute_range = AbsoluteTimeRange::from_relative_time_range(value, current_time);
+        ctx.send_time_commands([TimeControlCommand::HighlightRange(absolute_range)]);
+    }
+
     response
 }
 
@@ -127,13 +132,18 @@ pub fn time_range_singleline_view_ui(
 
     let (text, on_hover) = current_range_label(ctx, current_time, time_type, value, true);
 
-    let res = ui.label(text);
+    let mut res = ui.label(text);
 
     if let Some(on_hover) = on_hover {
-        res.on_hover_text(on_hover)
-    } else {
-        res
+        res = res.on_hover_text(on_hover);
     }
+
+    if res.hovered() {
+        let absolute_range = AbsoluteTimeRange::from_relative_time_range(value, current_time);
+        ctx.send_time_commands([TimeControlCommand::HighlightRange(absolute_range)]);
+    }
+
+    res
 }
 
 /// Returns (label text, on hover text).
