@@ -11,18 +11,17 @@ use re_view::{
     range_with_blueprint_resolved_data,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, ViewContext, ViewQuery, ViewStateExt as _, ViewSystemExecutionError,
-    VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, ViewContext, ViewQuery, ViewSystemExecutionError, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 use re_viewer_context::{external::re_entity_db::InstancePath, typed_fallback_for};
+use re_viewport_blueprint::ViewPropertyQueryError;
 
 use crate::series_query::{
     allocate_plot_points, collect_colors, collect_radius_ui, collect_scalars, collect_series_name,
     collect_series_visibility, determine_num_series,
 };
-use crate::util::{determine_time_per_pixel, determine_time_range, points_to_series};
-use crate::view_class::TimeSeriesViewState;
-use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
+use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, util};
 
 /// The system for rendering [`archetypes::SeriesLines`] archetypes.
 #[derive(Default, Debug)]
@@ -56,7 +55,7 @@ impl VisualizerSystem for SeriesLinesSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        self.load_scalars(ctx, query);
+        self.load_scalars(ctx, query)?;
         Ok(Vec::new())
     }
 
@@ -66,12 +65,16 @@ impl VisualizerSystem for SeriesLinesSystem {
 }
 
 impl SeriesLinesSystem {
-    fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
+    fn load_scalars(
+        &mut self,
+        ctx: &ViewContext<'_>,
+        query: &ViewQuery<'_>,
+    ) -> Result<(), ViewPropertyQueryError> {
         re_tracing::profile_function!();
 
         let plot_mem =
             egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx(), crate::plot_id(query.view_id));
-        let time_per_pixel = determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
+        let time_per_pixel = util::determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
 
         let data_results = query.iter_visible_data_results(Self::identifier());
 
@@ -82,57 +85,42 @@ impl SeriesLinesSystem {
             for mut one_series in data_results
                 .collect_vec()
                 .par_iter()
-                .map(|data_result| -> Vec<PlotSeries> {
-                    let mut series = vec![];
-                    Self::load_series(
-                        ctx,
-                        query,
-                        plot_mem.as_ref(),
-                        time_per_pixel,
-                        data_result,
-                        &mut series,
-                    );
-                    series
-                })
-                .collect::<Vec<_>>()
+                .map(
+                    |data_result| -> Result<Vec<PlotSeries>, ViewPropertyQueryError> {
+                        let mut series = vec![];
+                        Self::load_series(ctx, query, time_per_pixel, data_result, &mut series)?;
+                        Ok(series)
+                    },
+                )
+                .collect::<Result<Vec<_>, ViewPropertyQueryError>>()?
             {
                 self.all_series.append(&mut one_series);
             }
         } else {
             let mut series = vec![];
             for data_result in data_results {
-                Self::load_series(
-                    ctx,
-                    query,
-                    plot_mem.as_ref(),
-                    time_per_pixel,
-                    data_result,
-                    &mut series,
-                );
+                Self::load_series(ctx, query, time_per_pixel, data_result, &mut series)?;
             }
             self.all_series = series;
         }
+
+        Ok(())
     }
 
     fn load_series(
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
-        plot_mem: Option<&egui_plot::PlotMemory>,
         time_per_pixel: f64,
         data_result: &re_viewer_context::DataResult,
         all_series: &mut Vec<PlotSeries>,
-    ) {
+    ) -> Result<(), ViewPropertyQueryError> {
         re_tracing::profile_function!();
 
         let current_query = ctx.current_query();
         let query_ctx = ctx.query_context(data_result, &current_query);
 
-        let time_offset = ctx
-            .view_state
-            .downcast_ref::<TimeSeriesViewState>()
-            .map_or(0, |state| state.time_offset);
-        let time_range =
-            determine_time_range(view_query.latest_at, time_offset, data_result, plot_mem);
+        let time_range = util::determine_time_range(ctx)?;
+
         {
             use re_view::RangeResultsExt as _;
 
@@ -157,7 +145,7 @@ impl SeriesLinesSystem {
             let Some(all_scalar_chunks) =
                 results.get_required_chunks(archetypes::Scalars::descriptor_scalars().component)
             else {
-                return;
+                return Ok(());
             };
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default values.
@@ -321,7 +309,7 @@ impl SeriesLinesSystem {
                     InstancePath::instance(data_result.entity_path.clone(), instance as u64)
                 };
 
-                points_to_series(
+                util::points_to_series(
                     instance_path,
                     time_per_pixel,
                     visible,
@@ -333,6 +321,8 @@ impl SeriesLinesSystem {
                     all_series,
                 );
             }
+
+            Ok(())
         }
     }
 }

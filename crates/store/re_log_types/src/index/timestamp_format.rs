@@ -30,6 +30,9 @@ pub struct TimestampFormat {
     /// By default, we do, but having this toggle is convenient for the uses-cases where omitting
     /// the date part is not desirable.
     hide_today_date: bool,
+
+    /// For date-time format kinds, should we omit date, nanos and suffix?
+    short: bool,
 }
 
 impl Default for TimestampFormat {
@@ -37,6 +40,7 @@ impl Default for TimestampFormat {
         Self {
             format_kind: Default::default(),
             hide_today_date: true,
+            short: false,
         }
     }
 }
@@ -71,13 +75,22 @@ impl TimestampFormat {
         self.format_kind
     }
 
-    pub fn with_hide_today_date(mut self, show_date_when_today: bool) -> Self {
-        self.hide_today_date = show_date_when_today;
+    pub fn with_hide_today_date(mut self, hide_date_when_today: bool) -> Self {
+        self.hide_today_date = hide_date_when_today;
+        self
+    }
+
+    pub fn with_short(mut self, short: bool) -> Self {
+        self.short = short;
         self
     }
 
     pub fn hide_today_date(&self) -> bool {
         self.hide_today_date
+    }
+
+    pub fn short(&self) -> bool {
+        self.short
     }
 
     pub fn to_jiff_time_zone(self) -> jiff::tz::TimeZone {

@@ -35,6 +35,7 @@ pub use results_ext::{
 };
 pub use view_property_ui::{
     view_property_component_ui, view_property_component_ui_custom, view_property_ui,
+    view_property_ui_with_override,
 };
 
 pub mod external {
