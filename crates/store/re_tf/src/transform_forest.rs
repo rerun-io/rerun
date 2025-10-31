@@ -225,6 +225,9 @@ pub struct TransformForest {
     roots: IntMap<TransformFrameIdHash, TransformTreeRootInfo>,
 
     /// All frames reachable from one of the tree roots.
+    ///
+    /// Roots are also contained, targeting themselves with identity.
+    /// This simplified lookups.
     root_from_frame: IntMap<TransformFrameIdHash, TransformInfo>,
 }
 
@@ -257,108 +260,148 @@ impl TransformForest {
 
         // Pop an arbitrary source frame from the list of unprocessed frames.
         while let Some(current_frame) = unprocessed_sources.iter().next().copied() {
-            // Walk as long as we can to find the real root (and how to transform to it)
-            loop {
-                // We either already processed this frame, or we reached the end of our path if this source is not in the list of unprocessed frames.
-                let mut reached_end_of_path = !unprocessed_sources.remove(&current_frame);
+            // Walk as long as we can until we hit something we already processed or end up in a dead end.
+            walk_towards_parent(
+                entity_db,
+                query,
+                current_frame,
+                transforms,
+                &mut unprocessed_sources,
+                &mut transform_stack,
+            );
 
-                if !reached_end_of_path {
-                    let transforms = transforms_at(current_frame, entity_db, query, transforms);
-                    // No information how to get to the target can still happen if there's only pose transform information (and maybe pinhole).
-                    reached_end_of_path = transforms.target_from_source.is_none();
-                    transform_stack.push((current_frame, transforms));
-                }
+            // Process the stack we accumulated in reverse order.
+            debug_assert!(
+                !transform_stack.is_empty(),
+                "There should be at least one element in the transform stack since we know we had at least one unprocessed element to start with."
+            );
+            let Some((current_frame, top_of_stack_transform)) = transform_stack.last() else {
+                break;
+            };
 
-                if reached_end_of_path {
-                    debug_assert!(
-                        !transform_stack.is_empty(),
-                        "Transform stack can't be empty at this point since we should have processed at least one source frame."
+            // Nowhere to walk from here. If source is a built-in transform frame we keep walking towards the entity-root!
+            // TODO: do that. Have to lookup underlying entity path for that. Efficiently ideally ;-)
+
+            let mut root_from_parent = glam::Affine3A::IDENTITY;
+
+            // Is this a new root frame or are we connecting to an existing one?
+            let top_of_stack_target_frame = top_of_stack_transform
+                .target_from_source
+                .as_ref()
+                // TODO: the *current_frame case is very special actually. means we're _definitely_ at a root
+                .map_or(*current_frame, |target_from_source| {
+                    target_from_source.target
+                });
+            let mut root_frame =
+                if let Some(root_from_frame) = root_from_frame.get(&top_of_stack_target_frame) {
+                    debug_assert!(roots.contains_key(&root_from_frame.root));
+                    root_from_parent = root_from_frame.target_from_source;
+                    root_from_frame.root
+                } else {
+                    // `top_of_stack_target_frame` doesn't connect up to a root yet. So it has to be a new root!
+                    // TODO: special case handling for when we hit a pinhole here. Is that even allowed? Probably not since on a pinhole we have to keep walking up, right?
+                    roots.insert(
+                        top_of_stack_target_frame,
+                        TransformTreeRootInfo::TransformFrameRoot,
                     );
-                    let Some((_, top_of_stack_transform)) = transform_stack.last() else {
-                        break;
-                    };
 
-                    // Nowhere to walk from here. If source is a built-in transform frame we keep walking towards the entity-root!
-                    // TODO: do that. Have to lookup underlying entity path for that. Efficiently ideally ;-)
+                    top_of_stack_target_frame
+                };
 
-                    let mut root_from_parent = glam::Affine3A::IDENTITY;
-
-                    // Is this a new root frame or are we connecting to an existing one?
-                    let top_of_stack_target_frame = top_of_stack_transform
+            while let Some((current_frame, transforms)) = transform_stack.pop() {
+                let mut root_from_current_frame = root_from_parent
+                    * transforms
                         .target_from_source
-                        .as_ref()
-                        .map_or(current_frame, |target_from_source| {
-                            target_from_source.target
-                        });
-                    let mut root_frame = if let Some(root_from_frame) =
-                        root_from_frame.get(&top_of_stack_target_frame)
-                    {
-                        debug_assert!(roots.contains_key(&root_from_frame.root));
-                        root_from_parent = root_from_frame.target_from_source;
-                        root_from_frame.root
-                    } else {
-                        // `top_of_stack_target_frame` doesn't connect up to a root yet. So it has to be a new root!
-                        // TODO: special case handling for when we hit a pinhole here. Is that even allowed?
-                        roots.insert(
-                            top_of_stack_target_frame,
-                            TransformTreeRootInfo::TransformFrameRoot,
-                        );
-                        top_of_stack_target_frame
-                    };
+                        .map_or(glam::Affine3A::IDENTITY, |target_from_source| {
+                            target_from_source.transform
+                        }); // Identity if this is an implicit connection.
 
-                    while let Some((current_frame, transforms)) = transform_stack.pop() {
-                        let mut root_from_current_frame = root_from_parent
-                            * transforms
-                                .target_from_source
-                                .map_or(glam::Affine3A::IDENTITY, |target_from_source| {
-                                    target_from_source.transform
-                                }); // Identity if this is an implicit connection.
+                // Did we encounter a pinhole and need to create a new subspace?
+                if let Some(pinhole_projection) = transforms.pinhole_projection {
+                    let new_root_info = TransformTreeRootInfo::Pinhole(PinholeTreeRoot {
+                        parent_tree_root: root_frame,
+                        pinhole_projection: pinhole_projection.clone(),
+                        parent_root_from_pinhole_root: root_from_current_frame,
+                    });
+                    root_frame = current_frame;
 
-                        // Did we encounter a pinhole and need to create a new subspace?
-                        if let Some(pinhole_projection) = transforms.pinhole_projection {
-                            let new_root_info = TransformTreeRootInfo::Pinhole(PinholeTreeRoot {
-                                parent_tree_root: root_frame,
-                                pinhole_projection: pinhole_projection.clone(),
-                                parent_root_from_pinhole_root: root_from_current_frame,
-                            });
-                            root_frame = current_frame;
+                    let previous_root = roots.insert(root_frame, new_root_info);
+                    debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(andreas): Build out into cycle detection
 
-                            let previous_root = roots.insert(root_frame, new_root_info);
-                            debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(andreas): Build out into cycle detection
-
-                            root_from_current_frame = glam::Affine3A::IDENTITY;
-                        }
-
-                        // Collect & compute poses.
-                        let root_from_instances = compute_root_from_instances(
-                            root_from_current_frame,
-                            transforms.source_from_instance_poses.as_ref(),
-                        );
-                        let root_from_archetype = compute_root_from_archetype(
-                            root_from_current_frame,
-                            transforms.source_from_instance_poses.as_ref(),
-                        );
-
-                        let transform_root_from_current = TransformInfo {
-                            root: root_frame,
-                            target_from_source: root_from_current_frame,
-                            target_from_instances: root_from_instances,
-                            target_from_archetype: root_from_archetype,
-                        };
-
-                        let previous_transform =
-                            root_from_frame.insert(current_frame, transform_root_from_current);
-                        debug_assert!(previous_transform.is_none(), "Root was added already"); // TODO(RR-2667): Build out into cycle detection
-
-                        root_from_parent = root_from_current_frame;
-                    }
-
-                    break;
+                    root_from_current_frame = glam::Affine3A::IDENTITY;
                 }
+
+                // Collect & compute poses.
+                let root_from_instances = compute_root_from_instances(
+                    root_from_current_frame,
+                    transforms.source_from_instance_poses.as_ref(),
+                );
+                let root_from_archetype = compute_root_from_archetype(
+                    root_from_current_frame,
+                    transforms.source_from_instance_poses.as_ref(),
+                );
+
+                let transform_root_from_current = TransformInfo {
+                    root: root_frame,
+                    target_from_source: root_from_current_frame,
+                    target_from_instances: root_from_instances,
+                    target_from_archetype: root_from_archetype,
+                };
+
+                let previous_transform =
+                    root_from_frame.insert(current_frame, transform_root_from_current);
+
+                // TODO(RR-2667): Build out into cycle detection
+                debug_assert!(
+                    previous_transform.is_none(),
+                    "Root from frame relationship was added already for {:?}. Now targeting {:?}, previously {:?}",
+                    transform_cache.lookup_frame_id(current_frame),
+                    transform_cache.lookup_frame_id(root_frame),
+                    previous_transform.and_then(|f| transform_cache.lookup_frame_id(f.root))
+                );
+
+                root_from_parent = root_from_current_frame;
             }
         }
 
         forest
+    }
+}
+
+/// Starting from a `current_frame`, walks towards the parent and accumulates transforms into `transform_stack`.
+/// Stops until not more connection is found or an already processed frame_id is hit.
+fn walk_towards_parent(
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+    mut current_frame: TransformFrameIdHash,
+    transforms: &CachedTransformsForTimeline,
+    unprocessed_sources: &mut IntSet<TransformFrameIdHash>,
+    transform_stack: &mut Vec<(TransformFrameIdHash, TransformsAtEntity)>,
+) {
+    re_tracing::profile_function!();
+
+    debug_assert!(
+        transform_stack.is_empty(),
+        "Didn't process the last transform stack fully."
+    );
+
+    while unprocessed_sources.remove(&current_frame) {
+        // We either already processed this frame, or we reached the end of our path if this source is not in the list of unprocessed frames.
+        let transforms = transforms_at(current_frame, entity_db, query, transforms);
+
+        // No information how to get to the target can still happen if there's only pose transform information (and maybe pinhole).
+        let next_target = transforms
+            .target_from_source
+            .as_ref()
+            .map(|target_from_source| target_from_source.target);
+        transform_stack.push((current_frame, transforms));
+
+        if let Some(next_target) = next_target {
+            current_frame = next_target;
+        } else {
+            // TODO: Keep walking for implicit relationships.
+            break;
+        }
     }
 }
 

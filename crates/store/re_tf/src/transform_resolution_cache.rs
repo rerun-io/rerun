@@ -1189,18 +1189,19 @@ fn query_and_resolve_tree_transform_at_entity(
         return None;
     }
 
-    let target = results
-        .component_mono_quiet::<components::TransformFrameId>(
-            archetypes::Transform3D::descriptor_target_frame().component,
-        )
-        .map_or_else(
-            || {
-                TransformFrameIdHash::from_entity_path(
-                    &entity_path.parent().unwrap_or(EntityPath::root()),
-                )
-            },
-            |frame_id| TransformFrameIdHash::new(&frame_id),
-        );
+    let target = if let Some(target) = results.component_mono_quiet::<components::TransformFrameId>(
+        archetypes::Transform3D::descriptor_target_frame().component,
+    ) {
+        TransformFrameIdHash::from_str(target.as_str())
+    } else if let Some(parent) = entity_path.parent() {
+        TransformFrameIdHash::from_entity_path(&parent)
+    } else {
+        // We can't transform from the root to a root further up.
+        // As of writing this can happen if we overgenerously add transform invalidation points (e.g. due to a clear),
+        // meaning we can't log a warning about this. So instead just silently ignore it.
+        // TODO(andreas): we really should warn if someone tries to log a transform from entity root to the root's root.
+        return None;
+    };
 
     let mut transform = Affine3A::IDENTITY;
 
