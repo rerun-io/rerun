@@ -733,6 +733,11 @@ impl TransformResolutionCache {
         // Instead, we should do so lazily when results for a timeline are queried.
 
         for event in events {
+            if event.kind == re_chunk_store::ChunkStoreDiffKind::Addition {
+                // Since entity paths lead to implicit frames, we have to prime our lookup table with them even if this chunk doesn't have transform data.
+                self.ensure_frame_ids_are_known(&event.chunk);
+            }
+
             let aspects = TransformAspect::transform_aspects_of(&event.chunk);
             if aspects.is_empty() {
                 continue;
@@ -763,6 +768,9 @@ impl TransformResolutionCache {
         // Instead, we should do so lazily when results for a timeline are queried.
 
         for chunk in chunks {
+            // Since entity paths lead to implicit frames, we have to prime our lookup table with them even if this chunk doesn't have transform data.
+            self.ensure_frame_ids_are_known(chunk);
+
             let aspects = TransformAspect::transform_aspects_of(chunk);
             if aspects.is_empty() {
                 continue;
@@ -777,15 +785,29 @@ impl TransformResolutionCache {
     }
 
     fn ensure_frame_ids_are_known(&mut self, chunk: &Chunk) {
-        // Implicit frames.
-        let entity_path = chunk.entity_path();
-        self.frame_id_lookup_table
-            .entry(TransformFrameIdHash::from_entity_path(entity_path))
-            .or_insert_with(|| TransformFrameId::from_entity_path(entity_path));
-        if let Some(parent) = entity_path.parent() {
-            self.frame_id_lookup_table
-                .entry(TransformFrameIdHash::from_entity_path(&parent))
-                .or_insert_with(|| TransformFrameId::from_entity_path(&parent));
+        // Ensure all implicit frames from this entity all the way up to the root are known.
+        // Note that in-between entities may never be mentioned in any chunk but we want to make sure they're known to the system.
+        let mut entity_path = chunk.entity_path();
+        let mut parent;
+        loop {
+            // Note that we try to avoid computing `TransformFrameId` as much as we can since it has to string-concat,
+            // so compared to `TransformFrameIdHash` is it _relatively_ expensive to compute.
+            match self
+                .frame_id_lookup_table
+                .entry(TransformFrameIdHash::from_entity_path(entity_path))
+            {
+                Entry::Occupied(_) => {
+                    break;
+                }
+                Entry::Vacant(e) => e.insert(TransformFrameId::from_entity_path(entity_path)),
+            };
+
+            parent = entity_path.parent();
+            if let Some(parent) = parent.as_ref() {
+                entity_path = parent;
+            } else {
+                break;
+            }
         }
 
         // TODO(RR-2627, RR-2680): Custom source is not supported yet for Pinhole & Poses, we instead use whatever is on `Transform3D`.
@@ -810,7 +832,6 @@ impl TransformResolutionCache {
         debug_assert!(!chunk.is_static());
 
         let entity_path = chunk.entity_path();
-        self.ensure_frame_ids_are_known(chunk);
 
         for (timeline, time_column) in chunk.timelines() {
             let per_timeline = self.per_timeline.entry(*timeline).or_insert_with(|| {
@@ -961,8 +982,6 @@ impl TransformResolutionCache {
         re_tracing::profile_function!();
 
         debug_assert!(chunk.is_static());
-
-        self.ensure_frame_ids_are_known(chunk);
 
         let entity_path = chunk.entity_path();
         let fallback_sources = [TransformFrameIdHash::from_entity_path(entity_path)];
