@@ -2231,13 +2231,59 @@ impl App {
         #[cfg(not(target_arch = "wasm32"))]
         if let LogMsgKind::Arrow = msg_kind {
             if let LogMsg::ArrowMsg(_, arrow_msg) = msg {
-                if self.try_enqueue_arrow_ingestion(
-                    store_id,
-                    arrow_msg,
-                    channel_source.clone(),
-                    msg_will_add_new_store,
-                ) {
-                    return;
+                // In test mode, process synchronously to avoid race conditions
+                // In production, use async processing for better UI responsiveness
+                match self.app_env {
+                    crate::AppEnvironment::Test => {
+                        // Process synchronously in tests
+                        match re_entity_db::PreparedArrowChunk::from_arrow_msg(arrow_msg) {
+                            Ok(prepared) => {
+                                let (was_empty, entity_db_add_result) = {
+                                    let entity_db = store_hub.entity_db_mut(store_id);
+                                    let was_empty = entity_db.is_empty();
+                                    let result = entity_db.add_prepared_arrow_chunk(&prepared);
+                                    (was_empty, result)
+                                };
+
+                                self.finalize_log_msg_processing(
+                                    store_hub,
+                                    egui_ctx,
+                                    channel_source.as_ref(),
+                                    store_id,
+                                    &LogMsgKind::Arrow,
+                                    msg_will_add_new_store,
+                                    was_empty,
+                                    entity_db_add_result,
+                                );
+                                return;
+                            }
+                            Err(err) => {
+                                re_log::error_once!(
+                                    "Failed to prepare arrow msg for {store_id:?}: {err}"
+                                );
+                                if msg_will_add_new_store {
+                                    self.on_new_store(
+                                        egui_ctx,
+                                        store_id,
+                                        channel_source.as_ref(),
+                                        store_hub,
+                                    );
+                                }
+                                return;
+                            }
+                        }
+                    }
+                    _ => {
+                        // Use async processing in production
+                        if self.try_enqueue_arrow_ingestion(
+                            store_id,
+                            arrow_msg,
+                            channel_source.clone(),
+                            msg_will_add_new_store,
+                        ) {
+                            return;
+                        }
+                    }
                 }
             }
         }
@@ -2443,26 +2489,8 @@ impl App {
         for (store_id, channel_source, msg_will_add_new_store, result) in completed_items {
             match result {
                 Ok(prepared) => {
-                    // Create a dummy promise for the struct (won't be used since promise was already consumed)
-                    let dummy_promise = poll_promise::Promise::spawn_thread(
-                        "dummy_pending",
-                        move || Ok(PreparedArrowChunk {
-                            chunk: Arc::new(re_chunk::Chunk::empty(
-                                re_chunk::ChunkId::new(),
-                                re_log_types::EntityPath::root(),
-                            )),
-                            timestamps: Default::default(),
-                        }),
-                    );
-
-                    let pending = PendingArrowIngestion {
-                        promise: dummy_promise,
-                        channel_source,
-                        msg_will_add_new_store,
-                    };
-
-                    self.finish_prepared_arrow_ingestion(
-                        store_hub, egui_ctx, &store_id, pending, prepared,
+                    self.finish_prepared_arrow_ingestion_direct(
+                        store_hub, egui_ctx, &store_id, channel_source, msg_will_add_new_store, prepared,
                     );
                 }
                 Err(err) => {
@@ -2496,6 +2524,26 @@ impl App {
         pending: PendingArrowIngestion,
         prepared: PreparedArrowChunk,
     ) {
+        self.finish_prepared_arrow_ingestion_direct(
+            store_hub,
+            egui_ctx,
+            store_id,
+            pending.channel_source,
+            pending.msg_will_add_new_store,
+            prepared,
+        );
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn finish_prepared_arrow_ingestion_direct(
+        &self,
+        store_hub: &mut StoreHub,
+        egui_ctx: &egui::Context,
+        store_id: &StoreId,
+        channel_source: Arc<SmartChannelSource>,
+        msg_will_add_new_store: bool,
+        prepared: PreparedArrowChunk,
+    ) {
         let (was_empty, entity_db_add_result) = {
             let entity_db = store_hub.entity_db_mut(store_id);
             let was_empty = entity_db.is_empty();
@@ -2506,10 +2554,10 @@ impl App {
         self.finalize_log_msg_processing(
             store_hub,
             egui_ctx,
-            pending.channel_source.as_ref(),
+            channel_source.as_ref(),
             store_id,
             &LogMsgKind::Arrow,
-            pending.msg_will_add_new_store,
+            msg_will_add_new_store,
             was_empty,
             entity_db_add_result,
         );
