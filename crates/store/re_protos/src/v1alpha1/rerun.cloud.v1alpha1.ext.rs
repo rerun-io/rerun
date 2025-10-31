@@ -11,7 +11,6 @@ use arrow::{
     datatypes::{DataType, Field, Schema, TimeUnit},
     error::ArrowError,
 };
-use prost_types::Any;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
 use re_log_types::external::re_types_core::ComponentBatch as _;
@@ -702,7 +701,7 @@ impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryResponse> for CreateDatas
 pub struct CreateTableEntryRequest {
     pub name: String,
     pub schema: Schema,
-    pub provider_details: Any,
+    pub provider_details: ProviderDetails,
 }
 
 impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEntryRequest {
@@ -711,7 +710,7 @@ impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEnt
         Ok(Self {
             name: value.name,
             schema: Some((&value.schema).try_into()?),
-            provider_details: Some(value.provider_details),
+            provider_details: Some(value.provider_details.try_as_any()?),
         })
     }
 }
@@ -730,10 +729,12 @@ impl TryFrom<crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEnt
                     "schema"
                 ))?
                 .try_into()?,
-            provider_details: value.provider_details.ok_or(missing_field!(
-                crate::cloud::v1alpha1::CreateTableEntryRequest,
-                "provider_details"
-            ))?,
+            provider_details: ProviderDetails::try_from_any(&value.provider_details.ok_or(
+                missing_field!(
+                    crate::cloud::v1alpha1::CreateTableEntryRequest,
+                    "provider_details"
+                ),
+            )?)?,
         })
     }
 }
@@ -745,11 +746,12 @@ pub struct CreateTableEntryResponse {
     pub table: TableEntry,
 }
 
-impl From<CreateTableEntryResponse> for crate::cloud::v1alpha1::CreateTableEntryResponse {
-    fn from(value: CreateTableEntryResponse) -> Self {
-        Self {
-            table: Some(value.table.into()),
-        }
+impl TryFrom<CreateTableEntryResponse> for crate::cloud::v1alpha1::CreateTableEntryResponse {
+    type Error = TypeConversionError;
+    fn try_from(value: CreateTableEntryResponse) -> Result<Self, Self::Error> {
+        Ok(Self {
+            table: Some(value.table.try_into()?),
+        })
     }
 }
 
@@ -1010,11 +1012,12 @@ pub struct ReadTableEntryResponse {
     pub table_entry: TableEntry,
 }
 
-impl From<ReadTableEntryResponse> for crate::cloud::v1alpha1::ReadTableEntryResponse {
-    fn from(value: ReadTableEntryResponse) -> Self {
-        Self {
-            table: Some(value.table_entry.into()),
-        }
+impl TryFrom<ReadTableEntryResponse> for crate::cloud::v1alpha1::ReadTableEntryResponse {
+    type Error = TypeConversionError;
+    fn try_from(value: ReadTableEntryResponse) -> Result<Self, Self::Error> {
+        Ok(Self {
+            table: Some(value.table_entry.try_into()?),
+        })
     }
 }
 
@@ -1041,15 +1044,16 @@ impl TryFrom<crate::cloud::v1alpha1::ReadTableEntryResponse> for ReadTableEntryR
 #[derive(Debug, Clone)]
 pub struct RegisterTableRequest {
     pub name: String,
-    pub provider_details: Any,
+    pub provider_details: ProviderDetails,
 }
 
-impl From<RegisterTableRequest> for crate::cloud::v1alpha1::RegisterTableRequest {
-    fn from(value: RegisterTableRequest) -> Self {
-        Self {
+impl TryFrom<RegisterTableRequest> for crate::cloud::v1alpha1::RegisterTableRequest {
+    type Error = TypeConversionError;
+    fn try_from(value: RegisterTableRequest) -> Result<Self, Self::Error> {
+        Ok(Self {
             name: value.name,
-            provider_details: Some(value.provider_details),
-        }
+            provider_details: Some(value.provider_details.try_as_any()?),
+        })
     }
 }
 
@@ -1059,10 +1063,12 @@ impl TryFrom<crate::cloud::v1alpha1::RegisterTableRequest> for RegisterTableRequ
     fn try_from(value: crate::cloud::v1alpha1::RegisterTableRequest) -> Result<Self, Self::Error> {
         Ok(Self {
             name: value.name,
-            provider_details: value.provider_details.ok_or(missing_field!(
-                crate::cloud::v1alpha1::RegisterTableRequest,
-                "provider_details"
-            ))?,
+            provider_details: ProviderDetails::try_from_any(&value.provider_details.ok_or(
+                missing_field!(
+                    crate::cloud::v1alpha1::RegisterTableRequest,
+                    "provider_details"
+                ),
+            )?)?,
         })
     }
 }
@@ -1095,15 +1101,16 @@ impl TryFrom<crate::cloud::v1alpha1::RegisterTableResponse> for RegisterTableRes
 #[derive(Debug, Clone)]
 pub struct TableEntry {
     pub details: EntryDetails,
-    pub provider_details: prost_types::Any,
+    pub provider_details: ProviderDetails,
 }
 
-impl From<TableEntry> for crate::cloud::v1alpha1::TableEntry {
-    fn from(value: TableEntry) -> Self {
-        Self {
+impl TryFrom<TableEntry> for crate::cloud::v1alpha1::TableEntry {
+    type Error = TypeConversionError;
+    fn try_from(value: TableEntry) -> Result<Self, Self::Error> {
+        Ok(Self {
             details: Some(value.details.into()),
-            provider_details: Some(value.provider_details),
-        }
+            provider_details: Some(value.provider_details.try_as_any()?),
+        })
     }
 }
 
@@ -1119,9 +1126,11 @@ impl TryFrom<crate::cloud::v1alpha1::TableEntry> for TableEntry {
                     "details"
                 ))?
                 .try_into()?,
-            provider_details: value
-                .provider_details
-                .ok_or(missing_field!(crate::cloud::v1alpha1::TableEntry, "handle"))?,
+            provider_details: ProviderDetails::try_from_any(
+                &value
+                    .provider_details
+                    .ok_or(missing_field!(crate::cloud::v1alpha1::TableEntry, "handle"))?,
+            )?,
         })
     }
 }

@@ -21,9 +21,7 @@ pub async fn create_table_entry(service: impl RerunCloudService) {
 
     let table_url =
         url::Url::from_directory_path(tmp_dir.path()).expect("create url from tmp directory");
-    let provider_details = ProviderDetails::LanceTable(LanceTable { table_url })
-        .try_as_any()
-        .expect("convert provider details to any");
+    let provider_details = ProviderDetails::LanceTable(LanceTable { table_url });
 
     let create_table_request = CreateTableEntryRequest {
         name: table_name.to_owned(),
