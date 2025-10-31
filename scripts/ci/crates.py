@@ -496,12 +496,13 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], d
             # for any other error, retry after 6 seconds
             retry_delay = 1 + (parse_retry_delay_secs(error_message) or 5.0)
             if retry_attempts > 0:
-                print(f"{R}Failed to publish{X} {B}{name}{X}, retrying in {retry_delay} seconds…")
+                print(
+                    f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}\n\nRemaining retry attempts: {retry_attempts}.\nRetrying in {retry_delay} seconds."
+                )
                 retry_attempts -= 1
-                retry_delay *= 1.5  # some backoff
                 time.sleep(retry_delay + 1)
             else:
-                print(f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}")
+                print(f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}\n\nNo remaining retry attempts; aborting publish")
                 raise
 
 
