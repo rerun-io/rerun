@@ -3,7 +3,7 @@ title = "Server tables"
 tags = ["DataFrame", "Tables", "Server", "Cloud",]
 thumbnail = "https://static.rerun.io/server_tables/d5155346d84caed5c53de507708c780727c075ef/480w.png"
 thumbnail_dimensions = [480, 358]
-Channel = "main"
+channel = "main"
 -->
 
 ## Writing server tables example
