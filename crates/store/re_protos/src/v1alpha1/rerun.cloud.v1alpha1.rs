@@ -316,8 +316,16 @@ impl ::prost::Name for CreateIndexRequest {
         "/rerun.cloud.v1alpha1.CreateIndexRequest".into()
     }
 }
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CreateIndexResponse {
+    /// The properties/configuration of the newly created index.
+    #[prost(message, optional, tag = "3")]
+    pub index: ::core::option::Option<IndexConfig>,
+    /// Backend-specific statistics about the index.
+    ///
+    /// This is guaranteed to be valid JSON.
+    #[prost(bytes = "bytes", tag = "4")]
+    pub statistics_json: ::prost::bytes::Bytes,
     /// Optional debug information about the index-creation task
     #[prost(message, optional, tag = "2")]
     pub debug_info: ::core::option::Option<DebugInfo>,
@@ -346,8 +354,16 @@ impl ::prost::Name for ListIndexesRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListIndexesResponse {
+    /// The respective properties/configuration of the indexes.
     #[prost(message, repeated, tag = "1")]
     pub indexes: ::prost::alloc::vec::Vec<IndexConfig>,
+    /// Backend-specific statistics about the indexes.
+    ///
+    /// This is guaranteed to be valid JSON.
+    ///
+    /// If non-empty, this is the same length as `indexes`, and in the same order.
+    #[prost(bytes = "bytes", repeated, tag = "2")]
+    pub statistics_json: ::prost::alloc::vec::Vec<::prost::bytes::Bytes>,
 }
 impl ::prost::Name for ListIndexesResponse {
     const NAME: &'static str = "ListIndexesResponse";
@@ -1631,7 +1647,19 @@ impl DataSourceKind {
         }
     }
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    ::prost::Enumeration,
+)]
 #[repr(i32)]
 pub enum VectorDistanceMetric {
     Unspecified = 0,

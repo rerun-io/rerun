@@ -1910,20 +1910,60 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
     }
 }
 
+// ---
+
+impl std::fmt::Display for VectorDistanceMetric {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Unspecified => "unspecified",
+            Self::L2 => "l2",
+            Self::Cosine => "cosine",
+            Self::Dot => "dot",
+            Self::Hamming => "hamming",
+        };
+
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for VectorDistanceMetric {
+    type Err = TypeConversionError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s.to_lowercase().as_str() {
+            "l2" => Self::L2,
+            "cosine" => Self::Cosine,
+            "Dot" => Self::Dot,
+            "Hamming" => Self::Hamming,
+            _ => {
+                return Err(invalid_field!(
+                    crate::cloud::v1alpha1::IndexProperties,
+                    "VectorDistanceMetric",
+                    &format!("{s:?} is not a valid value"),
+                ));
+            }
+        })
+    }
+}
+
+// ---
+
 /// Depending on the type of index that is being created, different properties
 /// can be specified. These are defined by `IndexProperties`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum IndexProperties {
     Inverted {
         store_position: bool,
         base_tokenizer: String,
     },
+
     VectorIvfPq {
-        num_partitions: Option<usize>,
-        target_partition_num_rows: Option<usize>,
-        num_sub_vectors: usize,
+        num_partitions: Option<u32>,
+        target_partition_num_rows: Option<u32>,
+        num_sub_vectors: u32,
         metric: VectorDistanceMetric,
     },
+
     Btree,
 }
 
@@ -1937,6 +1977,7 @@ impl std::fmt::Display for IndexProperties {
                 f,
                 "Inverted {{ store_position: {store_position}, base_tokenizer: {base_tokenizer} }}"
             ),
+
             Self::VectorIvfPq {
                 num_partitions,
                 target_partition_num_rows,
@@ -1944,22 +1985,23 @@ impl std::fmt::Display for IndexProperties {
                 metric,
             } => {
                 if let Some(target_partition_num_rows) = target_partition_num_rows {
-                    return write!(
+                    write!(
                         f,
-                        "VectorIvfPq {{ target_partition_num_rows: {target_partition_num_rows}, num_sub_vectors: {num_sub_vectors}, metric: {metric:?} }}"
-                    );
+                        "VectorIvfPq {{ target_partition_num_rows: {target_partition_num_rows}, num_sub_vectors: {num_sub_vectors}, metric: {metric} }}"
+                    )
                 } else if let Some(num_partitions) = num_partitions {
-                    return write!(
+                    write!(
                         f,
-                        "VectorIvfPq {{ num_partitions: {num_partitions}, num_sub_vectors: {num_sub_vectors}, metric: {metric:?} }}"
-                    );
+                        "VectorIvfPq {{ num_partitions: {num_partitions}, num_sub_vectors: {num_sub_vectors}, metric: {metric} }}"
+                    )
                 } else {
                     write!(
                         f,
-                        "VectorIvfPq {{ num_sub_vectors: {num_sub_vectors}, metric: {metric:?} }}"
+                        "VectorIvfPq {{ num_sub_vectors: {num_sub_vectors}, metric: {metric} }}"
                     )
                 }
             }
+
             Self::Btree => write!(f, "Btree"),
         }
     }
@@ -1993,13 +2035,182 @@ impl From<IndexProperties> for crate::cloud::v1alpha1::IndexProperties {
             } => Self {
                 props: Some(crate::cloud::v1alpha1::index_properties::Props::Vector(
                     crate::cloud::v1alpha1::VectorIvfPqIndex {
-                        num_partitions: num_partitions.map(|n| n as u32),
-                        target_partition_num_rows: target_partition_num_rows.map(|n| n as u32),
-                        num_sub_vectors: Some(num_sub_vectors as u32),
+                        num_partitions,
+                        target_partition_num_rows,
+                        num_sub_vectors: Some(num_sub_vectors),
                         distance_metrics: metric.into(),
                     },
                 )),
             },
+        }
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::IndexProperties> for IndexProperties {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::IndexProperties) -> Result<Self, Self::Error> {
+        let props = value
+            .props
+            .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::IndexProperties, "props"))?;
+
+        use crate::cloud::v1alpha1::index_properties::Props;
+
+        match props {
+            Props::Inverted(data) => Ok(Self::Inverted {
+                store_position: data.store_position.ok_or_else(|| {
+                    missing_field!(
+                        crate::cloud::v1alpha1::IndexProperties,
+                        "props.store_position"
+                    )
+                })?,
+                base_tokenizer: data.base_tokenizer.ok_or_else(|| {
+                    missing_field!(
+                        crate::cloud::v1alpha1::IndexProperties,
+                        "props.base_tokenizer"
+                    )
+                })?,
+            }),
+
+            Props::Vector(data) => Ok(Self::VectorIvfPq {
+                num_partitions: data.num_partitions,
+                target_partition_num_rows: data.target_partition_num_rows,
+                num_sub_vectors: data.num_sub_vectors.ok_or_else(|| {
+                    missing_field!(
+                        crate::cloud::v1alpha1::IndexProperties,
+                        "props.num_sub_vectors"
+                    )
+                })?,
+
+                metric: data.distance_metrics(),
+            }),
+
+            Props::Btree(_) => Ok(Self::Btree),
+        }
+    }
+}
+
+// ---
+
+/// Depending on the type of index that is being queried, different properties
+/// can be specified.
+#[derive(Debug, Clone)]
+pub enum IndexQueryProperties {
+    Inverted,
+    Vector { top_k: u32 },
+    Btree,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::IndexQueryProperties> for IndexQueryProperties {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::IndexQueryProperties) -> Result<Self, Self::Error> {
+        let props = value
+            .props
+            .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::IndexQueryProperties, "props"))?;
+
+        use crate::cloud::v1alpha1::index_query_properties::Props;
+
+        match props {
+            Props::Inverted(_) => Ok(Self::Inverted),
+
+            Props::Vector(vector_index_query) => Ok(Self::Vector {
+                top_k: vector_index_query.top_k.ok_or_else(|| {
+                    missing_field!(crate::cloud::v1alpha1::VectorIndexQuery, "top_k")
+                })?,
+            }),
+
+            Props::Btree(_) => Ok(Self::Btree),
+        }
+    }
+}
+
+// ---
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct IndexColumn {
+    pub entity_path: re_chunk::EntityPath,
+    pub descriptor: re_types_core::ComponentDescriptor,
+}
+
+impl std::fmt::Display for IndexColumn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.entity_path, self.descriptor.display_name())
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::IndexColumn> for IndexColumn {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::IndexColumn) -> Result<Self, Self::Error> {
+        Ok(Self {
+            entity_path: value
+                .entity_path
+                .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::IndexColumn, "entity_path"))?
+                .try_into()?,
+            descriptor: value
+                .component
+                .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::IndexColumn, "component"))?
+                .try_into()?,
+        })
+    }
+}
+
+impl From<ComponentColumnDescriptor> for IndexColumn {
+    fn from(value: ComponentColumnDescriptor) -> Self {
+        let descriptor = value.component_descriptor();
+        IndexColumn {
+            entity_path: value.entity_path,
+            descriptor,
+        }
+    }
+}
+
+impl From<IndexColumn> for crate::cloud::v1alpha1::IndexColumn {
+    fn from(value: IndexColumn) -> Self {
+        Self {
+            entity_path: Some(value.entity_path.into()),
+            component: Some(value.descriptor.into()),
+        }
+    }
+}
+
+// ---
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IndexConfig {
+    pub time_index: re_log_types::TimelineName,
+    pub column: IndexColumn,
+    pub properties: IndexProperties,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::IndexConfig> for IndexConfig {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::IndexConfig) -> Result<Self, Self::Error> {
+        Ok(Self {
+            time_index: value
+                .time_index
+                .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::IndexConfig, "time_index"))?
+                .try_into()?,
+            column: value
+                .column
+                .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::IndexConfig, "column"))?
+                .try_into()?,
+            properties: value
+                .properties
+                .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::IndexConfig, "properties"))?
+                .try_into()?,
+        })
+    }
+}
+
+impl From<IndexConfig> for crate::cloud::v1alpha1::IndexConfig {
+    fn from(value: IndexConfig) -> Self {
+        Self {
+            properties: Some(value.properties.into()),
+            column: Some(value.column.into()),
+            time_index: Some(value.time_index.into()),
         }
     }
 }

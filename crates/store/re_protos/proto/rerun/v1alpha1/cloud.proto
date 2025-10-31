@@ -357,6 +357,14 @@ message CreateIndexResponse {
   reserved 1;
   reserved "data";
 
+  // The properties/configuration of the newly created index.
+  IndexConfig index = 3;
+
+  // Backend-specific statistics about the index.
+  //
+  // This is guaranteed to be valid JSON.
+  bytes statistics_json = 4;
+
   // Optional debug information about the index-creation task
   DebugInfo debug_info = 2;
 }
@@ -364,7 +372,15 @@ message CreateIndexResponse {
 message ListIndexesRequest {}
 
 message ListIndexesResponse {
+  // The respective properties/configuration of the indexes.
   repeated IndexConfig indexes = 1;
+
+  // Backend-specific statistics about the indexes.
+  //
+  // This is guaranteed to be valid JSON.
+  //
+  // If non-empty, this is the same length as `indexes`, and in the same order.
+  repeated bytes statistics_json = 2;
 }
 
 message DeleteIndexesRequest {
