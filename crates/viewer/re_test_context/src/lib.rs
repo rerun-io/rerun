@@ -494,6 +494,9 @@ impl TestContext {
         let drag_and_drop_manager =
             re_viewer_context::DragAndDropManager::new(ItemCollection::default());
 
+        // Tests don't compute visualizable entities per view, so we provide an empty map
+        let visualizable_entities_per_view: HashMap<ViewId, re_viewer_context::PerVisualizer<re_viewer_context::VisualizableEntities>> = HashMap::default();
+
         let mut context_render_state = self.egui_render_state.lock();
         let render_state = context_render_state.get_or_insert_with(create_egui_renderstate);
         let mut egui_renderer = render_state.renderer.write();
@@ -531,6 +534,7 @@ impl TestContext {
             storage_context: &storage_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
+            visualizable_entities_per_view: &visualizable_entities_per_view,
             query_results: &self.query_results,
             time_ctrl: &self.time_ctrl.read(),
             blueprint_time_ctrl: &Default::default(),

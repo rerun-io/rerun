@@ -47,6 +47,11 @@ pub struct ViewerContext<'a> {
     ///                 or are we ever interested in a (definitely-)non-visualizable but archetype-matching entity?
     pub indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
 
+    /// For each view, the set of entities that can be visualized by that view.
+    ///
+    /// This is computed once per frame and cached to avoid redundant computation.
+    pub visualizable_entities_per_view: &'a HashMap<ViewId, PerVisualizer<crate::VisualizableEntities>>,
+
     /// All the query results for this frame.
     pub query_results: &'a HashMap<ViewId, DataQueryResult>,
 
