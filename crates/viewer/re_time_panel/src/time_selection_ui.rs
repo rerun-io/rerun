@@ -117,17 +117,20 @@ pub fn loop_selection_ui(
 
             let full_y_range = rect.top()..=time_area_painter.clip_rect().bottom();
 
-            if is_active {
-                let full_rect = Rect::from_x_y_ranges(rect.x_range(), full_y_range);
-                let rounding = tokens.normal_corner_radius();
-                time_area_painter.rect_filled(full_rect, rounding, selection_color);
-            } else {
-                let rounding = tokens.normal_corner_radius();
-                time_area_painter.rect_filled(rect, rounding, selection_color);
-            }
-
-            if is_active && !selected_range.is_empty() {
-                paint_range_text(time_ctrl, selected_range, ui, time_area_painter, rect);
+            {
+                let corner_radius = tokens.normal_corner_radius();
+                let corner_radius = egui::CornerRadius {
+                    nw: corner_radius,
+                    ne: corner_radius,
+                    sw: 0,
+                    se: 0,
+                };
+                if is_active {
+                    let full_rect = Rect::from_x_y_ranges(rect.x_range(), full_y_range);
+                    time_area_painter.rect_filled(full_rect, corner_radius, selection_color);
+                } else {
+                    time_area_painter.rect_filled(rect, corner_radius, selection_color);
+                }
             }
 
             // Check for interaction:
@@ -398,68 +401,6 @@ fn on_drag_loop_selection(
     }
 
     Some(())
-}
-
-fn paint_range_text(
-    time_ctrl: &TimeControl,
-    selected_range: AbsoluteTimeRangeF,
-    ui: &egui::Ui,
-    painter: &egui::Painter,
-    selection_rect: Rect,
-) {
-    use egui::{Pos2, Stroke};
-
-    let text_color = ui.visuals().strong_text_color();
-
-    let arrow_color = text_color.gamma_multiply(0.75);
-    let arrow_stroke = Stroke::new(1.0, arrow_color);
-
-    fn paint_arrow_from_to(painter: &egui::Painter, origin: Pos2, to: Pos2, stroke: Stroke) {
-        use egui::emath::Rot2;
-        let vec = to - origin;
-        let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
-        let tip_length = 6.0;
-        let tip = origin + vec;
-        let dir = vec.normalized();
-        painter.line_segment([origin, tip], stroke);
-        painter.line_segment([tip, tip - tip_length * (rot * dir)], stroke);
-        painter.line_segment([tip, tip - tip_length * (rot.inverse() * dir)], stroke);
-    }
-
-    let range_text = format_duration(time_ctrl.time_type(), selected_range.length().abs());
-    if range_text.is_empty() {
-        return;
-    }
-
-    let font_id = egui::TextStyle::Small.resolve(ui.style());
-    let text_rect = painter.text(
-        selection_rect.center(),
-        egui::Align2::CENTER_CENTER,
-        range_text,
-        font_id,
-        text_color,
-    );
-
-    // Draw arrows on either side, if we have the space for it:
-    let text_rect = text_rect.expand(2.0); // Add some margin around text
-    let selection_rect = selection_rect.shrink(1.0); // Add some margin inside of the selection rect
-    let min_arrow_length = 12.0;
-    if selection_rect.left() + min_arrow_length <= text_rect.left() {
-        paint_arrow_from_to(
-            painter,
-            text_rect.left_center(),
-            selection_rect.left_center(),
-            arrow_stroke,
-        );
-    }
-    if text_rect.right() + min_arrow_length <= selection_rect.right() {
-        paint_arrow_from_to(
-            painter,
-            text_rect.right_center(),
-            selection_rect.right_center(),
-            arrow_stroke,
-        );
-    }
 }
 
 /// Human-readable description of a duration
