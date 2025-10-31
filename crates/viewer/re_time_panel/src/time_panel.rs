@@ -551,6 +551,7 @@ impl TimePanel {
             full_y_range,
         );
         time_selection_ui::loop_selection_ui(
+            ctx,
             time_ctrl,
             &self.time_ranges_ui,
             ui,
