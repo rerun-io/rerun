@@ -14,6 +14,7 @@ use lance::{
     dataset::{WriteMode, WriteParams},
 };
 use re_log_types::EntryId;
+use re_protos::cloud::v1alpha1::ext::LanceTable;
 use re_protos::cloud::v1alpha1::{
     EntryKind,
     ext::{EntryDetails, ProviderDetails as _, SystemTable, TableEntry},
@@ -28,6 +29,24 @@ pub enum TableType {
 }
 
 #[derive(Clone)]
+pub enum TableProviderDetails {
+    SystemTable(SystemTable),
+    LanceTable(LanceTable),
+}
+
+impl From<LanceTable> for TableProviderDetails {
+    fn from(table: LanceTable) -> Self {
+        TableProviderDetails::LanceTable(table)
+    }
+}
+
+impl From<SystemTable> for TableProviderDetails {
+    fn from(table: SystemTable) -> Self {
+        TableProviderDetails::SystemTable(table)
+    }
+}
+
+#[derive(Clone)]
 pub struct Table {
     id: EntryId,
     name: String,
@@ -36,7 +55,7 @@ pub struct Table {
     created_at: jiff::Timestamp,
     updated_at: jiff::Timestamp,
 
-    system_table: Option<SystemTable>,
+    provider_details: TableProviderDetails,
 }
 
 impl Table {
@@ -45,7 +64,7 @@ impl Table {
         name: String,
         table: TableType,
         created_at: Option<jiff::Timestamp>,
-        system_table: Option<SystemTable>,
+        provider_details: TableProviderDetails,
     ) -> Self {
         Self {
             id,
@@ -53,7 +72,7 @@ impl Table {
             table,
             created_at: created_at.unwrap_or_else(jiff::Timestamp::now),
             updated_at: jiff::Timestamp::now(),
-            system_table,
+            provider_details,
         }
     }
 
@@ -76,10 +95,11 @@ impl Table {
     }
 
     pub fn as_table_entry(&self) -> TableEntry {
-        let provider_details = match &self.system_table {
-            Some(s) => s.try_as_any().expect("system_table should always be valid"),
-            None => Default::default(),
-        };
+        let provider_details = match &self.provider_details {
+            TableProviderDetails::LanceTable(table) => table.try_as_any(),
+            TableProviderDetails::SystemTable(table) => table.try_as_any(),
+        }
+        .expect("provider details should always be valid");
 
         TableEntry {
             details: EntryDetails {

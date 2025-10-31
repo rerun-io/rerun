@@ -2,10 +2,9 @@ use std::str::FromStr as _;
 
 use pyo3::{Py, PyErr, PyResult, Python, exceptions::PyTypeError, pyclass, pymethods};
 
+use crate::catalog::PyCatalogClientInternal;
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::{EntryKind, ext::EntryDetails};
-
-use crate::catalog::PyCatalogClientInternal;
 
 /// A unique identifier for an entry in the catalog.
 #[pyclass(eq, name = "EntryId")]

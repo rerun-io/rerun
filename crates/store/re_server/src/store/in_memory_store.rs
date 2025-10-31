@@ -8,18 +8,19 @@ use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use datafusion::catalog::MemTable;
 use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
-
 use re_chunk_store::{Chunk, ChunkStoreConfig};
 use re_log_types::{EntryId, StoreId, StoreKind};
+use re_protos::cloud::v1alpha1::ext::LanceTable;
 use re_protos::{
     cloud::v1alpha1::{EntryKind, ext::EntryDetails},
     common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId},
 };
 use re_tuid::Tuid;
 use re_types_core::{ComponentBatch as _, Loggable as _};
+use url::Url;
 
 use crate::entrypoint::NamedPath;
-use crate::store::table::TableType;
+use crate::store::table::{TableProviderDetails, TableType};
 use crate::store::{ChunkKey, Dataset, Error, Table};
 
 const ENTRIES_TABLE_NAME: &str = "__entries";
@@ -199,15 +200,20 @@ impl InMemoryStore {
         ));
 
         let entry_id = EntryId::new();
+        let provider_details = LanceTable {
+            table_url: Url::from_directory_path(directory.to_path_buf())
+                .expect("Directory should be valid"),
+        }
+        .into();
 
         match self.table_by_name(entry_name.as_ref()) {
             None => {
-                self.add_table_entry(entry_name.as_ref(), entry_id, table)?;
+                self.add_table_entry(entry_name.as_ref(), entry_id, table, provider_details)?;
             }
             Some(_) => match on_duplicate {
                 IfDuplicateBehavior::Overwrite => {
                     re_log::info!("Overwriting {entry_name}");
-                    self.add_table_entry(entry_name.as_ref(), entry_id, table)?;
+                    self.add_table_entry(entry_name.as_ref(), entry_id, table, provider_details)?;
                 }
                 IfDuplicateBehavior::Skip => {
                     re_log::info!("Ignoring {entry_name}: it already exists");
@@ -227,11 +233,18 @@ impl InMemoryStore {
         entry_name: &str,
         entry_id: EntryId,
         table: TableType,
+        provider_details: TableProviderDetails,
     ) -> Result<(), Error> {
         self.id_by_name.insert(entry_name.to_owned(), entry_id);
         self.tables.insert(
             entry_id,
-            Table::new(entry_id, entry_name.to_owned(), table, None, None),
+            Table::new(
+                entry_id,
+                entry_name.to_owned(),
+                table,
+                None,
+                provider_details,
+            ),
         );
 
         self.update_entries_table()
@@ -261,9 +274,10 @@ impl InMemoryStore {
                 ENTRIES_TABLE_NAME.to_owned(),
                 TableType::DataFusionTable(entries_table),
                 prior_entries_table.map(|t| t.created_at()),
-                Some(SystemTable {
+                SystemTable {
                     kind: SystemTableKind::Entries,
-                }),
+                }
+                .into(),
             ),
         );
 
