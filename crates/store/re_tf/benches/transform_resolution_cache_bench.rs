@@ -77,7 +77,7 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
                 cache
             },
             |mut cold_cache| {
-                let frame_transforms = cold_cache
+                let mut frame_transforms = cold_cache
                     .transforms_for_timeline(query.timeline())
                     .frame_transforms(queried_frame)
                     .unwrap();
@@ -99,7 +99,7 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
 
     c.bench_function("query_cached_frame", |b| {
         b.iter(|| {
-            let frame_transforms = warm_cache
+            let mut frame_transforms = warm_cache
                 .transforms_for_timeline(query.timeline())
                 .frame_transforms(queried_frame)
                 .unwrap();
