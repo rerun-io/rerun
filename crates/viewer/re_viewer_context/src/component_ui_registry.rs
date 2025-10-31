@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use ahash::HashMap;
 
-use re_chunk::{RowId, TimePoint, UnitChunkShared};
+use re_chunk::{ComponentIdentifier, RowId, TimePoint, UnitChunkShared};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log::ResultExt as _;
@@ -10,10 +10,7 @@ use re_log_types::{Instance, StoreId};
 use re_types::{ComponentDescriptor, ComponentType};
 use re_ui::{UiExt as _, UiLayout};
 
-use crate::{
-    ComponentFallbackProvider, MaybeMutRef, QueryContext, ViewerContext,
-    blueprint_helpers::BlueprintContext as _,
-};
+use crate::{MaybeMutRef, QueryContext, ViewerContext, blueprint_helpers::BlueprintContext as _};
 
 /// Describes where an edit should be written to if any
 pub struct EditTarget {
@@ -267,7 +264,7 @@ impl ComponentUiRegistry {
         callback: impl Fn(
             &ViewerContext<'_>,
             &mut egui::Ui,
-            &ComponentDescriptor,
+            ComponentIdentifier,
             Option<RowId>,
             &dyn arrow::array::Array,
         ) -> Result<(), Box<dyn std::error::Error>>
@@ -286,7 +283,7 @@ impl ComponentUiRegistry {
                     }
                 }
 
-                let res = callback(ctx, ui, component_descriptor, row_id, value);
+                let res = callback(ctx, ui, component_descriptor.component, row_id, value);
 
                 if let Err(err) = res {
                     re_log::error_once!(
@@ -356,7 +353,7 @@ impl ComponentUiRegistry {
         // Don't use component.raw_instance here since we want to handle the case where there's several
         // elements differently.
         // Also, it allows us to slice the array without cloning any elements.
-        let Some(array) = unit.component_batch_raw(component_descr) else {
+        let Some(array) = unit.component_batch_raw(component_descr.component) else {
             re_log::error_once!("Couldn't get {component_descr}: missing");
             ui.error_with_details_on_hover(format!("Couldn't get {component_descr}: missing"));
             return;
@@ -549,7 +546,6 @@ impl ComponentUiRegistry {
         component_descr: &ComponentDescriptor,
         row_id: Option<RowId>,
         component_array: Option<&dyn arrow::array::Array>,
-        fallback_provider: &dyn ComponentFallbackProvider,
     ) {
         let multiline = true;
         self.edit_ui(
@@ -560,7 +556,6 @@ impl ComponentUiRegistry {
             component_descr,
             row_id,
             component_array,
-            fallback_provider,
             multiline,
         );
     }
@@ -580,7 +575,6 @@ impl ComponentUiRegistry {
         component_descr: &ComponentDescriptor,
         row_id: Option<RowId>,
         component_query_result: Option<&dyn arrow::array::Array>,
-        fallback_provider: &dyn ComponentFallbackProvider,
     ) {
         let multiline = false;
         self.edit_ui(
@@ -591,7 +585,6 @@ impl ComponentUiRegistry {
             component_descr,
             row_id,
             component_query_result,
-            fallback_provider,
             multiline,
         );
     }
@@ -606,7 +599,6 @@ impl ComponentUiRegistry {
         component_descr: &ComponentDescriptor,
         row_id: Option<RowId>,
         component_array: Option<&dyn arrow::array::Array>,
-        fallback_provider: &dyn ComponentFallbackProvider,
         allow_multiline: bool,
     ) {
         re_tracing::profile_function!(component_descr.display_name());
@@ -628,7 +620,11 @@ impl ComponentUiRegistry {
         if let Some(component_array) = component_array.filter(|array| !array.is_empty()) {
             run_with(component_array);
         } else {
-            let fallback = fallback_provider.fallback_for(ctx, component_descr);
+            let fallback = ctx.viewer_ctx().component_fallback_registry.fallback_for(
+                component_descr.component,
+                component_descr.component_type,
+                ctx,
+            );
             run_with(fallback.as_ref());
         }
     }

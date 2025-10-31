@@ -69,8 +69,9 @@ impl ChunkStore {
 
             let mut overwritten_chunk_ids = HashMap::default();
 
-            for (component_desc, list_array) in chunk.components().iter() {
-                let is_empty = list_array
+            for (component, column) in chunk.components().iter() {
+                let is_empty = column
+                    .list_array
                     .nulls()
                     .is_some_and(|validity| validity.is_empty());
                 if is_empty {
@@ -78,7 +79,7 @@ impl ChunkStore {
                 }
 
                 let Some((_row_id_min_for_component, row_id_max_for_component)) =
-                    row_id_range_per_component.get(component_desc)
+                    row_id_range_per_component.get(component)
                 else {
                     continue;
                 };
@@ -86,7 +87,7 @@ impl ChunkStore {
                 self.static_chunk_ids_per_entity
                     .entry(chunk.entity_path().clone())
                     .or_default()
-                    .entry(component_desc.clone())
+                    .entry(*component)
                     .and_modify(|cur_chunk_id| {
                         // NOTE: When attempting to overwrite static data, the chunk with the most
                         // recent data within -- according to RowId -- wins.
@@ -97,7 +98,7 @@ impl ChunkStore {
                             .map_or(RowId::ZERO, |chunk| {
                                 chunk
                                     .row_id_range_per_component()
-                                    .get(component_desc)
+                                    .get(component)
                                     .map_or(RowId::ZERO, |(_, row_id_max)| *row_id_max)
                             });
 
@@ -249,9 +250,9 @@ impl ChunkStore {
                     let temporal_chunk_ids_per_component =
                         temporal_chunk_ids_per_timeline.entry(timeline).or_default();
 
-                    for (component_desc, time_range) in time_range_per_component {
+                    for (component, time_range) in time_range_per_component {
                         let temporal_chunk_ids_per_time = temporal_chunk_ids_per_component
-                            .entry(component_desc)
+                            .entry(component)
                             .or_default();
 
                         // See `ChunkIdSetPerTime::max_interval_length`'s documentation.
@@ -370,20 +371,25 @@ impl ChunkStore {
             }
         }
 
-        for (component_descr, list_array) in chunk.components().iter() {
-            if let Some(component_type) = component_descr.component_type
+        for column in chunk.components().values() {
+            let re_types_core::SerializedComponentColumn {
+                list_array,
+                descriptor,
+            } = column;
+
+            if let Some(component_type) = descriptor.component_type
                 && let Some(old_typ) = self
                     .type_registry
                     .insert(component_type, list_array.value_type())
-                && old_typ != list_array.value_type()
+                && old_typ != column.list_array.value_type()
             {
                 re_log::warn_once!(
                     "Component '{}' with component type '{}' on entity '{}' changed type from {} to {}",
-                    component_descr.component,
+                    descriptor.component,
                     component_type,
                     chunk.entity_path(),
                     re_arrow_util::format_data_type(&old_typ),
-                    re_arrow_util::format_data_type(&list_array.value_type())
+                    re_arrow_util::format_data_type(&column.list_array.value_type())
                 );
             }
 
@@ -391,9 +397,9 @@ impl ChunkStore {
                 .per_column_metadata
                 .entry(chunk.entity_path().clone())
                 .or_default()
-                .entry(component_descr.component)
+                .entry(descriptor.component)
                 .or_insert((
-                    component_descr.clone(),
+                    descriptor.clone(),
                     ColumnMetadataState {
                         is_semantically_empty: true,
                     },
@@ -530,9 +536,9 @@ impl ChunkStore {
                 continue;
             };
 
-            for (component_desc, time_range) in time_range_per_component {
+            for (component, time_range) in time_range_per_component {
                 let Some(temporal_chunk_ids_per_time) =
-                    temporal_chunk_ids_per_component.get(&component_desc)
+                    temporal_chunk_ids_per_component.get(&component)
                 else {
                     continue;
                 };

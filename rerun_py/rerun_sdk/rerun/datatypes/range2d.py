@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Union
+from typing import Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -65,10 +65,7 @@ class Range2D:
 
 
 Range2DLike = Range2D
-Range2DArrayLike = Union[
-    Range2D,
-    Sequence[Range2DLike],
-]
+Range2DArrayLike = Range2D | Sequence[Range2DLike]
 
 
 class Range2DBatch(BaseBatch[Range2DArrayLike]):

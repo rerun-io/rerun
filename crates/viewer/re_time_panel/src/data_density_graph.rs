@@ -448,7 +448,15 @@ pub fn data_density_graph_ui(
         ui.tokens().density_graph_outside_valid_ranges,
     );
 
-    if tooltips_enabled && let Some(hovered_time) = data.hovered_time {
+    let mut hovered_time = data.hovered_time;
+
+    if let Some(pointer) = data.hovered_pos {
+        hovered_time = time_ranges_ui
+            .snapped_time_from_x(ui, pointer.x)
+            .map(|t| t.round());
+    }
+
+    if tooltips_enabled && let Some(hovered_time) = hovered_time {
         ctx.selection_state().set_hovered(item.to_item());
 
         if ui.ctx().dragged_id().is_none() {
@@ -494,20 +502,18 @@ pub fn build_density_graph<'a>(
         let store = engine.store();
         let query = RangeQuery::new(*timeline, visible_time_range);
 
-        if let Some(component_descr) = item.component_descr.as_ref() {
+        if let Some(component) = item.component {
             let mut total_num_events = 0;
             (
                 store
-                    .range_relevant_chunks(&query, &item.entity_path, component_descr)
+                    .range_relevant_chunks(&query, &item.entity_path, component)
                     .into_iter()
                     .filter_map(|chunk| {
                         let time_range = chunk.timelines().get(timeline)?.time_range();
-                        chunk
-                            .num_events_for_component(component_descr)
-                            .map(|num_events| {
-                                total_num_events += num_events;
-                                (chunk, time_range, num_events)
-                            })
+                        chunk.num_events_for_component(component).map(|num_events| {
+                            total_num_events += num_events;
+                            (chunk, time_range, num_events)
+                        })
                     })
                     .collect(),
                 total_num_events,
@@ -662,12 +668,11 @@ fn show_row_ids_tooltip(
 
     let TimePanelItem {
         entity_path,
-        component_descr,
+        component,
     } = item;
 
-    if let Some(component_descr) = component_descr.as_ref() {
-        ComponentPath::new(entity_path.clone(), component_descr.component)
-            .data_ui(ctx, ui, ui_layout, &query, db);
+    if let Some(component) = *component {
+        ComponentPath::new(entity_path.clone(), component).data_ui(ctx, ui, ui_layout, &query, db);
     } else {
         re_entity_db::InstancePath::entity_all(entity_path.clone())
             .data_ui(ctx, ui, ui_layout, &query, db);
@@ -683,6 +688,7 @@ pub struct DensityGraphBuilder<'a> {
 
     pub density_graph: DensityGraph,
     pub hovered_time: Option<TimeInt>,
+    pub hovered_pos: Option<egui::Pos2>,
 }
 
 impl<'a> DensityGraphBuilder<'a> {
@@ -699,6 +705,7 @@ impl<'a> DensityGraphBuilder<'a> {
 
             density_graph: DensityGraph::new(row_rect.x_range()),
             hovered_time: None,
+            hovered_pos: None,
         }
     }
 
@@ -755,9 +762,8 @@ impl<'a> DensityGraphBuilder<'a> {
                 time_range_rect.contains(pointer_pos)
             };
 
-            if is_hovered && let Some(at_time) = self.time_ranges_ui.time_from_x_f32(pointer_pos.x)
-            {
-                self.hovered_time = Some(at_time.round());
+            if is_hovered {
+                self.hovered_pos = Some(pointer_pos);
             }
         }
     }

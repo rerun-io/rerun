@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import pytest
@@ -41,8 +41,8 @@ def test_geopoints() -> None:
 
         # make Pyright happy as it's apparently not able to track typing info through zip_longest
         positions = cast("DVec2DArrayLike", positions)
-        radii = cast("Optional[Float32ArrayLike]", radii)
-        colors = cast("Optional[Rgba32ArrayLike]", colors)
+        radii = cast("Float32ArrayLike | None", radii)
+        colors = cast("Rgba32ArrayLike | None", colors)
 
         print(f"rr.GeoPoints(\n    lat_lon={positions}\n    radii={radii!r}\n    colors={colors!r}\n)")
         arch = rr.GeoPoints(

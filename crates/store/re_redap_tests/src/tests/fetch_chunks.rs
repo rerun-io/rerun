@@ -2,7 +2,6 @@ use futures::StreamExt as _;
 use itertools::Itertools as _;
 use std::collections::HashSet;
 
-use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_protos::{
     cloud::v1alpha1::{
         FetchChunksRequest, QueryDatasetResponse, ext::QueryDatasetRequest,
@@ -11,6 +10,7 @@ use re_protos::{
     common::v1alpha1::ext::ScanParameters,
     headers::RerunHeadersInjectorExt as _,
 };
+use re_sdk::external::re_log_encoding::ToApplication as _;
 use re_tuid::Tuid;
 use re_types_core::Loggable as _;
 
@@ -26,14 +26,17 @@ use crate::tests::common::{
 /// conceptually incorrect and works only because the data/chunk layout used is very basic and
 /// predictable.
 pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService) {
-    let data_sources_def = DataSourcesDefinition::new([
-        LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
-        LayerDefinition::simple("my_partition_id2", &["my/entity"]),
-        LayerDefinition::simple(
-            "my_partition_id3",
-            &["my/entity", "another/one", "yet/another/one"],
-        ),
-    ]);
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [
+            LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
+            LayerDefinition::simple("my_partition_id2", &["my/entity"]),
+            LayerDefinition::simple(
+                "my_partition_id3",
+                &["my/entity", "another/one", "yet/another/one"],
+            ),
+        ],
+    );
 
     let dataset_name = "dataset";
     service.create_dataset_entry_with_name(dataset_name).await;
@@ -51,7 +54,7 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
         .unwrap()
         .into_inner()
         .flat_map(|resp| futures::stream::iter(resp.unwrap().data))
-        .map(|dfp| dfp.decode().unwrap())
+        .map(|dfp| dfp.try_into().unwrap())
         .collect::<Vec<_>>()
         .await;
 
@@ -60,21 +63,17 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
     let chunk_keys = concat_record_batches(&chunk_info)
         .sort_rows_by(&[QueryDatasetResponse::FIELD_CHUNK_ID])
         .unwrap()
-        .filtered_columns(&required_columns_ref);
+        .project_columns(&required_columns_ref);
 
     let mut chunks = service
         .fetch_chunks(tonic::Request::new(FetchChunksRequest {
-            chunk_infos: vec![chunk_keys.encode().unwrap()],
+            chunk_infos: vec![chunk_keys.into()],
         }))
         .await
         .unwrap()
         .into_inner()
         .flat_map(|resp| futures::stream::iter(resp.unwrap().chunks))
-        .map(|msg| {
-            re_chunk::Chunk::from_arrow_msg(
-                &re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&msg).unwrap(),
-            )
-        })
+        .map(|msg| re_chunk::Chunk::from_arrow_msg(&msg.to_application(()).unwrap()))
         .collect::<Vec<_>>()
         .await
         .into_iter()
@@ -96,14 +95,17 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
     // Create first dataset
     //
 
-    let data_sources_def_1 = DataSourcesDefinition::new([
-        LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
-        LayerDefinition::simple("my_partition_id2", &["my/entity"]),
-        LayerDefinition::simple(
-            "my_partition_id3",
-            &["my/entity", "another/one", "yet/another/one"],
-        ),
-    ]);
+    let data_sources_def_1 = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [
+            LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
+            LayerDefinition::simple("my_partition_id2", &["my/entity"]),
+            LayerDefinition::simple(
+                "my_partition_id3",
+                &["my/entity", "another/one", "yet/another/one"],
+            ),
+        ],
+    );
 
     let dataset_name_1 = "dataset_1";
     service.create_dataset_entry_with_name(dataset_name_1).await;
@@ -115,10 +117,13 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
     // Create a second dataset
     //
 
-    let data_sources_def_2 = DataSourcesDefinition::new([
-        LayerDefinition::nasty("my_partition_id1", &["my/entity", "my/other/entity"]),
-        LayerDefinition::nasty("my_partition_id2", &["my/other/entity"]),
-    ]);
+    let data_sources_def_2 = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [
+            LayerDefinition::nasty("my_partition_id1", &["my/entity", "my/other/entity"]),
+            LayerDefinition::nasty("my_partition_id2", &["my/other/entity"]),
+        ],
+    );
 
     let dataset_name_2 = "dataset_2";
     service.create_dataset_entry_with_name(dataset_name_2).await;
@@ -153,7 +158,7 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
         .unwrap()
         .into_inner()
         .flat_map(|resp| futures::stream::iter(resp.unwrap().data))
-        .map(|dfp| dfp.decode().unwrap())
+        .map(|dfp| dfp.try_into().unwrap())
         .collect::<Vec<_>>()
         .await;
 
@@ -182,7 +187,7 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
         .unwrap()
         .into_inner()
         .flat_map(|resp| futures::stream::iter(resp.unwrap().data))
-        .map(|dfp| dfp.decode().unwrap())
+        .map(|dfp| dfp.try_into().unwrap())
         .collect::<Vec<_>>()
         .await;
 
@@ -195,17 +200,13 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
 
     let chunks = service
         .fetch_chunks(tonic::Request::new(FetchChunksRequest {
-            chunk_infos: vec![chunk_info.encode().unwrap()],
+            chunk_infos: vec![chunk_info.clone().into()],
         }))
         .await
         .unwrap()
         .into_inner()
         .flat_map(|resp| futures::stream::iter(resp.unwrap().chunks))
-        .map(|msg| {
-            re_chunk::Chunk::from_arrow_msg(
-                &re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&msg).unwrap(),
-            )
-        })
+        .map(|msg| re_chunk::Chunk::from_arrow_msg(&msg.to_application(()).unwrap()))
         .collect::<Vec<_>>()
         .await
         .into_iter()

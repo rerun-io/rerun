@@ -3,12 +3,83 @@ use std::{borrow::Cow, ops::RangeInclusive};
 use re_chunk::RowId;
 use re_log_types::hash::Hash64;
 use re_types::{
-    ComponentDescriptor,
-    components::Colormap,
+    ComponentIdentifier, archetypes,
+    components::{self, Colormap},
     datatypes::{Blob, ChannelDatatype, ColorModel, ImageFormat},
     image::{ImageKind, rgb_from_yuv},
     tensor_data::TensorElement,
 };
+
+/// Get a fallback resolution for an image on a specific entity.
+pub fn resolution_of_image_at(
+    ctx: &crate::ViewerContext<'_>,
+    query: &re_chunk_store::LatestAtQuery,
+    entity_path: &re_log_types::EntityPath,
+) -> Option<components::Resolution> {
+    let entity_db = ctx.recording();
+    let storage_engine = entity_db.storage_engine();
+
+    // Check what kind of non-encoded images were logged here, if any.
+    // TODO(andreas): can we do this more efficiently?
+    // TODO(andreas): doesn't take blueprint into account!
+    let all_components = storage_engine
+        .store()
+        .all_components_for_entity(entity_path)?;
+    let image_format_descr = all_components
+        .get(&archetypes::Image::descriptor_format().component)
+        .or_else(|| all_components.get(&archetypes::DepthImage::descriptor_format().component))
+        .or_else(|| {
+            all_components.get(&archetypes::SegmentationImage::descriptor_format().component)
+        });
+
+    if let Some((_, image_format)) = image_format_descr.and_then(|component| {
+        entity_db.latest_at_component::<components::ImageFormat>(entity_path, query, *component)
+    }) {
+        // Normal `Image` archetype
+        return Some(components::Resolution::from([
+            image_format.width as f32,
+            image_format.height as f32,
+        ]));
+    }
+
+    // Check for an encoded image.
+    if let Some(((_time, row_id), blob)) = entity_db
+        .latest_at_component::<re_types::components::Blob>(
+            entity_path,
+            query,
+            archetypes::EncodedImage::descriptor_blob().component,
+        )
+    {
+        let media_type = entity_db
+            .latest_at_component::<components::MediaType>(
+                entity_path,
+                query,
+                archetypes::EncodedImage::descriptor_media_type().component,
+            )
+            .map(|(_, c)| c);
+
+        let image = ctx
+            .store_context
+            .caches
+            .entry(|c: &mut crate::ImageDecodeCache| {
+                c.entry(
+                    row_id,
+                    archetypes::EncodedImage::descriptor_blob().component,
+                    &blob,
+                    media_type.as_ref(),
+                )
+            });
+
+        if let Ok(image) = image {
+            return Some(components::Resolution::from([
+                image.format.width as f32,
+                image.format.height as f32,
+            ]));
+        }
+    }
+
+    None
+}
 
 /// Colormap together with the range of image values that is mapped to the colormap's range.
 ///
@@ -54,10 +125,10 @@ impl re_byte_size::SizeBytes for StoredBlobCacheKey {
 impl StoredBlobCacheKey {
     pub const ZERO: Self = Self(Hash64::ZERO);
 
-    pub fn new(blob_row_id: RowId, component_descriptor: &ComponentDescriptor) -> Self {
-        // Row ID + component descriptor is enough because in a single row & column there
+    pub fn new(blob_row_id: RowId, component: ComponentIdentifier) -> Self {
+        // Row ID + component is enough because in a single row & column there
         // can currently only be a single blob since blobs are internally stored as transparent dynamic byte arrays.
-        Self(Hash64::hash((blob_row_id, &component_descriptor)))
+        Self(Hash64::hash((blob_row_id, component)))
     }
 }
 
@@ -82,22 +153,13 @@ pub struct ImageInfo {
 impl ImageInfo {
     pub fn from_stored_blob(
         blob_row_id: RowId,
-        component_descriptor: &ComponentDescriptor,
+        component: ComponentIdentifier,
         buffer: Blob,
         format: ImageFormat,
         kind: ImageKind,
     ) -> Self {
-        // TODO(andreas): Once we introduce descriptor overrides,
-        // we need to make sure that the descriptor is the one used for _querying_ the blob.
-        // This also means that the `ImageKind` may change!
-        // But until then, image kind and descriptor should be in sync.
-        debug_assert_eq!(
-            ImageKind::from_archetype_name(component_descriptor.archetype),
-            kind
-        );
-
         Self {
-            buffer_content_hash: StoredBlobCacheKey::new(blob_row_id, component_descriptor),
+            buffer_content_hash: StoredBlobCacheKey::new(blob_row_id, component),
             buffer,
             format,
             kind,

@@ -2,7 +2,7 @@ use std::error::Error;
 use std::str::FromStr as _;
 
 use egui::{Align, Layout, Link, Ui, UiBuilder};
-use re_types_core::{ComponentDescriptor, RowId};
+use re_types_core::{ComponentIdentifier, RowId};
 use re_ui::UiExt as _;
 use re_uri::RedapUri;
 use re_viewer_context::{
@@ -15,7 +15,7 @@ use re_viewer_context::{
 pub fn redap_uri_button(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _component_descriptor: &ComponentDescriptor,
+    _component: ComponentIdentifier,
     _row_id: Option<RowId>,
     array: &dyn arrow::array::Array,
 ) -> Result<(), Box<dyn Error>> {
@@ -115,9 +115,8 @@ pub fn redap_uri_button(
             if response.clicked() {
                 // Show it:
                 ctx.command_sender()
-                    .send_system(SystemCommand::SetSelection(
-                        re_viewer_context::Item::StoreId(loaded_recording_info.store_id.clone())
-                            .into(),
+                    .send_system(SystemCommand::set_selection(
+                        re_viewer_context::Item::StoreId(loaded_recording_info.store_id.clone()),
                     ));
             }
         } else if is_loading {

@@ -181,8 +181,8 @@ impl ViewClass for MapView {
     ) -> Result<(), ViewSystemExecutionError> {
         re_ui::list_item::list_item_scope(ui, "map_selection_ui", |ui| {
             let ctx = self.view_context(ctx, view_id, state);
-            re_view::view_property_ui::<MapZoom>(&ctx, ui, self);
-            re_view::view_property_ui::<MapBackground>(&ctx, ui, self);
+            re_view::view_property_ui::<MapZoom>(&ctx, ui);
+            re_view::view_property_ui::<MapBackground>(&ctx, ui);
         });
 
         Ok(())
@@ -219,11 +219,8 @@ impl ViewClass for MapView {
         //
 
         let view_ctx = self.view_context(ctx, query.view_id, state);
-        let map_provider = map_background.component_or_fallback(
-            &view_ctx,
-            self,
-            &MapBackground::descriptor_provider(),
-        )?;
+        let map_provider = map_background
+            .component_or_fallback(&view_ctx, MapBackground::descriptor_provider().component)?;
         if state.selected_provider != map_provider {
             state.tiles = None;
             state.selected_provider = map_provider;
@@ -255,7 +252,7 @@ impl ViewClass for MapView {
         let default_center_position = state.last_center_position;
 
         let blueprint_zoom_level = map_zoom
-            .component_or_empty::<ZoomLevel>(&MapZoom::descriptor_zoom())?
+            .component_or_empty::<ZoomLevel>(MapZoom::descriptor_zoom().component)?
             .map(|zoom| **zoom);
         let default_zoom_level = span.and_then(|span| {
             span.zoom_for_screen_size(
@@ -495,17 +492,15 @@ fn handle_ui_interactions(
         if map_response.double_clicked() {
             // Select the entire entity
             ctx.command_sender()
-                .send_system(SystemCommand::SetSelection(
-                    Item::DataResult(query.view_id, instance_path.entity_path.clone().into())
-                        .into(),
-                ));
+                .send_system(SystemCommand::set_selection(Item::DataResult(
+                    query.view_id,
+                    instance_path.entity_path.clone().into(),
+                )));
         }
     } else if map_response.clicked() {
         // clicked elsewhere, select the view
         ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(
-                Item::View(query.view_id).into(),
-            ));
+            .send_system(SystemCommand::set_selection(Item::View(query.view_id)));
     } else if map_response.hovered() {
         ctx.selection_state().set_hovered(Item::View(query.view_id));
     }
@@ -569,8 +564,6 @@ fn get_tile_manager(
         ),
     }
 }
-
-re_viewer_context::impl_component_fallback_provider!(MapView => []);
 
 // TODO(ab, andreas): this is a partial copy past of re_view_spatial::picking_gpu. Should be
 // turned into a utility function.

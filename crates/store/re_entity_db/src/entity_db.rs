@@ -4,8 +4,8 @@ use std::sync::Arc;
 use nohash_hasher::IntMap;
 
 use re_chunk::{
-    Chunk, ChunkBuilder, ChunkId, ChunkResult, LatestAtQuery, RowId, TimeInt, TimePoint, Timeline,
-    TimelineName,
+    Chunk, ChunkBuilder, ChunkId, ChunkResult, ComponentIdentifier, LatestAtQuery, RowId, TimeInt,
+    TimePoint, Timeline, TimelineName,
 };
 use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
@@ -162,6 +162,10 @@ impl EntityDb {
     /// Formats the entity tree into a human-readable text representation with component schema information.
     pub fn format_with_components(&self) -> String {
         let mut text = String::new();
+
+        let storage_engine = self.storage_engine();
+        let store = storage_engine.store();
+
         self.tree.visit_children_recursively(|entity_path| {
             if entity_path.is_root() {
                 return;
@@ -169,21 +173,16 @@ impl EntityDb {
             let depth = entity_path.len() - 1;
             let indent = "  ".repeat(depth);
             text.push_str(&format!("{indent}{entity_path}\n"));
-            let Some(components) = self
-                .storage_engine()
-                .store()
-                .all_components_for_entity_sorted(entity_path)
-            else {
+            let Some(components) = store.all_components_for_entity_sorted(entity_path) else {
                 return;
             };
-            for component in &components {
+            for component in components {
                 let component_indent = "  ".repeat(depth + 1);
-                if let Some(component_type) = &component.component_type {
-                    if let Some(datatype) = self
-                        .storage_engine()
-                        .store()
-                        .lookup_datatype(component_type)
-                    {
+                if let Some(component_descr) =
+                    store.entity_component_descriptor(entity_path, component)
+                    && let Some(component_type) = &component_descr.component_type
+                {
+                    if let Some(datatype) = store.lookup_datatype(component_type) {
                         text.push_str(&format!(
                             "{}{}: {}\n",
                             component_indent,
@@ -199,7 +198,7 @@ impl EntityDb {
                     }
                 } else {
                     // Fallback to component identifier
-                    text.push_str(&format!("{}{}\n", component_indent, component.component));
+                    text.push_str(&format!("{component_indent}{component}\n"));
                 }
             }
         });
@@ -295,11 +294,10 @@ impl EntityDb {
     /// Read one of the built-in `RecordingInfo` properties.
     pub fn recording_info_property<C: re_types_core::Component>(
         &self,
-        component_descr: &re_types_core::ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Option<C> {
-        debug_assert_eq!(component_descr.component_type, Some(C::name()));
         debug_assert!(
-            component_descr.archetype == Some("rerun.archetypes.RecordingInfo".into()),
+            component.starts_with("RecordingInfo:"),
             "This function should only be used for built-in RecordingInfo components, which are the only recording properties at {}",
             EntityPath::properties()
         );
@@ -307,7 +305,7 @@ impl EntityDb {
         self.latest_at_component::<C>(
             &EntityPath::properties(),
             &LatestAtQuery::latest(TimelineName::log_tick()),
-            component_descr,
+            component,
         )
         .map(|(_, value)| value)
     }
@@ -361,16 +359,16 @@ impl EntityDb {
     ///
     /// This is a cached API -- data will be lazily cached upon access.
     #[inline]
-    pub fn latest_at<'a>(
+    pub fn latest_at(
         &self,
         query: &re_chunk_store::LatestAtQuery,
         entity_path: &EntityPath,
-        component_descr: impl IntoIterator<Item = &'a re_types_core::ComponentDescriptor>,
+        components: impl IntoIterator<Item = ComponentIdentifier>,
     ) -> re_query::LatestAtResults {
         self.storage_engine
             .read()
             .cache()
-            .latest_at(query, entity_path, component_descr)
+            .latest_at(query, entity_path, components)
     }
 
     /// Get the latest index and value for a given dense [`re_types_core::Component`].
@@ -386,17 +384,15 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_chunk_store::LatestAtQuery,
-        component_descr: &re_types_core::ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Option<((TimeInt, RowId), C)> {
-        debug_assert_eq!(component_descr.component_type, Some(C::name()));
-
-        let results =
-            self.storage_engine
-                .read()
-                .cache()
-                .latest_at(query, entity_path, [component_descr]);
+        let results = self
+            .storage_engine
+            .read()
+            .cache()
+            .latest_at(query, entity_path, [component]);
         results
-            .component_mono(component_descr)
+            .component_mono(component)
             .map(|value| (results.index(), value))
     }
 
@@ -413,17 +409,16 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_chunk_store::LatestAtQuery,
-        component_descr: &re_types_core::ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Option<((TimeInt, RowId), C)> {
-        debug_assert_eq!(component_descr.component_type, Some(C::name()));
+        let results = self
+            .storage_engine
+            .read()
+            .cache()
+            .latest_at(query, entity_path, [component]);
 
-        let results =
-            self.storage_engine
-                .read()
-                .cache()
-                .latest_at(query, entity_path, [component_descr]);
         results
-            .component_mono_quiet(component_descr)
+            .component_mono_quiet(component)
             .map(|value| (results.index(), value))
     }
 
@@ -432,15 +427,13 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_chunk_store::LatestAtQuery,
-        component_descr: &re_types_core::ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> Option<(EntityPath, (TimeInt, RowId), C)> {
         re_tracing::profile_function!();
 
         let mut cur_entity_path = Some(entity_path.clone());
         while let Some(entity_path) = cur_entity_path {
-            if let Some((index, value)) =
-                self.latest_at_component(&entity_path, query, component_descr)
-            {
+            if let Some((index, value)) = self.latest_at_component(&entity_path, query, component) {
                 return Some((entity_path, index, value));
             }
             cur_entity_path = entity_path.parent();

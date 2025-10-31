@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy.typing as npt
 import pyarrow as pa
@@ -43,13 +43,11 @@ class TensorDimensionSelection(TensorDimensionSelectionExt):
 
 
 if TYPE_CHECKING:
-    TensorDimensionSelectionLike = Union[TensorDimensionSelection, int]
+    TensorDimensionSelectionLike = TensorDimensionSelection | int
 else:
     TensorDimensionSelectionLike = Any
 
-TensorDimensionSelectionArrayLike = Union[
-    TensorDimensionSelection, Sequence[TensorDimensionSelectionLike], npt.ArrayLike
-]
+TensorDimensionSelectionArrayLike = TensorDimensionSelection | Sequence[TensorDimensionSelectionLike] | npt.ArrayLike
 
 
 class TensorDimensionSelectionBatch(BaseBatch[TensorDimensionSelectionArrayLike]):

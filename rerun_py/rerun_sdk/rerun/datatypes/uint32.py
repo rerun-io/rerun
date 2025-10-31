@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -45,11 +45,11 @@ class UInt32:
 
 
 if TYPE_CHECKING:
-    UInt32Like = Union[UInt32, int]
+    UInt32Like = UInt32 | int
 else:
     UInt32Like = Any
 
-UInt32ArrayLike = Union[UInt32, Sequence[UInt32Like], int, npt.NDArray[np.uint32]]
+UInt32ArrayLike = UInt32 | Sequence[UInt32Like] | int | npt.NDArray[np.uint32]
 
 
 class UInt32Batch(BaseBatch[UInt32ArrayLike]):

@@ -1,13 +1,16 @@
-use egui::ahash::{HashMap, HashSet};
+use egui::{
+    Vec2,
+    ahash::{HashMap, HashSet},
+};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
 use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
 use re_chunk_store::TimeType;
-use re_format::next_grid_tick_magnitude_nanos;
+use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::{EntityPath, TimeInt};
 use re_types::{
-    Archetype as _, ComponentBatch as _, View as _, ViewClassIdentifier,
+    ComponentBatch as _, View as _, ViewClassIdentifier,
     archetypes::{SeriesLines, SeriesPoints},
     blueprint::{
         archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis},
@@ -24,10 +27,10 @@ use re_view::{
 use re_viewer_context::{
     BlueprintContext as _, IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities,
     PerVisualizer, QueryRange, RecommendedView, SmallVisualizerSet, SystemExecutionOutput,
-    TimeControlCommand, TypedComponentFallbackProvider, ViewClass, ViewClassExt as _,
-    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities, external::re_entity_db::InstancePath,
+    TimeControlCommand, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewHighlights,
+    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    external::re_entity_db::InstancePath,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -172,6 +175,43 @@ impl ViewClass for TimeSeriesView {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
+        for component in [
+            SeriesLines::descriptor_names().component,
+            SeriesPoints::descriptor_names().component,
+        ] {
+            system_registry.register_fallback_provider::<re_types::components::Name>(
+                component,
+                |ctx| {
+                    let state = ctx.view_state().downcast_ref::<TimeSeriesViewState>();
+
+                    state
+                        .ok()
+                        .and_then(|state| {
+                            state
+                                .default_names_for_entities
+                                .get(ctx.target_entity_path)
+                                .map(|name| name.clone().into())
+                        })
+                        .or_else(|| {
+                            ctx.target_entity_path
+                                .last()
+                                .map(|part| part.ui_string().into())
+                        })
+                        .unwrap_or_default()
+                },
+            );
+        }
+        system_registry.register_fallback_provider(
+            ScalarAxis::descriptor_range().component,
+            |ctx| {
+                ctx.view_state()
+                    .as_any()
+                    .downcast_ref::<TimeSeriesViewState>()
+                    .map(|s| make_range_sane(s.scalar_range))
+                    .unwrap_or_default()
+            },
+        );
+
         system_registry.register_visualizer::<SeriesLinesSystem>()?;
         system_registry.register_visualizer::<SeriesPointsSystem>()?;
         Ok(())
@@ -209,10 +249,10 @@ impl ViewClass for TimeSeriesView {
 
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
             let ctx = self.view_context(ctx, view_id, state);
-            view_property_ui::<PlotBackground>(&ctx, ui, self);
-            view_property_ui::<PlotLegend>(&ctx, ui, self);
-            view_property_ui::<TimeAxis>(&ctx, ui, self);
-            view_property_ui::<ScalarAxis>(&ctx, ui, self);
+            view_property_ui::<PlotBackground>(&ctx, ui);
+            view_property_ui::<PlotLegend>(&ctx, ui);
+            view_property_ui::<TimeAxis>(&ctx, ui);
+            view_property_ui::<ScalarAxis>(&ctx, ui);
         });
 
         Ok(())
@@ -364,49 +404,40 @@ impl ViewClass for TimeSeriesView {
         );
         let background_color = background.component_or_fallback::<Color>(
             &view_ctx,
-            self,
-            &PlotBackground::descriptor_color(),
+            PlotBackground::descriptor_color().component,
         )?;
         let show_grid = background.component_or_fallback::<Enabled>(
             &view_ctx,
-            self,
-            &PlotBackground::descriptor_show_grid(),
+            PlotBackground::descriptor_show_grid().component,
         )?;
 
         let plot_legend =
             ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
         let legend_visible = plot_legend.component_or_fallback::<Visible>(
             &view_ctx,
-            self,
-            &PlotLegend::descriptor_visible(),
+            PlotLegend::descriptor_visible().component,
         )?;
         let legend_corner = plot_legend.component_or_fallback::<Corner2D>(
             &view_ctx,
-            self,
-            &PlotLegend::descriptor_corner(),
+            PlotLegend::descriptor_corner().component,
         )?;
 
         let time_axis =
             ViewProperty::from_archetype::<TimeAxis>(blueprint_db, ctx.blueprint_query, view_id);
-        let link_x_axis = time_axis.component_or_fallback::<LinkAxis>(
-            &view_ctx,
-            self,
-            &TimeAxis::descriptor_link(),
-        )?;
+        let link_x_axis = time_axis
+            .component_or_fallback::<LinkAxis>(&view_ctx, TimeAxis::descriptor_link().component)?;
 
         let scalar_axis =
             ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
         let y_range = scalar_axis.component_or_fallback::<Range1D>(
             &view_ctx,
-            self,
-            &ScalarAxis::descriptor_range(),
+            ScalarAxis::descriptor_range().component,
         )?;
         let y_range = make_range_sane(y_range);
 
         let y_zoom_lock = scalar_axis.component_or_fallback::<LockRangeDuringZoom>(
             &view_ctx,
-            self,
-            &ScalarAxis::descriptor_zoom_lock(),
+            ScalarAxis::descriptor_zoom_lock().component,
         )?;
         let y_zoom_lock = y_zoom_lock.0.0;
 
@@ -683,7 +714,15 @@ impl ViewClass for TimeSeriesView {
                 if response.dragged()
                     && let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos())
                 {
-                    let new_offset_time = transform.value_from_position(pointer_pos).x;
+                    let aim_radius = ui.input(|i| i.aim_radius());
+                    let new_offset_time = egui::emath::smart_aim::best_in_range_f64(
+                        transform
+                            .value_from_position(pointer_pos - aim_radius * Vec2::X)
+                            .x,
+                        transform
+                            .value_from_position(pointer_pos + aim_radius * Vec2::X)
+                            .x,
+                    );
                     let new_time = time_offset + new_offset_time.round() as i64;
 
                     // Avoid frame-delay:
@@ -938,47 +977,6 @@ fn round_nanos_to_start_of_day(ns: i64) -> i64 {
     (ns.saturating_add(nanos_per_day / 2)) / nanos_per_day * nanos_per_day
 }
 
-impl TypedComponentFallbackProvider<Corner2D> for TimeSeriesView {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Corner2D {
-        // Explicitly pick RightCorner2D::LeftBottom, we don't want to make this dependent on the (arbitrary)
-        // default of Corner2D.
-        // We put it on the left side by default so that it does not cover the newest data coming n on the right side.
-        Corner2D::LeftBottom
-    }
-}
-
-impl TypedComponentFallbackProvider<Range1D> for TimeSeriesView {
-    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Range1D {
-        ctx.view_state()
-            .as_any()
-            .downcast_ref::<TimeSeriesViewState>()
-            .map(|s| make_range_sane(s.scalar_range))
-            .unwrap_or_default()
-    }
-}
-
-impl TypedComponentFallbackProvider<Color> for TimeSeriesView {
-    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Color {
-        // Color is a fairly common component, make sure this is the right context.
-        if ctx.archetype_name == Some(PlotBackground::name()) {
-            ctx.viewer_ctx().tokens().viewport_background.into()
-        } else {
-            Color::default()
-        }
-    }
-}
-
-impl TypedComponentFallbackProvider<Enabled> for TimeSeriesView {
-    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Enabled {
-        // Enabled is a fairly general component, make sure this is the right context.
-        if ctx.archetype_name == Some(PlotBackground::name()) {
-            Enabled(true.into())
-        } else {
-            Enabled::default()
-        }
-    }
-}
-
 /// Make sure the range is finite and positive, or `egui_plot` might be buggy.
 fn make_range_sane(y_range: Range1D) -> Range1D {
     let (mut start, mut end) = (y_range.start(), y_range.end());
@@ -1001,8 +999,6 @@ fn make_range_sane(y_range: Range1D) -> Range1D {
         Range1D::new(start, end)
     }
 }
-
-re_viewer_context::impl_component_fallback_provider!(TimeSeriesView => [Corner2D, Range1D, Color, Enabled]);
 
 #[test]
 fn test_help_view() {

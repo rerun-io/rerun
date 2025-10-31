@@ -58,6 +58,7 @@ impl<'a> ItemButtons<'a> {
         rect: &mut egui::Rect,
     ) {
         if self.buttons.is_empty() || !self.should_show_buttons(context) {
+            ui.skip_ahead_auto_ids(1); // Make sure the id of `ui` remains the same after the call regardless
             return;
         }
 

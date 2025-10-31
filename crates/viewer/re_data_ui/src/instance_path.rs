@@ -60,15 +60,22 @@ impl DataUi for InstancePath {
             return;
         };
 
-        let components_by_archetype = crate::sorted_component_list_by_archetype_for_ui(
-            ctx.reflection(),
-            &unordered_components,
-        );
+        let components_by_archetype = {
+            let recording_engine = ctx.recording_engine();
+            let store = recording_engine.store();
+            crate::sorted_component_list_by_archetype_for_ui(
+                ctx.reflection(),
+                unordered_components
+                    .iter()
+                    .filter_map(|c| store.entity_component_descriptor(entity_path, *c)),
+            )
+        };
 
-        let mut query_results =
-            db.storage_engine()
-                .cache()
-                .latest_at(query, entity_path, &unordered_components);
+        let mut query_results = db.storage_engine().cache().latest_at(
+            query,
+            entity_path,
+            unordered_components.iter().copied(),
+        );
 
         // Keep previously established order.
         let mut components_by_archetype: BTreeMap<
@@ -81,7 +88,12 @@ impl DataUi for InstancePath {
                     archetype,
                     components
                         .into_iter()
-                        .filter_map(|c| query_results.components.remove(&c).map(|chunk| (c, chunk)))
+                        .filter_map(|c| {
+                            query_results
+                                .components
+                                .remove(&c.component)
+                                .map(|chunk| (c, chunk))
+                        })
                         .collect(),
                 )
             })
@@ -133,7 +145,7 @@ impl DataUi for InstancePath {
                     .filter_map(|(archetype_name, archetype_components)| {
                         let instanced_archetype_components = archetype_components
                             .iter()
-                            .filter(|(descr, unit)| unit.num_instances(descr) > 1)
+                            .filter(|(descr, unit)| unit.num_instances(descr.component) > 1)
                             .cloned()
                             .collect_vec();
                         if instanced_archetype_components.is_empty() {
@@ -321,7 +333,7 @@ fn component_ui(
     let is_static = db
         .storage_engine()
         .store()
-        .entity_has_static_component(entity_path, component_descr);
+        .entity_has_static_component(entity_path, component_descr.component);
     let icon = if is_static {
         &re_ui::icons::COMPONENT_STATIC
     } else {
@@ -387,7 +399,7 @@ fn component_ui(
             component_type.data_ui_recording(ctx, ui, UiLayout::Tooltip);
         }
 
-        if let Some(array) = unit.component_batch_raw(component_descr) {
+        if let Some(array) = unit.component_batch_raw(component_descr.component) {
             re_ui::list_item::list_item_scope(ui, component_descr, |ui| {
                 ui.list_item_flat_noninteractive(
                     re_ui::list_item::PropertyContent::new("Data type").value_text(

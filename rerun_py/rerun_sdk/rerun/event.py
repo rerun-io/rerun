@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Literal, Union
+from typing import Literal
 
 # Type definitions based on `crates/viewer/re_viewer/src/event.rs`
 # NOTE: In Python, we need to update both the type definitions
@@ -50,7 +50,7 @@ class ContainerSelectionItem:
     container_name: str
 
 
-SelectionItem = Union[EntitySelectionItem, ViewSelectionItem, ContainerSelectionItem]
+SelectionItem = EntitySelectionItem | ViewSelectionItem | ContainerSelectionItem
 
 
 # Concrete event classes
@@ -107,14 +107,7 @@ class RecordingOpenEvent(ViewerEventBase):
 
 
 # Union type for all possible event types
-ViewerEvent = Union[
-    PlayEvent,
-    PauseEvent,
-    TimeUpdateEvent,
-    TimelineChangeEvent,
-    SelectionChangeEvent,
-    RecordingOpenEvent,
-]
+ViewerEvent = PlayEvent | PauseEvent | TimeUpdateEvent | TimelineChangeEvent | SelectionChangeEvent | RecordingOpenEvent
 
 
 def _viewer_event_from_json_str(json_str: str) -> ViewerEvent:

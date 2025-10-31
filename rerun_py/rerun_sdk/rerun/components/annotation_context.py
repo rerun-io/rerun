@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -66,16 +66,13 @@ class AnnotationContext(AnnotationContextExt, ComponentMixin):
 if TYPE_CHECKING:
     from .. import datatypes
 
-    AnnotationContextLike = Union[
-        AnnotationContext, datatypes.ClassDescriptionArrayLike, Sequence[datatypes.ClassDescriptionMapElemLike]
-    ]
+    AnnotationContextLike = (
+        AnnotationContext | datatypes.ClassDescriptionArrayLike | Sequence[datatypes.ClassDescriptionMapElemLike]
+    )
 else:
     AnnotationContextLike = Any
 
-AnnotationContextArrayLike = Union[
-    AnnotationContext,
-    Sequence[AnnotationContextLike],
-]
+AnnotationContextArrayLike = AnnotationContext | Sequence[AnnotationContextLike]
 
 
 class AnnotationContextBatch(BaseBatch[AnnotationContextArrayLike], ComponentBatchMixin):

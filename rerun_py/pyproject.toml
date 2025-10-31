@@ -24,7 +24,7 @@ dependencies = [
 description = "The Rerun Logging SDK"
 keywords = ["computer-vision", "logging", "rerun"]
 name = "rerun-sdk"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dynamic = ["version"]
 
 [[project.authors]]
@@ -35,9 +35,9 @@ name = "Rerun.io"
 text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
-tests = ["pytest==8.4.1"]
+tests = ["pytest==8.4.2", "syrupy==5.0.0"]
 notebook = ["rerun-notebook==0.27.0-alpha.1+dev"]
-datafusion = ["datafusion==49.0.0"]
+datafusion = ["datafusion==50.1.0"]
 all = ["rerun-sdk[notebook]", "rerun-sdk[datafusion]"]
 
 [project.urls]
@@ -55,8 +55,6 @@ rerun = "rerun_cli.__main__:main"
 
 [tool.ruff]
 # https://beta.ruff.rs/docs/configuration/
-
-# target-version = "py38"  # inferred from requires-python, see https://beta.ruff.rs/docs/settings/#target-version
 
 # Enable unsafe fixes to allow ruff to apply fixes that may change the behavior of the code.
 # This is needed because otherwise ruff will not be able to trim whitespaces in (codegened) docstrings.

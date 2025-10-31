@@ -1,5 +1,7 @@
 use egui::NumExt as _;
 use egui_extras::Column;
+
+use re_format::time::format_relative_timestamp_secs;
 use re_renderer::{
     external::re_video::VideoLoadError, resource_managers::SourceImageDataFormat,
     video::VideoFrameTexture,
@@ -298,7 +300,7 @@ fn timestamp_ui(
     let response = ui.monospace(re_format::format_int(timestamp.0));
     if let Some(timescale) = timescale {
         response.on_hover_ui(|ui| {
-            ui.monospace(re_format::format_timestamp_secs(
+            ui.monospace(format_relative_timestamp_secs(
                 timestamp.into_secs(timescale),
             ));
         });
@@ -444,8 +446,8 @@ fn frame_info_ui(
     if let Some(timescale) = video_descr.timescale {
         ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
             "{} - {}",
-            re_format::format_timestamp_secs(presentation_time_range.start.into_secs(timescale)),
-            re_format::format_timestamp_secs(presentation_time_range.end.into_secs(timescale)),
+            format_relative_timestamp_secs(presentation_time_range.start.into_secs(timescale)),
+            format_relative_timestamp_secs(presentation_time_range.end.into_secs(timescale)),
         )))
     } else {
         ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
@@ -606,7 +608,7 @@ impl VideoUi {
                     c.entry(
                         debug_name,
                         blob_row_id,
-                        blob_component_descriptor,
+                        blob_component_descriptor.component,
                         blob,
                         media_type,
                         ctx.app_options().video_decoder_settings(),

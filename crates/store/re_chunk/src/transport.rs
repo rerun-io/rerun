@@ -4,7 +4,7 @@ use nohash_hasher::IntMap;
 
 use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
 use re_byte_size::SizeBytes as _;
-use re_types_core::{ComponentDescriptor, arrow_helpers::as_array_ref};
+use re_types_core::{ComponentDescriptor, SerializedComponentColumn, arrow_helpers::as_array_ref};
 
 use crate::{Chunk, ChunkError, ChunkResult, TimeColumn, chunk::ChunkComponents};
 
@@ -82,14 +82,17 @@ impl Chunk {
             re_tracing::profile_scope!("components");
 
             let mut components = components
-                .iter()
-                .map(|(component_desc, list_array)| {
-                    let list_array = ArrowListArray::from(list_array.clone());
-                    let ComponentDescriptor {
-                        archetype: archetype_name,
-                        component,
-                        component_type,
-                    } = *component_desc;
+                .values()
+                .map(|column| {
+                    let SerializedComponentColumn {
+                        list_array,
+                        descriptor:
+                            ComponentDescriptor {
+                                archetype,
+                                component,
+                                component_type,
+                            },
+                    } = column.clone();
 
                     if let Some(c) = component_type {
                         c.sanity_check();
@@ -99,7 +102,7 @@ impl Chunk {
                         store_datatype: list_array.data_type().clone(),
                         entity_path: entity_path.clone(),
 
-                        archetype: archetype_name,
+                        archetype,
                         component,
                         component_type,
 
@@ -206,10 +209,17 @@ impl Chunk {
                     component_type: schema.component_type,
                 };
 
-                if components.insert(component_desc, column.clone()).is_some() {
+                if components
+                    .insert(SerializedComponentColumn::new(
+                        column.clone(),
+                        component_desc,
+                    ))
+                    .is_some()
+                {
                     return Err(ChunkError::Malformed {
                         reason: format!(
-                            "component column '{schema:?}' was specified more than once"
+                            "component column '{:?}' was specified more than once",
+                            schema.component,
                         ),
                     });
                 }

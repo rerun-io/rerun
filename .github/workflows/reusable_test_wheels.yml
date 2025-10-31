@@ -27,7 +27,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.9"
+  PYTHON_VERSION: "3.10"
 
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
@@ -81,7 +81,7 @@ jobs:
               container="'rerunio/ci_docker:0.16.0'"
               ;;
             windows-x64)
-              runner="windows-latest-8-cores"
+              runner="windows-latest-16-cores"
               target="x86_64-pc-windows-msvc"
               container="null"
               ;;
@@ -105,6 +105,7 @@ jobs:
 
   test-wheels:
     name: Test Wheels (${{ needs.set-config.outputs.RUNNER }})
+    timeout-minutes: 60
 
     needs: [set-config]
 

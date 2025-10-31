@@ -30,7 +30,7 @@ impl crate::DataLoader for RrdLoader {
 
         let mut extension = crate::extension(&filepath);
         if !matches!(extension.as_str(), "rbl" | "rrd") {
-            if filepath.is_file() {
+            if filepath.is_file() || filepath.is_dir() {
                 // NOTE: blueprints and recordings have the same file format
                 return Err(crate::DataLoaderError::Incompatible(filepath.clone()));
             } else {
@@ -135,8 +135,10 @@ impl crate::DataLoader for RrdLoader {
             Ok(decoder) => decoder,
             Err(err) => match err {
                 // simply not interested
-                re_log_encoding::DecodeError::NotAnRrd { .. }
-                | re_log_encoding::DecodeError::Options(_) => return Ok(()),
+                re_log_encoding::DecodeError::Codec(
+                    re_log_encoding::rrd::CodecError::NotAnRrd(_)
+                    | re_log_encoding::rrd::CodecError::InvalidOptions(_),
+                ) => return Ok(()),
                 _ => return Err(err.into()),
             },
         };
@@ -380,9 +382,9 @@ mod tests {
             .open(rrd_file_path.to_str().unwrap())
             .unwrap();
 
-        let mut encoder = Encoder::new(
+        let mut encoder = Encoder::new_eager(
             re_build_info::CrateVersion::LOCAL,
-            re_log_encoding::EncodingOptions::PROTOBUF_UNCOMPRESSED,
+            re_log_encoding::rrd::EncodingOptions::PROTOBUF_UNCOMPRESSED,
             rrd_file,
         )
         .unwrap();

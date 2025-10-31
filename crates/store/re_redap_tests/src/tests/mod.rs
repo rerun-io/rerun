@@ -1,9 +1,32 @@
+mod column_projection;
 mod common;
+#[cfg(feature = "lance")]
+mod create_table;
+#[cfg(not(feature = "lance"))]
+mod create_table {
+    // This is a stub test so that we do not have issues with setting
+    // --no-default-options when running tests
+    pub async fn create_table_entry(
+        _service: impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
+    ) {
+    }
+}
 mod dataset_schema;
 mod entries_table;
 mod fetch_chunks;
 mod query_dataset;
 mod register_partition;
+#[cfg(feature = "lance")]
+mod write_table;
+#[cfg(not(feature = "lance"))]
+mod write_table {
+    // This is a stub test so that we do not have issues with setting
+    // --no-default-options when running tests
+    pub async fn write_table(
+        _service: impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
+    ) {
+    }
+}
 
 macro_rules! define_redap_tests {
     (
@@ -44,6 +67,9 @@ macro_rules! define_redap_tests {
 }
 
 define_redap_tests! {
+    column_projection::test_partition_table_column_projections,
+    column_projection::test_dataset_manifest_column_projections,
+    create_table::create_table_entry,
     dataset_schema::empty_dataset_schema,
     dataset_schema::simple_dataset_schema,
     entries_table::list_entries_table,
@@ -56,5 +82,8 @@ define_redap_tests! {
     register_partition::register_and_scan_empty_dataset,
     register_partition::register_and_scan_simple_dataset,
     register_partition::register_and_scan_simple_dataset_with_layers,
-    register_partition::register_with_prefix
+    register_partition::register_and_scan_simple_dataset_with_properties,
+    register_partition::register_and_scan_simple_dataset_with_properties_out_of_order,
+    register_partition::register_with_prefix,
+    write_table::write_table
 }

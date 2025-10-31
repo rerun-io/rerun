@@ -121,6 +121,7 @@ jobs:
 
   rs-build-rerun_c:
     name: Build rerun_c (${{ needs.set-config.outputs.RUNNER }})
+    timeout-minutes: 60
 
     needs: [set-config]
 

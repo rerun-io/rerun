@@ -10,7 +10,12 @@ use tracing::instrument;
 use crate::catalog::PyCatalogClientInternal;
 use crate::utils::get_tokio_runtime;
 
-#[pyclass(frozen, name = "DataFusionTable")] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass( // NOLINT: ignore[py-cls-eq] non-trivial implementation
+    frozen,
+    name = "DataFusionTable",
+    module = "rerun_bindings.rerun_bindings"
+)]
+
 pub struct PyDataFusionTable {
     pub provider: Arc<dyn TableProvider + Send>,
     pub name: String,
@@ -43,14 +48,7 @@ impl PyDataFusionTable {
 
         drop(client);
 
-        let name = self_.name.clone();
-
-        // We're fine with this failing.
-        ctx.call_method1("deregister_table", (name.clone(),))?;
-
-        ctx.call_method1("register_table_provider", (name.clone(), self_))?;
-
-        let df = ctx.call_method1("table", (name.clone(),))?;
+        let df = ctx.call_method1("read_table", (self_,))?;
 
         Ok(df)
     }

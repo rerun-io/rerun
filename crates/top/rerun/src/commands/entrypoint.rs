@@ -729,7 +729,7 @@ fn run_impl(
     #[cfg(feature = "native_viewer")] profiler: re_tracing::Profiler,
 ) -> anyhow::Result<()> {
     //TODO(#10068): populate token passed with `--token`
-    let connection_registry = re_redap_client::ConnectionRegistry::new();
+    let connection_registry = re_redap_client::ConnectionRegistry::new_with_stored_credentials();
 
     let server_addr = std::net::SocketAddr::new(args.bind, args.port);
 
@@ -1344,11 +1344,14 @@ fn stream_to_rrd_on_disk(
 
     re_log::info!("Saving incoming log stream to {path:?}. Abort with Ctrl-C.");
 
-    let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
+    let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
     let file =
         std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-    let mut encoder =
-        re_log_encoding::Encoder::new(re_build_info::CrateVersion::LOCAL, encoding_options, file)?;
+    let mut encoder = re_log_encoding::Encoder::new_eager(
+        re_build_info::CrateVersion::LOCAL,
+        encoding_options,
+        file,
+    )?;
 
     loop {
         if let Ok(msg) = rx.recv() {

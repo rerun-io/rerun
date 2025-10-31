@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Union
+from typing import Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -69,10 +69,7 @@ class TimeRange:
 
 
 TimeRangeLike = TimeRange
-TimeRangeArrayLike = Union[
-    TimeRange,
-    Sequence[TimeRangeLike],
-]
+TimeRangeArrayLike = TimeRange | Sequence[TimeRangeLike]
 
 
 class TimeRangeBatch(BaseBatch[TimeRangeArrayLike]):

@@ -2,6 +2,7 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use egui::Modifiers;
 use egui::PointerButton;
+use egui::accesskit::Role;
 use egui::accesskit::Toggled;
 use egui_kittest::kittest::NodeT as _;
 use egui_kittest::kittest::Queryable as _;
@@ -28,8 +29,12 @@ use re_viewer::{
 use re_viewer_context::ContainerId;
 use re_viewport_blueprint::ViewportBlueprint;
 
+// use crate::GetSection;
+// use crate::GetSection as _;
+use crate::ViewerSection;
+
 // Kittest harness utilities specific to the Rerun app.
-pub trait HarnessExt {
+pub trait HarnessExt<'h> {
     // Initializes the chuck store with a new, empty recording and blueprint.
     fn init_recording(&mut self);
 
@@ -63,21 +68,16 @@ pub trait HarnessExt {
         build_chunk: impl FnOnce(ChunkBuilder) -> ChunkBuilder,
     );
 
-    // Finds the nth node with a given label
-    fn get_nth_label<'a>(&'a mut self, label: &'a str, index: usize) -> egui_kittest::Node<'a>;
+    // Get the position of a node in the UI by its label.
+    fn get_panel_position(&mut self, label: &str) -> egui::Rect;
 
-    // Clicks a node in the UI by its label.
-    fn click_label(&mut self, label: &str);
-    fn right_click_label(&mut self, label: &str);
-    fn click_nth_label(&mut self, label: &str, index: usize);
-    fn right_click_nth_label(&mut self, label: &str, index: usize);
-    fn click_nth_label_modifiers(&mut self, label: &str, index: usize, modifiers: Modifiers);
-    fn hover_label_contains(&mut self, label: &str);
-    fn hover_nth_label(&mut self, label: &str, index: usize);
+    // Drag-and-drop functions based on position
+    fn drag_at(&mut self, pos: egui::Pos2);
+    fn hover_at(&mut self, pos: egui::Pos2);
+    fn drop_at(&mut self, pos: egui::Pos2);
 
-    // Drag-and-drop functions. You can use `hover` between `drag` and `drop`.
-    fn drag_nth_label(&mut self, label: &str, index: usize);
-    fn drop_nth_label(&mut self, label: &str, index: usize);
+    // Changes the value of a dropdown menu.
+    fn change_dropdown_value(&mut self, dropdown_label: &str, value: &str);
 
     // Takes a snapshot of the current app state with good-enough snapshot options.
     fn snapshot_app(&mut self, snapshot_name: &str);
@@ -99,9 +99,72 @@ pub trait HarnessExt {
     fn set_time_panel_opened(&mut self, opened: bool) {
         self.set_panel_opened("Time panel toggle", opened);
     }
+
+    // Get a viewer section, eg. blueprint tree or selection panel.
+    fn section<'a>(&'a mut self, section_label: &'a str) -> ViewerSection<'a, 'h>
+    where
+        'h: 'a;
+
+    // The viewer section whose root node is the root of the app.
+    fn root_section<'a>(&'a mut self) -> ViewerSection<'a, 'h>
+    where
+        'h: 'a;
+
+    // The viewer section whose root node is the blueprint tree.
+    fn blueprint_tree<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
+        self.section("_blueprint_tree")
+    }
+
+    // The viewer section whose root node is the streams tree.
+    fn streams_tree<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
+        self.section("_streams_tree")
+    }
+
+    // The viewer section whose root node is the selection panel.
+    fn selection_panel<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
+        self.section("_selection_panel")
+    }
+
+    // Convenience proxy functions to the root section:
+
+    fn click_label(&mut self, label: &str) {
+        self.root_section().click_label(label);
+    }
+
+    fn right_click_label(&mut self, label: &str) {
+        self.root_section().right_click_label(label);
+    }
+
+    fn click_label_contains(&mut self, label: &str) {
+        self.root_section().click_label_contains(label);
+    }
+
+    fn click_nth_label(&mut self, label: &str, index: usize) {
+        self.root_section().click_nth_label(label, index);
+    }
+
+    fn right_click_nth_label(&mut self, label: &str, index: usize) {
+        self.root_section().right_click_nth_label(label, index);
+    }
+
+    fn hover_label_contains(&mut self, label: &str) {
+        self.root_section().hover_label_contains(label);
+    }
+
+    fn hover_nth_label(&mut self, label: &str, index: usize) {
+        self.root_section().hover_nth_label(label, index);
+    }
+
+    fn drag_nth_label(&mut self, label: &str, index: usize) {
+        self.root_section().drag_nth_label(label, index);
+    }
+
+    fn drop_nth_label(&mut self, label: &str, index: usize) {
+        self.root_section().drop_nth_label(label, index);
+    }
 }
 
-impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
+impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
     fn clear_current_blueprint(&mut self) {
         self.setup_viewport_blueprint(|_viewer_context, blueprint| {
             for item in blueprint.contents_iter() {
@@ -229,77 +292,40 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
             .set_cloned_blueprint_active_for_app(&blueprint_id)
             .expect("Failed to set blueprint as active");
 
-        app.command_sender.send_system(SystemCommand::SetSelection(
-            re_viewer_context::Item::StoreId(recording_store_id.clone()).into(),
+        app.command_sender.send_system(SystemCommand::set_selection(
+            re_viewer_context::Item::StoreId(recording_store_id.clone()),
         ));
         self.run_ok();
     }
 
-    fn click_label(&mut self, label: &str) {
-        self.get_by_label(label).click();
-        self.run_ok();
+    fn get_panel_position(&mut self, label: &str) -> egui::Rect {
+        self.get_by_role_and_label(Role::Pane, label).rect()
     }
 
-    fn right_click_label(&mut self, label: &str) {
-        self.get_by_label(label).click_secondary();
-        self.run_ok();
-    }
-
-    fn get_nth_label<'a>(&'a mut self, label: &'a str, index: usize) -> egui_kittest::Node<'a> {
-        let mut nodes = self.get_all_by_label(label).collect::<Vec<_>>();
-        assert!(
-            index < nodes.len(),
-            "Failed to find label '{label}' #{index}, there are only {} nodes:\n{nodes:#?}",
-            nodes.len()
-        );
-        nodes.swap_remove(index)
-    }
-
-    fn click_nth_label(&mut self, label: &str, index: usize) {
-        self.click_nth_label_modifiers(label, index, Modifiers::NONE);
-    }
-
-    fn right_click_nth_label(&mut self, label: &str, index: usize) {
-        self.get_nth_label(label, index).click_secondary();
-        self.run_ok();
-    }
-
-    fn hover_label_contains(&mut self, label: &str) {
-        self.get_by_label_contains(label).hover();
-        self.run_ok();
-    }
-
-    fn hover_nth_label(&mut self, label: &str, index: usize) {
-        self.get_nth_label(label, index).hover();
-        self.run_ok();
-    }
-
-    fn click_nth_label_modifiers(&mut self, label: &str, index: usize, modifiers: Modifiers) {
-        self.get_nth_label(label, index).click_modifiers(modifiers);
-        self.run_ok();
-    }
-
-    fn drag_nth_label(&mut self, label: &str, index: usize) {
-        let node = self.get_nth_label(label, index);
-        let event = egui::Event::PointerButton {
-            pos: node.rect().center(),
+    fn drag_at(&mut self, pos: egui::Pos2) {
+        self.event(egui::Event::PointerButton {
+            pos,
             button: PointerButton::Primary,
             pressed: true,
             modifiers: Modifiers::NONE,
-        };
-        self.event(event);
+        });
+        self.run_ok();
     }
 
-    fn drop_nth_label(&mut self, label: &str, index: usize) {
-        let node = self.get_nth_label(label, index);
-        let event = egui::Event::PointerButton {
-            pos: node.rect().center(),
+    fn hover_at(&mut self, pos: egui::Pos2) {
+        self.event(egui::Event::PointerMoved(pos));
+        self.run_ok();
+    }
+
+    fn drop_at(&mut self, pos: egui::Pos2) {
+        self.event(egui::Event::PointerButton {
+            pos,
             button: PointerButton::Primary,
             pressed: false,
             modifiers: Modifiers::NONE,
-        };
-        self.event(event);
+        });
         self.remove_cursor();
+        self.run_ok();
     }
 
     fn debug_viewer_state(&mut self) {
@@ -321,6 +347,13 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
                 _viewer_context.global_context.display_mode
             );
         });
+    }
+
+    fn change_dropdown_value(&mut self, dropdown_label: &str, value: &str) {
+        let node = self.get_by_role_and_label(Role::ComboBox, dropdown_label);
+        node.click();
+        self.run_ok();
+        self.click_label(value);
     }
 
     fn snapshot_app(&mut self, snapshot_name: &str) {
@@ -370,5 +403,25 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         }
         self.remove_cursor();
         self.run_ok();
+    }
+
+    fn section<'a>(&'a mut self, section_label: &'a str) -> ViewerSection<'a, 'h>
+    where
+        'h: 'a,
+    {
+        ViewerSection::<'a, 'h> {
+            harness: self,
+            section_label: Some(section_label),
+        }
+    }
+
+    fn root_section<'a>(&'a mut self) -> ViewerSection<'a, 'h>
+    where
+        'h: 'a,
+    {
+        ViewerSection::<'a, 'h> {
+            harness: self,
+            section_label: None,
+        }
     }
 }

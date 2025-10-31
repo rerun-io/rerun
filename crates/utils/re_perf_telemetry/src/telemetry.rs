@@ -47,7 +47,7 @@ pub enum TelemetryDropBehavior {
 }
 
 impl Telemetry {
-    pub fn flush(&mut self) {
+    pub fn flush(&self) {
         let Self {
             logs,
             traces,
@@ -75,7 +75,7 @@ impl Telemetry {
         }
     }
 
-    pub fn shutdown(&mut self) {
+    pub fn shutdown(&self) {
         // NOTE: We do both `force_flush` and `shutdown` because, even though they both flush the
         // pipeline, sometimes one has better error messages than the other (although, more often
         // than not, they both provide useless errors and you should make sure to look into the
@@ -159,6 +159,8 @@ impl Telemetry {
                     );
                 }
             }
+
+            eprintln!("Telemetry disabled. All logging will be ignored.");
 
             return Ok(Self {
                 logs: None,
@@ -262,7 +264,7 @@ impl Telemetry {
             // Everything is generically typed, which is why this is such a nightmare to do.
             macro_rules! handle_format {
                 ($format:ident) => {{
-                    let layer = layer.event_format(tracing_subscriber::fmt::format().$format());
+                    let layer = layer.$format();
                     if log_test_output {
                         layer.with_test_writer().boxed()
                     } else {

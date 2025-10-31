@@ -190,7 +190,7 @@ pub fn loop_selection_ui(
         if is_pointer_in_timeline
             && !is_anything_being_dragged
             && ui.input(|i| i.pointer.primary_down() && i.modifiers.shift_only())
-            && let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x)
+            && let Some(time) = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
         {
             time_commands.push(TimeControlCommand::SetLoopSelection(
                 AbsoluteTimeRangeF::point(time).to_int(),
@@ -255,19 +255,9 @@ fn drag_right_loop_selection_edge(
     selected_range: &mut AbsoluteTimeRangeF,
     right_edge_id: Id,
 ) -> Option<()> {
-    use egui::emath::smart_aim::best_in_range_f64;
     let pointer_pos = ui.input(|i| i.pointer.hover_pos())?;
-    let aim_radius = ui.input(|i| i.aim_radius());
-
-    let time_low = time_ranges_ui.time_from_x_f32(pointer_pos.x - aim_radius)?;
-    let time_high = time_ranges_ui.time_from_x_f32(pointer_pos.x + aim_radius)?;
-
-    // TODO(emilk): snap to absolute time too
-    let low_length = selected_range.max - time_low;
-    let high_length = selected_range.max - time_high;
-    let best_length = TimeReal::from(best_in_range_f64(low_length.as_f64(), high_length.as_f64()));
-
-    selected_range.min = selected_range.max - best_length;
+    let time = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)?;
+    selected_range.min = time;
 
     if selected_range.min > selected_range.max {
         std::mem::swap(&mut selected_range.min, &mut selected_range.max);
@@ -283,19 +273,9 @@ fn drag_left_loop_selection_edge(
     selected_range: &mut AbsoluteTimeRangeF,
     left_edge_id: Id,
 ) -> Option<()> {
-    use egui::emath::smart_aim::best_in_range_f64;
     let pointer_pos = ui.input(|i| i.pointer.hover_pos())?;
-    let aim_radius = ui.input(|i| i.aim_radius());
-
-    let time_low = time_ranges_ui.time_from_x_f32(pointer_pos.x - aim_radius)?;
-    let time_high = time_ranges_ui.time_from_x_f32(pointer_pos.x + aim_radius)?;
-
-    // TODO(emilk): snap to absolute time too
-    let low_length = time_low - selected_range.min;
-    let high_length = time_high - selected_range.min;
-    let best_length = TimeReal::from(best_in_range_f64(low_length.as_f64(), high_length.as_f64()));
-
-    selected_range.max = selected_range.min + best_length;
+    let time = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)?;
+    selected_range.max = time;
 
     if selected_range.min > selected_range.max {
         std::mem::swap(&mut selected_range.min, &mut selected_range.max);
@@ -315,8 +295,8 @@ fn on_drag_loop_selection(
     let min_x = time_ranges_ui.x_from_time_f32(selected_range.min)? + pointer_delta.x;
     let max_x = time_ranges_ui.x_from_time_f32(selected_range.max)? + pointer_delta.x;
 
-    let min_time = time_ranges_ui.time_from_x_f32(min_x)?;
-    let max_time = time_ranges_ui.time_from_x_f32(max_x)?;
+    let min_time = time_ranges_ui.snapped_time_from_x(ui, min_x)?;
+    let max_time = time_ranges_ui.snapped_time_from_x(ui, max_x)?;
 
     let mut new_range = AbsoluteTimeRangeF::new(min_time, max_time);
 

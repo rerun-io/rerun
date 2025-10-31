@@ -22,10 +22,10 @@ use re_ui::Help;
 
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintContext, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DataQueryResult, DisplayMode, GlobalContext, Item, ItemCollection,
-    NeedsRepaint, StoreHub, SystemCommand, SystemCommandSender as _, TimeControl,
-    TimeControlCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
-    blueprint_timeline, command_channel,
+    ComponentUiRegistry, DataQueryResult, DisplayMode, FallbackProviderRegistry, GlobalContext,
+    Item, ItemCollection, NeedsRepaint, StoreHub, SystemCommand, SystemCommandSender as _,
+    TimeControl, TimeControlCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates,
+    ViewerContext, blueprint_timeline, command_channel,
 };
 
 pub mod external {
@@ -68,6 +68,7 @@ pub struct TestContext {
 
     pub blueprint_query: LatestAtQuery,
     pub component_ui_registry: ComponentUiRegistry,
+    pub component_fallback_registry: FallbackProviderRegistry,
     pub reflection: Reflection,
 
     pub connection_registry: re_redap_client::ConnectionRegistryHandle,
@@ -205,6 +206,9 @@ impl TestContext {
 
         let component_ui_registry = ComponentUiRegistry::new();
 
+        let component_fallback_registry =
+            re_component_fallbacks::create_component_fallback_registry();
+
         let reflection =
             re_types::reflection::generate_reflection().expect("Failed to generate reflection");
 
@@ -219,8 +223,11 @@ impl TestContext {
             blueprint_query,
             query_results: Default::default(),
             component_ui_registry,
+            component_fallback_registry,
             reflection,
-            connection_registry: re_redap_client::ConnectionRegistry::new(),
+            // TODO(jan): We don't use CLI credentials in tests, it would be nice to test at some point.
+            connection_registry:
+                re_redap_client::ConnectionRegistry::new_without_stored_credentials(),
 
             command_sender,
             command_receiver,
@@ -459,7 +466,7 @@ impl TestContext {
     /// Register a view class.
     pub fn register_view_class<T: ViewClass + Default + 'static>(&mut self) {
         self.view_class_registry
-            .add_class::<T>()
+            .add_class::<T>(&mut self.component_fallback_registry)
             .expect("registering a class should succeed");
     }
 
@@ -517,6 +524,7 @@ impl TestContext {
                 ),
             },
             component_ui_registry: &self.component_ui_registry,
+            component_fallback_registry: &self.component_fallback_registry,
             view_class_registry: &self.view_class_registry,
             connected_receivers: &Default::default(),
             store_context: &store_context,
@@ -641,7 +649,7 @@ impl TestContext {
             };
 
             self.command_sender
-                .send_system(SystemCommand::SetSelection(item.clone().into()));
+                .send_system(SystemCommand::set_selection(item.clone()));
         }
 
         if let Some((timeline, timecell)) = when {
@@ -694,8 +702,8 @@ impl TestContext {
                         .drop_entity_path_recursive(&entity_path);
                 }
 
-                SystemCommand::SetSelection(item) => {
-                    self.selection_state.lock().set_selection(item);
+                SystemCommand::SetSelection(set) => {
+                    self.selection_state.lock().set_selection(set);
                 }
 
                 SystemCommand::SetFocus(item) => {
@@ -795,7 +803,7 @@ impl TestContext {
         };
         let messages = recording_entity_db.to_messages(None);
 
-        let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
+        let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
         re_log_encoding::Encoder::encode_into(
             re_build_info::CrateVersion::LOCAL,
             encoding_options,
@@ -816,7 +824,7 @@ impl TestContext {
         };
         let messages = blueprint_entity_db.to_messages(None);
 
-        let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
+        let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
         re_log_encoding::Encoder::encode_into(
             re_build_info::CrateVersion::LOCAL,
             encoding_options,

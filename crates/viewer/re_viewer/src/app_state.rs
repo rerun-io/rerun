@@ -15,10 +15,10 @@ use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintContext,
     BlueprintUndoState, CommandSender, ComponentUiRegistry, DataQueryResult, DisplayMode,
-    DragAndDropManager, GlobalContext, IndicatedEntities, Item, MaybeVisualizableEntities,
-    PerVisualizer, PlayState, SelectionChange, StorageContext, StoreContext, StoreHub,
-    SystemCommand, SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand,
-    ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
+    DragAndDropManager, FallbackProviderRegistry, GlobalContext, IndicatedEntities, Item,
+    MaybeVisualizableEntities, PerVisualizer, PlayState, SelectionChange, StorageContext,
+    StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, TableStore, TimeControl,
+    TimeControlCommand, ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
     open_url::{self, ViewerOpenUrl},
 };
 use re_viewport::ViewportUi;
@@ -178,6 +178,7 @@ impl AppState {
         storage_context: &StorageContext<'_>,
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
+        component_fallback_registry: &FallbackProviderRegistry,
         view_class_registry: &ViewClassRegistry,
         rx_log: &ReceiveSet<DataSourceMessage>,
         command_sender: &CommandSender,
@@ -349,6 +350,7 @@ impl AppState {
                         display_mode,
                     },
                     component_ui_registry,
+                    component_fallback_registry,
                     view_class_registry,
                     connected_receivers: rx_log,
                     store_context,
@@ -404,6 +406,7 @@ impl AppState {
                         display_mode,
                     },
                     component_ui_registry,
+                    component_fallback_registry,
                     view_class_registry,
                     connected_receivers: rx_log,
                     store_context,
@@ -527,7 +530,7 @@ impl AppState {
                         ui.ctx().content_rect().width(),
                     ));
 
-                left_panel.show_animated_inside(
+                let left_panel_response = left_panel.show_animated_inside(
                     ui,
                     app_blueprint.blueprint_panel_state().is_expanded(),
                     |ui: &mut egui::Ui| {
@@ -589,6 +592,11 @@ impl AppState {
                         }
                     },
                 );
+                if let Some(left_panel_response) = left_panel_response {
+                    left_panel_response.response.widget_info(|| {
+                        egui::WidgetInfo::labeled(egui::WidgetType::Panel, true, "blueprint_panel")
+                    });
+                }
 
                 //
                 // Viewport
@@ -708,6 +716,8 @@ impl AppState {
                 .selected_items()
                 .copy_to_clipboard(ui.ctx());
         }
+
+        self.selection_state.on_frame_end();
 
         // Reset the focused item.
         self.focused_item = None;

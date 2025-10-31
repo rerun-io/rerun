@@ -1,6 +1,7 @@
 use crate::{ArchetypeName, ComponentDescriptor, ComponentType, Loggable, SerializationResult};
 
-use arrow::array::ListArray as ArrowListArray;
+use arrow::array::{ListArray as ArrowListArray, ListArray};
+use arrow::buffer::OffsetBuffer;
 
 // used in docstrings:
 #[allow(clippy::allow_attributes, unused_imports, clippy::unused_trait_names)]
@@ -188,7 +189,7 @@ impl SerializedComponentBatch {
 /// A column's worth of component data.
 ///
 /// If a [`SerializedComponentBatch`] represents one row's worth of data
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SerializedComponentColumn {
     pub list_array: arrow::array::ListArray,
 
@@ -197,6 +198,14 @@ pub struct SerializedComponentColumn {
 }
 
 impl SerializedComponentColumn {
+    #[inline]
+    pub fn new(list_array: arrow::array::ListArray, descriptor: ComponentDescriptor) -> Self {
+        Self {
+            list_array,
+            descriptor,
+        }
+    }
+
     /// Repartitions the component data into multiple sub-batches, ignoring the previous partitioning.
     ///
     /// The specified `lengths` must sum to the total length of the component batch.
@@ -209,12 +218,19 @@ impl SerializedComponentColumn {
             descriptor,
         } = self;
 
-        let list_array = re_arrow_util::repartition_list_array(list_array, lengths)?;
+        let list_array = repartition_list_array(list_array, lengths)?;
 
         Ok(Self {
             list_array,
             descriptor,
         })
+    }
+}
+
+impl re_byte_size::SizeBytes for SerializedComponentColumn {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.list_array.heap_size_bytes() + self.descriptor.heap_size_bytes()
     }
 }
 
@@ -240,6 +256,24 @@ impl From<SerializedComponentBatch> for SerializedComponentColumn {
             descriptor: batch.descriptor,
         }
     }
+}
+
+/// Repartitions a [`ListArray`] according to the specified `lengths`, ignoring previous partitioning.
+///
+/// The specified `lengths` must sum to the total length underlying values (i.e. the child array).
+///
+/// The validity of the values is ignored.
+#[inline]
+pub fn repartition_list_array(
+    list_array: ListArray,
+    lengths: impl IntoIterator<Item = usize>,
+) -> arrow::error::Result<ListArray> {
+    let (field, _offsets, values, _nulls) = list_array.into_parts();
+
+    let offsets = OffsetBuffer::from_lengths(lengths);
+    let nulls = None;
+
+    ListArray::try_new(field, offsets, values, nulls)
 }
 
 impl SerializedComponentBatch {

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import rerun as rr
@@ -50,11 +50,11 @@ def test_arrows3d() -> None:
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
         vectors = cast("Vec3DArrayLike", vectors)
-        origins = cast("Optional[Vec3DArrayLike]", origins)
-        radii = cast("Optional[Float32ArrayLike]", radii)
-        colors = cast("Optional[Rgba32ArrayLike]", colors)
-        labels = cast("Optional[Utf8ArrayLike]", labels)
-        class_ids = cast("Optional[ClassIdArrayLike]", class_ids)
+        origins = cast("Vec3DArrayLike | None", origins)
+        radii = cast("Float32ArrayLike | None", radii)
+        colors = cast("Rgba32ArrayLike | None", colors)
+        labels = cast("Utf8ArrayLike | None", labels)
+        class_ids = cast("ClassIdArrayLike | None", class_ids)
 
         print(
             f"E: rr.Arrows3D(\n"

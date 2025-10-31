@@ -26,14 +26,14 @@ use pyo3::exceptions::{
 use re_redap_client::ApiErrorKind;
 
 pyo3::create_exception!(
-    rerun_bindings,
+    rerun_bindings.rerun_bindings,
     NotFoundError,
     PyException,
     "Raised when the requested resource is not found."
 );
 
 pyo3::create_exception!(
-    rerun_bindings,
+    rerun_bindings.rerun_bindings,
     AlreadyExistsError,
     PyException,
     "Raised when trying to create a resource that already exists."
@@ -74,7 +74,7 @@ enum ExternalError {
     DatafusionError(Box<datafusion::error::DataFusionError>),
 
     #[error(transparent)]
-    CodecError(#[from] re_log_encoding::codec::CodecError),
+    CodecError(#[from] re_log_encoding::rrd::CodecError),
 
     #[error(transparent)]
     SorbetError(#[from] re_sorbet::SorbetError),

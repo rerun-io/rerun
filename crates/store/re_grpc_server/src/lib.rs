@@ -13,7 +13,7 @@ use tonic::transport::{Server, server::TcpIncoming};
 use tower_http::cors::CorsLayer;
 
 use re_byte_size::SizeBytes;
-use re_log_encoding::codec::wire::decoder::Decode as _;
+use re_log_encoding::{ToApplication as _, ToTransport as _};
 use re_log_types::{DataSourceMessage, TableMsg};
 use re_protos::sdk_comms::v1alpha1::{
     ReadTablesRequest, ReadTablesResponse, WriteMessagesRequest, WriteTableRequest,
@@ -240,10 +240,7 @@ pub async fn serve_from_channel(
                 break;
             };
 
-            let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(
-                msg,
-                re_log_encoding::codec::Compression::LZ4,
-            ) {
+            let msg = match msg.to_transport(re_log_encoding::rrd::Compression::LZ4) {
                 Ok(msg) => msg,
                 Err(err) => {
                     re_log::error!("failed to encode message: {err}");
@@ -251,7 +248,7 @@ pub async fn serve_from_channel(
                 }
             };
 
-            if event_tx.blocking_send(Event::Message(msg)).is_err() {
+            if event_tx.blocking_send(Event::Message(msg.into())).is_err() {
                 re_log::debug!("shut down, closing sender");
                 break;
             }
@@ -328,10 +325,7 @@ pub fn spawn_from_rx_set(
                 }
             };
 
-            let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(
-                msg,
-                re_log_encoding::codec::Compression::LZ4,
-            ) {
+            let msg = match msg.to_transport(re_log_encoding::rrd::Compression::LZ4) {
                 Ok(msg) => msg,
                 Err(err) => {
                     re_log::error!("failed to encode message: {err}");
@@ -339,7 +333,7 @@ pub fn spawn_from_rx_set(
                 }
             };
 
-            if event_tx.blocking_send(Event::Message(msg)).is_err() {
+            if event_tx.blocking_send(Event::Message(msg.into())).is_err() {
                 re_log::debug!("shut down, closing sender");
                 break;
             }
@@ -387,10 +381,14 @@ pub fn spawn_with_recv(
 
         loop {
             let msg = match broadcast_log_rx.recv().await {
-                Ok(msg) => re_log_encoding::protobuf_conversions::log_msg_from_proto(
-                    &mut app_id_cache,
-                    msg,
-                ),
+                Ok(msg) => match msg.msg {
+                    Some(msg) => msg.to_application((&mut app_id_cache, None)),
+                    None => Err(re_protos::missing_field!(
+                        re_protos::log_msg::v1alpha1::LogMsg,
+                        "msg"
+                    )
+                    .into()),
+                },
                 Err(broadcast::error::RecvError::Closed) => {
                     re_log::debug!("message proxy server shut down, closing receiver");
                     channel_log_tx.quit(None).ok();
@@ -429,7 +427,7 @@ pub fn spawn_with_recv(
     tokio::spawn(async move {
         loop {
             let msg = match broadcast_table_rx.recv().await {
-                Ok(msg) => msg.data.decode().map(|data| TableMsg {
+                Ok(msg) => msg.data.try_into().map(|data| TableMsg {
                     id: msg.id.into(),
                     data,
                 }),
@@ -1036,8 +1034,7 @@ mod tests {
     use tonic::transport::server::TcpIncoming;
 
     use re_chunk::RowId;
-    use re_log_encoding::codec::Compression;
-    use re_log_encoding::protobuf_conversions::{log_msg_from_proto, log_msg_to_proto};
+    use re_log_encoding::rrd::Compression;
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
     use re_protos::sdk_comms::v1alpha1::{
         message_proxy_service_client::MessageProxyServiceClient,
@@ -1232,8 +1229,10 @@ mod tests {
                 messages
                     .clone()
                     .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
+                    .map(|msg| msg.to_transport(Compression::Off).unwrap())
+                    .map(|msg| WriteMessagesRequest {
+                        log_msg: Some(msg.into()),
+                    }),
             ))
             .await
             .unwrap();
@@ -1246,7 +1245,8 @@ mod tests {
         let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
 
         let mut stream_ref = log_stream.get_mut().map(|result| {
-            log_msg_from_proto(&mut app_id_cache, result.unwrap().log_msg.unwrap()).unwrap()
+            let msg = result.unwrap().log_msg.unwrap().msg.unwrap();
+            msg.to_application((&mut app_id_cache, None)).unwrap()
         });
 
         let mut messages = Vec::new();
@@ -1385,10 +1385,8 @@ mod tests {
             let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
             match timeout_result {
                 Ok(Some(value)) => {
-                    actual.push(
-                        log_msg_from_proto(&mut app_id_cache, value.unwrap().log_msg.unwrap())
-                            .unwrap(),
-                    );
+                    let msg = value.unwrap().log_msg.unwrap().msg.unwrap();
+                    actual.push(msg.to_application((&mut app_id_cache, None)).unwrap());
                 }
 
                 // Stream closed | Timed out
@@ -1424,10 +1422,8 @@ mod tests {
             let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
             match timeout_result {
                 Ok(Some(value)) => {
-                    actual.push(
-                        log_msg_from_proto(&mut app_id_cache, value.unwrap().log_msg.unwrap())
-                            .unwrap(),
-                    );
+                    let msg = value.unwrap().log_msg.unwrap().msg.unwrap();
+                    actual.push(msg.to_application((&mut app_id_cache, None)).unwrap());
                 }
 
                 // Stream closed | Timed out

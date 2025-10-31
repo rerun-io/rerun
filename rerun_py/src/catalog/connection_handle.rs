@@ -1,17 +1,21 @@
-use std::collections::BTreeSet;
-
 use arrow::array::{RecordBatch, RecordBatchIterator, RecordBatchReader};
-use arrow::datatypes::Schema as ArrowSchema;
+use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
+use arrow::ffi_stream::ArrowArrayStreamReader;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::{PyErr, PyResult, Python};
+use std::collections::BTreeSet;
 use tracing::Instrument as _;
 
+use crate::catalog::table_entry::PyTableInsertMode;
+use crate::catalog::to_py_err;
+use crate::utils::wait_for_future;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::QueryExpression;
 use re_datafusion::query_from_query_expression;
-use re_log_encoding::codec::wire::decoder::Decode as _;
+use re_log::external::log::warn;
 use re_log_types::EntryId;
+use re_protos::cloud::v1alpha1::EntryKind;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{
     cloud::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
@@ -27,9 +31,6 @@ use re_protos::{
     invalid_schema, missing_field,
 };
 use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
-
-use crate::catalog::to_py_err;
-use crate::utils::wait_for_future;
 
 /// Connection handle to a catalog service.
 #[derive(Clone)]
@@ -208,6 +209,29 @@ impl ConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
+    pub fn create_table_entry(
+        &self,
+        py: Python<'_>,
+        name: String,
+        schema: SchemaRef,
+        url: &url::Url,
+    ) -> PyResult<TableEntry> {
+        let entry_id = wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    .create_table_entry(&name, url, schema)
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )?;
+
+        self.read_table(py, entry_id.details.id)
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn read_table(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<TableEntry> {
         wait_for_future(
             py,
@@ -215,6 +239,46 @@ impl ConnectionHandle {
                 self.client()
                     .await?
                     .read_table_entry(entry_id)
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn write_table(
+        &self,
+        py: Python<'_>,
+        name: String,
+        stream: ArrowArrayStreamReader,
+        insert_mode: PyTableInsertMode,
+    ) -> PyResult<()> {
+        wait_for_future(
+            py,
+            async {
+                let mut client = self.client().await?;
+
+                let entry_id = client
+                    .get_entry_id(&name, Some(EntryKind::Table))
+                    .await
+                    .map_err(to_py_err)?
+                    .ok_or(PyValueError::new_err("Unable to find EntryId for table"))?;
+
+                // Since the errors occur during streaming, we cannot let this method
+                // fail without doing a collect operation. Instead, we log a warning to
+                // the user.
+                let stream = futures::stream::iter(stream.filter_map(move |rb| match rb {
+                    Ok(rb) => Some(rb),
+                    Err(err) => {
+                        warn!("write_table input stream contains an error. {err}");
+                        None
+                    }
+                }));
+
+                self.client()
+                    .await?
+                    .write_table(stream, entry_id, insert_mode.into())
                     .await
                     .map_err(to_py_err)
             }
@@ -271,6 +335,39 @@ impl ConnectionHandle {
             .map(|(url, layer)| DataSource::new_rrd_layer(layer, url))
             .collect::<Result<Vec<_>, _>>()
             .map_err(to_py_err)?;
+
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    //TODO(ab): expose `on_duplicate` as a method argument
+                    .register_with_dataset(dataset_id, data_sources, IfDuplicateBehavior::Error)
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
+    }
+
+    /// Initiate registration of all the recordings within provided object store prefix (aka directory)
+    /// and return the corresponding task descriptors.
+    ///
+    /// A custom layer can be specified via `recordings_layer`:
+    /// * When empty, this defaults to `["base"]`.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn register_with_dataset_prefix(
+        &self,
+        py: Python<'_>,
+        dataset_id: EntryId,
+        recordings_prefix: String,
+        recordings_layer: Option<String>,
+    ) -> PyResult<Vec<RegisterWithDatasetTaskDescriptor>> {
+        let layer = recordings_layer.unwrap_or_else(|| DataSource::DEFAULT_LAYER.to_owned());
+
+        let data_source =
+            DataSource::new_rrd_layer_prefix(layer, recordings_prefix).map_err(to_py_err)?;
+        let data_sources = vec![data_source];
 
         wait_for_future(
             py,
@@ -346,7 +443,7 @@ impl ConnectionHandle {
                     .map_err(to_py_err)?
                     .dataframe_part()
                     .map_err(to_py_err)?
-                    .decode()
+                    .try_into()
                     .map_err(to_py_err)?;
 
                 Ok(status_table)
@@ -380,7 +477,7 @@ impl ConnectionHandle {
                 // loop until all the tasks are done or the timeout is reached: both cases
                 // will complete the stream
                 while let Some(response) = response_stream.next().await {
-                    let item = response
+                    let item: RecordBatch = response
                         .map_err(|err| {
                             ApiError::tonic(
                                 err,
@@ -397,7 +494,7 @@ impl ConnectionHandle {
                             );
                             to_py_err(err)
                         })?
-                        .decode()
+                        .try_into()
                         .map_err(to_py_err)?;
 
                     // TODO(andrea): all this column unwrapping is a bit hideous. Maybe the idea of returning a dataframe rather
@@ -554,7 +651,7 @@ impl ConnectionHandle {
                     .map_err(to_py_err)?
                     .into_iter()
                     .filter_map(|response| response.data)
-                    .map(|dataframe_part| dataframe_part.decode().map_err(to_py_err))
+                    .map(|dataframe_part| dataframe_part.try_into().map_err(to_py_err))
                     .collect();
 
                 let record_batches = record_batches?;

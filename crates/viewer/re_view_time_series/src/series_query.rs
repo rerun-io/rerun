@@ -5,16 +5,16 @@ use itertools::Itertools as _;
 use re_chunk_store::RangeQuery;
 use re_log_types::{EntityPath, TimeInt};
 use re_types::external::arrow::datatypes::DataType as ArrowDatatype;
-use re_types::{ComponentDescriptor, Loggable as _, RowId, components};
-use re_view::{ChunksWithDescriptor, HybridRangeResults, RangeResultsExt as _, clamped_or_nothing};
-use re_viewer_context::{QueryContext, TypedComponentFallbackProvider, auto_color_egui};
+use re_types::{ComponentDescriptor, ComponentIdentifier, Loggable as _, RowId, components};
+use re_view::{ChunksWithComponent, HybridRangeResults, RangeResultsExt as _, clamped_or_nothing};
+use re_viewer_context::{QueryContext, auto_color_egui, typed_fallback_for};
 
 use crate::{PlotPoint, PlotSeriesKind};
 
 type PlotPointsPerSeries = smallvec::SmallVec<[Vec<PlotPoint>; 1]>;
 
 /// Determines how many series there are in the scalar chunks.
-pub fn determine_num_series(all_scalar_chunks: &ChunksWithDescriptor<'_>) -> usize {
+pub fn determine_num_series(all_scalar_chunks: &ChunksWithComponent<'_>) -> usize {
     // TODO(andreas): We should determine this only once and cache the result.
     // As data comes in we can validate that the number of series is consistent.
     // Keep in mind clears here.
@@ -34,14 +34,14 @@ pub fn collect_series_visibility(
     bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
     results: &HybridRangeResults<'_>,
     num_series: usize,
-    visibility_descriptor: ComponentDescriptor,
+    visibility_component: ComponentIdentifier,
 ) -> Vec<bool> {
     bootstrapped_results
-        .iter_as(*query.timeline(), visibility_descriptor.clone())
+        .iter_as(*query.timeline(), visibility_component)
         .slice::<bool>()
         .chain(
             results
-                .iter_as(*query.timeline(), visibility_descriptor)
+                .iter_as(*query.timeline(), visibility_component)
                 .slice::<bool>(),
         )
         .next()
@@ -65,7 +65,7 @@ pub fn collect_series_visibility(
 pub fn allocate_plot_points(
     query: &RangeQuery,
     default_point: &PlotPoint,
-    all_scalar_chunks: &ChunksWithDescriptor<'_>,
+    all_scalar_chunks: &ChunksWithComponent<'_>,
     num_series: usize,
 ) -> PlotPointsPerSeries {
     re_tracing::profile_function!();
@@ -74,7 +74,7 @@ pub fn allocate_plot_points(
 
     let points = all_scalar_chunks
         .iter()
-        .flat_map(|chunk| chunk.iter_component_indices(query.timeline()))
+        .flat_map(|chunk| chunk.iter_component_indices(*query.timeline()))
         .map(|(data_time, _)| PlotPoint {
             time: data_time.as_i64(),
             ..default_point.clone()
@@ -86,7 +86,7 @@ pub fn allocate_plot_points(
 
 /// Allocates scalars per series into pre-allocated plot points.
 pub fn collect_scalars(
-    all_scalar_chunks: &ChunksWithDescriptor<'_>,
+    all_scalar_chunks: &ChunksWithComponent<'_>,
     points_per_series: &mut PlotPointsPerSeries,
 ) {
     re_tracing::profile_function!();
@@ -126,7 +126,7 @@ pub fn collect_colors(
     query: &RangeQuery,
     bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
     results: &re_view::HybridRangeResults<'_>,
-    all_scalar_chunks: &ChunksWithDescriptor<'_>,
+    all_scalar_chunks: &ChunksWithComponent<'_>,
     points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
     color_descriptor: &ComponentDescriptor,
 ) {
@@ -143,12 +143,12 @@ pub fn collect_colors(
     }
 
     let all_color_chunks = bootstrapped_results
-        .get_optional_chunks(color_descriptor.clone())
+        .get_optional_chunks(color_descriptor.component)
         .iter()
         .cloned()
         .chain(
             results
-                .get_optional_chunks(color_descriptor.clone())
+                .get_optional_chunks(color_descriptor.component)
                 .iter()
                 .cloned(),
         )
@@ -158,7 +158,7 @@ pub fn collect_colors(
         re_tracing::profile_scope!("override/default fast path");
 
         if let Some(colors) = all_color_chunks[0]
-            .iter_slices::<u32>(color_descriptor.clone())
+            .iter_slices::<u32>(color_descriptor.component)
             .next()
         {
             for (points, color) in points_per_series
@@ -195,8 +195,8 @@ pub fn collect_colors(
 
         let all_colors = all_color_chunks.iter().flat_map(|chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(query.timeline(), color_descriptor),
-                chunk.iter_slices::<u32>(color_descriptor.clone())
+                chunk.iter_component_indices(*query.timeline(), color_descriptor.component),
+                chunk.iter_slices::<u32>(color_descriptor.component)
             )
         });
 
@@ -229,7 +229,6 @@ pub fn collect_colors(
 
 /// Collects series names for the series into pre-allocated plot points.
 pub fn collect_series_name(
-    fallback_provider: &dyn TypedComponentFallbackProvider<components::Name>,
     query_ctx: &QueryContext<'_>,
     bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
     results: &re_view::HybridRangeResults<'_>,
@@ -239,16 +238,26 @@ pub fn collect_series_name(
     re_tracing::profile_function!();
 
     let mut series_names: Vec<String> = bootstrapped_results
-        .get_optional_chunks(name_descriptor.clone())
+        .get_optional_chunks(name_descriptor.component)
         .iter()
-        .chain(results.get_optional_chunks(name_descriptor.clone()).iter())
+        .chain(
+            results
+                .get_optional_chunks(name_descriptor.component)
+                .iter(),
+        )
         .find(|chunk| !chunk.is_empty())
-        .and_then(|chunk| chunk.iter_slices::<String>(name_descriptor.clone()).next())
+        .and_then(|chunk| {
+            chunk
+                .iter_slices::<String>(name_descriptor.component)
+                .next()
+        })
         .map(|slice| slice.into_iter().map(|s| s.to_string()).collect())
         .unwrap_or_default();
 
     if series_names.len() < num_series {
-        let fallback_name: String = fallback_provider.fallback_for(query_ctx).to_string();
+        let fallback_name: String =
+            typed_fallback_for::<components::Name>(query_ctx, name_descriptor.component)
+                .to_string();
         if num_series == 1 {
             series_names.push(fallback_name);
         } else {
@@ -266,7 +275,7 @@ pub fn collect_radius_ui(
     query: &RangeQuery,
     bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
     results: &re_view::HybridRangeResults<'_>,
-    all_scalar_chunks: &ChunksWithDescriptor<'_>,
+    all_scalar_chunks: &ChunksWithComponent<'_>,
     points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
     radius_descriptor: &ComponentDescriptor,
     radius_multiplier: f32,
@@ -277,12 +286,12 @@ pub fn collect_radius_ui(
 
     {
         let all_radius_chunks = bootstrapped_results
-            .get_optional_chunks(radius_descriptor.clone())
+            .get_optional_chunks(radius_descriptor.component)
             .iter()
             .cloned()
             .chain(
                 results
-                    .get_optional_chunks(radius_descriptor.clone())
+                    .get_optional_chunks(radius_descriptor.component)
                     .iter()
                     .cloned(),
             )
@@ -292,7 +301,7 @@ pub fn collect_radius_ui(
             re_tracing::profile_scope!("override/default fast path");
 
             if let Some(radius) = all_radius_chunks[0]
-                .iter_slices::<f32>(radius_descriptor.clone())
+                .iter_slices::<f32>(radius_descriptor.component)
                 .next()
             {
                 for (points, radius) in points_per_series
@@ -310,8 +319,8 @@ pub fn collect_radius_ui(
 
             let all_radii = all_radius_chunks.iter().flat_map(|chunk| {
                 itertools::izip!(
-                    chunk.iter_component_indices(query.timeline(), radius_descriptor),
-                    chunk.iter_slices::<f32>(radius_descriptor.clone())
+                    chunk.iter_component_indices(*query.timeline(), radius_descriptor.component),
+                    chunk.iter_slices::<f32>(radius_descriptor.component)
                 )
             });
 
@@ -345,11 +354,11 @@ pub fn collect_radius_ui(
 
 pub fn all_scalars_indices<'a>(
     query: &'a RangeQuery,
-    all_scalar_chunks: &'a ChunksWithDescriptor<'_>,
+    all_scalar_chunks: &'a ChunksWithComponent<'_>,
 ) -> impl Iterator<Item = ((TimeInt, RowId), ())> + 'a {
     all_scalar_chunks
         .iter()
-        .flat_map(|chunk| chunk.iter_component_indices(query.timeline()))
+        .flat_map(|chunk| chunk.iter_component_indices(*query.timeline()))
         // That is just so we can satisfy the `range_zip` contract later on.
         .map(|index| (index, ()))
 }

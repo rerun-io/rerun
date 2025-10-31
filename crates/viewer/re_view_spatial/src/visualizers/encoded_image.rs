@@ -1,21 +1,18 @@
 use re_types::{
     Archetype as _,
     archetypes::EncodedImage,
-    components::{DrawOrder, MediaType, Opacity},
-    image::ImageKind,
+    components::{MediaType, Opacity},
 };
 use re_view::HybridResults;
 use re_viewer_context::{
-    IdentifiedViewSystem, ImageDecodeCache, MaybeVisualizableEntities, QueryContext,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, ImageDecodeCache, MaybeVisualizableEntities, QueryContext, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use crate::{
     PickableRectSourceData, PickableTexturedRect,
     contexts::SpatialSceneEntityContext,
-    ui::SpatialViewState,
     view_kind::SpatialViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
 };
@@ -97,10 +94,6 @@ impl VisualizerSystem for EncodedImageVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
 
 impl EncodedImageVisualizer {
@@ -115,15 +108,17 @@ impl EncodedImageVisualizer {
 
         let entity_path = ctx.target_entity_path;
 
-        let Some(all_blob_chunks) = results.get_required_chunks(EncodedImage::descriptor_blob())
+        let Some(all_blob_chunks) =
+            results.get_required_chunks(EncodedImage::descriptor_blob().component)
         else {
             return;
         };
 
         let timeline = ctx.query.timeline();
         let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);
-        let all_media_types = results.iter_as(timeline, EncodedImage::descriptor_media_type());
-        let all_opacities = results.iter_as(timeline, EncodedImage::descriptor_opacity());
+        let all_media_types =
+            results.iter_as(timeline, EncodedImage::descriptor_media_type().component);
+        let all_opacities = results.iter_as(timeline, EncodedImage::descriptor_opacity().component);
 
         for ((_time, tensor_data_row_id), blobs, media_types, opacities) in re_query::range_zip_1x2(
             all_blobs_indexed,
@@ -140,7 +135,7 @@ impl EncodedImageVisualizer {
             let image = ctx.store_ctx().caches.entry(|c: &mut ImageDecodeCache| {
                 c.entry(
                     tensor_data_row_id,
-                    &EncodedImage::descriptor_blob(),
+                    EncodedImage::descriptor_blob().component,
                     blob,
                     media_type.as_ref(),
                 )
@@ -158,7 +153,9 @@ impl EncodedImageVisualizer {
 
             let opacity: Option<&Opacity> =
                 opacities.and_then(|opacity| opacity.first().map(bytemuck::cast_ref));
-            let opacity = opacity.copied().unwrap_or_else(|| self.fallback_for(ctx));
+            let opacity = opacity.copied().unwrap_or_else(|| {
+                typed_fallback_for(ctx, EncodedImage::descriptor_opacity().component)
+            });
             #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
             let multiplicative_tint =
                 re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
@@ -188,30 +185,3 @@ impl EncodedImageVisualizer {
         }
     }
 }
-
-impl TypedComponentFallbackProvider<Opacity> for EncodedImageVisualizer {
-    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
-        // Color images should be transparent whenever they're on top of other images,
-        // But fully opaque if there are no other images in the scene.
-        let Some(view_state) = ctx.view_state().as_any().downcast_ref::<SpatialViewState>() else {
-            return 1.0.into();
-        };
-
-        // Known cosmetic issues with this approach:
-        // * The first frame we have more than one image, the image will be opaque.
-        //      It's too complex to do a full view query just for this here.
-        //      However, we should be able to analyze the `DataQueryResults` instead to check how many entities are fed to the Image/DepthImage visualizers.
-        // * In 3D scenes, images that are on a completely different plane will cause this to become transparent.
-        view_state
-            .fallback_opacity_for_image_kind(ImageKind::Color)
-            .into()
-    }
-}
-
-impl TypedComponentFallbackProvider<DrawOrder> for EncodedImageVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
-        DrawOrder::DEFAULT_IMAGE
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(EncodedImageVisualizer => [DrawOrder, Opacity]);

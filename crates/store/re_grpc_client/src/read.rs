@@ -1,7 +1,7 @@
-use re_log_types::DataSourceMessage;
 use tokio_stream::StreamExt as _;
 
-use re_log_encoding::protobuf_conversions::log_msg_from_proto;
+use re_log_encoding::ToApplication as _;
+use re_log_types::DataSourceMessage;
 use re_protos::sdk_comms::v1alpha1::ReadMessagesRequest;
 use re_protos::sdk_comms::v1alpha1::ReadMessagesResponse;
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
@@ -70,7 +70,7 @@ async fn stream_async(
             Ok(Some(ReadMessagesResponse {
                 log_msg: Some(log_msg_proto),
             })) => {
-                let mut log_msg = log_msg_from_proto(&mut app_id_cache, log_msg_proto)?;
+                let mut log_msg = log_msg_proto.to_application((&mut app_id_cache, None))?;
 
                 // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements:
                 log_msg.insert_arrow_record_batch_metadata(

@@ -4,7 +4,7 @@ use arrow::array::{RecordBatch, RecordBatchOptions, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
 use pyo3::Bound;
-use pyo3::types::PyAnyMethods as _;
+use pyo3::types::{PyAnyMethods as _, PyDict};
 use pyo3::{
     Py, PyAny, PyRef, PyRefMut, PyResult, Python, exceptions::PyRuntimeError,
     exceptions::PyValueError, pyclass, pymethods,
@@ -14,7 +14,6 @@ use tracing::instrument;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_datafusion::{DatasetManifestProvider, PartitionTableProvider, SearchResultsTableProvider};
-use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{StoreId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
@@ -23,7 +22,7 @@ use re_protos::{
         ext::{DatasetDetails, IndexProperties},
         index_query_properties,
     },
-    common::v1alpha1::{IfDuplicateBehavior, ext::DatasetHandle},
+    common::v1alpha1::ext::DatasetHandle,
     headers::RerunHeadersInjectorExt as _,
 };
 use re_redap_client::fetch_chunks_response_to_chunk_and_partition_id;
@@ -38,7 +37,7 @@ use super::{
 };
 
 /// A dataset entry in the catalog.
-#[pyclass(name = "DatasetEntry", extends=PyEntry)] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(name = "DatasetEntry", extends=PyEntry, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyDatasetEntry {
     pub dataset_details: DatasetDetails,
     pub dataset_handle: DatasetHandle,
@@ -325,6 +324,50 @@ impl PyDatasetEntry {
         Ok(task_descriptor.partition_id.id)
     }
 
+    /// Register all RRDs under a given prefix to the dataset and return a handle to the tasks.
+    ///
+    /// A prefix is a directory-like path in an object store (e.g. an S3 bucket or ABS container).
+    /// All RRDs that are recursively found under the given prefix will be registered to the dataset.
+    ///
+    /// This method initiates the registration of the recordings to the dataset, and returns
+    /// the corresponding task ids in a [`Tasks`] object.
+    ///
+    /// Parameters
+    /// ----------
+    /// recordings_prefix: str
+    ///     The prefix under which to register all RRDs.
+    ///
+    /// layer_name: Optional[str]
+    ///     The layer to which the recordings will be registered to.
+    ///     If `None`, this defaults to `"base"`.
+    #[allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)]
+    #[pyo3(signature = (
+        recordings_prefix,
+        layer_name = None,
+    ))]
+    #[pyo3(text_signature = "(self, /, recordings_prefix, layer_name = None)")]
+    fn register_prefix(
+        self_: PyRef<'_, Self>,
+        recordings_prefix: String,
+        layer_name: Option<String>,
+    ) -> PyResult<PyTasks> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let results = connection.register_with_dataset_prefix(
+            self_.py(),
+            dataset_id,
+            recordings_prefix,
+            layer_name,
+        )?;
+
+        Ok(PyTasks::new(
+            super_.client.clone_ref(self_.py()),
+            results.into_iter().map(|desc| desc.task_id),
+        ))
+    }
+
     /// Register a batch of RRD URIs to the dataset and return a handle to the tasks.
     ///
     /// This method initiates the registration of multiple recordings to the dataset, and returns
@@ -534,16 +577,11 @@ impl PyDatasetEntry {
         };
 
         let request = CreateIndexRequest {
-            partition_ids: vec![],
-            partition_layers: vec![],
-
             config: Some(IndexConfig {
                 properties: Some(properties.into()),
                 column: Some(component_descriptor.0.into()),
                 time_index: Some(time_selector.timeline.into()),
             }),
-
-            on_duplicate: IfDuplicateBehavior::Overwrite as i32,
         };
 
         wait_for_future(self_.py(), async {
@@ -564,11 +602,38 @@ impl PyDatasetEntry {
     }
 
     /// Create a vector index on the given column.
+    ///
+    /// This will enable indexing and build the vector index over all existing values
+    /// in the specified component column.
+    ///
+    /// Results can be retrieved using the `search_vector` API, which will include
+    /// the time-point on the indexed timeline.
+    ///
+    /// Only one index can be created per component column -- executing this a second
+    /// time for the same component column will replace the existing index.
+    ///
+    /// Parameters
+    /// ----------
+    /// column : AnyComponentColumn
+    ///     The component column to create the index on.
+    /// time_index : IndexColumnSelector
+    ///     Which timeline this index will map to.
+    /// num_partitions : int | None
+    ///     The number of partitions to create for the index.
+    ///     (Deprecated, use target_partition_num_rows instead)
+    /// target_partition_num_rows : int | None
+    ///     The target size (in number of rows) for each partition.
+    ///     Defaults to 4096 if neither this nor num_partitions is specified.
+    /// num_sub_vectors : int
+    ///     The number of sub-vectors to use when building the index.
+    /// distance_metric : VectorDistanceMetricLike
+    ///     The distance metric to use for the index. ("L2", "Cosine", "Dot", "Hamming")
     #[pyo3(signature = (
         *,
         column,
         time_index,
-        num_partitions = 5,
+        num_partitions = None,
+        target_partition_num_rows = None,
         num_sub_vectors = 16,
         distance_metric = VectorDistanceMetricLike::VectorDistanceMetric(crate::catalog::PyVectorDistanceMetric::Cosine),
     ))]
@@ -577,10 +642,12 @@ impl PyDatasetEntry {
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
         time_index: PyIndexColumnSelector,
-        num_partitions: usize,
+        // TODO(RR-2798): Remove num_partitions since deprecated
+        num_partitions: Option<usize>,
+        target_partition_num_rows: Option<usize>,
         num_sub_vectors: usize,
         distance_metric: VectorDistanceMetricLike,
-    ) -> PyResult<()> {
+    ) -> PyResult<PyIndexingResult> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
@@ -593,27 +660,48 @@ impl PyDatasetEntry {
         let distance_metric: re_protos::cloud::v1alpha1::VectorDistanceMetric =
             distance_metric.try_into()?;
 
+        let (num_partitions, target_partition_num_rows) = match (
+            num_partitions,
+            target_partition_num_rows,
+        ) {
+            // num_partitions is deprecated
+            (Some(n), None) => {
+                re_log::warn!(
+                    "The 'num_partitions' parameter is deprecated. Please use 'target_partition_num_rows' instead."
+                );
+                (Some(n), None)
+            }
+            // target_partition_num_rows is preferred
+            (None, Some(s)) => (None, Some(s)),
+            // If neither is set, default target_partition_num_rows to 4096
+            (None, None) => (None, Some(4096)),
+            // If both are set it's an error
+            (Some(_), Some(_)) => {
+                return Err(PyValueError::new_err(
+                    "Cannot specify both num_partitions and target_partition_num_rows.",
+                ));
+            }
+        };
+
+        // Otherwise
+
         let properties = IndexProperties::VectorIvfPq {
             num_partitions,
+            target_partition_num_rows,
             num_sub_vectors,
             metric: distance_metric,
         };
 
         let request = CreateIndexRequest {
-            partition_ids: vec![],
-            partition_layers: vec![],
-
             config: Some(IndexConfig {
                 properties: Some(properties.into()),
                 column: Some(component_descriptor.0.into()),
                 time_index: Some(time_selector.timeline.into()),
             }),
-
-            on_duplicate: IfDuplicateBehavior::Overwrite as i32,
         };
 
         wait_for_future(self_.py(), async {
-            connection
+            let result = connection
                 .client()
                 .await?
                 .inner()
@@ -625,7 +713,9 @@ impl PyDatasetEntry {
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-            Ok(())
+            Ok(PyIndexingResult {
+                debug_info: result.into_inner().debug_info,
+            })
         })
     }
 
@@ -664,11 +754,7 @@ impl PyDatasetEntry {
                     ),
                 ),
             }),
-            query: Some(
-                query
-                    .encode()
-                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
-            ),
+            query: Some(query.into()),
             scan_parameters: None,
         };
 
@@ -714,11 +800,7 @@ impl PyDatasetEntry {
                     top_k: Some(top_k),
                 })),
             }),
-            query: Some(
-                query
-                    .encode()
-                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
-            ),
+            query: Some(query.into()),
             scan_parameters: None,
         };
 
@@ -846,4 +928,38 @@ fn py_object_to_i64(py: Python<'_>, obj: &Bound<'_, PyAny>) -> PyResult<i64> {
     let int_builtin = py.import("builtins")?.getattr("int")?;
     let converted = int_builtin.call1((obj,))?;
     converted.extract::<i64>()
+}
+
+/// The result returned from an indexing operation.
+#[pyclass(name = "IndexingResult", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+pub struct PyIndexingResult {
+    debug_info: Option<re_protos::cloud::v1alpha1::DebugInfo>,
+}
+
+#[pymethods]
+impl PyIndexingResult {
+    /// Get debug information about the indexing operation.
+    ///
+    /// The exact contents of debug information may vary depending on the indexing operation performed
+    /// and the server implementation.
+    ///
+    /// Returns
+    /// -------
+    /// Optional[dict]
+    ///     A dictionary containing debug information, or `None` if no debug information is available
+    #[allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)]
+    fn debug_info(&self, py: Python<'_>) -> PyResult<Option<Py<PyDict>>> {
+        match &self.debug_info {
+            Some(debug_info) => {
+                let dict = PyDict::new(py);
+
+                if let Some(memory_used) = debug_info.memory_used {
+                    dict.set_item("memory_used", memory_used)?;
+                }
+
+                Ok(Some(dict.into()))
+            }
+            None => Ok(None),
+        }
+    }
 }

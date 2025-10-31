@@ -5,7 +5,8 @@ import inspect
 import os
 import threading
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -278,7 +279,7 @@ class RerunMissingDependencyError(ImportError):
     def __init__(self, package: str, optional_dep: str) -> None:
         super().__init__(
             f"'{package}' could not be imported. "
-            f"Please install it, or install rerun as rerun[{optional_dep}]/rerun[all] "
+            f"Please install it, or install rerun as rerun-sdk[{optional_dep}]/rerun-sdk[all] "
             "to use this functionality."
         )
 

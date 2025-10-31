@@ -20,7 +20,9 @@ async fn settings_screen() {
         std::env::set_var("TZ", "Europe/Stockholm");
     }
 
-    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        window_size: Some(egui::vec2(1024.0, 1080.0)), // Settings screen can be a bit tall
+    });
     harness.get_by_label("Menu").click();
     harness.run_ok();
     harness.get_by_label_contains("Settings…").click();
@@ -88,7 +90,7 @@ fn colormap_selector_ui() {
     harness.snapshot("colormap_selector_closed");
 
     // give the combo box some room to open
-    harness.set_size(egui::Vec2::new(200.0, 250.0));
+    harness.set_size(egui::Vec2::new(200.0, 350.0));
     harness.get_by_role(Role::ComboBox).click(); // open combo box
     harness.run();
 

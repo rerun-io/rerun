@@ -4,7 +4,6 @@
 
 mod graph;
 mod layout;
-mod properties;
 mod ui;
 mod view;
 mod visualizers;
