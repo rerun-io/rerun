@@ -5,8 +5,6 @@ use std::collections::BTreeMap;
 use tonic::async_trait;
 use url::Url;
 
-#[cfg(feature = "lance")]
-use re_protos::cloud::v1alpha1::ext::ProviderDetails as _;
 use re_protos::{
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DataSource, DataSourceKind, QueryTasksOnCompletionRequest,
@@ -68,9 +66,12 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
     async fn register_table_with_name(&self, table_name: &str, path: &std::path::Path) {
         let table_url =
             Url::from_directory_path(path).expect("Unable to create URL from directory path");
+        let provider_details = re_protos::cloud::v1alpha1::ext::ProviderDetails::LanceTable(
+            re_protos::cloud::v1alpha1::ext::LanceTable { table_url },
+        );
         let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
             name: table_name.to_owned(),
-            provider_details: re_protos::cloud::v1alpha1::ext::LanceTable { table_url }
+            provider_details: provider_details
                 .try_as_any()
                 .expect("Unable to create LanceTable as provider details"),
         };
