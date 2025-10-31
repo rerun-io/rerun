@@ -1,15 +1,15 @@
-use glam::DAffine3;
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 use vec1::smallvec_v1::SmallVec1;
 
-use re_chunk_store::LatestAtQuery;
-use re_entity_db::{EntityDb, EntityPath, EntityTree};
-use re_types::ArchetypeName;
-
+use crate::transform_resolution_cache::ParentFromChildTransform;
 use crate::{
     CachedTransformsForTimeline, PoseTransformArchetypeMap, ResolvedPinholeProjection,
     TransformFrameIdHash, TransformResolutionCache, image_view_coordinates,
 };
+use re_chunk_store::LatestAtQuery;
+use re_entity_db::{EntityDb, EntityPath, EntityTree};
+use re_log_types::entity_path;
+use re_types::ArchetypeName;
 
 /// Details on how to transform from a source to a target frame.
 #[derive(Clone, Debug, PartialEq)]
@@ -48,15 +48,6 @@ pub struct TransformInfo {
 }
 
 impl TransformInfo {
-    fn new_root(root: TransformFrameIdHash) -> Self {
-        Self {
-            root,
-            target_from_source: glam::DAffine3::IDENTITY,
-            target_from_instances: SmallVec1::new(glam::DAffine3::IDENTITY),
-            target_from_archetype: Default::default(),
-        }
-    }
-
     /// Returns the root frame of the tree this transform belongs to.
     ///
     /// This is **not** necessarily the transform's target frame.
@@ -207,15 +198,12 @@ pub struct PinholeTreeRoot {
 /// [`TransformForest`] tries to identify all roots.
 #[derive(Clone, Debug, PartialEq)]
 pub enum TransformTreeRootInfo {
-    /// This is the root of the entity path tree.
-    EntityRoot,
+    /// Regular root without any extra meta information.
+    TransformFrameRoot,
 
     /// The tree root is an entity path with a pinhole transformation,
     /// thus marking a 3D to 2D transition.
     Pinhole(PinholeTreeRoot),
-    //
-    // TODO(andreas): Something like this will eventually come up:
-    //TransformFrameRoot,
 }
 
 /// Analyzes & propagates the transform graph of a recording at a given time & timeline.
@@ -228,6 +216,9 @@ pub struct TransformForest {
     roots: IntMap<TransformFrameIdHash, TransformTreeRootInfo>,
 
     /// All frames reachable from one of the tree roots.
+    ///
+    /// Roots are also contained, targeting themselves with identity.
+    /// This simplified lookups.
     root_from_frame: IntMap<TransformFrameIdHash, TransformInfo>,
 }
 
@@ -238,108 +229,230 @@ impl TransformForest {
     /// This means that the entities in `reference_space` get the identity transform and all other
     /// entities are transformed relative to it.
     pub fn new(
-        recording: &re_entity_db::EntityDb,
+        entity_db: &EntityDb,
         transform_cache: &TransformResolutionCache,
-        time_query: &LatestAtQuery,
+        query: &LatestAtQuery,
     ) -> Self {
         re_tracing::profile_function!();
 
-        let entity_tree = recording.tree();
-        let transforms = transform_cache.transforms_for_timeline(time_query.timeline());
+        let transforms = transform_cache.transforms_for_timeline(query.timeline());
 
-        let entity_hierarchy_root = TransformFrameIdHash::entity_path_hierarchy_root();
+        let mut unprocessed_sources: IntSet<_> = transforms.all_child_frames().collect();
 
-        let mut tree = Self {
-            roots: std::iter::once((entity_hierarchy_root, TransformTreeRootInfo::EntityRoot))
-                .collect(),
-            root_from_frame: Default::default(),
+        // We also have to add implicit frame ids for all entities in the entity _tree_.
+        // That's more than just the entity paths that have things logged on since there might be arbitrary steps without any data.
+        entity_db.tree().visit_children_recursively(|entity_path| {
+            unprocessed_sources.insert(TransformFrameIdHash::from_entity_path(entity_path));
+        });
+
+        let mut transform_stack = Vec::new();
+
+        let mut forest = Self {
+            root_from_frame: IntMap::default(),
+            roots: IntMap::default(),
         };
-        tree.entity_tree_gather_transforms_recursive(
-            entity_tree,
-            recording,
-            time_query,
-            // Ignore potential pinhole camera at the root of the view, since it is regarded as being "above" this root.
-            // TODO(andreas): Should we warn about that?
-            TransformInfo::new_root(entity_hierarchy_root),
-            transforms,
-        );
 
-        tree
+        // Pop an arbitrary source frame from the list of unprocessed frames.
+        while let Some(current_frame) = unprocessed_sources.iter().next().copied() {
+            // Walk as long as we can until we hit something we already processed or end up in a dead end.
+            walk_towards_parent(
+                entity_db,
+                query,
+                current_frame,
+                transform_cache,
+                transforms,
+                &mut unprocessed_sources,
+                &mut transform_stack,
+            );
+
+            // Process the stack we accumulated.
+            debug_assert!(
+                !transform_stack.is_empty(),
+                "There should be at least one element in the transform stack since we know we had at least one unprocessed element to start with."
+            );
+            forest.add_stack_of_transforms(transform_cache, &mut transform_stack);
+        }
+
+        forest
     }
-}
 
-impl TransformForest {
-    fn entity_tree_gather_transforms_recursive(
+    /// Adds a stack of transforms produced by [`walk_towards_parent`] to the forest.
+    ///
+    /// Each stack in the transform is a parent item of the item before it.
+    fn add_stack_of_transforms(
         &mut self,
-        subtree: &EntityTree,
-        entity_db: &EntityDb,
-        query: &LatestAtQuery,
-        transform_root_from_parent: TransformInfo,
-        transforms_for_timeline: &CachedTransformsForTimeline,
+        cache: &TransformResolutionCache,
+        transform_stack: &mut Vec<(TransformFrameIdHash, TransformsAtEntity)>, // TODO: we could be clever and track `TransformFrameIdHash` by walking. But it's rather convenient!
     ) {
-        let root = transform_root_from_parent.root;
-        let root_from_parent = transform_root_from_parent.target_from_source;
+        re_tracing::profile_function!();
 
-        let transform_frame_id = TransformFrameIdHash::from_entity_path(&subtree.path);
-        let previous_transform = self
-            .root_from_frame
-            .insert(transform_frame_id, transform_root_from_parent);
-        debug_assert!(previous_transform.is_none(), "Root was added already"); // TODO(RR-2667): Build out into cycle detection (cycles can't _yet_ happen)
+        let Some((top_of_stack_frame, top_of_stack_transform)) = transform_stack.last() else {
+            // Should never happen in regular operation.
+            return;
+        };
 
-        for child_tree in subtree.children.values() {
-            let child_path = &child_tree.path;
+        // Figure out the root frame for this entire stack.
+        let (mut root_frame, mut root_from_target) =
+            if let Some(parent_from_child) = top_of_stack_transform.parent_from_child.as_ref() {
+                // We have a connection further up the stack. That might we must have stopped because we already know that target!
+                if let Some(root_from_frame) = self.root_from_frame.get(&parent_from_child.parent) {
+                    // Yes, we can short-circuit to a known root!
+                    debug_assert!(self.roots.contains_key(&root_from_frame.root));
+                    (root_from_frame.root, root_from_frame.target_from_source)
+                } else {
+                    // We didn't know the target. Must mean that the target is a new root!
+                    let previous_root = self.roots.insert(
+                        parent_from_child.parent,
+                        // There's apparently no information about this root, so it can't be a pinhole!
+                        TransformTreeRootInfo::TransformFrameRoot,
+                    );
+                    debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(RR-2667): Build out into cycle detection
 
-            let transforms_at_entity =
-                transforms_at(child_path, entity_db, query, transforms_for_timeline);
+                    (parent_from_child.parent, glam::DAffine3::IDENTITY)
+                }
+            } else {
+                // We're not pointing at a new root. So we ourselves must be a root!
+                // We could be a (lonely) pinhole with no 3D parent?
+                let previous_root =
+                    if let Some(pinhole_projection) = &top_of_stack_transform.pinhole_projection {
+                        let new_root_info = TransformTreeRootInfo::Pinhole(PinholeTreeRoot {
+                            parent_tree_root: *top_of_stack_frame,
+                            pinhole_projection: pinhole_projection.clone(),
+                            parent_root_from_pinhole_root: glam::DAffine3::IDENTITY,
+                        });
+                        self.roots.insert(*top_of_stack_frame, new_root_info)
+                    } else {
+                        self.roots.insert(
+                            *top_of_stack_frame,
+                            TransformTreeRootInfo::TransformFrameRoot,
+                        )
+                    };
+                debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(RR-2667): Build out into cycle detection
 
-            let root_from_child =
-                root_from_parent * transforms_at_entity.parent_from_entity_tree_transform;
+                (*top_of_stack_frame, glam::DAffine3::IDENTITY)
+            };
 
-            // Did we encounter a pinhole and need to create a new subspace?
-            let (root, target_from_source) =
-                if let Some(pinhole_projection) = transforms_at_entity.pinhole_projection {
-                    let new_root_frame_id = TransformFrameIdHash::from_entity_path(child_path);
-                    let new_root_info = TransformTreeRootInfo::Pinhole(PinholeTreeRoot {
-                        parent_tree_root: root,
-                        pinhole_projection: pinhole_projection.clone(),
-                        parent_root_from_pinhole_root: root_from_child,
+        // Walk the stack backwards, collecting transforms as we go.
+        while let Some((current_frame, transforms)) = transform_stack.pop() {
+            let mut root_from_current_frame = root_from_target
+                * transforms
+                    .parent_from_child
+                    // Identity here means we're self-referencing. That's fine since we want roots to refer to themselves in our look-up table.
+                    .map_or(glam::DAffine3::IDENTITY, |target_from_source| {
+                        target_from_source.transform
                     });
 
-                    let previous_root = self.roots.insert(new_root_frame_id, new_root_info);
-                    debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(andreas): Build out into cycle detection (cycles can't _yet_ happen)
+            // Did we encounter a pinhole and need to create a new subspace?
+            if let Some(pinhole_projection) = transforms.pinhole_projection {
+                let new_root_info = TransformTreeRootInfo::Pinhole(PinholeTreeRoot {
+                    parent_tree_root: root_frame,
+                    pinhole_projection: pinhole_projection.clone(),
+                    parent_root_from_pinhole_root: root_from_current_frame,
+                });
+                root_frame = current_frame;
 
-                    (new_root_frame_id, DAffine3::IDENTITY)
-                } else {
-                    (root, root_from_child)
-                };
+                let previous_root = self.roots.insert(root_frame, new_root_info);
+                debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(RR-2667): Build out into cycle detection
+
+                root_from_current_frame = glam::DAffine3::IDENTITY;
+            }
 
             // Collect & compute poses.
             let root_from_instances = compute_root_from_instances(
-                target_from_source,
-                transforms_at_entity.entity_from_instance_poses.as_ref(),
+                root_from_current_frame,
+                transforms.child_from_instance_poses.as_ref(),
             );
             let root_from_archetype = compute_root_from_archetype(
-                target_from_source,
-                transforms_at_entity.entity_from_instance_poses.as_ref(),
+                root_from_current_frame,
+                transforms.child_from_instance_poses.as_ref(),
             );
 
-            let transform_root_from_child = TransformInfo {
-                root,
-                target_from_source,
+            let transform_root_from_current = TransformInfo {
+                root: root_frame,
+                target_from_source: root_from_current_frame,
                 target_from_instances: root_from_instances,
                 target_from_archetype: root_from_archetype,
             };
 
-            self.entity_tree_gather_transforms_recursive(
-                child_tree,
-                entity_db,
-                query,
-                transform_root_from_child,
-                transforms_for_timeline,
+            let previous_transform = self
+                .root_from_frame
+                .insert(current_frame, transform_root_from_current);
+
+            // TODO(RR-2667): Build out into cycle detection
+            debug_assert!(
+                previous_transform.is_none(),
+                "Root from frame relationship was added already for {:?}. Now targeting {:?}, previously {:?}",
+                cache.lookup_frame_id(current_frame),
+                cache.lookup_frame_id(root_frame),
+                previous_transform.and_then(|f| cache.lookup_frame_id(f.root))
             );
+
+            root_from_target = root_from_current_frame;
         }
     }
+}
 
+/// Starting from a `current_frame`, walks towards the parent and accumulates transforms into `transform_stack`.
+/// Stops until not more connection is found or an already processed `frame_id` is hit.
+fn walk_towards_parent(
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+    current_frame: TransformFrameIdHash,
+    cache: &TransformResolutionCache,
+    transforms: &CachedTransformsForTimeline,
+    unprocessed_sources: &mut IntSet<TransformFrameIdHash>,
+    transform_stack: &mut Vec<(TransformFrameIdHash, TransformsAtEntity)>,
+) {
+    re_tracing::profile_function!();
+
+    debug_assert!(
+        transform_stack.is_empty(),
+        "Didn't process the last transform stack fully."
+    );
+
+    let mut next_frame = Some(current_frame);
+    while let Some(current_frame) = next_frame
+        && unprocessed_sources.remove(&current_frame)
+    {
+        // We either already processed this frame, or we reached the end of our path if this source is not in the list of unprocessed frames.
+        let mut transforms = transforms_at(current_frame, entity_db, query, transforms);
+
+        // Maybe there's an implicit connection that we have to fill in?
+        if transforms.parent_from_child.is_none()
+            && let Some(parent) = implicit_transform_parent(current_frame, cache)
+        {
+            // TODO: not having this still makes tests pass. Means tests are insufficient.
+            transforms.parent_from_child = Some(ParentFromChildTransform {
+                parent,
+                transform: glam::DAffine3::IDENTITY,
+            });
+        }
+
+        next_frame = transforms.parent_from_child.as_ref().map(|r| r.parent);
+
+        // No matter the previous outcome, we push the transform information we got about this frame onto the stack
+        // since we want something for every source we process.
+        transform_stack.push((current_frame, transforms));
+    }
+}
+
+/// If `frame` is an implicit transform frame and has a parent, return said parent.
+fn implicit_transform_parent(
+    frame: TransformFrameIdHash,
+    cache: &TransformResolutionCache,
+) -> Option<TransformFrameIdHash> {
+    debug_assert!(
+        &cache.lookup_frame_id(frame).is_some(),
+        "Frame id hash {frame:?} is not known to the cache at all."
+    );
+
+    // TODO(andreas): this _looks_ quite inefficient (citation needed)
+    Some(TransformFrameIdHash::from_entity_path(
+        &cache.lookup_frame_id(frame)?.as_entity_path()?.parent()?,
+    ))
+}
+
+impl TransformForest {
     /// Returns the properties of the transform tree root at the given frame.
     ///
     /// If frame is not known as a transform tree root, returns [`None`].
@@ -668,37 +781,29 @@ fn pinhole3d_from_image_plane(
 /// Resolved transforms at an entity.
 #[derive(Default)]
 struct TransformsAtEntity {
-    parent_from_entity_tree_transform: glam::DAffine3,
-    entity_from_instance_poses: Option<PoseTransformArchetypeMap>,
+    parent_from_child: Option<ParentFromChildTransform>,
+    child_from_instance_poses: Option<PoseTransformArchetypeMap>,
     pinhole_projection: Option<ResolvedPinholeProjection>,
 }
 
 fn transforms_at(
-    entity_path: &EntityPath,
+    source_frame: TransformFrameIdHash,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
     transforms_for_timeline: &CachedTransformsForTimeline,
 ) -> TransformsAtEntity {
     // This is called very frequently, don't put a profile scope here.
-
-    let Some(entity_transforms) = transforms_for_timeline
-        .frame_transforms(TransformFrameIdHash::from_entity_path(entity_path))
-    else {
+    let Some(source_transforms) = transforms_for_timeline.frame_transforms(source_frame) else {
         return TransformsAtEntity::default();
     };
 
-    let parent_from_entity_tree_transform = entity_transforms
-        .latest_at_transform(entity_db, query)
-        //  TODO(RR-2511): Don't ignore target frame.
-        .map_or(glam::DAffine3::IDENTITY, |source_to_target| {
-            source_to_target.transform
-        });
-    let entity_from_instance_poses = entity_transforms.latest_at_instance_poses(entity_db, query);
-    let pinhole_projection = entity_transforms.latest_at_pinhole(entity_db, query);
+    let parent_from_child = source_transforms.latest_at_transform(entity_db, query);
+    let child_from_instance_poses = source_transforms.latest_at_instance_poses(entity_db, query);
+    let pinhole_projection = source_transforms.latest_at_pinhole(entity_db, query);
 
     TransformsAtEntity {
-        parent_from_entity_tree_transform,
-        entity_from_instance_poses,
+        parent_from_child,
+        child_from_instance_poses,
         pinhole_projection,
     }
 }
@@ -832,7 +937,7 @@ mod tests {
         {
             assert_eq!(
                 transform_forest.root_info(TransformFrameIdHash::entity_path_hierarchy_root()),
-                Some(&TransformTreeRootInfo::EntityRoot)
+                Some(&TransformTreeRootInfo::TransformFrameRoot)
             );
             // Pinhole roots are a bit more complex. Let's use `insta` to verify.
             insta::assert_snapshot!(
@@ -896,7 +1001,7 @@ mod tests {
             // (this is covered by the snapshot below as well, but its a basic sanity check I wanted to call out)
             let target_result = result.iter().find(|(key, _)| *key == target_frame).unwrap();
             if let Ok(target_result) = &target_result.1 {
-                assert!(target_result.target_from_source == glam::DAffine3::IDENTITY);
+                assert_eq!(target_result.target_from_source, glam::DAffine3::IDENTITY);
             } else {
                 assert_eq!(
                     target_result.1,

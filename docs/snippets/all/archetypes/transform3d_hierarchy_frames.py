@@ -17,17 +17,20 @@ rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
 
 # Setup points, all are in the center of their own space:
 # TODO(#1361): Should use spheres instead of points.
-rr.log("sun", rr.Points3D([0.0, 0.0, 0.0], radii=1.0, colors=[255, 200, 10]))
-rr.log("sun/planet", rr.Points3D([0.0, 0.0, 0.0], radii=0.4, colors=[40, 80, 200]))
-rr.log("sun/planet/moon", rr.Points3D([0.0, 0.0, 0.0], radii=0.15, colors=[180, 180, 180]))
+rr.log("sun", rr.Points3D([0.0, 0.0, 0.0], radii=1.0, colors=[255, 200, 10]), rr.CoordinateFrame("sun_frame"))
+rr.log("planet", rr.Points3D([0.0, 0.0, 0.0], radii=0.4, colors=[40, 80, 200]), rr.CoordinateFrame("planet_frame"))
+rr.log("moon", rr.Points3D([0.0, 0.0, 0.0], radii=0.15, colors=[180, 180, 180]), rr.CoordinateFrame("moon_frame"))
 
 # Draw fixed paths where the planet & moon move.
 d_planet = 6.0
 d_moon = 3.0
 angles = np.arange(0.0, 1.01, 0.01) * np.pi * 2
 circle = np.array([np.sin(angles), np.cos(angles), angles * 0.0], dtype=np.float32).transpose()
-rr.log("sun/planet_path", rr.LineStrips3D(circle * d_planet))
-rr.log("sun/planet/moon_path", rr.LineStrips3D(circle * d_moon))
+rr.log("planet_path", rr.LineStrips3D(circle * d_planet), rr.CoordinateFrame("sun_frame"))
+rr.log("moon_path", rr.LineStrips3D(circle * d_moon), rr.CoordinateFrame("planet_frame"))
+
+# TODO: have to connect up tree to `tf#/` to show anything
+rr.log("todo_remove", rr.Transform3D(source_frame="sun_frame", target_frame="tf#/"))
 
 # Movement via transforms.
 for i in range(6 * 120):
@@ -41,7 +44,8 @@ for i in range(6 * 120):
         rr.Transform3D(
             translation=[np.sin(r_planet) * d_planet, np.cos(r_planet) * d_planet, 0.0],
             rotation=rr.RotationAxisAngle(axis=(1, 0, 0), degrees=20),
-            child_frame="tf#/sun/planet",
+            child_frame="planet_frame",
+            parent_frame="sun_frame",
         ),
     )
     rr.log(
@@ -49,6 +53,7 @@ for i in range(6 * 120):
         rr.Transform3D(
             translation=[np.cos(r_moon) * d_moon, np.sin(r_moon) * d_moon, 0.0],
             relation=rr.TransformRelation.ChildFromParent,
-            child_frame="tf#/sun/planet/moon",
+            child_frame="moon_frame",
+            parent_frame="planet_frame",
         ),
     )
