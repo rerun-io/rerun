@@ -63,7 +63,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.9"
+  PYTHON_VERSION: "3.10"
 
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
@@ -116,7 +116,7 @@ jobs:
               container="'rerunio/ci_docker:0.16.0'" # Required to be manylinux compatible
               ;;
             windows-x64)
-              runner="windows-latest-16-cores"
+              runner="windows-latest-32-cores"
               target="x86_64-pc-windows-msvc"
               container="null"
               compat="manylinux_2_28"
@@ -144,6 +144,7 @@ jobs:
 
   build-wheels:
     name: Build Wheels (${{ needs.set-config.outputs.RUNNER }})
+    timeout-minutes: 60
 
     needs: [set-config]
 

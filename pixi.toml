@@ -14,7 +14,7 @@
 # - python scripts/check_env.py
 # - pixi run check-env
 
-[project]
+[workspace]
 name = "rerun"
 authors = ["rerun.io <opensource@rerun.io>"]
 channels = ["conda-forge"]
@@ -584,11 +584,12 @@ ninja = "1.11.1.*"
 numpy = ">=2" # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
 prettier = ">=3.6"
 pyarrow = "18.0.0.*" # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
-pytest = ">=8.4.1"
+pytest = ">=8.4.2"
 pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11" # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.12.10.*"
 semver = ">=3.0,<3.1"
+syrupy = "5.0.0.*" # Snapshot testing with pytest
 taplo = "=0.9.1"
 tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67" # For displaying progress in various utility scripts.
@@ -716,7 +717,7 @@ av = "==14.2.0"
 # during the wheel-test task itself is otherwise painful.
 torch = "==2.8.0" # This must match the torch version in any package we install during `wheel-test`
 # DataFusion is needed to run integration tests, but it is an optional dependency for rerun sdk
-datafusion = "==49.0.0"
+datafusion = "==50.1.0"
 
 [feature.wheel-test.dependencies]
 pip = ">=23"
@@ -756,7 +757,7 @@ umap-learn = "==0.5.7"
 [feature.examples-common.pypi-dependencies]
 # External deps
 av = "==14.2.0"
-datafusion = "==49.0.0"
+datafusion = "==50.1.0"
 jupyter = ">=1.0"
 polars = ">=0.12.0"
 

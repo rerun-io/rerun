@@ -41,7 +41,6 @@ There are many ways to install the viewer. Please pick whatever works best for y
 -   Via Cargo
     -   `cargo binstall rerun-cli` - download binaries via [`cargo binstall`](https://github.com/cargo-bins/cargo-binstall)
     -   `cargo install rerun-cli --locked` - build it from source (this requires Rust 1.88+)
-        -   This requires a `protoc` installation on the `PATH` or `PROTOC` environment variable. To install it on macOS, run `brew install protobuf`. It is also available at https://github.com/protocolbuffers/protobuf/releases. For more information see https://docs.rs/prost-build/#sourcing-protoc.
 -   Via Snap (_community maintained_)
     -   `snap install rerun` - download the viewer from the [Store](https://snapcraft.io/rerun).
 -   Together with the Rerun [Python SDK](./quick-start/python.md):

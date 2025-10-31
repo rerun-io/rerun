@@ -15,7 +15,7 @@ pub use self::{
     recording_view::PyRecordingView,
     rrd::{PyRRDArchive, load_archive, load_recording},
     schema::PySchema,
-    type_aliases::{AnyColumn, AnyComponentColumn, IndexValuesLike},
+    type_aliases::{AnyColumn, AnyComponentColumn, IndexValuesLike, PyIndexValuesLike},
 };
 
 use pyo3::{
@@ -35,6 +35,7 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyComponentColumnDescriptor>()?;
     m.add_class::<PyComponentColumnSelector>()?;
     m.add_class::<PyRecordingView>()?;
+    m.add_class::<PyIndexValuesLike>()?;
 
     m.add_function(wrap_pyfunction!(crate::dataframe::load_archive, m)?)?;
     m.add_function(wrap_pyfunction!(crate::dataframe::load_recording, m)?)?;

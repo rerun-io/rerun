@@ -1,11 +1,12 @@
-use std::collections::BTreeMap;
-
 use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
+use std::collections::BTreeMap;
 use tonic::async_trait;
 use url::Url;
 
+#[cfg(feature = "lance")]
+use re_protos::cloud::v1alpha1::ext::ProviderDetails as _;
 use re_protos::{
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DataSource, DataSourceKind, QueryTasksOnCompletionRequest,
@@ -32,6 +33,9 @@ pub trait RerunCloudServiceExt: RerunCloudService {
         dataset_name: &str,
         data_sources: Vec<re_protos::cloud::v1alpha1::DataSource>,
     );
+
+    #[cfg(feature = "lance")]
+    async fn register_table_with_name(&self, table_name: &str, path: &std::path::Path);
 }
 
 #[async_trait]
@@ -58,6 +62,23 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
         .expect("Failed to create a request");
 
         register_with_dataset(self, request).await;
+    }
+
+    #[cfg(feature = "lance")]
+    async fn register_table_with_name(&self, table_name: &str, path: &std::path::Path) {
+        let table_url =
+            Url::from_directory_path(path).expect("Unable to create URL from directory path");
+        let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
+            name: table_name.to_owned(),
+            provider_details: re_protos::cloud::v1alpha1::ext::LanceTable { table_url }
+                .try_as_any()
+                .expect("Unable to create LanceTable as provider details"),
+        };
+        let request = tonic::Request::new(request.into());
+
+        self.register_table(request)
+            .await
+            .expect("register table should succeed");
     }
 }
 
@@ -145,7 +166,6 @@ pub enum LayerType {
     Nasty { entities: &'static [&'static str] },
 
     /// See [`crate::create_recording_with_properties`]
-    #[expect(dead_code)] //TODO(ab): I'll need that in the next PR
     Properties {
         properties: BTreeMap<String, Vec<Box<dyn AsComponents>>>,
     },
@@ -158,6 +178,14 @@ impl LayerType {
 
     pub fn nasty(entities: &'static [&'static str]) -> Self {
         Self::Nasty { entities }
+    }
+
+    pub fn properties(
+        properties: impl IntoIterator<Item = (String, Box<dyn AsComponents>)>,
+    ) -> Self {
+        Self::Properties {
+            properties: properties.into_iter().map(|(k, v)| (k, vec![v])).collect(),
+        }
     }
 
     fn into_recording(
@@ -194,6 +222,7 @@ pub struct LayerDefinition {
 }
 
 impl LayerDefinition {
+    /// A simple layer with the provided entities
     pub fn simple(partition_id: &'static str, entities: &'static [&'static str]) -> Self {
         Self {
             partition_id,
@@ -202,6 +231,7 @@ impl LayerDefinition {
         }
     }
 
+    /// A layer with a nasty chunk representation for the provided entities.
     pub fn nasty(partition_id: &'static str, entities: &'static [&'static str]) -> Self {
         Self {
             partition_id,
@@ -210,10 +240,30 @@ impl LayerDefinition {
         }
     }
 
+    /// A layer with just the provided properties.
+    pub fn properties(
+        partition_id: &'static str,
+        properties: impl IntoIterator<Item = (String, Box<dyn AsComponents>)>,
+    ) -> Self {
+        Self {
+            partition_id,
+            layer_name: None,
+            layer_type: LayerType::properties(properties),
+        }
+    }
+
     pub fn layer_name(mut self, layer_name: &'static str) -> Self {
         self.layer_name = Some(layer_name);
         self
     }
+}
+
+/// Helper function to construct property tuples
+pub fn prop(
+    key: impl Into<String>,
+    value: impl AsComponents + 'static,
+) -> (String, Box<dyn AsComponents>) {
+    (key.into(), Box::new(value) as Box<dyn AsComponents>)
 }
 
 /// Utility to simplify the creation of data sources to register with a dataset.
@@ -225,17 +275,29 @@ pub struct DataSourcesDefinition {
 }
 
 impl DataSourcesDefinition {
-    pub fn new(layers: impl IntoIterator<Item = LayerDefinition>) -> Self {
+    /// Create layers with the provided definitions.
+    ///
+    /// The provided `tuid_prefix` is used for the first layer and then incremented.
+    ///
+    /// Note: we require an explicit prefix, otherwise using two `DataSourcesDefinition`s in the
+    /// same test will cause a chunk id conflict, which is UB :true-story:
+    pub fn new_with_tuid_prefix(
+        tuid_prefix: TuidPrefix,
+        layers: impl IntoIterator<Item = LayerDefinition>,
+    ) -> Self {
         Self {
             layers: layers
                 .into_iter()
                 .enumerate()
-                .map(|(tuid_prefix, layer)| {
+                .map(|(tuid_prefix_increment, layer)| {
                     (
                         layer.layer_name.map(|s| s.to_owned()),
                         layer
                             .layer_type
-                            .into_recording(tuid_prefix.saturating_add(1) as _, layer.partition_id)
+                            .into_recording(
+                                tuid_prefix.saturating_add(tuid_prefix_increment as _),
+                                layer.partition_id,
+                            )
                             .unwrap(),
                     )
                 })

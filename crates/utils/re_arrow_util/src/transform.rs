@@ -748,7 +748,7 @@ mod test {
     impl<T: Array + Clone + 'static> std::fmt::Display for DisplayRB<T> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let rb = wrap_in_record_batch(Arc::new(self.0.clone()));
-            write!(f, "{}", re_format_arrow::format_record_batch(&rb))
+            write!(f, "{}", crate::format_record_batch(&rb))
         }
     }
 
@@ -981,8 +981,9 @@ mod test {
         outer_builder.values().append(true);
         outer_builder.append(true);
 
-        // Row 1: [[5], [6, 7, 8]] -> should flatten to [5, 6, 7, 8]
+        // Row 1: [[5, null], [6, 7, 8]] -> should flatten to [5, null, 6, 7, 8]
         outer_builder.values().values().append_value(5);
+        outer_builder.values().values().append_null();
         outer_builder.values().append(true);
         outer_builder.values().values().append_value(6);
         outer_builder.values().values().append_value(7);

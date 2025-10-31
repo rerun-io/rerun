@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Literal
 
 import pyarrow
 from pyarrow import RecordBatch, ipc
@@ -12,6 +12,7 @@ from .error_utils import deprecated_param
 from .time import to_nanos, to_nanos_since_epoch
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from datetime import datetime, timedelta
 
     import numpy as np

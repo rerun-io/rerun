@@ -65,7 +65,6 @@ pub fn range_with_blueprint_resolved_data<'a>(
 /// [`crate::HybridResults`].
 ///
 /// If `query_shadowed_components` is true, store components will be queried, even if they are not used.
-// TODO(#10460): Should take identifiers instead of descriptors.
 pub fn latest_at_with_blueprint_resolved_data<'a>(
     ctx: &'a ViewContext<'a>,
     _annotations: Option<&'a re_viewer_context::Annotations>,

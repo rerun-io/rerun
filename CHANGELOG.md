@@ -1,5 +1,26 @@
 # Rerun changelog
 
+## 0.27.0 - TBD - TBD
+
+### ⚠️ Breaking changes
+
+- Minimum supported Python is now 3.10.
+
+## [0.26.2](https://github.com/rerun-io/rerun/compare/0.26.1...0.26.2) - 2025-10-27 - More bug fixes
+
+- Add missing `line_radii` and `fill_mode` params to `Capsules3D` in Python SDK [#11660](https://github.com/rerun-io/rerun/pull/11660) (thanks [@yunho-c](https://github.com/yunho-c)!)
+- Fix pressing the play button sometimes going to follow mode [#11609](https://github.com/rerun-io/rerun/pull/11609)
+- Fix hiding all tabs in a tab-view breaking undo [#11619](https://github.com/rerun-io/rerun/pull/11619)
+- Fix color picker on default & override disappearing when trying to edit [#11651](https://github.com/rerun-io/rerun/pull/11651)
+- Fix `ViewerEvent::TimeUpdate` viewer callback not emitted during playback [#11639](https://github.com/rerun-io/rerun/pull/11639)
+
+
+## [0.26.1](https://github.com/rerun-io/rerun/compare/0.26.0...0.26.1) - 2025-10-21 - Bug fixes
+
+- Fix `cargo install rerun-cli` requiring `protoc` on `PATH` [#11592](https://github.com/rerun-io/rerun/pull/11592)
+- Switch to newly received recordings even if `SetStoreInfo` message is missing [#11568](https://github.com/rerun-io/rerun/pull/11568)
+
+
 ## [0.26.0](https://github.com/rerun-io/rerun/compare/0.25.1...0.26.0) - 2025-10-13 - Viewer improvements and table filtering upgrades
 
 ### ✨ Overview & highlights

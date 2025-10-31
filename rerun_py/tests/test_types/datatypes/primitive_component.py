@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Union
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -42,10 +42,7 @@ class PrimitiveComponent:
 
 
 PrimitiveComponentLike = PrimitiveComponent
-PrimitiveComponentArrayLike = Union[
-    PrimitiveComponent,
-    Sequence[PrimitiveComponentLike],
-]
+PrimitiveComponentArrayLike = PrimitiveComponent | Sequence[PrimitiveComponentLike]
 
 
 class PrimitiveComponentBatch(BaseBatch[PrimitiveComponentArrayLike]):

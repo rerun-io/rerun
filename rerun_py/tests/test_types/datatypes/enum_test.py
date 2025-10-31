@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 from rerun._baseclasses import (
@@ -61,12 +61,17 @@ class EnumTest(Enum):
         return self.name
 
 
-EnumTestLike = Union[
-    EnumTest,
-    Literal["Back", "Down", "Forward", "Left", "Right", "Up", "back", "down", "forward", "left", "right", "up"],
-    int,
-]
-EnumTestArrayLike = Union[EnumTestLike, Sequence[EnumTestLike]]
+EnumTestLike = (
+    EnumTest
+    | Literal["Back", "Down", "Forward", "Left", "Right", "Up", "back", "down", "forward", "left", "right", "up"]
+    | int
+)
+EnumTestArrayLike = (
+    EnumTest
+    | Literal["Back", "Down", "Forward", "Left", "Right", "Up", "back", "down", "forward", "left", "right", "up"]
+    | int
+    | Sequence[EnumTestLike]
+)
 
 
 class EnumTestBatch(BaseBatch[EnumTestArrayLike]):

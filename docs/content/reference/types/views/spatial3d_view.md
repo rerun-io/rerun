@@ -26,6 +26,7 @@ Configuration for the 3D eye
 
 * `kind`: The kind of the eye for the spatial 3D view.
 * `speed`: Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
+* `tracking_entity`: Currently tracked entity.
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
@@ -58,6 +59,7 @@ snippet: views/spatial3d
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Clear`](../archetypes/clear.md)
+* [`CoordinateFrame`](../archetypes/coordinate_frame.md)
 * [`Cylinders3D`](../archetypes/cylinders3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)

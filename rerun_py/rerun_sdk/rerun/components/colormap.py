@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -97,6 +97,16 @@ class Colormap(Enum):
     It interpolates from red to orange to yellow to green to blue to violet.
     """
 
+    Twilight = 9
+    """
+    The Twilight colormap from Matplotlib.
+
+    This is a perceptually uniform cyclic colormap from Matplotlib, it is useful for
+    visualizing periodic or cyclic data.
+
+    It interpolates from white to blue to purple to red to orange and back to white.
+    """
+
     @classmethod
     def auto(cls, val: str | int | Colormap) -> Colormap:
         """Best-effort converter, including a case-insensitive string matcher."""
@@ -118,9 +128,9 @@ class Colormap(Enum):
         return self.name
 
 
-ColormapLike = Union[
-    Colormap,
-    Literal[
+ColormapLike = (
+    Colormap
+    | Literal[
         "CyanToYellow",
         "Grayscale",
         "Inferno",
@@ -128,6 +138,7 @@ ColormapLike = Union[
         "Plasma",
         "Spectral",
         "Turbo",
+        "Twilight",
         "Viridis",
         "cyantoyellow",
         "grayscale",
@@ -136,11 +147,36 @@ ColormapLike = Union[
         "plasma",
         "spectral",
         "turbo",
+        "twilight",
         "viridis",
-    ],
-    int,
-]
-ColormapArrayLike = Union[ColormapLike, Sequence[ColormapLike]]
+    ]
+    | int
+)
+ColormapArrayLike = (
+    Colormap
+    | Literal[
+        "CyanToYellow",
+        "Grayscale",
+        "Inferno",
+        "Magma",
+        "Plasma",
+        "Spectral",
+        "Turbo",
+        "Twilight",
+        "Viridis",
+        "cyantoyellow",
+        "grayscale",
+        "inferno",
+        "magma",
+        "plasma",
+        "spectral",
+        "turbo",
+        "twilight",
+        "viridis",
+    ]
+    | int
+    | Sequence[ColormapLike]
+)
 
 
 class ColormapBatch(BaseBatch[ColormapArrayLike], ComponentBatchMixin):

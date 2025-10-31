@@ -6,9 +6,6 @@ pub struct Duration(i64);
 impl Duration {
     pub const MAX: Self = Self(i64::MAX);
     const NANOS_PER_SEC: i64 = 1_000_000_000;
-    const SEC_PER_MINUTE: i64 = 60;
-    const SEC_PER_HOUR: i64 = 60 * Self::SEC_PER_MINUTE;
-    const SEC_PER_DAY: i64 = 24 * Self::SEC_PER_HOUR;
 
     #[inline]
     pub const fn from_nanos(nanos: i64) -> Self {
@@ -48,81 +45,23 @@ impl Duration {
 
     /// Format as seconds, approximately.
     pub fn format_secs(self) -> String {
-        let nanos = self.as_nanos();
-        let secs = nanos as f64 * 1e-9;
-
-        let is_whole_second = nanos % 1_000_000_000 == 0;
-
-        let secs = re_format::FloatFormatOptions::DEFAULT_f64
+        re_format::DurationFormatOptions::default()
             .with_always_sign(true)
-            .with_decimals(if is_whole_second { 0 } else { 3 })
-            .with_strip_trailing_zeros(false)
-            .format(secs);
-        format!("{secs}s")
+            .with_only_seconds(true)
+            .with_min_decimals(0)
+            .with_max_decimals(6) // For time panel we want at least microsecond
+            .format_nanos(self.as_nanos())
     }
 
     pub fn exact_format(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let total_nanos = if self.0 < 0 {
-            // negative duration
-            write!(f, "-")?;
-            std::ops::Neg::neg(*self).0 // handle negation without overflow
-        } else {
-            self.0
-        };
-
-        let whole_secs = total_nanos / Self::NANOS_PER_SEC;
-        let nanos = total_nanos - Self::NANOS_PER_SEC * whole_secs;
-
-        let mut secs_remaining = whole_secs;
-        let mut did_write = false;
-
-        let days = secs_remaining / Self::SEC_PER_DAY;
-        if days > 0 {
-            write!(f, "{days}d")?;
-            secs_remaining -= days * Self::SEC_PER_DAY;
-            did_write = true;
-        }
-
-        let hours = secs_remaining / Self::SEC_PER_HOUR;
-        if hours > 0 {
-            if did_write {
-                write!(f, " ")?;
-            }
-            write!(f, "{hours}h")?;
-            secs_remaining -= hours * Self::SEC_PER_HOUR;
-            did_write = true;
-        }
-
-        let minutes = secs_remaining / Self::SEC_PER_MINUTE;
-        if minutes > 0 {
-            if did_write {
-                write!(f, " ")?;
-            }
-            write!(f, "{minutes}m")?;
-            secs_remaining -= minutes * Self::SEC_PER_MINUTE;
-            did_write = true;
-        }
-
-        const MAX_MILLISECOND_ACCURACY: bool = true;
-        const MAX_MICROSECOND_ACCURACY: bool = true;
-
-        if secs_remaining > 0 || nanos > 0 || !did_write {
-            if did_write {
-                write!(f, " ")?;
-            }
-
-            if nanos == 0 {
-                write!(f, "{secs_remaining}s")?;
-            } else if MAX_MILLISECOND_ACCURACY || nanos % 1_000_000 == 0 {
-                write!(f, "{}.{:03}s", secs_remaining, nanos / 1_000_000)?;
-            } else if MAX_MICROSECOND_ACCURACY || nanos % 1_000 == 0 {
-                write!(f, "{}.{:06}s", secs_remaining, nanos / 1_000)?;
-            } else {
-                write!(f, "{secs_remaining}.{nanos:09}s")?;
-            }
-        }
-
-        Ok(())
+        f.write_str(
+            &re_format::DurationFormatOptions::default()
+                .with_always_sign(true)
+                .with_only_seconds(false)
+                .with_min_decimals(0)
+                .with_max_decimals(6) // For time panel we want at least microsecond
+                .format_nanos(self.as_nanos()),
+        )
     }
 
     /// Useful when showing dates/times on a timeline and you want it compact.
@@ -221,10 +160,10 @@ mod tests {
     use crate::Duration;
 
     #[test]
-    fn test_formatting_duratuon() {
+    fn test_formatting_duration() {
         assert_eq!(&Duration::from_micros(42_000_000).format_secs(), "+42s");
         assert_eq!(&Duration::from_micros(69_000).format_secs(), "+0.069s");
-        assert_eq!(&Duration::from_micros(69_900).format_secs(), "+0.070s");
+        assert_eq!(&Duration::from_micros(69_900).format_secs(), "+0.069 900s");
         assert_eq!(
             &Duration::from_micros(42_123_000_000).format_secs(),
             "+42 123s"

@@ -260,6 +260,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "components.Scale3D",
             "datatypes.Quaternion",
             "datatypes.RotationAxisAngle",
+            "archetypes.CoordinateFrame",
         ],
         gen_page=False,
     ),
@@ -399,9 +400,22 @@ SECTION_TABLE: Final[list[Section]] = [
     ),
     Section(
         title="Catalog",
-        show_tables=False,
+        show_tables=True,
         mod_path="rerun.catalog",
         show_submodules=True,
+        class_list=[
+            "AlreadyExistsError",
+            "DataframeQueryView",
+            "DatasetEntry",
+            "CatalogClient",
+            "Entry",
+            "EntryId",
+            "EntryKind",
+            "NotFoundError",
+            "TableEntry",
+            "Task",
+            "VectorDistanceMetric",
+        ],
     ),
     Section(
         title="Utilities",
@@ -490,7 +504,9 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
 
 | **Rerun Version** | **Release Date** | **Supported Python Version** |
 |-------------------|------------------|------------------------------|
-| 0.25              | Sep./Oct. 2025   | 3.10+                        |
+| 0.27              | Nov. 2025 (est.) | 3.10+                        |
+| 0.26              | Oct. 13, 2025    | 3.9+                         |
+| 0.25              | Sep. 16, 2025    | 3.9+                         |
 | 0.24              | Jul. 17, 2025    | 3.9+                         |
 | 0.23              | Apr. 24, 2025    | 3.9+                         |
 | 0.22              | Feb. 6, 2025     | 3.9+                         |
@@ -562,13 +578,25 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
                         mod_tail = section.mod_path.split(".")[1:]
                         class_name = ".".join([*mod_tail, class_name])
                     cls = rerun_pkg[class_name]
+                    bindings_class = False
+                    if "rerun_bindings" in cls.canonical_path:
+                        bindings_class = True
+                        cls = bindings_pkg[cls.canonical_path[len("rerun_bindings.") :]]
+                        class_name = cls.canonical_path
                     show_class = class_name
                     for maybe_strip in ["archetypes.", "components.", "datatypes."]:
                         if class_name.startswith(maybe_strip):
                             stripped = class_name.replace(maybe_strip, "")
                             if stripped in rerun_pkg.classes:
                                 show_class = stripped
-                    index_file.write(f"[`rerun.{show_class}`][rerun.{class_name}] | {cls.docstring.lines[0]}\n")
+                    if bindings_class:
+                        show_class = class_name  # don't strip anything for bindings
+                    else:
+                        show_class = "rerun." + show_class
+                        class_name = "rerun." + class_name
+                    if cls.docstring is None:
+                        raise ValueError(f"No docstring for class {class_name}")
+                    index_file.write(f"[`{show_class}`][{class_name}] | {cls.docstring.lines[0]}\n")
 
         index_file.write("\n")
 

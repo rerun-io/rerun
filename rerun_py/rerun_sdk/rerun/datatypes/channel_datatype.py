@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, Union
+from typing import Literal
 
 import pyarrow as pa
 
@@ -82,9 +82,9 @@ class ChannelDatatype(ChannelDatatypeExt, Enum):
         return self.name
 
 
-ChannelDatatypeLike = Union[
-    ChannelDatatype,
-    Literal[
+ChannelDatatypeLike = (
+    ChannelDatatype
+    | Literal[
         "F16",
         "F32",
         "F64",
@@ -107,10 +107,38 @@ ChannelDatatypeLike = Union[
         "u32",
         "u64",
         "u8",
-    ],
-    int,
-]
-ChannelDatatypeArrayLike = Union[ChannelDatatypeLike, Sequence[ChannelDatatypeLike]]
+    ]
+    | int
+)
+ChannelDatatypeArrayLike = (
+    ChannelDatatype
+    | Literal[
+        "F16",
+        "F32",
+        "F64",
+        "I16",
+        "I32",
+        "I64",
+        "I8",
+        "U16",
+        "U32",
+        "U64",
+        "U8",
+        "f16",
+        "f32",
+        "f64",
+        "i16",
+        "i32",
+        "i64",
+        "i8",
+        "u16",
+        "u32",
+        "u64",
+        "u8",
+    ]
+    | int
+    | Sequence[ChannelDatatypeLike]
+)
 
 
 class ChannelDatatypeBatch(BaseBatch[ChannelDatatypeArrayLike]):

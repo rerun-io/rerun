@@ -68,7 +68,17 @@ def cargo(
         cmd = [CARGO_PATH, *args.split()]
     else:
         cmd = [CARGO_PATH, f"+{cargo_version}", *args.split()]
-    # print(f"> {subprocess.list2cmdline(cmd)}")
+
+    # Create and print a sanitized copy of the command
+    sanitized_cmd = cmd.copy()
+    try:
+        token_idx = sanitized_cmd.index("--token")
+        if token_idx + 1 < len(sanitized_cmd):
+            sanitized_cmd[token_idx + 1] = "***"
+    except ValueError:
+        pass
+    print(f"> CWD={cwd} cargo {subprocess.list2cmdline(sanitized_cmd[1:])}")
+
     if not dry_run:
         stderr = subprocess.STDOUT if capture else None
         subprocess.check_output(cmd, cwd=cwd, env=env, stderr=stderr)
@@ -95,9 +105,10 @@ def get_workspace_crates(root: dict[str, Any]) -> dict[str, Crate]:
     for pattern in root["workspace"]["members"]:
         for crate in [member for member in glob(pattern) if os.path.isdir(member)]:
             crate_path = Path(crate)
-            if not os.path.exists(crate_path / "Cargo.toml"):
+            crate_cargo_toml = crate_path / "Cargo.toml"
+            if not crate_cargo_toml.exists():
                 continue
-            manifest_text = (crate_path / "Cargo.toml").read_text()
+            manifest_text = crate_cargo_toml.read_text()
             manifest: dict[str, Any] = tomlkit.parse(manifest_text)
             crates[manifest["package"]["name"]] = Crate(manifest, crate_path)
     return crates
@@ -153,36 +164,40 @@ def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dic
     This also filters any crates which have `publish` set to `false`.
     """
 
+    visited: dict[str, bool] = {}
+    output: dict[str, Crate] = {}
+
     def helper(
         ctx: Context,
         crates: dict[str, Crate],
         name: str,
-        output: dict[str, Crate],
-        visited: dict[str, bool],
     ) -> None:
+        nonlocal visited, output
+
+        # Circular references are possible, so we must check for cycles before recursing.
+        if name in visited:
+            return
+        else:
+            visited[name] = True
+
         crate = crates[name]
         for dependency in crate_deps(crate.manifest):
             assert dependency.name != name, f"Crate {name} had itself as a dependency"
             if dependency.name not in crates:
                 continue
-            if dependency.name in visited:
-                continue
-            helper(ctx, crates, dependency.name, output, visited)
+            helper(ctx, crates, dependency.name)
+
         # Insert only after all dependencies have been traversed
-        if name not in visited:
-            visited[name] = True
-            publish = crate.manifest["package"].get("publish")
-            if publish is None:
-                ctx.error(f"Crate {B}{name}{X} does not have {B}package.publish{X} set.")
-                return
+        publish = crate.manifest["package"].get("publish")
+        if publish is None:
+            ctx.error(f"Crate {B}{name}{X} does not have {B}package.publish{X} set.")
+            return
 
-            if publish:
-                output[name] = crate
+        if publish:
+            output[name] = crate
 
-    visited: dict[str, bool] = {}
-    output: dict[str, Crate] = {}
     for name in crates.keys():
-        helper(ctx, crates, name, output, visited)
+        helper(ctx, crates, name)
     return output
 
 
@@ -431,7 +446,7 @@ def parse_retry_delay_secs(error_message: str) -> float | None:
     return (retry_after - datetime.now(timezone.utc)).total_seconds() * MAX_PUBLISH_WORKERS
 
 
-def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -> None:
+def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], dry_run: bool) -> None:
     package = crate.manifest["package"]
     name = package["name"]
 
@@ -443,6 +458,11 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
         # TODO(#11199): remove this hack
         publish_cmd += " --allow-dirty"
 
+    # This is a bit redundant given that we don't run the command in dry runs, but it allows setting `dry_run=False`
+    # bellow for testing purposes.
+    if dry_run:
+        publish_cmd += " --dry-run"
+
     print(f"{G}Publishing{X} {B}{name}{X}…")
     retry_attempts = 5
     while True:
@@ -451,11 +471,11 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
                 publish_cmd,
                 cwd=crate.path,
                 env=env,
-                dry_run=False,
+                dry_run=dry_run,
                 capture=True,
             )
 
-            if not is_already_published(version, crate):
+            if not dry_run and not is_already_published(version, crate):
                 # Theoretically this shouldn't be needed… but sometimes it is.
                 print(f"{R}Waiting for {name} to become available…")
                 time.sleep(2)  # give crates.io some time to index the new crate
@@ -476,16 +496,21 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
             # for any other error, retry after 6 seconds
             retry_delay = 1 + (parse_retry_delay_secs(error_message) or 5.0)
             if retry_attempts > 0:
-                print(f"{R}Failed to publish{X} {B}{name}{X}, retrying in {retry_delay} seconds…")
+                print(
+                    f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}\n\nRemaining retry attempts: {retry_attempts}.\nRetrying in {retry_delay} seconds."
+                )
                 retry_attempts -= 1
-                retry_delay *= 1.5  # some backoff
                 time.sleep(retry_delay + 1)
             else:
-                print(f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}")
+                print(
+                    f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}\n\nNo remaining retry attempts; aborting publish"
+                )
                 raise
 
 
-def publish_unpublished_crates_in_parallel(all_crates: dict[str, Crate], version: str, token: str) -> None:
+def publish_unpublished_crates_in_parallel(
+    all_crates: dict[str, Crate], version: str, token: str, dry_run: bool
+) -> None:
     # filter all_crates for any that are already published
     print("Collecting unpublished crates…")
     unpublished_crates: dict[str, Crate] = {}
@@ -501,6 +526,12 @@ def publish_unpublished_crates_in_parallel(all_crates: dict[str, Crate], version
     for name, crate in unpublished_crates.items():
         dependencies = []
         for dependency in crate_deps(crate.manifest):
+            # NOTE: we _could_ theoretically ignore dev-dependencies here, as per the cargo book:
+            # https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html
+            #
+            # However, we historically had a `dev-dependency` cycle which caused endless headaches. So we're now
+            # disallowing _any_ cycles.
+
             if dependency.name in unpublished_crates:
                 dependencies.append(dependency.name)
         dependency_graph[name] = dependencies
@@ -508,13 +539,51 @@ def publish_unpublished_crates_in_parallel(all_crates: dict[str, Crate], version
     # walk the dependency graph in parallel and publish each crate
     print(f"Publishing {len(unpublished_crates)} crates…")
     env = {**os.environ.copy(), "RERUN_IS_PUBLISHING_CRATES": "yes"}
+
+    # The max token parameter attempts to model `crates.io` rate limiting. In dry run mode, we don't want to wait so
+    # we seed the rate limiter with plenty of tokens.
+    if dry_run:
+        max_token = 1e3
+    else:
+        max_token = 30
+
     DAG(dependency_graph).walk_parallel(
-        lambda name: publish_crate(unpublished_crates[name], token, version, env),
+        lambda name: publish_crate(unpublished_crates[name], token, version, env, dry_run),
         # 30 tokens per minute (burst limit in crates.io)
-        rate_limiter=RateLimiter(max_tokens=30, refill_interval_sec=60),
+        rate_limiter=RateLimiter(max_tokens=max_token, refill_interval_sec=60),
         # publishing already uses all cores, don't start too many publishes at once
         num_workers=min(MAX_PUBLISH_WORKERS, cpu_count()),
     )
+
+
+def check_dependency_tree() -> None:
+    root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text(encoding="utf-8"))
+
+    print("Collecting publishable crates…")
+    workspace_crates = get_workspace_crates(root)
+
+    ctx = Context()
+    crates = get_sorted_publishable_crates(ctx, workspace_crates)
+
+    dependency_graph: dict[str, list[str]] = {}
+    for name, crate in crates.items():
+        print(name)
+        dependencies = []
+        for dependency in crate_deps(crate.manifest):
+            if dependency.name in crates:
+                dependencies.append(dependency.name)
+        dependency_graph[name] = dependencies
+
+    try:
+        # This runs a dependency graph sanitization and raises an exception on fail
+        _dag = DAG(dependency_graph)
+    except Exception as e:
+        from pprint import pprint
+
+        print("Full dependency graph:")
+        pprint(dependency_graph)
+
+        raise e
 
 
 def publish(dry_run: bool, token: str) -> None:
@@ -522,15 +591,16 @@ def publish(dry_run: bool, token: str) -> None:
 
     root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text(encoding="utf-8"))
     version: str = root["workspace"]["package"]["version"]
+
     print("Collecting publishable crates…")
-    crates = get_sorted_publishable_crates(ctx, get_workspace_crates(root))
+    workspace_crates = get_workspace_crates(root)
+    crates = get_sorted_publishable_crates(ctx, workspace_crates)
 
     for name in crates.keys():
         ctx.publish(name, version)
     ctx.finish()
 
-    if not dry_run:
-        publish_unpublished_crates_in_parallel(crates, version, token)
+    publish_unpublished_crates_in_parallel(crates, version, token, dry_run)
 
 
 def get_latest_published_version(crate_name: str, skip_prerelease: bool = False) -> str | None:
@@ -573,7 +643,7 @@ class Target(Enum):
 
 
 def get_release_version_from_git_branch() -> str:
-    return git.Repo().active_branch.name.removeprefix("release-")
+    return git.Repo().active_branch.name.removeprefix("prepare-release-")
 
 
 def get_version(target: Target | None, skip_prerelease: bool = False) -> VersionInfo:
@@ -583,7 +653,7 @@ def get_version(target: Target | None, skip_prerelease: bool = False) -> Version
             current_version = VersionInfo.parse(branch_name)  # ensures that it is a valid version
         except ValueError:
             print(f"the current branch `{branch_name}` does not specify a valid version.")
-            print("this script expects the format `release-x.y.z-meta.N`")
+            print("this script expects the format `prepare-release-x.y.z-meta.N`")
             sys.exit(1)
     elif target is Target.CratesIo:
         latest_published_version = get_latest_published_version("rerun", skip_prerelease)
@@ -740,12 +810,16 @@ def main() -> None:
         "check-publish-flags", help="Check if any publish=true crates depend on publish=false crates."
     )
 
+    cmds_parser.add_parser("check-dependency-tree", help="Check that our dependency tree doesn't have any cycles.")
+
     args = parser.parse_args()
 
     if args.cmd == "check-git-branch-name":
         check_git_branch_name()
     if args.cmd == "check-publish-flags":
         check_publish_flags()
+    if args.cmd == "check-dependency-tree":
+        check_dependency_tree()
     if args.cmd == "get-version":
         print_version(args.target, args.finalize, args.pre_id, args.skip_prerelease)
     if args.cmd == "version":

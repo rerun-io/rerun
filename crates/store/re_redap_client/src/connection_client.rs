@@ -1,9 +1,10 @@
+use crate::ApiError;
+use arrow::datatypes::SchemaRef;
 use arrow::{array::RecordBatch, datatypes::Schema as ArrowSchema};
-use tokio_stream::{Stream, StreamExt as _};
-use tonic::codegen::{Body, StdError};
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::EntryId;
+use re_protos::cloud::v1alpha1::WriteTableRequest;
+use re_protos::cloud::v1alpha1::ext::{CreateTableEntryRequest, TableInsertMode};
 use re_protos::{
     TypeConversionError,
     cloud::v1alpha1::{
@@ -31,8 +32,10 @@ use re_protos::{
     headers::RerunHeadersInjectorExt as _,
     invalid_schema, missing_column, missing_field,
 };
-
-use crate::ApiError;
+use tokio_stream::{Stream, StreamExt as _};
+use tonic::codegen::{Body, StdError};
+use tonic::{IntoStreamingRequest as _, Status};
+use url::Url;
 
 pub type FetchChunksResponseStream = std::pin::Pin<
     Box<
@@ -690,5 +693,91 @@ where
             .map_err(|err| ApiError::tonic(err, "/QueryTasks failed"))?
             .into_inner();
         Ok(response)
+    }
+
+    pub async fn get_entry_id(
+        &mut self,
+        entry_name: &str,
+        entry_kind: Option<EntryKind>,
+    ) -> Result<Option<EntryId>, ApiError> {
+        self.inner()
+            .find_entries(FindEntriesRequest {
+                filter: Some(EntryFilter {
+                    id: None,
+                    name: Some(entry_name.to_owned()),
+                    entry_kind: entry_kind.map(|kind| kind.into()),
+                }),
+            })
+            .await
+            .map_err(|err| ApiError::tonic(err, "/FindEntries failed"))?
+            .into_inner()
+            .entries
+            .first()
+            .and_then(|entry| entry.id)
+            .map(|id| {
+                EntryId::try_from(id)
+                    .map_err(|err| ApiError::serialization(err, "/FindEntries failed"))
+            })
+            .transpose()
+    }
+
+    pub async fn write_table(
+        &mut self,
+        stream: impl Stream<Item = RecordBatch> + Send + 'static,
+        table_id: EntryId,
+        insert_mode: TableInsertMode,
+    ) -> Result<(), ApiError> {
+        let insert_mode = re_protos::cloud::v1alpha1::TableInsertMode::from(insert_mode).into();
+        let stream = stream
+            .map(move |batch| WriteTableRequest {
+                dataframe_part: Some(batch.into()),
+                insert_mode,
+            })
+            .into_streaming_request()
+            .with_entry_id(table_id)
+            .map_err(|err| ApiError::tonic(err, "/WriteTable failed"))?;
+
+        self.inner()
+            .write_table(stream)
+            .await
+            .map(|_| ())
+            .map_err(|err| ApiError::tonic(err, "/WriteTable failed"))
+    }
+
+    pub async fn create_table_entry(
+        &mut self,
+        name: &str,
+        url: &Url,
+        schema: SchemaRef,
+    ) -> Result<TableEntry, ApiError> {
+        let provider_details = LanceTable {
+            table_url: url.clone(),
+        }
+        .try_as_any()
+        .map_err(|err| ApiError::serialization(err, "/CreateTable failed"))?;
+        let request = CreateTableEntryRequest {
+            name: name.to_owned(),
+            schema: schema.as_ref().clone(),
+            provider_details,
+        };
+
+        let resp = self
+            .inner()
+            .create_table_entry(tonic::Request::new(
+                request
+                    .try_into()
+                    .map_err(|err| ApiError::internal(err, "/CreateTableEntry failed"))?,
+            ))
+            .await
+            .map_err(|err| ApiError::tonic(err, "failed to create table"))?
+            .into_inner();
+
+        resp.table
+            .ok_or(ApiError::tonic(
+                Status::invalid_argument("entry ID not set in response"),
+                "/CreateTable failed",
+            ))?
+            .try_into()
+            .map_err(|err| ApiError::internal(err, "/CreateTable failed"))
     }
 }

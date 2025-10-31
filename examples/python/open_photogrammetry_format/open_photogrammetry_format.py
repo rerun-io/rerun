@@ -90,7 +90,7 @@ class OPFProject:
 
         """
         self.path = path
-        self.project = resolve(load(self.path))
+        self.project = resolve(load(str(self.path)))
         self.log_as_frames = log_as_frames
 
     @classmethod
@@ -133,6 +133,7 @@ class OPFProject:
             zip(
                 self.project.camera_list.cameras,
                 self.project.calibration.calibrated_cameras.cameras,
+                strict=False,
             ),
         ):
             if not str(camera.uri).endswith(".jpg"):

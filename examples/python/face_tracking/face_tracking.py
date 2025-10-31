@@ -267,13 +267,13 @@ class FaceLandmarkerLogger:
             except StopIteration:
                 return True
 
-        if is_empty(zip(detection_result.face_landmarks, detection_result.face_blendshapes)):
+        if is_empty(zip(detection_result.face_landmarks, detection_result.face_blendshapes, strict=False)):
             rr.log("video/landmarker/faces", rr.Clear(recursive=True), static=ALL_STATIC)
             rr.log("reconstruction/faces", rr.Clear(recursive=True), static=ALL_STATIC)
             rr.log("blendshapes", rr.Clear(recursive=True), static=ALL_STATIC)
 
         for i, (landmark, blendshapes) in enumerate(
-            zip(detection_result.face_landmarks, detection_result.face_blendshapes),
+            zip(detection_result.face_landmarks, detection_result.face_blendshapes, strict=False),
         ):
             if len(landmark) == 0 or len(blendshapes) == 0:
                 rr.log(

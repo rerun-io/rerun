@@ -1,4 +1,4 @@
-use egui::{NumExt as _, TextBuffer};
+use egui::{NumExt as _, TextBuffer, WidgetInfo, WidgetType};
 use egui_tiles::ContainerKind;
 
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
@@ -67,8 +67,10 @@ impl SelectionPanel {
                 ..Default::default()
             });
 
-        // Always reset the VH highlight, and let the UI re-set it if needed.
-        ctx.send_time_commands([TimeControlCommand::ClearHighlightedRange]);
+        if ctx.time_ctrl.highlighted_range.is_some() {
+            // Always reset the VH highlight, and let the UI re-set it if needed.
+            ctx.send_time_commands([TimeControlCommand::ClearHighlightedRange]);
+        }
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
             ui.panel_content(|ui| {
@@ -81,7 +83,7 @@ impl SelectionPanel {
             // area
             ui.add_space(-ui.spacing().item_spacing.y);
 
-            egui::ScrollArea::both()
+            let r = egui::ScrollArea::both()
                 .auto_shrink([false; 2])
                 .show(ui, |ui| {
                     ui.add_space(ui.spacing().item_spacing.y);
@@ -89,6 +91,7 @@ impl SelectionPanel {
                         self.contents(ctx, viewport, view_states, ui);
                     });
                 });
+            r.state
         });
 
         // run modals (these are noop if the modals are not active)
@@ -117,7 +120,7 @@ impl SelectionPanel {
 
         if selection.len() == 1 {
             for item in selection.iter_items() {
-                list_item::list_item_scope(ui, item, |ui| {
+                let res = list_item::list_item_scope(ui, item, |ui| {
                     item_heading_with_breadcrumbs(ctx, viewport, ui, item);
 
                     self.item_ui(
@@ -129,9 +132,12 @@ impl SelectionPanel {
                         UiLayout::SelectionPanel,
                     );
                 });
+                res.response.widget_info(|| {
+                    egui::WidgetInfo::labeled(egui::WidgetType::Panel, true, "_selection_panel")
+                });
             }
         } else {
-            list_item::list_item_scope(ui, "selections_panel", |ui| {
+            let response = list_item::list_item_scope(ui, "selections_panel", |ui| {
                 ui.list_item()
                     .with_height(tokens.title_bar_height())
                     .interactive(false)
@@ -148,6 +154,9 @@ impl SelectionPanel {
                     ui.add_space(4.0);
                     item_title_list_item(ctx, viewport, ui, item);
                 }
+            });
+            response.response.widget_info(|| {
+                WidgetInfo::labeled(egui::WidgetType::Panel, true, "_selection_panel")
             });
         }
     }
@@ -328,12 +337,20 @@ impl SelectionPanel {
                     if let Some(data_result) = &data_result
                         && let Some(view) = viewport.view(view_id)
                     {
-                        visible_interactive_toggle_ui(
-                            &view.bundle_context_with_states(ctx, view_states),
-                            ui,
-                            ctx.lookup_query_result(*view_id),
-                            data_result,
-                        );
+                        let view_ctx = view.bundle_context_with_states(ctx, view_states);
+                        visible_interactive_toggle_ui(&view_ctx, ui, query_result, data_result);
+
+                        // TODO(RR-2700): Come up with something non-experimental.
+                        let is_spatial_view =
+                            view.class_identifier() == "3D" || view.class_identifier() == "2D";
+                        if ctx
+                            .global_context
+                            .app_options
+                            .experimental_coordinate_frame_display_and_override
+                            && is_spatial_view
+                        {
+                            coordinate_frame_ui(ui, &view_ctx, data_result);
+                        }
                     }
                 }
             }
@@ -498,6 +515,69 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     }
 }
 
+/// Shows the active coordinate frame.
+///
+/// This is not technically a visualizer, but it affects visualization, so we show it alongside.
+fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &DataResult) {
+    use re_types::archetypes;
+    use re_types::components::TransformFrameId;
+    use re_view::latest_at_with_blueprint_resolved_data;
+
+    let component_descr = archetypes::CoordinateFrame::descriptor_frame_id();
+    let component = component_descr.component;
+    let query_shadowed_components = true;
+    let query_result = latest_at_with_blueprint_resolved_data(
+        ctx,
+        None,
+        &ctx.current_query(),
+        data_result,
+        [component],
+        query_shadowed_components,
+    );
+
+    let override_path = data_result.override_path();
+
+    let frame_id_before = query_result
+        .get_mono_with_fallback::<TransformFrameId>(component)
+        .to_string();
+    let mut frame_id = frame_id_before.clone();
+
+    ui.list_item_flat_noninteractive(
+        list_item::PropertyContent::new("Coordinate frame")
+            .value_text_mut(&mut frame_id)
+            .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
+                let result_override = query_result.overrides.get(component);
+                let raw_override = result_override
+                    .and_then(|c| c.non_empty_component_batch_raw(component))
+                    .map(|(_, array)| array);
+
+                crate::visualizer_ui::remove_and_reset_override_buttons(
+                    ctx,
+                    ui,
+                    component_descr.clone(),
+                    override_path,
+                    &raw_override,
+                );
+            }),
+    )
+        .on_hover_ui(|ui| {
+            ui.markdown_ui(
+                "The coordinate frame this entity is associated with.
+
+To learn more about coordinate frames, see the [Spaces & Transforms](https://rerun.io/docs/concepts/spaces-and-transforms) in the manual.",
+            );
+        });
+
+    if frame_id_before != frame_id {
+        // Save as blueprint override.
+        ctx.save_blueprint_component(
+            override_path.clone(),
+            &component_descr,
+            &TransformFrameId::new(&frame_id),
+        );
+    }
+}
+
 fn show_recording_properties(
     ctx: &ViewerContext<'_>,
     db: &re_entity_db::EntityDb,
@@ -575,7 +655,7 @@ fn clone_view_button_ui(
             .on_click(|| {
                 if let Some(new_view_id) = viewport.duplicate_view(&view_id, ctx) {
                     ctx.command_sender()
-                        .send_system(SystemCommand::SetSelection(Item::View(new_view_id).into()));
+                        .send_system(SystemCommand::set_selection(Item::View(new_view_id)));
                     viewport.mark_user_interaction(ctx);
                 }
             })
@@ -968,7 +1048,8 @@ fn container_kind_selection_ui(ui: &mut egui::Ui, in_out_kind: &mut ContainerKin
                 *in_out_kind = kind;
             }
         }
-    });
+    })
+    .widget_info(|| WidgetInfo::labeled(WidgetType::ComboBox, true, "Container kind"));
 }
 
 // TODO(#4560): this code should be generic and part of re_data_ui

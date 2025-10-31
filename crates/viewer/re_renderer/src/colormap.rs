@@ -20,10 +20,11 @@ pub enum Colormap {
     Viridis = 6,
     CyanToYellow = 7,
     Spectral = 8,
+    Twilight = 9,
 }
 
 impl Colormap {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 9] = [
         Self::Grayscale,
         Self::Inferno,
         Self::Magma,
@@ -32,6 +33,7 @@ impl Colormap {
         Self::Viridis,
         Self::CyanToYellow,
         Self::Spectral,
+        Self::Twilight,
     ];
 }
 
@@ -46,6 +48,7 @@ impl std::fmt::Display for Colormap {
             Self::Viridis => write!(f, "Viridis"),
             Self::CyanToYellow => write!(f, "CyanToYellow"),
             Self::Spectral => write!(f, "Spectral"),
+            Self::Twilight => write!(f, "Twilight"),
         }
     }
 }
@@ -60,6 +63,7 @@ pub fn colormap_srgb(which: Colormap, t: f32) -> [u8; 4] {
         Colormap::Inferno => colormap_inferno_srgb(t),
         Colormap::CyanToYellow => colormap_cyan_to_yellow_srgb(t),
         Colormap::Spectral => colormap_spectral_srgb(t),
+        Colormap::Twilight => colormap_twilight_srgb(t),
     }
 }
 
@@ -235,5 +239,32 @@ pub fn colormap_spectral_srgb(t: f32) -> [u8; 4] {
     let c = C0 + t * (C1 + t * (C2 + t * (C3 + t * (C4 + t * (C5 + t * C6)))));
 
     let c = c * 255.0;
+    [c.x as u8, c.y as u8, c.z as u8, 255]
+}
+
+/// Returns sRGB polynomial approximation from Twilight color map, assuming `t` is normalized.
+///
+/// This is a perceptually uniform cyclic colormap from Matplotlib, it is useful for
+/// visualizing periodic or cyclic data.
+///
+/// It interpolates from white to blue to purple to red to orange and back to white.
+///
+/// Data from <https://github.com/matplotlib/matplotlib> (matplotlib's twilight colormap).
+pub fn colormap_twilight_srgb(t: f32) -> [u8; 4] {
+    const C0: Vec3A = Vec3A::new(0.99435322698120, 0.85170793387210, 0.93942033498486);
+    const C1: Vec3A = Vec3A::new(-6.61774273956635, -0.23133259259568, -3.96704343424284);
+    const C2: Vec3A = Vec3A::new(41.78124131041812, -7.61851602599826, 38.98566990464263);
+    const C3: Vec3A = Vec3A::new(-158.29764239605322, 3.73408709288658, -170.02538195370874);
+    const C4: Vec3A = Vec3A::new(301.70954078396789, 25.04157831823896, 319.73628266524258);
+    const C5: Vec3A = Vec3A::new(-265.16454480601146, -30.83148395246298, -271.62226902484138);
+
+    // Adjusted C6 to ensure f(0) = f(1) for true cyclicity
+    const C6: Vec3A = Vec3A::new(86.58914784721200, 9.90660484718943, 86.89294583380010);
+
+    debug_assert!((0.0..=1.0).contains(&t));
+
+    let c = C0 + t * (C1 + t * (C2 + t * (C3 + t * (C4 + t * (C5 + t * C6)))));
+    let c = c * 255.0;
+
     [c.x as u8, c.y as u8, c.z as u8, 255]
 }
