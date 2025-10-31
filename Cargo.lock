@@ -9639,6 +9639,7 @@ dependencies = [
  "insta",
  "itertools 0.14.0",
  "nohash-hasher",
+ "parking_lot",
  "re_chunk_store",
  "re_entity_db",
  "re_log",

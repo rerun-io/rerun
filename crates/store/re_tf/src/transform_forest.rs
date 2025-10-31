@@ -693,10 +693,10 @@ fn transforms_at(
     source_frame: TransformFrameIdHash,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
-    transforms_for_timeline: &mut CachedTransformsForTimeline,
+    transforms_for_timeline: &CachedTransformsForTimeline,
 ) -> TransformsAtEntity {
     // This is called very frequently, don't put a profile scope here.
-    let Some(source_transforms) = transforms_for_timeline.frame_transforms(source_frame) else {
+    let Some(mut source_transforms) = transforms_for_timeline.frame_transforms(source_frame) else {
         return TransformsAtEntity::default();
     };
 
