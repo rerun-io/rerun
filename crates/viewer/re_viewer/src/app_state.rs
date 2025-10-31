@@ -921,7 +921,7 @@ pub(crate) fn create_time_control_for<'cfgs>(
         let mut time_ctrl = TimeControl::from_blueprint(blueprint_ctx);
 
         time_ctrl.set_play_state(
-            entity_db.times_per_timeline(),
+            entity_db.time_histogram_per_timeline(),
             play_state,
             Some(blueprint_ctx),
         );
