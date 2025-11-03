@@ -102,6 +102,7 @@ Write blueprint code that configures the Viewer automatically:
 For example, you might send different blueprints automatically based on detected issues in your application (e.g., a robot enters an error state and surfaces the correct blueprint to help you debug that)
 
 ```python
+import rerun as rr
 import rerun.blueprint as rrb
 
 if robot_error:
