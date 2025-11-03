@@ -31,7 +31,7 @@ TABLE_FILEPATH = (
 )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def table_filepath() -> Generator[pathlib.Path, None, None]:
     """
     Copies test data to a temp directory.
