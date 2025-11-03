@@ -105,6 +105,7 @@ impl TimeType {
         self.format_opt(time_int, timestamp_format, subsecond_decimals)
     }
 
+    /// The format will omit trailing sub-second zeroes as far as `subsecond_decimals` perimts it.
     pub fn format_opt(
         &self,
         time_int: impl Into<TimeInt>,

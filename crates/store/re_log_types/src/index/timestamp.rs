@@ -156,6 +156,8 @@ impl Timestamp {
     /// Human-readable timestamp.
     ///
     /// Omits the date of same-day timestamps.
+    ///
+    /// The format will omit trailing sub-second zeroes as far as `subsecond_decimals` perimts it.
     pub fn format_opt(
         self,
         timestamp_format: TimestampFormat,

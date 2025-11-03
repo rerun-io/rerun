@@ -45,6 +45,8 @@ impl Duration {
         self.0 as f64 * 1e-9
     }
 
+
+    /// The format will omit trailing sub-second zeroes as far as `subsecond_decimals` perimts it.
     pub fn format_secs(self, subsecond_decimals: RangeInclusive<usize>) -> String {
         re_format::DurationFormatOptions::default()
             .with_always_sign(true)
