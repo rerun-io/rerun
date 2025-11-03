@@ -21,6 +21,10 @@ where
         ".rerun.log_msg.v1alpha1",
         ".rerun.manifest_registry.v1alpha1",
     ]);
+    prost_config.enum_attribute(
+        ".rerun.cloud.v1alpha1.VectorDistanceMetric",
+        "#[derive(serde::Serialize, serde::Deserialize)]",
+    );
 
     if let Err(err) = tonic_prost_build::configure()
         .out_dir(output_dir)

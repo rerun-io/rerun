@@ -126,6 +126,13 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
 #[derive(Clone, PartialEq, Eq)]
 pub struct PyComponentColumnSelector(pub ComponentColumnSelector);
 
+impl std::fmt::Display for PyComponentColumnSelector {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(selector) = self;
+        f.write_fmt(format_args!("{selector}"))
+    }
+}
+
 #[pymethods]
 impl PyComponentColumnSelector {
     /// Create a new `ComponentColumnSelector`.
@@ -140,7 +147,7 @@ impl PyComponentColumnSelector {
     }
 
     fn __repr__(&self) -> String {
-        format!("{}", self.0)
+        self.to_string()
     }
 
     /// The entity path.
