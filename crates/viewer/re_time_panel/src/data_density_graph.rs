@@ -643,7 +643,7 @@ pub struct DensityGraphBuilderConfig {
     pub max_events_in_unsorted_chunk: u64,
 
     /// When a chunk is too large to render all events, uniformly sample this many events
-    /// to create a better density estimate instead of falling back to a uniform distribution.
+    /// to create a good enough density estimate instead.
     pub max_sampled_events_per_chunk: usize,
 }
 
@@ -695,7 +695,7 @@ impl Default for DensityGraphBuilderConfig {
             max_events_in_unsorted_chunk: 8_000,
 
             // When chunks are too large to render all events, sample this many events uniformly
-            // to create a better density estimate.
+            // to create a good enough density estimate.
             max_sampled_events_per_chunk: 4_000,
         }
     }
