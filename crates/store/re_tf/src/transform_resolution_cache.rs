@@ -792,33 +792,38 @@ impl TransformResolutionCache {
                 let (changed_range, previous_sources) =
                     affected_sources.insert_range_start(start_time, sources.clone());
 
-                // Since (by convention) only this entity can affect `previous_sources`, we have to drop all their events in the `changed_range`!
-                let mut moved_events = TransformsForSourceFrame::new_empty();
-                for previous_source_frame in &previous_sources {
-                    let Some(frame_transforms) = per_timeline
-                        .per_source_frame_transforms
-                        .get_mut(previous_source_frame)
-                    else {
-                        // No events on this source, so nothing to remove!
-                        continue;
-                    };
-                    // Since (by convention) only this entity can affect `previous_sources`, we have to move all their events in the `changed_range` to the new range.
-                    frame_transforms
-                        .remove_events_in_range(changed_range.clone(), &mut moved_events);
-                }
-                // …and add them to the new sources!
-                for new_source_frame in sources {
-                    per_timeline
-                        .per_source_frame_transforms
-                        .entry(new_source_frame)
-                        .or_insert_with(|| {
-                            TransformsForSourceFrame::new(
-                                new_source_frame,
-                                *timeline,
-                                &self.static_timeline,
-                            )
-                        })
-                        .insert_all_events_of(&moved_events);
+                // Since (by convention) only this entity can affect `previous_sources`, we have to drop all their events in the `changed_range`
+                // if `previous_sources` is not equal to `sources`.
+                //
+                // Note that the time range insertion we just did was still necessary regardless since more (different) sources may be added in between.
+                if previous_sources != sources {
+                    let mut moved_events = TransformsForSourceFrame::new_empty();
+                    for previous_source_frame in &previous_sources {
+                        let Some(frame_transforms) = per_timeline
+                            .per_source_frame_transforms
+                            .get_mut(previous_source_frame)
+                        else {
+                            // No events on this source, so nothing to remove!
+                            continue;
+                        };
+                        // Since (by convention) only this entity can affect `previous_sources`, we have to move all their events in the `changed_range` to the new range.
+                        frame_transforms
+                            .remove_events_in_range(changed_range.clone(), &mut moved_events);
+                    }
+                    // …and add them to the new sources!
+                    for new_source_frame in sources {
+                        per_timeline
+                            .per_source_frame_transforms
+                            .entry(new_source_frame)
+                            .or_insert_with(|| {
+                                TransformsForSourceFrame::new(
+                                    new_source_frame,
+                                    *timeline,
+                                    &self.static_timeline,
+                                )
+                            })
+                            .insert_all_events_of(&moved_events);
+                    }
                 }
             }
 
