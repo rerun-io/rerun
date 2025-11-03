@@ -102,7 +102,7 @@ impl std::ops::DerefMut for PerEntityAffectedSources {
 pub struct CachedTransformsForTimeline {
     /// Maps entity paths to [`EntityToAffectedSources`] datastructures.
     ///
-    /// This allows us to keep track of which incoming (or removed) transform events on entities apply to which
+    /// This allows us to keep track of which incoming (or removed) transform events on entities, apply to which
     /// source-transform at which time.
     per_entity_affected_sources: PerEntityAffectedSources,
 
@@ -825,7 +825,7 @@ impl TransformResolutionCache {
             for (time_range, source_frames) in
                 affected_sources.iter_ranges(time_column.time_range())
             {
-                // We can now filter out the times on the time column that we're interested in.
+                // We now look only at the times in the time column that are relevant for this child-frame.
                 // Note that there may be more times than actual relevant updates, but crucially, all queries
                 // to the current entity path yield information about the sources in `source_frames`.
                 let times_with_potential_update = time_column
