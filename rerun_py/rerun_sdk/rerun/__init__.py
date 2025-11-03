@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.27.0-alpha.1+dev"
-__version_info__ = (0, 27, 0, "alpha.1")
+__version__ = "0.27.0-alpha.8+dev"
+__version_info__ = (0, 27, 0, "alpha.8")
 
 if sys.version_info < (3, 10):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.10 or later.")
@@ -28,6 +28,7 @@ from . import (
     catalog as catalog,
     dataframe as dataframe,
     experimental as experimental,
+    server as server,
 )
 from ._baseclasses import (
     ComponentBatchLike as ComponentBatchLike,
@@ -79,6 +80,7 @@ from .archetypes import (
     Boxes3D as Boxes3D,
     Capsules3D as Capsules3D,
     Clear as Clear,
+    CoordinateFrame as CoordinateFrame,
     Cylinders3D as Cylinders3D,
     DepthImage as DepthImage,
     Ellipsoids3D as Ellipsoids3D,

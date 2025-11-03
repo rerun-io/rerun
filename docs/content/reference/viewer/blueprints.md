@@ -24,7 +24,7 @@ The reset button in the blueprint panel header provides two reset options:
 If no default blueprint has been set, the reset button uses the heuristic blueprint. See [Reset Behavior](../../concepts/blueprints.md#reset-behavior-heuristic-vs-default) for more details.
 
 ### Add view
-The "+" button allows you to add new views or containers for any [Space](../../concepts/spaces-and-transforms.md).
+The "+" button allows you to add new views or containers.
 
 ## Blueprint tree
 
@@ -59,4 +59,4 @@ To add or re-add an entity to a view:
 
 See [Entity Queries](../../reference/entity-queries.md) for information on how view content is determined.
 
-For more information about configuring the viewer, see [Blueprints](../../getting-started/configure-the-viewer.md).
+For more information about configuring the viewer, see [Configure the Viewer](../../getting-started/configure-the-viewer.md).

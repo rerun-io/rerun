@@ -27,7 +27,10 @@ if TYPE_CHECKING:
     import numpy as np
 
     from ..memory import MemoryRecording
+    from .components.absolute_time_range import AbsoluteTimeRange
     from .components.container_kind import ContainerKindLike
+    from .components.loop_mode import LoopModeLike
+    from .components.play_state import PlayStateLike
 
 ViewContentsLike = Utf8ArrayLike | ViewContents
 
@@ -439,6 +442,8 @@ class SelectionPanel(Panel):
 class TimePanel(Panel):
     """The state of the time panel."""
 
+    time: int | None
+
     def __init__(
         self,
         *,
@@ -450,6 +455,9 @@ class TimePanel(Panel):
         timestamp_cursor: int | float | datetime | np.datetime64 | None = None,
         playback_speed: float | None = None,
         fps: float | None = None,
+        play_state: PlayStateLike | None = None,
+        loop_mode: LoopModeLike | None = None,
+        time_selection: AbsoluteTimeRange | None = None,
     ) -> None:
         """
         Construct a new time panel.
@@ -481,6 +489,18 @@ class TimePanel(Panel):
         fps:
             Frames per second. Only applicable for sequence timelines.
 
+        play_state:
+            If the time is currently paused, playing, or following.
+
+        loop_mode:
+            How the time should loop.
+
+            A loop selection only works if there's also a `time_selection`
+            passed.
+
+        time_selection:
+            Selects a range of time on the time panel.
+
         """
         super().__init__(blueprint_path="time_panel", expanded=expanded, state=state)
         self.timeline = timeline
@@ -496,9 +516,14 @@ class TimePanel(Panel):
             self.time = to_nanos(duration_cursor)
         elif timestamp_cursor is not None:
             self.time = to_nanos_since_epoch(timestamp_cursor)
+        else:
+            self.time = None
 
         self.playback_speed = playback_speed
         self.fps = fps
+        self.play_state = play_state
+        self.loop_mode = loop_mode
+        self.time_selection = time_selection
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
@@ -507,12 +532,17 @@ class TimePanel(Panel):
             timeline=self.timeline,
             playback_speed=self.playback_speed,
             fps=self.fps,
+            loop_mode=self.loop_mode,
+            time_selection=self.time_selection,
         )
 
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
 
-        if hasattr(self, "time"):
-            static_arch = TimePanelBlueprint(time=self.time)
+        if self.time is not None or self.play_state is not None:
+            static_arch = TimePanelBlueprint(
+                time=self.time,
+                play_state=self.play_state,
+            )
 
             stream.log(self.blueprint_path(), static_arch, static=True)
 

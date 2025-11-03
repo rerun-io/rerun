@@ -14,8 +14,8 @@ When you work with the Rerun Viewer, understanding blueprints is important if yo
 
 A way to think about the Rerun View is that
 
--   **The recording** provides the actual data you are visualizing
--   **The blueprint** determines how that data is displayed
+-   The **recording** provides the actual data you are visualizing
+-   The **blueprint** determines how that data is displayed
 
 Both pieces are crucial. Without a recording there is nothing to show. Without a blueprint there is no way to show it. Even when you use Rerun without explicitly loading a blueprint, the Viewer creates one automatically for you.
 
@@ -39,7 +39,7 @@ The [Application ID](apps-and-recordings.md) is how blueprints connect to your d
 This loose coupling between blueprints and recordings means:
 -   You can keep the blueprint constant while changing the recording to compare different datasets with consistent views
 -   You can change the blueprint while keeping a recording constant to view the same data in different ways
--   When you save blueprint changes in the Viewer, those changes apply to all recordings with that Application ID
+-   When you save blueprint changes with the Viewer, those changes apply to all recordings with that Application ID
 
 Think of the Application ID as the "key" that binds a blueprint to a specific type of recording. If you want recordings to share the same layout, give them the same Application ID.
 
