@@ -410,6 +410,31 @@ fn smooth(density: &[f32]) -> Vec<f32> {
         .collect()
 }
 
+/// Uniformly sample events from a vector.
+fn uniform_sample_events(events: &[(TimeInt, u64)], sample_size: usize) -> Vec<(TimeInt, u64)> {
+    re_tracing::profile_function!();
+
+    if events.len() <= sample_size {
+        return events.to_vec();
+    }
+
+    // Use double precision to prevent rounding errors when handling many events.
+    // This ensures that we sample evenly across the entire range.
+    let step = events.len() as f64 / sample_size as f64;
+    let mut sampled = Vec::with_capacity(sample_size);
+
+    for i in 0..sample_size {
+        let idx = (i as f64 * step) as usize;
+
+        // This means we might miss the last event if rounding down, but that's acceptable.
+        if let Some(event) = events.get(idx) {
+            sampled.push(*event);
+        }
+    }
+
+    sampled
+}
+
 // ----------------------------------------------------------------------------
 
 #[expect(clippy::too_many_arguments)]
@@ -582,10 +607,21 @@ pub fn build_density_graph<'a>(
                 };
 
             if should_render_individual_events {
+                // Render all individual events
                 for (time, num_events) in chunk.num_events_cumulative_per_unique_time(timeline) {
                     data.add_chunk_point(time, num_events as usize);
                 }
+            } else if config.max_sampled_events_per_chunk > 0 {
+                // Sample events to get a better density estimate than a uniform distribution
+                let events = chunk.num_events_cumulative_per_unique_time(timeline);
+                let sampled_events =
+                    uniform_sample_events(&events, config.max_sampled_events_per_chunk);
+
+                for (time, num_events) in sampled_events {
+                    data.add_chunk_point(time, num_events as usize);
+                }
             } else {
+                // Fall back to uniform distribution across the entire time range
                 data.add_chunk_range(time_range, num_events_in_chunk);
             }
         }
@@ -604,6 +640,10 @@ pub struct DensityGraphBuilderConfig {
 
     /// If an unsorted chunk has fewer events than this we show its individual events.
     pub max_events_in_unsorted_chunk: u64,
+
+    /// When a chunk is too large to render all events, uniformly sample this many events
+    /// to create a better density estimate instead of falling back to a uniform distribution.
+    pub max_sampled_events_per_chunk: usize,
 }
 
 impl DensityGraphBuilderConfig {
@@ -612,6 +652,7 @@ impl DensityGraphBuilderConfig {
         max_total_chunk_events: 0,
         max_events_in_unsorted_chunk: 0,
         max_events_in_sorted_chunk: 0,
+        max_sampled_events_per_chunk: 0,
     };
 
     /// All sorted chunks will be rendered as individual events,
@@ -620,6 +661,7 @@ impl DensityGraphBuilderConfig {
         max_total_chunk_events: u64::MAX,
         max_events_in_unsorted_chunk: 0,
         max_events_in_sorted_chunk: u64::MAX,
+        max_sampled_events_per_chunk: 0,
     };
 
     /// All chunks will be rendered as individual events.
@@ -627,6 +669,7 @@ impl DensityGraphBuilderConfig {
         max_total_chunk_events: u64::MAX,
         max_events_in_unsorted_chunk: u64::MAX,
         max_events_in_sorted_chunk: u64::MAX,
+        max_sampled_events_per_chunk: 0,
     };
 }
 
@@ -649,6 +692,10 @@ impl Default for DensityGraphBuilderConfig {
 
             // Processing unsorted events is about 20% slower than sorted events.
             max_events_in_unsorted_chunk: 8_000,
+
+            // When chunks are too large to render all events, sample this many events uniformly
+            // to create a better density estimate.
+            max_sampled_events_per_chunk: 1_000,
         }
     }
 }
