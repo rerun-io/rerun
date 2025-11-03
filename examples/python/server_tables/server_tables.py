@@ -127,7 +127,7 @@ def process_partitions(client: CatalogClient, dataset: DatasetEntry, partition_l
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Process some partitions in a dataset.")
-    parser.add_argument("--save", type=str, default=None, help="Temporary directory to store tables.")
+    parser.add_argument("--temp-dir", type=str, default=None, help="Temporary directory to store tables.")
     args = parser.parse_args()
     temp_dir = args.temp_dir
     if args.temp_dir is not None:
