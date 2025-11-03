@@ -1,7 +1,8 @@
+use std::{ops::RangeInclusive, str::FromStr as _};
+
 use super::{Duration, TimestampFormat};
-use crate::TimestampFormatKind;
-use crate::external::re_types_core;
-use std::str::FromStr as _;
+
+use crate::{TimestampFormatKind, external::re_types_core};
 
 /// Encodes a timestamp in nanoseconds since unix epoch.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -148,11 +149,23 @@ impl Timestamp {
     ///
     /// Omits the date of same-day timestamps.
     pub fn format(self, timestamp_format: TimestampFormat) -> String {
-        let format_fractional_nanos = |ns: i32| {
+        let subsecond_decimals = 0..=6; // NOTE: we currently ignore sub-microsecond
+        self.format_opt(timestamp_format, subsecond_decimals)
+    }
+
+    /// Human-readable timestamp.
+    ///
+    /// Omits the date of same-day timestamps.
+    pub fn format_opt(
+        self,
+        timestamp_format: TimestampFormat,
+        subsecond_decimals: RangeInclusive<usize>,
+    ) -> String {
+        let format_fractional_nanos = move |ns: i32| {
             re_format::DurationFormatOptions::default()
                 .with_always_sign(false)
-                .with_min_decimals(0)
-                .with_max_decimals(6) // NOTE: we currently ignore sub-microsecond
+                .with_min_decimals(*subsecond_decimals.start())
+                .with_max_decimals(*subsecond_decimals.end())
                 .round_towards_zero()
                 .format_nanos(ns as _)
                 // Turn `0.123s` into `.123`:
