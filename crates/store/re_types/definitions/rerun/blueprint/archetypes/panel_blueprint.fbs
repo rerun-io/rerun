@@ -40,4 +40,17 @@ table TimePanelBlueprint (
 
   /// Frames per second. Only applicable for sequence timelines.
   fps: rerun.blueprint.components.Fps ("attr.rerun.component_optional", nullable, order: 2300);
+
+  /// If the time is currently paused, playing, or following.
+  ///
+  /// Defaults to either playing or following, depending on the data source.
+  play_state: rerun.blueprint.components.PlayState ("attr.rerun.component_optional", nullable, order: 2400);
+
+  /// How the time should loop. A selection loop only works if there is also a `time_selection` passed.
+  ///
+  /// Defaults to off.
+  loop_mode: rerun.blueprint.components.LoopMode ("attr.rerun.component_optional", nullable, order: 2500);
+
+  /// Selects a range of time on the time panel.
+  time_selection: rerun.blueprint.components.AbsoluteTimeRange ("attr.rerun.component_optional", nullable, order: 2600);
 }

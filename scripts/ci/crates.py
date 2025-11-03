@@ -77,7 +77,7 @@ def cargo(
             sanitized_cmd[token_idx + 1] = "***"
     except ValueError:
         pass
-    print(f"{datetime.now()} > CWD={cwd} cargo {subprocess.list2cmdline(sanitized_cmd[1:])}")
+    print(f"> CWD={cwd} cargo {subprocess.list2cmdline(sanitized_cmd[1:])}")
 
     if not dry_run:
         stderr = subprocess.STDOUT if capture else None
@@ -463,7 +463,7 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], d
     if dry_run:
         publish_cmd += " --dry-run"
 
-    print(f"{datetime.now()} {G}Publishing{X} {B}{name}{X}…")
+    print(f"{G}Publishing{X} {B}{name}{X}…")
     retry_attempts = 5
     while True:
         try:
@@ -477,19 +477,17 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], d
 
             if not dry_run and not is_already_published(version, crate):
                 # Theoretically this shouldn't be needed… but sometimes it is.
-                print(f"{datetime.now()}  {R}Waiting for {name} to become available…")
+                print(f"{R}Waiting for {name} to become available…")
                 time.sleep(2)  # give crates.io some time to index the new crate
                 num_retries = 0
                 while not is_already_published(version, crate):
                     time.sleep(3)
                     num_retries += 1
                     if num_retries > 10:
-                        print(
-                            f"{datetime.now()} {R}We published{X} {B}{name}{X} but it was never made available. Continuing anyway."
-                        )
+                        print(f"{R}We published{X} {B}{name}{X} but it was never made available. Continuing anyway.")
                         return
 
-            print(f"{datetime.now()} {G}Published{X} {B}{name}{X}@{B}{version}{X}")
+            print(f"{G}Published{X} {B}{name}{X}@{B}{version}{X}")
 
             break
         except subprocess.CalledProcessError as e:
@@ -498,12 +496,15 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], d
             # for any other error, retry after 6 seconds
             retry_delay = 1 + (parse_retry_delay_secs(error_message) or 5.0)
             if retry_attempts > 0:
-                print(f"{datetime.now()} {R}Failed to publish{X} {B}{name}{X}, retrying in {retry_delay} seconds…")
+                print(
+                    f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}\n\nRemaining retry attempts: {retry_attempts}.\nRetrying in {retry_delay} seconds."
+                )
                 retry_attempts -= 1
-                retry_delay *= 1.5  # some backoff
                 time.sleep(retry_delay + 1)
             else:
-                print(f"{datetime.now()} {R}Failed to publish{X} {B}{name}{X}:\n{error_message}")
+                print(
+                    f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}\n\nNo remaining retry attempts; aborting publish"
+                )
                 raise
 
 
@@ -511,35 +512,32 @@ def publish_unpublished_crates_in_parallel(
     all_crates: dict[str, Crate], version: str, token: str, dry_run: bool
 ) -> None:
     # filter all_crates for any that are already published
-    print(f"{datetime.now()} Collecting unpublished crates…")
+    print("Collecting unpublished crates…")
     unpublished_crates: dict[str, Crate] = {}
     for name, crate in all_crates.items():
         if is_already_published(version, crate):
-            print(f"{datetime.now()} {G}Already published{X} {B}{name}{X}@{B}{version}{X}")
+            print(f"{G}Already published{X} {B}{name}{X}@{B}{version}{X}")
         else:
             unpublished_crates[name] = crate
 
     # collect dependency graph (adjacency list of `crate -> dependencies`)
-    print(f"{datetime.now()} Building dependency graph…")
+    print("Building dependency graph…")
     dependency_graph: dict[str, list[str]] = {}
     for name, crate in unpublished_crates.items():
         dependencies = []
         for dependency in crate_deps(crate.manifest):
-            # IMPORTANT: we must ignore dev-dependencies.
-            #
-            # As per the Cargo book, `dev-dependencies` are ignored by crates.io (contrary to `build-dependencies`).
+            # NOTE: we _could_ theoretically ignore dev-dependencies here, as per the cargo book:
             # https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html
             #
-            # Also, Cargo allows circular dependencies via `dev-dependencies`, but our publishing logic requires a DAG.
-            if dependency.kind == DependencyKind.DEV:
-                continue
+            # However, we historically had a `dev-dependency` cycle which caused endless headaches. So we're now
+            # disallowing _any_ cycles.
 
             if dependency.name in unpublished_crates:
                 dependencies.append(dependency.name)
         dependency_graph[name] = dependencies
 
     # walk the dependency graph in parallel and publish each crate
-    print(f"{datetime.now()} Publishing {len(unpublished_crates)} crates…")
+    print(f"Publishing {len(unpublished_crates)} crates…")
     env = {**os.environ.copy(), "RERUN_IS_PUBLISHING_CRATES": "yes"}
 
     # The max token parameter attempts to model `crates.io` rate limiting. In dry run mode, we don't want to wait so
@@ -556,6 +554,36 @@ def publish_unpublished_crates_in_parallel(
         # publishing already uses all cores, don't start too many publishes at once
         num_workers=min(MAX_PUBLISH_WORKERS, cpu_count()),
     )
+
+
+def check_dependency_tree() -> None:
+    root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text(encoding="utf-8"))
+
+    print("Collecting publishable crates…")
+    workspace_crates = get_workspace_crates(root)
+
+    ctx = Context()
+    crates = get_sorted_publishable_crates(ctx, workspace_crates)
+
+    dependency_graph: dict[str, list[str]] = {}
+    for name, crate in crates.items():
+        print(name)
+        dependencies = []
+        for dependency in crate_deps(crate.manifest):
+            if dependency.name in crates:
+                dependencies.append(dependency.name)
+        dependency_graph[name] = dependencies
+
+    try:
+        # This runs a dependency graph sanitization and raises an exception on fail
+        _dag = DAG(dependency_graph)
+    except Exception as e:
+        from pprint import pprint
+
+        print("Full dependency graph:")
+        pprint(dependency_graph)
+
+        raise e
 
 
 def publish(dry_run: bool, token: str) -> None:
@@ -782,12 +810,16 @@ def main() -> None:
         "check-publish-flags", help="Check if any publish=true crates depend on publish=false crates."
     )
 
+    cmds_parser.add_parser("check-dependency-tree", help="Check that our dependency tree doesn't have any cycles.")
+
     args = parser.parse_args()
 
     if args.cmd == "check-git-branch-name":
         check_git_branch_name()
     if args.cmd == "check-publish-flags":
         check_publish_flags()
+    if args.cmd == "check-dependency-tree":
+        check_dependency_tree()
     if args.cmd == "get-version":
         print_version(args.target, args.finalize, args.pre_id, args.skip_prerelease)
     if args.cmd == "version":

@@ -2,7 +2,7 @@ use arrow::{datatypes::Schema, pyarrow::FromPyArrow as _, record_batch::RecordBa
 use comfy_table::Table;
 use pyo3::{Bound, PyAny, PyResult, pyclass, pymethods};
 
-use re_format_arrow::{RecordBatchFormatOpts, format_record_batch_opts};
+use re_arrow_util::{RecordBatchFormatOpts, format_record_batch_opts};
 
 #[pyclass(eq, name = "RerunHtmlTable", module = "rerun_bindings.rerun_bindings")]
 #[derive(Clone, PartialEq, Eq)]
