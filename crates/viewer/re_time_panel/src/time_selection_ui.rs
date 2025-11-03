@@ -82,14 +82,14 @@ pub fn loop_selection_ui(
     let selection_color = loop_selection_color(time_ctrl, tokens);
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
-    let is_pointer_in_timeline =
-        pointer_pos.is_some_and(|pointer_pos| timeline_rect.contains(pointer_pos));
 
-    if is_pointer_in_timeline {
-        // May be override below if hovering on existing loop region
-        ui.ctx()
-            .set_cursor_icon(crate::CREATE_TIME_LOOP_CURSOR_ICON);
-    }
+    let timeline_response = ui
+        .interact(
+            *timeline_rect,
+            ui.id().with("timeline"),
+            egui::Sense::drag(),
+        )
+        .on_hover_cursor(crate::CREATE_TIME_LOOP_CURSOR_ICON);
 
     let left_edge_id = ui.id().with("selection_left_edge");
     let right_edge_id = ui.id().with("selection_right_edge");
@@ -222,13 +222,22 @@ pub fn loop_selection_ui(
     }
 
     // Start new selection?
-    if let Some(pointer_pos) = pointer_pos {
-        let is_anything_being_dragged = ui.ctx().dragged_id().is_some();
-        if is_pointer_in_timeline
-            && !is_anything_being_dragged
-            && ui.input(|i| i.pointer.primary_down() && i.pointer.is_decidedly_dragging())
-            && let Some(time) = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
-        {
+    if let Some(pointer_pos) = pointer_pos
+        && timeline_response.hovered()
+        && let Some(time) = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
+    {
+        // Show preview:
+        let x = time_ranges_ui
+            .x_from_time_f32(time)
+            .unwrap_or(pointer_pos.x);
+        ui.painter().vline(
+            x,
+            timeline_rect.y_range(),
+            ui.visuals().widgets.noninteractive.fg_stroke,
+        );
+
+        if timeline_response.dragged() && ui.input(|i| i.pointer.is_decidedly_dragging()) {
+            // Start new selection
             time_commands.push(TimeControlCommand::SetLoopSelection(
                 AbsoluteTimeRangeF::point(time).to_int(),
             ));
