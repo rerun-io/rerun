@@ -1,3 +1,12 @@
+use std::collections::{BTreeMap, BTreeSet, hash_map::Entry};
+use std::ops::Range;
+
+use ahash::HashMap;
+use glam::Affine3A;
+use itertools::Itertools as _;
+use nohash_hasher::{IntMap, IntSet};
+use vec1::smallvec_v1::SmallVec1;
+
 use crate::entity_to_source_frame_tracking::EntityToAffectedSources;
 use crate::{
     TransformFrameIdHash,
@@ -6,10 +15,6 @@ use crate::{
         query_and_resolve_instance_poses_at_entity, query_and_resolve_pinhole_projection_at_entity,
     },
 };
-use ahash::HashMap;
-use glam::Affine3A;
-use itertools::Itertools as _;
-use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::external::re_types_core::ArrowString;
@@ -19,9 +24,6 @@ use re_types::{
     archetypes::{self},
     components::{self},
 };
-use std::collections::{BTreeMap, BTreeSet, hash_map::Entry};
-use std::ops::Range;
-use vec1::smallvec_v1::SmallVec1;
 
 /// Resolves all transform relationship defining components to affine transforms for fast lookup.
 ///
@@ -828,11 +830,18 @@ impl TransformResolutionCache {
                 // We now look only at the times in the time column that are relevant for this child-frame.
                 // Note that there may be more times than actual relevant updates, but crucially, all queries
                 // to the current entity path yield information about the sources in `source_frames`.
-                let times_with_potential_update = time_column
-                    .times()
-                    // TODO(andreas): For sorted time columns we could speed this up a bit.
-                    .filter(|time| time_range.contains(time))
-                    .collect_vec();
+                let times_with_potential_update = if time_column.time_range().min
+                    >= time_range.start
+                    && time_column.time_range().max < time_range.end
+                {
+                    time_column.times().collect_vec()
+                } else {
+                    time_column
+                        .times()
+                        // TODO(andreas): For sorted time columns we could speed this up a bit.
+                        .filter(|time| time_range.contains(time))
+                        .collect_vec()
+                };
 
                 // Note down that all these source frames were updated at the given times.
                 for source_frame in source_frames {
