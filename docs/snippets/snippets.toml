@@ -7,6 +7,11 @@
   "cpp",
   "rust",
 ] # TODO(RR-2777): Mark as stable when we're ready for it.
+"archetypes/transform3d_hierarchy_frames" = [
+  "py",
+  "cpp",
+  "rust",
+] # TODO(RR-2777): Mark as stable when we're ready for it.
 
 # These archetypes will ignore the associated snippets in the snippet index.
 [snippets_ref.archetypes.opt_out]
