@@ -69,8 +69,8 @@ macro_rules! define_redap_tests {
 }
 
 define_redap_tests! {
-    column_projection::test_partition_table_column_projections,
     column_projection::test_dataset_manifest_column_projections,
+    column_projection::test_partition_table_column_projections,
     create_dataset::create_dataset_tests,
     create_table::create_table_entry,
     dataset_schema::empty_dataset_schema,
@@ -82,6 +82,7 @@ define_redap_tests! {
     query_dataset::query_empty_dataset,
     query_dataset::query_simple_dataset,
     query_dataset::query_simple_dataset_with_layers,
+    register_partition::register_and_scan_blueprint_dataset,
     register_partition::register_and_scan_empty_dataset,
     register_partition::register_and_scan_simple_dataset,
     register_partition::register_and_scan_simple_dataset_with_layers,
