@@ -1923,8 +1923,6 @@ fn time_marker_ui(
         let is_pointer_in_timeline_rect =
             ui.ui_contains_pointer() && timeline_rect.contains(pointer_pos);
 
-        let hovered_ctx_id = egui::Id::new("hovered timestamp context");
-
         let on_timeline = !is_hovering_time_cursor
             && !time_area_double_clicked
             && is_pointer_in_time_area_rect
@@ -1933,28 +1931,6 @@ fn time_marker_ui(
 
         if on_timeline {
             ui.ctx().set_cursor_icon(timeline_cursor_icon);
-        }
-
-        // Show a preview bar at this position, if we have right-clicked
-        // on the time panel we want to still draw the line at the
-        // original position.
-        let hovered_x_pos = if let Some(hovered_time) =
-            ui.ctx().memory(|mem| mem.data.get_temp(hovered_ctx_id))
-            && let Some(x) = time_ranges_ui.x_from_time_f32(hovered_time)
-        {
-            Some(x)
-        } else if on_timeline {
-            Some(pointer_pos.x)
-        } else {
-            None
-        };
-
-        if let Some(x) = hovered_x_pos {
-            time_area_painter.vline(
-                x,
-                timeline_rect.top()..=ui.max_rect().bottom(),
-                ui.visuals().widgets.noninteractive.fg_stroke,
-            );
         }
 
         // Click to move time here:
@@ -1993,11 +1969,26 @@ fn time_marker_ui(
             }
         }
 
-        if let Some(hovered_time) = ui
+        let right_clicked_time_id = egui::Id::new("__right_clicked_time");
+
+        let right_clicked_time = ui
             .ctx()
-            .memory(|mem| mem.data.get_temp(hovered_ctx_id))
-            .or(hovered_time)
-        {
+            .memory(|mem| mem.data.get_temp(right_clicked_time_id));
+
+        // If we have right-clicked a time, we show it, else the hovered time.
+        let hovered_time = right_clicked_time.or(hovered_time);
+
+        if let Some(hovered_time) = hovered_time {
+            let hovered_x = time_ranges_ui.x_from_time_f32(hovered_time);
+
+            if let Some(hovered_x) = hovered_x {
+                time_area_painter.vline(
+                    hovered_x,
+                    timeline_rect.top()..=ui.max_rect().bottom(),
+                    ui.visuals().widgets.noninteractive.fg_stroke,
+                );
+            }
+
             let popup_is_open = egui::Popup::context_menu(&time_area_response)
                 .width(300.0)
                 .show(|ui| {
@@ -2006,10 +1997,10 @@ fn time_marker_ui(
                 .is_some();
             if popup_is_open {
                 ui.ctx()
-                    .memory_mut(|mem| mem.data.insert_temp(hovered_ctx_id, hovered_time));
+                    .memory_mut(|mem| mem.data.insert_temp(right_clicked_time_id, hovered_time));
             } else {
                 ui.ctx()
-                    .memory_mut(|mem| mem.data.remove::<TimeReal>(hovered_ctx_id));
+                    .memory_mut(|mem| mem.data.remove::<TimeReal>(right_clicked_time_id));
             }
         }
     }
