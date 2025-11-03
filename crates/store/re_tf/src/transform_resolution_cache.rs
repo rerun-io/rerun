@@ -296,7 +296,7 @@ type PinholeProjectionMap = BTreeMap<TimeInt, TransformEntry<ResolvedPinholeProj
 /// Time points are conservative: it can happen that we generate new events (==cache slots) despite no change
 /// occurring for this source frame.
 /// However, we mustn't ever note down timepoints at which the given source frame is not "active" on its entity.
-/// Doing so would mean that queries using [`re_query`] yield information about a _different_ source
+/// Doing so would mean that queries using `re_query` yield information about a _different_ source
 /// which we then can't add to the cache entries of the current source.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TransformsForSourceFrame {
