@@ -1103,11 +1103,10 @@ fn debug_panic_missing_source_transforms_for_update_on_entity(
     source: TransformFrameIdHash,
 ) {
     // There was no actual transform change for this source frame after all.
-    if cfg!(debug_assertions) {
-        panic!(
-            "DEBUG ASSERTION: Internally inconsistent state: entity {entity_path:?} had updates for source frame {source:?} but no transforms for that source frame were found. Please report this as a bug."
-        );
-    }
+    assert!(
+        !cfg!(debug_assertions),
+        "DEBUG ASSERTION: Internally inconsistent state: entity {entity_path:?} had updates for source frame {source:?} but no transforms for that source frame were found. Please report this as a bug."
+    );
 }
 
 /// Queries all components that are part of pose transforms, returning the transform from child to parent.

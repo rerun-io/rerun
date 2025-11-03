@@ -149,7 +149,7 @@ mod tests {
             TransformFrameIdHash::from_entity_path_hash(path.hash())
         );
         assert_eq!(
-            TransformFrameIdHash::from_str(&format!("tf#{}", path.to_string())),
+            TransformFrameIdHash::from_str(&format!("tf#{path}")),
             TransformFrameIdHash::from_entity_path_hash(path.hash())
         );
     }
