@@ -1385,7 +1385,6 @@ impl TimePanel {
             ///
             /// The formatting should omit trailing sub-second zeroes as far as `subsecond_decimals` perimts it.
             fn num_subsecond_decimals(nanos_per_point: f64) -> std::ops::RangeInclusive<usize> {
-                // TODO: put in re_format
                 if 1e9 < nanos_per_point {
                     0..=6
                 } else if 1e8 < nanos_per_point {
