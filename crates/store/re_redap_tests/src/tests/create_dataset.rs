@@ -64,7 +64,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
     // Check a duplicate entry name is rejected.
     //
 
-    let error_code = create_dataset_entry(
+    let status = create_dataset_entry(
         &service,
         CreateDatasetEntryRequest {
             name: dataset1_name.to_owned(),
@@ -72,16 +72,19 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
         },
     )
     .await
-    .unwrap_err()
-    .code();
+    .unwrap_err();
 
-    assert_eq!(error_code, tonic::Code::AlreadyExists);
+    assert_eq!(
+        status.code(),
+        tonic::Code::AlreadyExists,
+        "unexpected status: {status:?}"
+    );
 
     //
     // Check a duplicate entry id is rejected.
     //
 
-    let error_code = create_dataset_entry(
+    let status = create_dataset_entry(
         &service,
         CreateDatasetEntryRequest {
             name: "this name is for sure not used, but the id might".to_owned(),
@@ -89,10 +92,13 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
         },
     )
     .await
-    .unwrap_err()
-    .code();
+    .unwrap_err();
 
-    assert_eq!(error_code, tonic::Code::AlreadyExists);
+    assert_eq!(
+        status.code(),
+        tonic::Code::AlreadyExists,
+        "unexpected status: {status:?}"
+    );
 
     //
     // Create another dataset with an enforced entry id
@@ -157,7 +163,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
     // Dataset with same name as table fails
     //
 
-    let error_code = create_dataset_entry(
+    let status = create_dataset_entry(
         &service,
         CreateDatasetEntryRequest {
             name: table_name.to_owned(),
@@ -165,10 +171,13 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
         },
     )
     .await
-    .unwrap_err()
-    .code();
+    .unwrap_err();
 
-    assert_eq!(error_code, tonic::Code::AlreadyExists);
+    assert_eq!(
+        status.code(),
+        tonic::Code::AlreadyExists,
+        "unexpected status: {status:?}"
+    );
 }
 
 // ---
