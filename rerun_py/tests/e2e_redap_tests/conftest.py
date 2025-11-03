@@ -71,6 +71,7 @@ class ServerInstance:
         self.dataset = dataset
 
 
+# TODO(ab): we should have a knob to have an empty server instance for when the prefilled one is not necessary
 @pytest.fixture(scope="function")
 def server_instance(table_filepath: pathlib.Path) -> Generator[ServerInstance, None, None]:
     assert DATASET_FILEPATH.is_dir()

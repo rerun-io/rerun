@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterable, Mapping
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import rerun_bindings as bindings
@@ -741,7 +742,7 @@ class Blueprint:
 
         bindings.connect_grpc_blueprint(url, make_active, make_default, blueprint_stream.to_native())
 
-    def save(self, application_id: str, path: str | None = None) -> None:
+    def save(self, application_id: str, path: str | Path | None = None) -> None:
         """
         Save this blueprint to a file. Rerun recommends the `.rbl` suffix.
 
@@ -757,6 +758,8 @@ class Blueprint:
 
         if path is None:
             path = f"{application_id}.rbl"
+        else:
+            path = str(path)
 
         blueprint_stream = RecordingStream._from_native(
             bindings.new_blueprint(

@@ -27,6 +27,7 @@ use re_protos::{
             self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
             CreateTableEntryResponse, DataSource, DatasetDetails, LanceTable, ProviderDetails as _,
             ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
+            UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
         },
         rerun_cloud_service_server::RerunCloudService,
     },
@@ -506,13 +507,23 @@ impl RerunCloudService for RerunCloudHandler {
 
     async fn update_dataset_entry(
         &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::UpdateDatasetEntryRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::UpdateDatasetEntryRequest>,
     ) -> Result<
         tonic::Response<re_protos::cloud::v1alpha1::UpdateDatasetEntryResponse>,
         tonic::Status,
     > {
-        Err(tonic::Status::unimplemented(
-            "update_dataset_entry not implemented",
+        let request: UpdateDatasetEntryRequest = request.into_inner().try_into()?;
+
+        let mut store = self.store.write().await;
+        let dataset = store.dataset_mut(request.id)?;
+
+        dataset.set_dataset_details(request.dataset_details);
+
+        Ok(tonic::Response::new(
+            UpdateDatasetEntryResponse {
+                dataset_entry: dataset.as_dataset_entry(),
+            }
+            .into(),
         ))
     }
 
@@ -566,9 +577,7 @@ impl RerunCloudService for RerunCloudHandler {
     > {
         let mut store = self.store.write().await;
         let dataset_id = get_entry_id_from_headers(&store, &request)?;
-        let dataset = store.dataset_mut(dataset_id).ok_or_else(|| {
-            tonic::Status::not_found(format!("Dataset with ID {dataset_id} not found"))
-        })?;
+        let dataset = store.dataset_mut(dataset_id)?;
 
         let re_protos::cloud::v1alpha1::ext::RegisterWithDatasetRequest {
             data_sources,
@@ -604,7 +613,12 @@ impl RerunCloudService for RerunCloudHandler {
             }
 
             if let Ok(rrd_path) = storage_url.to_file_path() {
-                let new_partition_ids = dataset.load_rrd(&rrd_path, Some(&layer), on_duplicate)?;
+                let new_partition_ids = dataset.load_rrd(
+                    &rrd_path,
+                    Some(&layer),
+                    on_duplicate,
+                    dataset.store_kind(),
+                )?;
 
                 for partition_id in new_partition_ids {
                     partition_ids.push(partition_id.to_string());
@@ -687,9 +701,7 @@ impl RerunCloudService for RerunCloudHandler {
         }
 
         let mut store = self.store.write().await;
-        let Some(dataset) = store.dataset_mut(entry_id) else {
-            return Err(tonic::Status::not_found("dataset not found"));
-        };
+        let dataset = store.dataset_mut(entry_id)?;
 
         #[expect(clippy::iter_over_hash_type)]
         for (entity_path, chunk_store) in chunk_stores {

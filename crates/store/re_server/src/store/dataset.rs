@@ -96,6 +96,11 @@ impl Dataset {
         }
     }
 
+    pub fn set_dataset_details(&mut self, details: DatasetDetails) {
+        self.details = details;
+        self.updated_at = jiff::Timestamp::now();
+    }
+
     pub fn as_entry_details(&self) -> EntryDetails {
         EntryDetails {
             id: self.id,
@@ -321,12 +326,15 @@ impl Dataset {
         Ok(())
     }
 
-    /// Load a RRD using its recording id as partition id.
+    /// Load a RRD using its recording id as partition id.¨
+    ///
+    /// Only stores with matching kinds with be loaded.
     pub fn load_rrd(
         &mut self,
         path: &Path,
         layer_name: Option<&str>,
         on_duplicate: IfDuplicateBehavior,
+        store_kind: StoreKind,
     ) -> Result<BTreeSet<PartitionId>, Error> {
         re_log::info!("Loading RRD: {}", path.display());
         let contents =
@@ -338,7 +346,7 @@ impl Dataset {
         let mut new_partition_ids = BTreeSet::default();
 
         for (store_id, chunk_store) in contents {
-            if !store_id.is_recording() {
+            if store_id.kind() != store_kind {
                 continue;
             }
 

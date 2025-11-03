@@ -156,7 +156,7 @@ impl InMemoryStore {
                     .is_some_and(|s| s.to_lowercase().ends_with(".rrd"));
 
                 if is_rrd {
-                    dataset.load_rrd(&entry.path(), None, on_duplicate)?;
+                    dataset.load_rrd(&entry.path(), None, on_duplicate, StoreKind::Recording)?;
                 }
             }
         }
@@ -315,8 +315,10 @@ impl InMemoryStore {
             .ok_or(Error::EntryIdNotFound(entry_id))
     }
 
-    pub fn dataset_mut(&mut self, entry_id: EntryId) -> Option<&mut Dataset> {
-        self.datasets.get_mut(&entry_id)
+    pub fn dataset_mut(&mut self, entry_id: EntryId) -> Result<&mut Dataset, Error> {
+        self.datasets
+            .get_mut(&entry_id)
+            .ok_or(Error::EntryIdNotFound(entry_id))
     }
 
     pub fn dataset_by_name(&self, name: &str) -> Result<&Dataset, Error> {
