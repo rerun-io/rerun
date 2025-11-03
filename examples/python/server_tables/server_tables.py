@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 DATASET_NAME = "dataset"
 
-STATUS_TABLE_NAME = "status"
+STATUS_LOG_TABLE_NAME = "status_log"
 RESULTS_TABLE_NAME = "results"
 
 
@@ -27,7 +27,7 @@ def create_table(client: CatalogClient, directory: Path, table_name: str, schema
     """
     Create a lance table at a specified location and return its DataFrame.
 
-    This is a convenience function for creating the status and result tables.
+    This is a convenience function for creating the status log and result tables.
     """
     if table_name in client.table_names():
         return client.get_table(name=table_name)
@@ -37,14 +37,14 @@ def create_table(client: CatalogClient, directory: Path, table_name: str, schema
     return client.create_table_entry(table_name, schema, url).df()
 
 
-def create_status_table(client: CatalogClient, directory: Path) -> DataFrame:
-    """Create the status table."""
+def create_status_log_table(client: CatalogClient, directory: Path) -> DataFrame:
+    """Create the status log table."""
     schema = pa.schema([
         ("rerun_partition_id", pa.utf8()),
         ("is_complete", pa.bool_()),
         ("update_time", pa.timestamp(unit="ms")),
     ])
-    return create_table(client, directory, STATUS_TABLE_NAME, schema)
+    return create_table(client, directory, STATUS_LOG_TABLE_NAME, schema)
 
 
 def create_results_table(client: CatalogClient, directory: Path) -> DataFrame:
@@ -60,10 +60,10 @@ def create_results_table(client: CatalogClient, directory: Path) -> DataFrame:
     return create_table(client, directory, RESULTS_TABLE_NAME, schema)
 
 
-def find_missing_partitions(partition_table: DataFrame, status_table: DataFrame) -> list[str]:
-    """Query the status table for partitions that have not processed."""
-    status_table = status_table.filter(col("is_complete"))
-    partitions = partition_table.join(status_table, on="rerun_partition_id", how="anti")
+def find_missing_partitions(partition_table: DataFrame, status_log_table: DataFrame) -> list[str]:
+    """Query the status log table for partitions that have not processed."""
+    status_log_table = status_log_table.filter(col("is_complete"))
+    partitions = partition_table.join(status_log_table, on="rerun_partition_id", how="anti")
 
     partition_list = collect_to_string_list(partitions, "rerun_partition_id")
 
@@ -77,14 +77,14 @@ def process_partitions(client: CatalogClient, dataset: DatasetEntry, partition_l
 
     This example performs a simple aggregation of some of the values stored in the dataset that
     might be useful for further processing or metrics extraction. In this work flow we first write
-    to the status table that we have started work but set the `is_complete` column to `False`.
+    to the status log table that we have started work but set the `is_complete` column to `False`.
     When the work is complete we write an additional row setting this column to `True`. Alternate
     workflows may only include writing to the table when work is complete. It is sometimes favorable
     to keep track of when jobs start and finish so you can produce additional metrics around
     when the jobs ran and how long they took.
     """
     client.append_to_table(
-        STATUS_TABLE_NAME,
+        STATUS_LOG_TABLE_NAME,
         rerun_partition_id=partition_list,
         is_complete=[False] * len(partition_list),
         update_time=[datetime.now()] * len(partition_list),
@@ -118,7 +118,7 @@ def process_partitions(client: CatalogClient, dataset: DatasetEntry, partition_l
     df.write_table(RESULTS_TABLE_NAME)
 
     client.append_to_table(
-        STATUS_TABLE_NAME,
+        STATUS_LOG_TABLE_NAME,
         rerun_partition_id=partition_list,
         is_complete=[True] * len(partition_list),  # Add the `True` value to prevent this from processing again
         update_time=[datetime.now()] * len(partition_list),
@@ -144,14 +144,14 @@ def run_example(temp_path: Path) -> None:
         client = srv.client()
         dataset = client.get_dataset(name=DATASET_NAME)
 
-        status_table = create_status_table(client, temp_path)
+        status_log_table = create_status_log_table(client, temp_path)
         results_table = create_results_table(client, temp_path)
 
         partition_table = dataset.partition_table().df().select("rerun_partition_id").distinct()
 
         missing_partitions = None
         while missing_partitions is None or len(missing_partitions) != 0:
-            missing_partitions = find_missing_partitions(partition_table, status_table)
+            missing_partitions = find_missing_partitions(partition_table, status_log_table)
             print(f"{len(missing_partitions)} of {partition_table.count()} partitions have not processed.")
 
             if len(missing_partitions) > 0:
@@ -161,9 +161,9 @@ def run_example(temp_path: Path) -> None:
         print("Results table:")
         results_table.show()
 
-        # Show the final status table
-        print("Final status table:")
-        status_table.show()
+        # Show the final status log table
+        print("Final status log table:")
+        status_log_table.show()
 
 
 if __name__ == "__main__":
