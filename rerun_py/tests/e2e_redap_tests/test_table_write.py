@@ -94,7 +94,7 @@ def test_client_append_to_table(server_instance: ServerInstance) -> None:
     assert ctx.table(table_name).count() == original_rows + 4
 
 
-@pytest.mark.parameterize("is_append", [True, False])
+@pytest.mark.parametrize("is_append", [True, False])
 def test_concurrent_write_tables(server_instance: ServerInstance, is_append: bool) -> None:
     num_writes = 100
 
@@ -113,10 +113,12 @@ def test_concurrent_write_tables(server_instance: ServerInstance, is_append: boo
     # Track any exceptions from threads
     exceptions = []
 
+    insert_mode = InsertOp.APPEND if is_append else InsertOp.OVERWRITE
+
     def write_low() -> None:
         for _ in range(num_writes):
             try:
-                df_low.write_table(table_name)
+                df_low.write_table(table_name, write_options=DataFrameWriteOptions(insert_operation=insert_mode))
             except Exception as e:
                 exceptions.append(e)
                 return
@@ -124,7 +126,7 @@ def test_concurrent_write_tables(server_instance: ServerInstance, is_append: boo
     def write_high() -> None:
         for _ in range(num_writes):
             try:
-                df_high.write_table(table_name)
+                df_high.write_table(table_name, write_options=DataFrameWriteOptions(insert_operation=insert_mode))
             except Exception as e:
                 exceptions.append(e)
                 return
