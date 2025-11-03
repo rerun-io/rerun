@@ -1384,7 +1384,7 @@ impl TimePanel {
             /// The zoom level is expressed as nanoseconds per ui point (logical pixel).
             ///
             /// The formatting should omit trailing sub-second zeroes as far as `subsecond_decimals` perimts it.
-            pub fn num_subsecond_decimals(nanos_per_point: f64) -> std::ops::RangeInclusive<usize> {
+            fn num_subsecond_decimals(nanos_per_point: f64) -> std::ops::RangeInclusive<usize> {
                 // TODO: put in re_format
                 if 1e9 < nanos_per_point {
                     0..=6
