@@ -30,3 +30,21 @@ impl TryFrom<PoseRotationAxisAngle> for glam::Affine3A {
         }
     }
 }
+
+#[cfg(feature = "glam")]
+impl TryFrom<PoseRotationAxisAngle> for glam::DAffine3 {
+    type Error = ();
+
+    #[inline]
+    fn try_from(val: PoseRotationAxisAngle) -> Result<Self, Self::Error> {
+        // 0 degrees around any axis is an identity transform.
+        if val.angle.radians == 0. {
+            Ok(Self::IDENTITY)
+        } else {
+            glam::DVec3::from(val.0.axis)
+                .try_normalize()
+                .map(|normalized| Self::from_axis_angle(normalized, val.0.angle.radians() as f64))
+                .ok_or(())
+        }
+    }
+}
