@@ -264,3 +264,151 @@ impl RelativeTimeRange<'_> {
         response_x | response_y | response_z
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::ops::RangeInclusive;
+
+    use egui_kittest::Harness;
+    use re_log_types::{
+        TimeType, TimestampFormat,
+        external::re_types_core::datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
+    };
+
+    use crate::{TimeDragValue, UiExt};
+
+    use super::RelativeTimeRange;
+
+    struct SnapshotOptions {
+        name: &'static str,
+        current_time: i64,
+        time_range: TimeRange,
+    }
+
+    fn run_snapshot(
+        time_type: TimeType,
+        timeline_range: RangeInclusive<i64>,
+        timestamp_format: TimestampFormat,
+        SnapshotOptions {
+            name,
+            current_time,
+            mut time_range,
+        }: SnapshotOptions,
+    ) {
+        let mut harness = Harness::builder().build_ui(|ui| {
+            crate::apply_style_and_install_loaders(ui.ctx());
+
+            let start = time_range.start.start_boundary_time(TimeInt(current_time));
+            let end = time_range.end.end_boundary_time(TimeInt(current_time));
+
+            ui.list_item_scope("test", |ui| {
+                RelativeTimeRange {
+                    time_drag_value: &TimeDragValue::from_time_range(timeline_range.clone()),
+                    value: &mut time_range,
+                    resolved_range: re_log_types::AbsoluteTimeRange {
+                        min: start.into(),
+                        max: end.into(),
+                    },
+                    time_type,
+                    timestamp_format,
+                    current_time: TimeInt(current_time),
+                }
+                .ui(ui);
+            });
+        });
+
+        harness.fit_contents();
+        harness.snapshot(format!("relative_time_range_{name}_{time_type}"));
+    }
+
+    fn test_date_time(add_secs: i64) -> i64 {
+        // 12345 days and 10 hours after unix epoch
+        1_000_000_000 * (60 * 60 * (24 * 12345 + 10) + add_secs)
+    }
+
+    #[test]
+    fn test_relative_time_range_ui() {
+        let timestamp_format = TimestampFormat::utc().with_hide_today_date(true);
+        for (time_type, time_range) in [
+            (TimeType::Sequence, 0..=100),
+            (
+                TimeType::DurationNs,
+                re_log_types::TimeInt::from_secs(0.0).as_i64()
+                    ..=re_log_types::TimeInt::from_secs(60.0).as_i64(),
+            ),
+            (
+                TimeType::TimestampNs,
+                test_date_time(0)..=test_date_time(5000),
+            ),
+        ] {
+            let start = *time_range.start();
+            let end = *time_range.end();
+            let middle = i64::midpoint(start, end);
+            let after_start = i64::midpoint(start, middle);
+            let before_end = i64::midpoint(middle, end);
+            let sz = end - start;
+            for o in [
+                SnapshotOptions {
+                    name: "everything",
+                    current_time: start,
+                    time_range: TimeRange::EVERYTHING,
+                },
+                SnapshotOptions {
+                    name: "at_cursor",
+                    current_time: middle,
+                    time_range: TimeRange::AT_CURSOR,
+                },
+                SnapshotOptions {
+                    name: "absolute",
+                    current_time: start,
+                    time_range: TimeRange {
+                        start: TimeRangeBoundary::Absolute(TimeInt(after_start)),
+                        end: TimeRangeBoundary::Absolute(TimeInt(before_end)),
+                    },
+                },
+                SnapshotOptions {
+                    name: "absolute_to_end",
+                    current_time: start,
+                    time_range: TimeRange {
+                        start: TimeRangeBoundary::Absolute(TimeInt(after_start)),
+                        end: TimeRangeBoundary::Infinite,
+                    },
+                },
+                SnapshotOptions {
+                    name: "start_to_absolute",
+                    current_time: start,
+                    time_range: TimeRange {
+                        start: TimeRangeBoundary::Infinite,
+                        end: TimeRangeBoundary::Absolute(TimeInt(before_end)),
+                    },
+                },
+                SnapshotOptions {
+                    name: "cursor_to_end",
+                    current_time: before_end,
+                    time_range: TimeRange {
+                        start: TimeRangeBoundary::CursorRelative(TimeInt(-sz / 2)),
+                        end: TimeRangeBoundary::Infinite,
+                    },
+                },
+                SnapshotOptions {
+                    name: "start_to_cursor",
+                    current_time: after_start,
+                    time_range: TimeRange {
+                        start: TimeRangeBoundary::Infinite,
+                        end: TimeRangeBoundary::CursorRelative(TimeInt(sz / 2)),
+                    },
+                },
+                SnapshotOptions {
+                    name: "around_cursor",
+                    current_time: middle,
+                    time_range: TimeRange {
+                        start: TimeRangeBoundary::CursorRelative(TimeInt(-sz / 4)),
+                        end: TimeRangeBoundary::CursorRelative(TimeInt(sz / 4)),
+                    },
+                },
+            ] {
+                run_snapshot(time_type, time_range.clone(), timestamp_format, o);
+            }
+        }
+    }
+}
