@@ -44,7 +44,7 @@ class TimeAxis(Archetype):
         link:
             How should the horizontal/X/time axis be linked across multiple plots?
 
-            Linking with global will ignore all the other options.
+            Linking with global will ignore `view_range`.
         view_range:
             The view range of the horizontal/X/time axis.
         zoom_lock:
@@ -92,7 +92,7 @@ class TimeAxis(Archetype):
         link:
             How should the horizontal/X/time axis be linked across multiple plots?
 
-            Linking with global will ignore all the other options.
+            Linking with global will ignore `view_range`.
         view_range:
             The view range of the horizontal/X/time axis.
         zoom_lock:
@@ -129,7 +129,7 @@ class TimeAxis(Archetype):
     )
     # How should the horizontal/X/time axis be linked across multiple plots?
     #
-    # Linking with global will ignore all the other options.
+    # Linking with global will ignore `view_range`.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

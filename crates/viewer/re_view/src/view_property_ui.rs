@@ -34,7 +34,7 @@ pub fn view_property_ui_with_override<A: Archetype + ArchetypeReflectionMarker>(
         ctx,
         ui,
         &view_property,
-        Some(&OverridenComponentView {
+        Some(&OverriddenComponentView {
             component: override_component,
             ctx: ViewContext {
                 viewer_ctx: ctx.viewer_ctx,
@@ -52,7 +52,7 @@ pub fn view_property_ui_with_override<A: Archetype + ArchetypeReflectionMarker>(
     );
 }
 
-struct OverridenComponentView<'a> {
+struct OverriddenComponentView<'a> {
     component: ComponentIdentifier,
     ctx: ViewContext<'a>,
     view_property: ViewProperty,
@@ -62,7 +62,7 @@ fn view_property_ui_impl(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     property: &ViewProperty,
-    override_component_view: Option<&OverridenComponentView<'_>>,
+    override_component_view: Option<&OverriddenComponentView<'_>>,
 ) {
     let reflection = ctx.viewer_ctx.reflection();
     let Some(archetype) = reflection.archetypes.get(&property.archetype_name) else {

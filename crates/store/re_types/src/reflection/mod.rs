@@ -390,7 +390,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <TimeRange as Component>::name(),
             ComponentReflection {
-                docstring_md: "A time range.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "A time range on an unspecified timeline using either relative or absolute boundaries.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
                 datatype: TimeRange::arrow_datatype(),
@@ -3929,7 +3929,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "link",
                         display_name: "Link",
                         component_type: "rerun.blueprint.components.LinkAxis".into(),
-                        docstring_md: "How should the horizontal/X/time axis be linked across multiple plots?\n\nLinking with global will ignore all the other options.",
+                        docstring_md: "How should the horizontal/X/time axis be linked across multiple plots?\n\nLinking with global will ignore `view_range`.",
                         is_required: false,
                     },
                     ArchetypeFieldReflection {

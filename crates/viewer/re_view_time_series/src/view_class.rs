@@ -1,5 +1,5 @@
 use egui::{
-    NumExt as _, Vec2,
+    NumExt as _, Vec2, Vec2b,
     ahash::{HashMap, HashSet},
 };
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
@@ -196,10 +196,8 @@ impl ViewClass for TimeSeriesView {
         system_registry.register_fallback_provider(
             TimeAxis::descriptor_view_range().component,
             |ctx| {
-                let (timeline_min, timeline_max) = ctx
-                    .viewer_ctx()
-                    .recording()
-                    .times_per_timeline()
+                let times_per_timeline = ctx.viewer_ctx().recording().times_per_timeline();
+                let (timeline_min, timeline_max) = times_per_timeline
                     .get(ctx.viewer_ctx().time_ctrl.timeline().name())
                     .and_then(|stats| {
                         Some((
@@ -488,14 +486,14 @@ impl ViewClass for TimeSeriesView {
             .max()
             .unwrap_or(0);
 
-        let timeline_start = ctx
-            .recording()
+        let recording = ctx.recording();
+
+        let timeline_start = recording
             .time_histogram(ctx.time_ctrl.timeline().name())
             .and_then(|times| times.min_key())
             .unwrap_or_default();
 
-        let timeline_end = ctx
-            .recording()
+        let timeline_end = recording
             .time_histogram(ctx.time_ctrl.timeline().name())
             .and_then(|times| times.max_key())
             .unwrap_or_default();
@@ -539,11 +537,6 @@ impl ViewClass for TimeSeriesView {
 
         let link_x_axis = time_axis
             .component_or_fallback::<LinkAxis>(&view_ctx, TimeAxis::descriptor_link().component)?;
-
-        let x_zoom_lock = **time_axis.component_or_fallback::<LockRangeDuringZoom>(
-            &view_ctx,
-            TimeAxis::descriptor_zoom_lock().component,
-        )?;
 
         let view_current_time =
             re_types::datatypes::TimeInt(current_time.unwrap_or_default().at_least(timeline_start));
@@ -607,10 +600,16 @@ impl ViewClass for TimeSeriesView {
         )?;
         let y_range = make_range_sane(y_range);
 
-        let y_zoom_lock = **scalar_axis.component_or_fallback::<LockRangeDuringZoom>(
-            &view_ctx,
-            ScalarAxis::descriptor_zoom_lock().component,
-        )?;
+        let zoom_lock = Vec2b::new(
+            **time_axis.component_or_fallback::<LockRangeDuringZoom>(
+                &view_ctx,
+                TimeAxis::descriptor_zoom_lock().component,
+            )?,
+            **scalar_axis.component_or_fallback::<LockRangeDuringZoom>(
+                &view_ctx,
+                ScalarAxis::descriptor_zoom_lock().component,
+            )?,
+        );
 
         // TODO(jleibs): If this is allowed to be different, need to track it per line.
         let aggregation_factor = all_plot_series
@@ -768,8 +767,6 @@ impl ViewClass for TimeSeriesView {
                 ctx.handle_select_hover_drag_interactions(&response, hovered, false);
             }
 
-            let mut is_dragging_time_cursor = false;
-
             // Decide if the time cursor should be displayed, and if so where:
             let time_x = current_time
                 .map(|current_time| (current_time.saturating_sub(time_offset)) as f64)
@@ -779,98 +776,37 @@ impl ViewClass for TimeSeriesView {
                 })
                 .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
 
-            if let Some(mut time_x) = time_x {
-                let interact_radius = ui.style().interaction.resize_grab_radius_side;
-                let line_rect =
-                    egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
-                        .expand(interact_radius);
+            let is_dragging_time_cursor = if let Some(time_x) = time_x {
+                let time_cursor_response =
+                    draw_time_cursor(ctx, ui, &response, &transform, time_offset, time_x);
 
-                let time_drag_id = ui.id().with("time_drag");
-                let time_cursor_response = ui
-                    .interact(line_rect, time_drag_id, egui::Sense::drag())
-                    .on_hover_and_drag_cursor(egui::CursorIcon::ResizeHorizontal);
-
-                if time_cursor_response.dragged()
-                    && let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos())
-                {
-                    let aim_radius = ui.input(|i| i.aim_radius());
-                    let new_offset_time = egui::emath::smart_aim::best_in_range_f64(
-                        transform
-                            .value_from_position(pointer_pos - aim_radius * Vec2::X)
-                            .x,
-                        transform
-                            .value_from_position(pointer_pos + aim_radius * Vec2::X)
-                            .x,
-                    );
-                    let new_time = time_offset + new_offset_time.round() as i64;
-
-                    // Avoid frame-delay:
-                    time_x = pointer_pos.x;
-
-                    ctx.send_time_commands([
-                        TimeControlCommand::SetTime(new_time.into()),
-                        TimeControlCommand::Pause,
-                    ]);
-
-                    is_dragging_time_cursor = true;
-                }
-
-                ui.paint_time_cursor(
-                    ui.painter(),
-                    &time_cursor_response,
-                    time_x,
-                    time_cursor_response.rect.y_range(),
-                );
+                let dragged = time_cursor_response.dragged();
 
                 // Union with time cursor response to be able to pan over it.
                 response |= time_cursor_response;
-            }
+
+                dragged
+            } else {
+                false
+            };
 
             // Can determine whether we're resetting only now since we need to know whether there's a plot item hovered.
             let is_resetting = plot_double_clicked && hovered_data_result.is_none();
 
             if is_resetting {
-                scalar_axis.reset_blueprint_component(ctx, ScalarAxis::descriptor_range());
-                time_range_property
-                    .reset_blueprint_component(ctx, TimeAxis::descriptor_view_range());
+                reset_view(ctx, time_range_property, &scalar_axis);
 
                 ui.ctx().request_repaint(); // Make sure we get another frame with the view reset.
             } else {
-                let mut transform_changed = false;
-
-                // We manually handle inputs for the plot to better interact with blueprints.
-                let drag_delta = if !is_dragging_time_cursor
-                    && response.dragged_by(egui::PointerButton::Primary)
-                {
-                    response.drag_delta()
-                } else {
-                    egui::Vec2::ZERO
-                };
-                let (scroll_delta, mut zoom_delta) =
-                    ui.input(|i| (i.smooth_scroll_delta, i.zoom_delta_2d()));
-
-                if y_zoom_lock {
-                    zoom_delta.y = 1.0;
-                }
-                if x_zoom_lock {
-                    zoom_delta.x = 1.0;
-                }
-
-                let move_delta = drag_delta + scroll_delta;
-
-                if let Some(hover_pos) = response.hover_pos()
-                    && (move_delta != egui::Vec2::ZERO || zoom_delta != egui::Vec2::ONE)
-                {
-                    transform.translate_bounds((-move_delta.x as f64, -move_delta.y as f64));
-
-                    transform.zoom(zoom_delta, hover_pos);
-
-                    transform_changed = true;
-                }
+                let transform_changed = handle_plot_input(
+                    &mut transform,
+                    &response,
+                    zoom_lock,
+                    is_dragging_time_cursor,
+                );
 
                 if transform_changed {
-                    let new_x_range = transform.bounds().range_x();
-                    let new_x_range = Range1D::new(*new_x_range.start(), *new_x_range.end());
+                    let new_x_range = transform_axis_range(transform, 0);
 
                     let new_view_time_range =
                         re_types::blueprint::components::TimeRange(TimeRange {
@@ -895,8 +831,7 @@ impl ViewClass for TimeSeriesView {
                         ui.ctx().request_repaint(); // Make sure we get another frame with this new range applied.
                     }
 
-                    let new_y_range = transform.bounds().range_y();
-                    let new_y_range = Range1D::new(*new_y_range.start(), *new_y_range.end());
+                    let new_y_range = transform_axis_range(transform, 1);
 
                     // Write new y_range if it has changed.
                     if new_y_range != y_range {
@@ -923,6 +858,110 @@ impl ViewClass for TimeSeriesView {
         })
         .inner
     }
+}
+
+fn draw_time_cursor(
+    ctx: &ViewerContext<'_>,
+    ui: &egui::Ui,
+    response: &egui::Response,
+    transform: &egui_plot::PlotTransform,
+    time_offset: i64,
+    mut time_x: f32,
+) -> egui::Response {
+    let interact_radius = ui.style().interaction.resize_grab_radius_side;
+    let line_rect = egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
+        .expand(interact_radius);
+
+    let time_drag_id = ui.id().with("time_drag");
+    let time_cursor_response = ui
+        .interact(line_rect, time_drag_id, egui::Sense::drag())
+        .on_hover_and_drag_cursor(egui::CursorIcon::ResizeHorizontal);
+
+    if time_cursor_response.dragged()
+        && let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos())
+    {
+        let aim_radius = ui.input(|i| i.aim_radius());
+        let new_offset_time = egui::emath::smart_aim::best_in_range_f64(
+            transform
+                .value_from_position(pointer_pos - aim_radius * Vec2::X)
+                .x,
+            transform
+                .value_from_position(pointer_pos + aim_radius * Vec2::X)
+                .x,
+        );
+        let new_time = time_offset + new_offset_time.round() as i64;
+
+        // Avoid frame-delay:
+        time_x = pointer_pos.x;
+
+        ctx.send_time_commands([
+            TimeControlCommand::SetTime(new_time.into()),
+            TimeControlCommand::Pause,
+        ]);
+    }
+
+    ui.paint_time_cursor(
+        ui.painter(),
+        &time_cursor_response,
+        time_x,
+        time_cursor_response.rect.y_range(),
+    );
+    time_cursor_response
+}
+
+fn reset_view(ctx: &ViewerContext<'_>, time_axis: &ViewProperty, scalar_axis: &ViewProperty) {
+    scalar_axis.reset_blueprint_component(ctx, ScalarAxis::descriptor_range());
+    time_axis.reset_blueprint_component(ctx, TimeAxis::descriptor_view_range());
+}
+
+/// axis = 0 is the x axis
+///
+/// axis = 1 is the y axis
+fn transform_axis_range(transform: egui_plot::PlotTransform, axis: usize) -> Range1D {
+    Range1D::new(
+        transform.bounds().min()[axis],
+        transform.bounds().max()[axis],
+    )
+}
+
+fn handle_plot_input(
+    transform: &mut egui_plot::PlotTransform,
+    response: &egui::Response,
+    zoom_lock: Vec2b,
+    is_dragging_time_cursor: bool,
+) -> bool {
+    let mut transform_changed = false;
+
+    // We manually handle inputs for the plot to better interact with blueprints.
+    let drag_delta =
+        if !is_dragging_time_cursor && response.dragged_by(egui::PointerButton::Primary) {
+            response.drag_delta()
+        } else {
+            egui::Vec2::ZERO
+        };
+    let (scroll_delta, mut zoom_delta) = response
+        .ctx
+        .input(|i| (i.smooth_scroll_delta, i.zoom_delta_2d()));
+
+    if zoom_lock.x {
+        zoom_delta.x = 1.0;
+    }
+    if zoom_lock.y {
+        zoom_delta.y = 1.0;
+    }
+
+    let move_delta = drag_delta + scroll_delta;
+
+    if let Some(hover_pos) = response.hover_pos()
+        && (move_delta != egui::Vec2::ZERO || zoom_delta != egui::Vec2::ONE)
+    {
+        transform.translate_bounds((-move_delta.x as f64, -move_delta.y as f64));
+
+        transform.zoom(zoom_delta, hover_pos);
+
+        transform_changed = true;
+    }
+    transform_changed
 }
 
 fn set_plot_visibility_from_store(

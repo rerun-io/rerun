@@ -28,7 +28,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct TimeAxis {
     /// How should the horizontal/X/time axis be linked across multiple plots?
     ///
-    /// Linking with global will ignore all the other options.
+    /// Linking with global will ignore `view_range`.
     pub link: Option<SerializedComponentBatch>,
 
     /// The view range of the horizontal/X/time axis.
@@ -220,7 +220,7 @@ impl TimeAxis {
 
     /// How should the horizontal/X/time axis be linked across multiple plots?
     ///
-    /// Linking with global will ignore all the other options.
+    /// Linking with global will ignore `view_range`.
     #[inline]
     pub fn with_link(mut self, link: impl Into<crate::blueprint::components::LinkAxis>) -> Self {
         self.link = try_serialize_field(Self::descriptor_link(), [link]);

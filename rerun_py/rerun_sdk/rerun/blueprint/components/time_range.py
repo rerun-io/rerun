@@ -16,7 +16,7 @@ __all__ = ["TimeRange", "TimeRangeBatch"]
 
 class TimeRange(datatypes.TimeRange, ComponentMixin):
     """
-    **Component**: A time range.
+    **Component**: A time range on an unspecified timeline using either relative or absolute boundaries.
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
