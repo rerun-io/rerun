@@ -147,4 +147,4 @@ def test_concurrent_write_tables(server_instance: ServerInstance, is_append: boo
         [prior_count + (num_writes * low_count) + (num_writes * high_count)] if is_append else [low_count, high_count]
     )
 
-    assert final_count in [low_count, high_count], f"Expected rows in {expected} rows, got {final_count}"
+    assert final_count in expected, f"Expected rows in {expected} rows, got {final_count}"
