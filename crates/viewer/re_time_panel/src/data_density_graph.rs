@@ -695,7 +695,7 @@ impl Default for DensityGraphBuilderConfig {
 
             // When chunks are too large to render all events, sample this many events uniformly
             // to create a better density estimate.
-            max_sampled_events_per_chunk: 1_000,
+            max_sampled_events_per_chunk: 4_000,
         }
     }
 }
