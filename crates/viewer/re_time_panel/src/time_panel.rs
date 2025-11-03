@@ -1516,27 +1516,20 @@ fn help(os: egui::os::OperatingSystem) -> Help {
     // Should we just assume that every mac user has a trackpad, and nobody else does?
     // But some mac users (like @Wumpf) use a mouse with their mac.
     Help::new("Timeline")
-        .control("Play/Pause", "Space")
-        .control(
-            "Select time segment",
-            (icons::LEFT_MOUSE_CLICK, "+", "drag timeline"),
-        )
-        .control(
-            "Move time cursor",
-            (icons::LEFT_MOUSE_CLICK, "+", "drag event canva"),
-        )
         .control("Snap to grid", icons::SHIFT)
-        .control("Pan", (icons::CENTER_MOUSE_CLICK, "+", "drag event canvas"))
-        .control("Zoom", (icons::RIGHT_MOUSE_CLICK, "+", "drag event canvas"))
+        .control("Pan", "Middle click drag")
+        .control("Pan vertically", icons::SCROLL)
         .control(
-            "Pan",
+            "Pan horizontally",
             IconText::from_modifiers_and(os, Modifiers::SHIFT, icons::SCROLL),
         )
         .control(
             "Zoom",
             IconText::from_modifiers_and(os, Modifiers::COMMAND, icons::SCROLL),
         )
-        .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
+        .control("Reset view", "Double click")
+        .control_separator()
+        .control("Play/Pause", "Space")
 }
 
 fn help_button(ui: &mut egui::Ui) {

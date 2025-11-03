@@ -227,7 +227,6 @@ pub const SETTINGS: Icon = icon_from_path!("../data/icons/settings.svg");
 
 // Shortcuts:
 pub const LEFT_MOUSE_CLICK: Icon = icon_from_path!("../data/icons/lmc.svg");
-pub const CENTER_MOUSE_CLICK: Icon = icon_from_path!("../data/icons/scroll.svg"); // TODO: an icon
 pub const RIGHT_MOUSE_CLICK: Icon = icon_from_path!("../data/icons/rmc.svg");
 pub const SCROLL: Icon = icon_from_path!("../data/icons/scroll.svg");
 pub const SHIFT: Icon = icon_from_path!("../data/icons/shift.svg");
