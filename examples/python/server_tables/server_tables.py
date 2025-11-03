@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import pyarrow as pa
+import rerun as rr
 from datafusion import DataFrame, col, functions as F
 from rerun.server import Server
 from rerun.utilities.datafusion.collect import collect_to_string_list
@@ -128,6 +129,8 @@ def process_partitions(client: CatalogClient, dataset: DatasetEntry, partition_l
 def main() -> None:
     parser = argparse.ArgumentParser(description="Process some partitions in a dataset.")
     parser.add_argument("--temp-dir", type=str, default=None, help="Temporary directory to store tables.")
+    # TODO(#11760): Remove unneeded args when examples infra is fixed.
+    rr.script_add_args(parser)
     args = parser.parse_args()
     temp_dir = args.temp_dir
     if args.temp_dir is not None:
