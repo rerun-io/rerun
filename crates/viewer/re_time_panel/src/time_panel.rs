@@ -1700,8 +1700,9 @@ fn paint_time_ranges_gaps(
     if let Some(segment_subrange) = valid_time_ranges.last() {
         let gap_edge = *segment_subrange.end() as f32;
         if zig_zag_first_and_last_edges {
+            // Careful with adding a too large number here. Nvidia @ Windows was observed not drawing the rect correctly for -100_000.0
             // Right side of last segment - paint as a very wide gap that we only see the left side of
-            paint_time_gap(gap_edge, gap_edge + 100_000.0);
+            paint_time_gap(gap_edge, gap_edge + 10_000.0);
         } else {
             painter.rect_filled(
                 Rect::from_min_max(pos2(gap_edge, top), pos2(gap_edge + 100_000.0, bottom)),
