@@ -149,17 +149,16 @@ impl Timestamp {
     /// Omits the date of same-day timestamps.
     pub fn format(self, timestamp_format: TimestampFormat) -> String {
         let format_fractional_nanos = |ns: i32| {
-            let is_whole_sec = ns % 1_000_000_000 == 0;
-            let is_whole_ms = ns % 1_000_000 == 0;
-
-            if is_whole_sec {
-                String::new()
-            } else if is_whole_ms {
-                format!(".{:03}", ns / 1_000_000)
-            } else {
-                // NOTE: we currently ignore sub-microsecond
-                format!(".{:03} {:03}", (ns / 1_000_000), (ns / 1_000) % 1_000)
-            }
+            re_format::DurationFormatOptions::default()
+                .with_always_sign(false)
+                .with_min_decimals(0)
+                .with_max_decimals(6) // NOTE: we currently ignore sub-microsecond
+                .round_towards_zero()
+                .format_nanos(ns as _)
+                // Turn `0.123s` into `.123`:
+                .trim_start_matches('0')
+                .trim_end_matches('s')
+                .to_owned()
         };
 
         let timestamp = jiff::Timestamp::from(self);

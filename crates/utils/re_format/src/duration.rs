@@ -2,12 +2,19 @@ use itertools::Itertools as _;
 
 use crate::{THIN_SPACE, format_uint};
 
+/// How to round sub-seconds
+enum Rounding {
+    Closest,
+    TowardsZero,
+}
+
 /// Format a duration as e.g. `3.2s` or `1h 42m`.
 pub struct DurationFormatOptions {
     only_seconds: bool,
     always_sign: bool,
     min_decimals: usize,
     max_decimals: usize,
+    rounding: Rounding,
 }
 
 impl Default for DurationFormatOptions {
@@ -17,6 +24,7 @@ impl Default for DurationFormatOptions {
             always_sign: false,
             min_decimals: 1,
             max_decimals: 9,
+            rounding: Rounding::Closest,
         }
     }
 }
@@ -65,6 +73,18 @@ impl DurationFormatOptions {
         self
     }
 
+    /// When we hit `with_max_decimals`, round towards zero.
+    pub fn round_towards_zero(mut self) -> Self {
+        self.rounding = Rounding::TowardsZero;
+        self
+    }
+
+    /// When we hit `with_max_decimals`, round to closest.
+    pub fn round_to_closest(mut self) -> Self {
+        self.rounding = Rounding::Closest;
+        self
+    }
+
     /// Formats nanoseconds in a pretty way, as specific.
     ///
     /// This function is NOT optimized for performance (and does many small allocations).
@@ -78,6 +98,7 @@ impl DurationFormatOptions {
             always_sign,
             mut min_decimals,
             max_decimals,
+            rounding,
         } = self;
 
         let mut front = vec![];
@@ -103,7 +124,10 @@ impl DurationFormatOptions {
             back_rev.push(THIN_SPACE.to_string());
             ns / 1_000
         } else {
-            (ns + 500) / 1_000 // rounding
+            match rounding {
+                Rounding::Closest => (ns + 500) / 1_000,
+                Rounding::TowardsZero => ns / 1_000,
+            }
         };
 
         let ms = if 6 <= min_decimals || (6 <= max_decimals && !us.is_multiple_of(1_000)) {
@@ -112,7 +136,10 @@ impl DurationFormatOptions {
             back_rev.push(THIN_SPACE.to_string());
             us / 1_000
         } else {
-            (us + 500) / 1_000 // rounding
+            match rounding {
+                Rounding::Closest => (us + 500) / 1_000,
+                Rounding::TowardsZero => us / 1_000,
+            }
         };
 
         // deca-seconds, i.e. tenths of a second
@@ -121,14 +148,20 @@ impl DurationFormatOptions {
             back_rev.push(format!("{:02}", ms % 100));
             ms / 100
         } else {
-            (ms + 50) / 100 // rounding
+            match rounding {
+                Rounding::Closest => (ms + 50) / 100,
+                Rounding::TowardsZero => ms / 100,
+            }
         };
 
         let s = if 1 <= min_decimals || (1 <= max_decimals && !ds.is_multiple_of(10)) {
             back_rev.push(format!("{:01}", ds % 10));
             ds / 10
         } else {
-            (ds + 5) / 10 // rounding
+            match rounding {
+                Rounding::Closest => (ds + 5) / 10,
+                Rounding::TowardsZero => ds / 10,
+            }
         };
 
         if !back_rev.is_empty() {
@@ -262,6 +295,15 @@ fn test_format_duration() {
             .with_only_seconds(false)
             .format_nanos(59_999_999_987),
         "1m 0.0s"
+    );
+    assert_eq!(
+        DurationFormatOptions::default()
+            .with_min_decimals(1)
+            .with_max_decimals(6)
+            .with_only_seconds(false)
+            .round_towards_zero()
+            .format_nanos(59_999_999_987),
+        "59.999 999s"
     );
 
     fn format_as_secs(nanos: i64) -> String {
