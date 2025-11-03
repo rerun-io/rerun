@@ -1,9 +1,23 @@
-use crate::web_tools::string_from_js_value;
 use base64::prelude::*;
 use re_auth::oauth::{Credentials, api::AuthenticationResponse};
 use re_log::ResultExt;
 use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::{JsCast, prelude::Closure};
+
+#[expect(clippy::needless_pass_by_value)]
+fn string_from_js_value(s: wasm_bindgen::JsValue) -> String {
+    // it's already a string
+    if let Some(s) = s.as_string() {
+        return s;
+    }
+
+    // it's an Error, call `toString` instead
+    if let Some(s) = s.dyn_ref::<js_sys::Error>() {
+        return format!("{}", s.to_string());
+    }
+
+    format!("{s:#?}")
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -13,7 +27,7 @@ pub enum Error {
 
 impl From<wasm_bindgen::JsValue> for Error {
     fn from(value: wasm_bindgen::JsValue) -> Self {
-        Error::FailedToOpenWindow(string_from_js_value(value))
+        Error::OpenWindow(string_from_js_value(value))
     }
 }
 
@@ -49,11 +63,19 @@ struct AuthEventPayload {
 }
 
 impl State {
-    pub fn done(&self) -> Option<Credentials> {
-        self.result.borrow_mut().take()
+    pub fn ui(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            ui.spinner();
+            ui.label("Waiting for login…");
+        });
     }
 
-    pub fn open(ui: &mut egui::Ui) -> Result<Option<Self>, Error> {
+    #[expect(clippy::needless_pass_by_ref_mut)]
+    pub fn done(&mut self) -> Result<Option<Credentials>, Error> {
+        Ok(self.result.borrow_mut().take())
+    }
+
+    pub fn open(ui: &mut egui::Ui) -> Result<Self, Error> {
         let egui_ctx = ui.ctx().clone();
 
         let parent_window = web_sys::window().expect("no window available");
@@ -75,7 +97,9 @@ impl State {
             "width=480,height=640",
         )?
         else {
-            return Ok(None);
+            return Err(Error::OpenWindow(
+                "window.open did not return a handle".into(),
+            ));
         };
 
         // TODO: clean up this mess
@@ -161,10 +185,10 @@ impl State {
             .add_event_listener_with_callback("storage", on_storage_event.as_ref().unchecked_ref())
             .ok();
 
-        Ok(Some(Self {
+        Ok(Self {
             child_window,
             on_storage_event,
             result,
-        }))
+        })
     }
 }

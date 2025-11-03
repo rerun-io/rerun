@@ -59,8 +59,7 @@ impl WebHandle {
 
         let app_options: Option<AppOptions> = serde_wasm_bindgen::from_value(app_options)?;
 
-        let connection_registry =
-            re_redap_client::ConnectionRegistry::new_with_stored_credentials();
+        let connection_registry = re_redap_client::ConnectionRegistry::new();
 
         Ok(Self {
             runner: eframe::WebRunner::new(),

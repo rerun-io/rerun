@@ -4,7 +4,9 @@ use re_redap_client::ConnectionRegistryHandle;
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
-use re_viewer_context::{DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _};
+use re_viewer_context::{
+    CommandSender, DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _,
+};
 use std::str::FromStr as _;
 
 use crate::{context::Context, servers::Command};
@@ -24,35 +26,38 @@ pub enum ServerModalMode {
     Edit(re_uri::Origin),
 }
 
-enum CredentialsState {
-    Token(String),
-    Login(LoginFlow),
-    LoggedIn(String),
+#[derive(Default)]
+struct Authentication {
+    email: Option<String>,
+    token: String,
+    state: AuthenticationState,
+}
+
+#[derive(Default)]
+enum AuthenticationState {
+    #[default]
+    LoginOrAddToken,
+    TokenInput,
+    LoginFlow(LoginFlow),
     Error(String),
 }
 
-impl CredentialsState {
-    #[expect(clippy::needless_pass_by_value)]
-    fn with_token(token: String) -> Self {
-        Self::Token(token.trim().to_owned())
-    }
-
-    fn empty_token() -> Self {
-        Self::Token(String::new())
-    }
-
-    fn login_flow(ui: &mut egui::Ui) -> Self {
-        match LoginFlow::open(ui) {
-            Ok(flow) => Self::Login(flow),
-            Err(err) => Self::Error(err),
-        }
-    }
-
-    fn try_from_stored() -> Option<Self> {
-        re_auth::oauth::load_credentials()
+impl Authentication {
+    fn new(token: Option<String>) -> Self {
+        let email = re_auth::oauth::load_credentials()
             .ok()
             .flatten()
-            .map(|credentials| Self::LoggedIn(credentials.user().email.clone()))
+            .map(|credentials| credentials.user().email.clone());
+        let (token, state) = match token {
+            Some(token) => (token, AuthenticationState::TokenInput),
+            None => (String::new(), AuthenticationState::LoginOrAddToken),
+        };
+
+        Self {
+            email,
+            token,
+            state,
+        }
     }
 }
 
@@ -62,7 +67,7 @@ pub struct ServerModal {
     mode: ServerModalMode,
     scheme: Scheme,
     host: String,
-    credentials: Option<CredentialsState>,
+    auth: Authentication,
     port: u16,
 }
 
@@ -73,7 +78,7 @@ impl Default for ServerModal {
             mode: ServerModalMode::Add,
             scheme: Scheme::Rerun,
             host: String::new(),
-            credentials: None,
+            auth: Authentication::default(),
             port: 443,
         }
     }
@@ -83,11 +88,11 @@ impl ServerModal {
     pub fn open(&mut self, mode: ServerModalMode, connection_registry: &ConnectionRegistryHandle) {
         *self = match mode {
             ServerModalMode::Add => {
-                let credentials = CredentialsState::try_from_stored();
+                let auth = Authentication::new(None);
 
                 Self {
                     mode: ServerModalMode::Add,
-                    credentials,
+                    auth,
                     ..Default::default()
                 }
             }
@@ -95,13 +100,11 @@ impl ServerModal {
                 let re_uri::Origin { scheme, host, port } = origin.clone();
 
                 let credentials = connection_registry.credentials(&origin);
-                let credentials = match credentials {
+                let auth = match credentials {
                     Some(re_redap_client::Credentials::Token(token)) => {
-                        Some(CredentialsState::Token(token.to_string()))
+                        Authentication::new(Some(token.to_string()))
                     }
-                    Some(re_redap_client::Credentials::Stored) | None => {
-                        CredentialsState::try_from_stored()
-                    }
+                    Some(re_redap_client::Credentials::Stored) | None => Authentication::new(None),
                 };
 
                 Self {
@@ -109,7 +112,7 @@ impl ServerModal {
                     mode: ServerModalMode::Edit(origin),
                     scheme,
                     host: host.to_string(),
-                    credentials,
+                    auth,
                     port,
                 }
             }
@@ -138,27 +141,6 @@ impl ServerModal {
                 );
 
                 ui.label("URL:");
-                let mut host = url::Host::parse(&self.host);
-
-                if host.is_err()
-                    && let Ok(url) = url::Url::parse(&self.host)
-                {
-                    // Maybe the user pasted a full URL, with scheme and port?
-                    // Then handle that gracefully! `from_str` requires the url
-                    // with the "://" part so we just pass the whole url.
-                    if let Ok(scheme) = Scheme::from_str(&self.host) {
-                        self.scheme = scheme;
-                    }
-
-                    if let Some(url_host) = url.host_str() {
-                        self.host = url_host.to_owned();
-                        host = url::Host::parse(&self.host);
-                    }
-
-                    if let Some(port) = url.port() {
-                        self.port = port;
-                    }
-                }
 
                 ui.horizontal(|ui| {
                     egui::ComboBox::new("scheme", "")
@@ -174,7 +156,7 @@ impl ServerModal {
 
                     ui.scope(|ui| {
                         // make field red if host is invalid
-                        if host.is_err() {
+                        if url::Host::parse(&self.host).is_err() {
                             ui.style_invalid_field();
                         }
                         ui.add(
@@ -189,105 +171,37 @@ impl ServerModal {
                     ui.add(egui::DragValue::new(&mut self.port));
                 });
 
+                let mut host = url::Host::parse(&self.host);
+                if host.is_err()
+                    && let Ok(url) = url::Url::parse(&self.host)
+                {
+                    // Maybe the user pasted a full URL, with scheme and port?
+                    // Then handle that gracefully! `from_str` requires the url
+                    // with the "://" part so we just pass the whole url.
+                    match url.scheme() {
+                        "https" => self.scheme = Scheme::RerunHttps,
+                        "http" => self.scheme = Scheme::RerunHttp,
+                        _ => {
+                            if let Ok(scheme) = Scheme::from_str(&self.host) {
+                                self.scheme = scheme;
+                            }
+                        }
+                    }
+
+                    if let Some(url_host) = url.host_str() {
+                        self.host = url_host.to_owned();
+                        host = url::Host::parse(&self.host);
+                    }
+
+                    if let Some(port) = url.port() {
+                        self.port = port;
+                    }
+                }
+
                 ui.add_space(14.0);
 
                 ui.label("Authenticate:");
-                ui.scope(|ui| match &mut self.credentials {
-                    None => {
-                        ui.horizontal(|ui| {
-                            if action_button(ui, &mut true, None, "Login", "Login") {
-                                self.credentials = Some(CredentialsState::login_flow(ui));
-                            }
-
-                            ui.add_space(6.0);
-                            ui.label("or");
-                            ui.add_space(6.0);
-
-                            if ui
-                                .link(RichText::new("Add a token").strong().underline())
-                                .clicked()
-                            {
-                                self.credentials = Some(CredentialsState::empty_token());
-                            }
-                        });
-                    }
-                    Some(CredentialsState::Token(token)) => {
-                        let mut token = token.clone();
-                        let mut close = false;
-
-                        ui.horizontal(|ui| {
-                            let jwt = (!token.is_empty())
-                                .then(|| re_auth::Jwt::try_from(token.clone()))
-                                .transpose();
-
-                            if jwt.is_err() {
-                                ui.style_invalid_field();
-                            }
-
-                            ui.add(
-                                egui::TextEdit::singleline(&mut token)
-                                    .hint_text("Token (will be stored in plain text)")
-                                    .code_editor(),
-                            );
-
-                            if ui
-                                .small_icon_button(&re_ui::icons::CLOSE, "Clear login status")
-                                .on_hover_text("Clear login status")
-                                .clicked()
-                            {
-                                close = true;
-                            }
-                        });
-
-                        if close {
-                            self.credentials = None;
-                        } else {
-                            self.credentials = Some(CredentialsState::with_token(token));
-                        }
-                    }
-                    Some(CredentialsState::Login(flow)) => {
-                        if let Some(result) = flow.ui(ui, global_ctx.command_sender) {
-                            match result {
-                                LoginFlowResult::Success(credentials) => {
-                                    self.credentials = Some(CredentialsState::LoggedIn(
-                                        credentials.user().email.clone(),
-                                    ));
-                                }
-                                LoginFlowResult::Failure(err) => {
-                                    self.credentials = Some(CredentialsState::Error(err));
-                                }
-                            }
-                        }
-                    }
-                    Some(CredentialsState::Error(err)) => {
-                        ui.error_label(err.clone());
-                    }
-                    Some(CredentialsState::LoggedIn(email)) => {
-                        let email = email.clone();
-                        ui.scope(|ui| {
-                            ui.horizontal(|ui| {
-                                ui.label("Continue as ");
-                                ui.label(RichText::new(email).strong().underline());
-
-                                ui.add_space(6.0);
-                                ui.label("or");
-                                ui.add_space(6.0);
-
-                                if ui.link(RichText::new("Add a token").underline()).clicked() {
-                                    self.credentials = Some(CredentialsState::Token(String::new()));
-                                }
-
-                                if ui
-                                    .small_icon_button(&re_ui::icons::CLOSE, "Clear login status")
-                                    .on_hover_text("Clear login status")
-                                    .clicked()
-                                {
-                                    self.credentials = None;
-                                }
-                            });
-                        });
-                    }
-                });
+                ui.scope(|ui| auth_ui(ui, global_ctx.command_sender, &mut self.auth));
 
                 ui.add_space(24.0);
 
@@ -302,17 +216,16 @@ impl ServerModal {
                     port: self.port,
                 });
 
-                let credentials = match &self.credentials {
-                    Some(CredentialsState::Token(token)) => Jwt::try_from(token.clone())
+                let credentials = if !self.auth.token.is_empty() {
+                    Jwt::try_from(self.auth.token.clone())
                         .map(re_redap_client::Credentials::Token)
                         .map(Some)
                         // error is reported in the UI above
-                        .map_err(|_err| ()),
-                    Some(CredentialsState::LoggedIn(_)) => {
-                        Ok(Some(re_redap_client::Credentials::Stored))
-                    }
-                    Some(CredentialsState::Login(_) | CredentialsState::Error(_)) => Err(()),
-                    None => Ok(None),
+                        .map_err(|_err| ())
+                } else if self.auth.email.is_some() {
+                    Ok(Some(re_redap_client::Credentials::Stored))
+                } else {
+                    Ok(None)
                 };
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -346,10 +259,97 @@ impl ServerModal {
                     let cancel_button_response =
                         ui.add(egui::Button::new("Cancel").min_size(egui::vec2(button_width, 0.0)));
                     if cancel_button_response.clicked() {
+                        self.auth.state = AuthenticationState::LoginOrAddToken;
                         ui.close();
                     }
                 });
             },
         );
     }
+}
+
+fn auth_ui(ui: &mut egui::Ui, cmd: &CommandSender, auth: &mut Authentication) {
+    ui.horizontal(|ui| {
+        ui.scope(|ui| {
+            let mut new_state = None;
+
+            match &mut auth.state {
+                AuthenticationState::LoginOrAddToken => {
+                    if let Some(email) = &auth.email {
+                        ui.label("Continue as ");
+                        ui.label(RichText::new(email).strong().underline());
+
+                        if ui
+                            .small_icon_button(&re_ui::icons::CLOSE, "Clear login status")
+                            .on_hover_text("Clear login status")
+                            .clicked()
+                        {
+                            auth.email = None;
+                        }
+                    } else {
+                        if action_button(ui, &mut true, None, "Login", "Login") {
+                            new_state = match LoginFlow::open(ui) {
+                                Ok(flow) => Some(AuthenticationState::LoginFlow(flow)),
+                                Err(err) => Some(AuthenticationState::Error(err)),
+                            };
+                        }
+                    }
+
+                    ui.add_space(6.0);
+                    ui.label("or");
+                    ui.add_space(6.0);
+
+                    if ui
+                        .link(RichText::new("Add a token").strong().underline())
+                        .clicked()
+                    {
+                        new_state = Some(AuthenticationState::TokenInput);
+                    }
+                }
+                AuthenticationState::TokenInput => {
+                    let jwt = (!auth.token.is_empty())
+                        .then(|| re_auth::Jwt::try_from(auth.token.clone()))
+                        .transpose();
+
+                    if jwt.is_err() {
+                        ui.style_invalid_field();
+                    }
+
+                    ui.add(
+                        egui::TextEdit::singleline(&mut auth.token)
+                            .hint_text("Token (will be stored in plain text)")
+                            .code_editor(),
+                    );
+
+                    if ui
+                        .small_icon_button(&re_ui::icons::CLOSE, "Go back")
+                        .on_hover_text("Go back")
+                        .clicked()
+                    {
+                        new_state = Some(AuthenticationState::LoginOrAddToken);
+                    }
+                }
+                AuthenticationState::LoginFlow(flow) => {
+                    if let Some(result) = flow.ui(ui, cmd) {
+                        match result {
+                            LoginFlowResult::Success(credentials) => {
+                                auth.email = Some(credentials.user().email.clone());
+                                new_state = Some(AuthenticationState::LoginOrAddToken);
+                            }
+                            LoginFlowResult::Failure(err) => {
+                                new_state = Some(AuthenticationState::Error(err));
+                            }
+                        }
+                    }
+                }
+                AuthenticationState::Error(err) => {
+                    ui.error_label(err.clone());
+                }
+            }
+
+            if let Some(new_state) = new_state {
+                auth.state = new_state;
+            }
+        });
+    });
 }

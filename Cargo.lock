@@ -9302,10 +9302,12 @@ name = "re_redap_browser"
 version = "0.27.0-alpha.8+dev"
 dependencies = [
  "ahash",
+ "base64 0.22.1",
  "datafusion",
  "egui",
  "futures",
  "itertools 0.14.0",
+ "js-sys",
  "re_auth",
  "re_component_ui",
  "re_dataframe_ui",
@@ -9319,8 +9321,11 @@ dependencies = [
  "re_uri",
  "re_viewer_context",
  "serde",
+ "serde_json",
  "thiserror 2.0.17",
  "url",
+ "wasm-bindgen",
+ "web-sys",
  "webbrowser",
 ]
 
