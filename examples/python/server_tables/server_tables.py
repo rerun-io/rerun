@@ -132,6 +132,8 @@ def main() -> None:
     # TODO(#11760): Remove unneeded args when examples infra is fixed.
     rr.script_add_args(parser)
     args = parser.parse_args()
+    # TODO(#11760): Fake output to satisfy examples infra.
+    Path(args.save).touch()
     temp_dir = args.temp_dir
     if args.temp_dir is not None:
         run_example(Path(temp_dir))
