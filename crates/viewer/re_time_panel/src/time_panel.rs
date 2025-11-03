@@ -1998,13 +1998,13 @@ fn time_marker_ui(
             .memory(|mem| mem.data.get_temp(hovered_ctx_id))
             .or(hovered_time)
         {
-            if egui::Popup::context_menu(&time_area_response)
+            let popup_is_open = egui::Popup::context_menu(&time_area_response)
                 .width(300.0)
                 .show(|ui| {
                     copy_timeline_properties_context_menu(ui, ctx, time_ctrl, hovered_time);
                 })
-                .is_some()
-            {
+                .is_some();
+            if popup_is_open {
                 ui.ctx()
                     .memory_mut(|mem| mem.data.insert_temp(hovered_ctx_id, hovered_time));
             } else {
