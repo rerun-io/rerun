@@ -28,9 +28,8 @@ pub mod __bench {
 }
 
 /// Indicate moving the time cursor.
-const MOVE_TIME_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::Default;
-// const MOVE_TIME_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::ResizeColumn;  // TODO(rust-windowing/winit#4390)
+const MOVE_TIME_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::ResizeColumn;
 
 /// Indicate creating a new time loop selection.
-// const CREATE_TIME_LOOP_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::Default;
-const CREATE_TIME_LOOP_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::ResizeHorizontal;
+const CREATE_TIME_LOOP_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::Default;
+// const CREATE_TIME_LOOP_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::ResizeHorizontal;   // TODO(rust-windowing/winit#4390)
