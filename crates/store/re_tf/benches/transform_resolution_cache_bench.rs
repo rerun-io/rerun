@@ -58,7 +58,7 @@ fn setup_store() -> (EntityDb, Vec<ChunkStoreEvent>) {
 fn transform_resolution_cache_query(c: &mut Criterion) {
     let (entity_db, events) = setup_store();
 
-    c.bench_function("build_from_entitydb", |b| {
+    c.bench_function("build_from_entity_db", |b| {
         b.iter(|| {
             let mut cache = TransformResolutionCache::default();
             cache.process_store_events(events.iter());

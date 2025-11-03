@@ -38,6 +38,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
     re_tracing::profile_function!();
     let array = [
         (
+            <AbsoluteTimeRange as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A reference to a range of time.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: AbsoluteTimeRange::arrow_datatype(),
+                verify_arrow_array: AbsoluteTimeRange::verify_arrow_array,
+            },
+        ),
+        (
             <ActiveTab as Component>::name(),
             ComponentReflection {
                 docstring_md: "The active tab in a tabbed container.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -258,6 +268,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <LoopMode as Component>::name(),
+            ComponentReflection {
+                docstring_md: "If playing, whether and how the playback time should loop.",
+                deprecation_summary: None,
+                custom_placeholder: Some(LoopMode::default().to_arrow()?),
+                datatype: LoopMode::arrow_datatype(),
+                verify_arrow_array: LoopMode::verify_arrow_array,
+            },
+        ),
+        (
             <MapProvider as Component>::name(),
             ComponentReflection {
                 docstring_md: "Name of the map provider to be used in Map views.",
@@ -285,6 +305,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 custom_placeholder: Some(PanelState::default().to_arrow()?),
                 datatype: PanelState::arrow_datatype(),
                 verify_arrow_array: PanelState::verify_arrow_array,
+            },
+        ),
+        (
+            <PlayState as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The current play state.",
+                deprecation_summary: None,
+                custom_placeholder: Some(PlayState::default().to_arrow()?),
+                datatype: PlayState::arrow_datatype(),
+                verify_arrow_array: PlayState::verify_arrow_array,
             },
         ),
         (
@@ -3130,6 +3160,20 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
+                        name: "source_frame",
+                        display_name: "Source frame",
+                        component_type: "rerun.components.TransformFrameId".into(),
+                        docstring_md: "The frame this transform transforms from.\n\nThe entity at which the transform relationship of any given source frame is specified mustn't change over time.\nE.g. if you specified the source `\"robot_arm\"` on an entity named `\"my_transforms\"`, you may not log transforms\nwith the source `\"robot_arm\"` on any other entity than `\"my_transforms\"`.\nAn exception to this rule is static time - you may first mention a source on one entity statically and later on\nanother one temporally.\n\n⚠ This currently also affects the target frame of [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).\n⚠ This currently is also used as the frame id of [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).\n\nIf not specified, this is set to the implicit transform frame of the current entity path.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame?speculative-link).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "target_frame",
+                        display_name: "Target frame",
+                        component_type: "rerun.components.TransformFrameId".into(),
+                        docstring_md: "The frame this transform transforms to.\n\n⚠ This currently also affects the target frame of [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).\n\nIf not specified, this is set to the implicit transform frame of the current entity path's parent.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame?speculative-link).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
                         name: "axis_length",
                         display_name: "Axis length",
                         component_type: "rerun.components.AxisLength".into(),
@@ -3920,6 +3964,27 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Fps",
                         component_type: "rerun.blueprint.components.Fps".into(),
                         docstring_md: "Frames per second. Only applicable for sequence timelines.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "play_state",
+                        display_name: "Play state",
+                        component_type: "rerun.blueprint.components.PlayState".into(),
+                        docstring_md: "If the time is currently paused, playing, or following.\n\nDefaults to either playing or following, depending on the data source.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "loop_mode",
+                        display_name: "Loop mode",
+                        component_type: "rerun.blueprint.components.LoopMode".into(),
+                        docstring_md: "How the time should loop. A selection loop only works if there is also a `time_selection` passed.\n\nDefaults to off.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "time_selection",
+                        display_name: "Time selection",
+                        component_type: "rerun.blueprint.components.AbsoluteTimeRange".into(),
+                        docstring_md: "Selects a range of time on the time panel.",
                         is_required: false,
                     },
                 ],

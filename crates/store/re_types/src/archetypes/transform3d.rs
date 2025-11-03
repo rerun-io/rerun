@@ -354,6 +354,37 @@ pub struct Transform3D {
     /// Specifies the relation this transform establishes between this entity and its parent.
     pub relation: Option<SerializedComponentBatch>,
 
+    /// The frame this transform transforms from.
+    ///
+    /// The entity at which the transform relationship of any given source frame is specified mustn't change over time.
+    /// E.g. if you specified the source `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
+    /// with the source `"robot_arm"` on any other entity than `"my_transforms"`.
+    /// An exception to this rule is static time - you may first mention a source on one entity statically and later on
+    /// another one temporally.
+    ///
+    /// ⚠ This currently also affects the target frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole].
+    /// ⚠ This currently is also used as the frame id of [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
+    ///
+    /// If not specified, this is set to the implicit transform frame of the current entity path.
+    /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
+    ///
+    /// To set the frame an entity is part of see [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
+    ///
+    /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    pub source_frame: Option<SerializedComponentBatch>,
+
+    /// The frame this transform transforms to.
+    ///
+    /// ⚠ This currently also affects the target frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole].
+    ///
+    /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
+    /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
+    ///
+    /// To set the frame an entity is part of see [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
+    ///
+    /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    pub target_frame: Option<SerializedComponentBatch>,
+
     /// Visual length of the 3 axes.
     ///
     /// The length is interpreted in the local coordinate system of the transform.
@@ -434,6 +465,30 @@ impl Transform3D {
         }
     }
 
+    /// Returns the [`ComponentDescriptor`] for [`Self::source_frame`].
+    ///
+    /// The corresponding component is [`crate::components::TransformFrameId`].
+    #[inline]
+    pub fn descriptor_source_frame() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.Transform3D".into()),
+            component: "Transform3D:source_frame".into(),
+            component_type: Some("rerun.components.TransformFrameId".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::target_frame`].
+    ///
+    /// The corresponding component is [`crate::components::TransformFrameId`].
+    #[inline]
+    pub fn descriptor_target_frame() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.Transform3D".into()),
+            component: "Transform3D:target_frame".into(),
+            component_type: Some("rerun.components.TransformFrameId".into()),
+        }
+    }
+
     /// Returns the [`ComponentDescriptor`] for [`Self::axis_length`].
     ///
     /// The corresponding component is [`crate::components::AxisLength`].
@@ -453,7 +508,7 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 9usize]> =
     std::sync::LazyLock::new(|| {
         [
             Transform3D::descriptor_translation(),
@@ -462,11 +517,13 @@ static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
             Transform3D::descriptor_scale(),
             Transform3D::descriptor_mat3x3(),
             Transform3D::descriptor_relation(),
+            Transform3D::descriptor_source_frame(),
+            Transform3D::descriptor_target_frame(),
             Transform3D::descriptor_axis_length(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 9usize]> =
     std::sync::LazyLock::new(|| {
         [
             Transform3D::descriptor_translation(),
@@ -475,13 +532,15 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
             Transform3D::descriptor_scale(),
             Transform3D::descriptor_mat3x3(),
             Transform3D::descriptor_relation(),
+            Transform3D::descriptor_source_frame(),
+            Transform3D::descriptor_target_frame(),
             Transform3D::descriptor_axis_length(),
         ]
     });
 
 impl Transform3D {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 7 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 9 optional
+    pub const NUM_COMPONENTS: usize = 9usize;
 }
 
 impl ::re_types_core::Archetype for Transform3D {
@@ -546,6 +605,16 @@ impl ::re_types_core::Archetype for Transform3D {
         let relation = arrays_by_descr
             .get(&Self::descriptor_relation())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_relation()));
+        let source_frame = arrays_by_descr
+            .get(&Self::descriptor_source_frame())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_source_frame())
+            });
+        let target_frame = arrays_by_descr
+            .get(&Self::descriptor_target_frame())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_target_frame())
+            });
         let axis_length = arrays_by_descr
             .get(&Self::descriptor_axis_length())
             .map(|array| {
@@ -558,6 +627,8 @@ impl ::re_types_core::Archetype for Transform3D {
             scale,
             mat3x3,
             relation,
+            source_frame,
+            target_frame,
             axis_length,
         })
     }
@@ -574,6 +645,8 @@ impl ::re_types_core::AsComponents for Transform3D {
             self.scale.clone(),
             self.mat3x3.clone(),
             self.relation.clone(),
+            self.source_frame.clone(),
+            self.target_frame.clone(),
             self.axis_length.clone(),
         ]
         .into_iter()
@@ -620,6 +693,14 @@ impl Transform3D {
                 crate::components::TransformRelation::arrow_empty(),
                 Self::descriptor_relation(),
             )),
+            source_frame: Some(SerializedComponentBatch::new(
+                crate::components::TransformFrameId::arrow_empty(),
+                Self::descriptor_source_frame(),
+            )),
+            target_frame: Some(SerializedComponentBatch::new(
+                crate::components::TransformFrameId::arrow_empty(),
+                Self::descriptor_target_frame(),
+            )),
             axis_length: Some(SerializedComponentBatch::new(
                 crate::components::AxisLength::arrow_empty(),
                 Self::descriptor_axis_length(),
@@ -664,6 +745,12 @@ impl Transform3D {
             self.relation
                 .map(|relation| relation.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.source_frame
+                .map(|source_frame| source_frame.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.target_frame
+                .map(|target_frame| target_frame.partitioned(_lengths.clone()))
+                .transpose()?,
             self.axis_length
                 .map(|axis_length| axis_length.partitioned(_lengths.clone()))
                 .transpose()?,
@@ -685,6 +772,8 @@ impl Transform3D {
         let len_scale = self.scale.as_ref().map(|b| b.array.len());
         let len_mat3x3 = self.mat3x3.as_ref().map(|b| b.array.len());
         let len_relation = self.relation.as_ref().map(|b| b.array.len());
+        let len_source_frame = self.source_frame.as_ref().map(|b| b.array.len());
+        let len_target_frame = self.target_frame.as_ref().map(|b| b.array.len());
         let len_axis_length = self.axis_length.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_translation)
@@ -693,6 +782,8 @@ impl Transform3D {
             .or(len_scale)
             .or(len_mat3x3)
             .or(len_relation)
+            .or(len_source_frame)
+            .or(len_target_frame)
             .or(len_axis_length)
             .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
@@ -834,6 +925,77 @@ impl Transform3D {
         self
     }
 
+    /// The frame this transform transforms from.
+    ///
+    /// The entity at which the transform relationship of any given source frame is specified mustn't change over time.
+    /// E.g. if you specified the source `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
+    /// with the source `"robot_arm"` on any other entity than `"my_transforms"`.
+    /// An exception to this rule is static time - you may first mention a source on one entity statically and later on
+    /// another one temporally.
+    ///
+    /// ⚠ This currently also affects the target frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole].
+    /// ⚠ This currently is also used as the frame id of [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
+    ///
+    /// If not specified, this is set to the implicit transform frame of the current entity path.
+    /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
+    ///
+    /// To set the frame an entity is part of see [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
+    ///
+    /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    #[inline]
+    pub fn with_source_frame(
+        mut self,
+        source_frame: impl Into<crate::components::TransformFrameId>,
+    ) -> Self {
+        self.source_frame = try_serialize_field(Self::descriptor_source_frame(), [source_frame]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::TransformFrameId`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_source_frame`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_source_frame(
+        mut self,
+        source_frame: impl IntoIterator<Item = impl Into<crate::components::TransformFrameId>>,
+    ) -> Self {
+        self.source_frame = try_serialize_field(Self::descriptor_source_frame(), source_frame);
+        self
+    }
+
+    /// The frame this transform transforms to.
+    ///
+    /// ⚠ This currently also affects the target frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole].
+    ///
+    /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
+    /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
+    ///
+    /// To set the frame an entity is part of see [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
+    ///
+    /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    #[inline]
+    pub fn with_target_frame(
+        mut self,
+        target_frame: impl Into<crate::components::TransformFrameId>,
+    ) -> Self {
+        self.target_frame = try_serialize_field(Self::descriptor_target_frame(), [target_frame]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::TransformFrameId`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_target_frame`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_target_frame(
+        mut self,
+        target_frame: impl IntoIterator<Item = impl Into<crate::components::TransformFrameId>>,
+    ) -> Self {
+        self.target_frame = try_serialize_field(Self::descriptor_target_frame(), target_frame);
+        self
+    }
+
     /// Visual length of the 3 axes.
     ///
     /// The length is interpreted in the local coordinate system of the transform.
@@ -870,6 +1032,8 @@ impl ::re_byte_size::SizeBytes for Transform3D {
             + self.scale.heap_size_bytes()
             + self.mat3x3.heap_size_bytes()
             + self.relation.heap_size_bytes()
+            + self.source_frame.heap_size_bytes()
+            + self.target_frame.heap_size_bytes()
             + self.axis_length.heap_size_bytes()
     }
 }
