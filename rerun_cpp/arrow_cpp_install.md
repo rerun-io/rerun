@@ -5,7 +5,7 @@
 ## Automatically download & build Arrow from source (default)
 
 By default, the Rerun C++ SDK's CMake script (which is part of the SDK's zip artifact that can be fetched via `FetchContent`)
-will download a known compatible version of Arrow from GitHub and add it to the build.
+will download a known compatible version of Arrow C++ from GitHub and add it to the build.
 The build configuration is kept to the minimum required by the Rerun C++ SDK.
 
 To instead use an existing install of Arrow, disable the CMake build option `RERUN_DOWNLOAD_AND_BUILD_ARROW`.
@@ -22,7 +22,7 @@ of our external examples.
 
 Make sure to use `-DRERUN_DOWNLOAD_AND_BUILD_ARROW=OFF` when building, otherwise Rerun's CMake script
 will download & build Arrow instead, ignoring your Pixi install.
-The advantage of using Pixi is that you can rely on pre-built artifacts rather than adding Arrows build to your own.
+The advantage of using Pixi is that you can rely on pre-built artifacts rather than adding Arrow's build to your own.
 Also, Pixi is of course also useful for managing other dependencies like Eigen or OpenCV,
 as well as for pinning the version of your build tooling.
 
@@ -49,8 +49,8 @@ If you want to use `pixi` to manage dependencies in your own project, you can si
 project folder. This will create a `pixi.toml` file that manages the project. After that you can run
 `pixi add libarrow==18.0.0` to add Arrow C++ as a dependency to your project.
 
-If you install the `rerun-sdk` Python package into the same environment, take care to pick a compatible arrow version.
-On Linux & Mac you can check the current arrow version for instance using `curl -s https://pypi.org/pypi/rerun-sdk/json  | jq -r | grep pyarrow`.
+If you install the `rerun-sdk` Python package into the same environment, take care to pick a compatible Arrow version.
+On Linux & Mac you can check the current Arrow version for instance using `curl -s https://pypi.org/pypi/rerun-sdk/json  | jq -r | grep pyarrow`.
 
 Now, any Pixi tasks added to your project will have access to the `libarrow` library.
 
@@ -82,5 +82,5 @@ or stick with `RERUN_DOWNLOAD_AND_BUILD_ARROW=ON`.
 Rerun will also work with any existing environment install of Arrow that works with `find_package`.
  - Arrow provides pre-built packages for many platforms.
    - See the list at: <https://arrow.apache.org/install/>
- - Conda-forge contains a package for Arrow:
+ - Conda-forge contains a package for Arrow C++:
    - <https://anaconda.org/conda-forge/libarrow>

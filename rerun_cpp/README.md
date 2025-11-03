@@ -76,6 +76,7 @@ Note that this also what happens when you follow the CMake setup in the [quickst
     which is why we offer pre-built libraries with every release for all major platforms
 * [Apache Arrow C++ library](https://arrow.apache.org/docs/cpp/index.html)
   * The SDK uses this library to perform all serialization before handing data over to rerun_c
+  * See [Install Arrow C++](arrow_cpp_install.md) for how to install this library
 
 
 ### SDK bundle (rerun_cpp_sdk.zip)
