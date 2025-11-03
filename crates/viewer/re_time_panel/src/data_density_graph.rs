@@ -414,10 +414,6 @@ fn smooth(density: &[f32]) -> Vec<f32> {
 fn uniform_sample_events(events: &[(TimeInt, u64)], sample_size: usize) -> Vec<(TimeInt, u64)> {
     re_tracing::profile_function!();
 
-    if events.len() <= sample_size {
-        return events.to_vec();
-    }
-
     // Use double precision to prevent rounding errors when handling many events.
     // This ensures that we sample evenly across the entire range.
     let step = events.len() as f64 / sample_size as f64;
@@ -612,10 +608,15 @@ pub fn build_density_graph<'a>(
                     data.add_chunk_point(time, num_events as usize);
                 }
             } else if config.max_sampled_events_per_chunk > 0 {
-                // Sample events to get a better density estimate than a uniform distribution
                 let events = chunk.num_events_cumulative_per_unique_time(timeline);
-                let sampled_events =
-                    uniform_sample_events(&events, config.max_sampled_events_per_chunk);
+
+                let sampled_events = if events.len() > config.max_sampled_events_per_chunk {
+                    // If there's more rows than the configured max, we sample events to get a fast, good enough density estimate.
+                    uniform_sample_events(&events, config.max_sampled_events_per_chunk)
+                } else {
+                    // No need to sample, we can use all events.
+                    events
+                };
 
                 for (time, num_events) in sampled_events {
                     data.add_chunk_point(time, num_events as usize);
