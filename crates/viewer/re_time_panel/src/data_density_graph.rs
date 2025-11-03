@@ -410,7 +410,7 @@ fn smooth(density: &[f32]) -> Vec<f32> {
         .collect()
 }
 
-/// Uniformly sample events from a vector.
+/// Uniformly sample events using the given sample size.
 fn uniform_sample_events(events: &[(TimeInt, u64)], sample_size: usize) -> Vec<(TimeInt, u64)> {
     re_tracing::profile_function!();
 
