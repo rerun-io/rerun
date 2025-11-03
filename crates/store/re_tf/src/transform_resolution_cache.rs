@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet, hash_map::Entry};
 use std::ops::Range;
 
 use ahash::HashMap;
-use glam::Affine3A;
+use glam::DAffine3;
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 use vec1::smallvec_v1::SmallVec1;
@@ -65,7 +65,7 @@ pub struct SourceToTargetTransform {
     pub target: TransformFrameIdHash,
 
     /// The transform from the source frame to the target frame.
-    pub transform: Affine3A,
+    pub transform: DAffine3,
 }
 
 /// Maps entity paths to [`EntityToAffectedSources`] datastructures.
@@ -229,16 +229,16 @@ pub struct PoseTransformArchetypeMap {
     /// Iff there's a concrete archetype in here, the mapped values are the full resolved pose transform.
     // TODO(andreas): use some kind of small map? Vec of tuples might already be more appropriate?
     pub instance_from_archetype_poses_per_archetype:
-        IntMap<ArchetypeName, SmallVec1<[Affine3A; 1]>>,
+        IntMap<ArchetypeName, SmallVec1<[DAffine3; 1]>>,
 
     /// Resolved transforms for the instance poses archetype if any.
-    pub instance_from_poses: Vec<Affine3A>,
+    pub instance_from_poses: Vec<DAffine3>,
 }
 
 impl PoseTransformArchetypeMap {
     #[cfg(test)]
     #[inline]
-    fn get(&self, archetype: ArchetypeName) -> &[Affine3A] {
+    fn get(&self, archetype: ArchetypeName) -> &[DAffine3] {
         self.instance_from_archetype_poses_per_archetype
             .get(&archetype)
             .map_or(&self.instance_from_poses, |v| v.as_slice())
@@ -1166,7 +1166,7 @@ fn query_and_resolve_tree_transform_at_entity(
             |frame_id| TransformFrameIdHash::new(&frame_id),
         );
 
-    let mut transform = Affine3A::IDENTITY;
+    let mut transform = DAffine3::IDENTITY;
 
     // It's an error if there's more than one component. Warn in that case.
     let mono_log_level = re_log::Level::Warn;
@@ -1176,7 +1176,7 @@ fn query_and_resolve_tree_transform_at_entity(
         archetypes::Transform3D::descriptor_translation().component,
         mono_log_level,
     ) {
-        transform = Affine3A::from(translation);
+        transform = DAffine3::from(translation);
     }
     if let Some(axis_angle) = results
         .component_mono_with_log_level::<components::RotationAxisAngle>(
@@ -1184,7 +1184,7 @@ fn query_and_resolve_tree_transform_at_entity(
             mono_log_level,
         )
     {
-        if let Ok(axis_angle) = Affine3A::try_from(axis_angle) {
+        if let Ok(axis_angle) = DAffine3::try_from(axis_angle) {
             transform *= axis_angle;
         } else {
             return None;
@@ -1194,7 +1194,7 @@ fn query_and_resolve_tree_transform_at_entity(
         archetypes::Transform3D::descriptor_quaternion().component,
         mono_log_level,
     ) {
-        if let Ok(quaternion) = Affine3A::try_from(quaternion) {
+        if let Ok(quaternion) = DAffine3::try_from(quaternion) {
             transform *= quaternion;
         } else {
             return None;
@@ -1207,13 +1207,13 @@ fn query_and_resolve_tree_transform_at_entity(
         if scale.x() == 0.0 && scale.y() == 0.0 && scale.z() == 0.0 {
             return None;
         }
-        transform *= Affine3A::from(scale);
+        transform *= DAffine3::from(scale);
     }
     if let Some(mat3x3) = results.component_mono_with_log_level::<components::TransformMat3x3>(
         archetypes::Transform3D::descriptor_mat3x3().component,
         mono_log_level,
     ) {
-        let affine_transform = Affine3A::from(mat3x3);
+        let affine_transform = DAffine3::from(mat3x3);
         if affine_transform.matrix3.determinant() == 0.0 {
             return None;
         }
@@ -1529,7 +1529,7 @@ mod tests {
                 ),
                 Some(SourceToTargetTransform {
                     target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                    transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                    transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                 })
             );
             assert_eq!(
@@ -1545,10 +1545,10 @@ mod tests {
                     .latest_at_transform(&entity_db, &LatestAtQuery::new(*timeline.name(), 1)),
                 Some(SourceToTargetTransform {
                     target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                    transform: Affine3A::from_scale_rotation_translation(
-                        glam::Vec3::new(123.0, 234.0, 345.0),
-                        glam::Quat::IDENTITY,
-                        glam::Vec3::new(1.0, 2.0, 3.0),
+                    transform: DAffine3::from_scale_rotation_translation(
+                        glam::dvec3(123.0, 234.0, 345.0),
+                        glam::DQuat::IDENTITY,
+                        glam::dvec3(1.0, 2.0, 3.0),
                     ),
                 })
             );
@@ -1567,7 +1567,7 @@ mod tests {
                 ),
                 Some(SourceToTargetTransform {
                     target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                    transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                    transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                 })
             );
         }
@@ -1628,8 +1628,8 @@ mod tests {
                 Some(&PoseTransformArchetypeMap {
                     instance_from_archetype_poses_per_archetype: IntMap::default(),
                     instance_from_poses: vec![
-                        Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
-                        Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
+                        DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
+                        DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
                     ],
                 })
             );
@@ -1649,15 +1649,15 @@ mod tests {
                     .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(*timeline.name(), 1))
                     .map(|poses| &poses.instance_from_poses),
                 Some(&vec![
-                    Affine3A::from_scale_rotation_translation(
-                        glam::Vec3::new(10.0, 20.0, 30.0),
-                        glam::Quat::IDENTITY,
-                        glam::Vec3::new(1.0, 2.0, 3.0),
+                    DAffine3::from_scale_rotation_translation(
+                        glam::dvec3(10.0, 20.0, 30.0),
+                        glam::DQuat::IDENTITY,
+                        glam::dvec3(1.0, 2.0, 3.0),
                     ),
-                    Affine3A::from_scale_rotation_translation(
-                        glam::Vec3::new(10.0, 20.0, 30.0),
-                        glam::Quat::IDENTITY,
-                        glam::Vec3::new(4.0, 5.0, 6.0),
+                    DAffine3::from_scale_rotation_translation(
+                        glam::dvec3(10.0, 20.0, 30.0),
+                        glam::DQuat::IDENTITY,
+                        glam::dvec3(4.0, 5.0, 6.0),
                     ),
                 ])
             );
@@ -1677,8 +1677,8 @@ mod tests {
                     )
                     .map(|poses| &poses.instance_from_poses),
                 Some(&vec![
-                    Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
-                    Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
+                    DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
+                    DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
                 ])
             );
         }
@@ -1912,24 +1912,24 @@ mod tests {
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 2)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: Affine3A::from_scale_rotation_translation(
-                    glam::Vec3::new(1.0, 2.0, 3.0),
-                    glam::Quat::IDENTITY,
-                    glam::Vec3::new(1.0, 2.0, 3.0),
+                transform: DAffine3::from_scale_rotation_translation(
+                    glam::dvec3(1.0, 2.0, 3.0),
+                    glam::DQuat::IDENTITY,
+                    glam::dvec3(1.0, 2.0, 3.0),
                 ),
             })
         );
@@ -1937,21 +1937,21 @@ mod tests {
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 4)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: Affine3A::from_quat(glam::Quat::from_rotation_x(1.0)),
+                transform: DAffine3::from_quat(glam::DQuat::from_rotation_x(1.0)),
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 5)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: Affine3A::IDENTITY, // Empty transform is treated as connected with identity.
+                transform: DAffine3::IDENTITY, // Empty transform is treated as connected with identity.
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 123)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: Affine3A::IDENTITY, // Empty transform is treated as connected with identity.
+                transform: DAffine3::IDENTITY, // Empty transform is treated as connected with identity.
             })
         );
 
@@ -2007,9 +2007,9 @@ mod tests {
                 .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 1))
                 .map(|poses| &poses.instance_from_poses),
             Some(&vec![
-                Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
-                Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
-                Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
+                DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
+                DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
+                DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)),
             ])
         );
         assert_eq!(
@@ -2017,9 +2017,9 @@ mod tests {
                 .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 2))
                 .map(|poses| &poses.instance_from_poses),
             Some(&vec![
-                Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
-                Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
-                Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
+                DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
+                DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
+                DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)),
             ])
         );
         assert_eq!(
@@ -2027,15 +2027,15 @@ mod tests {
                 .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 3))
                 .map(|poses| &poses.instance_from_poses),
             Some(&vec![
-                Affine3A::from_scale_rotation_translation(
-                    glam::Vec3::new(2.0, 3.0, 4.0),
-                    glam::Quat::IDENTITY,
-                    glam::Vec3::new(1.0, 2.0, 3.0),
+                DAffine3::from_scale_rotation_translation(
+                    glam::dvec3(2.0, 3.0, 4.0),
+                    glam::DQuat::IDENTITY,
+                    glam::dvec3(1.0, 2.0, 3.0),
                 ),
-                Affine3A::from_scale_rotation_translation(
-                    glam::Vec3::new(2.0, 3.0, 4.0),
-                    glam::Quat::IDENTITY,
-                    glam::Vec3::new(4.0, 5.0, 6.0),
+                DAffine3::from_scale_rotation_translation(
+                    glam::dvec3(2.0, 3.0, 4.0),
+                    glam::DQuat::IDENTITY,
+                    glam::dvec3(4.0, 5.0, 6.0),
                 ),
             ])
         );
@@ -2079,7 +2079,7 @@ mod tests {
                 // Rotate the box by 90 degrees around the Y axis.
                 &archetypes::Boxes3D::update_fields().with_rotation_axis_angles([
                     datatypes::RotationAxisAngle::new(
-                        glam::Vec3::new(0.0, 1.0, 0.0),
+                        glam::vec3(0.0, 1.0, 0.0),
                         90.0_f32.to_radians(),
                     ),
                 ]),
@@ -2110,9 +2110,9 @@ mod tests {
                 assert_eq!(
                     instance_poses.get(archetype),
                     [
-                        Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
-                        Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
-                        Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
+                        DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
+                        DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
+                        DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)),
                     ]
                 );
             }
@@ -2126,9 +2126,9 @@ mod tests {
             Some(&PoseTransformArchetypeMap {
                 instance_from_archetype_poses_per_archetype: IntMap::default(),
                 instance_from_poses: vec![
-                    Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
-                    Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
-                    Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
+                    DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
+                    DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
+                    DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)),
                 ]
             })
         );
@@ -2141,15 +2141,15 @@ mod tests {
                 instance_from_archetype_poses_per_archetype: IntMap::from_iter([(
                     archetypes::Boxes3D::name(),
                     SmallVec1::try_from_slice(&[
-                        Affine3A::from_translation(glam::Vec3::new(11.0, 2.0, 3.0)),
-                        Affine3A::from_translation(glam::Vec3::new(4.0, 105.0, 6.0)),
-                        Affine3A::from_translation(glam::Vec3::new(7.0, 108.0, 9.0)), // Affected by the last box center which is still splatted.
+                        DAffine3::from_translation(glam::dvec3(11.0, 2.0, 3.0)),
+                        DAffine3::from_translation(glam::dvec3(4.0, 105.0, 6.0)),
+                        DAffine3::from_translation(glam::dvec3(7.0, 108.0, 9.0)), // Affected by the last box center which is still splatted.
                     ])?
                 )]),
                 instance_from_poses: vec![
-                    Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
-                    Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
-                    Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
+                    DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
+                    DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
+                    DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)),
                 ]
             })
         );
@@ -2163,33 +2163,29 @@ mod tests {
             .expect("Boxes3D archetype should be present");
 
         // More readable sanity check on translations which aren't affected by the rotation.
-        assert_eq!(
-            query_result[0].translation,
-            glam::Vec3A::new(11.0, 2.0, 3.0)
-        );
+        assert_eq!(query_result[0].translation, glam::dvec3(11.0, 2.0, 3.0));
         // Since rotation isn't 100% accurate, we need to check for equality with a small tolerance.
         let eps = 0.000001;
         // Rotation on the first box affects all instances since it's splatted.
-        let rotation =
-            Affine3A::from_axis_angle(glam::Vec3::new(0.0, 1.0, 0.0), 90.0_f32.to_radians());
-        let expected = Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)) * // Pose
-            Affine3A::from_translation(glam::Vec3::new(10.0, 0.0, 0.0)) * rotation; // Box
+        let rotation = DAffine3::from_axis_angle(glam::dvec3(0.0, 1.0, 0.0), 90.0_f64.to_radians());
+        let expected = DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)) * // Pose
+            DAffine3::from_translation(glam::dvec3(10.0, 0.0, 0.0)) * rotation; // Box
         assert!(
             query_result[0].abs_diff_eq(expected, eps),
             "Expected: {:?}\nGot: {:?}",
             expected,
             query_result[0]
         );
-        let expected = Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)) * // Pose
-            (Affine3A::from_translation(glam::Vec3::new(0.0, 100.0, 0.0)) * rotation); // Box
+        let expected = DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)) * // Pose
+            (DAffine3::from_translation(glam::dvec3(0.0, 100.0, 0.0)) * rotation); // Box
         assert!(
             query_result[1].abs_diff_eq(expected, eps),
             "Expected: {:?}\nGot: {:?}",
             expected,
             query_result[1]
         );
-        let expected = Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)) * // Pose
-            (Affine3A::from_translation(glam::Vec3::new(0.0, 100.0, 0.0)) * rotation); // Box
+        let expected = DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)) * // Pose
+            (DAffine3::from_translation(glam::dvec3(0.0, 100.0, 0.0)) * rotation); // Box
         assert!(
             query_result[2].abs_diff_eq(expected, eps),
             "Expected: {:?}\nGot: {:?}",
@@ -2312,14 +2308,14 @@ mod tests {
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 1)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 3)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: Affine3A::from_translation(glam::Vec3::new(2.0, 3.0, 4.0)),
+                transform: DAffine3::from_translation(glam::dvec3(2.0, 3.0, 4.0)),
             })
         );
 
@@ -2348,17 +2344,17 @@ mod tests {
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 1)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 2)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: Affine3A::from_scale_rotation_translation(
-                    glam::Vec3::new(-1.0, -2.0, -3.0),
-                    glam::Quat::IDENTITY,
-                    glam::Vec3::new(1.0, 2.0, 3.0),
+                transform: DAffine3::from_scale_rotation_translation(
+                    glam::dvec3(-1.0, -2.0, -3.0),
+                    glam::DQuat::IDENTITY,
+                    glam::dvec3(1.0, 2.0, 3.0),
                 ),
             })
         );
@@ -2366,10 +2362,10 @@ mod tests {
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 3)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: Affine3A::from_scale_rotation_translation(
-                    glam::Vec3::new(-1.0, -2.0, -3.0),
-                    glam::Quat::IDENTITY,
-                    glam::Vec3::new(2.0, 3.0, 4.0),
+                transform: DAffine3::from_scale_rotation_translation(
+                    glam::dvec3(-1.0, -2.0, -3.0),
+                    glam::DQuat::IDENTITY,
+                    glam::dvec3(2.0, 3.0, 4.0),
                 ),
             })
         );
@@ -2420,7 +2416,7 @@ mod tests {
                             .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
                         Some(SourceToTargetTransform {
                             target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                            transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                            transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                         })
                     );
                     assert_eq!(
@@ -2428,7 +2424,7 @@ mod tests {
                             .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
                         Some(SourceToTargetTransform {
                             target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                            transform: Affine3A::from_translation(glam::Vec3::new(3.0, 4.0, 5.0)),
+                            transform: DAffine3::from_translation(glam::dvec3(3.0, 4.0, 5.0)),
                         })
                     );
                 }
@@ -2457,7 +2453,7 @@ mod tests {
                         .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
                     Some(SourceToTargetTransform {
                         target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                        transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                        transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                     })
                 );
                 assert_eq!(
@@ -2470,7 +2466,7 @@ mod tests {
                         .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
                     Some(SourceToTargetTransform {
                         target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                        transform: Affine3A::from_translation(glam::Vec3::new(3.0, 4.0, 5.0)),
+                        transform: DAffine3::from_translation(glam::dvec3(3.0, 4.0, 5.0)),
                     })
                 );
             }
@@ -2545,7 +2541,7 @@ mod tests {
                     transform.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 1)),
                     Some(SourceToTargetTransform {
                         target: TransformFrameIdHash::from_entity_path(&path.parent().unwrap()),
-                        transform: Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                        transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                     })
                 );
                 assert_eq!(
@@ -2638,7 +2634,7 @@ mod tests {
                     .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
                 Some(SourceToTargetTransform {
                     target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                    transform: Affine3A::from_translation(glam::Vec3::new(1.0, 0.0, 0.0)),
+                    transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
                 }),
                 "querying at t=={t}"
             );
@@ -2658,7 +2654,7 @@ mod tests {
                 .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 2)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: Affine3A::from_translation(glam::Vec3::new(2.0, 0.0, 0.0)),
+                transform: DAffine3::from_translation(glam::dvec3(2.0, 0.0, 0.0)),
             })
         );
         assert_eq!(
@@ -2666,7 +2662,7 @@ mod tests {
                 .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::from_str("frame1"),
-                transform: Affine3A::from_translation(glam::Vec3::new(3.0, 0.0, 0.0)),
+                transform: DAffine3::from_translation(glam::dvec3(3.0, 0.0, 0.0)),
             })
         );
         assert_eq!(
@@ -2674,7 +2670,7 @@ mod tests {
                 .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 4)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::from_str("frame1"),
-                transform: Affine3A::from_translation(glam::Vec3::new(3.0, 0.0, 0.0)),
+                transform: DAffine3::from_translation(glam::dvec3(3.0, 0.0, 0.0)),
             })
         );
 
@@ -2701,7 +2697,7 @@ mod tests {
                     .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
                 Some(SourceToTargetTransform {
                     target: TransformFrameIdHash::from_str("frame3"),
-                    transform: Affine3A::from_translation(glam::Vec3::new(4.0, 0.0, 0.0)),
+                    transform: DAffine3::from_translation(glam::dvec3(4.0, 0.0, 0.0)),
                 }),
                 "querying at t=={t}"
             );
@@ -2782,7 +2778,7 @@ mod tests {
                 .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: Affine3A::from_translation(glam::Vec3::new(1.0, 0.0, 0.0)),
+                transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
             })
         );
         assert_eq!(
@@ -2790,7 +2786,7 @@ mod tests {
                 .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: Affine3A::from_translation(glam::Vec3::new(1.0, 0.0, 0.0)),
+                transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
             })
         );
 
@@ -2808,7 +2804,7 @@ mod tests {
                 .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: Affine3A::from_translation(glam::Vec3::new(2.0, 0.0, 0.0)),
+                transform: DAffine3::from_translation(glam::dvec3(2.0, 0.0, 0.0)),
             })
         );
 
@@ -2849,7 +2845,7 @@ mod tests {
                 .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: Affine3A::from_translation(glam::Vec3::new(1.0, 0.0, 0.0)),
+                transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
             })
         );
         assert_eq!(
@@ -2857,7 +2853,7 @@ mod tests {
                 .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: Affine3A::from_translation(glam::Vec3::new(2.0, 0.0, 0.0)),
+                transform: DAffine3::from_translation(glam::dvec3(2.0, 0.0, 0.0)),
             })
         );
 

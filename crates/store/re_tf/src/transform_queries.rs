@@ -1,6 +1,6 @@
 //! Utilities for querying out transform types.
 
-use glam::Affine3A;
+use glam::DAffine3;
 use itertools::Either;
 use nohash_hasher::IntMap;
 
@@ -43,7 +43,7 @@ fn archetypes_with_instance_pose_transforms_and_translation_descriptor()
 
 /// Queries all components that are part of pose transforms, returning the transform from child to parent.
 ///
-/// If any of the components yields an invalid transform, returns a `glam::Affine3A::ZERO` for that instance.
+/// If any of the components yields an invalid transform, returns a `glam::DAffine3::ZERO` for that instance.
 /// (this effectively ignores the instance for most visualizations!)
 // TODO(#3849): There's no way to discover invalid transforms right now (they can be intentional but often aren't).
 pub fn query_and_resolve_instance_poses_at_entity(
@@ -114,7 +114,7 @@ fn query_and_resolve_instance_from_pose_for_archetype_name(
     query: &LatestAtQuery,
     archetype_name: ArchetypeName,
     descriptor_translations: &ComponentDescriptor,
-) -> Vec<Affine3A> {
+) -> Vec<DAffine3> {
     debug_assert_eq!(
         descriptor_translations.component_type,
         Some(components::PoseTranslation3D::name())
@@ -208,29 +208,29 @@ fn query_and_resolve_instance_from_pose_for_archetype_name(
     (0..max_num_instances)
         .map(|_| {
             // We apply these in a specific order - see `debug_assert_transform_field_order`
-            let mut transform = Affine3A::IDENTITY;
+            let mut transform = DAffine3::IDENTITY;
             if let Some(translation) = iter_translation.next() {
-                transform = Affine3A::from(translation);
+                transform = DAffine3::from(translation);
             }
             if let Some(rotation_quat) = iter_rotation_quat.next() {
-                if let Ok(rotation_quat) = Affine3A::try_from(rotation_quat) {
+                if let Ok(rotation_quat) = DAffine3::try_from(rotation_quat) {
                     transform *= rotation_quat;
                 } else {
-                    transform = Affine3A::ZERO;
+                    transform = DAffine3::ZERO;
                 }
             }
             if let Some(rotation_axis_angle) = iter_rotation_axis_angle.next() {
-                if let Ok(axis_angle) = Affine3A::try_from(rotation_axis_angle) {
+                if let Ok(axis_angle) = DAffine3::try_from(rotation_axis_angle) {
                     transform *= axis_angle;
                 } else {
-                    transform = Affine3A::ZERO;
+                    transform = DAffine3::ZERO;
                 }
             }
             if let Some(scale) = iter_scale.next() {
-                transform *= Affine3A::from(scale);
+                transform *= DAffine3::from(scale);
             }
             if let Some(mat3x3) = iter_mat3x3.next() {
-                transform *= Affine3A::from(mat3x3);
+                transform *= DAffine3::from(mat3x3);
             }
             transform
         })
