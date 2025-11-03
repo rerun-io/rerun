@@ -46,7 +46,7 @@ table Transform3D (
 
   // --- transform frame
 
-  /// ⚠ Experimental ⚠: The frame this transform transforms from.
+  /// The frame this transform transforms from.
   ///
   /// The entity at which the transform relationship of any given source frame is specified mustn't change over time.
   /// E.g. if you specified the source `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
@@ -54,26 +54,27 @@ table Transform3D (
   /// An exception to this rule is static time - you may first mention a source on one entity statically and later on
   /// another one temporally.
   ///
-  /// ⚠ This also affects the source frame of [archetypes.Pinhole] & [archetypes.InstancePoses3D].
+  /// ⚠ This currently also affects the target frame of [archetypes.Pinhole].
+  /// ⚠ This currently is also used as the frame id of [archetypes.InstancePoses3D].
   ///
   /// If not specified, this is set to the implicit transform frame of the current entity path.
   /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
   ///
   /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
   // TODO(RR-2777): Mark as stable when we're ready for it.
-  source_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", nullable, order: 2000);
+  source_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.state": "unstable", nullable, order: 2000);
 
-  /// ⚠ Experimental ⚠: The frame this transform transforms to.
+  /// The frame this transform transforms to.
   ///
   ///
-  /// ⚠ This also affects the target frame of [archetypes.Pinhole].
+  /// ⚠ This currently also affects the target frame of [archetypes.Pinhole].
   ///
   /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
   /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
   ///
   /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
   // TODO(RR-2777): Mark as stable when we're ready for it.
-  target_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", nullable, order: 2100);
+  target_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.state": "unstable", nullable, order: 2100);
 
   // --- visual representation
 
