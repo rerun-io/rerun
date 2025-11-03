@@ -1940,7 +1940,11 @@ fn time_marker_ui(
             egui::Sense::click(),
         );
 
-        let hovered_time = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x);
+        let hovered_time = if time_area_response.hovered() {
+            time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
+        } else {
+            None
+        };
 
         if !is_hovering_the_loop_selection {
             let mut set_time_to_pointer = || {
