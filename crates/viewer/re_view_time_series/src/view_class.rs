@@ -286,7 +286,7 @@ impl ViewClass for TimeSeriesView {
                     view_property_ui::<TimeAxis>(&ctx, ui);
                 }
                 LinkAxis::LinkToGlobal => {
-                    re_view::view_property_ui_with_override::<TimeAxis>(
+                    re_view::view_property_ui_with_redirect::<TimeAxis>(
                         &ctx,
                         ui,
                         TimeAxis::descriptor_view_range().component,

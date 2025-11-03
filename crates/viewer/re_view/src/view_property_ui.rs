@@ -21,12 +21,13 @@ pub fn view_property_ui<A: Archetype + ArchetypeReflectionMarker>(
 
 /// See [`view_property_ui`].
 ///
-/// This will override
-pub fn view_property_ui_with_override<A: Archetype + ArchetypeReflectionMarker>(
+/// This will also redirect the given component to instead use the given view id as the
+/// data source.
+pub fn view_property_ui_with_redirect<A: Archetype + ArchetypeReflectionMarker>(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    override_component: ComponentIdentifier,
-    override_with_view_id: re_viewer_context::ViewId,
+    redirect_component: ComponentIdentifier,
+    redirect_with_view_id: re_viewer_context::ViewId,
 ) {
     let view_property =
         ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query(), ctx.view_id);
@@ -34,11 +35,11 @@ pub fn view_property_ui_with_override<A: Archetype + ArchetypeReflectionMarker>(
         ctx,
         ui,
         &view_property,
-        Some(&OverriddenComponentView {
-            component: override_component,
+        Some(&RedirectComponentView {
+            component: redirect_component,
             ctx: ViewContext {
                 viewer_ctx: ctx.viewer_ctx,
-                view_id: override_with_view_id,
+                view_id: redirect_with_view_id,
                 view_class_identifier: ctx.view_class_identifier,
                 view_state: ctx.view_state,
                 query_result: &re_viewer_context::DataQueryResult::default(),
@@ -46,13 +47,13 @@ pub fn view_property_ui_with_override<A: Archetype + ArchetypeReflectionMarker>(
             view_property: ViewProperty::from_archetype::<A>(
                 ctx.blueprint_db(),
                 ctx.blueprint_query(),
-                override_with_view_id,
+                redirect_with_view_id,
             ),
         }),
     );
 }
 
-struct OverriddenComponentView<'a> {
+struct RedirectComponentView<'a> {
     component: ComponentIdentifier,
     ctx: ViewContext<'a>,
     view_property: ViewProperty,
@@ -62,7 +63,7 @@ fn view_property_ui_impl(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     property: &ViewProperty,
-    override_component_view: Option<&OverriddenComponentView<'_>>,
+    override_component_view: Option<&RedirectComponentView<'_>>,
 ) {
     let reflection = ctx.viewer_ctx.reflection();
     let Some(archetype) = reflection.archetypes.get(&property.archetype_name) else {
