@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterable, Mapping
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import rerun_bindings as bindings
@@ -24,6 +23,7 @@ from .components import PanelState, PanelStateLike
 
 if TYPE_CHECKING:
     from datetime import datetime, timedelta
+    from pathlib import Path
 
     import numpy as np
 

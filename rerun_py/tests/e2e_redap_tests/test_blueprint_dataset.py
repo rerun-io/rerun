@@ -1,9 +1,14 @@
-from pathlib import Path
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import rerun as rr
 import rerun.blueprint as rrb
 
-from .conftest import ServerInstance
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from .conftest import ServerInstance
 
 
 def test_configure_blueprint_dataset(server_instance: ServerInstance, tmp_path: Path) -> None:
@@ -34,6 +39,6 @@ def test_configure_blueprint_dataset(server_instance: ServerInstance, tmp_path: 
     ds.set_default_blueprint_partition_id(blueprint_partition_id)
 
     # Uncomment this line for a chance to connect to this server using the viewer
-    # input(f"Server running on {server.address()}. Press enter to continue..."
+    # input(f"Server running on {server.address()}. Press enter to continue…"
 
     assert ds.default_blueprint_partition_id() == blueprint_partition_id
