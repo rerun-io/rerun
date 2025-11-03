@@ -115,7 +115,7 @@ impl Args {
         Ok(server_handle)
     }
 
-    async fn run_async(self) -> anyhow::Result<()> {
+    pub async fn run_async(self) -> anyhow::Result<()> {
         let mut server_handle = self.create_server_handle().await?;
 
         #[cfg(unix)]

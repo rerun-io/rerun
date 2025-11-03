@@ -655,7 +655,7 @@ where
             Command::Rrd(rrd) => rrd.run(),
 
             #[cfg(feature = "oss_server")]
-            Command::Server(server) => server.run(),
+            Command::Server(server) => tokio_runtime.block_on(server.run_async()),
         }
     } else {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
