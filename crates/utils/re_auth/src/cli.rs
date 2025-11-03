@@ -1,7 +1,8 @@
-use std::{collections::HashMap, time::Duration};
+use std::{borrow::Cow, collections::HashMap, time::Duration};
 
 use base64::prelude::*;
 use indicatif::ProgressBar;
+use rand::{Rng as _, SeedableRng as _, rngs::StdRng};
 
 use crate::oauth::{self, Credentials, CredentialsStoreError, MalformedTokenError};
 
@@ -43,8 +44,10 @@ impl<R: std::io::Read> ResponseCorsExt<R> for tiny_http::Response<R> {
     }
 }
 
+const DEFAULT_LOGIN_URL: &str = "https://rerun.io/login/v2";
+
 pub struct LoginOptions<'a> {
-    pub login_page_url: &'a str,
+    pub login_page_url: Option<&'a str>,
     pub open_browser: bool,
     pub force_login: bool,
 }
@@ -122,11 +125,18 @@ pub async fn login(options: LoginOptions<'_>) -> Result<(), Error> {
     p.inc(1);
 
     // 2. Open authorization URL in browser
-    let callback_url = format!("http://{}/callback", server.server_addr());
+    let nonce: u128 = StdRng::from_os_rng().random();
+    // User is sent to this URL after logging in:
+    let logged_in_url = format!(
+        "http://{addr}/logged-in?n={n}",
+        addr = server.server_addr(),
+        n = BASE64_URL_SAFE.encode(nonce.to_le_bytes()),
+    );
+    // This is the URL the user should open to log in:
     let login_url = format!(
         "{login_page_url}?r={r}",
-        login_page_url = options.login_page_url,
-        r = BASE64_URL_SAFE_NO_PAD.encode(callback_url.as_bytes()),
+        login_page_url = options.login_page_url.unwrap_or(DEFAULT_LOGIN_URL),
+        r = BASE64_URL_SAFE.encode(logged_in_url.as_bytes()),
     );
 
     // Once the user opens the link, they are redirected to the login UI.
@@ -148,7 +158,7 @@ pub async fn login(options: LoginOptions<'_>) -> Result<(), Error> {
 
     // 3. Wait for callback
     p.set_message("Waiting for browser…");
-    let auth = wait_for_browser_response(&server, &p)?;
+    let auth = wait_for_browser_response(&server, nonce, &p)?;
 
     // 4. Deserialize credentials
     let credentials = Credentials::from_auth_response(auth.into())?;
@@ -169,6 +179,7 @@ pub async fn login(options: LoginOptions<'_>) -> Result<(), Error> {
 /// which provides us with the token payload.
 fn wait_for_browser_response(
     server: &tiny_http::Server,
+    nonce: u128,
     p: &ProgressBar,
 ) -> Result<AuthenticationResponse, Error> {
     loop {
@@ -180,12 +191,12 @@ fn wait_for_browser_response(
             continue;
         };
 
-        if let Some(res) = handle_non_get_requests(&req) {
+        if let Some(res) = handle_other_requests(&req) {
             req.respond(res).map_err(Error::Http)?;
             continue;
         }
 
-        let Some(res) = handle_auth_request(server, req, p)? else {
+        let Some(res) = handle_auth_request(server, req, nonce)? else {
             continue;
         };
 
@@ -194,9 +205,7 @@ fn wait_for_browser_response(
 }
 
 /// Handles CORS (Options) and HEAD requests
-fn handle_non_get_requests(
-    req: &tiny_http::Request,
-) -> Option<tiny_http::Response<std::io::Empty>> {
+fn handle_other_requests(req: &tiny_http::Request) -> Option<tiny_http::Response<std::io::Empty>> {
     match req.method() {
         tiny_http::Method::Get => None,
         tiny_http::Method::Options => Some(
@@ -213,11 +222,11 @@ fn handle_non_get_requests(
     }
 }
 
-// Handles `/callback?t=<base64-encoded token payload>`
+// Handles `/logged-in?t=<base64-encoded token payload>&n=<base64-encoded nonce>`
 fn handle_auth_request(
     server: &tiny_http::Server,
     req: tiny_http::Request,
-    p: &ProgressBar,
+    nonce: u128,
 ) -> Result<Option<AuthenticationResponse>, Error> {
     // Parse and check the URL pathname
     let Ok(url) = url::Url::parse(&format!("http://{}{}", server.server_addr(), req.url())) else {
@@ -226,60 +235,80 @@ fn handle_auth_request(
         return Ok(None);
     };
 
-    if url.path() != "/callback" {
+    if url.path() != "/logged-in" {
         req.respond(tiny_http::Response::empty(404).cors())
             .map_err(Error::Http)?;
         return Ok(None);
     }
 
-    // Retrieve query param `t`
-    let Some(serialized_response) = url.query_pairs().find(|(k, _)| k == "t").map(|(_, v)| v)
-    else {
-        req.respond(
-            tiny_http::Response::from_string("missing `t` query param")
-                .with_status_code(400)
-                .cors(),
-        )
-        .map_err(Error::Http)?;
+    // get required query params
+    let Some(serialized_response) = get_query_param(&url, "t") else {
+        status_page_response(req, "Missing query param <code>t</code>")?;
+        return Ok(None);
+    };
+    let Some(serialized_nonce) = get_query_param(&url, "n") else {
+        status_page_response(req, "Missing query param <code>n</code>")?;
         return Ok(None);
     };
 
-    // `t` is base64-encoded, decode it
-    let raw_response = match BASE64_STANDARD.decode(serialized_response.as_ref()) {
+    // decode base64
+    let raw_response = match BASE64_URL_SAFE.decode(serialized_response.as_ref()) {
         Ok(v) => v,
         Err(err) => {
-            let err = format!("failed to deserialize response: {err}");
-            p.println(&err);
-            req.respond(
-                tiny_http::Response::from_string(err)
-                    .with_status_code(400)
-                    .cors(),
-            )
-            .map_err(Error::Http)?;
+            status_page_response(req, format!("Failed to deserialize response: {err}"))?;
+            return Ok(None);
+        }
+    };
+    let received_nonce_bytes = match BASE64_URL_SAFE.decode(serialized_nonce.as_ref()) {
+        Ok(v) => v,
+        Err(err) => {
+            status_page_response(req, format!("Failed to deserialize nonce: {err}"))?;
             return Ok(None);
         }
     };
 
-    // And finally, deserialize the token payload
+    // deserialize
     let response: AuthenticationResponse = match serde_json::from_slice(&raw_response) {
         Ok(v) => v,
         Err(err) => {
-            let err = format!("failed to deserialize response: {err}");
-            p.println(&err);
-            req.respond(
-                tiny_http::Response::from_string(err)
-                    .with_status_code(400)
-                    .cors(),
-            )
-            .map_err(Error::Http)?;
+            status_page_response(req, format!("Failed to deserialize response: {err}"))?;
+            return Ok(None);
+        }
+    };
+    let received_nonce: u128 = match received_nonce_bytes.as_slice().try_into() {
+        Ok(nonce_bytes) => u128::from_le_bytes(nonce_bytes),
+        Err(err) => {
+            status_page_response(req, format!("Failed to deserialize nonce: {err}"))?;
             return Ok(None);
         }
     };
 
-    req.respond(tiny_http::Response::empty(200).cors())
-        .map_err(Error::Http)?;
+    if nonce != received_nonce {
+        status_page_response(
+            req,
+            "Request expired, try running <code>rerun auth login</code> again.",
+        )?;
+        return Ok(None);
+    }
+
+    status_page_response(req, "Success! You can close this page now.")?;
 
     Ok(Some(response))
+}
+
+fn status_page_response(req: tiny_http::Request, message: impl Into<String>) -> Result<(), Error> {
+    let message: String = message.into();
+    let data = include_str!("./status_page.html").replace("$MESSAGE$", message.as_str());
+    req.respond(
+        tiny_http::Response::from_data(data)
+            .with_header(header(b"Content-Type", b"text/html; charset=utf-8"))
+            .cors(),
+    )
+    .map_err(Error::Http)
+}
+
+fn get_query_param<'a>(url: &'a url::Url, key: &str) -> Option<Cow<'a, str>> {
+    url.query_pairs().find(|(k, _)| k == key).map(|(_, v)| v)
 }
 
 #[expect(dead_code)] // fields may become used at some point in the near future

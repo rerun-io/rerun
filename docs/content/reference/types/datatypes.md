@@ -7,6 +7,7 @@ order: 3
 Data types are the lowest layer of the data model hierarchy. They are re-usable types used by the components.
 
 
+* [`AbsoluteTimeRange`](datatypes/absolute_time_range.md): Two [`datatypes.TimeInt`](https://rerun.io/docs/reference/types/datatypes/time_int) describing a range of time.
 * [`Angle`](datatypes/angle.md): Angle in radians.
 * [`AnnotationInfo`](datatypes/annotation_info.md): Annotation info annotating a class id or key-point id.
 * [`Blob`](datatypes/blob.md): A binary blob of data.

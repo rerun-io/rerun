@@ -1,8 +1,9 @@
 use egui::{Color32, CursorIcon, Id, NumExt as _, Rect};
 
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType};
+use re_types::blueprint::components::LoopMode;
 use re_ui::UiExt as _;
-use re_viewer_context::{Looping, TimeControl, TimeControlCommand};
+use re_viewer_context::{TimeControl, TimeControlCommand};
 
 use super::time_ranges_ui::TimeRangesUi;
 
@@ -27,7 +28,7 @@ pub fn paint_timeline_range(
 
 fn loop_selection_color(time_ctrl: &TimeControl, tokens: &re_ui::DesignTokens) -> Color32 {
     // Display in a brighter color when active
-    if time_ctrl.looping() == Looping::Selection {
+    if time_ctrl.loop_mode() == LoopMode::Selection {
         tokens.loop_selection_color
     } else {
         tokens.loop_selection_color.gamma_multiply(0.7)
@@ -62,18 +63,18 @@ pub fn loop_selection_ui(
 ) {
     let tokens = ui.tokens();
 
-    if time_ctrl.loop_selection().is_none() && time_ctrl.looping() == Looping::Selection {
+    if time_ctrl.loop_selection().is_none() && time_ctrl.loop_mode() == LoopMode::Selection {
         // Helpfully select a time slice
         if let Some(selection) = initial_time_selection(time_ranges_ui, time_ctrl.time_type()) {
             time_commands.push(TimeControlCommand::SetLoopSelection(selection.to_int()));
         }
     }
 
-    if time_ctrl.loop_selection().is_none() && time_ctrl.looping() == Looping::Selection {
-        time_commands.push(TimeControlCommand::SetLooping(Looping::Off));
+    if time_ctrl.loop_selection().is_none() && time_ctrl.loop_mode() == LoopMode::Selection {
+        time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Off));
     }
 
-    let is_active = time_ctrl.looping() == Looping::Selection;
+    let is_active = time_ctrl.loop_mode() == LoopMode::Selection;
 
     let selection_color = loop_selection_color(time_ctrl, tokens);
 
@@ -176,8 +177,8 @@ pub fn loop_selection_ui(
             // A zero-sized loop selection is confusing (and invisible), so remove it
             // (unless we are in the process of dragging right now):
             time_commands.push(TimeControlCommand::RemoveLoopSelection);
-        } else {
-            // Update it in case it was modified:
+        } else if Some(selected_range.to_int()) != time_ctrl.loop_selection().map(|s| s.to_int()) {
+            // Update it if it was modified:
             time_commands.push(TimeControlCommand::SetLoopSelection(
                 selected_range.to_int(),
             ));
@@ -195,7 +196,7 @@ pub fn loop_selection_ui(
             time_commands.push(TimeControlCommand::SetLoopSelection(
                 AbsoluteTimeRangeF::point(time).to_int(),
             ));
-            time_commands.push(TimeControlCommand::SetLooping(Looping::Selection));
+            time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
             ui.ctx().set_dragged_id(right_edge_id);
         }
     }

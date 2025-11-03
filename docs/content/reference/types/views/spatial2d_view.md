@@ -49,6 +49,7 @@ snippet: views/spatial2d
 * [`AssetVideo`](../archetypes/asset_video.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`Clear`](../archetypes/clear.md)
+* [`CoordinateFrame`](../archetypes/coordinate_frame.md)
 * [`DepthImage`](../archetypes/depth_image.md)
 * [`EncodedImage`](../archetypes/encoded_image.md)
 * [`Image`](../archetypes/image.md)
