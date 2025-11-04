@@ -1,6 +1,7 @@
 """Connect to the viewer and log some data."""
 
 import numpy as np
+
 import rerun as rr
 
 # Initialize the SDK and give our recording a unique name

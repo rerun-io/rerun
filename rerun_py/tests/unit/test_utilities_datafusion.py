@@ -4,6 +4,7 @@ import importlib
 from unittest.mock import Mock, patch
 
 import pytest
+
 import rerun.utilities.datafusion.functions.url_generation
 from rerun.error_utils import RerunMissingDependencyError
 

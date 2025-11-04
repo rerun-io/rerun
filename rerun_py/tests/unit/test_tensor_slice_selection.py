@@ -4,6 +4,7 @@ import itertools
 from typing import cast
 
 import numpy as np
+
 import rerun as rr
 import rerun.blueprint as rrb
 

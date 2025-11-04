@@ -8,8 +8,9 @@ from typing import Final
 
 import matplotlib
 import numpy as np
-import rerun as rr
 from nuscenes import nuscenes
+
+import rerun as rr
 
 from .download_dataset import MINISPLIT_SCENES, download_minisplit
 

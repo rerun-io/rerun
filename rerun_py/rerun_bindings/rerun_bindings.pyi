@@ -10,8 +10,9 @@ import datafusion as dfn
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.catalog import CatalogClient
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
+
+from rerun.catalog import CatalogClient
 
 from .types import (
     AnyColumn,

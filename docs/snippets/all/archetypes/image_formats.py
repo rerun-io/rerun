@@ -1,6 +1,7 @@
 """Create and log an image with various formats."""
 
 import numpy as np
+
 import rerun as rr
 
 rr.init("rerun_example_image_formats", spawn=True)

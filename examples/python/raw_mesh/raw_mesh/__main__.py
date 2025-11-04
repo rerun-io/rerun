@@ -15,9 +15,10 @@ from pathlib import Path
 from typing import cast
 
 import numpy as np
+import trimesh
+
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
-import trimesh
 
 from .download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
 

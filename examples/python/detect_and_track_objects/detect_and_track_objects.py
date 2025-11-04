@@ -15,8 +15,9 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 import requests
-import rerun as rr  # pip install rerun-sdk
 from PIL import Image
+
+import rerun as rr  # pip install rerun-sdk
 
 DESCRIPTION = """
 # Detect and track objects

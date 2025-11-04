@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pytest
+
 from rerun.server import Server
 
 if TYPE_CHECKING:

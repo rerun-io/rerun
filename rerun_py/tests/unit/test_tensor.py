@@ -4,6 +4,7 @@ from typing import Any
 
 import numpy as np
 import pytest
+
 import rerun as rr
 from rerun.components import TensorData, TensorDataBatch
 from rerun.datatypes import TensorBuffer, TensorDataLike

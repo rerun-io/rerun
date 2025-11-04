@@ -13,9 +13,10 @@ from typing import Any
 
 import humanize
 import pytz
+import yfinance as yf
+
 import rerun as rr
 import rerun.blueprint as rrb
-import yfinance as yf
 
 ################################################################################
 # Helper functions to create blueprints

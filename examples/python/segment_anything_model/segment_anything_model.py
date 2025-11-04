@@ -18,12 +18,13 @@ from urllib.parse import urlparse
 import cv2
 import numpy as np
 import requests
-import rerun as rr  # pip install rerun-sdk
-import rerun.blueprint as rrb
 import torch
 import torchvision
 from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
 from tqdm import tqdm
+
+import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
 
 if TYPE_CHECKING:
     from segment_anything.modeling import Sam

@@ -6,6 +6,7 @@ from __future__ import annotations
 import sys
 
 import numpy as np
+
 import rerun as rr  # pip install rerun-sdk
 
 

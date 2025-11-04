@@ -6,6 +6,7 @@ Logs a transform hierarchy using explicit transform frame relationships.
 """
 
 import numpy as np
+
 import rerun as rr
 
 rr.init("rerun_example_transform3d_hierarchy_frames", spawn=True)

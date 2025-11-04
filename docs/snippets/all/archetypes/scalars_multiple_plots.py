@@ -3,6 +3,7 @@
 from math import cos, sin, tau
 
 import numpy as np
+
 import rerun as rr
 
 rr.init("rerun_example_scalar_multiple_plots", spawn=True)

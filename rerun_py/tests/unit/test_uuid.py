@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+
 import rerun as rr
 from rerun.datatypes.uuid import UuidBatch
 

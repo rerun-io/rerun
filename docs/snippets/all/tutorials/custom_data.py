@@ -8,6 +8,7 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+
 import rerun as rr
 
 

@@ -8,7 +8,6 @@ import uuid
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, TypeVar, overload
 
-from rerun_bindings import ChunkBatcherConfig  # noqa: TC002
 from typing_extensions import deprecated
 
 import rerun as rr
@@ -25,6 +24,7 @@ if TYPE_CHECKING:
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch
     from rerun.memory import MemoryRecording
     from rerun.sinks import LogSinkLike
+    from rerun_bindings import ChunkBatcherConfig
 
     from ._send_columns import TimeColumnLike
 

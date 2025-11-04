@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+
 import rerun as rr
 import rerun.blueprint.components as blueprint_components
 from rerun import TimeInt, datatypes

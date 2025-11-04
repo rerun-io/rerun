@@ -6,8 +6,9 @@ from fractions import Fraction
 from typing import cast
 
 import numpy as np
-import rerun as rr
 import torch
+
+import rerun as rr
 from rerun.datatypes import (
     Angle,
     Float64ArrayLike,

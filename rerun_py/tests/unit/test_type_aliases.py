@@ -7,6 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 import pytest
+
 from rerun_bindings import _IndexValuesLikeInternal
 
 if TYPE_CHECKING:

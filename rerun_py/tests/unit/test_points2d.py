@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import pytest
+
 import rerun as rr
 from rerun.components import (
     Color,

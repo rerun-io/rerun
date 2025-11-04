@@ -3,6 +3,7 @@ from __future__ import annotations
 import warnings
 
 import pytest
+
 from rerun.error_utils import deprecated_param, set_strict_mode, strict_mode
 
 

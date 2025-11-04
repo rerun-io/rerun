@@ -6,9 +6,10 @@ from typing import TYPE_CHECKING, cast
 from urllib.parse import urlparse
 
 import numpy as np
-import rerun as rr  # pip install rerun-sdk
 from ament_index_python.packages import get_package_share_directory
 from yourdfpy import URDF
+
+import rerun as rr  # pip install rerun-sdk
 
 if TYPE_CHECKING:
     import trimesh

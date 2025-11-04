@@ -8,9 +8,8 @@ importing the module.
 
 from __future__ import annotations
 
-from rerun_cli.__main__ import main as cli_main
-
 from rerun import unregister_shutdown
+from rerun_cli.__main__ import main as cli_main
 
 
 def main() -> int:

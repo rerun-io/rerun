@@ -5,6 +5,7 @@ import os
 from typing import Any
 
 import pytest
+
 import rerun as rr
 from rerun.error_utils import RerunWarning, catch_and_log_exceptions
 

@@ -5,8 +5,9 @@ from typing import Any, cast
 
 import numpy as np
 import pytest
-import rerun as rr
 import torch
+
+import rerun as rr
 from rerun.components import (
     LineStrip2DArrayLike,
     LineStrip2DBatch,
