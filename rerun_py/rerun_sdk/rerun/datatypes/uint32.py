@@ -46,10 +46,12 @@ class UInt32:
 
 if TYPE_CHECKING:
     UInt32Like = UInt32 | int
+    """A type alias for any UInt32-like object."""
 else:
     UInt32Like = Any
 
 UInt32ArrayLike = UInt32 | Sequence[UInt32Like] | int | npt.NDArray[np.uint32]
+"""A type alias for any UInt32-like array object."""
 
 
 class UInt32Batch(BaseBatch[UInt32ArrayLike]):

@@ -61,9 +61,12 @@ class MagnificationFilter(Enum):
 
 
 MagnificationFilterLike = MagnificationFilter | Literal["Linear", "Nearest", "linear", "nearest"] | int
+"""A type alias for any MagnificationFilter-like object."""
+
 MagnificationFilterArrayLike = (
     MagnificationFilter | Literal["Linear", "Nearest", "linear", "nearest"] | int | Sequence[MagnificationFilterLike]
 )
+"""A type alias for any MagnificationFilter-like array object."""
 
 
 class MagnificationFilterBatch(BaseBatch[MagnificationFilterArrayLike], ComponentBatchMixin):

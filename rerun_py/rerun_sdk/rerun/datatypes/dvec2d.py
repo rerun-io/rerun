@@ -48,12 +48,14 @@ class DVec2D(DVec2DExt):
 
 if TYPE_CHECKING:
     DVec2DLike = DVec2D | npt.NDArray[Any] | npt.ArrayLike | Sequence[float]
+    """A type alias for any DVec2D-like object."""
 else:
     DVec2DLike = Any
 
 DVec2DArrayLike = (
     DVec2D | Sequence[DVec2DLike] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[float]] | Sequence[float]
 )
+"""A type alias for any DVec2D-like array object."""
 
 
 class DVec2DBatch(BaseBatch[DVec2DArrayLike]):
