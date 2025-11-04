@@ -86,7 +86,7 @@ This window has five main sections:
 
 -   [Viewport](../../reference/viewer/viewport.md) (center): Displays the rendered views for your session.
 -   [Recordings panel](../../concepts/apps-and-recordings.md) (top left): Lists loaded recordings and their applications, and allows navigation back to the welcome screen.
--   [Blueprint panel](../../reference/viewer/blueprint.md) (below Recordings): Controls the different views.
+-   [Blueprint panel](../../reference/viewer/blueprints.md) (below Recordings): Controls the different views.
 -   [Selection panel](../../reference/viewer/selection.md) (right): Shows detailed information and configuration for selected items.
 -   [Timeline panel](../../reference/viewer/timeline.md) (bottom): Controls the current point in time being viewed.
 
@@ -100,8 +100,8 @@ Each of the three sides has a button in the upper-right corner. Click these to s
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_toggle/2dadc5f29d9948678bdec9ef0e0671f4643c5f24/1200w.png">
 </picture>
 
-There are several ways to rearrange the viewer layout to your liking: through the Viewer [user interface](configure-the-viewer.md#interactive-configuration),
-via the [Blueprint API](configure-the-viewer.md#programmatic-blueprints), or by [loading an .rbl file](configure-the-viewer.md#save-and-load-blueprint-files).
+There are several ways to rearrange the viewer layout to your liking: through the Viewer [user interface](../configure-the-viewer.md#interactive-configuration),
+via the [Blueprint API](../configure-the-viewer.md#programmatic-blueprints), or by [loading an .rbl file](../configure-the-viewer.md#save-and-load-blueprint-files).
 
 ## Exploring data
 
@@ -213,7 +213,7 @@ That brings us to the end of this walkthrough. To recap, you have learned how to
 -   Install the `rerun-sdk` pypi package.
 -   Run the Rerun Viewer using the `rerun` command.
 -   Open the examples integrated in the viewer.
--   Work with the [Blueprint](../../reference/viewer/blueprint.md), [Selection](../../reference/viewer/selection.md) and [Timeline](../../reference/viewer/timeline.md) panels.
+-   Work with the [Blueprint](../../reference/viewer/blueprints.md), [Selection](../../reference/viewer/selection.md) and [Timeline](../../reference/viewer/timeline.md) panels.
 -   Rearrange view layouts.
 -   Explore data through hover and selection.
 -   Change the time selection.
