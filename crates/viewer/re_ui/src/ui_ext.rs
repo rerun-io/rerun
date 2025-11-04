@@ -922,19 +922,13 @@ pub trait UiExt {
     fn paint_time_cursor(
         &self,
         painter: &egui::Painter,
-        response: Option<&egui::Response>, // TODO: remove?
+        response: Option<&egui::Response>,
         x: f32,
         y: Rangef,
     ) {
         let ui = self.ui();
         let stroke = if let Some(response) = response {
-            if response.dragged() {
-                ui.style().visuals.widgets.active.fg_stroke
-            } else if response.hovered() {
-                ui.style().visuals.widgets.hovered.fg_stroke
-            } else {
-                ui.visuals().widgets.inactive.fg_stroke
-            }
+            ui.visuals().widgets.style(response).fg_stroke
         } else {
             ui.visuals().widgets.inactive.fg_stroke
         };
