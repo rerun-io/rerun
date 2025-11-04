@@ -12,7 +12,7 @@ High-level introduction to Rerun:
 - **[What is Rerun?](what-is-rerun.md)** - Learn about Rerun's data platform for Physical AI
 - **[Installing the Viewer](installing-viewer.md)** - Get Rerun installed on your system
 
-## Getting Started
+## Getting started
 
 Step-by-step guides to get up and running quickly:
 
@@ -40,11 +40,11 @@ Understanding the foundational concepts behind Rerun:
 - **[Visualizers and Overrides](../concepts/visualizers-and-overrides.md)** - Customizing rendering
 - **[Chunks](../concepts/chunks.md)** - Internal storage mechanism (advanced)
 
-## How-to Guides
+## How-to guides
 
 Practical guides for specific tasks and advanced features:
 
-### Logging Data
+### Logging data
 - **[Logging](../howto/logging.md)** - Advanced logging techniques
 - **[Send Columns](../howto/send_columns.md)** - Efficiently log columnar data
 - **[Using Native Loggers](../howto/using-native-loggers.md)** - Integrate with existing logging systems
@@ -55,19 +55,19 @@ Practical guides for specific tasks and advanced features:
 - **[Configure Viewer Through Code](../howto/configure-viewer-through-code.md)** - Programmatic viewer configuration
 - **[Fixed Window Plots](../howto/fixed-window-plot.md)** - Creating time-windowed plots
 
-### Data Management
+### Data management
 - **[DataFrame API](../howto/dataframe-api.md)** - Query recordings programmatically
 - **[Get Data Out](../howto/get-data-out.md)** - Export data from Rerun
 - **[MCAP Integration](../howto/mcap.md)** - Working with MCAP files
 - **[Shared Recordings](../howto/shared-recordings.md)** - Collaborate with recordings
 
-### Integration & Deployment
+### Integration & deployment
 - **[Integrations](../howto/integrations.md)** - Integrate Rerun with other tools
 - **[Embed Rerun Viewer](../howto/embed-rerun-viewer.md)** - Embed the viewer in your application
 - **[Jupyter Notebooks](../howto/notebook.md)** - Use Rerun in notebooks
 - **[Callbacks](../howto/callbacks.md)** - Respond to viewer events
 
-### Performance & Optimization
+### Performance & optimization
 - **[Limit RAM Usage](../howto/limit-ram.md)** - Control memory consumption
 - **[Optimize Chunks](../howto/optimize-chunks.md)** - Fine-tune data storage
 

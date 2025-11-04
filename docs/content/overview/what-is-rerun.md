@@ -23,7 +23,7 @@ Rerun provides an integrated solution for working with multimodal temporal data:
 
 Rerun helps you debug, understand, and improve systems that generate rich multimodal data. Here's a concrete example:
 
-### Example: Debugging a vacuum cleaning robot
+### Example: debugging a vacuum cleaning robot
 
 Say you're building a vacuum cleaning robot and it keeps running into walls. A traditional debugger won't help, and text logs aren't enough—the robot may log "Going through doorway" but that won't explain why it thinks a wall is a door.
 
