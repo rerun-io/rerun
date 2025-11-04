@@ -44,8 +44,8 @@ impl State {
                 #[expect(unsafe_code)]
                 // SAFETY: credentials come from a trusted source
                 let credentials = unsafe { Credentials::from_auth_response(response.into()) }
-                    .map_err(|e| e.to_string())?;
-                let credentials = credentials.ensure_stored().map_err(|e| e.to_string())?;
+                    .map_err(|err| err.to_string())?;
+                let credentials = credentials.ensure_stored().map_err(|err| err.to_string())?;
                 Ok(Some(credentials))
             }
             Ok(None) => Ok(None),
