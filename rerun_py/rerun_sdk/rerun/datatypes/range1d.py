@@ -48,12 +48,14 @@ class Range1D(Range1DExt):
 
 if TYPE_CHECKING:
     Range1DLike = Range1D | npt.NDArray[Any] | npt.ArrayLike | Sequence[float] | slice
+    """A type alias for any Range1D-like object."""
 else:
     Range1DLike = Any
 
 Range1DArrayLike = (
     Range1D | Sequence[Range1DLike] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[float]] | Sequence[float]
 )
+"""A type alias for any Range1D-like array object."""
 
 
 class Range1DBatch(BaseBatch[Range1DArrayLike]):

@@ -20,6 +20,10 @@ from rerun_bindings import (
     Task as Task,
     VectorDistanceMetric as VectorDistanceMetric,
 )
+from rerun_bindings.types import (
+    IndexValuesLike as IndexValuesLike,
+    VectorDistanceMetricLike as VectorDistanceMetricLike,
+)
 
 from .error_utils import RerunIncompatibleDependencyVersionError, RerunMissingDependencyError
 

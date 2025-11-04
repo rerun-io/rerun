@@ -36,7 +36,7 @@ class DescribedComponentBatch:
         """
         Returns a `pyarrow.Array` of the component data.
 
-        Part of the `ComponentBatchLike` logging interface.
+        Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
         return self._batch.as_arrow_array()
 
@@ -262,7 +262,7 @@ class BaseBatch(Generic[T]):
         """
         The component as an arrow batch.
 
-        Part of the `ComponentBatchLike` logging interface.
+        Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
         return self.pa_array
 
@@ -326,7 +326,7 @@ class ComponentColumn:
         """
         Returns the complete descriptor of the component.
 
-        Part of the `ComponentBatchLike` logging interface.
+        Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
         return self.descriptor
 
@@ -334,7 +334,7 @@ class ComponentColumn:
         """
         The component as an arrow batch.
 
-        Part of the `ComponentBatchLike` logging interface.
+        Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
         array = self.component_batch.as_arrow_array()
         offsets = np.concatenate((np.array([0], dtype="int32"), np.cumsum(self.lengths, dtype="int32")))
@@ -407,7 +407,7 @@ class ComponentBatchMixin(ComponentBatchLike):
         """
         Returns the name of the component.
 
-        Part of the `ComponentBatchLike` logging interface.
+        Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
         return self._COMPONENT_TYPE  # type: ignore[attr-defined, no-any-return]
 
@@ -453,7 +453,7 @@ class ComponentMixin(ComponentBatchLike):
         """
         The pyarrow type of this batch.
 
-        Part of the `ComponentBatchLike` logging interface.
+        Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
         return cls._BATCH_TYPE._ARROW_DATATYPE  # type: ignore[attr-defined]
 
@@ -462,7 +462,7 @@ class ComponentMixin(ComponentBatchLike):
         """
         Returns the name of the component.
 
-        Part of the `ComponentBatchLike` logging interface.
+        Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
         return cls._BATCH_TYPE._COMPONENT_TYPE  # type: ignore[attr-defined, no-any-return]
 
@@ -470,7 +470,7 @@ class ComponentMixin(ComponentBatchLike):
         """
         The component as an arrow batch.
 
-        Part of the `ComponentBatchLike` logging interface.
+        Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
         return self._BATCH_TYPE([self]).as_arrow_array()  # type: ignore[attr-defined]
 

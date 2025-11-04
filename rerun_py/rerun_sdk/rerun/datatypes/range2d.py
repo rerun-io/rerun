@@ -65,7 +65,10 @@ class Range2D:
 
 
 Range2DLike = Range2D
+"""A type alias for any Range2D-like object."""
+
 Range2DArrayLike = Range2D | Sequence[Range2DLike]
+"""A type alias for any Range2D-like array object."""
 
 
 class Range2DBatch(BaseBatch[Range2DArrayLike]):

@@ -44,10 +44,12 @@ class TensorDimensionSelection(TensorDimensionSelectionExt):
 
 if TYPE_CHECKING:
     TensorDimensionSelectionLike = TensorDimensionSelection | int
+    """A type alias for any TensorDimensionSelection-like object."""
 else:
     TensorDimensionSelectionLike = Any
 
 TensorDimensionSelectionArrayLike = TensorDimensionSelection | Sequence[TensorDimensionSelectionLike] | npt.ArrayLike
+"""A type alias for any TensorDimensionSelection-like array object."""
 
 
 class TensorDimensionSelectionBatch(BaseBatch[TensorDimensionSelectionArrayLike]):
