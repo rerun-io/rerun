@@ -170,7 +170,12 @@ impl View3DState {
                 view_eye_drag_threshold = 4.0;
             } else {
                 // For other entities we keep interpolating, so when the entity jumps, we follow smoothly.
-                self.interpolate_eye_to_entity(&tracked_entity, bounding_boxes);
+                let keep_distance_from_orbit_center = true;
+                self.interpolate_eye_to_entity(
+                    &tracked_entity,
+                    bounding_boxes,
+                    keep_distance_from_orbit_center,
+                );
             }
         }
 
@@ -248,6 +253,7 @@ impl View3DState {
         &mut self,
         entity_path: &EntityPath,
         bounding_boxes: &SceneBoundingBoxes,
+        keep_distance_from_orbit_center: bool,
     ) {
         // Note that we may want to focus on an _instance_ instead in the future:
         // The problem with that is that there may be **many** instances (think point cloud)
@@ -273,7 +279,9 @@ impl View3DState {
             let orbit_radius = if radius < 0.0001 {
                 // Handle zero-sized bounding boxes:
                 (bounding_boxes.current.centered_bounding_sphere_radius() * 1.5).at_least(0.01)
-            } else if let Some(radius) = new_view_eye.orbit_radius() {
+            } else if keep_distance_from_orbit_center
+                && let Some(radius) = new_view_eye.orbit_radius()
+            {
                 radius
             } else {
                 radius
@@ -505,9 +513,12 @@ impl SpatialView3D {
                 state.state_3d.camera_before_tracked_entity =
                     state.state_3d.view_eye.map(|eye| eye.to_eye());
 
-                state
-                    .state_3d
-                    .interpolate_eye_to_entity(&entity_path, &state.bounding_boxes);
+                let keep_distance_from_orbit_center = true;
+                state.state_3d.interpolate_eye_to_entity(
+                    &entity_path,
+                    &state.bounding_boxes,
+                    keep_distance_from_orbit_center,
+                );
 
                 state.state_3d.tracked_entity = Some(entity_path);
             }
@@ -658,7 +669,7 @@ impl SpatialView3D {
                         state.state_3d.interpolate_to_eye(tracked_camera);
                         state.state_3d.tracked_entity = Some(entity_path.clone());
                     } else {
-                        // Additionally track the entity if `alt` is pressed.
+                        // Additionally, track the entity if `alt` is pressed.
                         // (Note that this means slightly different things for cameras & regular entities)
                         if response.ctx.input(|i| i.modifiers.alt) {
                             eye_property.save_blueprint_component(
@@ -667,9 +678,12 @@ impl SpatialView3D {
                                 &re_types::components::EntityPath::from(entity_path),
                             );
                         } else {
-                            state
-                                .state_3d
-                                .interpolate_eye_to_entity(entity_path, &state.bounding_boxes);
+                            let keep_distance_from_orbit_center = false;
+                            state.state_3d.interpolate_eye_to_entity(
+                                entity_path,
+                                &state.bounding_boxes,
+                                keep_distance_from_orbit_center,
+                            );
                         }
                     }
                 }
