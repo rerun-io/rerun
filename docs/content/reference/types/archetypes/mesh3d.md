@@ -5,9 +5,9 @@ title: "Mesh3D"
 
 A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
-See also [`archetypes.Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d).
+See also [`archetypes.Asset3D`](/docs/reference/types/archetypes/asset3d).
 
-If there are multiple [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) instances logged to the same entity as a mesh,
+If there are multiple [`archetypes.InstancePoses3D`](/docs/reference/types/archetypes/instance_poses3d) instances logged to the same entity as a mesh,
 an instance of the mesh will be drawn for each transform.
 
 The viewer draws meshes always two-sided. However, for transparency ordering
@@ -77,4 +77,3 @@ snippet: archetypes/mesh3d_partial_updates
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/1200w.png">
   <img src="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/full.png">
 </picture>
-

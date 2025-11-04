@@ -11,8 +11,8 @@ They provide the blueprint for interpreting message payloads, specifying field n
 types, and organization. Each schema is referenced by channels to indicate how their
 messages should be decoded and understood.
 
-See also [`archetypes.McapChannel`](https://rerun.io/docs/reference/types/archetypes/mcap_channel) for channels that reference these schemas,
-[`archetypes.McapMessage`](https://rerun.io/docs/reference/types/archetypes/mcap_message) for the messages that conform to these schemas, and the
+See also [`archetypes.McapChannel`](/docs/reference/types/archetypes/mcap_channel) for channels that reference these schemas,
+[`archetypes.McapMessage`](/docs/reference/types/archetypes/mcap_message) for the messages that conform to these schemas, and the
 [MCAP specification](https://mcap.dev/) for complete format details.
 
 ## Fields
@@ -36,4 +36,3 @@ See also [`archetypes.McapChannel`](https://rerun.io/docs/reference/types/archet
 ### Simple MCAP schema
 
 snippet: archetypes/mcap_schema_simple
-

@@ -160,7 +160,7 @@ We tested the following codecs in more detail:
 | H.265/hevc | ❌             | ❌                | ❌             | ✅            | 🚧[^4]        | ❌               | 🚧[^5]              |
 
 [^1]: Any Chromium-based browser should work, but we don't test all of them.
-[^2]: Chrome on Windows has been observed to stutter on playback. It can be mitigated by [using software decoding](https://rerun.io/docs/getting-started/troubleshooting#video-stuttering), but this may lead to high memory usage. See [#7595](https://github.com/rerun-io/rerun/issues/7595).
+[^2]: Chrome on Windows has been observed to stutter on playback. It can be mitigated by [using software decoding](/docs/getting-started/troubleshooting#video-stuttering), but this may lead to high memory usage. See [#7595](https://github.com/rerun-io/rerun/issues/7595).
 [^3]: Safari/WebKit does not support AV1 decoding except on [Apple Silicon devices with hardware support](https://webkit.org/blog/14445/webkit-features-in-safari-17-0/).
 [^4]: Safari/WebKit has been observed suttering when playing `hvc1` but working fine with `hevc1`. Despite support being advertised Safari 16.5 has been observed not support H.265 decoding.
 [^5]: Only supported if hardware encoding is available. Therefore always affected by Windows stuttering issues, see above.

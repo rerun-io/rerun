@@ -9,7 +9,7 @@ This archetype only provides styling information.
 Changes over time are supported for most but not all its fields (see respective fields for details),
 it's generally recommended to log this type as static.
 
-The underlying data needs to be logged to the same entity-path using [`archetypes.Scalars`](https://rerun.io/docs/reference/types/archetypes/scalars).
+The underlying data needs to be logged to the same entity-path using [`archetypes.Scalars`](/docs/reference/types/archetypes/scalars).
 Dimensionality of the scalar arrays logged at each time point is assumed to be the same over time.
 
 ## Fields
@@ -45,4 +45,3 @@ snippet: archetypes/series_points_style
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/1200w.png">
   <img src="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/full.png">
 </picture>
-

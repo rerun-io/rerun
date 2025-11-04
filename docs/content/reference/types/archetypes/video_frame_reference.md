@@ -5,12 +5,12 @@ title: "VideoFrameReference"
 
 References a single video frame.
 
-Used to display individual video frames from a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).
+Used to display individual video frames from a [`archetypes.AssetVideo`](/docs/reference/types/archetypes/asset_video).
 To show an entire video, a video frame reference for each frame of the video should be logged.
 
-See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
+See </docs/reference/video> for details of what is and isn't supported.
 
-TODO(#10422): [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference) does not yet work with [`archetypes.VideoStream`](https://rerun.io/docs/reference/types/archetypes/video_stream).
+TODO(#10422): [`archetypes.VideoFrameReference`](/docs/reference/types/archetypes/video_frame_reference) does not yet work with [`archetypes.VideoStream`](/docs/reference/types/archetypes/video_stream).
 
 ## Fields
 ### Required
@@ -57,4 +57,3 @@ snippet: archetypes/video_manual_frames
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1200w.png">
   <img src="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/full.png">
 </picture>
-

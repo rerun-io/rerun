@@ -6,7 +6,7 @@ title: "AnnotationContext"
 ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 The annotation context provides additional information on how to display entities.
 
-Entities can use [`datatypes.ClassId`](https://rerun.io/docs/reference/types/datatypes/class_id)s and [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id)s to provide annotations, and
+Entities can use [`datatypes.ClassId`](/docs/reference/types/datatypes/class_id)s and [`datatypes.KeypointId`](/docs/reference/types/datatypes/keypoint_id)s to provide annotations, and
 the labels and colors will be looked up in the appropriate
 annotation context. We use the *first* annotation context we find in the
 path-hierarchy when searching up through the ancestors of a given entity

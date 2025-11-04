@@ -11,7 +11,7 @@ Capsules in other orientations may be produced by applying a rotation to the ent
 instances.
 
 If there's more instance poses than lengths & radii, the last capsule's orientation will be repeated for the remaining poses.
-Orienting and placing capsules forms a separate transform that is applied prior to [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) and [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).
+Orienting and placing capsules forms a separate transform that is applied prior to [`archetypes.InstancePoses3D`](/docs/reference/types/archetypes/instance_poses3d) and [`archetypes.Transform3D`](/docs/reference/types/archetypes/transform3d).
 
 ## Fields
 ### Required
@@ -55,4 +55,3 @@ snippet: archetypes/capsules3d_batch
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/1200w.png">
   <img src="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/full.png">
 </picture>
-

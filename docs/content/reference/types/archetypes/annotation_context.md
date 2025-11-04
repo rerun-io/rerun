@@ -6,13 +6,13 @@ title: "AnnotationContext"
 ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 The annotation context provides additional information on how to display entities.
 
-Entities can use [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s and [`components.KeypointId`](https://rerun.io/docs/reference/types/components/keypoint_id)s to provide annotations, and
+Entities can use [`components.ClassId`](/docs/reference/types/components/class_id)s and [`components.KeypointId`](/docs/reference/types/components/keypoint_id)s to provide annotations, and
 the labels and colors will be looked up in the appropriate
 annotation context. We use the *first* annotation context we find in the
 path-hierarchy when searching up through the ancestors of a given entity
 path.
 
-See also [`datatypes.ClassDescription`](https://rerun.io/docs/reference/types/datatypes/class_description).
+See also [`datatypes.ClassDescription`](/docs/reference/types/datatypes/class_description).
 
 ## Fields
 ### Required
@@ -66,4 +66,3 @@ snippet: archetypes/annotation_context_connections
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/annotation_context_connections/4a8422bc154699c5334f574ff01b55c5cd1748e3/1200w.png">
   <img src="https://static.rerun.io/annotation_context_connections/4a8422bc154699c5334f574ff01b55c5cd1748e3/full.png">
 </picture>
-

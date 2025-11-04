@@ -5,9 +5,9 @@ title: "Asset3D"
 
 A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 
-See also [`archetypes.Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d).
+See also [`archetypes.Mesh3D`](/docs/reference/types/archetypes/mesh3d).
 
-If there are multiple [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) instances logged to the same entity as a mesh,
+If there are multiple [`archetypes.InstancePoses3D`](/docs/reference/types/archetypes/instance_poses3d) instances logged to the same entity as a mesh,
 an instance of the mesh will be drawn for each transform.
 
 ## Fields
@@ -44,4 +44,3 @@ snippet: archetypes/asset3d_simple
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/1200w.png">
   <img src="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/full.png">
 </picture>
-

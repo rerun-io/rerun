@@ -9,7 +9,7 @@ A string identifier for a transform frame.
 **Experimental:** Transform frames are still in early development!
 
 Transform frames may be derived from entity paths to refer to Rerun's implicit
-entity path driven hierarchy which is defined via [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d), [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole) etc..
+entity path driven hierarchy which is defined via [`archetypes.Transform3D`](/docs/reference/types/archetypes/transform3d), [`archetypes.Pinhole`](/docs/reference/types/archetypes/pinhole) etc..
 Note that any transform logged at an entity path describes a relationship between the two transform
 frames represented by that entity path and its parent path,
 **not** the transform frame that the entity path may be using.

@@ -5,7 +5,7 @@ title: "DepthImage"
 
 A depth image, i.e. as captured by a depth camera.
 
-Each pixel corresponds to a depth value in units specified by [`components.DepthMeter`](https://rerun.io/docs/reference/types/components/depth_meter).
+Each pixel corresponds to a depth value in units specified by [`components.DepthMeter`](/docs/reference/types/components/depth_meter).
 
 ## Fields
 ### Required
@@ -55,4 +55,3 @@ snippet: archetypes/depth_image_3d
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/1200w.png">
   <img src="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/full.png">
 </picture>
-

@@ -11,7 +11,7 @@ Specifies the coordinate frame for an entity.
 If not specified, the coordinate frame uses an implicit frame derived from the entity path.
 The implicit frame's name is `tf#/your/entity/path` and has an identity transform connection to its parent path.
 
-To learn more about transforms see [Spaces & Transforms](https://rerun.io/docs/concepts/spaces-and-transforms) in the reference.
+To learn more about transforms see [Spaces & Transforms](/docs/concepts/spaces-and-transforms) in the reference.
 
 ## Fields
 ### Required
@@ -41,4 +41,3 @@ snippet: archetypes/coordinate_frame_builtin_frames
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/coordinate_frame_builtin_frame/71f941f35cf73c299c6ea7fbc4487a140db8e8f8/1200w.png">
   <img src="https://static.rerun.io/coordinate_frame_builtin_frame/71f941f35cf73c299c6ea7fbc4487a140db8e8f8/full.png">
 </picture>
-

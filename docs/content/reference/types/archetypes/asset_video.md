@@ -7,9 +7,9 @@ A video binary.
 
 Only MP4 containers are currently supported.
 
-See <https://rerun.io/docs/reference/video> for codec support and more general information.
+See </docs/reference/video> for codec support and more general information.
 
-In order to display a video, you also need to log a [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference) for each frame.
+In order to display a video, you also need to log a [`archetypes.VideoFrameReference`](/docs/reference/types/archetypes/video_frame_reference) for each frame.
 
 ## Fields
 ### Required
@@ -54,4 +54,3 @@ snippet: archetypes/video_manual_frames
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1200w.png">
   <img src="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/full.png">
 </picture>
-

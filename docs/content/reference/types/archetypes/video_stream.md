@@ -6,13 +6,13 @@ title: "VideoStream"
 ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 Video stream consisting of raw video chunks.
 
-For logging video containers like mp4, refer to [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video) and [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference).
-To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/reference/video).
+For logging video containers like mp4, refer to [`archetypes.AssetVideo`](/docs/reference/types/archetypes/asset_video) and [`archetypes.VideoFrameReference`](/docs/reference/types/archetypes/video_frame_reference).
+To learn more about video support in Rerun, check the [video reference](/docs/reference/video).
 
 All components except `sample` are typically logged statically once per entity.
 `sample` is then logged repeatedly for each frame on the timeline.
 
-TODO(#10422): [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference) does not yet work with [`archetypes.VideoStream`](https://rerun.io/docs/reference/types/archetypes/video_stream).
+TODO(#10422): [`archetypes.VideoFrameReference`](/docs/reference/types/archetypes/video_frame_reference) does not yet work with [`archetypes.VideoStream`](/docs/reference/types/archetypes/video_stream).
 
 ## Fields
 ### Required
@@ -49,4 +49,3 @@ snippet: archetypes/video_stream_synthetic
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1200w.png">
   <img src="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/full.png">
 </picture>
-

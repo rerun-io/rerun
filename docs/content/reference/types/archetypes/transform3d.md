@@ -14,7 +14,7 @@ Whenever you log this archetype, it will write all components, even if you do no
 This means that if you first log a transform with only a translation, and then log one with only a rotation,
 it will be resolved to a transform with only a rotation.
 
-For transforms that affect only a single entity and do not propagate along the entity tree refer to [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).
+For transforms that affect only a single entity and do not propagate along the entity tree refer to [`archetypes.InstancePoses3D`](/docs/reference/types/archetypes/instance_poses3d).
 
 ## Fields
 ### Optional
@@ -100,4 +100,3 @@ snippet: archetypes/transform3d_partial_updates
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/1200w.png">
   <img src="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/full.png">
 </picture>
-

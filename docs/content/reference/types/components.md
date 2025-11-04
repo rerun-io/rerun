@@ -38,7 +38,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`HalfSize2D`](components/half_size2d.md): Half-size (radius) of a 2D box.
 * [`HalfSize3D`](components/half_size3d.md): Half-size (radius) of a 3D box.
 * [`ImageBuffer`](components/image_buffer.md): A buffer that is known to store image data.
-* [`ImageFormat`](components/image_format.md): The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).
+* [`ImageFormat`](components/image_format.md): The metadata describing the contents of a [`components.ImageBuffer`](/docs/reference/types/components/image_buffer).
 * [`ImagePlaneDistance`](components/image_plane_distance.md): The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
 * [`Interactive`](components/interactive.md): Whether the entity can be interacted with.
 * [`KeyValuePairs`](components/key_value_pairs.md): A map of string keys to string values.
@@ -71,8 +71,8 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Scalar`](components/scalar.md): A scalar value, encoded as a 64-bit floating point.
 * [`Scale3D`](components/scale3d.md): A 3D scale factor.
 * [`SchemaId`](components/schema_id.md): A 16-bit unique identifier for a schema within the MCAP file.
-* [`SeriesVisible`](components/series_visible.md): Like [`components.Visible`](https://rerun.io/docs/reference/types/components/visible), but for time series.
-* [`ShowLabels`](components/show_labels.md): Whether the entity's [`components.Text`](https://rerun.io/docs/reference/types/components/text) label is shown.
+* [`SeriesVisible`](components/series_visible.md): Like [`components.Visible`](/docs/reference/types/components/visible), but for time series.
+* [`ShowLabels`](components/show_labels.md): Whether the entity's [`components.Text`](/docs/reference/types/components/text) label is shown.
 * [`StrokeWidth`](components/stroke_width.md): The width of a stroke specified in UI points.
 * [`TensorData`](components/tensor_data.md): An N-dimensional array of numbers.
 * [`TensorDimensionIndexSelection`](components/tensor_dimension_index_selection.md): Specifies a concrete index on a tensor dimension.
@@ -90,9 +90,8 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`ValueRange`](components/value_range.md): Range of expected or valid values, specifying a lower and upper bound.
 * [`Vector2D`](components/vector2d.md): A vector in 2D space.
 * [`Vector3D`](components/vector3d.md): A vector in 3D space.
-* [`VideoCodec`](components/video_codec.md): The codec used to encode video stored in [`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample).
+* [`VideoCodec`](components/video_codec.md): The codec used to encode video stored in [`components.VideoSample`](/docs/reference/types/components/video_sample).
 * [`VideoSample`](components/video_sample.md): Video sample data (also known as "video chunk").
-* [`VideoTimestamp`](components/video_timestamp.md): Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).
+* [`VideoTimestamp`](components/video_timestamp.md): Timestamp inside a [`archetypes.AssetVideo`](/docs/reference/types/archetypes/asset_video).
 * [`ViewCoordinates`](components/view_coordinates.md): How we interpret the coordinate system of an entity/space.
 * [`Visible`](components/visible.md): Whether the container, view, entity or instance is currently visible.
-

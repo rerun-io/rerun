@@ -10,8 +10,8 @@ Channels in MCAP files group messages by topic and define their encoding format.
 Each channel has a unique identifier and specifies the message schema and encoding used
 for all messages published to that topic.
 
-See also [`archetypes.McapMessage`](https://rerun.io/docs/reference/types/archetypes/mcap_message) for individual messages within a channel,
-[`archetypes.McapSchema`](https://rerun.io/docs/reference/types/archetypes/mcap_schema) for the data structure definitions, and the
+See also [`archetypes.McapMessage`](/docs/reference/types/archetypes/mcap_message) for individual messages within a channel,
+[`archetypes.McapSchema`](/docs/reference/types/archetypes/mcap_schema) for the data structure definitions, and the
 [MCAP specification](https://mcap.dev/) for complete format details.
 
 ## Fields
@@ -37,4 +37,3 @@ See also [`archetypes.McapMessage`](https://rerun.io/docs/reference/types/archet
 ### Simple MCAP channel
 
 snippet: archetypes/mcap_channel_simple
-

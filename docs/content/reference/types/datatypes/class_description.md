@@ -5,29 +5,29 @@ title: "ClassDescription"
 
 The description of a semantic Class.
 
-If an entity is annotated with a corresponding [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id), Rerun will use
-the attached [`datatypes.AnnotationInfo`](https://rerun.io/docs/reference/types/datatypes/annotation_info) to derive labels and colors.
+If an entity is annotated with a corresponding [`components.ClassId`](/docs/reference/types/components/class_id), Rerun will use
+the attached [`datatypes.AnnotationInfo`](/docs/reference/types/datatypes/annotation_info) to derive labels and colors.
 
 Keypoints within an annotation class can similarly be annotated with a
-[`components.KeypointId`](https://rerun.io/docs/reference/types/components/keypoint_id) in which case we should defer to the label and color for the
-[`datatypes.AnnotationInfo`](https://rerun.io/docs/reference/types/datatypes/annotation_info) specifically associated with the Keypoint.
+[`components.KeypointId`](/docs/reference/types/components/keypoint_id) in which case we should defer to the label and color for the
+[`datatypes.AnnotationInfo`](/docs/reference/types/datatypes/annotation_info) specifically associated with the Keypoint.
 
 Keypoints within the class can also be decorated with skeletal edges.
-Keypoint-connections are pairs of [`components.KeypointId`](https://rerun.io/docs/reference/types/components/keypoint_id)s. If an edge is
+Keypoint-connections are pairs of [`components.KeypointId`](/docs/reference/types/components/keypoint_id)s. If an edge is
 defined, and both keypoints exist within the instance of the class, then the
 keypoints should be connected with an edge. The edge should be labeled and
-colored as described by the class's [`datatypes.AnnotationInfo`](https://rerun.io/docs/reference/types/datatypes/annotation_info).
+colored as described by the class's [`datatypes.AnnotationInfo`](/docs/reference/types/datatypes/annotation_info).
 
 ## Fields
 #### `info`
 Type: [`AnnotationInfo`](../datatypes/annotation_info.md)
 
-The [`datatypes.AnnotationInfo`](https://rerun.io/docs/reference/types/datatypes/annotation_info) for the class.
+The [`datatypes.AnnotationInfo`](/docs/reference/types/datatypes/annotation_info) for the class.
 
 #### `keypoint_annotations`
 Type: List of [`AnnotationInfo`](../datatypes/annotation_info.md)
 
-The [`datatypes.AnnotationInfo`](https://rerun.io/docs/reference/types/datatypes/annotation_info) for all of the keypoints.
+The [`datatypes.AnnotationInfo`](/docs/reference/types/datatypes/annotation_info) for all of the keypoints.
 
 #### `keypoint_connections`
 Type: List of [`KeypointPair`](../datatypes/keypoint_pair.md)

@@ -5,7 +5,7 @@ title: "ImageBuffer"
 
 A buffer that is known to store image data.
 
-To interpret the contents of this buffer, see, [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format).
+To interpret the contents of this buffer, see, [`components.ImageFormat`](/docs/reference/types/components/image_format).
 
 ## Rerun datatype
 [`Blob`](../datatypes/blob.md)

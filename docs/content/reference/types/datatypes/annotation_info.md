@@ -12,7 +12,7 @@ The id refers either to a class or key-point id
 #### `id`
 Type: `uint16`
 
-[`datatypes.ClassId`](https://rerun.io/docs/reference/types/datatypes/class_id) or [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id) to which this annotation info belongs.
+[`datatypes.ClassId`](/docs/reference/types/datatypes/class_id) or [`datatypes.KeypointId`](/docs/reference/types/datatypes/keypoint_id) to which this annotation info belongs.
 
 #### `label`
 Type: nullable [`Utf8`](../datatypes/utf8.md)

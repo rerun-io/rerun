@@ -25,7 +25,7 @@ This page lists all built-in archetypes.
 * [`DepthImage`](archetypes/depth_image.md): A depth image, i.e. as captured by a depth camera.
 * [`EncodedImage`](archetypes/encoded_image.md): An image encoded as e.g. a JPEG or PNG.
 * [`Image`](archetypes/image.md): A monochrome or color image.
-* [`SegmentationImage`](archetypes/segmentation_image.md): An image made up of integer [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s.
+* [`SegmentationImage`](archetypes/segmentation_image.md): An image made up of integer [`components.ClassId`](/docs/reference/types/components/class_id)s.
 * [`Tensor`](archetypes/tensor.md): An N-dimensional array of numbers.
 
 ## MCAP
@@ -33,7 +33,7 @@ This page lists all built-in archetypes.
 * [`McapChannel`](archetypes/mcap_channel.md): A channel within an MCAP file that defines how messages are structured and encoded.
 * [`McapMessage`](archetypes/mcap_message.md): The binary payload of a single MCAP message, without metadata.
 * [`McapSchema`](archetypes/mcap_schema.md): A schema definition that describes the structure of messages in an MCAP file.
-* [`McapStatistics`](archetypes/mcap_statistics.md): Recording-level statistics about an MCAP file, logged as a part of [`archetypes.RecordingInfo`](https://rerun.io/docs/reference/types/archetypes/recording_info).
+* [`McapStatistics`](archetypes/mcap_statistics.md): Recording-level statistics about an MCAP file, logged as a part of [`archetypes.RecordingInfo`](/docs/reference/types/archetypes/recording_info).
 
 ## Plotting
 
@@ -58,7 +58,7 @@ This page lists all built-in archetypes.
 * [`CoordinateFrame`](archetypes/coordinate_frame.md): Specifies the coordinate frame for an entity.
 * [`Cylinders3D`](archetypes/cylinders3d.md): 3D cylinders with flat caps.
 * [`Ellipsoids3D`](archetypes/ellipsoids3d.md): 3D ellipsoids or spheres.
-* [`InstancePoses3D`](archetypes/instance_poses3d.md): One or more transforms between the current entity and its parent. Unlike [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d), it is *not* propagated in the transform hierarchy.
+* [`InstancePoses3D`](archetypes/instance_poses3d.md): One or more transforms between the current entity and its parent. Unlike [`archetypes.Transform3D`](/docs/reference/types/archetypes/transform3d), it is *not* propagated in the transform hierarchy.
 * [`LineStrips3D`](archetypes/line_strips3d.md): 3D line strips with positions and optional colors, radii, labels, etc.
 * [`Mesh3D`](archetypes/mesh3d.md): A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 * [`Pinhole`](archetypes/pinhole.md): Camera perspective projection (a.k.a. intrinsics).
@@ -82,4 +82,3 @@ This page lists all built-in archetypes.
 * [`AnnotationContext`](archetypes/annotation_context.md): The annotation context provides additional information on how to display entities.
 * [`Clear`](archetypes/clear.md): Empties all the components of an entity.
 * [`RecordingInfo`](archetypes/recording_info.md): A list of properties associated with a recording.
-

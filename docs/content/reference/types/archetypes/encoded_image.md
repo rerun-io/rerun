@@ -5,8 +5,8 @@ title: "EncodedImage"
 
 An image encoded as e.g. a JPEG or PNG.
 
-Rerun also supports uncompressed images with the [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
-For images that refer to video frames see [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference).
+Rerun also supports uncompressed images with the [`archetypes.Image`](/docs/reference/types/archetypes/image).
+For images that refer to video frames see [`archetypes.VideoFrameReference`](/docs/reference/types/archetypes/video_frame_reference).
 
 ## Fields
 ### Required
@@ -35,4 +35,3 @@ For images that refer to video frames see [`archetypes.VideoFrameReference`](htt
 ### encoded_image
 
 snippet: archetypes/encoded_image
-

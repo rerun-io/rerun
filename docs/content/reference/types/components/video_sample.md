@@ -8,7 +8,7 @@ Video sample data (also known as "video chunk").
 Each video sample must contain enough data for exactly one video frame
 (this restriction may be relaxed in the future for some codecs).
 
-Keyframes may require additional data, for details see [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec).
+Keyframes may require additional data, for details see [`components.VideoCodec`](/docs/reference/types/components/video_codec).
 
 ## Rerun datatype
 [`Blob`](../datatypes/blob.md)

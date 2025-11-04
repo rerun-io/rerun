@@ -10,7 +10,7 @@ should not be static.
 Number of scalars per timestamp is expected to be the same over time.
 
 When used to produce a plot, this archetype is used to provide the data that
-is referenced by [`archetypes.SeriesLines`](https://rerun.io/docs/reference/types/archetypes/series_lines) or [`archetypes.SeriesPoints`](https://rerun.io/docs/reference/types/archetypes/series_points). You can do
+is referenced by [`archetypes.SeriesLines`](/docs/reference/types/archetypes/series_lines) or [`archetypes.SeriesPoints`](/docs/reference/types/archetypes/series_points). You can do
 this by logging both archetypes to the same path, or alternatively configuring
 the plot-specific archetypes through the blueprint.
 
@@ -77,4 +77,3 @@ snippet: archetypes/scalars_column_updates
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1200w.png">
   <img src="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/full.png">
 </picture>
-
