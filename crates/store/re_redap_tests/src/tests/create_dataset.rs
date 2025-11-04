@@ -6,7 +6,7 @@ use re_protos::{
         EntryFilter, EntryKind, FindEntriesRequest, ReadDatasetEntryRequest,
         ext::{
             CreateDatasetEntryRequest, CreateTableEntryRequest, DatasetDetails, DatasetEntry,
-            EntryDetails, LanceTable, ProviderDetails as _,
+            EntryDetails, LanceTable, ProviderDetails,
         },
         rerun_cloud_service_server::RerunCloudService,
     },
@@ -142,9 +142,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
 
     let table_url =
         url::Url::from_directory_path(tmp_dir.path()).expect("create url from tmp directory");
-    let provider_details = LanceTable { table_url }
-        .try_as_any()
-        .expect("convert provider details to any");
+    let provider_details = ProviderDetails::LanceTable(LanceTable { table_url });
 
     let create_table_request = CreateTableEntryRequest {
         name: table_name.to_owned(),
