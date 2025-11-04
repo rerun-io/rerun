@@ -21,20 +21,20 @@ class Transform3DExt:
     """Extension for [Transform3D][rerun.archetypes.Transform3D]."""
 
     def __init__(
-            self: Any,
-            *,
-            clear: bool = True,
-            translation: Vec3DLike | None = None,
-            rotation: QuaternionLike | RotationAxisAngleLike | None = None,
-            rotation_axis_angle: RotationAxisAngleLike | None = None,
-            quaternion: QuaternionLike | None = None,
-            scale: Vec3DLike | Float32Like | None = None,
-            mat3x3: Mat3x3Like | None = None,
-            from_parent: bool | None = None,
-            relation: TransformRelationLike | None = None,
-            child_frame: Utf8Like | None = None,
-            parent_frame: Utf8Like | None = None,
-            axis_length: Float32Like | None = None,
+        self: Any,
+        *,
+        clear: bool = True,
+        translation: Vec3DLike | None = None,
+        rotation: QuaternionLike | RotationAxisAngleLike | None = None,
+        rotation_axis_angle: RotationAxisAngleLike | None = None,
+        quaternion: QuaternionLike | None = None,
+        scale: Vec3DLike | Float32Like | None = None,
+        mat3x3: Mat3x3Like | None = None,
+        from_parent: bool | None = None,
+        relation: TransformRelationLike | None = None,
+        child_frame: Utf8Like | None = None,
+        parent_frame: Utf8Like | None = None,
+        axis_length: Float32Like | None = None,
     ) -> None:
         """
         Create a new instance of the Transform3D archetype.
