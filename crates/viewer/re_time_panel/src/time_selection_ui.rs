@@ -163,9 +163,7 @@ pub fn loop_selection_ui(
                     );
                 }
 
-                if middle_response.dragged() {
-                    on_drag_loop_selection(ui, time_ranges_ui, &mut selected_range);
-                }
+                on_drag_loop_selection(ui, &middle_response, time_ranges_ui, &mut selected_range);
             } else {
                 // inactive - show a tooltip at least:
                 ui.interact(rect, middle_id, egui::Sense::hover())
@@ -288,29 +286,45 @@ fn drag_left_loop_selection_edge(
 
 fn on_drag_loop_selection(
     ui: &egui::Ui,
+    drag_response: &egui::Response,
     time_ranges_ui: &TimeRangesUi,
     selected_range: &mut AbsoluteTimeRangeF,
 ) -> Option<()> {
-    let pointer_delta = ui.input(|i| i.pointer.delta());
+    // Since we may snap time values, we need to store full-precision "unsnapped" value
+    // somewhere, or we will accumulate rounding errors.
+    let precise_min_id = ui.id().with("__time_loop_drag");
 
-    let min_x = time_ranges_ui.x_from_time_f32(selected_range.min)? + pointer_delta.x;
-    let max_x = time_ranges_ui.x_from_time_f32(selected_range.max)? + pointer_delta.x;
-
-    let min_time = time_ranges_ui.snapped_time_from_x(ui, min_x)?;
-    let max_time = time_ranges_ui.snapped_time_from_x(ui, max_x)?;
-
-    let mut new_range = AbsoluteTimeRangeF::new(min_time, max_time);
-
-    if egui::emath::almost_equal(
-        selected_range.length().as_f32(),
-        new_range.length().as_f32(),
-        1e-5,
-    ) {
-        // Avoid numerical inaccuracies: maintain length if very close
-        new_range.max = new_range.min + selected_range.length();
+    if ui.input(|i| i.pointer.any_pressed() || i.pointer.any_released()) {
+        ui.data_mut(|data| data.remove::<TimeReal>(precise_min_id));
     }
 
-    *selected_range = new_range;
+    if drag_response.dragged() {
+        let old_precise_min = ui
+            .data_mut(|data| data.get_temp::<TimeReal>(precise_min_id))
+            .unwrap_or(selected_range.min);
+
+        *selected_range = selected_range.to_int().into();
+
+        let pointer_delta = ui.input(|i| i.pointer.delta());
+
+        // We move the time selection in a way to preserve the length of it (in time units).
+        // If there are gaps in the timeline, this can cause the _visual_ length of the
+        // time selection to change. But that is the least worst option.
+
+        let new_precise_min_x =
+            time_ranges_ui.x_from_time(old_precise_min)? + pointer_delta.x as f64;
+        let new_precise_min = time_ranges_ui.time_from_x_f64(new_precise_min_x)?;
+
+        ui.data_mut(|data| data.insert_temp::<TimeReal>(precise_min_id, new_precise_min));
+
+        let snapped_min = time_ranges_ui
+            .snapped_time_from_x(ui, new_precise_min_x as f32)?
+            .round();
+
+        *selected_range =
+            AbsoluteTimeRange::new(snapped_min, snapped_min + selected_range.length().round())
+                .into();
+    }
 
     Some(())
 }
@@ -381,6 +395,6 @@ fn paint_range_text(
 fn format_duration(time_typ: TimeType, duration: TimeReal) -> String {
     match time_typ {
         TimeType::DurationNs | TimeType::TimestampNs => Duration::from(duration).to_string(),
-        TimeType::Sequence => duration.round().as_i64().to_string(), // TODO(emilk): show real part?
+        TimeType::Sequence => re_format::format_int(duration.round().as_i64()),
     }
 }

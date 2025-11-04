@@ -8,53 +8,53 @@ expression: "pretty_print_transform_frame_ids_in(&result, &all_transform_frame_i
         Ok(
             TransformInfo {
                 root: tf#/,
-                target_from_source: Affine3A {
-                    matrix3: Mat3A {
-                        x_axis: Vec3A(
-                            0.0019999999,
+                target_from_source: DAffine3 {
+                    matrix3: DMat3 {
+                        x_axis: DVec3(
+                            0.002,
                             0.0,
                             0.0,
                         ),
-                        y_axis: Vec3A(
+                        y_axis: DVec3(
                             0.0,
-                            0.0039999997,
+                            0.004,
                             0.0,
                         ),
-                        z_axis: Vec3A(
+                        z_axis: DVec3(
                             0.0,
                             0.0,
-                            0.0029999998,
+                            0.003,
                         ),
                     },
-                    translation: Vec3A(
-                        49.997997,
-                        99.995995,
-                        -1.4999999,
+                    translation: DVec3(
+                        49.998,
+                        99.996,
+                        -1.5,
                     ),
                 },
                 target_from_instances: [
-                    Affine3A {
-                        matrix3: Mat3A {
-                            x_axis: Vec3A(
-                                0.0019999999,
+                    DAffine3 {
+                        matrix3: DMat3 {
+                            x_axis: DVec3(
+                                0.002,
                                 0.0,
                                 0.0,
                             ),
-                            y_axis: Vec3A(
+                            y_axis: DVec3(
                                 0.0,
-                                0.0039999997,
+                                0.004,
                                 0.0,
                             ),
-                            z_axis: Vec3A(
+                            z_axis: DVec3(
                                 0.0,
                                 0.0,
-                                0.0029999998,
+                                0.003,
                             ),
                         },
-                        translation: Vec3A(
-                            49.997997,
-                            99.995995,
-                            -1.4999999,
+                        translation: DVec3(
+                            49.998,
+                            99.996,
+                            -1.5,
                         ),
                     },
                 ],
@@ -67,128 +67,128 @@ expression: "pretty_print_transform_frame_ids_in(&result, &all_transform_frame_i
         Ok(
             TransformInfo {
                 root: tf#/,
-                target_from_source: Affine3A {
-                    matrix3: Mat3A {
-                        x_axis: Vec3A(
-                            0.0019999999,
+                target_from_source: DAffine3 {
+                    matrix3: DMat3 {
+                        x_axis: DVec3(
+                            0.002,
                             0.0,
                             0.0,
                         ),
-                        y_axis: Vec3A(
+                        y_axis: DVec3(
                             0.0,
-                            0.0039999997,
+                            0.004,
                             0.0,
                         ),
-                        z_axis: Vec3A(
+                        z_axis: DVec3(
                             0.0,
                             0.0,
-                            0.0029999998,
+                            0.003,
                         ),
                     },
-                    translation: Vec3A(
-                        49.999996,
-                        99.995995,
-                        -1.4999999,
+                    translation: DVec3(
+                        50.0,
+                        99.996,
+                        -1.5,
                     ),
                 },
                 target_from_instances: [
-                    Affine3A {
-                        matrix3: Mat3A {
-                            x_axis: Vec3A(
-                                0.0019999999,
+                    DAffine3 {
+                        matrix3: DMat3 {
+                            x_axis: DVec3(
+                                0.002,
                                 0.0,
                                 0.0,
                             ),
-                            y_axis: Vec3A(
+                            y_axis: DVec3(
                                 0.0,
-                                0.0039999997,
+                                0.004,
                                 0.0,
                             ),
-                            z_axis: Vec3A(
+                            z_axis: DVec3(
                                 0.0,
                                 0.0,
-                                0.0029999998,
+                                0.003,
                             ),
                         },
-                        translation: Vec3A(
-                            50.019997,
-                            99.995995,
-                            -1.4999999,
+                        translation: DVec3(
+                            50.019999999999996,
+                            99.996,
+                            -1.5,
                         ),
                     },
-                    Affine3A {
-                        matrix3: Mat3A {
-                            x_axis: Vec3A(
-                                0.0019999999,
+                    DAffine3 {
+                        matrix3: DMat3 {
+                            x_axis: DVec3(
+                                0.002,
                                 0.0,
                                 0.0,
                             ),
-                            y_axis: Vec3A(
+                            y_axis: DVec3(
                                 0.0,
-                                0.0039999997,
+                                0.004,
                                 0.0,
                             ),
-                            z_axis: Vec3A(
+                            z_axis: DVec3(
                                 0.0,
                                 0.0,
-                                0.0029999998,
+                                0.003,
                             ),
                         },
-                        translation: Vec3A(
-                            50.039997,
-                            99.995995,
-                            -1.4999999,
+                        translation: DVec3(
+                            50.04,
+                            99.996,
+                            -1.5,
                         ),
                     },
                 ],
                 target_from_archetype: {
                     "rerun.archetypes.Boxes3D": [
-                        Affine3A {
-                            matrix3: Mat3A {
-                                x_axis: Vec3A(
-                                    0.0019999999,
+                        DAffine3 {
+                            matrix3: DMat3 {
+                                x_axis: DVec3(
+                                    0.002,
                                     0.0,
                                     0.0,
                                 ),
-                                y_axis: Vec3A(
+                                y_axis: DVec3(
                                     0.0,
-                                    0.0039999997,
+                                    0.004,
                                     0.0,
                                 ),
-                                z_axis: Vec3A(
+                                z_axis: DVec3(
                                     0.0,
                                     0.0,
-                                    0.0029999998,
+                                    0.003,
                                 ),
                             },
-                            translation: Vec3A(
-                                50.019997,
-                                100.035995,
-                                -1.4999999,
+                            translation: DVec3(
+                                50.019999999999996,
+                                100.036,
+                                -1.5,
                             ),
                         },
-                        Affine3A {
-                            matrix3: Mat3A {
-                                x_axis: Vec3A(
-                                    0.0019999999,
+                        DAffine3 {
+                            matrix3: DMat3 {
+                                x_axis: DVec3(
+                                    0.002,
                                     0.0,
                                     0.0,
                                 ),
-                                y_axis: Vec3A(
+                                y_axis: DVec3(
                                     0.0,
-                                    0.0039999997,
+                                    0.004,
                                     0.0,
                                 ),
-                                z_axis: Vec3A(
+                                z_axis: DVec3(
                                     0.0,
                                     0.0,
-                                    0.0029999998,
+                                    0.003,
                                 ),
                             },
-                            translation: Vec3A(
-                                50.039997,
+                            translation: DVec3(
+                                50.04,
                                 100.076,
-                                -1.4999999,
+                                -1.5,
                             ),
                         },
                     ],
@@ -201,50 +201,50 @@ expression: "pretty_print_transform_frame_ids_in(&result, &all_transform_frame_i
         Ok(
             TransformInfo {
                 root: tf#/top/pinhole,
-                target_from_source: Affine3A {
-                    matrix3: Mat3A {
-                        x_axis: Vec3A(
+                target_from_source: DAffine3 {
+                    matrix3: DMat3 {
+                        x_axis: DVec3(
                             1.0,
                             0.0,
                             0.0,
                         ),
-                        y_axis: Vec3A(
+                        y_axis: DVec3(
                             0.0,
                             1.0,
                             0.0,
                         ),
-                        z_axis: Vec3A(
+                        z_axis: DVec3(
                             0.0,
                             0.0,
                             1.0,
                         ),
                     },
-                    translation: Vec3A(
+                    translation: DVec3(
                         0.0,
                         0.0,
                         0.0,
                     ),
                 },
                 target_from_instances: [
-                    Affine3A {
-                        matrix3: Mat3A {
-                            x_axis: Vec3A(
+                    DAffine3 {
+                        matrix3: DMat3 {
+                            x_axis: DVec3(
                                 1.0,
                                 0.0,
                                 0.0,
                             ),
-                            y_axis: Vec3A(
+                            y_axis: DVec3(
                                 0.0,
                                 1.0,
                                 0.0,
                             ),
-                            z_axis: Vec3A(
+                            z_axis: DVec3(
                                 0.0,
                                 0.0,
                                 1.0,
                             ),
                         },
-                        translation: Vec3A(
+                        translation: DVec3(
                             0.0,
                             0.0,
                             0.0,
@@ -260,53 +260,53 @@ expression: "pretty_print_transform_frame_ids_in(&result, &all_transform_frame_i
         Ok(
             TransformInfo {
                 root: tf#/,
-                target_from_source: Affine3A {
-                    matrix3: Mat3A {
-                        x_axis: Vec3A(
-                            0.0019999999,
+                target_from_source: DAffine3 {
+                    matrix3: DMat3 {
+                        x_axis: DVec3(
+                            0.002,
                             0.0,
                             0.0,
                         ),
-                        y_axis: Vec3A(
+                        y_axis: DVec3(
                             0.0,
-                            0.0039999997,
+                            0.004,
                             0.0,
                         ),
-                        z_axis: Vec3A(
+                        z_axis: DVec3(
                             0.0,
                             0.0,
-                            0.0029999998,
+                            0.003,
                         ),
                     },
-                    translation: Vec3A(
-                        49.999996,
-                        99.995995,
-                        -1.4969999,
+                    translation: DVec3(
+                        50.0,
+                        99.996,
+                        -1.497,
                     ),
                 },
                 target_from_instances: [
-                    Affine3A {
-                        matrix3: Mat3A {
-                            x_axis: Vec3A(
-                                0.0019999999,
+                    DAffine3 {
+                        matrix3: DMat3 {
+                            x_axis: DVec3(
+                                0.002,
                                 0.0,
                                 0.0,
                             ),
-                            y_axis: Vec3A(
+                            y_axis: DVec3(
                                 0.0,
-                                0.0039999997,
+                                0.004,
                                 0.0,
                             ),
-                            z_axis: Vec3A(
+                            z_axis: DVec3(
                                 0.0,
                                 0.0,
-                                0.0029999998,
+                                0.003,
                             ),
                         },
-                        translation: Vec3A(
-                            49.999996,
-                            99.995995,
-                            -1.4969999,
+                        translation: DVec3(
+                            50.0,
+                            99.996,
+                            -1.497,
                         ),
                     },
                 ],
@@ -327,50 +327,50 @@ expression: "pretty_print_transform_frame_ids_in(&result, &all_transform_frame_i
         Ok(
             TransformInfo {
                 root: tf#/top/pinhole,
-                target_from_source: Affine3A {
-                    matrix3: Mat3A {
-                        x_axis: Vec3A(
+                target_from_source: DAffine3 {
+                    matrix3: DMat3 {
+                        x_axis: DVec3(
                             1.0,
                             0.0,
                             0.0,
                         ),
-                        y_axis: Vec3A(
+                        y_axis: DVec3(
                             0.0,
                             1.0,
                             0.0,
                         ),
-                        z_axis: Vec3A(
+                        z_axis: DVec3(
                             0.0,
                             0.0,
                             1.0,
                         ),
                     },
-                    translation: Vec3A(
+                    translation: DVec3(
                         2.0,
                         0.0,
                         0.0,
                     ),
                 },
                 target_from_instances: [
-                    Affine3A {
-                        matrix3: Mat3A {
-                            x_axis: Vec3A(
+                    DAffine3 {
+                        matrix3: DMat3 {
+                            x_axis: DVec3(
                                 1.0,
                                 0.0,
                                 0.0,
                             ),
-                            y_axis: Vec3A(
+                            y_axis: DVec3(
                                 0.0,
                                 1.0,
                                 0.0,
                             ),
-                            z_axis: Vec3A(
+                            z_axis: DVec3(
                                 0.0,
                                 0.0,
                                 1.0,
                             ),
                         },
-                        translation: Vec3A(
+                        translation: DVec3(
                             2.0,
                             0.0,
                             0.0,

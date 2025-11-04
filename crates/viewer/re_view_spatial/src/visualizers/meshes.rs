@@ -85,6 +85,7 @@ impl Mesh3DVisualizer {
                     .transform_info
                     .target_from_instances(Mesh3D::name())
                 {
+                    let world_from_instance = world_from_instance.as_affine3a();
                     instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
                         let entity_from_mesh = mesh_instance.world_from_mesh;
                         let world_from_mesh = world_from_instance * entity_from_mesh;
