@@ -6,6 +6,9 @@
   "modal_button_width": 50,
   "default_modal_width": 400,
 
+  "loop_selection_alpha": 0.55, // Multiplied with selection_bg_fill
+  "loop_selection_alpha_inactive": 0.20, // Multiplied with selection_bg_fill
+
   "Alias": {
     "native_frame_stroke": {
       "color": "{Gray.750}",
@@ -64,12 +67,7 @@
     "section_header_color": {
       "color": "{Gray.875}"
     },
-    "loop_selection_color": {
-      "color": "#6386C9B2"
-    },
-    "loop_selection_color_inactive": {
-      "color": "#6386C940"
-    },
+
     "loop_everything_color": {
       "color": "#06A35C"
     },
