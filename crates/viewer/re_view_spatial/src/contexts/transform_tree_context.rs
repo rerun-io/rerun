@@ -116,6 +116,7 @@ impl ViewContextSystem for TransformTreeContext {
                             || 1.0,
                             |entity_paths| {
                                 lookup_image_plane_distance(ctx, entity_paths, &latest_at_query)
+                                    as f64
                             },
                         )
                 },
