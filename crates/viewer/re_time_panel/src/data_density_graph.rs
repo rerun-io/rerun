@@ -582,10 +582,27 @@ pub fn build_density_graph<'a>(
                 };
 
             if should_render_individual_events {
+                // Render all individual events
                 for (time, num_events) in chunk.num_events_cumulative_per_unique_time(timeline) {
-                    data.add_chunk_point(time, num_events as usize);
+                    data.add_chunk_point(time, num_events as f32);
+                }
+            } else if config.max_sampled_events_per_chunk > 0 {
+                let events = chunk.num_events_cumulative_per_unique_time(timeline);
+
+                if events.len() > config.max_sampled_events_per_chunk {
+                    // If there's more rows than the configured max, we sample events to get a fast, good enough density estimate.
+                    data.add_uniform_sample_from_chunk(
+                        &events,
+                        config.max_sampled_events_per_chunk,
+                    );
+                } else {
+                    // No need to sample, we can use all events.
+                    for (time, num_events) in events {
+                        data.add_chunk_point(time, num_events as f32);
+                    }
                 }
             } else {
+                // Fall back to uniform distribution across the entire time range
                 data.add_chunk_range(time_range, num_events_in_chunk);
             }
         }
@@ -604,6 +621,10 @@ pub struct DensityGraphBuilderConfig {
 
     /// If an unsorted chunk has fewer events than this we show its individual events.
     pub max_events_in_unsorted_chunk: u64,
+
+    /// When a chunk is too large to render all events, uniformly sample this many events
+    /// to create a good enough density estimate instead.
+    pub max_sampled_events_per_chunk: usize,
 }
 
 impl DensityGraphBuilderConfig {
@@ -612,6 +633,7 @@ impl DensityGraphBuilderConfig {
         max_total_chunk_events: 0,
         max_events_in_unsorted_chunk: 0,
         max_events_in_sorted_chunk: 0,
+        max_sampled_events_per_chunk: 0,
     };
 
     /// All sorted chunks will be rendered as individual events,
@@ -620,6 +642,7 @@ impl DensityGraphBuilderConfig {
         max_total_chunk_events: u64::MAX,
         max_events_in_unsorted_chunk: 0,
         max_events_in_sorted_chunk: u64::MAX,
+        max_sampled_events_per_chunk: 0,
     };
 
     /// All chunks will be rendered as individual events.
@@ -627,6 +650,7 @@ impl DensityGraphBuilderConfig {
         max_total_chunk_events: u64::MAX,
         max_events_in_unsorted_chunk: u64::MAX,
         max_events_in_sorted_chunk: u64::MAX,
+        max_sampled_events_per_chunk: 0,
     };
 }
 
@@ -649,6 +673,10 @@ impl Default for DensityGraphBuilderConfig {
 
             // Processing unsorted events is about 20% slower than sorted events.
             max_events_in_unsorted_chunk: 8_000,
+
+            // When chunks are too large to render all events, sample this many events uniformly
+            // to create a good enough density estimate.
+            max_sampled_events_per_chunk: 8_000,
         }
     }
 }
@@ -709,12 +737,32 @@ impl<'a> DensityGraphBuilder<'a> {
         }
     }
 
-    fn add_chunk_point(&mut self, time: TimeInt, num_events: usize) {
+    /// Uniformly sample events using the given sample size.
+    ///
+    /// Each sampled event's count is reweighted to preserve the total density.
+    fn add_uniform_sample_from_chunk(&mut self, events: &[(TimeInt, u64)], sample_size: usize) {
+        re_tracing::profile_function!();
+
+        let step = events.len() as f32 / sample_size as f32;
+
+        for i in 0..sample_size {
+            let idx = (i as f32 * step) as usize;
+            // This means we might miss the last event if rounding down, but that's acceptable.
+            if let Some(&(time, count)) = events.get(idx) {
+                // Reweight the count to preserve total density
+                let weighted_count = count as f32 * step;
+
+                self.add_chunk_point(time, weighted_count);
+            }
+        }
+    }
+
+    fn add_chunk_point(&mut self, time: TimeInt, weight: f32) {
         let Some(x) = self.time_ranges_ui.x_from_time_f32(time.into()) else {
             return;
         };
 
-        self.density_graph.add_point(x, num_events as _);
+        self.density_graph.add_point(x, weight);
 
         if let Some(pointer_pos) = self.pointer_pos {
             let is_hovered = {

@@ -97,7 +97,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "notebook_show",
             "legacy_notebook_show",
         ],
-        class_list=["RecordingStream"],
+        class_list=["ChunkBatcherConfig", "DescribedComponentBatch", "RecordingStream", "TimeColumnLike"],
     ),
     Section(
         title="Logging functions",
@@ -175,6 +175,11 @@ SECTION_TABLE: Final[list[Section]] = [
             "datatypes.ClassDescription",
         ],
         gen_page=False,
+    ),
+    Section(
+        title="ErrorUtils",
+        mod_path="rerun.error_utils",
+        show_tables=False,
     ),
     Section(
         title="Images",
@@ -272,6 +277,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.McapSchema",
             "archetypes.McapStatistics",
         ],
+        gen_page=False,
     ),
     # Section(
     #     title="Deprecated",
@@ -294,11 +300,14 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Interfaces",
         mod_path="rerun",
         class_list=[
+            "ComponentMixin",
+            "ComponentBatchLike",
             "AsComponents",
             "ComponentBatchLike",
             "ComponentColumn",
         ],
         default_filters=False,
+        show_tables=True,
     ),
     ################################################################################
     # Blueprint APIs
@@ -308,6 +317,7 @@ SECTION_TABLE: Final[list[Section]] = [
         mod_path="rerun.blueprint",
         class_list=[
             "Blueprint",
+            "BlueprintLike",
             "BlueprintPart",
             "Container",
             "ContainerLike",
@@ -338,6 +348,12 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Blueprint",
         sub_title="Components",
         mod_path="rerun.blueprint.components",
+        show_tables=False,
+    ),
+    Section(
+        title="Blueprint",
+        sub_title="Datatypes",
+        mod_path="rerun.blueprint.datatypes",
         show_tables=False,
     ),
     Section(
@@ -411,10 +427,12 @@ SECTION_TABLE: Final[list[Section]] = [
             "Entry",
             "EntryId",
             "EntryKind",
+            "IndexValuesLike",
             "NotFoundError",
             "TableEntry",
             "Task",
             "VectorDistanceMetric",
+            "VectorDistanceMetricLike",
         ],
     ),
     Section(

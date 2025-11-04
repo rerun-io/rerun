@@ -9,6 +9,7 @@ FILES_ALLOWED_TO_BE_LARGE = {
     "Cargo.lock",
     "CHANGELOG.md",
     "crates/build/re_types_builder/src/codegen/cpp/mod.rs",  # TODO(andreas): This file should really be split up.
+    "crates/build/re_types_builder/src/codegen/python/mod.rs",
     "crates/build/re_types_builder/src/reflection.rs",
     "crates/store/re_dataframe/src/query.rs",
     "crates/store/re_protos/proto/schema_snapshot.yaml",

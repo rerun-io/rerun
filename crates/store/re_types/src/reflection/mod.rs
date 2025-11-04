@@ -388,6 +388,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <TimeRange as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A time range on an unspecified timeline using either relative or absolute boundaries.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: TimeRange::arrow_datatype(),
+                verify_arrow_array: TimeRange::verify_arrow_array,
+            },
+        ),
+        (
             <TimelineName as Component>::name(),
             ComponentReflection {
                 docstring_md: "A timeline identified by its name.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -3914,13 +3924,29 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 deprecation_summary: None,
                 scope: Some("blueprint"),
                 view_types: &[],
-                fields: vec![ArchetypeFieldReflection {
-                    name: "link",
-                    display_name: "Link",
-                    component_type: "rerun.blueprint.components.LinkAxis".into(),
-                    docstring_md: "How should the horizontal/X/time axis be linked across multiple plots?",
-                    is_required: false,
-                }],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "link",
+                        display_name: "Link",
+                        component_type: "rerun.blueprint.components.LinkAxis".into(),
+                        docstring_md: "How should the horizontal/X/time axis be linked across multiple plots?\n\nLinking with global will ignore `view_range`.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "view_range",
+                        display_name: "View range",
+                        component_type: "rerun.blueprint.components.TimeRange".into(),
+                        docstring_md: "The view range of the horizontal/X/time axis.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "zoom_lock",
+                        display_name: "Zoom lock",
+                        component_type: "rerun.blueprint.components.LockRangeDuringZoom".into(),
+                        docstring_md: "If enabled, the X axis range will remain locked to the specified range when zooming.",
+                        is_required: false,
+                    },
+                ],
             },
         ),
         (

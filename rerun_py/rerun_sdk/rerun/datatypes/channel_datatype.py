@@ -110,6 +110,8 @@ ChannelDatatypeLike = (
     ]
     | int
 )
+"""A type alias for any ChannelDatatype-like object."""
+
 ChannelDatatypeArrayLike = (
     ChannelDatatype
     | Literal[
@@ -139,6 +141,7 @@ ChannelDatatypeArrayLike = (
     | int
     | Sequence[ChannelDatatypeLike]
 )
+"""A type alias for any ChannelDatatype-like array object."""
 
 
 class ChannelDatatypeBatch(BaseBatch[ChannelDatatypeArrayLike]):

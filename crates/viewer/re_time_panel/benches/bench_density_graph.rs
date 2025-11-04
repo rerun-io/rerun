@@ -215,6 +215,30 @@ fn bench_many_chunks(c: &mut Criterion) {
     }
 }
 
+/// Benchmark that specifically tests the `uniform_sample_events` path.
+///
+/// This uses large chunks that exceed the individual event rendering threshold,
+/// forcing the sampling path to be taken.
+fn bench_sampling(c: &mut Criterion) {
+    let mut group = c.benchmark_group("sampling");
+
+    let sizes = [5000, 10000, 20000, 50000, 100000];
+    for size in sizes {
+        for max_sampled_events_per_chunk in [0, 4000, 8000] {
+            let id = format!("{size}/sample_{max_sampled_events_per_chunk}");
+
+            let config = DensityGraphBuilderConfig {
+                max_sampled_events_per_chunk,
+                ..Default::default()
+            };
+
+            group.bench_with_input(id, &single_chunk(size, true), |b, &entry| {
+                run(b, config, entry);
+            });
+        }
+    }
+}
+
 fn main() {
     // More noisy results, but benchmark ends a lot sooner.
     let mut criterion = Criterion::default()
@@ -226,6 +250,7 @@ fn main() {
 
     bench_single_chunks(&mut criterion);
     bench_many_chunks(&mut criterion);
+    bench_sampling(&mut criterion);
 
     criterion.final_summary();
 }

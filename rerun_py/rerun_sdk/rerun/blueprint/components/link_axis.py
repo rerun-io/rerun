@@ -52,9 +52,12 @@ class LinkAxis(Enum):
 
 
 LinkAxisLike = LinkAxis | Literal["Independent", "LinkToGlobal", "independent", "linktoglobal"] | int
+"""A type alias for any LinkAxis-like object."""
+
 LinkAxisArrayLike = (
     LinkAxis | Literal["Independent", "LinkToGlobal", "independent", "linktoglobal"] | int | Sequence[LinkAxisLike]
 )
+"""A type alias for any LinkAxis-like array object."""
 
 
 class LinkAxisBatch(BaseBatch[LinkAxisArrayLike], ComponentBatchMixin):
