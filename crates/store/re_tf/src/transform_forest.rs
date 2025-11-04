@@ -275,7 +275,7 @@ impl TransformForest {
         entity_db: &EntityDb,
         query: &LatestAtQuery,
         transform_root_from_parent: TransformInfo,
-        transforms_for_timeline: &mut CachedTransformsForTimeline,
+        transforms_for_timeline: &CachedTransformsForTimeline,
     ) {
         let root = transform_root_from_parent.root;
         let root_from_parent = transform_root_from_parent.target_from_source;
@@ -677,11 +677,11 @@ fn transforms_at(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
-    transforms_for_timeline: &mut CachedTransformsForTimeline,
+    transforms_for_timeline: &CachedTransformsForTimeline,
 ) -> TransformsAtEntity {
     // This is called very frequently, don't put a profile scope here.
 
-    let Some(entity_transforms) = transforms_for_timeline
+    let Some(mut entity_transforms) = transforms_for_timeline
         .frame_transforms(TransformFrameIdHash::from_entity_path(entity_path))
     else {
         return TransformsAtEntity::default();
