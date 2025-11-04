@@ -423,7 +423,6 @@ fn walk_towards_parent(
         if transforms.parent_from_child.is_none()
             && let Some(parent) = implicit_transform_parent(current_frame, id_registry)
         {
-            // TODO: not having this still makes tests pass. Means tests are insufficient.
             transforms.parent_from_child = Some(ParentFromChildTransform {
                 parent,
                 transform: glam::DAffine3::IDENTITY,
@@ -815,12 +814,12 @@ fn transforms_at(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
+    use itertools::Itertools;
     use re_chunk_store::Chunk;
     use re_entity_db::EntityDb;
     use re_log_types::{StoreInfo, TimePoint, TimelineName};
-    use re_types::{Archetype as _, RowId, archetypes, components::TransformFrameId};
+    use re_types::{Archetype as _, RowId, archetypes};
+    use std::sync::Arc;
 
     use super::*;
 
@@ -893,6 +892,7 @@ mod tests {
         for (hash, frame) in transform_cache.frame_id_registry().iter_frame_ids() {
             result = result.replace(&format!("{hash:#?}"), &format!("{frame}"));
         }
+
         result
     }
 
@@ -1069,5 +1069,107 @@ mod tests {
             ))
             .collect()
         );
+    }
+
+    /// A test scene that exclusively uses the parent/child farme ids.
+    ///
+    /// We're using relatively basic transforms here as we assume that resolving transforms have been tested on [`TransformResolutionCache`] already.
+    /// Similarly, since [`TransformForest`] does not yet maintain anything over time, we're using static timing instead.
+    ///
+    /// TODO(RR-2627): Add instances poses into the mix.
+    /// TODO(RR-2680): Add pinholes into the mix.
+    /// TODO(RR-2799): Variant where everything is just logged on a single entity
+    fn simple_frame_hierarchy_test_scene() -> Result<EntityDb, Box<dyn std::error::Error>> {
+        let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
+        entity_db.add_chunk(&Arc::new(
+            Chunk::builder(EntityPath::from("transforms0"))
+                .with_archetype_auto_row(
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0])
+                        .with_child_frame("top")
+                        .with_parent_frame("root"),
+                )
+                .build()?,
+        ))?;
+
+        entity_db.add_chunk(&Arc::new(
+            Chunk::builder(EntityPath::from("transforms1"))
+                .with_archetype_auto_row(
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::from_translation([2.0, 0.0, 0.0])
+                        .with_child_frame("child0")
+                        .with_parent_frame("top"),
+                )
+                .build()?,
+        ))?;
+        entity_db.add_chunk(&Arc::new(
+            Chunk::builder(EntityPath::from("transforms2"))
+                .with_archetype_auto_row(
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::from_translation([3.0, 0.0, 0.0])
+                        .with_child_frame("child1")
+                        .with_parent_frame("top"),
+                )
+                .build()?,
+        ))?;
+
+        Ok(entity_db)
+    }
+
+    #[test]
+    fn test_simple_frame_hierarchy() -> Result<(), Box<dyn std::error::Error>> {
+        let test_scene = simple_frame_hierarchy_test_scene()?;
+        let mut transform_cache = TransformResolutionCache::default();
+        transform_cache.add_chunks(test_scene.storage_engine().store().iter_chunks());
+
+        let query = LatestAtQuery::latest(TimelineName::log_tick());
+        let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+
+        // Check that we get the expected roots.
+        {
+            assert_eq!(
+                transform_forest.root_info(TransformFrameIdHash::entity_path_hierarchy_root()),
+                Some(&TransformTreeRootInfo::TransformFrameRoot)
+            );
+            assert_eq!(
+                transform_forest.root_info(TransformFrameIdHash::from_str("root")),
+                Some(&TransformTreeRootInfo::TransformFrameRoot)
+            );
+            assert_eq!(transform_forest.roots.len(), 2);
+        }
+
+        // Check we have all the right connections.
+        // We don't test for tree rearrangement here, this has been already tested quite a bit in `test_simple_entity_hierarchy`
+        insta::assert_snapshot!(
+            "simple_frame_hierarchy_root_connections",
+            pretty_print_transform_frame_ids_in(
+                &transform_forest.root_from_frame,
+                &transform_cache
+            )
+        );
+
+        // Check that there is no connection between the implicit & explicit frames.
+        assert_eq!(
+            transform_forest
+                .transform_from_to(
+                    TransformFrameIdHash::from_str("child0"),
+                    std::iter::once(TransformFrameIdHash::from_entity_path(
+                        &"transforms2".into()
+                    )),
+                    &|_| 0.0
+                )
+                .collect_vec(),
+            vec![(
+                TransformFrameIdHash::from_entity_path(&"transforms2".into()),
+                Err(TransformFromToError::NoPathBetweenFrames {
+                    target: TransformFrameIdHash::from_str("child0"),
+                    src: TransformFrameIdHash::from_entity_path(&"transforms2".into()),
+                    target_root: TransformFrameIdHash::from_str("root"),
+                    source_root: TransformFrameIdHash::entity_path_hierarchy_root(),
+                })
+            )]
+        );
+
+        Ok(())
     }
 }
