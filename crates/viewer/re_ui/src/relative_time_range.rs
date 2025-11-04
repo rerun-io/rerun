@@ -275,7 +275,7 @@ mod tests {
         external::re_types_core::datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
     };
 
-    use crate::{TimeDragValue, UiExt};
+    use crate::{TimeDragValue, UiExt as _};
 
     use super::RelativeTimeRange;
 
