@@ -1483,6 +1483,7 @@ fn help(os: egui::os::OperatingSystem) -> Help {
             "Select time segment",
             (icons::SHIFT, "+", "drag time scale"),
         )
+        .control("Snap to grid", icons::SHIFT)
         .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag event canvas"))
         .control(
             "Zoom",
