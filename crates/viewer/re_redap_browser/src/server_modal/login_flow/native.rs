@@ -56,7 +56,7 @@ impl State {
     pub fn open(_ui: &mut egui::Ui) -> Result<Self, String> {
         // Whenever the modal is open, we always keep the callback server running:
         let callback_server = OauthCallbackServer::new(None)
-            .map_err(|e| format!("Failed to start callback server: {e}"))?;
+            .map_err(|err| format!("Failed to start callback server: {err}"))?;
 
         Ok(Self {
             callback_server,
