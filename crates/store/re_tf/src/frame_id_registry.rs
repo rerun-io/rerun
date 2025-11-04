@@ -26,7 +26,7 @@ impl FrameIdRegistry {
     /// Registers all frame ids mentioned in a chunk, including frames implied by the chunk's entity and its parents.
     ///
     /// Implementation note:
-    /// Having the registration of frame ids separate from other frame id related bookkeeping makes things more module
+    /// Having the registration of frame ids separate from other frame id related bookkeeping makes things more modular
     /// at the price of additional overhead. However, we generally assume that retrieving `TransformFrameId`/`TransformFrameIdHash` from a string is fast.
     pub fn register_all_ids_in_chunk(&mut self, chunk: &re_chunk_store::Chunk) {
         // Ensure all implicit frames from this entity all the way up to the root are known.
