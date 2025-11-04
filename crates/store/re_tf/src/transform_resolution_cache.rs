@@ -10,6 +10,7 @@ use parking_lot::{Mutex, MutexGuard};
 use vec1::smallvec_v1::SmallVec1;
 
 use crate::entity_to_frame_tracking::EntityToFrameOverTime;
+use crate::frame_id_registry::FrameIdRegistry;
 use crate::{
     TransformFrameIdHash,
     transform_aspect::TransformAspect,
@@ -42,15 +43,20 @@ use re_types::{
 /// * [`components::PinholeProjection`] and [`components::ViewCoordinates`]
 ///   Pinhole projections & associated view coordinates used for visualizing cameras in 3D and embedding 2D in 3D
 pub struct TransformResolutionCache {
+    /// The frame id registry is co-located in the resolution cache for convenience:
+    /// the resolution cache is often the lowest level of transform access and
+    /// thus allowing us to access debug information across the stack.
+    frame_id_registry: FrameIdRegistry,
+
     per_timeline: HashMap<TimelineName, CachedTransformsForTimeline>,
     static_timeline: CachedTransformsForTimeline,
-    frame_id_lookup_table: IntMap<TransformFrameIdHash, TransformFrameId>,
 }
 
 impl Default for TransformResolutionCache {
     #[inline]
     fn default() -> Self {
         Self {
+            frame_id_registry: Default::default(),
             per_timeline: Default::default(),
             // `CachedTransformsForTimeline` intentionally doesn't implement Default to not accidentally create it without considering static transforms.
             static_timeline: CachedTransformsForTimeline {
@@ -58,7 +64,6 @@ impl Default for TransformResolutionCache {
                 per_child_frame_transforms: Default::default(),
                 recursive_clears: Default::default(), // Unused for static timeline.
             },
-            frame_id_lookup_table: Default::default(),
         }
     }
 }
@@ -137,7 +142,7 @@ impl CachedTransformsForTimeline {
                         *transform_frame,
                         Mutex::new(TransformsForChildFrame::new_for_new_empty_timeline(
                             *timeline,
-                            &*static_transforms.lock(),
+                            &static_transforms.lock(),
                         )),
                     )
                 })
@@ -701,7 +706,7 @@ impl TransformResolutionCache {
         &self,
         frame_id_hash: TransformFrameIdHash,
     ) -> Option<&TransformFrameId> {
-        self.frame_id_lookup_table.get(&frame_id_hash)
+        self.frame_id_registry.lookup_frame_id(frame_id_hash)
     }
 
     /// Accesses the transform component tracking data for a given timeline.
@@ -736,7 +741,8 @@ impl TransformResolutionCache {
         for event in events {
             if event.kind == re_chunk_store::ChunkStoreDiffKind::Addition {
                 // Since entity paths lead to implicit frames, we have to prime our lookup table with them even if this chunk doesn't have transform data.
-                self.ensure_frame_ids_are_known(&event.chunk);
+                self.frame_id_registry
+                    .register_all_ids_in_chunk(&event.chunk);
             }
 
             let aspects = TransformAspect::transform_aspects_of(&event.chunk);
@@ -770,7 +776,7 @@ impl TransformResolutionCache {
 
         for chunk in chunks {
             // Since entity paths lead to implicit frames, we have to prime our lookup table with them even if this chunk doesn't have transform data.
-            self.ensure_frame_ids_are_known(chunk);
+            self.frame_id_registry.register_all_ids_in_chunk(chunk);
 
             let aspects = TransformAspect::transform_aspects_of(chunk);
             if aspects.is_empty() {
@@ -781,48 +787,6 @@ impl TransformResolutionCache {
                 self.add_static_chunk(chunk, aspects);
             } else {
                 self.add_temporal_chunk(chunk, aspects);
-            }
-        }
-    }
-
-    fn ensure_frame_ids_are_known(&mut self, chunk: &Chunk) {
-        // Ensure all implicit frames from this entity all the way up to the root are known.
-        // Note that in-between entities may never be mentioned in any chunk but we want to make sure they're known to the system.
-        let mut entity_path = chunk.entity_path();
-        let mut parent;
-        loop {
-            // Note that we try to avoid computing `TransformFrameId` as much as we can since it has to string-concat,
-            // so compared to `TransformFrameIdHash,` is it _relatively_ expensive to compute.
-            match self
-                .frame_id_lookup_table
-                .entry(TransformFrameIdHash::from_entity_path(entity_path))
-            {
-                Entry::Occupied(_) => {
-                    break;
-                }
-                Entry::Vacant(e) => e.insert(TransformFrameId::from_entity_path(entity_path)),
-            };
-
-            parent = entity_path.parent();
-            if let Some(parent) = parent.as_ref() {
-                entity_path = parent;
-            } else {
-                break;
-            }
-        }
-
-        // TODO(RR-2627, RR-2680): Custom source is not supported yet for Pinhole & Poses, we instead use whatever is on `Transform3D`.
-        let child_frame_component = archetypes::Transform3D::descriptor_child_frame().component;
-        let parent_frame_component = archetypes::Transform3D::descriptor_parent_frame().component;
-        for frame_id_strings in chunk
-            .iter_slices::<String>(child_frame_component)
-            .chain(chunk.iter_slices::<String>(parent_frame_component))
-        {
-            for frame_id_string in frame_id_strings {
-                let frame_id_hash = TransformFrameIdHash::from_str(frame_id_string.as_str());
-                self.frame_id_lookup_table
-                    .entry(frame_id_hash)
-                    .or_insert_with(|| TransformFrameId::new(frame_id_string.as_str()));
             }
         }
     }

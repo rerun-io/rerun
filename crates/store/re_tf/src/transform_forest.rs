@@ -239,7 +239,7 @@ impl TransformForest {
     /// entities are transformed relative to it.
     pub fn new(
         recording: &re_entity_db::EntityDb,
-        transform_cache: &mut TransformResolutionCache,
+        transform_cache: &TransformResolutionCache,
         time_query: &LatestAtQuery,
     ) -> Self {
         re_tracing::profile_function!();
