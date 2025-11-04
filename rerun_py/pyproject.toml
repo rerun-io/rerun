@@ -215,11 +215,11 @@ max-positional-args = 3
 ]
 
 "rerun_py/rerun_sdk/*" = [
-  # Allow using banned API
+  # Allow using rerun_bindings
   "TID251",
 ]
 "rerun_py/rerun_bindings/*" = [
-  # Allow using banned API
+  # Allow using rerun_bindings
   "TID251",
 ]
 
