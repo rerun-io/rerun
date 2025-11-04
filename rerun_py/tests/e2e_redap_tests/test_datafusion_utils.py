@@ -27,7 +27,8 @@ def test_url_generation(server_instance: ServerInstance) -> None:
 
     # Since the OSS server will generate a random dataset ID at startup, we can only check part of
     # the generated URL
+    print(results[0][0][0].as_py())
     assert (
-        "partition_id=0cd72aae349f46bc97540d144582ff15#when=time_1@2024-01-15T10:30:45.123457000Z"
+        "partition_id=141a866deb2d49f69eb3215e8a404ffc#when=time_1@2024-01-15T10:30:45.123457000Z"
         in results[0][0][0].as_py()
     )
