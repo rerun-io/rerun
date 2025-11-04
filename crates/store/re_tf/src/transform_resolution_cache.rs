@@ -24,7 +24,6 @@ use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::external::re_types_core::ArrowString;
 use re_log_types::{EntityPath, TimeInt, TimelineName};
-use re_types::components::TransformFrameId;
 use re_types::{
     ArchetypeName,
     archetypes::{self},
@@ -743,15 +742,10 @@ impl TransformsForChildFrame {
 }
 
 impl TransformResolutionCache {
-    /// Looks up a frame ID by its hash.
-    ///
-    /// Returns `None` if the frame id hash was never encountered.
+    /// Returns the registry of all known frame ids.
     #[inline]
-    pub fn lookup_frame_id(
-        &self,
-        frame_id_hash: TransformFrameIdHash,
-    ) -> Option<&TransformFrameId> {
-        self.frame_id_registry.lookup_frame_id(frame_id_hash)
+    pub fn frame_id_registry(&self) -> &FrameIdRegistry {
+        &self.frame_id_registry
     }
 
     /// Accesses the transform component tracking data for a given timeline.

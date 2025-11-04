@@ -69,6 +69,16 @@ impl FrameIdRegistry {
             }
         }
     }
+
+    /// Iterates over all known frame ids.
+    ///
+    /// Mostly useful for testing.
+    #[inline]
+    pub fn iter_frame_ids(
+        &self,
+    ) -> impl Iterator<Item = (&TransformFrameIdHash, &TransformFrameId)> {
+        self.frame_id_lookup_table.iter()
+    }
 }
 
 #[cfg(test)]
