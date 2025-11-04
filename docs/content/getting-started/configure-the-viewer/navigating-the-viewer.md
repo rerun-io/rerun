@@ -36,7 +36,7 @@ to take the images.
 
 Although the Rerun SDK is available in both Python and Rust, this walkthrough makes use the Python installation. Even if
 you plan to use Rerun with Rust, we still recommend having a Rerun Python environment available for quick
-experimentation and working with examples. You can either follow the [Python Quickstart](./quick-start/python.md) or simply run:
+experimentation and working with examples. You can either follow the [Python Quickstart](../quick-start/python.md) or simply run:
 
 ```bash
 pip install rerun-sdk
@@ -84,11 +84,11 @@ Depending on your display size, the panels may have a different arrangements. Fu
 
 This window has five main sections:
 
--   [Viewport](../reference/viewer/viewport.md) (center): Displays the rendered views for your session.
--   [Recordings panel](../concepts/apps-and-recordings.md) (top left): Lists loaded recordings and their applications, and allows navigation back to the welcome screen.
--   [Blueprint panel](../reference/viewer/blueprints.md) (below Recordings): Controls the different views.
--   [Selection panel](../reference/viewer/selection.md) (right): Shows detailed information and configuration for selected items.
--   [Timeline panel](../reference/viewer/timeline.md) (bottom): Controls the current point in time being viewed.
+-   [Viewport](../../reference/viewer/viewport.md) (center): Displays the rendered views for your session.
+-   [Recordings panel](../../concepts/apps-and-recordings.md) (top left): Lists loaded recordings and their applications, and allows navigation back to the welcome screen.
+-   [Blueprint panel](../../reference/viewer/blueprint.md) (below Recordings): Controls the different views.
+-   [Selection panel](../../reference/viewer/selection.md) (right): Shows detailed information and configuration for selected items.
+-   [Timeline panel](../../reference/viewer/timeline.md) (bottom): Controls the current point in time being viewed.
 
 Each of the three sides has a button in the upper-right corner. Click these to show or hide the corresponding panels.
 
@@ -105,20 +105,20 @@ via the [Blueprint API](configure-the-viewer.md#programmatic-blueprints), or by 
 
 ## Exploring data
 
-In Rerun, data is modeled using [entities](../concepts/entity-component.md) (essentially objects) that contain batches of [components](../reference/types/components.md)
+In Rerun, data is modeled using [entities](../../concepts/entity-component.md) (essentially objects) that contain batches of [components](../../reference/types/components.md)
 that change over time. Each entity is identified by an entity path, which uses a hierarchical syntax to represent relationships between entities.
 Let's explore an example of this hierarchy in our scene:
 
 -   `/camera/image/keypoints` is an entity stream that contains 2 component streams (`Color`, `Position2D`)
-    of the [Points2D archetype](../reference/types/archetypes/points2d.md),
+    of the [Points2D archetype](../../reference/types/archetypes/points2d.md),
     representing point clouds that were detected and tracked in images.
--   The images themselves are represented by the parent entity `/camera/image`. This entity consist of 6 components: 4 form an [Image archetype](../reference/types/archetypes/image.md),
-    while the remaining 2 correspond to a [pinhole projection](../reference/types/archetypes/pinhole.md). The images are captures by the camera, and a pinhole projection defines the relationship between 2D and 3D space.
--   Both the images and pinhole projection are hierarchically dependent on the camera's position, which is described by the `/camera` entity. This entity includes a series of transforms that together form a [Transform3D archetype](../reference/types/archetypes/transform3d.md).
+-   The images themselves are represented by the parent entity `/camera/image`. This entity consist of 6 components: 4 form an [Image archetype](../../reference/types/archetypes/image.md),
+    while the remaining 2 correspond to a [pinhole projection](../../reference/types/archetypes/pinhole.md). The images are captures by the camera, and a pinhole projection defines the relationship between 2D and 3D space.
+-   Both the images and pinhole projection are hierarchically dependent on the camera's position, which is described by the `/camera` entity. This entity includes a series of transforms that together form a [Transform3D archetype](../../reference/types/archetypes/transform3d.md).
 
 The hierarchy of logged entity streams and their component streams is found under `Streams` in the Timeline panel. A similar list appears in the `Blueprint` panel, but the key difference is that the Blueprint panel focuses on how data is arranged and visualized in the Viewport, while the Streams panel shows when and what events were logged. In other words, an entity may be logged once but displayed in multiple views.
 
-Visualizations can also be customized per each view using [Overrides](../concepts/visualizers-and-overrides.md) in the Selection panel. In the screenshot below, the same entity `keypoints` is displayed in different colors: yellow and magenta. This is reflected in Selection > Visualizers > Points2D > Color, where yellow is an overridden value, even though the logged color value was different.
+Visualizations can also be customized per each view using [Overrides](../../concepts/visualizers-and-overrides.md) in the Selection panel. In the screenshot below, the same entity `keypoints` is displayed in different colors: yellow and magenta. This is reflected in Selection > Visualizers > Points2D > Color, where yellow is an overridden value, even though the logged color value was different.
 
 <picture>
   <img src="https://static.rerun.io/viewer_walkthrough_overrides/f6b6780491f1ea4312de7ef014362971c6efc541/full.png" alt="">
@@ -131,7 +131,7 @@ Visualizations can also be customized per each view using [Overrides](../concept
 ### Hover and selection
 
 You can easily identify which entity mentions and visual representations refer to the same entities across different panels by seeing them simultaneously highlighted in the UI. Hovering over an entity will
-display a popup with additional information about its content. Clicking on it will reveal more details in the [Selection panel](../reference/viewer/selection.md).
+display a popup with additional information about its content. Clicking on it will reveal more details in the [Selection panel](../../reference/viewer/selection.md).
 
 <picture>
   <img src="https://static.rerun.io/viewer_walkthrough_relations/267707775554601b6ab11e279a286d040c8b4138/full.png" alt="">
@@ -204,7 +204,7 @@ to the "frame" timeline and double-click the timeline panel to reset it to the d
 One thing to notice is there is a gap in the timeline in the "frame" view. This dataset is actually missing a few
 frames, and the timeline view of frames makes this easy to spot. This highlights the importance of applying meaningful
 timestamps to your data as you log it. You also aren't limited to frame and log_time. Rerun lets you define your own
-timelines however you would like. You can read more about timelines [here](../concepts/timelines.md).
+timelines however you would like. You can read more about timelines [here](../../concepts/timelines.md).
 
 ## Conclusion
 
@@ -213,7 +213,7 @@ That brings us to the end of this walkthrough. To recap, you have learned how to
 -   Install the `rerun-sdk` pypi package.
 -   Run the Rerun Viewer using the `rerun` command.
 -   Open the examples integrated in the viewer.
--   Work with the [Blueprint](../reference/viewer/blueprints.md), [Selection](../reference/viewer/selection.md) and [Timeline](../reference/viewer/timeline.md) panels.
+-   Work with the [Blueprint](../../reference/viewer/blueprint.md), [Selection](../../reference/viewer/selection.md) and [Timeline](../../reference/viewer/timeline.md) panels.
 -   Rearrange view layouts.
 -   Explore data through hover and selection.
 -   Change the time selection.
@@ -223,7 +223,7 @@ Again, if you ran into any issues following this guide, please don't hesitate to
 
 ### Up next
 
--   [Get started](./quick-start) by writing a program to log data with the Rerun SDK.
--   Learn how to further [configure the viewer](./configure-the-viewer.md) to suit your data.
+-   [Get started](../quick-start) by writing a program to log data with the Rerun SDK.
+-   Learn how to further [configure the viewer](../configure-the-viewer.md) to suit your data.
 -   Explore other [examples of using Rerun](/examples).
--   Consult the [concept overview](../concepts.md) for more context on the ideas covered here.
+-   Consult the [concept overview](../../concepts.md) for more context on the ideas covered here.

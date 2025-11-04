@@ -1,10 +1,13 @@
 # Rerun changelog
 
+
 ## 0.27.0 - TBD - TBD
 
 ### ⚠️ Breaking changes
 
 - Minimum supported Python is now 3.10.
+- Dropped support for Intel Mac
+
 
 ## [0.26.2](https://github.com/rerun-io/rerun/compare/0.26.1...0.26.2) - 2025-10-27 - More bug fixes
 

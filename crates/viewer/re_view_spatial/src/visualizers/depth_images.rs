@@ -168,7 +168,9 @@ impl DepthImageVisualizer {
 
         // Place the cloud at the pinhole's location. Note that this means we ignore any 2D transforms that might on the way.
         let pinhole = &pinhole_tree_root_info.pinhole_projection;
-        let world_from_view = pinhole_tree_root_info.parent_root_from_pinhole_root;
+        let world_from_view = pinhole_tree_root_info
+            .parent_root_from_pinhole_root
+            .as_affine3a();
         let world_from_rdf =
             world_from_view * glam::Affine3A::from_mat3(pinhole.view_coordinates.from_rdf());
 

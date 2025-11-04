@@ -92,7 +92,9 @@ impl CamerasVisualizer {
             );
             return;
         };
-        let world_from_camera = pinhole_tree_root_info.parent_root_from_pinhole_root;
+        let world_from_camera = pinhole_tree_root_info
+            .parent_root_from_pinhole_root
+            .as_affine3a();
 
         // If this transform is not representable as an `IsoTransform` we can't display it yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.

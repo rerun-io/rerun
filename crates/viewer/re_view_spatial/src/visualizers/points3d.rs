@@ -110,7 +110,7 @@ impl Points3DVisualizer {
                 .transform_info
                 .target_from_instances(Points3D::name())
                 .iter()
-                .copied()
+                .map(|transform| transform.as_affine3a())
             {
                 let point_batch = point_builder
                     .batch(entity_path.to_string())

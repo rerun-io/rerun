@@ -19,8 +19,7 @@ from rerun.server import Server
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from rerun.catalog import CatalogClient
-    from rerun_bindings import DatasetEntry
+    from rerun.catalog import CatalogClient, DatasetEntry
 
 
 DATASET_NAME = "dataset"
@@ -71,6 +70,7 @@ class ServerInstance:
         self.dataset = dataset
 
 
+# TODO(ab): we should have a knob to have an empty server instance for when the prefilled one is not necessary
 @pytest.fixture(scope="function")
 def server_instance(table_filepath: pathlib.Path) -> Generator[ServerInstance, None, None]:
     assert DATASET_FILEPATH.is_dir()

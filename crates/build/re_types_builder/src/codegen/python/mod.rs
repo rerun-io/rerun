@@ -1045,7 +1045,16 @@ def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
     code.push_unindented(
         format!(
             r#"
+            """A type alias for any {enum_name}-like object."""
+            "#,
+        ),
+        1,
+    );
+    code.push_unindented(
+        format!(
+            r#"
             {enum_name}ArrayLike = {enum_name} | {variants} | int |Sequence[{enum_name}Like]
+            """A type alias for any {enum_name}-like array object."""
             "#,
         ),
         2,
@@ -1569,13 +1578,19 @@ fn quote_aliases_from_object(obj: &Object) -> String {
                 r#"
                 if TYPE_CHECKING:
                     {name}Like = {name}{aliases}
+                    """A type alias for any {name}-like object."""
                 else:
                     {name}Like = Any
                 "#,
                 aliases = format!(" | {aliases}").trim_end_matches(" | "),
             )
         } else {
-            format!("{name}Like = {name}")
+            format!(
+                r#"
+                {name}Like = {name}
+                """A type alias for any {name}-like object."""
+                "#,
+            )
         },
         1,
     );
@@ -1584,6 +1599,7 @@ fn quote_aliases_from_object(obj: &Object) -> String {
         format!(
             r#"
             {name}ArrayLike = {name} | Sequence[{name}Like]{array_aliases}
+            """A type alias for any {name}-like array object."""
             "#,
             array_aliases = format!(" | {array_aliases}").trim_end_matches(" | "),
         ),
@@ -1615,7 +1631,10 @@ fn quote_union_aliases_from_object<'a>(
         r#"
             if TYPE_CHECKING:
                 {name}Like = {name} | {union_fields}{aliases}
+                """A type alias for any {name}-like object."""
+
                 {name}ArrayLike = {name} | {union_fields} | Sequence[{name}Like]{array_aliases}
+                """A type alias for any {name}-like array object."""
             else:
                 {name}Like = Any
                 {name}ArrayLike = Any

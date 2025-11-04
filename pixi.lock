@@ -4107,6 +4107,7 @@ environments:
       - pypi: ./examples/python/rgbd
       - pypi: ./examples/python/rrt_star
       - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/server_tables
       - pypi: ./examples/python/shared_recording
       - pypi: ./examples/python/stdio
       - pypi: ./examples/python/structure_from_motion
@@ -4495,6 +4496,7 @@ environments:
       - pypi: ./examples/python/rgbd
       - pypi: ./examples/python/rrt_star
       - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/server_tables
       - pypi: ./examples/python/shared_recording
       - pypi: ./examples/python/stdio
       - pypi: ./examples/python/structure_from_motion
@@ -4881,6 +4883,7 @@ environments:
       - pypi: ./examples/python/rgbd
       - pypi: ./examples/python/rrt_star
       - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/server_tables
       - pypi: ./examples/python/shared_recording
       - pypi: ./examples/python/stdio
       - pypi: ./examples/python/structure_from_motion
@@ -5350,6 +5353,7 @@ environments:
       - pypi: ./examples/python/rgbd
       - pypi: ./examples/python/rrt_star
       - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/server_tables
       - pypi: ./examples/python/shared_recording
       - pypi: ./examples/python/stdio
       - pypi: ./examples/python/structure_from_motion
@@ -5721,6 +5725,7 @@ environments:
       - pypi: ./examples/python/rgbd
       - pypi: ./examples/python/rrt_star
       - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/server_tables
       - pypi: ./examples/python/shared_recording
       - pypi: ./examples/python/stdio
       - pypi: ./examples/python/structure_from_motion
@@ -6082,6 +6087,7 @@ environments:
       - pypi: ./examples/python/rgbd
       - pypi: ./examples/python/rrt_star
       - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/server_tables
       - pypi: ./examples/python/shared_recording
       - pypi: ./examples/python/stdio
       - pypi: ./examples/python/structure_from_motion
@@ -10080,6 +10086,7 @@ environments:
       - pypi: ./examples/python/rgbd
       - pypi: ./examples/python/rrt_star
       - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/server_tables
       - pypi: ./examples/python/shared_recording
       - pypi: ./examples/python/stdio
       - pypi: ./examples/python/structure_from_motion
@@ -10556,6 +10563,7 @@ environments:
       - pypi: ./examples/python/rgbd
       - pypi: ./examples/python/rrt_star
       - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/server_tables
       - pypi: ./examples/python/shared_recording
       - pypi: ./examples/python/stdio
       - pypi: ./examples/python/structure_from_motion
@@ -11035,6 +11043,7 @@ environments:
       - pypi: ./examples/python/rgbd
       - pypi: ./examples/python/rrt_star
       - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/server_tables
       - pypi: ./examples/python/shared_recording
       - pypi: ./examples/python/stdio
       - pypi: ./examples/python/structure_from_motion
@@ -34214,7 +34223,7 @@ packages:
 - pypi: ./rerun_py
   name: rerun-sdk
   version: 0.27.0a8+dev
-  sha256: 9e88902158ce4437bc7a5cc571ff646972472892f8c93aa3273bd03b63f3f8d2
+  sha256: b386e17b005f92c35f4bfc1a4c67acbe6ee4df0cba70e2eda2713db2c560af4a
   requires_dist:
   - attrs>=23.1.0
   - numpy>=2
@@ -35016,6 +35025,14 @@ packages:
   - pyobjc-framework-cocoa ; sys_platform == 'darwin' and extra == 'objc'
   - pywin32 ; sys_platform == 'win32' and extra == 'win32'
   requires_python: '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*'
+- pypi: ./examples/python/server_tables
+  name: server-tables
+  version: 0.1.0
+  sha256: 1aaaa2af93a5ff20009bb2c37e175ac2ad3b9323d9e306ebaef06a72f7001d20
+  requires_dist:
+  - rerun-sdk
+  - datafusion==50.1
+  editable: true
 - pypi: https://files.pythonhosted.org/packages/a3/dc/17031897dae0efacfea57dfd3a82fdd2a2aeb58e0ff71b77b87e44edc772/setuptools-80.9.0-py3-none-any.whl
   name: setuptools
   version: 80.9.0

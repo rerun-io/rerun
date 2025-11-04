@@ -67,12 +67,15 @@ BackgroundKindLike = (
     | Literal["GradientBright", "GradientDark", "SolidColor", "gradientbright", "gradientdark", "solidcolor"]
     | int
 )
+"""A type alias for any BackgroundKind-like object."""
+
 BackgroundKindArrayLike = (
     BackgroundKind
     | Literal["GradientBright", "GradientDark", "SolidColor", "gradientbright", "gradientdark", "solidcolor"]
     | int
     | Sequence[BackgroundKindLike]
 )
+"""A type alias for any BackgroundKind-like array object."""
 
 
 class BackgroundKindBatch(BaseBatch[BackgroundKindArrayLike], ComponentBatchMixin):

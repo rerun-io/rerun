@@ -388,6 +388,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <TimeRange as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A time range on an unspecified timeline using either relative or absolute boundaries.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: TimeRange::arrow_datatype(),
+                verify_arrow_array: TimeRange::verify_arrow_array,
+            },
+        ),
+        (
             <TimelineName as Component>::name(),
             ComponentReflection {
                 docstring_md: "A timeline identified by its name.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -3160,6 +3170,20 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
+                        name: "source_frame",
+                        display_name: "Source frame",
+                        component_type: "rerun.components.TransformFrameId".into(),
+                        docstring_md: "The frame this transform transforms from.\n\nThe entity at which the transform relationship of any given source frame is specified mustn't change over time.\nE.g. if you specified the source `\"robot_arm\"` on an entity named `\"my_transforms\"`, you may not log transforms\nwith the source `\"robot_arm\"` on any other entity than `\"my_transforms\"`.\nAn exception to this rule is static time - you may first mention a source on one entity statically and later on\nanother one temporally.\n\n⚠ This currently also affects the target frame of [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).\n⚠ This currently is also used as the frame id of [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).\n\nIf not specified, this is set to the implicit transform frame of the current entity path.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame?speculative-link).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "target_frame",
+                        display_name: "Target frame",
+                        component_type: "rerun.components.TransformFrameId".into(),
+                        docstring_md: "The frame this transform transforms to.\n\n⚠ This currently also affects the target frame of [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).\n\nIf not specified, this is set to the implicit transform frame of the current entity path's parent.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame?speculative-link).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
                         name: "axis_length",
                         display_name: "Axis length",
                         component_type: "rerun.components.AxisLength".into(),
@@ -3900,13 +3924,29 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 deprecation_summary: None,
                 scope: Some("blueprint"),
                 view_types: &[],
-                fields: vec![ArchetypeFieldReflection {
-                    name: "link",
-                    display_name: "Link",
-                    component_type: "rerun.blueprint.components.LinkAxis".into(),
-                    docstring_md: "How should the horizontal/X/time axis be linked across multiple plots?",
-                    is_required: false,
-                }],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "link",
+                        display_name: "Link",
+                        component_type: "rerun.blueprint.components.LinkAxis".into(),
+                        docstring_md: "How should the horizontal/X/time axis be linked across multiple plots?\n\nLinking with global will ignore `view_range`.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "view_range",
+                        display_name: "View range",
+                        component_type: "rerun.blueprint.components.TimeRange".into(),
+                        docstring_md: "The view range of the horizontal/X/time axis.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "zoom_lock",
+                        display_name: "Zoom lock",
+                        component_type: "rerun.blueprint.components.LockRangeDuringZoom".into(),
+                        docstring_md: "If enabled, the X axis range will remain locked to the specified range when zooming.",
+                        is_required: false,
+                    },
+                ],
             },
         ),
         (

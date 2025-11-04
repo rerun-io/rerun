@@ -8,16 +8,18 @@ use arrow::datatypes::{DataType, Field, Schema, SchemaRef, TimeUnit};
 use datafusion::catalog::MemTable;
 use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
-
 use re_chunk_store::{Chunk, ChunkStoreConfig};
 use re_log_types::{EntryId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::ext::TableEntry;
 use re_protos::{
-    cloud::v1alpha1::{EntryKind, ext::EntryDetails},
+    cloud::v1alpha1::{
+        EntryKind,
+        ext::{DatasetDetails, EntryDetails, LanceTable, ProviderDetails, TableEntry},
+    },
     common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId},
 };
 use re_tuid::Tuid;
 use re_types_core::{ComponentBatch as _, Loggable as _};
+use url::Url;
 
 use crate::entrypoint::NamedPath;
 use crate::store::table::TableType;
@@ -118,6 +120,7 @@ impl InMemoryStore {
     }
 
     /// Load a directory of RRDs.
+    //TODO(ab): maybe we could be smart with .rbl and auto-setup a blueprint dataset?
     pub fn load_directory_as_dataset(
         &mut self,
         named_path: &NamedPath,
@@ -141,7 +144,7 @@ impl InMemoryStore {
         };
 
         let dataset = self
-            .create_dataset(&entry_name)
+            .create_dataset(&entry_name, None, StoreKind::Recording, None)
             .expect("Name cannot yet exist");
 
         for entry in std::fs::read_dir(&directory)? {
@@ -153,7 +156,7 @@ impl InMemoryStore {
                     .is_some_and(|s| s.to_lowercase().ends_with(".rrd"));
 
                 if is_rrd {
-                    dataset.load_rrd(&entry.path(), None, on_duplicate)?;
+                    dataset.load_rrd(&entry.path(), None, on_duplicate, StoreKind::Recording)?;
                 }
             }
         }
@@ -198,17 +201,22 @@ impl InMemoryStore {
                 .await
                 .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?,
         ));
+        let table_url = Url::from_directory_path(&directory).or(Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "Cannot turn directory into URL",
+        )))?;
 
         let entry_id = EntryId::new();
+        let provider_details = LanceTable { table_url };
 
         match self.table_by_name(entry_name.as_ref()) {
             None => {
-                self.add_table_entry(entry_name.as_ref(), entry_id, table)?;
+                self.add_table_entry(entry_name.as_ref(), entry_id, table, provider_details)?;
             }
             Some(_) => match on_duplicate {
                 IfDuplicateBehavior::Overwrite => {
                     re_log::info!("Overwriting {entry_name}");
-                    self.add_table_entry(entry_name.as_ref(), entry_id, table)?;
+                    self.add_table_entry(entry_name.as_ref(), entry_id, table, provider_details)?;
                 }
                 IfDuplicateBehavior::Skip => {
                     re_log::info!("Ignoring {entry_name}: it already exists");
@@ -228,11 +236,18 @@ impl InMemoryStore {
         entry_name: &str,
         entry_id: EntryId,
         table: TableType,
+        provider_details: LanceTable,
     ) -> Result<(), Error> {
         self.id_by_name.insert(entry_name.to_owned(), entry_id);
         self.tables.insert(
             entry_id,
-            Table::new(entry_id, entry_name.to_owned(), table, None, None),
+            Table::new(
+                entry_id,
+                entry_name.to_owned(),
+                table,
+                None,
+                ProviderDetails::LanceTable(provider_details),
+            ),
         );
 
         self.update_entries_table()
@@ -262,7 +277,7 @@ impl InMemoryStore {
                 ENTRIES_TABLE_NAME.to_owned(),
                 TableType::DataFusionTable(entries_table),
                 prior_entries_table.map(|t| t.created_at()),
-                Some(SystemTable {
+                ProviderDetails::SystemTable(SystemTable {
                     kind: SystemTableKind::Entries,
                 }),
             ),
@@ -271,20 +286,29 @@ impl InMemoryStore {
         Ok(())
     }
 
-    pub fn create_dataset(&mut self, name: &str) -> Result<&mut Dataset, Error> {
+    pub fn create_dataset(
+        &mut self,
+        name: &str,
+        id: Option<EntryId>,
+        store_kind: StoreKind,
+        details: Option<DatasetDetails>,
+    ) -> Result<&mut Dataset, Error> {
         re_log::debug!(name, "create_dataset");
         let name = name.to_owned();
         if self.id_by_name.contains_key(&name) {
             return Err(Error::DuplicateEntryNameError(name));
         }
 
-        let entry_id = EntryId::new();
+        let entry_id = id.unwrap_or_else(EntryId::new);
+        if self.id_exists(&entry_id) {
+            return Err(Error::DuplicateEntryIdError(entry_id));
+        }
+
         self.id_by_name.insert(name.clone(), entry_id);
 
-        Ok(self
-            .datasets
-            .entry(entry_id)
-            .or_insert_with(|| Dataset::new(entry_id, name)))
+        Ok(self.datasets.entry(entry_id).or_insert_with(|| {
+            Dataset::new(entry_id, name, store_kind, details.unwrap_or_default())
+        }))
     }
 
     pub fn delete_dataset(&mut self, entry_id: EntryId) -> Result<(), Error> {
@@ -303,8 +327,10 @@ impl InMemoryStore {
             .ok_or(Error::EntryIdNotFound(entry_id))
     }
 
-    pub fn dataset_mut(&mut self, entry_id: EntryId) -> Option<&mut Dataset> {
-        self.datasets.get_mut(&entry_id)
+    pub fn dataset_mut(&mut self, entry_id: EntryId) -> Result<&mut Dataset, Error> {
+        self.datasets
+            .get_mut(&entry_id)
+            .ok_or(Error::EntryIdNotFound(entry_id))
     }
 
     pub fn dataset_by_name(&self, name: &str) -> Result<&Dataset, Error> {
@@ -339,6 +365,10 @@ impl InMemoryStore {
 
     pub fn id_by_name(&self, name: &str) -> Option<&EntryId> {
         self.id_by_name.get(name)
+    }
+
+    pub fn id_exists(&self, id: &EntryId) -> bool {
+        self.tables.contains_key(id) || self.datasets.contains_key(id)
     }
 
     pub async fn create_table_entry(
