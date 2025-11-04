@@ -732,7 +732,7 @@ impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEnt
         Ok(Self {
             name: value.name,
             schema: Some((&value.schema).try_into()?),
-            provider_details: Some(value.provider_details.try_as_any()?),
+            provider_details: Some((&value.provider_details).try_into()?),
         })
     }
 }
@@ -751,7 +751,7 @@ impl TryFrom<crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEnt
                     "schema"
                 ))?
                 .try_into()?,
-            provider_details: ProviderDetails::try_from_any(&value.provider_details.ok_or(
+            provider_details: ProviderDetails::try_from(&value.provider_details.ok_or(
                 missing_field!(
                     crate::cloud::v1alpha1::CreateTableEntryRequest,
                     "provider_details"
@@ -1074,7 +1074,7 @@ impl TryFrom<RegisterTableRequest> for crate::cloud::v1alpha1::RegisterTableRequ
     fn try_from(value: RegisterTableRequest) -> Result<Self, Self::Error> {
         Ok(Self {
             name: value.name,
-            provider_details: Some(value.provider_details.try_as_any()?),
+            provider_details: Some((&value.provider_details).try_into()?),
         })
     }
 }
@@ -1085,7 +1085,7 @@ impl TryFrom<crate::cloud::v1alpha1::RegisterTableRequest> for RegisterTableRequ
     fn try_from(value: crate::cloud::v1alpha1::RegisterTableRequest) -> Result<Self, Self::Error> {
         Ok(Self {
             name: value.name,
-            provider_details: ProviderDetails::try_from_any(&value.provider_details.ok_or(
+            provider_details: ProviderDetails::try_from(&value.provider_details.ok_or(
                 missing_field!(
                     crate::cloud::v1alpha1::RegisterTableRequest,
                     "provider_details"
@@ -1131,7 +1131,7 @@ impl TryFrom<TableEntry> for crate::cloud::v1alpha1::TableEntry {
     fn try_from(value: TableEntry) -> Result<Self, Self::Error> {
         Ok(Self {
             details: Some(value.details.into()),
-            provider_details: Some(value.provider_details.try_as_any()?),
+            provider_details: Some((&value.provider_details).try_into()?),
         })
     }
 }
@@ -1148,7 +1148,7 @@ impl TryFrom<crate::cloud::v1alpha1::TableEntry> for TableEntry {
                     "details"
                 ))?
                 .try_into()?,
-            provider_details: ProviderDetails::try_from_any(
+            provider_details: ProviderDetails::try_from(
                 &value
                     .provider_details
                     .ok_or(missing_field!(crate::cloud::v1alpha1::TableEntry, "handle"))?,
@@ -1165,27 +1165,15 @@ pub enum ProviderDetails {
     LanceTable(LanceTable),
 }
 
-impl ProviderDetails {
-    pub fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError> {
-        match self {
-            Self::SystemTable(table) => {
-                let as_proto: crate::cloud::v1alpha1::SystemTable = table.clone().into();
-                Ok(prost_types::Any::from_msg(&as_proto)?)
-            }
-            Self::LanceTable(table) => {
-                let as_proto: crate::cloud::v1alpha1::LanceTable = table.clone().into();
-                Ok(prost_types::Any::from_msg(&as_proto)?)
-            }
-        }
-    }
-
-    pub fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError> {
-        if any.type_url == crate::cloud::v1alpha1::LanceTable::type_url() {
-            let as_proto = any.to_msg::<crate::cloud::v1alpha1::LanceTable>()?;
+impl TryFrom<&prost_types::Any> for ProviderDetails {
+    type Error = TypeConversionError;
+    fn try_from(value: &prost_types::Any) -> Result<Self, Self::Error> {
+        if value.type_url == crate::cloud::v1alpha1::LanceTable::type_url() {
+            let as_proto = value.to_msg::<crate::cloud::v1alpha1::LanceTable>()?;
             let table = LanceTable::try_from(as_proto)?;
             Ok(Self::LanceTable(table))
-        } else if any.type_url == crate::cloud::v1alpha1::SystemTable::type_url() {
-            let as_proto = any.to_msg::<crate::cloud::v1alpha1::SystemTable>()?;
+        } else if value.type_url == crate::cloud::v1alpha1::SystemTable::type_url() {
+            let as_proto = value.to_msg::<crate::cloud::v1alpha1::SystemTable>()?;
             let table = SystemTable::try_from(as_proto)?;
             Ok(Self::SystemTable(table))
         } else {
@@ -1197,7 +1185,25 @@ impl ProviderDetails {
             })
         }
     }
+}
 
+impl TryFrom<&ProviderDetails> for prost_types::Any {
+    type Error = TypeConversionError;
+    fn try_from(value: &ProviderDetails) -> Result<Self, Self::Error> {
+        match value {
+            ProviderDetails::SystemTable(table) => {
+                let as_proto: crate::cloud::v1alpha1::SystemTable = table.clone().into();
+                Ok(prost_types::Any::from_msg(&as_proto)?)
+            }
+            ProviderDetails::LanceTable(table) => {
+                let as_proto: crate::cloud::v1alpha1::LanceTable = table.clone().into();
+                Ok(prost_types::Any::from_msg(&as_proto)?)
+            }
+        }
+    }
+}
+
+impl ProviderDetails {
     pub fn type_url(&self) -> String {
         match self {
             Self::SystemTable(_) => crate::cloud::v1alpha1::SystemTable::type_url(),

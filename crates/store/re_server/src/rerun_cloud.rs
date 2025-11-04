@@ -1206,7 +1206,7 @@ impl RerunCloudService for RerunCloudHandler {
             return Err(tonic::Status::invalid_argument("Missing provider details"));
         };
         #[cfg_attr(not(feature = "lance"), expect(unused_variables))]
-        let lance_table = match ProviderDetails::try_from_any(&provider_details) {
+        let lance_table = match ProviderDetails::try_from(&provider_details) {
             Ok(ProviderDetails::LanceTable(lance_table)) => lance_table.table_url,
             Ok(ProviderDetails::SystemTable(_)) => Err(Status::invalid_argument(
                 "System tables cannot be registered",
