@@ -1395,6 +1395,8 @@ impl TimePanel {
                     time_type.parse_time(&time_str, ctx.app_options().timestamp_format)
                 {
                     time_commands.push(TimeControlCommand::SetTime(time_int.into()));
+                } else {
+                    re_log::warn!("Failed to parse {time_str:?}");
                 }
                 self.time_edit_string = None;
             }
