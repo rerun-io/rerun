@@ -1,24 +1,12 @@
 use std::time::Duration;
 
 use re_auth::{
-    callback_server::{self, OauthCallbackServer},
-    oauth::{Credentials, CredentialsStoreError, MalformedTokenError},
+    callback_server::OauthCallbackServer,
+    oauth::Credentials,
 };
 use re_ui::icons;
 
-use super::action_button;
-
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("failed to start callback server: {0}")]
-    CallbackServer(#[from] callback_server::Error),
-
-    #[error(transparent)]
-    MalformedToken(#[from] MalformedTokenError),
-
-    #[error(transparent)]
-    CredentialsStore(#[from] CredentialsStoreError),
-}
+use super::ActionButton;
 
 pub struct State {
     callback_server: OauthCallbackServer,
@@ -29,58 +17,49 @@ pub struct State {
 
 impl State {
     pub fn ui(&mut self, ui: &mut egui::Ui) {
-        ui.vertical(|ui| {
-            let mut url_for_text_edit = self.callback_server.get_login_url().to_owned();
-            egui::TextEdit::singleline(&mut url_for_text_edit)
-                .hint_text("<can't share link>") // No known way to get into this situation.
-                .text_color(ui.style().visuals.strong_text_color())
-                .desired_width(f32::INFINITY) // Take up the entire space.
-                .show(ui);
+        // The native login flow consists of having the user open a link in their browser,
+        // which eventually sends back the credentials to the `callback_server`.
+        ui.horizontal(|ui| {
+            if ActionButton::primary(&icons::EXTERNAL_LINK, "Login", "Link opened!")
+                .show(ui, &mut self.show_open_feedback)
+                .clicked()
+            {
+                webbrowser::open(self.callback_server.get_login_url()).ok();
+            }
 
-            ui.horizontal(|ui| {
-                if action_button(
-                    ui,
-                    &mut self.show_open_feedback,
-                    Some(&icons::EXTERNAL_LINK),
-                    "Open in browser",
-                    "Link opened!",
-                ) {
-                    webbrowser::open(self.callback_server.get_login_url()).ok();
-                }
-
-                if action_button(
-                    ui,
-                    &mut self.show_copy_feedback,
-                    Some(&icons::URL),
-                    "Copy URL",
-                    "Copied to clipboard!",
-                ) {
-                    ui.ctx()
-                        .copy_text(self.callback_server.get_login_url().to_owned());
-                }
-            });
+            if ActionButton::secondary(&icons::COPY, "Copy link", "Copied to clipboard!")
+                .show(ui, &mut self.show_copy_feedback)
+                .clicked()
+            {
+                ui.ctx()
+                    .copy_text(self.callback_server.get_login_url().to_owned());
+            }
         });
 
         ui.ctx().request_repaint_after(Duration::from_millis(10));
     }
 
     #[expect(clippy::needless_pass_by_ref_mut)]
-    pub fn done(&mut self) -> Result<Option<Credentials>, Error> {
+    pub fn done(&mut self) -> Result<Option<Credentials>, String> {
+        // We're done if we received valid credentials from the client:
         match self.callback_server.check_for_browser_response() {
             Ok(Some(response)) => {
                 #[expect(unsafe_code)]
                 // SAFETY: credentials come from a trusted source
-                let credentials = unsafe { Credentials::from_auth_response(response.into())? };
-                let credentials = credentials.ensure_stored()?;
+                let credentials = unsafe { Credentials::from_auth_response(response.into()) }
+                    .map_err(|e| e.to_string())?;
+                let credentials = credentials.ensure_stored().map_err(|e| e.to_string())?;
                 Ok(Some(credentials))
             }
             Ok(None) => Ok(None),
-            Err(err) => Err(Error::CallbackServer(err)),
+            Err(err) => Err(format!("Failed to check for browser response: {err}")),
         }
     }
 
-    pub fn open(_ui: &mut egui::Ui) -> Result<Self, Error> {
-        let callback_server = OauthCallbackServer::new(None)?;
+    pub fn open(_ui: &mut egui::Ui) -> Result<Self, String> {
+        // Whenever the modal is open, we always keep the callback server running:
+        let callback_server = OauthCallbackServer::new(None)
+            .map_err(|e| format!("Failed to start callback server: {e}"))?;
 
         Ok(Self {
             callback_server,

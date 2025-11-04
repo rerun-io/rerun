@@ -4,8 +4,7 @@ use re_log::ResultExt;
 use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::{JsCast, prelude::Closure};
 
-#[expect(clippy::needless_pass_by_value)]
-fn string_from_js_value(s: wasm_bindgen::JsValue) -> String {
+fn js_value_to_string(s: wasm_bindgen::JsValue) -> String {
     // it's already a string
     if let Some(s) = s.as_string() {
         return s;
@@ -19,38 +18,31 @@ fn string_from_js_value(s: wasm_bindgen::JsValue) -> String {
     format!("{s:#?}")
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("failed to open window, popup was blocked: {0}")]
-    OpenWindow(String),
-}
-
-impl From<wasm_bindgen::JsValue> for Error {
-    fn from(value: wasm_bindgen::JsValue) -> Self {
-        Error::OpenWindow(string_from_js_value(value))
-    }
-}
-
 type StorageEventCallback = dyn FnMut(web_sys::StorageEvent);
 
 pub struct State {
-    child_window: web_sys::Window,
-    on_storage_event: Closure<StorageEventCallback>,
+    child_window: Option<web_sys::Window>,
+    on_storage_event: Option<Closure<StorageEventCallback>>,
 
+    nonce: String,
     result: Rc<RefCell<Option<Credentials>>>,
 }
 
 impl Drop for State {
     fn drop(&mut self) {
         re_log::debug!("dropping auth state");
-        self.child_window.close().ok();
+        if let Some(child_window) = &self.child_window {
+            child_window.close().ok();
+        }
         if let Some(window) = web_sys::window() {
-            window
-                .remove_event_listener_with_callback(
-                    "storage",
-                    self.on_storage_event.as_ref().unchecked_ref(),
-                )
-                .ok();
+            if let Some(on_storage_event) = &self.on_storage_event {
+                window
+                    .remove_event_listener_with_callback(
+                        "storage",
+                        on_storage_event.as_ref().unchecked_ref(),
+                    )
+                    .ok();
+            }
         };
     }
 }
@@ -63,28 +55,19 @@ struct AuthEventPayload {
 }
 
 impl State {
-    pub fn ui(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            ui.spinner();
-            ui.label("Waiting for login…");
-        });
-    }
+    pub fn start(&mut self) -> Result<(), String> {
+        if self.child_window.is_some() {
+            // If already started, do nothing
+            return Ok(());
+        }
 
-    #[expect(clippy::needless_pass_by_ref_mut)]
-    pub fn done(&mut self) -> Result<Option<Credentials>, Error> {
-        Ok(self.result.borrow_mut().take())
-    }
-
-    pub fn open(ui: &mut egui::Ui) -> Result<Self, Error> {
-        let egui_ctx = ui.ctx().clone();
-
+        // Open popup window at `/login/v2`:
         let parent_window = web_sys::window().expect("no window available");
-        let origin = parent_window.location().origin()?;
+        let origin = parent_window.location().origin().map_err(js_value_to_string)?;
 
-        let nonce = parent_window.crypto()?.random_uuid();
         let return_to = format!(
             "{origin}/signed-in?n={nonce}",
-            nonce = BASE64_URL_SAFE.encode(&nonce),
+            nonce = BASE64_URL_SAFE.encode(&self.nonce),
         );
         let login_url = format!(
             "/login/v2?r={return_to}",
@@ -95,20 +78,76 @@ impl State {
             &login_url,
             "auth",
             "width=480,height=640",
-        )?
+        ).map_err(js_value_to_string)?
         else {
-            return Err(Error::OpenWindow(
-                "window.open did not return a handle".into(),
-            ));
+            return Err("window.open did not return a handle".into());
         };
 
-        // TODO: clean up this mess
+        // Keep a handle to the opened window, so we can close it later:
+        self.child_window = Some(child_window);
+        Ok(())
+    }
+
+    pub fn ui(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            ui.spinner();
+            ui.label("Waiting for login…");
+        });
+    }
+
+    #[expect(clippy::needless_pass_by_ref_mut)]
+    pub fn done(&mut self) -> Result<Option<Credentials>, String> {
+        // Check if we have credentials
+        if let Some(credentials) = self.result.borrow_mut().take() {
+            return Ok(Some(credentials));
+        }
+
+        // Check if popup window was manually closed by user
+        if let Some(child_window) = &self.child_window {
+            match child_window.closed() {
+                Ok(true) => {
+                    return Err("Login popup was closed before completing authentication".into());
+                }
+                Ok(false) => {
+                    // Still open, continue waiting
+                }
+                Err(_) => {
+                    // Error checking window state, ignore and continue
+                }
+            }
+        }
+
+        Ok(None)
+    }
+
+    pub fn open(ui: &mut egui::Ui) -> Result<Self, String> {
+        let egui_ctx = ui.ctx().clone();
+
+        let parent_window = web_sys::window().expect("no window available");
+        let nonce = parent_window.crypto().map_err(js_value_to_string)?.random_uuid();
+
         let result = Rc::new(RefCell::new(None));
+
+        // To receive the auth payload after the user logs in, we use
+        // a `storage` event callback. When the user is redirected after
+        // logging in, they land on a page which is on the same domain
+        // as us, where any `localStorage.setItem` calls will result in
+        // this event listener being fired.
         let on_storage_event = Closure::wrap(Box::new({
             let result = Rc::clone(&result);
+            let nonce = nonce.clone();
             move |e: web_sys::StorageEvent| {
                 web_sys::console::log_1(&e);
 
+                // Instead of setting the credentials in localstorage directly,
+                // we instead first set it to a different key, and then only
+                // when everything has succeeded do we store the final credentials
+                // in localstorage. This ensures that if something goes wrong at
+                // any point during the login flow, we do not invalidate the
+                // user's existing credentials until the _very_ end.
+
+                // The payload is received on the `_auth` key,
+                // see `AuthEventPayload` above for what it looks like.
                 if e.key().as_deref() != Some("_auth") {
                     re_log::debug!("invalid storage event key: _auth");
                     return;
@@ -126,6 +165,8 @@ impl State {
                     re_log::error!("storage event payload.type != auth");
                     return;
                 }
+                // The payload contains the URL to which the user was redirected to by
+                // the login flow, which stores the nonce and auth response in its search params:
                 let Some(url) = url::Url::parse(&payload.url).ok_or_log_error() else {
                     return;
                 };
@@ -138,6 +179,7 @@ impl State {
                     return;
                 };
 
+                // The nonce is a base64-encoded v4 uuid.
                 let Some(decoded_nonce) = BASE64_URL_SAFE
                     .decode(encoded_nonce.as_bytes())
                     .ok_or_log_error()
@@ -152,6 +194,8 @@ impl State {
                     return;
                 }
 
+                // The auth response is a base64-encoded json object which
+                // holds the token pair, and also user info, such as their email:
                 let Some(response) = BASE64_URL_SAFE
                     .decode(encoded_tokens.as_bytes())
                     .ok_or_log_error()
@@ -172,10 +216,12 @@ impl State {
                     return;
                 };
 
+                // As a last step, we store the actual credentials in local storage:
                 let Some(credentials) = credentials.ensure_stored().ok_or_log_error() else {
                     return;
                 };
 
+                // And then notify the UI that the login succeeded:
                 *result.borrow_mut() = Some(credentials);
                 egui_ctx.request_repaint();
             }
@@ -186,8 +232,9 @@ impl State {
             .ok();
 
         Ok(Self {
-            child_window,
-            on_storage_event,
+            child_window: None,
+            on_storage_event: Some(on_storage_event),
+            nonce,
             result,
         })
     }

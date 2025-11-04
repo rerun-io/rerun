@@ -12,7 +12,7 @@ use std::str::FromStr as _;
 use crate::{context::Context, servers::Command};
 
 mod login_flow;
-use login_flow::{LoginFlow, LoginFlowResult, action_button};
+use login_flow::{LoginFlow, LoginFlowResult};
 
 /// Should the modal edit an existing server or add a new one?
 pub enum ServerModalMode {
@@ -26,38 +26,46 @@ pub enum ServerModalMode {
     Edit(re_uri::Origin),
 }
 
-#[derive(Default)]
+/// Authentication state for the server modal.
 struct Authentication {
     email: Option<String>,
     token: String,
-    state: AuthenticationState,
-}
-
-#[derive(Default)]
-enum AuthenticationState {
-    #[default]
-    LoginOrAddToken,
-    TokenInput,
-    LoginFlow(LoginFlow),
-    Error(String),
+    show_token_input: bool,
+    login_flow: Option<LoginFlow>,
+    error: Option<String>,
 }
 
 impl Authentication {
+    /// Initialize auth state.
+    ///
+    /// This always attempts to load credentials from disk.
+    /// Note that it accepts them even if they are expired.
+    ///
+    /// Optionally, this can be given a token, which takes
+    /// precedence over stored credentials.
     fn new(token: Option<String>) -> Self {
         let email = re_auth::oauth::load_credentials()
             .ok()
             .flatten()
             .map(|credentials| credentials.user().email.clone());
-        let (token, state) = match token {
-            Some(token) => (token, AuthenticationState::TokenInput),
-            None => (String::new(), AuthenticationState::LoginOrAddToken),
+        let (token, show_token_input) = match token {
+            Some(token) => (token, true),
+            None => (String::new(), false),
         };
 
         Self {
             email,
             token,
-            state,
+            show_token_input,
+            login_flow: None,
+            error: None,
         }
+    }
+
+    /// This cleans up the login flow's resources, such as
+    /// closing popup windows.
+    fn reset_login_flow(&mut self) {
+        self.login_flow = None;
     }
 }
 
@@ -78,7 +86,7 @@ impl Default for ServerModal {
             mode: ServerModalMode::Add,
             scheme: Scheme::Rerun,
             host: String::new(),
-            auth: Authentication::default(),
+            auth: Authentication::new(None),
             port: 443,
         }
     }
@@ -121,8 +129,9 @@ impl ServerModal {
         self.modal.open();
     }
 
-    //TODO(ab): handle ESC and return
     pub fn ui(&mut self, global_ctx: &GlobalContext<'_>, ctx: &Context<'_>, ui: &egui::Ui) {
+        let was_open = self.modal.is_open();
+
         self.modal.ui(
             ui.ctx(),
             || {
@@ -133,6 +142,8 @@ impl ServerModal {
                     }
                 };
                 ModalWrapper::new(&title)
+                    .default_height(300.0)
+                    .min_height(300.0)
             },
             |ui| {
                 ui.warning_label(
@@ -201,7 +212,10 @@ impl ServerModal {
                 ui.add_space(14.0);
 
                 ui.label("Authenticate:");
-                ui.scope(|ui| auth_ui(ui, global_ctx.command_sender, &mut self.auth));
+                ui.scope(|ui| {
+                    ui.shrink_width_to_current();
+                    auth_ui(ui, global_ctx.command_sender, &mut self.auth);
+                });
 
                 ui.add_space(24.0);
 
@@ -228,7 +242,7 @@ impl ServerModal {
                     Ok(None)
                 };
 
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Max), |ui| {
                     let button_width = ui.tokens().modal_button_width;
 
                     if let (Ok(origin), Ok(credentials)) = (origin, credentials) {
@@ -238,6 +252,7 @@ impl ServerModal {
                         if save_button_response.clicked()
                             || ui.input(|i| i.key_pressed(egui::Key::Enter))
                         {
+                            self.auth.reset_login_flow();
                             ui.close();
 
                             if let ServerModalMode::Edit(old_origin) = &self.mode {
@@ -259,97 +274,127 @@ impl ServerModal {
                     let cancel_button_response =
                         ui.add(egui::Button::new("Cancel").min_size(egui::vec2(button_width, 0.0)));
                     if cancel_button_response.clicked() {
-                        self.auth.state = AuthenticationState::LoginOrAddToken;
+                        self.auth.show_token_input = false;
+                        self.auth.reset_login_flow();
                         ui.close();
                     }
                 });
             },
         );
+
+        // reset login flow if modal was just closed (e.g., by backdrop click)
+        if was_open && !self.modal.is_open() {
+            re_log::debug!("modal closed; reset login flow");
+            self.auth.reset_login_flow();
+        }
     }
 }
 
 fn auth_ui(ui: &mut egui::Ui, cmd: &CommandSender, auth: &mut Authentication) {
     ui.horizontal(|ui| {
         ui.scope(|ui| {
-            let mut new_state = None;
+            if auth.show_token_input {
+                let jwt = (!auth.token.is_empty())
+                    .then(|| re_auth::Jwt::try_from(auth.token.clone()))
+                    .transpose();
 
-            match &mut auth.state {
-                AuthenticationState::LoginOrAddToken => {
-                    if let Some(email) = &auth.email {
-                        ui.label("Continue as ");
-                        ui.label(RichText::new(email).strong().underline());
-
-                        if ui
-                            .small_icon_button(&re_ui::icons::CLOSE, "Clear login status")
-                            .on_hover_text("Clear login status")
-                            .clicked()
-                        {
-                            auth.email = None;
-                        }
-                    } else {
-                        if action_button(ui, &mut true, None, "Login", "Login") {
-                            new_state = match LoginFlow::open(ui) {
-                                Ok(flow) => Some(AuthenticationState::LoginFlow(flow)),
-                                Err(err) => Some(AuthenticationState::Error(err)),
-                            };
-                        }
-                    }
-
-                    ui.add_space(6.0);
-                    ui.label("or");
-                    ui.add_space(6.0);
-
-                    if ui
-                        .link(RichText::new("Add a token").strong().underline())
-                        .clicked()
-                    {
-                        new_state = Some(AuthenticationState::TokenInput);
-                    }
+                if jwt.is_err() {
+                    ui.style_invalid_field();
                 }
-                AuthenticationState::TokenInput => {
-                    let jwt = (!auth.token.is_empty())
-                        .then(|| re_auth::Jwt::try_from(auth.token.clone()))
-                        .transpose();
 
-                    if jwt.is_err() {
-                        ui.style_invalid_field();
-                    }
-
+                ui.horizontal(|ui| {
+                    ui.set_min_width(300.0);
+                    ui.set_width(300.0);
                     ui.add(
                         egui::TextEdit::singleline(&mut auth.token)
                             .hint_text("Token (will be stored in plain text)")
-                            .code_editor(),
+                            .code_editor()
+                            .desired_width(300.0),
                     );
+                });
+
+                if ui
+                    .small_icon_button(&re_ui::icons::CLOSE, "Go back")
+                    .on_hover_text("Go back")
+                    .clicked()
+                {
+                    auth.show_token_input = false;
+                    auth.error = None;
+                }
+            } else {
+                if let Some(email) = &auth.email {
+                    ui.label("Continue as ");
+                    ui.label(RichText::new(email).strong().underline());
 
                     if ui
-                        .small_icon_button(&re_ui::icons::CLOSE, "Go back")
-                        .on_hover_text("Go back")
+                        .small_icon_button(&re_ui::icons::CLOSE, "Clear login status")
+                        .on_hover_text("Clear login status")
                         .clicked()
                     {
-                        new_state = Some(AuthenticationState::LoginOrAddToken);
+                        auth.email = None;
+                        auth.error = None;
+                        auth.reset_login_flow();
                     }
-                }
-                AuthenticationState::LoginFlow(flow) => {
-                    if let Some(result) = flow.ui(ui, cmd) {
-                        match result {
-                            LoginFlowResult::Success(credentials) => {
-                                auth.email = Some(credentials.user().email.clone());
-                                new_state = Some(AuthenticationState::LoginOrAddToken);
+                } else {
+                    if auth.error.is_some() && auth.login_flow.is_none() {
+                        if ui.button("Try again").clicked() {
+                            auth.error = None;
+                        }
+                    } else {
+                        if auth.login_flow.is_none() {
+                            match LoginFlow::open(ui) {
+                                Ok(flow) => {
+                                    auth.login_flow = Some(flow);
+                                    auth.error = None;
+                                }
+                                Err(err) => {
+                                    auth.error = Some(err);
+                                }
                             }
-                            LoginFlowResult::Failure(err) => {
-                                new_state = Some(AuthenticationState::Error(err));
+                        }
+
+                        if let Some(flow) = &mut auth.login_flow {
+                            if let Some(result) = flow.ui(ui, cmd) {
+                                match result {
+                                    LoginFlowResult::Success(credentials) => {
+                                        auth.email = Some(credentials.user().email.clone());
+                                        auth.error = None;
+                                        // Clear login flow to close popup window
+                                        auth.reset_login_flow();
+                                    }
+                                    LoginFlowResult::Failure(err) => {
+                                        auth.error = Some(err);
+                                        // Clear login flow so user can retry
+                                        auth.reset_login_flow();
+                                    }
+                                }
                             }
                         }
                     }
                 }
-                AuthenticationState::Error(err) => {
-                    ui.error_label(err.clone());
+
+                ui.add_space(6.0);
+                ui.label("or");
+                ui.add_space(6.0);
+
+                if ui
+                    .link(RichText::new("Add a token").strong().underline())
+                    .clicked()
+                {
+                    auth.show_token_input = true;
+                    auth.error = None;
                 }
             }
-
-            if let Some(new_state) = new_state {
-                auth.state = new_state;
-            }
         });
+    });
+
+    ui.horizontal(|ui| {
+        ui.set_min_width(300.0);
+        ui.set_width(300.0);
+        if !auth.show_token_input && auth.email.is_none() {
+            if let Some(error) = &auth.error {
+                ui.error_label(error.clone());
+            }
+        }
     });
 }
