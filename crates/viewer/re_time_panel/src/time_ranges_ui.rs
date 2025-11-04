@@ -539,13 +539,11 @@ fn time_snap_value_smaller_than(max: f64) -> i64 {
         return 1;
     }
 
-    if 1_000_000_000_000_000.0 < max {
-        return 1_000_000_000_000_000;
-    }
+    let magnitude = max.log10().floor() as u32;
+    let magnitude = magnitude.at_most(16); // Avoid overfloing i64 below
+    let step = 10_i64.pow(magnitude);
 
-    let step = 10_i64.pow(max.log10().floor() as u32);
-
-    if ((5 * step) as f64) <= max {
+    if 5.0 * step as f64 <= max {
         5 * step
     } else {
         step
