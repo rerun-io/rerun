@@ -29,6 +29,7 @@ mod data {
     pub const SW_JS: &[u8] = include_bytes!("../web_viewer/sw.js");
     pub const VIEWER_JS: &[u8] = include_bytes!("../web_viewer/re_viewer.js");
     pub const VIEWER_WASM: &[u8] = include_bytes!("../web_viewer/re_viewer_bg.wasm");
+    pub const SIGNED_IN_HTML: &[u8] = include_bytes!("./signed-in.html");
 }
 
 /// Failure to host the web viewer.
@@ -245,6 +246,7 @@ impl WebViewerServerInner {
                 self.on_serve_wasm();
                 ("application/wasm", data::VIEWER_WASM)
             }
+            "/signed-in" => ("text/html", data::SIGNED_IN_HTML),
             _ => {
                 re_log::warn!("404 path: {}", path);
                 return request.respond(tiny_http::Response::empty(404));

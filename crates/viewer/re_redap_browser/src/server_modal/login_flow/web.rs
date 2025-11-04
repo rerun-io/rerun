@@ -63,22 +63,24 @@ impl State {
 
         // Open popup window at `/login/v2`:
         let parent_window = web_sys::window().expect("no window available");
-        let origin = parent_window.location().origin().map_err(js_value_to_string)?;
+        let origin = parent_window
+            .location()
+            .origin()
+            .map_err(js_value_to_string)?;
 
         let return_to = format!(
             "{origin}/signed-in?n={nonce}",
             nonce = BASE64_URL_SAFE.encode(&self.nonce),
         );
         let login_url = format!(
-            "/login/v2?r={return_to}",
+            "{login_page_url}?r={return_to}",
+            login_page_url = &*re_auth::oauth::api::DEFAULT_LOGIN_URL,
             return_to = BASE64_URL_SAFE.encode(&return_to),
         );
 
-        let Some(child_window) = parent_window.open_with_url_and_target_and_features(
-            &login_url,
-            "auth",
-            "width=480,height=640",
-        ).map_err(js_value_to_string)?
+        let Some(child_window) = parent_window
+            .open_with_url_and_target_and_features(&login_url, "auth", "width=480,height=640")
+            .map_err(js_value_to_string)?
         else {
             return Err("window.open did not return a handle".into());
         };
@@ -124,7 +126,10 @@ impl State {
         let egui_ctx = ui.ctx().clone();
 
         let parent_window = web_sys::window().expect("no window available");
-        let nonce = parent_window.crypto().map_err(js_value_to_string)?.random_uuid();
+        let nonce = parent_window
+            .crypto()
+            .map_err(js_value_to_string)?
+            .random_uuid();
 
         let result = Rc::new(RefCell::new(None));
 

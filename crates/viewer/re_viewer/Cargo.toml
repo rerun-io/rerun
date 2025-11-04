@@ -111,7 +111,6 @@ tokio = { workspace = true, optional = true }
 ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
-base64.workspace = true
 bytemuck.workspace = true
 cfg-if.workspace = true
 crossbeam.workspace = true

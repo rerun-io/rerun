@@ -1,14 +1,8 @@
 use base64::prelude::*;
 use rand::{Rng as _, SeedableRng as _, rngs::StdRng};
 
-use crate::oauth::{CredentialsStoreError, MalformedTokenError};
-use std::{borrow::Cow, collections::HashMap, sync::LazyLock};
-
-static DEFAULT_LOGIN_URL: LazyLock<String> = LazyLock::new(|| {
-    std::env::var("DEFAULT_LOGIN_URL")
-        .ok()
-        .unwrap_or_else(|| "https://rerun.io/login/v2".into())
-});
+use crate::oauth::{CredentialsStoreError, MalformedTokenError, api::DEFAULT_LOGIN_URL};
+use std::{borrow::Cow, collections::HashMap};
 
 pub struct OauthCallbackServer {
     server: tiny_http::Server,

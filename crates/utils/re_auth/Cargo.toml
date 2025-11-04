@@ -27,13 +27,19 @@ cli = [
   "dep:indicatif",
   "dep:serde",
   "dep:serde_json",
-  "dep:tiny_http",
-  "dep:url",
   "dep:webbrowser",
   "oauth",
 ]
 
-oauth = ["dep:base64", "dep:directories", "dep:ehttp", "dep:serde", "dep:serde_json"]
+oauth = [
+"dep:base64",
+"dep:directories",
+"dep:ehttp",
+"dep:serde",
+"dep:serde_json",
+"dep:tiny_http",
+"dep:url",
+]
 
 [dependencies]
 re_log.workspace = true
@@ -52,16 +58,16 @@ base64 = { workspace = true, optional = true }
 indicatif = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
-tiny_http = { workspace = true, optional = true }
 url = { workspace = true, optional = true }
 webbrowser = { workspace = true, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 base64.workspace = true
+directories = { workspace = true, optional = true }
+ehttp = { workspace = true, optional = true, features = ["json", "native-async"] }
 rand = { workspace = true, features = ["std", "std_rng", "os_rng"] }
 serde.workspace = true
-ehttp = { workspace = true, optional = true, features = ["json", "native-async"] }
-directories = { workspace = true, optional = true }
+tiny_http = { workspace = true, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 ehttp = { workspace = true, optional = true, features = ["json"] }

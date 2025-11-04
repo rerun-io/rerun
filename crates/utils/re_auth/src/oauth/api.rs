@@ -10,6 +10,12 @@ static API_BASE_URL: LazyLock<String> = LazyLock::new(|| {
         .unwrap_or_else(|| "https://rerun.io/api".into())
 });
 
+pub static DEFAULT_LOGIN_URL: LazyLock<String> = LazyLock::new(|| {
+    std::env::var("DEFAULT_LOGIN_URL")
+        .ok()
+        .unwrap_or_else(|| "https://rerun.io/login/v2".into())
+});
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("failed to serialize request: {0}")]
