@@ -137,8 +137,6 @@ impl SpatialView3D {
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        state.space_origin = Some(query.space_origin.clone());
-
         let highlights = &query.highlights;
         let space_cameras = &system_output
             .view_systems

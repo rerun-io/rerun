@@ -206,14 +206,8 @@ impl ViewClass for SpatialView3D {
                 }
 
 
-                let Some(space_origin) = &view_state.space_origin else {
-                    return Position3D::ZERO;
-                };
-
-                let Some(scene_view_coordinates) =
-                    query_view_coordinates(space_origin, ctx.recording(), &ctx.view_ctx.current_query()) else {
-                    return Position3D::ZERO;
-                };
+                let scene_view_coordinates =
+                    view_state.state_3d.scene_view_coordinates.unwrap_or_default();
 
                 let scene_right = scene_view_coordinates
                     .right()
@@ -252,20 +246,14 @@ impl ViewClass for SpatialView3D {
                     return Vector3D(Vec3D::new(0.0, 0.0, 1.0));
                 };
 
-                let Some(space_origin) = &view_state.space_origin else {
-                    return Vector3D(Vec3D::new(0.0, 0.0, 1.0));
-                };
-
-                let Some(scene_view_coordinates) =
-                    query_view_coordinates(space_origin, ctx.recording(), &ctx.view_ctx.current_query()) else {
-                    return Vector3D(Vec3D::new(0.0, 0.0, 1.0));
-                };
+                let scene_view_coordinates =
+                    view_state.state_3d.scene_view_coordinates.unwrap_or_default();
 
                 let scene_up = scene_view_coordinates
                     .up()
                     .unwrap_or(SignedAxis3::POSITIVE_Z);
 
-                let eye_up: glam::Vec3 = scene_up.into();
+                let eye_up = glam::Vec3::from(scene_up).normalize_or(Vec3::Z);
 
                 Vector3D(Vec3D::new(eye_up.x, eye_up.y, eye_up.z))
             },
@@ -573,8 +561,6 @@ impl ViewClass for SpatialView3D {
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialViewState>()?;
-
-        state.space_origin = Some(space_origin.clone());
 
         let scene_view_coordinates =
             query_view_coordinates(space_origin, ctx.recording(), &ctx.current_query());

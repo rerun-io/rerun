@@ -54,9 +54,6 @@ pub struct ImageCounts {
 pub struct SpatialViewState {
     pub bounding_boxes: SceneBoundingBoxes,
 
-    /// Currently to pass the space origin to fallbacks we have to use this state.
-    pub space_origin: Option<EntityPath>,
-
     /// Number of images per image kind processed last frame.
     pub image_counts_last_frame: ImageCounts,
 

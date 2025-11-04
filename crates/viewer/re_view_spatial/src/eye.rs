@@ -266,12 +266,21 @@ impl RawEye {
     }
 
     fn up(&self) -> Vec3 {
-        let up = self.eye_up.normalize_or(Vec3::Z);
-
-        if up == self.fwd() {
-            if up == Vec3::Z { Vec3::X } else { Vec3::Z }
+        let fwd = self.fwd();
+        let right = if fwd == Vec3::Z {
+            Vec3::X
         } else {
-            up
+            fwd.cross(Vec3::Z)
+        };
+
+        let fallback = fwd.cross(right).normalize_or_zero();
+
+        let res = self.eye_up.normalize_or(fallback);
+
+        if res.dot(fwd).abs() > 0.9999 {
+            fallback
+        } else {
+            res
         }
     }
 
@@ -286,14 +295,12 @@ impl RawEye {
         }
     }
 
-    fn rotation_and_radius(&self) -> (Quat, f32) {
-        let d = match self.kind {
-            Eye3DKind::FirstPerson => 1.0,
-            Eye3DKind::Orbital => self.pos.distance(self.look_target),
-        };
-        let rot = Quat::look_to_rh(self.fwd(), self.up()).inverse();
+    fn radius(&self) -> f32 {
+        self.pos.distance(self.look_target)
+    }
 
-        (rot, d)
+    fn rotation(&self) -> Quat {
+        Quat::look_to_rh(self.fwd(), self.up()).inverse()
     }
 
     fn apply_rotation_and_radius(&mut self, rot: Quat, d: f32) {
@@ -314,7 +321,8 @@ impl RawEye {
 
         let delta = sensitivity * delta;
 
-        let (mut rot, d) = self.rotation_and_radius();
+        let mut rot = self.rotation();
+        let radius = self.radius();
 
         if let Some(old_pitch) = self.pitch() {
             // 2-dof rotation
@@ -337,12 +345,13 @@ impl RawEye {
             rot *= rot_delta;
         }
 
-        self.apply_rotation_and_radius(rot, d);
+        self.apply_rotation_and_radius(rot, radius);
     }
 
     /// Rotate around forward axis
     fn roll(&mut self, rect: &egui::Rect, pointer_pos: egui::Pos2, delta: egui::Vec2) {
-        let (mut rot, d) = self.rotation_and_radius();
+        let mut rot = self.rotation();
+        let radius = self.radius();
         // steering-wheel model
         let rel = pointer_pos - rect.center();
         let delta_angle = delta.rot90().dot(rel) / rel.length_sq();
@@ -353,18 +362,17 @@ impl RawEye {
         rot *= rot_delta;
 
         // Permanently change our up-axis, at least until the user resets the view:
-        self.eye_up = rot * up_in_view;
+        self.eye_up = (rot * up_in_view).normalize_or_zero();
 
         // Prevent numeric drift:
         rot = rot.normalize();
-        self.eye_up = self.eye_up.normalize_or_zero();
 
-        self.apply_rotation_and_radius(rot, d);
+        self.apply_rotation_and_radius(rot, radius);
     }
 
     /// Given a delta in view-space, translate the eye.
     fn translate(&mut self, delta_in_view: egui::Vec2) {
-        let (rot, _) = self.rotation_and_radius();
+        let rot = self.rotation();
         let up = rot * Vec3::Y;
         let right = rot * -Vec3::X; // TODO(emilk): why do we need a negation here? O.o
 
@@ -463,7 +471,7 @@ impl RawEye {
             local_movement.y += input.key_down(egui::Key::E) as i32 as f32;
             local_movement = local_movement.normalize_or_zero();
 
-            let (rot, _) = self.rotation_and_radius();
+            let rot = self.rotation();
 
             let world_movement = rot * (self.speed as f32 * local_movement);
 
@@ -615,7 +623,7 @@ impl EyeState {
             eye_controls
                 .component_or_fallback::<Vector3D>(
                     ctx,
-                    EyeControls3D::descriptor_look_target().component,
+                    EyeControls3D::descriptor_eye_up().component,
                 )?
                 .0
                 .0,
@@ -777,7 +785,7 @@ impl EyeState {
             Eye3DKind::Orbital => eye.look_target,
         });
         self.last_orbit_radius = Some(eye.pos.distance(eye.look_target));
-        self.last_eye_up = Some(eye.eye_up);
+        self.last_eye_up = Some(eye.up());
 
         Ok(eye.get_eye())
     }
