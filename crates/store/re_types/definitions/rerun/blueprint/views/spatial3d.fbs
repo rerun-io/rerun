@@ -12,8 +12,11 @@ table Spatial3DView (
     /// Configuration for the 3D line grid.
     line_grid: rerun.blueprint.archetypes.LineGrid3D (order: 2000);
 
+    /// Configuration of debug drawing in the 3d view.
+    spatial_information: rerun.blueprint.archetypes.SpatialInformation (order: 3000);
+
     /// Configuration for the 3D eye
-    eye_controls: rerun.blueprint.archetypes.EyeControls3D (order: 3000);
+    eye_controls: rerun.blueprint.archetypes.EyeControls3D (order: 4000);
 
     /// Configures which range on each timeline is shown by this view (unless specified differently per entity).
     ///

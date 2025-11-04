@@ -9,7 +9,7 @@ use re_tf::query_view_coordinates;
 use re_types::{
     Component as _, View as _, ViewClassIdentifier, archetypes,
     blueprint::{
-        archetypes::{Background, EyeControls3D, LineGrid3D},
+        archetypes::{Background, EyeControls3D, LineGrid3D, SpatialInformation},
         components::Eye3DKind,
     },
     components::{LinearSpeed, Plane3D, Position3D, Vector3D},
@@ -586,16 +586,6 @@ impl ViewClass for SpatialView3D {
                 ui.label(up_description).on_hover_ui(|ui| {
                     ui.markdown_ui("Set with `rerun.ViewCoordinates`.");
                 });
-
-                ui.re_checkbox(&mut state.state_3d.show_axes, "Show origin axes")
-                    .on_hover_text("Show X-Y-Z axes");
-                ui.re_checkbox(&mut state.state_3d.show_bbox, "Show bounding box")
-                    .on_hover_text("Show the current scene bounding box");
-                ui.re_checkbox(
-                    &mut state.state_3d.show_smoothed_bbox,
-                    "Show smoothed bounding box",
-                )
-                .on_hover_text("Show a smoothed bounding box used for some heuristics");
             });
             ui.end_row();
 
@@ -607,6 +597,7 @@ impl ViewClass for SpatialView3D {
             view_property_ui::<EyeControls3D>(&view_ctx, ui);
             view_property_ui::<Background>(&view_ctx, ui);
             view_property_ui_grid3d(&view_ctx, ui);
+            view_property_ui::<SpatialInformation>(&view_ctx, ui);
         });
 
         Ok(())

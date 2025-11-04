@@ -104,6 +104,7 @@ class Spatial3DView(View):
         | blueprint_components.BackgroundKindLike
         | None = None,
         line_grid: blueprint_archetypes.LineGrid3D | datatypes.BoolLike | None = None,
+        spatial_information: blueprint_archetypes.SpatialInformation | None = None,
         eye_controls: blueprint_archetypes.EyeControls3D | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
         | datatypes.VisibleTimeRangeLike
@@ -149,6 +150,8 @@ class Spatial3DView(View):
             Configuration for the background of the view.
         line_grid:
             Configuration for the 3D line grid.
+        spatial_information:
+            Configuration of debug drawing in the 3d view.
         eye_controls:
             Configuration for the 3D eye
         time_ranges:
@@ -169,6 +172,11 @@ class Spatial3DView(View):
             if not isinstance(line_grid, blueprint_archetypes.LineGrid3D):
                 line_grid = blueprint_archetypes.LineGrid3D(line_grid)
             properties["LineGrid3D"] = line_grid
+
+        if spatial_information is not None:
+            if not isinstance(spatial_information, blueprint_archetypes.SpatialInformation):
+                spatial_information = blueprint_archetypes.SpatialInformation(spatial_information)
+            properties["SpatialInformation"] = spatial_information
 
         if eye_controls is not None:
             if not isinstance(eye_controls, blueprint_archetypes.EyeControls3D):

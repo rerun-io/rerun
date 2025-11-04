@@ -32,6 +32,9 @@ pub struct Spatial3DView {
     /// Configuration for the 3D line grid.
     pub line_grid: crate::blueprint::archetypes::LineGrid3D,
 
+    /// Configuration of debug drawing in the 3d view.
+    pub spatial_information: crate::blueprint::archetypes::SpatialInformation,
+
     /// Configuration for the 3D eye
     pub eye_controls: crate::blueprint::archetypes::EyeControls3D,
 
@@ -54,6 +57,7 @@ impl ::re_byte_size::SizeBytes for Spatial3DView {
     fn heap_size_bytes(&self) -> u64 {
         self.background.heap_size_bytes()
             + self.line_grid.heap_size_bytes()
+            + self.spatial_information.heap_size_bytes()
             + self.eye_controls.heap_size_bytes()
             + self.time_ranges.heap_size_bytes()
     }
@@ -62,6 +66,7 @@ impl ::re_byte_size::SizeBytes for Spatial3DView {
     fn is_pod() -> bool {
         <crate::blueprint::archetypes::Background>::is_pod()
             && <crate::blueprint::archetypes::LineGrid3D>::is_pod()
+            && <crate::blueprint::archetypes::SpatialInformation>::is_pod()
             && <crate::blueprint::archetypes::EyeControls3D>::is_pod()
             && <crate::blueprint::archetypes::VisibleTimeRanges>::is_pod()
     }

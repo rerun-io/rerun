@@ -3868,6 +3868,38 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.blueprint.archetypes.SpatialInformation"),
+            ArchetypeReflection {
+                display_name: "Spatial information",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "show_axes",
+                        display_name: "Show axes",
+                        component_type: "rerun.blueprint.components.Enabled".into(),
+                        docstring_md: "Whether axes should be shown at the origin.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "show_bounding_box",
+                        display_name: "Show bounding box",
+                        component_type: "rerun.blueprint.components.Enabled".into(),
+                        docstring_md: "Whether the bounding box should be shown.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "show_smoothed_bounding_box",
+                        display_name: "Show smoothed bounding box",
+                        component_type: "rerun.blueprint.components.Enabled".into(),
+                        docstring_md: "Whether the smoothed bounding box should be shown.",
+                        is_required: false,
+                    },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.blueprint.archetypes.TensorScalarMapping"),
             ArchetypeReflection {
                 display_name: "Tensor scalar mapping",

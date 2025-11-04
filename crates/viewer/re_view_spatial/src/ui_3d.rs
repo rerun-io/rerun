@@ -9,8 +9,8 @@ use re_renderer::{
 use re_tf::{image_view_coordinates, query_view_coordinates_at_closest_ancestor};
 use re_types::{
     blueprint::{
-        archetypes::{Background, EyeControls3D, LineGrid3D},
-        components::GridSpacing,
+        archetypes::{Background, EyeControls3D, LineGrid3D, SpatialInformation},
+        components::{Enabled, GridSpacing},
     },
     components::{ViewCoordinates, Visible},
 };
@@ -45,11 +45,6 @@ pub struct View3DState {
     /// Used to detect changes in view coordinates, in which case we reset the camera eye.
     pub scene_view_coordinates: Option<ViewCoordinates>,
 
-    // options:
-    pub show_axes: bool,
-    pub show_bbox: bool,
-    pub show_smoothed_bbox: bool,
-
     eye_interact_fade_in: bool,
     eye_interact_fade_change_time: f64,
 }
@@ -59,9 +54,6 @@ impl Default for View3DState {
         Self {
             eye_state: Default::default(),
             scene_view_coordinates: None,
-            show_axes: false,
-            show_bbox: false,
-            show_smoothed_bbox: false,
             eye_interact_fade_in: false,
             eye_interact_fade_change_time: f64::NEG_INFINITY,
         }
@@ -159,6 +151,25 @@ impl SpatialView3D {
 
         let view_context = self.view_context(ctx, query.view_id, state);
 
+        let information_property = ViewProperty::from_archetype::<SpatialInformation>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.view_id,
+        );
+
+        let show_axes = **information_property.component_or_fallback::<Enabled>(
+            &view_context,
+            SpatialInformation::descriptor_show_axes().component,
+        )?;
+        let show_bounding_box = **information_property.component_or_fallback::<Enabled>(
+            &view_context,
+            SpatialInformation::descriptor_show_bounding_box().component,
+        )?;
+        let show_smoothed_bounding_box = **information_property.component_or_fallback::<Enabled>(
+            &view_context,
+            SpatialInformation::descriptor_show_smoothed_bounding_box().component,
+        )?;
+
         state_3d.update(scene_view_coordinates);
 
         let eye = state_3d.eye_state.update(
@@ -189,7 +200,7 @@ impl SpatialView3D {
         // Origin gizmo if requested.
         // TODO(andreas): Move this to the transform3d_arrow scene part.
         //              As of #2522 state is now longer accessible there, move the property to a context?
-        if state.state_3d.show_axes {
+        if show_axes {
             let axis_length = 1.0; // The axes are also a measuring stick
             crate::visualizers::add_axis_arrows(
                 ctx.tokens(),
@@ -353,7 +364,7 @@ impl SpatialView3D {
         // TODO(andreas): Make configurable. Could pick up default radius for this view?
         let box_line_radius = Size(*re_types::components::Radius::default().0);
 
-        if state.state_3d.show_bbox {
+        if show_bounding_box {
             line_builder
                 .batch("scene_bbox_current")
                 .add_box_outline(&state.bounding_boxes.current)
@@ -363,7 +374,7 @@ impl SpatialView3D {
                         .color(ui.tokens().frustum_color)
                 });
         }
-        if state.state_3d.show_smoothed_bbox {
+        if show_smoothed_bounding_box {
             line_builder
                 .batch("scene_bbox_smoothed")
                 .add_box_outline(&state.bounding_boxes.smoothed)

@@ -21,6 +21,12 @@ Configuration for the 3D line grid.
 * `plane`: In what plane the grid is drawn.
 * `stroke_width`: How thick the lines should be in ui units.
 * `color`: Color used for the grid.
+### `spatial_information`
+Configuration of debug drawing in the 3d view.
+
+* `show_axes`: Whether axes should be shown at the origin.
+* `show_bounding_box`: Whether the bounding box should be shown.
+* `show_smoothed_bounding_box`: Whether the smoothed bounding box should be shown.
 ### `eye_controls`
 Configuration for the 3D eye
 
