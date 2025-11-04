@@ -1,7 +1,8 @@
+use std::collections::BTreeMap;
+
 use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
-use std::collections::BTreeMap;
 use tonic::async_trait;
 use url::Url;
 
@@ -182,6 +183,9 @@ pub enum LayerType {
         embeddings: u32,
         embeddings_per_row: u32,
     },
+
+    /// See [`crate::create_simple_blueprint`]
+    SimpleBlueprint,
 }
 
 impl LayerType {
@@ -214,6 +218,10 @@ impl LayerType {
             embeddings,
             embeddings_per_row,
         }
+    }
+
+    pub fn simple_blueprint() -> Self {
+        Self::SimpleBlueprint
     }
 
     fn into_recording(
@@ -253,6 +261,8 @@ impl LayerType {
                 embeddings,
                 embeddings_per_row,
             ),
+
+            Self::SimpleBlueprint => crate::create_simple_blueprint(tuid_prefix, partition_id),
         }
     }
 }
@@ -323,6 +333,14 @@ impl LayerDefinition {
             partition_id,
             layer_name: None,
             layer_type: LayerType::embeddings(embeddings, embeddings_per_row),
+        }
+    }
+
+    pub fn simple_blueprint(partition_id: &'static str) -> Self {
+        Self {
+            partition_id,
+            layer_name: None,
+            layer_type: LayerType::simple_blueprint(),
         }
     }
 

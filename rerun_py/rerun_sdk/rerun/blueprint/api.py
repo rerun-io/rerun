@@ -23,6 +23,7 @@ from .components import PanelState, PanelStateLike
 
 if TYPE_CHECKING:
     from datetime import datetime, timedelta
+    from pathlib import Path
 
     import numpy as np
 
@@ -741,7 +742,7 @@ class Blueprint:
 
         bindings.connect_grpc_blueprint(url, make_active, make_default, blueprint_stream.to_native())
 
-    def save(self, application_id: str, path: str | None = None) -> None:
+    def save(self, application_id: str, path: str | Path | None = None) -> None:
         """
         Save this blueprint to a file. Rerun recommends the `.rbl` suffix.
 
@@ -757,6 +758,8 @@ class Blueprint:
 
         if path is None:
             path = f"{application_id}.rbl"
+        else:
+            path = str(path)
 
         blueprint_stream = RecordingStream._from_native(
             bindings.new_blueprint(
