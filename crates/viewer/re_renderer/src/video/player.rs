@@ -412,7 +412,7 @@ impl VideoPlayer {
             && !treat_video_as_live_stream(&self.config, video_description)
             && self.enqueued_last_sample_of_video(video_description)
         {
-            re_log::debug!("Signaling end of video");
+            re_log::trace!("Signaling end of video");
             self.signaled_end_of_video = true;
             self.sample_decoder.end_of_video()?;
         }
