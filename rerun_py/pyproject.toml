@@ -228,13 +228,12 @@ max-positional-args = 3
 required-imports = ["from __future__ import annotations"]
 combine-as-imports = true # needed so keep rerun_sdk/__init__.py clean
 
-# In most places (scripts, snippets, tests, etc.), we want to present rerun as a third party package. The notable
-# exception is the actual package implementation, which is covered by a separate `ruff.toml` file.
+# Sometime Ruff is unable to guess that this is first-party package. Since it's disallowed outside of context where
+# it should be considered first-party (e.g. tests, scripts), it's OK to enforce it here.
 known-first-party = ["rerun_bindings"]
 
-
-# We should never use these as they are internal APIs. The exception is `rerun`'s implementation, which is covered by a
-# `ruff.toml` file.
+# We should never use these as they are internal APIs. The exception is `rerun`'s implementation, which is covered by
+# `per-file-ignores` exceptions.
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "rerun_bindings".msg = "Internal API"
 "rerun_cli".msg = "Only for running CLI"
