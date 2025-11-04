@@ -7,10 +7,11 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 import pytest
-from rerun_bindings import _IndexValuesLikeInternal
+
+from rerun_bindings import _IndexValuesLikeInternal  # noqa: TID251
 
 if TYPE_CHECKING:
-    from rerun_bindings.types import IndexValuesLike
+    from rerun_bindings.types import IndexValuesLike  # noqa: TID251
 
 # Generate source data so truncation doesn't lose correctness.
 MS_TO_NS = 1_000_000

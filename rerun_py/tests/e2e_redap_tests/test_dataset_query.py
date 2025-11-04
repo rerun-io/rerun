@@ -94,7 +94,7 @@ def test_tables_to_arrow_reader(server_instance: ServerInstance) -> None:
 
 def test_query_view_from_schema(server_instance: ServerInstance) -> None:
     """Verify Our Schema is sufficiently descriptive to extract all contents from dataset."""
-    from rerun_bindings import IndexColumnDescriptor
+    from rerun.dataframe import IndexColumnDescriptor
 
     dataset = server_instance.dataset
 
