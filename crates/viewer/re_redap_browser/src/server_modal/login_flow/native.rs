@@ -1,9 +1,6 @@
 use std::time::Duration;
 
-use re_auth::{
-    callback_server::OauthCallbackServer,
-    oauth::Credentials,
-};
+use re_auth::{callback_server::OauthCallbackServer, oauth::Credentials};
 use re_ui::icons;
 
 use super::ActionButton;

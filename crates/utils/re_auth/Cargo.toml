@@ -22,23 +22,16 @@ version.workspace = true
 workspace = true
 
 [features]
-cli = [
-  "dep:base64",
-  "dep:indicatif",
-  "dep:serde",
-  "dep:serde_json",
-  "dep:webbrowser",
-  "oauth",
-]
+cli = ["dep:base64", "dep:indicatif", "dep:serde", "dep:serde_json", "dep:webbrowser", "oauth"]
 
 oauth = [
-"dep:base64",
-"dep:directories",
-"dep:ehttp",
-"dep:serde",
-"dep:serde_json",
-"dep:tiny_http",
-"dep:url",
+  "dep:base64",
+  "dep:directories",
+  "dep:ehttp",
+  "dep:serde",
+  "dep:serde_json",
+  "dep:tiny_http",
+  "dep:url",
 ]
 
 [dependencies]
@@ -80,10 +73,7 @@ js-sys.workspace = true
 #         There should be no errors in the browser console.
 #     For details see https://github.com/rerun-io/rerun/issues/8766
 wasm-bindgen = "=0.2.100" # ⚠️ read above notice before touching this!
-web-sys = { workspace = true, features = [
-  "Storage",
-  "Window",
-] }
+web-sys = { workspace = true, features = ["Storage", "Window"] }
 
 [dev-dependencies]
 rand = { workspace = true, features = ["std", "std_rng"] }
