@@ -120,7 +120,7 @@ pub struct CachedTransformsForTimeline {
     per_entity_affected_child_frames: PerEntityAffectedChildFrames,
 
     /// Transforms information for each child frame to a parent frame over time.
-    // Note that this these are potentially a lot of mutexes, but `parking_lot`-Mutex are incredibly lightweight on all platforms, so not a memory concern.
+    // Note that these are potentially a lot of mutexes, but `parking_lot`-Mutex are incredibly lightweight on all platforms, so not a memory concern.
     per_child_frame_transforms: IntMap<TransformFrameIdHash, Mutex<TransformsForChildFrame>>,
 
     // We need to keep track of all recursive clears that ever happened and when.
