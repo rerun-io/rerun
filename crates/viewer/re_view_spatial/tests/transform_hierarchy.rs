@@ -2,8 +2,9 @@ use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};
-use re_viewport_blueprint::ViewBlueprint;
+use re_types::{blueprint::archetypes::EyeControls3D, components::Position3D};
+use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
+use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 #[test]
 pub fn test_transform_hierarchy() {
@@ -186,16 +187,18 @@ fn run_view_ui_and_save_snapshot(
         // * 6: The logo rotated 45 degrees around the y axis (green).
         // * 7: The logo is back to normal (frame 0) again.
 
-        let raw_input = harness.input_mut();
-        raw_input
-            .events
-            .push(egui::Event::PointerMoved((100.0, 100.0).into()));
-        raw_input.events.push(egui::Event::MouseWheel {
-            unit: egui::MouseWheelUnit::Line,
-            delta: egui::Vec2::UP * 3.0,
-            modifiers: egui::Modifiers::default(),
+        test_context.with_blueprint_ctx(|ctx, _| {
+            ViewProperty::from_archetype::<EyeControls3D>(
+                ctx.current_blueprint(),
+                ctx.blueprint_query(),
+                view_id,
+            )
+            .save_blueprint_component(
+                &ctx,
+                &EyeControls3D::descriptor_position(),
+                &Position3D::new(0.0, 8.0, 10.0),
+            );
         });
-        harness.run_steps(8);
 
         let mut errors = Vec::new();
         for time in 0..=7 {
