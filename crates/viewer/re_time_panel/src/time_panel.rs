@@ -1676,13 +1676,17 @@ fn paint_time_ranges_gaps(
         .cloned()
         .collect::<Vec<_>>();
 
+    // Margin for the (left or right) end of a gap.
+    // Don't use an arbitrarily large value since it can cause platform-specific rendering issues.
+    const GAP_END_MARGIN: f32 = 100.0;
+
     if let Some(segment_subrange) = valid_time_ranges.first() {
         let gap_edge = *segment_subrange.start() as f32;
+        let gap_edge_left_side = ui.ctx().content_rect().left() - GAP_END_MARGIN;
 
         if zig_zag_first_and_last_edges {
-            // Careful with subtracting a too large number here. Nvidia @ Windows was observed not drawing the rect correctly for -100_000.0
             // Left side of first segment - paint as a very wide gap that we only see the right side of
-            paint_time_gap(gap_edge - 10_000.0, gap_edge);
+            paint_time_gap(gap_edge_left_side, gap_edge);
         } else {
             // Careful with subtracting a too large number here. Nvidia @ Windows was observed not drawing the rect correctly for -100_000.0
             painter.rect_filled(
@@ -1700,12 +1704,14 @@ fn paint_time_ranges_gaps(
 
     if let Some(segment_subrange) = valid_time_ranges.last() {
         let gap_edge = *segment_subrange.end() as f32;
+        let gap_edge_right_side = ui.ctx().content_rect().right() + GAP_END_MARGIN;
+
         if zig_zag_first_and_last_edges {
             // Right side of last segment - paint as a very wide gap that we only see the left side of
-            paint_time_gap(gap_edge, gap_edge + 100_000.0);
+            paint_time_gap(gap_edge, gap_edge_right_side);
         } else {
             painter.rect_filled(
-                Rect::from_min_max(pos2(gap_edge, top), pos2(gap_edge + 100_000.0, bottom)),
+                Rect::from_min_max(pos2(gap_edge, top), pos2(gap_edge_right_side, bottom)),
                 0.0,
                 fill_color,
             );
