@@ -195,13 +195,14 @@ impl PyCatalogClientInternal {
             .map(|details| {
                 let id = Py::new(py, PyEntryId::from(details.id))?;
 
+                let table_entry = connection.read_table(py, details.id)?;
+                let table = PyTableEntry::new(&table_entry);
+
                 let entry = PyEntry {
                     client: self_.clone_ref(py),
                     id,
                     details,
                 };
-
-                let table = PyTableEntry::default();
 
                 Py::new(py, (table, entry))
             })
@@ -286,14 +287,13 @@ impl PyCatalogClientInternal {
         let client = self_.clone_ref(py);
 
         let table_entry = connection.read_table(py, id.borrow(py).id)?;
+        let table = PyTableEntry::new(&table_entry);
 
         let entry = PyEntry {
             client,
             id,
             details: table_entry.details,
         };
-
-        let table = PyTableEntry::default();
 
         Py::new(py, (table, entry))
     }
@@ -335,6 +335,7 @@ impl PyCatalogClientInternal {
             .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
 
         let table_entry = connection.register_table(py, name, url)?;
+        let table = PyTableEntry::new(&table_entry);
 
         let entry_id = Py::new(py, PyEntryId::from(table_entry.details.id))?;
 
@@ -343,8 +344,6 @@ impl PyCatalogClientInternal {
             id: entry_id,
             details: table_entry.details,
         };
-
-        let table = PyTableEntry::default();
 
         Py::new(py, (table, entry))
     }
@@ -364,6 +363,7 @@ impl PyCatalogClientInternal {
 
         let schema = Arc::new(schema.0);
         let table_entry = connection.create_table_entry(py, name, schema, &url)?;
+        let table = PyTableEntry::new(&table_entry);
 
         let entry_id = Py::new(py, PyEntryId::from(table_entry.details.id))?;
 
@@ -372,8 +372,6 @@ impl PyCatalogClientInternal {
             id: entry_id,
             details: table_entry.details,
         };
-
-        let table = PyTableEntry::default();
 
         Py::new(py, (table, entry))
     }

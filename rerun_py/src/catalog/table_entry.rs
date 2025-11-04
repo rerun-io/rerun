@@ -16,16 +16,16 @@ use crate::{
     utils::{get_tokio_runtime, wait_for_future},
 };
 use re_datafusion::TableEntryTableProvider;
-use re_protos::cloud::v1alpha1::ext::TableInsertMode;
+use re_protos::cloud::v1alpha1::ext::{ProviderDetails, TableEntry, TableInsertMode};
 
 /// A table entry in the catalog.
 ///
 /// Note: this object acts as a table provider for DataFusion.
 //TODO(ab): expose metadata about the table (e.g. stuff found in `provider_details`).
 #[pyclass(name = "TableEntry", extends=PyEntry, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
-#[derive(Default)]
 pub struct PyTableEntry {
     lazy_provider: Option<Arc<dyn TableProvider + Send>>,
+    url: Option<String>,
 }
 
 #[pymethods]
@@ -77,9 +77,26 @@ impl PyTableEntry {
             .getattr("RecordBatchReader")?
             .call_method1("from_stream", (df,))
     }
+
+    /// The entry's URL
+    #[getter]
+    pub fn url(&self) -> String {
+        self.url.clone().unwrap_or_default()
+    }
 }
 
 impl PyTableEntry {
+    pub fn new(table_entry: &TableEntry) -> Self {
+        let url = match &table_entry.provider_details {
+            ProviderDetails::LanceTable(p) => Some(p.table_url.to_string()),
+            ProviderDetails::SystemTable(_) => None,
+        };
+        Self {
+            lazy_provider: None,
+            url,
+        }
+    }
+
     fn table_provider(mut self_: PyRefMut<'_, Self>) -> PyResult<Arc<dyn TableProvider + Send>> {
         let py = self_.py();
         if self_.lazy_provider.is_none() {
