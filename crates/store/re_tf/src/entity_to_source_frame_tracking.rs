@@ -76,6 +76,8 @@ impl EntityToAffectedSources {
     }
 
     /// Within a subrange, iterates over all ranges it touches. With each range, it specifies which sources are affected therein.
+    ///
+    /// Returns `Range` since the ranges may contain [`TimeInt::STATIC`].
     pub fn iter_ranges(
         &self,
         sub_range: AbsoluteTimeRange,

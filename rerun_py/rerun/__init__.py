@@ -27,7 +27,7 @@ real_path = pathlib.Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
 print(f"DEV ENVIRONMENT DETECTED! Re-importing rerun from: {real_path}", file=sys.stderr)
 
 if "RERUN_CLI_PATH" not in os.environ:
-    import rerun_bindings as bindings
+    import rerun_bindings as bindings  # noqa: TID251
 
     flavor = "debug" if bindings.is_dev_build() else "release"
     target_path = pathlib.Path(__file__).parent.parent.parent.joinpath(f"target_pixi/{flavor}/rerun").resolve()
