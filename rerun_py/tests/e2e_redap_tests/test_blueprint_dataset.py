@@ -33,6 +33,8 @@ def test_configure_blueprint_dataset(server_instance: ServerInstance, tmp_path: 
 
     # Register our blueprint to the corresponding blueprint dataset
     bds = ds.blueprint_dataset()
+    assert bds is not None
+
     blueprint_partition_id = bds.register(rbl_path.absolute().as_uri())
 
     # Set our newly registered blueprint as default for our dataset
