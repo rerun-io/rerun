@@ -2,7 +2,6 @@ use egui::{NumExt as _, WidgetText, emath::OrderedFloat, text::TextWrapping};
 use macaw::BoundingBox;
 
 use re_format::format_f32;
-use re_log_types::EntityPath;
 use re_types::{
     blueprint::{archetypes::EyeControls3D, components::VisualBounds2D},
     image::ImageKind,

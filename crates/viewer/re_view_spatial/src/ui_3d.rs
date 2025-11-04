@@ -479,7 +479,7 @@ fn show_orbit_eye_center(
     line_builder: &mut LineDrawableBuilder<'_>,
     scene_view_coordinates: Option<ViewCoordinates>,
 ) {
-    let Some(orbit_center) = state_3d.eye_state.last_orbit_center else {
+    let Some(look_target) = state_3d.eye_state.last_look_target else {
         return;
     };
     let Some(orbit_radius) = state_3d.eye_state.last_orbit_radius else {
@@ -549,14 +549,14 @@ fn show_orbit_eye_center(
             .batch("center orbit orientation help")
             .add_segments(
                 [
-                    (orbit_center, orbit_center + 0.5 * up * half_line_length),
+                    (look_target, look_target + 0.5 * up * half_line_length),
                     (
-                        orbit_center - right * half_line_length,
-                        orbit_center + right * half_line_length,
+                        look_target - right * half_line_length,
+                        look_target + right * half_line_length,
                     ),
                     (
-                        orbit_center - forward * half_line_length,
-                        orbit_center + forward * half_line_length,
+                        look_target - forward * half_line_length,
+                        look_target + forward * half_line_length,
                     ),
                 ]
                 .into_iter(),

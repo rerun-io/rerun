@@ -221,7 +221,7 @@ pub struct EyeState {
     ///
     /// None: Hasn't been interacted with yet.
     pub last_interaction: Option<f64>,
-    pub last_orbit_center: Option<Vec3>,
+    pub last_look_target: Option<Vec3>,
     pub last_orbit_radius: Option<f32>,
     pub last_eye_up: Option<Vec3>,
 }
@@ -689,10 +689,13 @@ impl EyeState {
                 self.start_interpolation();
             }
 
+            let did_eye_change = match eye.kind {
+                Eye3DKind::FirstPerson => eye.pos != pos,
+                Eye3DKind::Orbital => eye.look_target != look_target,
+            };
+
             if let Some(target_eye) = find_camera(space_cameras, &tracking_entity) {
-                // Only break out of a
-                if eye.did_interact && eye.pos != pos {
-                    // TODO: Copy `target_eye` to `eye`.
+                if eye.did_interact && did_eye_change {
                     eye_controls.clear_blueprint_component(
                         ctx.viewer_ctx,
                         EyeControls3D::descriptor_tracking_entity(),
@@ -700,8 +703,7 @@ impl EyeState {
                 } else {
                     return Ok(target_eye);
                 }
-            } else if eye.did_interact {
-                // TODO: Copy `target_eye` to `eye`.
+            } else if eye.did_interact && did_eye_change {
                 eye_controls.clear_blueprint_component(
                     ctx.viewer_ctx,
                     EyeControls3D::descriptor_tracking_entity(),
@@ -780,10 +782,7 @@ impl EyeState {
             self.spin = None;
         }
 
-        self.last_orbit_center = Some(match eye.kind {
-            Eye3DKind::FirstPerson => eye.pos,
-            Eye3DKind::Orbital => eye.look_target,
-        });
+        self.last_look_target = Some(eye.look_target);
         self.last_orbit_radius = Some(eye.pos.distance(eye.look_target));
         self.last_eye_up = Some(eye.up());
 

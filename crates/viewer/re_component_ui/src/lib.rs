@@ -44,9 +44,9 @@ use re_types::{
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
         FillRatio, GammaCorrection, GraphType, ImagePlaneDistance, LinearSpeed,
-        MagnificationFilter, MarkerSize, Name, Opacity, Position2D, Range1D, Scale3D,
+        MagnificationFilter, MarkerSize, Name, Opacity, Position2D, Position3D, Range1D, Scale3D,
         SeriesVisible, ShowLabels, StrokeWidth, Text, Timestamp, TransformRelation, Translation3D,
-        ValueRange, VideoCodec, Visible,
+        ValueRange, Vector3D, VideoCodec, Visible,
     },
 };
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
@@ -155,6 +155,8 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     // Vec3 components:
     registry.add_singleline_edit_or_view::<Translation3D>(edit_or_view_vec3d);
     registry.add_singleline_edit_or_view::<Scale3D>(edit_or_view_vec3d);
+    registry.add_singleline_edit_or_view::<Position3D>(edit_or_view_vec3d);
+    registry.add_singleline_edit_or_view::<Vector3D>(edit_or_view_vec3d);
 
     // Components that refer to views:
     registry.add_singleline_edit_or_view::<ViewMaximized>(view_view_id);
