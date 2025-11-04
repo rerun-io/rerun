@@ -3,25 +3,52 @@ title: What is Rerun?
 order: 0
 ---
 
-Rerun is building the multimodal data stack to model, ingest, store, query and view robotics-style data.
-It's used in areas like robotics, spatial and embodied AI, generative media, industrial processing, simulation, security, and health.
+Rerun is a data platform for Physical AI that helps you understand and improve complex processes involving rich multimodal data like 2D, 3D, text, time series, and tensors.
 
-## Open source: visualization and log handling
-The open source project combines simple and flexible log handling with a fast, embeddable visualizer.
-It’s easy to get started and can be used as a stand alone library.
+It combines simple and flexible data logging with a powerful visualizer and query engine, designed specifically for domains like robotics, spatial computing, embodied AI, computer vision, simulation, and any system involving sensors and signals that evolve over time.
 
-The data model is a time aware Entity Component System (ECS), designed for domains like robotics and XR.
-The project includes a custom database query engine and rendering engine, both built around this model.
+## The Rerun data platform
 
-## Commercial: multimodal data handling at scale
-The commercial offering is managed infrastructure to ingest, store, analyze, and stream large amounts of robotics-style data.
-It's built around Rerun's open source data model to make data pipelines simple to build, and easy to operate with built-in visual debugging.
+Rerun provides an integrated solution for working with multimodal temporal data:
 
-It gives you a single database interface to operate on data from multiple sources, including MCAP, proprietary log-formats, LeRobot Datasets,
-and multimodal table formats like Lance.
+**Time-aware data model:** At its core is an Entity Component System (ECS) designed for robotics and XR applications. This model understands both spatial relationships and temporal evolution, making it natural to work with sensor data, transforms, and time-series information.
 
-It's under development with select partners. [Get in touch](https://5li7zhj98k8.typeform.com/to/a5XDpBkZ) if you'd like to be one of them.
+**Built-in visualization:** A fast, embeddable visualizer lets you see your data as 3D scenes, images, plots, and text—all synchronized and explorable through time. Build layouts and customize visualizations interactively or programmatically.
 
+**Query and export:** Extract clean dataframes for analysis in Pandas, Polars, or DuckDB. Use recordings to create datasets for training and evaluating your models.
+
+**Flexible ingestion:** Load data from your code via the SDK, from storage formats like MCAP, or from proprietary log formats. Extend Rerun when you need custom types or visualizations.
+
+## What is Rerun for?
+
+Rerun helps you debug, understand, and improve systems that generate rich multimodal data. Here's a concrete example:
+
+### Example: Debugging a vacuum cleaning robot
+
+Say you're building a vacuum cleaning robot and it keeps running into walls. A traditional debugger won't help, and text logs aren't enough—the robot may log "Going through doorway" but that won't explain why it thinks a wall is a door.
+
+What you need is to see the world from the robot's perspective in time:
+
+* RGB camera feed
+* Depth images
+* Lidar scans
+* Segmentation results (how the robot interprets what it sees)
+* The robot's 3D map of the apartment
+* Detected objects as 3D shapes in the map
+* Confidence scores
+* And more
+
+You want to see how all these data streams evolve over time so you can pinpoint exactly what went wrong, when, and why.
+
+Maybe a sun glare hit a sensor wrong, confusing the segmentation network and leading to bad object detection. Or a bug in the lidar code. Or broken odometry made the robot think it was somewhere else. Rerun helps you find out!
+
+But visual debugging is just the start. Seeing your data also:
+- Gives you ideas for algorithm improvements
+- Helps identify new test cases to set up
+- Suggests datasets to collect
+- Lets you explain your system to colleagues and stakeholders
+
+And the same data you use for visualization can be queried to create clean datasets for training and evaluating your models.
 
 ## How do you use it?
 
