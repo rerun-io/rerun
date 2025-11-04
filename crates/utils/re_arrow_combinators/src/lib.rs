@@ -48,6 +48,9 @@ pub enum Error {
         struct_fields: Vec<String>,
     },
 
+    #[error("Unexpected value: expected {expected}, got {actual}")]
+    UnexpectedValue { expected: String, actual: String },
+
     #[error("List contains unexpected value type: expected {expected}, got {actual:?}")]
     UnexpectedListValueType { expected: String, actual: DataType },
 
