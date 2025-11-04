@@ -352,7 +352,7 @@ class Transform3D(Transform3DExt, Archetype):
             An exception to this rule is static time - you may first mention a child frame on one entity statically and later on
             another one temporally.
 
-            ⚠ This currently also affects the child frame frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
+            ⚠ This currently also affects the child frame  of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
             ⚠ This currently is also used as the frame id of [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
 
             If not specified, this is set to the implicit transform frame of the current entity path.
@@ -449,7 +449,7 @@ class Transform3D(Transform3DExt, Archetype):
             An exception to this rule is static time - you may first mention a child frame on one entity statically and later on
             another one temporally.
 
-            ⚠ This currently also affects the child frame frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
+            ⚠ This currently also affects the child frame  of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
             ⚠ This currently is also used as the frame id of [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
 
             If not specified, this is set to the implicit transform frame of the current entity path.
@@ -598,7 +598,7 @@ class Transform3D(Transform3DExt, Archetype):
     # An exception to this rule is static time - you may first mention a child frame on one entity statically and later on
     # another one temporally.
     #
-    # ⚠ This currently also affects the child frame frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
+    # ⚠ This currently also affects the child frame  of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
     # ⚠ This currently is also used as the frame id of [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # If not specified, this is set to the implicit transform frame of the current entity path.
