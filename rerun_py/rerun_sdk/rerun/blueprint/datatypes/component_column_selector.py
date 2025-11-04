@@ -69,10 +69,12 @@ class ComponentColumnSelector(ComponentColumnSelectorExt):
 
 if TYPE_CHECKING:
     ComponentColumnSelectorLike = ComponentColumnSelector | str
+    """A type alias for any ComponentColumnSelector-like object."""
 else:
     ComponentColumnSelectorLike = Any
 
 ComponentColumnSelectorArrayLike = ComponentColumnSelector | Sequence[ComponentColumnSelectorLike]
+"""A type alias for any ComponentColumnSelector-like array object."""
 
 
 class ComponentColumnSelectorBatch(BaseBatch[ComponentColumnSelectorArrayLike]):

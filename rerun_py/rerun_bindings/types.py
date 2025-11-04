@@ -51,7 +51,7 @@ IndexValuesLike: TypeAlias = npt.NDArray[np.int_] | npt.NDArray[np.datetime64] |
 """
 A type alias for index values.
 
-This can be any numpy-compatible array of integers, or a [`pa.Int64Array`][]
+This can be any numpy-compatible array of integers, or a [`pyarrow.Int64Array`][]
 """
 
 TableLike: TypeAlias = pa.Table | pa.RecordBatch | pa.RecordBatchReader

@@ -41,10 +41,12 @@ if TYPE_CHECKING:
     from .. import datatypes
 
     GeoLineStringLike = GeoLineString | datatypes.DVec2DArrayLike | npt.NDArray[np.float64]
+    """A type alias for any GeoLineString-like object."""
 else:
     GeoLineStringLike = Any
 
 GeoLineStringArrayLike = GeoLineString | Sequence[GeoLineStringLike] | npt.NDArray[np.float64]
+"""A type alias for any GeoLineString-like array object."""
 
 
 class GeoLineStringBatch(BaseBatch[GeoLineStringArrayLike], ComponentBatchMixin):

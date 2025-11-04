@@ -46,10 +46,12 @@ class UInt16:
 
 if TYPE_CHECKING:
     UInt16Like = UInt16 | int
+    """A type alias for any UInt16-like object."""
 else:
     UInt16Like = Any
 
 UInt16ArrayLike = UInt16 | Sequence[UInt16Like] | int | npt.NDArray[np.uint16]
+"""A type alias for any UInt16-like array object."""
 
 
 class UInt16Batch(BaseBatch[UInt16ArrayLike]):

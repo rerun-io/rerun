@@ -65,12 +65,15 @@ class ColorModel(ColorModelExt, Enum):
 
 
 ColorModelLike = ColorModel | Literal["BGR", "BGRA", "L", "RGB", "RGBA", "bgr", "bgra", "l", "rgb", "rgba"] | int
+"""A type alias for any ColorModel-like object."""
+
 ColorModelArrayLike = (
     ColorModel
     | Literal["BGR", "BGRA", "L", "RGB", "RGBA", "bgr", "bgra", "l", "rgb", "rgba"]
     | int
     | Sequence[ColorModelLike]
 )
+"""A type alias for any ColorModel-like array object."""
 
 
 class ColorModelBatch(BaseBatch[ColorModelArrayLike]):
