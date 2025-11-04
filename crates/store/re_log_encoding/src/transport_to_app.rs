@@ -51,6 +51,41 @@ impl ToTransport for re_log_types::ArrowMsg {
     }
 }
 
+impl ToTransport for crate::RrdManifest {
+    type Output = re_protos::log_msg::v1alpha1::RrdManifest;
+    type Context<'a> = ();
+
+    fn to_transport(&self, _: Self::Context<'_>) -> Result<Self::Output, CodecError> {
+        let sorbet_schema = re_protos::common::v1alpha1::Schema::try_from(&self.sorbet_schema)
+            .map_err(CodecError::ArrowSerialization)?;
+
+        // TODO: checking that this value is correct somewhere would certainly be nice 🫠
+        // is it worth asserting all over the place or are tests enough? probably the latter.
+        //
+        // TODO: im not sure this takes into account the whole "get rid of metadata first" thing,
+        // does it?
+        // let schema = {
+        //     // Sort and remove top-level metadata before hashing.
+        //     let mut fields = self.schema().fields().to_vec();
+        //     fields.sort();
+        //     Schema::new_with_metadata(fields, Default::default()) // no metadata!
+        // };
+        use sha2::Digest as _;
+        let mut sorbet_schema_sha_256 = [0u8; 32];
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(sorbet_schema.arrow_schema());
+        hasher.finalize_into(sha2::digest::generic_array::GenericArray::from_mut_slice(
+            &mut sorbet_schema_sha_256,
+        ));
+
+        Ok(Self::Output {
+            sorbet_schema_sha_256: Some(sorbet_schema_sha_256.to_vec().into()),
+            sorbet_schema: Some(sorbet_schema),
+            manifest: Some(self.manifest.clone().into()),
+        })
+    }
+}
+
 /// Converts a transport-level type to an application-level type, ready for use in the viewer.
 pub trait ToApplication {
     type Output;
@@ -105,6 +140,30 @@ impl ToApplication for re_protos::log_msg::v1alpha1::ArrowMsg {
 
     fn to_application(&self, _context: Self::Context<'_>) -> Result<Self::Output, CodecError> {
         arrow_msg_to_app(self)
+    }
+}
+
+impl ToApplication for re_protos::log_msg::v1alpha1::RrdManifest {
+    type Output = crate::RrdManifest;
+    type Context<'a> = ();
+
+    fn to_application(&self, _context: Self::Context<'_>) -> Result<Self::Output, CodecError> {
+        let sorbet_schema = self
+            .sorbet_schema
+            .as_ref()
+            .ok_or_else(|| re_protos::missing_field!(Self, "sorbet_schema"))?;
+
+        let manifest = self
+            .manifest
+            .as_ref()
+            .ok_or_else(|| re_protos::missing_field!(Self, "manifest"))?;
+
+        Ok(Self::Output {
+            sorbet_schema: sorbet_schema
+                .try_into()
+                .map_err(CodecError::ArrowDeserialization)?,
+            manifest: manifest.try_into()?,
+        })
     }
 }
 

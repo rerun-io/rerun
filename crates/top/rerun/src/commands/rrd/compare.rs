@@ -104,6 +104,7 @@ impl CompareCommand {
                 &re_arrow_util::RecordBatchFormatOpts {
                     transposed: false,
                     width: Some(800),
+                    max_cell_content_width: 100,
                     include_metadata: true,
                     include_column_metadata: true,
                     trim_field_names: false,

@@ -227,3 +227,24 @@ message StoreVersion {
   // See `CrateVersion` in `re_build_info`.
   int32 crate_version_bits = 1;
 }
+
+// This is the payload found in footers of RRD streams.
+//
+// It is transported using the `MessageKind::End` tag.
+//
+// This is a transport-level type, the associated application-level type can be found
+// in `re_log_encoding::RrdManifest`.
+message RrdManifest {
+  // The Sorbet schema of the associated RRD stream.
+  rerun.common.v1alpha1.Schema sorbet_schema = 1;
+
+  // The Sorbet schema of the associated RRD stream.
+  optional bytes sorbet_schema_sha_256 = 3;
+
+  // The complete manifest for the associated RRD stream.
+  //
+  // Each row in this dataframe describes a unique chunk (ID, offset, size, timeline & component stats, etc).
+  // This can be used to compute relevancy queries (latest-at, range, dataframe), without needing to load
+  // any of the actual data in memory.
+  rerun.common.v1alpha1.DataframePart manifest = 2;
+}

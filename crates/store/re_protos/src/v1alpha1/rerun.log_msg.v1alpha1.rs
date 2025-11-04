@@ -269,6 +269,38 @@ impl ::prost::Name for StoreVersion {
         "/rerun.log_msg.v1alpha1.StoreVersion".into()
     }
 }
+/// This is the payload found in footers of RRD streams.
+///
+/// It is transported using the `MessageKind::End` tag.
+///
+/// This is a transport-level type, the associated application-level type can be found
+/// in `re_log_encoding::RrdManifest`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct RrdManifest {
+    /// The Sorbet schema of the associated RRD stream.
+    #[prost(message, optional, tag = "1")]
+    pub sorbet_schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
+    /// The Sorbet schema of the associated RRD stream.
+    #[prost(bytes = "bytes", optional, tag = "3")]
+    pub sorbet_schema_sha_256: ::core::option::Option<::prost::bytes::Bytes>,
+    /// The complete manifest for the associated RRD stream.
+    ///
+    /// Each row in this dataframe describes a unique chunk (ID, offset, size, timeline & component stats, etc).
+    /// This can be used to compute relevancy queries (latest-at, range, dataframe), without needing to load
+    /// any of the actual data in memory.
+    #[prost(message, optional, tag = "2")]
+    pub manifest: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for RrdManifest {
+    const NAME: &'static str = "RrdManifest";
+    const PACKAGE: &'static str = "rerun.log_msg.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.log_msg.v1alpha1.RrdManifest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.log_msg.v1alpha1.RrdManifest".into()
+    }
+}
 /// The type of compression used on the payload.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]

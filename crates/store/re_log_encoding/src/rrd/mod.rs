@@ -18,6 +18,7 @@
 mod errors;
 mod headers;
 mod log_msg;
+mod manifest;
 
 #[cfg(feature = "decoder")]
 mod decoder;
@@ -32,11 +33,12 @@ mod file_sink;
 #[cfg(feature = "stream_from_http")]
 pub mod stream_from_http;
 
-pub use self::errors::{CodecError, NotAnRrdError, OptionsError};
+pub use self::errors::{CodecError, CodecResult, NotAnRrdError, OptionsError};
 pub use self::headers::{
     Compression, CrateVersion, EncodingOptions, MessageHeader, MessageKind, Serializer,
-    StreamHeader,
+    StreamFooter, StreamHeader,
 };
+pub use self::manifest::{RrdManifest, RrdManifestBuilder};
 
 #[cfg(feature = "decoder")]
 pub use self::decoder::{
