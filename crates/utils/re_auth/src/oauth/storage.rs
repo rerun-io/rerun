@@ -79,7 +79,7 @@ mod web {
 
     use super::{Credentials, LoadError, StoreError};
 
-    const STORAGE_KEY: &'static str = "rerun_auth";
+    const STORAGE_KEY: &str = "rerun_auth";
 
     struct NoLocalStorage;
 
@@ -114,17 +114,15 @@ mod web {
         web_sys::window()
             .ok_or(NoLocalStorage)?
             .local_storage()
-            .map_err(|_| NoLocalStorage)?
+            .map_err(|_err| NoLocalStorage)?
             .ok_or(NoLocalStorage)
     }
 
-    #[expect(clippy::unnecessary_wraps)] // for compat with non-Wasm
-    // TODO(jan): local storage
     pub fn load() -> Result<Option<Credentials>, LoadError> {
         let local_storage = get_local_storage()?;
-        let data = local_storage.get_item(STORAGE_KEY).map_err(|err| {
-            std::io::Error::new(std::io::ErrorKind::Other, string_from_js_value(err))
-        })?;
+        let data = local_storage
+            .get_item(STORAGE_KEY)
+            .map_err(|err| std::io::Error::other(string_from_js_value(err)))?;
 
         let Some(data) = data else {
             return Ok(None);
@@ -137,9 +135,9 @@ mod web {
     pub fn store(credentials: &Credentials) -> Result<(), StoreError> {
         let local_storage = get_local_storage()?;
         let data = serde_json::to_string(credentials)?;
-        local_storage.set_item(STORAGE_KEY, &data).map_err(|err| {
-            std::io::Error::new(std::io::ErrorKind::Other, string_from_js_value(err))
-        })?;
+        local_storage
+            .set_item(STORAGE_KEY, &data)
+            .map_err(|err| std::io::Error::other(string_from_js_value(err)))?;
         Ok(())
     }
 }

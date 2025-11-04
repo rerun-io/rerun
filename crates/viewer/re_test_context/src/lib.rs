@@ -225,7 +225,8 @@ impl TestContext {
             component_ui_registry,
             component_fallback_registry,
             reflection,
-            connection_registry: re_redap_client::ConnectionRegistry::new(),
+            connection_registry:
+                re_redap_client::ConnectionRegistry::new_without_stored_credentials(),
 
             command_sender,
             command_receiver,

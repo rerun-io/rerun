@@ -37,17 +37,40 @@ pub struct ConnectionRegistry {
     /// Clients are much cheaper to clone than create (since the latter involves establishing an
     /// actual TCP connection), so we keep them around once created.
     clients: HashMap<re_uri::Origin, RedapClient>,
+
+    /// Whether to use credentials stored on the host machine by default.
+    use_stored_credentials: bool,
 }
 
 impl ConnectionRegistry {
     /// Create a new connection registry and return a handle to it.
-    #[expect(clippy::new_ret_no_self)]
-    pub fn new() -> ConnectionRegistryHandle {
+    ///
+    /// This version uses stored credentials by default if they are available.
+    /// You should prefer to use this instead of [`Self::new_without_stored_credentials`]
+    /// if there is no reason not to.
+    pub fn new_with_stored_credentials() -> ConnectionRegistryHandle {
         ConnectionRegistryHandle {
             inner: Arc::new(RwLock::new(Self {
                 saved_credentials: HashMap::new(),
                 fallback_token: None,
                 clients: HashMap::new(),
+                use_stored_credentials: true,
+            })),
+        }
+    }
+
+    /// Create a new connection registry and return a handle to it.
+    ///
+    /// This version does not use stored credentials by default if they are available.
+    /// You should prefer to use [`Self::new_with_stored_credentials`] instead,
+    /// if there is no reason not to.
+    pub fn new_without_stored_credentials() -> ConnectionRegistryHandle {
+        ConnectionRegistryHandle {
+            inner: Arc::new(RwLock::new(Self {
+                saved_credentials: HashMap::new(),
+                fallback_token: None,
+                clients: HashMap::new(),
+                use_stored_credentials: false,
             })),
         }
     }
@@ -121,6 +144,13 @@ impl ConnectionRegistryHandle {
             let mut inner = self.inner.blocking_write();
             inner.fallback_token = Some(token);
         });
+    }
+
+    pub fn should_use_stored_credentials(&self) -> bool {
+        wrap_blocking_lock(|| {
+            let inner = self.inner.blocking_read();
+            inner.use_stored_credentials
+        })
     }
 
     /// Get a client for the given origin, creating one if it doesn't exist yet.

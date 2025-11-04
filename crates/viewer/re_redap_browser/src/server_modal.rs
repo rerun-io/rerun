@@ -38,16 +38,21 @@ struct Authentication {
 impl Authentication {
     /// Initialize auth state.
     ///
-    /// This always attempts to load credentials from disk.
-    /// Note that it accepts them even if they are expired.
+    /// This attempts to load credentials from disk if `use_stored_credentials`
+    /// is set to `true`. Note that they are accepted even if they are expired,
+    /// the assumption being that they'll be refreshed automatically before usage.
     ///
     /// Optionally, this can be given a token, which takes
     /// precedence over stored credentials.
-    fn new(token: Option<String>) -> Self {
-        let email = re_auth::oauth::load_credentials()
-            .ok()
-            .flatten()
-            .map(|credentials| credentials.user().email.clone());
+    fn new(token: Option<String>, use_stored_credentials: bool) -> Self {
+        let email = if !use_stored_credentials {
+            None
+        } else {
+            re_auth::oauth::load_credentials()
+                .ok()
+                .flatten()
+                .map(|credentials| credentials.user().email.clone())
+        };
         let (token, show_token_input) = match token {
             Some(token) => (token, true),
             None => (String::new(), false),
@@ -86,7 +91,7 @@ impl Default for ServerModal {
             mode: ServerModalMode::Add,
             scheme: Scheme::Rerun,
             host: String::new(),
-            auth: Authentication::new(None),
+            auth: Authentication::new(None, false),
             port: 443,
         }
     }
@@ -94,9 +99,10 @@ impl Default for ServerModal {
 
 impl ServerModal {
     pub fn open(&mut self, mode: ServerModalMode, connection_registry: &ConnectionRegistryHandle) {
+        let use_stored_credentials = connection_registry.should_use_stored_credentials();
         *self = match mode {
             ServerModalMode::Add => {
-                let auth = Authentication::new(None);
+                let auth = Authentication::new(None, use_stored_credentials);
 
                 Self {
                     mode: ServerModalMode::Add,
@@ -110,9 +116,11 @@ impl ServerModal {
                 let credentials = connection_registry.credentials(&origin);
                 let auth = match credentials {
                     Some(re_redap_client::Credentials::Token(token)) => {
-                        Authentication::new(Some(token.to_string()))
+                        Authentication::new(Some(token.to_string()), use_stored_credentials)
                     }
-                    Some(re_redap_client::Credentials::Stored) | None => Authentication::new(None),
+                    Some(re_redap_client::Credentials::Stored) | None => {
+                        Authentication::new(None, use_stored_credentials)
+                    }
                 };
 
                 Self {
@@ -336,38 +344,36 @@ fn auth_ui(ui: &mut egui::Ui, cmd: &CommandSender, auth: &mut Authentication) {
                         auth.error = None;
                         auth.reset_login_flow();
                     }
+                } else if auth.error.is_some() && auth.login_flow.is_none() {
+                    if ui.button("Try again").clicked() {
+                        auth.error = None;
+                    }
                 } else {
-                    if auth.error.is_some() && auth.login_flow.is_none() {
-                        if ui.button("Try again").clicked() {
-                            auth.error = None;
-                        }
-                    } else {
-                        if auth.login_flow.is_none() {
-                            match LoginFlow::open(ui) {
-                                Ok(flow) => {
-                                    auth.login_flow = Some(flow);
-                                    auth.error = None;
-                                }
-                                Err(err) => {
-                                    auth.error = Some(err);
-                                }
+                    if auth.login_flow.is_none() {
+                        match LoginFlow::open(ui) {
+                            Ok(flow) => {
+                                auth.login_flow = Some(flow);
+                                auth.error = None;
+                            }
+                            Err(err) => {
+                                auth.error = Some(err);
                             }
                         }
+                    }
 
-                        if let Some(flow) = &mut auth.login_flow {
-                            if let Some(result) = flow.ui(ui, cmd) {
-                                match result {
-                                    LoginFlowResult::Success(credentials) => {
-                                        auth.email = Some(credentials.user().email.clone());
-                                        auth.error = None;
-                                        // Clear login flow to close popup window
-                                        auth.reset_login_flow();
-                                    }
-                                    LoginFlowResult::Failure(err) => {
-                                        auth.error = Some(err);
-                                        // Clear login flow so user can retry
-                                        auth.reset_login_flow();
-                                    }
+                    if let Some(flow) = &mut auth.login_flow {
+                        if let Some(result) = flow.ui(ui, cmd) {
+                            match result {
+                                LoginFlowResult::Success(credentials) => {
+                                    auth.email = Some(credentials.user().email.clone());
+                                    auth.error = None;
+                                    // Clear login flow to close popup window
+                                    auth.reset_login_flow();
+                                }
+                                LoginFlowResult::Failure(err) => {
+                                    auth.error = Some(err);
+                                    // Clear login flow so user can retry
+                                    auth.reset_login_flow();
                                 }
                             }
                         }

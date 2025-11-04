@@ -54,7 +54,9 @@ impl TestServer {
             port: self.port,
             scheme: re_uri::Scheme::RerunHttp,
         };
-        ConnectionRegistry::new().client(origin).await
+        ConnectionRegistry::new_without_stored_credentials()
+            .client(origin)
+            .await
     }
 
     pub async fn add_test_data(&self) {
