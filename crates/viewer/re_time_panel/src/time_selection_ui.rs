@@ -28,15 +28,6 @@ pub fn paint_timeline_range(
     }
 }
 
-fn loop_selection_color(time_ctrl: &TimeControl, tokens: &re_ui::DesignTokens) -> Color32 {
-    // Display in a brighter color when active
-    if time_ctrl.loop_mode() == LoopMode::Selection {
-        tokens.loop_selection_color
-    } else {
-        tokens.loop_selection_color.gamma_multiply(0.7)
-    }
-}
-
 pub fn collapsed_loop_selection_ui(
     time_ctrl: &TimeControl,
     painter: &egui::Painter,
@@ -45,12 +36,17 @@ pub fn collapsed_loop_selection_ui(
     time_range_rect: Rect,
 ) {
     if let Some(loop_range) = time_ctrl.loop_selection() {
+        let color = if time_ctrl.loop_mode() == LoopMode::Selection {
+            ui.tokens().loop_selection_color
+        } else {
+            ui.tokens().loop_selection_color_inactive
+        };
         paint_timeline_range(
             loop_range.to_int(),
             time_ranges_ui,
             painter,
             time_range_rect,
-            loop_selection_color(time_ctrl, ui.tokens()),
+            color,
         );
     }
 }
@@ -78,8 +74,6 @@ pub fn loop_selection_ui(
     }
 
     let is_active = time_ctrl.loop_mode() == LoopMode::Selection;
-
-    let selection_color = loop_selection_color(time_ctrl, tokens);
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
 
@@ -115,7 +109,8 @@ pub fn loop_selection_ui(
                 );
             }
 
-            let full_y_range = rect.top()..=time_area_painter.clip_rect().bottom();
+            let full_y_range =
+                egui::Rangef::new(rect.top(), time_area_painter.clip_rect().bottom());
 
             {
                 let corner_radius = tokens.normal_corner_radius();
@@ -125,11 +120,19 @@ pub fn loop_selection_ui(
                     sw: 0,
                     se: 0,
                 };
+
+                let full_color = tokens.loop_selection_color;
+                let inactive_color = tokens.loop_selection_color_inactive;
+
                 if is_active {
                     let full_rect = Rect::from_x_y_ranges(rect.x_range(), full_y_range);
-                    time_area_painter.rect_filled(full_rect, corner_radius, selection_color);
+                    time_area_painter.rect_filled(full_rect, corner_radius, full_color);
                 } else {
-                    time_area_painter.rect_filled(rect, corner_radius, selection_color);
+                    time_area_painter.rect_filled(rect, corner_radius, full_color);
+
+                    let bottom_rect =
+                        Rect::from_x_y_ranges(rect.x_range(), rect.bottom()..=full_y_range.max);
+                    time_area_painter.rect_filled(bottom_rect, 0.0, inactive_color);
                 }
             }
 

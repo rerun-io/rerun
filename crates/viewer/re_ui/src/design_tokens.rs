@@ -94,6 +94,9 @@ pub struct DesignTokens {
     /// The color we use to mean "loop this selection"
     pub loop_selection_color: Color32,
 
+    /// Like [`Self::loop_selection_color`], but inactive.
+    pub loop_selection_color_inactive: Color32,
+
     /// The color we use to mean "loop all the data"
     pub loop_everything_color: Color32,
 
@@ -281,6 +284,7 @@ impl DesignTokens {
             section_header_color: get_color("section_header_color"),
 
             loop_selection_color: get_color("loop_selection_color"),
+            loop_selection_color_inactive: get_color("loop_selection_color_inactive"),
             loop_everything_color: get_color("loop_everything_color"),
 
             thumbnail_background_color: get_color("thumbnail_background_color"),

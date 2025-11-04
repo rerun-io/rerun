@@ -67,6 +67,9 @@
     "loop_selection_color": {
       "color": "#012569B2"
     },
+    "loop_selection_color_inactive": {
+      "color": "#01256940"
+    },
     "loop_everything_color": {
       "color": "#02502D"
     },
