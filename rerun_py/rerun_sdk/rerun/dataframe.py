@@ -4,11 +4,6 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
-from rerun_bindings.types import (
-    AnyColumn as AnyColumn,
-    AnyComponentColumn as AnyComponentColumn,
-    ViewContentsLike as ViewContentsLike,
-)
 
 from rerun_bindings import (
     ComponentColumnDescriptor as ComponentColumnDescriptor,
@@ -21,6 +16,11 @@ from rerun_bindings import (
     Schema as Schema,
     load_archive as load_archive,
     load_recording as load_recording,
+)
+from rerun_bindings.types import (
+    AnyColumn as AnyColumn,
+    AnyComponentColumn as AnyComponentColumn,
+    ViewContentsLike as ViewContentsLike,
 )
 
 from ._baseclasses import ComponentColumn, ComponentDescriptor

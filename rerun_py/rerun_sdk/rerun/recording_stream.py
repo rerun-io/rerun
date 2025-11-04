@@ -8,9 +8,10 @@ import uuid
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, TypeVar, overload
 
+from typing_extensions import deprecated
+
 import rerun as rr
 from rerun import bindings
-from typing_extensions import deprecated
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -19,10 +20,10 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     import numpy as np
+
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch
     from rerun.memory import MemoryRecording
     from rerun.sinks import LogSinkLike
-
     from rerun_bindings import ChunkBatcherConfig
 
     from ._send_columns import TimeColumnLike

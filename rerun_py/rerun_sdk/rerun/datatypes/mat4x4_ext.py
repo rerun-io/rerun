@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pyarrow as pa
+
 from rerun.error_utils import _send_warning_or_raise
 
 if TYPE_CHECKING:
