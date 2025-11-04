@@ -37,6 +37,7 @@ from .row_share import RowShare, RowShareBatch
 from .selected_columns import SelectedColumns, SelectedColumnsBatch
 from .tensor_dimension_index_slider import TensorDimensionIndexSlider, TensorDimensionIndexSliderBatch
 from .time_int import TimeInt, TimeIntBatch
+from .time_range import TimeRange, TimeRangeBatch
 from .timeline_name import TimelineName, TimelineNameBatch
 from .view_class import ViewClass, ViewClassBatch
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike
@@ -137,6 +138,8 @@ __all__ = [
     "TensorDimensionIndexSliderBatch",
     "TimeInt",
     "TimeIntBatch",
+    "TimeRange",
+    "TimeRangeBatch",
     "TimelineName",
     "TimelineNameBatch",
     "ViewClass",
