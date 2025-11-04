@@ -1632,6 +1632,7 @@ fn quote_union_aliases_from_object<'a>(
             if TYPE_CHECKING:
                 {name}Like = {name} | {union_fields}{aliases}
                 """A type alias for any {name}-like object."""
+
                 {name}ArrayLike = {name} | {union_fields} | Sequence[{name}Like]{array_aliases}
                 """A type alias for any {name}-like array object."""
             else:
