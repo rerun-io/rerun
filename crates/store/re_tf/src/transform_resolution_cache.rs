@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, hash_map::Entry};
 use std::ops::Range;
 
@@ -837,15 +838,20 @@ impl TransformResolutionCache {
                 // to the current entity path yield information about the sources in `source_frames`.
                 let times_with_potential_update = if time_column.time_range().min
                     >= time_range.start
+                    // Careful, we're comparing a std `Range` with `AbsoluteTimeRange`!
+                    // `max` is inclusive, `end` is exclusive.
+                    // The reason we have to use `Range` here over `AbsoluteTimeRange` is that `time_range` may contain `TimeRange::STATIC`.
                     && time_column.time_range().max < time_range.end
                 {
-                    time_column.times().collect_vec()
+                    Cow::Borrowed(time_column.times_raw())
                 } else {
-                    time_column
-                        .times()
-                        // TODO(andreas): For sorted time columns we could speed this up a bit.
-                        .filter(|time| time_range.contains(time))
-                        .collect_vec()
+                    Cow::Owned(
+                        time_column
+                            .times()
+                            // TODO(andreas): For sorted time columns we could speed this up a bit.
+                            .filter_map(|time| time_range.contains(&time).then_some(time.as_i64()))
+                            .collect_vec(),
+                    )
                 };
 
                 // Note down that all these source frames were updated at the given times.
@@ -865,7 +871,11 @@ impl TransformResolutionCache {
                     frame_transforms.insert_invalidated_transform_events(
                         aspects,
                         time_range.start,
-                        || times_with_potential_update.iter().copied(),
+                        || {
+                            times_with_potential_update
+                                .iter()
+                                .map(|t| TimeInt::new_temporal(*t))
+                        },
                         entity_path,
                     );
 
