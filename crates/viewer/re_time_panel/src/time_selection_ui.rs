@@ -113,6 +113,7 @@ pub fn loop_selection_ui(
                 egui::Rangef::new(rect.top(), time_area_painter.clip_rect().bottom());
 
             {
+                // Paint selection:
                 let corner_radius = tokens.normal_corner_radius();
                 let corner_radius = egui::CornerRadius {
                     nw: corner_radius,
@@ -137,8 +138,7 @@ pub fn loop_selection_ui(
             }
 
             // Check for interaction:
-            // To not annoy the user, we only allow interaction when it is active.
-            if is_active {
+            {
                 let left_edge_rect =
                     Rect::from_x_y_ranges(rect.left()..=rect.left(), rect.y_range())
                         .expand(interact_radius);
@@ -205,10 +205,15 @@ pub fn loop_selection_ui(
                 }
 
                 on_drag_loop_selection(ui, &middle_response, time_ranges_ui, &mut selected_range);
-            } else {
-                // inactive - show a tooltip at least:
-                ui.interact(rect, middle_id, egui::Sense::hover())
-                    .on_hover_text("Click the loop button to turn on the loop selection, or drag to select a new loop selection");
+
+                if middle_response.clicked() {
+                    let new_loop_mode = if time_ctrl.loop_mode() == LoopMode::Selection {
+                        LoopMode::Off
+                    } else {
+                        LoopMode::Selection
+                    };
+                    time_commands.push(TimeControlCommand::SetLoopMode(new_loop_mode));
+                }
             }
         }
 
