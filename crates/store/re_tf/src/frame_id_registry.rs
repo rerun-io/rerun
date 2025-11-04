@@ -1,8 +1,9 @@
+use std::collections::hash_map::Entry;
+
 use nohash_hasher::IntMap;
+
 use re_types::components::TransformFrameId;
 use re_types::{TransformFrameIdHash, archetypes};
-use std::collections::hash_map::Entry;
-use std::hash::Hash;
 
 /// Frame id registry for resolving frame id hashes back to frame ids.
 #[derive(Default)]
@@ -29,7 +30,7 @@ impl FrameIdRegistry {
     /// at the price of additional overhead. However, we generally assume that retrieving `TransformFrameId`/`TransformFrameIdHash` from a string is fast.
     pub fn register_all_ids_in_chunk(&mut self, chunk: &re_chunk_store::Chunk) {
         // Ensure all implicit frames from this entity all the way up to the root are known.
-        // Note that in-between entities may never be mentioned in any chunk but we want to make sure they're known to the system.
+        // Note that in-between entities may never be mentioned in any chunk, but we want to make sure they're known to the system.
         let mut entity_path = chunk.entity_path();
         let mut parent;
         loop {
@@ -67,5 +68,86 @@ impl FrameIdRegistry {
                     .or_insert_with(|| TransformFrameId::new(frame_id_string.as_str()));
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::frame_id_registry::FrameIdRegistry;
+    use re_chunk_store::Chunk;
+    use re_log_types::TimePoint;
+    use re_types::components::TransformFrameId;
+    use re_types::{TransformFrameIdHash, archetypes};
+
+    #[test]
+    fn test_register_all_ids_in_chunk() {
+        let mut registry = FrameIdRegistry::default();
+
+        registry.register_all_ids_in_chunk(
+            &Chunk::builder("root/robot/hand/pinky")
+                .with_archetype_auto_row(
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::default().with_many_child_frame(["child0", "child1"]),
+                )
+                .build()
+                .unwrap(),
+        );
+        registry.register_all_ids_in_chunk(
+            &Chunk::builder("root/surprise")
+                .with_archetype_auto_row(
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::default().with_many_parent_frame(["parent0"]),
+                )
+                .build()
+                .unwrap(),
+        );
+
+        // Verify explicit frame IDs from the first chunk.
+        assert_eq!(
+            registry.lookup_frame_id(TransformFrameIdHash::from_str("child0")),
+            Some(&TransformFrameId::new("child0"))
+        );
+        assert_eq!(
+            registry.lookup_frame_id(TransformFrameIdHash::from_str("child1")),
+            Some(&TransformFrameId::new("child1"))
+        );
+
+        // Verify explicit frame IDs from the second chunk.
+        assert_eq!(
+            registry.lookup_frame_id(TransformFrameIdHash::from_str("parent0")),
+            Some(&TransformFrameId::new("parent0"))
+        );
+
+        // Verify implicit frame IDs from entity paths.
+        assert_eq!(
+            registry.lookup_frame_id(TransformFrameIdHash::from_entity_path(
+                &"root/robot/hand/pinky".into()
+            )),
+            Some(&TransformFrameId::from_entity_path(
+                &"root/robot/hand/pinky".into()
+            ))
+        );
+        assert_eq!(
+            registry.lookup_frame_id(TransformFrameIdHash::from_entity_path(
+                &"root/robot/hand".into()
+            )),
+            Some(&TransformFrameId::from_entity_path(
+                &"root/robot/hand".into()
+            ))
+        );
+        assert_eq!(
+            registry.lookup_frame_id(TransformFrameIdHash::from_entity_path(&"root/robot".into())),
+            Some(&TransformFrameId::from_entity_path(&"root/robot".into()))
+        );
+        assert_eq!(
+            registry.lookup_frame_id(TransformFrameIdHash::from_entity_path(&"root".into())),
+            Some(&TransformFrameId::from_entity_path(&"root".into()))
+        );
+        assert_eq!(
+            registry.lookup_frame_id(TransformFrameIdHash::from_entity_path(
+                &"root/surprise".into()
+            )),
+            Some(&TransformFrameId::from_entity_path(&"root/surprise".into()))
+        );
     }
 }
