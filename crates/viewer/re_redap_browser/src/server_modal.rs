@@ -151,7 +151,7 @@ impl ServerModal {
                 available yet. Proceed with caution!",
                 );
 
-                ui.label("URL:");
+                let label = ui.label("URL:");
 
                 ui.horizontal(|ui| {
                     egui::ComboBox::new("scheme", "")
@@ -175,7 +175,8 @@ impl ServerModal {
                                 .lock_focus(false)
                                 .hint_text("Host name")
                                 .desired_width(200.0),
-                        );
+                        )
+                        .labelled_by(label.id);
                         self.host = self.host.trim().to_owned();
                     });
 
