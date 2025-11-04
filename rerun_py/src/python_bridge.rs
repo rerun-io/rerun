@@ -1669,7 +1669,7 @@ fn flush(py: Python<'_>, timeout_sec: f32, recording: Option<&PyRecordingStream>
     module = "rerun_bindings.rerun_bindings"
 )]
 #[derive(Clone, PartialEq, Eq, Hash)]
-struct PyComponentDescriptor(pub ComponentDescriptor);
+pub struct PyComponentDescriptor(pub ComponentDescriptor);
 
 #[pymethods]
 impl PyComponentDescriptor {

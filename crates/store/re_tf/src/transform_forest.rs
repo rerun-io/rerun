@@ -363,6 +363,8 @@ impl TransformForest {
 
     /// Computes the transform from one frame to another if there is a path between them.
     ///
+    /// This function computes all T, such that for each source `p_target = T * p_source`
+    ///
     /// `target`: The frame into which to transform.
     /// `sources`: The frames from which to transform.
     ///

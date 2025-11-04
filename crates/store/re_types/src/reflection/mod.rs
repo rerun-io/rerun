@@ -3160,6 +3160,20 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
+                        name: "source_frame",
+                        display_name: "Source frame",
+                        component_type: "rerun.components.TransformFrameId".into(),
+                        docstring_md: "The frame this transform transforms from.\n\nThe entity at which the transform relationship of any given source frame is specified mustn't change over time.\nE.g. if you specified the source `\"robot_arm\"` on an entity named `\"my_transforms\"`, you may not log transforms\nwith the source `\"robot_arm\"` on any other entity than `\"my_transforms\"`.\nAn exception to this rule is static time - you may first mention a source on one entity statically and later on\nanother one temporally.\n\n⚠ This currently also affects the target frame of [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).\n⚠ This currently is also used as the frame id of [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).\n\nIf not specified, this is set to the implicit transform frame of the current entity path.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame?speculative-link).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "target_frame",
+                        display_name: "Target frame",
+                        component_type: "rerun.components.TransformFrameId".into(),
+                        docstring_md: "The frame this transform transforms to.\n\n⚠ This currently also affects the target frame of [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).\n\nIf not specified, this is set to the implicit transform frame of the current entity path's parent.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame?speculative-link).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
                         name: "axis_length",
                         display_name: "Axis length",
                         component_type: "rerun.components.AxisLength".into(),

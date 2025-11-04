@@ -18,6 +18,7 @@ namespace rerun.archetypes;
 /// \example archetypes/transform3d_row_updates title="Update a transform over time" image="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png"
 /// \example archetypes/transform3d_column_updates title="Update a transform over time, in a single operation" image="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png"
 /// \example archetypes/transform3d_partial_updates title="Update specific properties of a transform over time" image="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/1200w.png"
+// TODO(RR-2777): Add frame example once it's ready.
 table Transform3D (
   "attr.docs.category": "Spatial 3D",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
@@ -43,11 +44,43 @@ table Transform3D (
   /// Specifies the relation this transform establishes between this entity and its parent.
   relation: rerun.components.TransformRelation ("attr.rerun.component_optional", nullable, order: 1600);
 
+  // --- transform frame
+
+  /// The frame this transform transforms from.
+  ///
+  /// The entity at which the transform relationship of any given source frame is specified mustn't change over time.
+  /// E.g. if you specified the source `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
+  /// with the source `"robot_arm"` on any other entity than `"my_transforms"`.
+  /// An exception to this rule is static time - you may first mention a source on one entity statically and later on
+  /// another one temporally.
+  ///
+  /// ⚠ This currently also affects the target frame of [archetypes.Pinhole].
+  /// ⚠ This currently is also used as the frame id of [archetypes.InstancePoses3D].
+  ///
+  /// If not specified, this is set to the implicit transform frame of the current entity path.
+  /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
+  ///
+  /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
+  // TODO(RR-2777): Mark as stable when we're ready for it.
+  source_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.state": "unstable", nullable, order: 2000);
+
+  /// The frame this transform transforms to.
+  ///
+  ///
+  /// ⚠ This currently also affects the target frame of [archetypes.Pinhole].
+  ///
+  /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
+  /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
+  ///
+  /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
+  // TODO(RR-2777): Mark as stable when we're ready for it.
+  target_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.state": "unstable", nullable, order: 2100);
+
   // --- visual representation
 
   /// Visual length of the 3 axes.
   ///
   /// The length is interpreted in the local coordinate system of the transform.
   /// If the transform is scaled, the axes will be scaled accordingly.
-  axis_length: rerun.components.AxisLength ("attr.rerun.component_optional", nullable, order: 2000);
+  axis_length: rerun.components.AxisLength ("attr.rerun.component_optional", nullable, order: 3000);
 }
