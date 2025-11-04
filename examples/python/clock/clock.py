@@ -12,7 +12,6 @@ import math
 from typing import Final
 
 import numpy as np
-
 import rerun as rr  # pip install rerun-sdk
 
 LENGTH_S: Final = 20.0

@@ -16,12 +16,11 @@ import numpy.typing as npt
 import pandas as pd
 import pdf2image
 import requests
+import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
 import tqdm
 from paddleocr import PPStructure
 from paddleocr.ppstructure.recovery.recovery_to_doc import sorted_layout_boxes
-
-import rerun as rr  # pip install rerun-sdk
-import rerun.blueprint as rrb
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

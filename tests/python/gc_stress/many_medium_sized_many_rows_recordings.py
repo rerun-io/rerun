@@ -13,9 +13,8 @@ Usage:
 
 from __future__ import annotations
 
-from numpy.random import default_rng
-
 import rerun as rr
+from numpy.random import default_rng
 
 rng = default_rng(12345)
 

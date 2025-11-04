@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 
 import cv2
-
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
 

@@ -1,7 +1,6 @@
 """Create and log a depth image and pinhole camera."""
 
 import numpy as np
-
 import rerun as rr
 
 depth_image = 65535 * np.ones((200, 300), dtype=np.uint16)

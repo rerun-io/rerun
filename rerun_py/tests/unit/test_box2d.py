@@ -6,9 +6,8 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 import numpy.typing as npt
 import pytest
-import torch
-
 import rerun as rr
+import torch
 from rerun.components import (
     HalfSize2DBatch,
     Position2DBatch,

@@ -5,9 +5,8 @@ from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pytest
-import torch
-
 import rerun as rr
+import torch
 from rerun.components.line_strip3d import LineStrip3DArrayLike, LineStrip3DBatch
 from rerun.datatypes import Float32ArrayLike, Vec3D
 

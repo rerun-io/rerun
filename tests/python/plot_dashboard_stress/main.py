@@ -24,7 +24,6 @@ import time
 from typing import Any, cast
 
 import numpy as np
-
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
 

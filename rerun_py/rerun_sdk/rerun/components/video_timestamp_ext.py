@@ -4,7 +4,6 @@ from typing import Any
 
 import numpy as np
 import numpy.typing as npt
-
 from rerun.error_utils import catch_and_log_exceptions
 
 from .. import components

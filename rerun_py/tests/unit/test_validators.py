@@ -5,7 +5,6 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 import pytest
-
 from rerun._validators import flat_np_array_from_array_like
 
 VALID_CASES = [

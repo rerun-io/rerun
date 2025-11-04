@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 
 import pyarrow as pa
-
 import rerun as rr
 
 DESCRIPTION = """

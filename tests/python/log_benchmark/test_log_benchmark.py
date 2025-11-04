@@ -7,7 +7,6 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 import pytest
-
 import rerun as rr
 
 from . import Point3DInput

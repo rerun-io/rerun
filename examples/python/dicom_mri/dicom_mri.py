@@ -15,7 +15,6 @@ import numpy as np
 import numpy.typing as npt
 import pydicom as dicom
 import requests
-
 import rerun as rr  # pip install rerun-sdk
 
 if TYPE_CHECKING:

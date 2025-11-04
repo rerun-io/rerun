@@ -9,7 +9,6 @@ import threading
 
 import numpy as np
 import numpy.typing as npt
-
 import rerun as rr  # pip install rerun-sdk
 
 

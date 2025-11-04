@@ -4,7 +4,6 @@ from fractions import Fraction
 
 import numpy as np
 import pytest
-
 import rerun as rr
 from rerun.datatypes import (
     Vec2D,

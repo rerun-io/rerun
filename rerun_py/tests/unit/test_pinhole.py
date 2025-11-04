@@ -4,7 +4,6 @@ import itertools
 from typing import TYPE_CHECKING
 
 import numpy as np
-
 import rerun as rr
 from rerun.components import PinholeProjectionBatch, ResolutionBatch, ViewCoordinatesBatch
 

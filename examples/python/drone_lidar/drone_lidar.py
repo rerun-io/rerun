@@ -10,10 +10,9 @@ import laspy
 import numpy as np
 import numpy.typing as npt
 import requests
-from tqdm import tqdm
-
 import rerun as rr
 import rerun.blueprint as rrb
+from tqdm import tqdm
 
 DATASET_DIR = Path(__file__).parent / "dataset"
 if not DATASET_DIR.exists():

@@ -7,7 +7,6 @@ import argparse
 from math import tau
 
 import numpy as np
-
 import rerun as rr  # pip install rerun-sdk
 from rerun import blueprint as rrb
 from rerun.utilities import bounce_lerp, build_color_spiral

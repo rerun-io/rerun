@@ -4,9 +4,8 @@ import tempfile
 
 import cv2
 import numpy as np
-from PIL import Image as PILImage, ImageDraw
-
 import rerun as rr
+from PIL import Image as PILImage, ImageDraw
 
 # Save a transparent PNG to a temporary file.
 _, file_path = tempfile.mkstemp(suffix=".png")

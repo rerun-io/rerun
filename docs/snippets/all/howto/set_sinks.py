@@ -1,7 +1,6 @@
 """Log some data to a file and a Viewer at the same time."""
 
 import numpy as np
-
 import rerun as rr
 
 # Initialize the SDK and give our recording a unique name

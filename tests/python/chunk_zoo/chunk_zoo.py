@@ -12,7 +12,6 @@ import argparse
 from typing import TYPE_CHECKING
 
 import numpy as np
-
 import rerun as rr
 
 if TYPE_CHECKING:

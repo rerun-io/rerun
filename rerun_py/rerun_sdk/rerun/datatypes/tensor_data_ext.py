@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any, Final, Protocol
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-
 from rerun._validators import flat_np_uint64_array_from_array_like
 from rerun.error_utils import _send_warning_or_raise
 

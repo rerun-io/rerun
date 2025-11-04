@@ -3,7 +3,6 @@
 from datetime import datetime
 
 import numpy as np
-
 import rerun as rr
 
 rr.init("rerun_example_different_indices", spawn=True)

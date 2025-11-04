@@ -1,7 +1,6 @@
 """Spawn a viewer and log some data."""
 
 import numpy as np
-
 import rerun as rr
 
 # Initialize the SDK, give our recording a unique name, and spawn a viewer

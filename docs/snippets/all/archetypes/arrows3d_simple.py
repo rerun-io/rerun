@@ -3,7 +3,6 @@
 from math import tau
 
 import numpy as np
-
 import rerun as rr
 
 rr.init("rerun_example_arrow3d", spawn=True)

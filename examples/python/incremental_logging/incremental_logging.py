@@ -5,9 +5,8 @@ from __future__ import annotations
 
 import argparse
 
-from numpy.random import default_rng
-
 import rerun as rr
+from numpy.random import default_rng
 
 parser = argparse.ArgumentParser(description="Showcases how to incrementally log data belonging to the same archetype.")
 rr.script_add_args(parser)

@@ -1,7 +1,6 @@
 """Log random points and the corresponding covariance ellipsoid."""
 
 import numpy as np
-
 import rerun as rr
 
 rr.init("rerun_example_ellipsoid_simple", spawn=True)

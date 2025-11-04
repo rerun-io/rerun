@@ -6,7 +6,6 @@ from __future__ import annotations
 import time
 
 import numpy as np
-
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
 

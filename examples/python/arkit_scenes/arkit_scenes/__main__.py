@@ -8,12 +8,11 @@ from typing import TYPE_CHECKING, Any
 
 import cv2
 import numpy as np
+import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
 import trimesh
 from scipy.spatial.transform import Rotation as R
 from tqdm import tqdm
-
-import rerun as rr  # pip install rerun-sdk
-import rerun.blueprint as rrb
 
 from .download_dataset import AVAILABLE_RECORDINGS, ensure_recording_available
 

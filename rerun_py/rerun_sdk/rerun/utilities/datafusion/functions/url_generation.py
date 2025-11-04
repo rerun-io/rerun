@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pyarrow.compute
-
 from rerun.error_utils import RerunMissingDependencyError
 
 if TYPE_CHECKING:

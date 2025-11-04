@@ -19,7 +19,6 @@ from typing import TYPE_CHECKING, Annotated, Literal
 
 import numpy as np
 import numpy.typing as npt
-
 import rerun as rr
 import rerun.blueprint as rrb
 

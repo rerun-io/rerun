@@ -8,10 +8,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import requests
-from tqdm.auto import tqdm
-
 import rerun as rr
 from rerun import blueprint as rrb
+from tqdm.auto import tqdm
 
 DATA_DIR = Path(__file__).parent / "dataset"
 

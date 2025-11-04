@@ -19,10 +19,9 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 import requests
-from tqdm import tqdm
-
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
+from tqdm import tqdm
 
 DESCRIPTION = """
 # RGBD

@@ -6,7 +6,6 @@ from typing import Any
 import numpy as np
 import pyarrow as pa
 from pyarrow import ArrowInvalid
-
 from rerun._baseclasses import ComponentDescriptor
 
 from ._baseclasses import ComponentBatchLike, ComponentColumn

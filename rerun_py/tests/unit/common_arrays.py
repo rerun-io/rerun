@@ -4,7 +4,6 @@ from typing import Any, TypeVar, overload
 
 import numpy as np
 import torch
-
 from rerun.components import (
     ClassId,
     ClassIdBatch,

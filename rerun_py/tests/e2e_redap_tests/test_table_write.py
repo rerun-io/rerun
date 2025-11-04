@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 from datafusion import DataFrameWriteOptions, InsertOp, SessionContext, col
-
 from rerun.catalog import TableInsertMode
 
 if TYPE_CHECKING:

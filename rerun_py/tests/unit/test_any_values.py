@@ -5,7 +5,6 @@ from typing import Any
 import numpy as np
 import pyarrow as pa
 import pytest
-
 import rerun as rr
 from rerun.error_utils import RerunWarning
 

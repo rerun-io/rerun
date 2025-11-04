@@ -5,9 +5,8 @@ from typing import Any, cast
 
 import numpy as np
 import pytest
-import torch
-
 import rerun as rr
+import torch
 from rerun.components import (
     GeoLineStringArrayLike,
     GeoLineStringBatch,

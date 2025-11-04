@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
-
 from rerun.components.image_format import ImageFormat
 from rerun.datatypes.channel_datatype import ChannelDatatype
 from rerun.datatypes.color_model import ColorModel

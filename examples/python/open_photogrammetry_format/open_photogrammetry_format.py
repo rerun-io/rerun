@@ -16,12 +16,11 @@ from typing import Final
 
 import numpy as np
 import requests
+import rerun as rr
 import tqdm
 from PIL import Image
 from pyopf.io import load
 from pyopf.resolve import resolve
-
-import rerun as rr
 
 DESCRIPTION = """
 # Open Photogrammetry Format

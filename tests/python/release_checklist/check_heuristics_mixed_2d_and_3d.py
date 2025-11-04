@@ -5,7 +5,6 @@ from argparse import Namespace
 from uuid import uuid4
 
 import numpy as np
-
 import rerun as rr
 
 README = """\

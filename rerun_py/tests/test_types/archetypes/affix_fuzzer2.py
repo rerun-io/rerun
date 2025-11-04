@@ -10,7 +10,6 @@ from typing import Any
 import numpy as np
 import pyarrow as pa
 from attrs import define, field
-
 from rerun._baseclasses import (
     Archetype,
     ComponentColumnList,

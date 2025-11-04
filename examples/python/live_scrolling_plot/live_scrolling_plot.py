@@ -8,7 +8,6 @@ import time
 from typing import TYPE_CHECKING
 
 import numpy as np
-
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
 

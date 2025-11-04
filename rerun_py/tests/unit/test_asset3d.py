@@ -3,7 +3,6 @@ from __future__ import annotations
 import pathlib
 
 import numpy as np
-
 import rerun as rr
 
 CUBE_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "cube.glb"

@@ -16,7 +16,6 @@ import argparse
 import sys
 
 import numpy as np
-
 import rerun as rr  # pip install rerun-sdk
 
 try:

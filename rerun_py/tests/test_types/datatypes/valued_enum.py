@@ -9,7 +9,6 @@ from collections.abc import Sequence
 from typing import Literal
 
 import pyarrow as pa
-
 from rerun._baseclasses import (
     BaseBatch,
 )

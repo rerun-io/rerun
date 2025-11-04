@@ -7,7 +7,6 @@ import argparse
 
 import numpy as np
 import pyrealsense2 as rs
-
 import rerun as rr  # pip install rerun-sdk
 
 

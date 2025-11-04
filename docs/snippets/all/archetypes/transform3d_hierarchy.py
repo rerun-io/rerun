@@ -1,7 +1,6 @@
 """Logs a transform hierarchy."""
 
 import numpy as np
-
 import rerun as rr
 import rerun.blueprint as rrb
 

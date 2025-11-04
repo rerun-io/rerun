@@ -15,11 +15,10 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import requests
-import tqdm
-from mediapipe.tasks.python import vision
-
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
+import tqdm
+from mediapipe.tasks.python import vision
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator

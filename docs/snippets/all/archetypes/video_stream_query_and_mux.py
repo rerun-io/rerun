@@ -6,9 +6,8 @@ import sys
 from fractions import Fraction
 
 import av
-from pyarrow import ChunkedArray
-
 import rerun as rr
+from pyarrow import ChunkedArray
 
 
 def read_h264_samples_from_rrd(rrd_path: str, video_entity: str, timeline: str) -> tuple[ChunkedArray, ChunkedArray]:

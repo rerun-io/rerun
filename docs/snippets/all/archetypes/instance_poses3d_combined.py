@@ -1,7 +1,6 @@
 """Log a simple 3D box with a regular & instance pose transform."""
 
 import numpy as np
-
 import rerun as rr
 
 rr.init("rerun_example_instance_pose3d_combined", spawn=True)

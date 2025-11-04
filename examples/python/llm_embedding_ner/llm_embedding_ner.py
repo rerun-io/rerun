@@ -7,12 +7,11 @@ import argparse
 from collections import defaultdict
 from typing import Any
 
+import rerun as rr
+import rerun.blueprint as rrb
 import torch
 import umap
 from transformers import AutoModelForTokenClassification, AutoTokenizer, pipeline
-
-import rerun as rr
-import rerun.blueprint as rrb
 
 DEFAULT_TEXT = """
 In the bustling city of Brightport, nestled between rolling hills and a sparkling harbor, lived three friends: Maya, a spirited chef known for her spicy curries; Leo, a laid-back jazz musician with a penchant for saxophone solos; and Ava, a tech-savvy programmer who loved solving puzzles.

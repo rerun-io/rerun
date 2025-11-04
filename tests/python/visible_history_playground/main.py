@@ -7,7 +7,6 @@ import datetime
 import math
 
 import numpy as np
-
 import rerun as rr
 
 parser = argparse.ArgumentParser(description=__doc__)

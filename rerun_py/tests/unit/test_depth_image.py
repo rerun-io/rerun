@@ -5,9 +5,8 @@ from typing import Any
 
 import numpy as np
 import pytest
-import torch
-
 import rerun as rr
+import torch
 from rerun.components import DepthMeter, ImageFormat
 from rerun.datatypes import ChannelDatatype, Float32Like
 
