@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from rerun.catalog import CatalogClient
-
     from rerun_bindings import DatasetEntry
 
 
