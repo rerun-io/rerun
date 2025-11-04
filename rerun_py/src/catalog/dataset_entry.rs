@@ -3,12 +3,13 @@ use std::sync::Arc;
 use arrow::array::{RecordBatch, RecordBatchOptions, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
-use pyo3::Bound;
-use pyo3::types::{PyAnyMethods as _, PyDict};
+use pyo3::types::PyAnyMethods as _;
+use pyo3::{Bound, PyErr};
 use pyo3::{
     Py, PyAny, PyRef, PyRefMut, PyResult, Python, exceptions::PyRuntimeError,
     exceptions::PyValueError, pyclass, pymethods,
 };
+use re_protos::cloud::v1alpha1::{DeleteIndexesRequest, ListIndexesRequest};
 use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
@@ -32,8 +33,9 @@ use crate::dataframe::{AnyComponentColumn, PyIndexColumnSelector, PyRecording, P
 use crate::utils::wait_for_future;
 
 use super::{
-    PyDataFusionTable, PyEntry, PyEntryId, VectorDistanceMetricLike, VectorLike,
-    dataframe_query::PyDataframeQueryView, task::PyTasks, to_py_err,
+    PyDataFusionTable, PyEntry, PyEntryId, PyIndexConfig, PyIndexingResult,
+    VectorDistanceMetricLike, VectorLike, dataframe_query::PyDataframeQueryView, task::PyTasks,
+    to_py_err,
 };
 
 /// A dataset entry in the catalog.
@@ -547,6 +549,8 @@ impl PyDatasetEntry {
         )
     }
 
+    // TODO(RR-2824): we should have a generic `create_index(PyIndexConfig)`
+
     /// Create a full-text search index on the given column.
     #[pyo3(signature = (
             *,
@@ -643,9 +647,9 @@ impl PyDatasetEntry {
         column: AnyComponentColumn,
         time_index: PyIndexColumnSelector,
         // TODO(RR-2798): Remove num_partitions since deprecated
-        num_partitions: Option<usize>,
-        target_partition_num_rows: Option<usize>,
-        num_sub_vectors: usize,
+        num_partitions: Option<u32>,
+        target_partition_num_rows: Option<u32>,
+        num_sub_vectors: u32,
         distance_metric: VectorDistanceMetricLike,
     ) -> PyResult<PyIndexingResult> {
         let super_ = self_.as_super();
@@ -692,6 +696,12 @@ impl PyDatasetEntry {
             metric: distance_metric,
         };
 
+        let config = re_protos::cloud::v1alpha1::ext::IndexConfig {
+            time_index: time_selector.timeline,
+            column: component_descriptor.0.clone().into(),
+            properties: properties.clone(),
+        };
+
         let request = CreateIndexRequest {
             config: Some(IndexConfig {
                 properties: Some(properties.into()),
@@ -711,11 +721,102 @@ impl PyDatasetEntry {
                         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
                 )
                 .await
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner();
 
             Ok(PyIndexingResult {
-                debug_info: result.into_inner().debug_info,
+                index: config.into(),
+                statistics_json: result.statistics_json,
+                debug_info: result.debug_info,
             })
+        })
+    }
+
+    /// List all user-defined indexes in this dataset.
+    #[instrument(skip_all, err)]
+    fn list_indexes(self_: PyRef<'_, Self>) -> PyResult<Vec<PyIndexingResult>> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let request = ListIndexesRequest {};
+
+        wait_for_future(self_.py(), async {
+            let result = connection
+                .client()
+                .await?
+                .inner()
+                .list_indexes(
+                    tonic::Request::new(request)
+                        .with_entry_id(dataset_id)
+                        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+                )
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner();
+
+            let indexes: Result<Vec<_>, PyErr> = result
+                .indexes
+                .into_iter()
+                .map(|index| {
+                    let index = re_protos::cloud::v1alpha1::ext::IndexConfig::try_from(index)?;
+                    Ok(PyIndexConfig::from(index))
+                })
+                .collect();
+
+            Ok(itertools::izip!(indexes?, result.statistics_json)
+                .map(|(index, statistics_json)| PyIndexingResult {
+                    index,
+                    statistics_json,
+                    debug_info: None,
+                })
+                .collect())
+        })
+    }
+
+    /// Deletes all user-defined indexes for the specified column.
+    //
+    // TODO(RR-2824): this should also be capable of accepting a `PyIndexConfig` directly.
+    #[instrument(skip_all, err)]
+    fn delete_indexes(
+        self_: PyRef<'_, Self>,
+        column: AnyComponentColumn,
+    ) -> PyResult<Vec<PyIndexConfig>> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let schema = Self::fetch_schema(&self_)?;
+        let component_descriptor = schema.column_for_selector(column)?;
+
+        let request = DeleteIndexesRequest {
+            column: Some(component_descriptor.0.into()),
+        };
+
+        wait_for_future(self_.py(), async {
+            let result = connection
+                .client()
+                .await?
+                .inner()
+                .delete_indexes(
+                    tonic::Request::new(request)
+                        .with_entry_id(dataset_id)
+                        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+                )
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner();
+
+            let indexes: Result<Vec<_>, PyErr> = result
+                .indexes
+                .into_iter()
+                .map(|index| {
+                    let index = re_protos::cloud::v1alpha1::ext::IndexConfig::try_from(index)?;
+                    Ok(PyIndexConfig::from(index))
+                })
+                .collect();
+
+            indexes
         })
     }
 
@@ -928,38 +1029,4 @@ fn py_object_to_i64(py: Python<'_>, obj: &Bound<'_, PyAny>) -> PyResult<i64> {
     let int_builtin = py.import("builtins")?.getattr("int")?;
     let converted = int_builtin.call1((obj,))?;
     converted.extract::<i64>()
-}
-
-/// The result returned from an indexing operation.
-#[pyclass(name = "IndexingResult", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
-pub struct PyIndexingResult {
-    debug_info: Option<re_protos::cloud::v1alpha1::DebugInfo>,
-}
-
-#[pymethods]
-impl PyIndexingResult {
-    /// Get debug information about the indexing operation.
-    ///
-    /// The exact contents of debug information may vary depending on the indexing operation performed
-    /// and the server implementation.
-    ///
-    /// Returns
-    /// -------
-    /// Optional[dict]
-    ///     A dictionary containing debug information, or `None` if no debug information is available
-    #[allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)]
-    fn debug_info(&self, py: Python<'_>) -> PyResult<Option<Py<PyDict>>> {
-        match &self.debug_info {
-            Some(debug_info) => {
-                let dict = PyDict::new(py);
-
-                if let Some(memory_used) = debug_info.memory_used {
-                    dict.set_item("memory_used", memory_used)?;
-                }
-
-                Ok(Some(dict.into()))
-            }
-            None => Ok(None),
-        }
-    }
 }

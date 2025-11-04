@@ -11,6 +11,9 @@ use re_types::{RowId, archetypes};
 
 use re_tf::{TransformFrameIdHash, TransformResolutionCache};
 
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 const NUM_TIMELINES: usize = 4;
 const NUM_TIMEPOINTS: usize = 1000;
 const NUM_TIMEPOINTS_PER_ENTITY: usize = 50;
@@ -58,7 +61,7 @@ fn setup_store() -> (EntityDb, Vec<ChunkStoreEvent>) {
 fn transform_resolution_cache_query(c: &mut Criterion) {
     let (entity_db, events) = setup_store();
 
-    c.bench_function("build_from_entitydb", |b| {
+    c.bench_function("build_from_entity_db", |b| {
         b.iter(|| {
             let mut cache = TransformResolutionCache::default();
             cache.process_store_events(events.iter());

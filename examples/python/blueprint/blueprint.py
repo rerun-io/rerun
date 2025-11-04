@@ -39,7 +39,14 @@ def main() -> None:
             ),
             rrb.BlueprintPanel(state="collapsed"),
             rrb.SelectionPanel(state="collapsed"),
-            rrb.TimePanel(state="collapsed", timeline="custom", sequence_cursor=15),
+            rrb.TimePanel(
+                state="collapsed",
+                timeline="custom",
+                sequence_cursor=15,
+                time_selection=rrb.components.AbsoluteTimeRange(10, 25),
+                loop_mode="selection",
+                play_state="playing",
+            ),
             auto_views=args.auto_views,
         )
 

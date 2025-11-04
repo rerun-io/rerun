@@ -90,8 +90,8 @@ pub use self::{
     tables::{TableStore, TableStores},
     tensor::{ImageStats, TensorStats},
     time_control::{
-        Looping, PlayState, TIME_PANEL_PATH, TimeControl, TimeControlCommand, TimeControlResponse,
-        TimeView, time_panel_blueprint_entity_path,
+        TIME_PANEL_PATH, TimeControl, TimeControlCommand, TimeControlResponse, TimeView,
+        time_panel_blueprint_entity_path,
     },
     typed_entity_collections::{
         IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, VisualizableEntities,

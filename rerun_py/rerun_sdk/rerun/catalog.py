@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from pyarrow import RecordBatch, RecordBatchReader
+
 from rerun_bindings import (
     AlreadyExistsError as AlreadyExistsError,
     CatalogClientInternal,

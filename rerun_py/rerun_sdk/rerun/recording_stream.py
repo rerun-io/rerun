@@ -8,11 +8,11 @@ import uuid
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, TypeVar, overload
 
-from rerun_bindings import ChunkBatcherConfig as ChunkBatcherConfig  # noqa: TC002
 from typing_extensions import deprecated
 
 import rerun as rr
 from rerun import bindings
+from rerun_bindings import ChunkBatcherConfig as ChunkBatcherConfig  # noqa: TC001
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

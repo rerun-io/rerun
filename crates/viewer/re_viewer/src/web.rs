@@ -13,9 +13,9 @@ use wasm_bindgen::prelude::*;
 use re_log::ResultExt as _;
 use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
+use re_types::blueprint::components::PlayState;
 use re_viewer_context::{
-    AsyncRuntimeHandle, PlayState, SystemCommand, SystemCommandSender as _, TimeControlCommand,
-    open_url,
+    AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url,
 };
 
 use crate::history::install_popstate_listener;

@@ -5,13 +5,14 @@ use std::sync::Arc;
 use arrow::array::{RecordBatch, RecordBatchOptions};
 use arrow::datatypes::{Fields, Schema};
 use itertools::Either;
+
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_log_types::{EntryId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
         EntryKind, ScanDatasetManifestResponse, ScanPartitionTableResponse,
-        ext::{DataSource, DatasetEntry, EntryDetails},
+        ext::{DataSource, DatasetDetails, DatasetEntry, EntryDetails},
     },
     common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
 };
@@ -21,6 +22,9 @@ use crate::store::{Error, InMemoryStore, Layer, Partition};
 pub struct Dataset {
     id: EntryId,
     name: String,
+    store_kind: StoreKind,
+    details: DatasetDetails,
+
     partitions: HashMap<PartitionId, Partition>,
 
     created_at: jiff::Timestamp,
@@ -28,22 +32,39 @@ pub struct Dataset {
 }
 
 impl Dataset {
-    pub fn new(id: EntryId, name: String) -> Self {
+    pub fn new(id: EntryId, name: String, store_kind: StoreKind, details: DatasetDetails) -> Self {
         Self {
             id,
             name,
+            store_kind,
+            details,
             partitions: HashMap::default(),
             created_at: jiff::Timestamp::now(),
             updated_at: jiff::Timestamp::now(),
         }
     }
 
+    #[inline]
     pub fn id(&self) -> EntryId {
         self.id
     }
 
+    #[inline]
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    #[inline]
+    pub fn store_kind(&self) -> StoreKind {
+        self.store_kind
+    }
+
+    #[inline]
+    pub fn entry_kind(&self) -> EntryKind {
+        match self.store_kind() {
+            StoreKind::Recording => EntryKind::Dataset,
+            StoreKind::Blueprint => EntryKind::BlueprintDataset,
+        }
     }
 
     pub fn partition(&self, partition_id: &PartitionId) -> Result<&Partition, Error> {
@@ -75,11 +96,16 @@ impl Dataset {
         }
     }
 
+    pub fn set_dataset_details(&mut self, details: DatasetDetails) {
+        self.details = details;
+        self.updated_at = jiff::Timestamp::now();
+    }
+
     pub fn as_entry_details(&self) -> EntryDetails {
         EntryDetails {
             id: self.id,
             name: self.name.clone(),
-            kind: EntryKind::Dataset,
+            kind: self.entry_kind(),
             created_at: self.created_at,
             updated_at: self.updated_at,
         }
@@ -90,16 +116,16 @@ impl Dataset {
             details: EntryDetails {
                 id: self.id,
                 name: self.name.clone(),
-                kind: EntryKind::Dataset,
+                kind: self.entry_kind(),
                 created_at: self.created_at,
                 updated_at: self.updated_at,
             },
 
-            dataset_details: Default::default(),
+            dataset_details: self.details.clone(),
 
             handle: DatasetHandle {
                 id: Some(self.id),
-                store_kind: StoreKind::Recording,
+                store_kind: self.store_kind,
                 url: url::Url::parse(&format!("memory:///{}", self.id)).expect("valid url"),
             },
         }
@@ -300,12 +326,15 @@ impl Dataset {
         Ok(())
     }
 
-    /// Load a RRD using its recording id as partition id.
+    /// Load a RRD using its recording id as partition id.¨
+    ///
+    /// Only stores with matching kinds with be loaded.
     pub fn load_rrd(
         &mut self,
         path: &Path,
         layer_name: Option<&str>,
         on_duplicate: IfDuplicateBehavior,
+        store_kind: StoreKind,
     ) -> Result<BTreeSet<PartitionId>, Error> {
         re_log::info!("Loading RRD: {}", path.display());
         let contents =
@@ -317,7 +346,7 @@ impl Dataset {
         let mut new_partition_ids = BTreeSet::default();
 
         for (store_id, chunk_store) in contents {
-            if !store_id.is_recording() {
+            if store_id.kind() != store_kind {
                 continue;
             }
 

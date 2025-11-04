@@ -11,7 +11,8 @@ use egui::{NumExt as _, lerp, remap};
 use itertools::Itertools as _;
 
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeInt, TimeReal};
-use re_viewer_context::{PlayState, TimeControlCommand, TimeView};
+use re_types::blueprint::components::PlayState;
+use re_viewer_context::{TimeControlCommand, TimeView};
 
 /// The ideal gap between time segments.
 ///
@@ -350,15 +351,26 @@ impl TimeRangesUi {
     ///
     /// In effect, this will automatically choose the snap-radius based on zoom level.
     pub fn snapped_time_from_x(&self, ui: &egui::Ui, pointer_x: f32) -> Option<TimeReal> {
-        // TODO(emilk): coarser snapping if some modifier is held down
-        let aim_radius = ui.input(|i| i.aim_radius());
-        let min_time = self.time_from_x_f32(pointer_x - aim_radius);
-        let max_time = self.time_from_x_f32(pointer_x + aim_radius);
-        if let (Some(min_time), Some(max_time)) = (min_time, max_time) {
-            Some(AbsoluteTimeRangeF::new(min_time, max_time).smart_aim())
+        let aim_radius = ui.input(|i| i.aim_radius()) as f64;
+
+        let time = self.time_from_x_f32(pointer_x)?;
+        let time = time.round();
+
+        let time_per_x = 1.0 / self.points_per_time;
+
+        let coarse_snapping = ui.input(|i| i.modifiers.shift);
+        let fine_snap_interval = time_snap_value_smaller_than(2.0 * aim_radius * time_per_x);
+
+        let snap_interval = if coarse_snapping {
+            i64::max(
+                10 * fine_snap_interval,
+                time_snap_value_smaller_than(50.0 * time_per_x),
+            )
         } else {
-            min_time.or(max_time)
-        }
+            fine_snap_interval
+        };
+
+        Some(time.closest_multiple_of(snap_interval).into())
     }
 
     pub fn time_from_x_f32(&self, needle_x: f32) -> Option<TimeReal> {
@@ -518,4 +530,37 @@ fn test_time_ranges_ui_2() {
             "time_in: {time_in:?}, time_out: {time_out:?}, x: {x}, time_range_ui: {time_range_ui:#?}"
         );
     }
+}
+
+/// Find the largest value, smaller than `max`, that is "round" (even multiple of 10, or half that).
+fn time_snap_value_smaller_than(max: f64) -> i64 {
+    let max = max.abs();
+    if max <= 1.0 {
+        return 1;
+    }
+
+    let magnitude = max.log10().floor() as u32;
+    let magnitude = magnitude.at_most(16); // Avoid overfloing i64 below
+    let step = 10_i64.pow(magnitude);
+
+    if 5.0 * step as f64 <= max {
+        5 * step
+    } else {
+        step
+    }
+}
+
+#[test]
+fn test_largest_round_value_smaller_than() {
+    assert_eq!(time_snap_value_smaller_than(9.9), 5);
+    assert_eq!(time_snap_value_smaller_than(10.0), 10);
+    assert_eq!(time_snap_value_smaller_than(10.2), 10);
+    assert_eq!(time_snap_value_smaller_than(40.9), 10);
+    assert_eq!(time_snap_value_smaller_than(50.0), 50);
+    assert_eq!(time_snap_value_smaller_than(50.1), 50);
+    assert_eq!(time_snap_value_smaller_than(90.9), 50);
+    assert_eq!(time_snap_value_smaller_than(100.0), 100);
+    assert_eq!(time_snap_value_smaller_than(100.1), 100);
+    assert_eq!(time_snap_value_smaller_than(1.1e12), 1_000_000_000_000);
+    assert_eq!(time_snap_value_smaller_than(6.1e12), 5_000_000_000_000);
 }
