@@ -127,7 +127,10 @@ impl std::str::FromStr for Timestamp {
     type Err = jiff::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let jiff_timestamp = jiff::Timestamp::from_str(s)?;
+        // Ignore thin spaces that we put between milliseconds and microseconds for readability:
+        let s: String = s.chars().filter(|&c| c != re_format::THIN_SPACE).collect();
+
+        let jiff_timestamp = jiff::Timestamp::from_str(&s)?;
         Ok(Self(jiff_timestamp.as_nanosecond() as i64))
     }
 }
@@ -272,6 +275,19 @@ impl Timestamp {
             // Parse as seconds and convert to nanoseconds
             let seconds = s.parse::<f64>().ok()?;
             Some(Self::from_secs_since_epoch(seconds))
+        } else if timestamp_format.hide_today_date() {
+            // Maybe this is a naked timestamp without any date?
+
+            let tz = timestamp_format.to_jiff_time_zone();
+            let today = jiff::Timestamp::now().to_zoned(tz).date();
+            let today = today.strftime("%Y-%m-%d").to_string();
+
+            if s.starts_with(&today) {
+                None // prevent infinite recursion
+            } else {
+                let datetime_string = format!("{today}T{s}");
+                Self::parse_with_format(&datetime_string, timestamp_format)
+            }
         } else {
             None
         }
@@ -387,6 +403,15 @@ mod tests {
             .unwrap();
         let datetime = Timestamp::from(today);
         assert_eq!(&datetime.format(TimestampFormat::utc()), "22:35:42Z");
+
+        assert_eq!(
+            Timestamp::parse_with_format("22:35:42Z", TimestampFormat::utc()),
+            Some(datetime)
+        );
+        assert_eq!(
+            Timestamp::parse_with_format("22:35:42", TimestampFormat::utc()),
+            Some(datetime)
+        );
     }
 
     #[test]
