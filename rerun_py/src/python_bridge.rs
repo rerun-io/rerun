@@ -258,6 +258,9 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // viewer
     crate::viewer::register(py, m)?;
 
+    // server
+    crate::server::register(py, m)?;
+
     Ok(())
 }
 
@@ -1666,7 +1669,7 @@ fn flush(py: Python<'_>, timeout_sec: f32, recording: Option<&PyRecordingStream>
     module = "rerun_bindings.rerun_bindings"
 )]
 #[derive(Clone, PartialEq, Eq, Hash)]
-struct PyComponentDescriptor(pub ComponentDescriptor);
+pub struct PyComponentDescriptor(pub ComponentDescriptor);
 
 #[pymethods]
 impl PyComponentDescriptor {

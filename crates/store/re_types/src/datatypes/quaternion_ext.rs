@@ -49,6 +49,20 @@ impl TryFrom<Quaternion> for glam::Quat {
 }
 
 #[cfg(feature = "glam")]
+impl TryFrom<Quaternion> for glam::DQuat {
+    type Error = ();
+
+    #[inline]
+    fn try_from(q: Quaternion) -> Result<Self, ()> {
+        let q = q.0;
+        glam::DVec4::new(q[0] as f64, q[1] as f64, q[2] as f64, q[3] as f64)
+            .try_normalize()
+            .map(Self::from_vec4)
+            .ok_or(())
+    }
+}
+
+#[cfg(feature = "glam")]
 impl From<glam::Quat> for Quaternion {
     #[inline]
     fn from(q: glam::Quat) -> Self {

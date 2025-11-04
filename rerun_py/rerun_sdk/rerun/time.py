@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING, overload
 
 import numpy as np
 import pyarrow as pa
-import rerun_bindings as bindings
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
+
+import rerun_bindings as bindings
 
 if TYPE_CHECKING:
     from rerun.recording_stream import RecordingStream

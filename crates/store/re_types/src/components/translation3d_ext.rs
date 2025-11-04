@@ -1,7 +1,7 @@
 use super::Translation3D;
 use crate::datatypes::Vec3D;
 
-// This is intentionally not implemented for `Vec3`:
+// This is intentionally not implemented for `DVec3`:
 // The transform semantic is expressed here, `Vec3` on the other hand implements conversion to `glam::Vec3A`.
 #[cfg(feature = "glam")]
 impl From<Translation3D> for glam::Affine3A {
@@ -10,6 +10,19 @@ impl From<Translation3D> for glam::Affine3A {
         Self {
             matrix3: glam::Mat3A::IDENTITY,
             translation: glam::Vec3A::from_slice(&v.0.0),
+        }
+    }
+}
+
+// This is intentionally not implemented for `DVec3`:
+// The transform semantic is expressed here, `Vec3` on the other hand implements conversion to `glam::DVec3`.
+#[cfg(feature = "glam")]
+impl From<Translation3D> for glam::DAffine3 {
+    #[inline]
+    fn from(v: Translation3D) -> Self {
+        Self {
+            matrix3: glam::DMat3::IDENTITY,
+            translation: v.0.into(),
         }
     }
 }

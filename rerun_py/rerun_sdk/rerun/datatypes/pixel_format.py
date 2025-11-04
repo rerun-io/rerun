@@ -182,6 +182,8 @@ PixelFormatLike = (
     ]
     | int
 )
+"""A type alias for any PixelFormat-like object."""
+
 PixelFormatArrayLike = (
     PixelFormat
     | Literal[
@@ -209,6 +211,7 @@ PixelFormatArrayLike = (
     | int
     | Sequence[PixelFormatLike]
 )
+"""A type alias for any PixelFormat-like array object."""
 
 
 class PixelFormatBatch(BaseBatch[PixelFormatArrayLike]):

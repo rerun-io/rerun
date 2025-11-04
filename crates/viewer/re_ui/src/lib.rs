@@ -20,6 +20,7 @@ mod markdown_utils;
 pub mod menu;
 pub mod modal;
 pub mod notifications;
+mod relative_time_range;
 mod section_collapsing_header;
 pub mod syntax_highlighting;
 pub mod time;
@@ -44,6 +45,9 @@ pub use self::{
     icons::Icon,
     markdown_utils::*,
     notifications::Link,
+    relative_time_range::{
+        RelativeTimeRange, relative_time_range_boundary_label_text, relative_time_range_label_text,
+    },
     section_collapsing_header::SectionCollapsingHeader,
     syntax_highlighting::SyntaxHighlighting,
     time_drag_value::TimeDragValue,

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from pyarrow import RecordBatch, RecordBatchReader
+
 from rerun_bindings import (
     AlreadyExistsError as AlreadyExistsError,
     CatalogClientInternal,
@@ -18,6 +19,10 @@ from rerun_bindings import (
     TableInsertMode as TableInsertMode,
     Task as Task,
     VectorDistanceMetric as VectorDistanceMetric,
+)
+from rerun_bindings.types import (
+    IndexValuesLike as IndexValuesLike,
+    VectorDistanceMetricLike as VectorDistanceMetricLike,
 )
 
 from .error_utils import RerunIncompatibleDependencyVersionError, RerunMissingDependencyError

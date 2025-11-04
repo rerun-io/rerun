@@ -10,9 +10,9 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_protos::{
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DataSource, DataSourceKind, GetDatasetManifestSchemaRequest,
-        GetPartitionTableSchemaRequest, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
-        ScanPartitionTableRequest, ScanPartitionTableResponse,
-        rerun_cloud_service_server::RerunCloudService,
+        GetPartitionTableSchemaRequest, ReadDatasetEntryRequest, ScanDatasetManifestRequest,
+        ScanDatasetManifestResponse, ScanPartitionTableRequest, ScanPartitionTableResponse,
+        ext::DatasetDetails, rerun_cloud_service_server::RerunCloudService,
     },
     headers::RerunHeadersInjectorExt as _,
 };
@@ -41,6 +41,62 @@ pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
 
     scan_partition_table_and_snapshot(&service, dataset_name, "simple").await;
     scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple").await;
+}
+
+/// Make sure that registering to blueprint dataset works as expected.
+pub async fn register_and_scan_blueprint_dataset(service: impl RerunCloudService) {
+    let blueprint_data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        2,
+        [LayerDefinition::simple_blueprint("blueprint_partition_id")],
+    );
+
+    let dataset_name = "my_dataset1";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    let dataset_details: DatasetDetails = service
+        .read_dataset_entry(
+            tonic::Request::new(ReadDatasetEntryRequest {})
+                .with_entry_name(dataset_name)
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+        .into_inner()
+        .dataset
+        .unwrap()
+        .dataset_details
+        .unwrap()
+        .try_into()
+        .unwrap();
+
+    assert!(dataset_details.blueprint_dataset.is_some());
+
+    // find the dataset name for the blueprint dataset
+    let blueprint_dataset_name = service
+        .read_dataset_entry(
+            tonic::Request::new(ReadDatasetEntryRequest {})
+                .with_entry_id(dataset_details.blueprint_dataset.unwrap())
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+        .into_inner()
+        .dataset
+        .unwrap()
+        .details
+        .unwrap()
+        .name
+        .unwrap();
+
+    service
+        .register_with_dataset_name(
+            &blueprint_dataset_name,
+            blueprint_data_sources_def.to_data_sources(),
+        )
+        .await;
+
+    scan_partition_table_and_snapshot(&service, &blueprint_dataset_name, "simple_blueprint").await;
+    scan_dataset_manifest_and_snapshot(&service, &blueprint_dataset_name, "simple_blueprint").await;
 }
 
 pub async fn register_and_scan_simple_dataset_with_properties(service: impl RerunCloudService) {

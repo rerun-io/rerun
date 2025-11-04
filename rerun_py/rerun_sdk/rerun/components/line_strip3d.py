@@ -59,10 +59,12 @@ if TYPE_CHECKING:
     from .. import datatypes
 
     LineStrip3DLike = LineStrip3D | datatypes.Vec3DArrayLike | npt.NDArray[np.float32]
+    """A type alias for any LineStrip3D-like object."""
 else:
     LineStrip3DLike = Any
 
 LineStrip3DArrayLike = LineStrip3D | Sequence[LineStrip3DLike] | npt.NDArray[np.float32]
+"""A type alias for any LineStrip3D-like array object."""
 
 
 class LineStrip3DBatch(BaseBatch[LineStrip3DArrayLike], ComponentBatchMixin):

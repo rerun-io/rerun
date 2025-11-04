@@ -64,7 +64,7 @@ pub trait Filter {
 /// need them (e.g., to test blueprint inequality before triggering a costly table update).
 /// The last item is related to how the filter UI is implemented using the `SyntaxHighlighting`
 /// machinery.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypedFilter {
     NullableBoolean(NullableBooleanFilter),
     NonNullableBoolean(NonNullableBooleanFilter),

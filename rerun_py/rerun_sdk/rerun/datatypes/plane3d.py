@@ -53,7 +53,10 @@ class Plane3D(Plane3DExt):
 
 
 Plane3DLike = Plane3D
+"""A type alias for any Plane3D-like object."""
+
 Plane3DArrayLike = Plane3D | Sequence[Plane3DLike] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[float]]
+"""A type alias for any Plane3D-like array object."""
 
 
 class Plane3DBatch(BaseBatch[Plane3DArrayLike]):

@@ -47,12 +47,14 @@ class UVec4D:
 
 if TYPE_CHECKING:
     UVec4DLike = UVec4D | npt.NDArray[Any] | npt.ArrayLike | Sequence[int]
+    """A type alias for any UVec4D-like object."""
 else:
     UVec4DLike = Any
 
 UVec4DArrayLike = (
     UVec4D | Sequence[UVec4DLike] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[int]] | Sequence[int]
 )
+"""A type alias for any UVec4D-like array object."""
 
 
 class UVec4DBatch(BaseBatch[UVec4DArrayLike]):

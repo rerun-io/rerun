@@ -144,8 +144,10 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
 
         let world_from_instances = target_from_instances
             .iter()
-            .chain(std::iter::repeat(target_from_instances.last()))
-            .copied();
+            .map(|transform| transform.as_affine3a())
+            .chain(std::iter::repeat(
+                target_from_instances.last().as_affine3a(),
+            ));
 
         let mut num_instances = 0;
         for (
@@ -244,7 +246,7 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
                 instance_positions: target_from_instances
                     .iter()
                     .chain(std::iter::repeat(target_from_instances.last()))
-                    .map(|t| t.translation.into()),
+                    .map(|t| t.translation.as_vec3()),
                 labels: batch.labels,
                 colors: &colors,
                 show_labels: batch

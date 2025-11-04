@@ -46,10 +46,12 @@ class Angle(AngleExt):
 
 if TYPE_CHECKING:
     AngleLike = Angle | float | int
+    """A type alias for any Angle-like object."""
 else:
     AngleLike = Any
 
 AngleArrayLike = Angle | Sequence[AngleLike] | npt.ArrayLike | Sequence[float] | Sequence[int]
+"""A type alias for any Angle-like array object."""
 
 
 class AngleBatch(BaseBatch[AngleArrayLike]):
