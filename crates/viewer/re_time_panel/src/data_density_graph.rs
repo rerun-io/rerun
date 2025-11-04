@@ -411,6 +411,8 @@ fn smooth(density: &[f32]) -> Vec<f32> {
 }
 
 /// Uniformly sample events using the given sample size.
+///
+/// Each sampled event's count is reweighted to preserve the total density.
 fn uniform_sample_events(events: &[(TimeInt, u64)], sample_size: usize) -> Vec<(TimeInt, u64)> {
     re_tracing::profile_function!();
 
@@ -423,8 +425,10 @@ fn uniform_sample_events(events: &[(TimeInt, u64)], sample_size: usize) -> Vec<(
         let idx = (i as f64 * step) as usize;
 
         // This means we might miss the last event if rounding down, but that's acceptable.
-        if let Some(event) = events.get(idx) {
-            sampled.push(*event);
+        if let Some(&(time, count)) = events.get(idx) {
+            // Reweight the count to preserve total density
+            let weighted_count = (count as f64 * step).round() as u64;
+            sampled.push((time, weighted_count));
         }
     }
 
