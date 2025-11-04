@@ -410,28 +410,6 @@ fn smooth(density: &[f32]) -> Vec<f32> {
         .collect()
 }
 
-/// Uniformly sample events using the given sample size.
-///
-/// Each sampled event's count is reweighted to preserve the total density.
-pub fn uniform_sample_events(events: &[(TimeInt, u64)], sample_size: usize) -> Vec<(TimeInt, f32)> {
-    re_tracing::profile_function!();
-
-    let step = events.len() as f32 / sample_size as f32;
-    let mut sampled = Vec::with_capacity(sample_size);
-
-    for i in 0..sample_size {
-        let idx = (i as f32 * step) as usize;
-        // This means we might miss the last event if rounding down, but that's acceptable.
-        if let Some(&(time, count)) = events.get(idx) {
-            // Reweight the count to preserve total density
-            let weighted_count = count as f32 * step;
-            sampled.push((time, weighted_count));
-        }
-    }
-
-    sampled
-}
-
 // ----------------------------------------------------------------------------
 
 #[expect(clippy::too_many_arguments)]
@@ -611,16 +589,17 @@ pub fn build_density_graph<'a>(
             } else if config.max_sampled_events_per_chunk > 0 {
                 let events = chunk.num_events_cumulative_per_unique_time(timeline);
 
-                let sampled_events = if events.len() > config.max_sampled_events_per_chunk {
+                if events.len() > config.max_sampled_events_per_chunk {
                     // If there's more rows than the configured max, we sample events to get a fast, good enough density estimate.
-                    uniform_sample_events(&events, config.max_sampled_events_per_chunk)
+                    data.add_uniform_sample_from_chunk(
+                        &events,
+                        config.max_sampled_events_per_chunk,
+                    );
                 } else {
                     // No need to sample, we can use all events.
-                    events.into_iter().map(|(t, n)| (t, n as f32)).collect()
-                };
-
-                for (time, num_events) in sampled_events {
-                    data.add_chunk_point(time, num_events);
+                    for (time, num_events) in events {
+                        data.add_chunk_point(time, num_events as f32);
+                    }
                 }
             } else {
                 // Fall back to uniform distribution across the entire time range
@@ -755,6 +734,26 @@ impl<'a> DensityGraphBuilder<'a> {
             density_graph: DensityGraph::new(row_rect.x_range()),
             hovered_time: None,
             hovered_pos: None,
+        }
+    }
+
+    /// Uniformly sample events using the given sample size.
+    ///
+    /// Each sampled event's count is reweighted to preserve the total density.
+    fn add_uniform_sample_from_chunk(&mut self, events: &[(TimeInt, u64)], sample_size: usize) {
+        re_tracing::profile_function!();
+
+        let step = events.len() as f32 / sample_size as f32;
+
+        for i in 0..sample_size {
+            let idx = (i as f32 * step) as usize;
+            // This means we might miss the last event if rounding down, but that's acceptable.
+            if let Some(&(time, count)) = events.get(idx) {
+                // Reweight the count to preserve total density
+                let weighted_count = count as f32 * step;
+
+                self.add_chunk_point(time, weighted_count);
+            }
         }
     }
 
