@@ -59,6 +59,7 @@ if TYPE_CHECKING:
 
     TimeRangeBoundaryLike = TimeRangeBoundary | None | datatypes.TimeInt
     """A type alias for any TimeRangeBoundary-like object."""
+
     TimeRangeBoundaryArrayLike = TimeRangeBoundary | None | datatypes.TimeInt | Sequence[TimeRangeBoundaryLike]
     """A type alias for any TimeRangeBoundary-like array object."""
 else:

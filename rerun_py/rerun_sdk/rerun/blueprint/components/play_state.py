@@ -55,12 +55,15 @@ class PlayState(Enum):
 
 
 PlayStateLike = PlayState | Literal["Following", "Paused", "Playing", "following", "paused", "playing"] | int
+"""A type alias for any PlayState-like object."""
+
 PlayStateArrayLike = (
     PlayState
     | Literal["Following", "Paused", "Playing", "following", "paused", "playing"]
     | int
     | Sequence[PlayStateLike]
 )
+"""A type alias for any PlayState-like array object."""
 
 
 class PlayStateBatch(BaseBatch[PlayStateArrayLike], ComponentBatchMixin):

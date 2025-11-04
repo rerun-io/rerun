@@ -102,6 +102,7 @@ if TYPE_CHECKING:
         | npt.NDArray[np.uint8]
     )
     """A type alias for any TensorBuffer-like object."""
+
     TensorBufferArrayLike = (
         TensorBuffer
         | npt.NDArray[np.float16]

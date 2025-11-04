@@ -44,6 +44,7 @@ if TYPE_CHECKING:
 
     AffixFuzzer3Like = AffixFuzzer3 | None | float | list[datatypes.AffixFuzzer1] | npt.NDArray[np.float32]
     """A type alias for any AffixFuzzer3-like object."""
+
     AffixFuzzer3ArrayLike = (
         AffixFuzzer3
         | None

@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 
     AffixFuzzer4Like = AffixFuzzer4 | datatypes.AffixFuzzer3 | list[datatypes.AffixFuzzer3]
     """A type alias for any AffixFuzzer4-like object."""
+
     AffixFuzzer4ArrayLike = (
         AffixFuzzer4 | datatypes.AffixFuzzer3 | list[datatypes.AffixFuzzer3] | Sequence[AffixFuzzer4Like]
     )

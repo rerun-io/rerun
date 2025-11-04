@@ -40,7 +40,10 @@ class AbsoluteTimeRange(AbsoluteTimeRangeExt):
 
 
 AbsoluteTimeRangeLike = AbsoluteTimeRange
+"""A type alias for any AbsoluteTimeRange-like object."""
+
 AbsoluteTimeRangeArrayLike = AbsoluteTimeRange | Sequence[AbsoluteTimeRangeLike]
+"""A type alias for any AbsoluteTimeRange-like array object."""
 
 
 class AbsoluteTimeRangeBatch(BaseBatch[AbsoluteTimeRangeArrayLike]):
