@@ -183,6 +183,7 @@ examples = [
   "incremental_logging",
   "lenses",
   "minimal_serve",
+  "server_tables",
   "shared_recording",
   "spawn_viewer",
   "stdio",
