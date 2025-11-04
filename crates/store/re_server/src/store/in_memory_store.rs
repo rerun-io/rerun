@@ -225,6 +225,16 @@ impl InMemoryStore {
     }
 
     pub fn rename_entry(&mut self, entry_id: EntryId, entry_name: String) -> Result<(), Error> {
+        if let Some(existing_entry_id) = self.id_by_name.get(&entry_name) {
+            return if existing_entry_id == &entry_id {
+                // nothing to do, the rename is a no-op
+                Ok(())
+            } else {
+                // name is already taken
+                Err(Error::DuplicateEntryNameError(entry_name))
+            };
+        }
+
         if let Some(dataset) = self.datasets.get_mut(&entry_id) {
             dataset.set_name(entry_name.clone());
         } else if let Some(table) = self.tables.get_mut(&entry_id) {
