@@ -383,7 +383,7 @@ impl Dataset {
         Ok(())
     }
 
-    /// Load a RRD using its recording id as partition id.¨
+    /// Load a RRD using its recording id as partition id.
     ///
     /// Only stores with matching kinds with be loaded.
     pub fn load_rrd(

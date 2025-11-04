@@ -36,6 +36,9 @@ impl SchemaBuilder {
     }
 
     /// Add a chunk to the builder.
+    //
+    // TODO: the fact that the final schema depends on the contents of the data is pretty cursed
+    // TODO: i think we need a way to feed this builder with RrdManifests (or the other way around).
     #[tracing::instrument(level = "trace")]
     pub fn add_chunk(&mut self, chunk_batch: &ChunkBatch) {
         let chunk_schema = chunk_batch.chunk_schema();

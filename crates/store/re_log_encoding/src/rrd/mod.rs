@@ -18,6 +18,7 @@
 mod errors;
 mod headers;
 mod log_msg;
+mod manifest; // TODO: i guess footer; might be a better module name at this point
 
 #[cfg(feature = "decoder")]
 mod decoder;
@@ -32,11 +33,12 @@ mod file_sink;
 #[cfg(feature = "stream_from_http")]
 pub mod stream_from_http;
 
-pub use self::errors::{CodecError, NotAnRrdError, OptionsError};
+pub use self::errors::{CodecError, CodecResult, NotAnRrdError, OptionsError};
 pub use self::headers::{
     Compression, CrateVersion, EncodingOptions, MessageHeader, MessageKind, Serializer,
-    StreamHeader,
+    StreamFooter, StreamHeader,
 };
+pub use self::manifest::{RrdFooter, RrdManifest, RrdManifestBuilder};
 
 #[cfg(feature = "decoder")]
 pub use self::decoder::{

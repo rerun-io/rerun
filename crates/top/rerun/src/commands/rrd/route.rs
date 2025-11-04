@@ -177,6 +177,7 @@ fn process_messages<W: std::io::Write>(
                 // in any meaningful way.
                 #[expect(unsafe_code)]
                 unsafe {
+                    // TODO: that is probably fucked footer-wise, ye?
                     encoder.append_transport(&msg)?;
                 }
             }

@@ -321,7 +321,7 @@ fn merge_and_compact(
 
     rrd_out.flush().context("couldn't flush output")?;
 
-    let rrds_in_size = rx_size_bytes.recv().ok();
+    let rrds_in_size = rx_size_bytes.recv().ok().map(|(size, _footers)| size);
     let num_chunks_reduction = format!(
         "-{:3.3}%",
         100.0 - num_chunks_after as f64 / (num_chunks_before as f64 + f64::EPSILON) * 100.0
