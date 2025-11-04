@@ -28,7 +28,6 @@ use crate::store::{ChunkKey, Dataset, Error, Table};
 const ENTRIES_TABLE_NAME: &str = "__entries";
 
 pub struct InMemoryStore {
-    // TODO(ab): track created/modified time
     datasets: HashMap<EntryId, Dataset>,
     tables: HashMap<EntryId, Table>,
     id_by_name: HashMap<String, EntryId>,
@@ -223,6 +222,29 @@ impl InMemoryStore {
         }
 
         Ok(entry_id)
+    }
+
+    pub fn rename_entry(&mut self, entry_id: EntryId, entry_name: String) -> Result<(), Error> {
+        if let Some(dataset) = self.datasets.get_mut(&entry_id) {
+            dataset.set_name(entry_name.clone());
+        } else if let Some(table) = self.tables.get_mut(&entry_id) {
+            table.set_name(entry_name.clone());
+        } else {
+            return Err(Error::EntryIdNotFound(entry_id));
+        }
+
+        self.id_by_name.insert(entry_name, entry_id);
+        self.update_entries_table()
+    }
+
+    pub fn entry_details(&self, entry_id: EntryId) -> Result<EntryDetails, Error> {
+        if let Some(dataset) = self.datasets.get(&entry_id) {
+            Ok(dataset.as_entry_details())
+        } else if let Some(table) = self.tables.get(&entry_id) {
+            Ok(table.as_entry_details())
+        } else {
+            Err(Error::EntryIdNotFound(entry_id))
+        }
     }
 
     #[cfg(feature = "lance")] // only used by the `lance` feature

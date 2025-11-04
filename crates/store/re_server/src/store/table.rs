@@ -61,6 +61,15 @@ impl Table {
         self.id
     }
 
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn set_name(&mut self, name: String) {
+        self.name = name;
+        self.updated_at = jiff::Timestamp::now();
+    }
+
     pub fn created_at(&self) -> jiff::Timestamp {
         self.created_at
     }
