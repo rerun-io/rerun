@@ -14,6 +14,7 @@ use crate::{
     transform_aspect::TransformAspect,
     transform_queries::{
         query_and_resolve_instance_poses_at_entity, query_and_resolve_pinhole_projection_at_entity,
+        query_and_resolve_tree_transform_at_entity,
     },
 };
 use re_chunk_store::{Chunk, LatestAtQuery};
@@ -21,7 +22,7 @@ use re_entity_db::EntityDb;
 use re_log_types::external::re_types_core::ArrowString;
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types::{
-    Archetype as _, ArchetypeName,
+    ArchetypeName,
     archetypes::{self},
     components::{self},
 };
@@ -1133,114 +1134,6 @@ fn debug_panic_missing_source_transforms_for_update_on_entity(
     );
 }
 
-/// Queries all components that are part of pose transforms, returning the transform from child to parent.
-///
-/// If any of the components yields an invalid transform, returns `None`.
-// TODO(#3849): There's no way to discover invalid transforms right now (they can be intentional but often aren't).
-fn query_and_resolve_tree_transform_at_entity(
-    entity_path: &EntityPath,
-    entity_db: &EntityDb,
-    query: &LatestAtQuery,
-) -> Option<SourceToTargetTransform> {
-    // TODO(RR-2799): Output more than one target at once, doing the usual clamping - means probably we can merge a lot of code here with instance poses!
-    // TODO(andreas): Filter out styling components.
-    let results = entity_db.latest_at(
-        query,
-        entity_path,
-        archetypes::Transform3D::all_component_identifiers(),
-    );
-    if results.components.is_empty() {
-        return None;
-    }
-
-    let target = results
-        .component_mono_quiet::<components::TransformFrameId>(
-            archetypes::Transform3D::descriptor_target_frame().component,
-        )
-        .map_or_else(
-            || {
-                TransformFrameIdHash::from_entity_path(
-                    &entity_path.parent().unwrap_or(EntityPath::root()),
-                )
-            },
-            |frame_id| TransformFrameIdHash::new(&frame_id),
-        );
-
-    let mut transform = DAffine3::IDENTITY;
-
-    // It's an error if there's more than one component. Warn in that case.
-    let mono_log_level = re_log::Level::Warn;
-
-    // The order of the components here is important and checked by `debug_assert_transform_field_order`
-    if let Some(translation) = results.component_mono_with_log_level::<components::Translation3D>(
-        archetypes::Transform3D::descriptor_translation().component,
-        mono_log_level,
-    ) {
-        transform = DAffine3::from(translation);
-    }
-    if let Some(axis_angle) = results
-        .component_mono_with_log_level::<components::RotationAxisAngle>(
-            archetypes::Transform3D::descriptor_rotation_axis_angle().component,
-            mono_log_level,
-        )
-    {
-        if let Ok(axis_angle) = DAffine3::try_from(axis_angle) {
-            transform *= axis_angle;
-        } else {
-            return None;
-        }
-    }
-    if let Some(quaternion) = results.component_mono_with_log_level::<components::RotationQuat>(
-        archetypes::Transform3D::descriptor_quaternion().component,
-        mono_log_level,
-    ) {
-        if let Ok(quaternion) = DAffine3::try_from(quaternion) {
-            transform *= quaternion;
-        } else {
-            return None;
-        }
-    }
-    if let Some(scale) = results.component_mono_with_log_level::<components::Scale3D>(
-        archetypes::Transform3D::descriptor_scale().component,
-        mono_log_level,
-    ) {
-        if scale.x() == 0.0 && scale.y() == 0.0 && scale.z() == 0.0 {
-            return None;
-        }
-        transform *= DAffine3::from(scale);
-    }
-    if let Some(mat3x3) = results.component_mono_with_log_level::<components::TransformMat3x3>(
-        archetypes::Transform3D::descriptor_mat3x3().component,
-        mono_log_level,
-    ) {
-        let affine_transform = DAffine3::from(mat3x3);
-        if affine_transform.matrix3.determinant() == 0.0 {
-            return None;
-        }
-        transform *= affine_transform;
-    }
-
-    if results.component_mono_with_log_level::<components::TransformRelation>(
-        archetypes::Transform3D::descriptor_relation().component,
-        mono_log_level,
-    ) == Some(components::TransformRelation::ChildFromParent)
-    {
-        let determinant = transform.matrix3.determinant();
-        if determinant != 0.0 && determinant.is_finite() {
-            transform = transform.inverse();
-        } else {
-            // All "regular invalid" transforms should have been caught.
-            // So ending up here means something else went wrong?
-            re_log::warn_once!(
-                "Failed to express child-from-parent transform at {} since it wasn't invertible",
-                entity_path,
-            );
-        }
-    }
-
-    Some(SourceToTargetTransform { transform, target })
-}
-
 /// Iterates over all source frames that are in a chunk.
 pub fn iter_source_frames_in_chunk(
     chunk: &Chunk,
@@ -1296,7 +1189,7 @@ mod tests {
         PerStoreChunkSubscriber, RowId,
     };
     use re_log_types::{StoreId, TimePoint, Timeline};
-    use re_types::{ChunkId, archetypes, datatypes};
+    use re_types::{Archetype as _, ChunkId, archetypes, datatypes};
 
     #[derive(Debug, Clone, Copy)]
     enum StaticTestFlavor {
