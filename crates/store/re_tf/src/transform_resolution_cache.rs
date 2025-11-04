@@ -1937,7 +1937,16 @@ mod tests {
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 4)),
             Some(SourceToTargetTransform {
                 target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_quat(glam::DQuat::from_rotation_x(1.0)),
+                // Note: We must use the same conversion path as the actual implementation:
+                // glam::Quat (f32) -> Quaternion (f32) -> glam::DQuat (f64)
+                // This involves casting f32 components to f64 and renormalizing, which produces
+                // slightly different values than directly computing in f64.
+                transform: DAffine3::from_quat(
+                    glam::DQuat::try_from(re_types::datatypes::Quaternion::from(
+                        glam::Quat::from_rotation_x(1.0)
+                    ))
+                    .unwrap()
+                ),
             })
         );
         assert_eq!(
