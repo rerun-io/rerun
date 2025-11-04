@@ -1143,7 +1143,7 @@ pub fn iter_child_frames_in_chunk(
     )
 }
 
-/// Iterates over all child frames frames that are in a chunk.
+/// Iterates over all child frames that are in a chunk.
 pub fn child_frames_in_static_chunk(chunk: &Chunk) -> Option<Vec<ArrowString>> {
     debug_assert!(chunk.is_static());
 
