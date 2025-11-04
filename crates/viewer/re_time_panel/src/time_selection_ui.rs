@@ -4,7 +4,7 @@ use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType, TimestampFormat,
 };
 use re_types::blueprint::components::LoopMode;
-use re_ui::{UiExt as _, list_item};
+use re_ui::{HasDesignTokens as _, UiExt as _, list_item};
 use re_viewer_context::{TimeControl, TimeControlCommand, ViewerContext};
 
 use super::time_ranges_ui::TimeRangesUi;
@@ -24,7 +24,8 @@ pub fn paint_timeline_range(
         let visible_history_area_rect =
             Rect::from_x_y_ranges(x_from..=x_to, rect.y_range()).intersect(rect);
 
-        painter.rect_filled(visible_history_area_rect, 0.0, color);
+        let corner_radius = painter.ctx().tokens().small_corner_radius();
+        painter.rect_filled(visible_history_area_rect, corner_radius, color);
     }
 }
 
