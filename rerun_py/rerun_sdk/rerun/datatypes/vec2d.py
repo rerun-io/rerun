@@ -48,12 +48,14 @@ class Vec2D(Vec2DExt):
 
 if TYPE_CHECKING:
     Vec2DLike = Vec2D | npt.NDArray[Any] | npt.ArrayLike | Sequence[float]
+    """A type alias for any Vec2D-like object."""
 else:
     Vec2DLike = Any
 
 Vec2DArrayLike = (
     Vec2D | Sequence[Vec2DLike] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[float]] | Sequence[float]
 )
+"""A type alias for any Vec2D-like array object."""
 
 
 class Vec2DBatch(BaseBatch[Vec2DArrayLike]):

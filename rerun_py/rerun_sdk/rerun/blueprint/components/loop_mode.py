@@ -59,9 +59,12 @@ class LoopMode(Enum):
 
 
 LoopModeLike = LoopMode | Literal["All", "Off", "Selection", "all", "off", "selection"] | int
+"""A type alias for any LoopMode-like object."""
+
 LoopModeArrayLike = (
     LoopMode | Literal["All", "Off", "Selection", "all", "off", "selection"] | int | Sequence[LoopModeLike]
 )
+"""A type alias for any LoopMode-like array object."""
 
 
 class LoopModeBatch(BaseBatch[LoopModeArrayLike], ComponentBatchMixin):

@@ -46,12 +46,14 @@ class Float64:
 
 if TYPE_CHECKING:
     Float64Like = Float64 | float
+    """A type alias for any Float64-like object."""
 else:
     Float64Like = Any
 
 Float64ArrayLike = (
     Float64 | Sequence[Float64Like] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[float]] | Sequence[float]
 )
+"""A type alias for any Float64-like array object."""
 
 
 class Float64Batch(BaseBatch[Float64ArrayLike]):

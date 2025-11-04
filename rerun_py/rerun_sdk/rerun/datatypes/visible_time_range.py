@@ -44,7 +44,10 @@ class VisibleTimeRange(VisibleTimeRangeExt):
 
 
 VisibleTimeRangeLike = VisibleTimeRange
+"""A type alias for any VisibleTimeRange-like object."""
+
 VisibleTimeRangeArrayLike = VisibleTimeRange | Sequence[VisibleTimeRangeLike]
+"""A type alias for any VisibleTimeRange-like array object."""
 
 
 class VisibleTimeRangeBatch(BaseBatch[VisibleTimeRangeArrayLike]):
