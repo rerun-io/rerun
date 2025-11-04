@@ -36,7 +36,6 @@ If you want to match the behavior of `rerun_cpp_sdk.zip`, these libraries should
  - Linux, x64: `librerun_c__linux_x64.a`
  - Linux, Arm64: `librerun_c__linux_arm64.a`
  - Windows, x64: `rerun_c__win_x64.lib`
- - Mac, Intel: `librerun_c__macos_x64.a`
  - Mac, Apple Silicon: `librerun_c__macos_arm64.a`
 
 Or if you have a different build/download mechanism, you can point directly to the library by setting `RERUN_C_LIB`
