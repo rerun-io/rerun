@@ -25,7 +25,7 @@ use re_protos::{
         ScanPartitionTableResponse, ScanTableResponse,
         ext::{
             self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
-            CreateTableEntryResponse, DataSource, DatasetDetails, LanceTable, ProviderDetails,
+            CreateTableEntryResponse, DataSource, DatasetDetails, ProviderDetails,
             ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
             UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
         },
