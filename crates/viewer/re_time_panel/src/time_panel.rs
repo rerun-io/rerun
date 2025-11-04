@@ -648,7 +648,7 @@ impl TimePanel {
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             // We turn off `ScrollSource::DRAG` so that the `ScrollArea` don't steal input from
-            // the earlier `interact_with_time_area`.
+            // the earlier `pan_and_zoom_interaction`.
             // We implement drag-to-scroll manually instead, with middle mouse button
             .scroll_source(ScrollSource::MOUSE_WHEEL | ScrollSource::SCROLL_BAR)
             .show(ui, |ui| {
