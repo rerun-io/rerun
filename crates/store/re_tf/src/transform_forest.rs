@@ -819,7 +819,7 @@ mod tests {
         transform_cache.add_chunks(test_scene.storage_engine().store().iter_chunks());
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
-        let transform_forest = TransformForest::new(&test_scene, &mut transform_cache, &query);
+        let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
 
         let all_entity_paths = test_scene
             .entity_paths()
@@ -951,7 +951,7 @@ mod tests {
         transform_cache.add_chunks(entity_db.storage_engine().store().iter_chunks());
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
-        let transform_forest = TransformForest::new(&entity_db, &mut transform_cache, &query);
+        let transform_forest = TransformForest::new(&entity_db, &transform_cache, &query);
 
         let target = TransformFrameIdHash::from_entity_path(&EntityPath::from("box"));
         let sources = [TransformFrameIdHash::from_entity_path(&EntityPath::from(
