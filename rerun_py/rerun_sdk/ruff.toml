@@ -1,9 +1,0 @@
-
-extend = "../../pyproject.toml"
-
-[lint.isort]
-known-first-party = ["rerun", "rerun_notebook", "rerun_bindings", "rerun_cli"]
-
-
-[lint]
-ignore = ["TID251"] # unban rerun_bindings and rerun_sdk
