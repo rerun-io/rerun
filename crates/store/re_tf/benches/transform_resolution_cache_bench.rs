@@ -11,6 +11,9 @@ use re_types::{RowId, archetypes};
 
 use re_tf::{TransformFrameIdHash, TransformResolutionCache};
 
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 const NUM_TIMELINES: usize = 4;
 const NUM_TIMEPOINTS: usize = 1000;
 const NUM_TIMEPOINTS_PER_ENTITY: usize = 50;

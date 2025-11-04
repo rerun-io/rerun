@@ -1,3 +1,13 @@
+use std::borrow::Cow;
+use std::collections::{BTreeMap, BTreeSet, hash_map::Entry};
+use std::ops::Range;
+
+use ahash::HashMap;
+use glam::Affine3A;
+use itertools::Itertools as _;
+use nohash_hasher::{IntMap, IntSet};
+use vec1::smallvec_v1::SmallVec1;
+
 use crate::entity_to_source_frame_tracking::EntityToAffectedSources;
 use crate::{
     TransformFrameIdHash,
@@ -6,10 +16,6 @@ use crate::{
         query_and_resolve_instance_poses_at_entity, query_and_resolve_pinhole_projection_at_entity,
     },
 };
-use ahash::HashMap;
-use glam::Affine3A;
-use itertools::Itertools as _;
-use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::external::re_types_core::ArrowString;
@@ -19,9 +25,6 @@ use re_types::{
     archetypes::{self},
     components::{self},
 };
-use std::collections::{BTreeMap, BTreeSet, hash_map::Entry};
-use std::ops::Range;
-use vec1::smallvec_v1::SmallVec1;
 
 /// Resolves all transform relationship defining components to affine transforms for fast lookup.
 ///
@@ -790,33 +793,38 @@ impl TransformResolutionCache {
                 let (changed_range, previous_sources) =
                     affected_sources.insert_range_start(start_time, sources.clone());
 
-                // Since (by convention) only this entity can affect `previous_sources`, we have to drop all their events in the `changed_range`!
-                let mut moved_events = TransformsForSourceFrame::new_empty();
-                for previous_source_frame in &previous_sources {
-                    let Some(frame_transforms) = per_timeline
-                        .per_source_frame_transforms
-                        .get_mut(previous_source_frame)
-                    else {
-                        // No events on this source, so nothing to remove!
-                        continue;
-                    };
-                    // Since (by convention) only this entity can affect `previous_sources`, we have to move all their events in the `changed_range` to the new range.
-                    frame_transforms
-                        .remove_events_in_range(changed_range.clone(), &mut moved_events);
-                }
-                // …and add them to the new sources!
-                for new_source_frame in sources {
-                    per_timeline
-                        .per_source_frame_transforms
-                        .entry(new_source_frame)
-                        .or_insert_with(|| {
-                            TransformsForSourceFrame::new(
-                                new_source_frame,
-                                *timeline,
-                                &self.static_timeline,
-                            )
-                        })
-                        .insert_all_events_of(&moved_events);
+                // Since (by convention) only this entity can affect `previous_sources`, we have to drop all their events in the `changed_range`
+                // if `previous_sources` is not equal to `sources`.
+                //
+                // Note that the time range insertion we just did was still necessary regardless since more (different) sources may be added in between.
+                if previous_sources != sources {
+                    let mut moved_events = TransformsForSourceFrame::new_empty();
+                    for previous_source_frame in &previous_sources {
+                        let Some(frame_transforms) = per_timeline
+                            .per_source_frame_transforms
+                            .get_mut(previous_source_frame)
+                        else {
+                            // No events on this source, so nothing to remove!
+                            continue;
+                        };
+                        // Since (by convention) only this entity can affect `previous_sources`, we have to move all their events in the `changed_range` to the new range.
+                        frame_transforms
+                            .remove_events_in_range(changed_range.clone(), &mut moved_events);
+                    }
+                    // …and add them to the new sources!
+                    for new_source_frame in sources {
+                        per_timeline
+                            .per_source_frame_transforms
+                            .entry(new_source_frame)
+                            .or_insert_with(|| {
+                                TransformsForSourceFrame::new(
+                                    new_source_frame,
+                                    *timeline,
+                                    &self.static_timeline,
+                                )
+                            })
+                            .insert_all_events_of(&moved_events);
+                    }
                 }
             }
 
@@ -828,11 +836,23 @@ impl TransformResolutionCache {
                 // We now look only at the times in the time column that are relevant for this child-frame.
                 // Note that there may be more times than actual relevant updates, but crucially, all queries
                 // to the current entity path yield information about the sources in `source_frames`.
-                let times_with_potential_update = time_column
-                    .times()
-                    // TODO(andreas): For sorted time columns we could speed this up a bit.
-                    .filter(|time| time_range.contains(time))
-                    .collect_vec();
+                let times_with_potential_update = if time_column.time_range().min
+                    >= time_range.start
+                    // Careful, we're comparing a std `Range` with `AbsoluteTimeRange`!
+                    // `max` is inclusive, `end` is exclusive.
+                    // The reason we have to use `Range` here over `AbsoluteTimeRange` is that `time_range` may contain `TimeRange::STATIC`.
+                    && time_column.time_range().max < time_range.end
+                {
+                    Cow::Borrowed(time_column.times_raw())
+                } else {
+                    Cow::Owned(
+                        time_column
+                            .times()
+                            // TODO(andreas): For sorted time columns we could speed this up a bit.
+                            .filter_map(|time| time_range.contains(&time).then_some(time.as_i64()))
+                            .collect_vec(),
+                    )
+                };
 
                 // Note down that all these source frames were updated at the given times.
                 for source_frame in source_frames {
@@ -851,7 +871,11 @@ impl TransformResolutionCache {
                     frame_transforms.insert_invalidated_transform_events(
                         aspects,
                         time_range.start,
-                        || times_with_potential_update.iter().copied(),
+                        || {
+                            times_with_potential_update
+                                .iter()
+                                .map(|t| TimeInt::new_temporal(*t))
+                        },
                         entity_path,
                     );
 
