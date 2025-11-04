@@ -619,6 +619,21 @@ impl EyeState {
                 .0,
         );
 
+        // If we use fallbacks for either position or look target, continue to
+        // interpolate to the new default eye. This gives much better robustness
+        // with scenes that change over time.
+        if eye_controls
+            .component_or_empty::<Position3D>(EyeControls3D::descriptor_position().component)?
+            .is_none()
+            || eye_controls
+                .component_or_empty::<Position3D>(
+                    EyeControls3D::descriptor_look_target().component,
+                )?
+                .is_none()
+        {
+            self.start_interpolation();
+        }
+
         let eye_up = Vec3::from_array(
             eye_controls
                 .component_or_fallback::<Vector3D>(
@@ -797,13 +812,6 @@ impl EyeState {
         bounding_boxes: &SceneBoundingBoxes,
     ) -> Result<Eye, ViewPropertyQueryError> {
         let target_eye = self.update_target_eye(ctx, response, space_cameras, bounding_boxes)?;
-
-        // If the user has not interacted with the eye-camera yet, continue to
-        // interpolate to the new default eye. This gives much better robustness
-        // with scenes that change over time.
-        if self.last_interaction.is_none() {
-            self.start_interpolation();
-        }
 
         let eye = if let Some(interpolation) = &mut self.interpolation
             && let Some(target_time) =

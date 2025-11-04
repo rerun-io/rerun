@@ -378,23 +378,3 @@ pub fn paint_loading_spinners(
         }
     }
 }
-
-pub fn format_vector(v: glam::Vec3) -> String {
-    use glam::Vec3;
-
-    if v == Vec3::X {
-        "+X".to_owned()
-    } else if v == -Vec3::X {
-        "-X".to_owned()
-    } else if v == Vec3::Y {
-        "+Y".to_owned()
-    } else if v == -Vec3::Y {
-        "-Y".to_owned()
-    } else if v == Vec3::Z {
-        "+Z".to_owned()
-    } else if v == -Vec3::Z {
-        "-Z".to_owned()
-    } else {
-        format!("[{:.02}, {:.02}, {:.02}]", v.x, v.y, v.z)
-    }
-}
