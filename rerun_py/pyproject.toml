@@ -306,3 +306,7 @@ module = [
   "cv2.*",
 ]
 ignore_missing_imports = true
+
+
+[tool.inline-snapshot]
+format-command = "ruff check --config rerun_py/pyproject.toml --fix-only --stdin-filename {filename} | ruff format --config rerun_py/pyproject.toml --stdin-filename {filename}"
