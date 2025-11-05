@@ -20,15 +20,6 @@ if RERUN_DRAFT_PATH not in sys.path:
     sys.path.insert(0, RERUN_DRAFT_PATH)
 
 
-@pytest.fixture(scope="session")
-def simple_recording_path(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]:
-    """Create a temporary recording with little but predicatable content."""
-
-    rrd_path = tmp_path_factory.mktemp("simple_recording") / "simple_recording.rrd"
-    create_simple_rrd(rrd_path, "simple_recording_id", 0)
-    yield rrd_path
-
-
 def create_simple_rrd(rrd_path: Path, recording_id: str, data_start_value: int) -> None:
     with rr.RecordingStream("rerun_example_api_test", recording_id=recording_id) as rec:
         rec.save(rrd_path)
@@ -44,3 +35,24 @@ def create_simple_rrd(rrd_path: Path, recording_id: str, data_start_value: int) 
                 ).partition([2])
             ],
         )
+
+
+@pytest.fixture(scope="session")
+def simple_recording_path(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]:
+    """Create a temporary recording with little but predicatable content."""
+
+    rrd_path = tmp_path_factory.mktemp("simple_recording") / "simple_recording.rrd"
+    create_simple_rrd(rrd_path, "simple_recording_id", 0)
+    yield rrd_path
+
+
+@pytest.fixture(scope="session")
+def simple_dataset_prefix(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]:
+    """Create a temporary dataset prefix with a few simple recordings."""
+
+    prefix_path = tmp_path_factory.mktemp("simple_dataset_prefix")
+
+    for i in range(3):
+        create_simple_rrd(prefix_path / f"simple_recording_{i}.rrd", f"simple_recording_{i}", i)
+
+    yield prefix_path
