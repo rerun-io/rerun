@@ -1,9 +1,10 @@
 use base64::prelude::*;
 use re_auth::oauth::{Credentials, api::AuthenticationResponse};
-use re_log::ResultExt;
+use re_log::ResultExt as _;
 use std::{cell::RefCell, rc::Rc};
-use wasm_bindgen::{JsCast, prelude::Closure};
+use wasm_bindgen::{JsCast as _, prelude::Closure};
 
+#[expect(clippy::needless_pass_by_value)]
 fn js_value_to_string(s: wasm_bindgen::JsValue) -> String {
     // it's already a string
     if let Some(s) = s.as_string() {
@@ -43,7 +44,7 @@ impl Drop for State {
                     )
                     .ok();
             }
-        };
+        }
     }
 }
 
@@ -90,14 +91,15 @@ impl State {
         Ok(())
     }
 
-    pub fn ui(&mut self, ui: &mut egui::Ui) {
+    #[expect(clippy::unused_self)] // compat with native api
+    pub fn ui(&self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.spinner();
             ui.label("Waiting for login…");
         });
     }
 
-    #[expect(clippy::needless_pass_by_ref_mut)]
+    #[expect(clippy::needless_pass_by_ref_mut)] // compat with native api
     pub fn done(&mut self) -> Result<Option<Credentials>, String> {
         // Check if we have credentials
         if let Some(credentials) = self.result.borrow_mut().take() {
@@ -106,22 +108,21 @@ impl State {
 
         // Check if popup window was manually closed by user
         if let Some(child_window) = &self.child_window {
-            match child_window.closed() {
-                Ok(true) => {
-                    return Err("Login popup was closed before completing authentication".into());
-                }
-                Ok(false) => {
-                    // Still open, continue waiting
-                }
-                Err(_) => {
-                    // Error checking window state, ignore and continue
-                }
+            // ignoring the error here
+            if child_window
+                .closed()
+                .map_err(js_value_to_string)
+                .ok_or_log_error()
+                .unwrap_or_default()
+            {
+                return Err("Login popup was closed before completing authentication".into());
             }
         }
 
         Ok(None)
     }
 
+    #[expect(clippy::needless_pass_by_ref_mut)]
     pub fn open(ui: &mut egui::Ui) -> Result<Self, String> {
         let egui_ctx = ui.ctx().clone();
 
@@ -213,8 +214,9 @@ impl State {
                     return;
                 };
 
-                #[allow(unsafe_code)] // misusing does not cause UB, only a bad day
+                #[expect(unsafe_code)]
                 let Some(credentials) =
+                // SAFETY: credentials come from a trusted source
                     unsafe { re_auth::oauth::Credentials::from_auth_response(response) }
                         .ok_or_log_error()
                 else {
