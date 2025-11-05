@@ -212,7 +212,7 @@ fn run_view_ui_and_save_snapshot(
                 ],
             );
 
-            harness.run_steps(8);
+            harness.run();
 
             if let Err(err) = harness.try_snapshot(&name) {
                 errors.push(err);

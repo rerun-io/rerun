@@ -136,7 +136,7 @@ fn run_view_ui_and_save_snapshot(
             &Position3D::new(0.0, 8.0, 10.0),
         );
     });
-    harness.run_steps(8);
+    harness.run();
 
     harness.snapshot(name);
 }
