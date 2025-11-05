@@ -23,7 +23,7 @@ pub async fn update_entry_tests(service: impl RerunCloudService) {
     let dataset_id = dataset_entry.details.id;
 
     //
-    // No-up dataset update should succeed
+    // No-op dataset update should succeed
     //
 
     let response = update_entry(
