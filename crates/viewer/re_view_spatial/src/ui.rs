@@ -182,6 +182,12 @@ impl SpatialViewState {
             ImageKind::Depth => 1.0,
         }
     }
+
+    /// Accesser method for getting the entity, if any, that was tracked last time
+    /// the eye was updated.
+    pub fn last_tracked_entity(&self) -> Option<&re_log_types::EntityPath> {
+        self.state_3d.eye_state.last_tracked_entity.as_ref()
+    }
 }
 
 pub fn create_labels(

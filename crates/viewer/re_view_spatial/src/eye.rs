@@ -16,7 +16,7 @@ use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
     RuntimeModifiers, SPEED_UP_3D_MODIFIER,
 };
-use re_viewer_context::ViewContext;
+use re_viewer_context::{ViewContext, ViewerContext};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 use crate::{scene_bounding_boxes::SceneBoundingBoxes, space_camera_3d::SpaceCamera3D};
@@ -213,13 +213,14 @@ pub struct EyeState {
     /// The time this was last interacted with in egui time.
     ///
     /// None: Hasn't been interacted with yet.
-    pub last_interaction: Option<f64>,
+    pub last_interaction_time: Option<f64>,
     pub last_look_target: Option<Vec3>,
     pub last_orbit_radius: Option<f32>,
     pub last_eye_up: Option<Vec3>,
 }
 
-struct RawEye {
+/// Utility struct to pass current and new eye information.
+struct ControlEye {
     pos: Vec3,
     look_target: Vec3,
     kind: Eye3DKind,
@@ -232,7 +233,7 @@ struct RawEye {
     written_radius: bool,
 }
 
-impl RawEye {
+impl ControlEye {
     /// Avoids zentith/nadir singularity.
     const MAX_PITCH: f32 = 0.99 * 0.25 * std::f32::consts::TAU;
 
@@ -253,11 +254,102 @@ impl RawEye {
         }
     }
 
-    /// World-direction we are looking at
+    fn from_blueprint(
+        ctx: &ViewContext<'_>,
+        eye_property: &ViewProperty,
+        fov_y: Option<f32>,
+    ) -> Result<Self, ViewPropertyQueryError> {
+        let kind = eye_property
+            .component_or_fallback::<Eye3DKind>(ctx, EyeControls3D::descriptor_kind().component)?;
+
+        let speed = **eye_property.component_or_fallback::<LinearSpeed>(
+            ctx,
+            EyeControls3D::descriptor_speed().component,
+        )?;
+
+        let pos = Vec3::from(eye_property.component_or_fallback::<Position3D>(
+            ctx,
+            EyeControls3D::descriptor_position().component,
+        )?);
+
+        let look_target = Vec3::from(eye_property.component_or_fallback::<Position3D>(
+            ctx,
+            EyeControls3D::descriptor_look_target().component,
+        )?);
+
+        let eye_up = Vec3::from_array(
+            eye_property
+                .component_or_fallback::<Vector3D>(
+                    ctx,
+                    EyeControls3D::descriptor_eye_up().component,
+                )?
+                .0
+                .0,
+        );
+
+        let has_look_target = eye_property
+            .component_or_empty::<Position3D>(EyeControls3D::descriptor_look_target().component)?
+            .is_some();
+
+        let has_position = eye_property
+            .component_or_empty::<Position3D>(EyeControls3D::descriptor_position().component)?
+            .is_some();
+
+        Ok(Self {
+            pos,
+            look_target,
+            kind,
+            speed,
+            eye_up,
+            did_interact: false,
+            written_radius: has_position && has_look_target,
+            fov_y,
+        })
+    }
+
+    /// Saves position, look target and eye up to blueprint if we have interacted
+    /// and that field has changed.
+    fn save_to_blueprint(
+        &self,
+        ctx: &ViewerContext<'_>,
+        eye_property: &ViewProperty,
+        old_pos: Vec3,
+        old_look_target: Vec3,
+        old_eye_up: Vec3,
+    ) {
+        if self.did_interact {
+            if self.pos != old_pos {
+                eye_property.save_blueprint_component(
+                    ctx,
+                    &EyeControls3D::descriptor_position(),
+                    &Position3D::from(self.pos),
+                );
+            }
+
+            if self.look_target != old_look_target {
+                eye_property.save_blueprint_component(
+                    ctx,
+                    &EyeControls3D::descriptor_look_target(),
+                    &Position3D::from(self.look_target),
+                );
+            }
+
+            if self.eye_up != old_eye_up {
+                eye_property.save_blueprint_component(
+                    ctx,
+                    &EyeControls3D::descriptor_eye_up(),
+                    &Vector3D::from(self.eye_up),
+                );
+            }
+        }
+    }
+
+    /// Normalized world-direction we are looking at.
     fn fwd(&self) -> Vec3 {
         (self.look_target - self.pos).normalize_or(Vec3::Y)
     }
 
+    /// Normalized up vector, guaranteed to not be parallel to [`Self::fwd`].
     fn up(&self) -> Vec3 {
         let fwd = self.fwd();
         let right = if fwd.dot(Vec3::Z).abs() > 0.9999 {
@@ -277,15 +369,11 @@ impl RawEye {
         }
     }
 
-    /// Only valid if we have an up-vector set.
+    /// Only valid if we [`Self::eye_up`] is non-zero.
     ///
     /// `[-tau/4, +tau/4]`
-    fn pitch(&self) -> Option<f32> {
-        if self.eye_up == Vec3::ZERO {
-            None
-        } else {
-            Some(self.fwd().dot(self.up()).clamp(-1.0, 1.0).asin())
-        }
+    fn pitch(&self) -> f32 {
+        self.fwd().dot(self.up()).clamp(-1.0, 1.0).asin()
     }
 
     fn radius(&self) -> f32 {
@@ -317,26 +405,22 @@ impl RawEye {
         let mut rot = self.rotation();
         let radius = self.radius();
 
-        if let Some(old_pitch) = self.pitch() {
-            // 2-dof rotation
+        let old_pitch = self.pitch();
 
-            // Apply change in heading:
-            rot = Quat::from_axis_angle(self.up(), -delta.x) * rot;
+        // 2-dof rotation
 
-            // We need to clamp pitch to avoid nadir/zenith singularity:
-            let new_pitch = (old_pitch - delta.y).clamp(-Self::MAX_PITCH, Self::MAX_PITCH);
-            let pitch_delta = new_pitch - old_pitch;
+        // Apply change in heading:
+        rot = Quat::from_axis_angle(self.up(), -delta.x) * rot;
 
-            // Apply change in pitch:
-            rot *= Quat::from_rotation_x(pitch_delta);
+        // We need to clamp pitch to avoid nadir/zenith singularity:
+        let new_pitch = (old_pitch - delta.y).clamp(-Self::MAX_PITCH, Self::MAX_PITCH);
+        let pitch_delta = new_pitch - old_pitch;
 
-            // Avoid numeric drift:
-            rot = rot.normalize();
-        } else {
-            // no up-axis -> no pitch -> 3-dof rotation
-            let rot_delta = Quat::from_rotation_y(-delta.x) * Quat::from_rotation_x(-delta.y);
-            rot *= rot_delta;
-        }
+        // Apply change in pitch:
+        rot *= Quat::from_rotation_x(pitch_delta);
+
+        // Avoid numeric drift:
+        rot = rot.normalize();
 
         self.apply_rotation_and_radius(rot, radius);
     }
@@ -477,6 +561,44 @@ impl RawEye {
             egui_ctx.request_repaint();
         }
     }
+
+    fn handle_input(
+        &mut self,
+        eye_state: &mut EyeState,
+        response: &egui::Response,
+        drag_threshold: f32,
+    ) {
+        // Modify speed based on modifiers:
+        let os = response.ctx.os();
+        response.ctx.input(|input| {
+            if input.modifiers.contains(SPEED_UP_3D_MODIFIER) {
+                self.speed *= 10.0;
+            }
+            if input.modifiers.contains(RuntimeModifiers::slow_down(&os)) {
+                self.speed *= 0.1;
+            }
+        });
+
+        // Dragging even below the [`drag_threshold`] should be considered interaction.
+        // Otherwise we flicker in and out of "has interacted" too quickly.
+        self.did_interact |= response.drag_delta().length() > 0.0;
+
+        self.handle_drag(response, drag_threshold);
+
+        if response.hovered() {
+            self.handle_zoom(&response.ctx);
+        }
+
+        if response.has_focus() {
+            self.handle_keyboard_navigation(eye_state, &response.ctx);
+        } else if response.clicked() || self.did_interact {
+            response.request_focus();
+        }
+
+        if self.did_interact {
+            eye_state.last_interaction_time = Some(response.ctx.time());
+        }
+    }
 }
 
 fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<Eye> {
@@ -499,7 +621,7 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<E
 fn entity_target_eye(
     entity_path: &EntityPath,
     bounding_boxes: &SceneBoundingBoxes,
-    eye: &mut RawEye,
+    eye: &mut ControlEye,
 ) {
     // Note that we may want to focus on an _instance_ instead in the future:
     // The problem with that is that there may be **many** instances (think point cloud)
@@ -556,107 +678,29 @@ impl EyeState {
     }
 
     /// Gets and updates the current target eye from/to the blueprint.
-    fn update_target_eye(
+    fn control_and_sync_with_blueprint(
         &mut self,
         ctx: &ViewContext<'_>,
+        eye_property: &ViewProperty,
         response: &egui::Response,
         space_cameras: &[SpaceCamera3D],
         bounding_boxes: &SceneBoundingBoxes,
     ) -> Result<Eye, ViewPropertyQueryError> {
-        let eye_controls = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query(),
-            ctx.view_id,
-        );
+        let mut eye = ControlEye::from_blueprint(ctx, eye_property, self.fov_y)?;
 
-        let kind = eye_controls
-            .component_or_fallback::<Eye3DKind>(ctx, EyeControls3D::descriptor_kind().component)?;
-
-        let tracking_entity = eye_controls.component_or_empty::<re_types::components::EntityPath>(
-            EyeControls3D::descriptor_tracking_entity().component,
-        )?;
-
-        let speed = **eye_controls.component_or_fallback::<LinearSpeed>(
-            ctx,
-            EyeControls3D::descriptor_speed().component,
-        )?;
-
-        let pos = Vec3::from_array(
-            eye_controls
-                .component_or_fallback::<Position3D>(
-                    ctx,
-                    EyeControls3D::descriptor_position().component,
-                )?
-                .0
-                .0,
-        );
-
-        let look_target = Vec3::from_array(
-            eye_controls
-                .component_or_fallback::<Position3D>(
-                    ctx,
-                    EyeControls3D::descriptor_look_target().component,
-                )?
-                .0
-                .0,
-        );
-
-        // If we use fallbacks for position and look target, continue to
-        // interpolate to the new default eye. This gives much better robustness
-        // with scenes that change over time.
-        if eye_controls
-            .component_or_empty::<Position3D>(EyeControls3D::descriptor_position().component)?
-            .is_none()
-            && eye_controls
-                .component_or_empty::<Position3D>(
-                    EyeControls3D::descriptor_look_target().component,
-                )?
-                .is_none()
-        {
-            self.start_interpolation();
-        }
-
-        let eye_up = Vec3::from_array(
-            eye_controls
-                .component_or_fallback::<Vector3D>(
-                    ctx,
-                    EyeControls3D::descriptor_eye_up().component,
-                )?
-                .0
-                .0,
-        );
-
-        let has_look_target = eye_controls
-            .component_or_empty::<Position3D>(EyeControls3D::descriptor_look_target().component)?
-            .is_some();
-
-        let has_position = eye_controls
-            .component_or_empty::<Position3D>(EyeControls3D::descriptor_position().component)?
-            .is_some();
-
-        let mut eye = RawEye {
-            pos,
-            look_target,
-            kind,
-            speed,
-            eye_up,
-            did_interact: false,
-            written_radius: has_position && has_look_target,
-            fov_y: self.fov_y,
-        };
-
-        // Modify speed based on modifiers:
-        let os = response.ctx.os();
-        response.ctx.input(|input| {
-            if input.modifiers.contains(SPEED_UP_3D_MODIFIER) {
-                eye.speed *= 10.0;
-            }
-            if input.modifiers.contains(RuntimeModifiers::slow_down(&os)) {
-                eye.speed *= 0.1;
-            }
-        });
+        // Save values before mutating the eye to check if they changed later.
+        let ControlEye {
+            pos: old_pos,
+            look_target: old_look_target,
+            eye_up: old_eye_up,
+            ..
+        } = eye;
 
         let mut drag_threshold = 0.0;
+
+        let tracking_entity = eye_property.component_or_empty::<re_types::components::EntityPath>(
+            EyeControls3D::descriptor_tracking_entity().component,
+        )?;
 
         if let Some(tracking_entity) = &tracking_entity {
             let tracking_entity = EntityPath::from(tracking_entity.as_str());
@@ -665,22 +709,56 @@ impl EyeState {
             }
         }
 
-        // Dragging even below the [`drag_threshold`] should be considered interaction.
-        // Otherwise we flicker in and out of "has interacted" too quickly.
-        eye.did_interact |= response.drag_delta().length() > 0.0;
+        // We do input before tracking entity, because the input can cause the eye
+        // to stop tracking.
+        eye.handle_input(self, response, drag_threshold);
 
-        eye.handle_drag(response, drag_threshold);
-
-        if response.hovered() {
-            eye.handle_zoom(ctx.egui_ctx());
+        if let Some(tracked_eye) = self.handle_tracking_entity(
+            ctx,
+            eye_property,
+            space_cameras,
+            bounding_boxes,
+            &mut eye,
+            old_pos,
+            old_look_target,
+            tracking_entity.as_ref(),
+        ) {
+            return Ok(tracked_eye);
         }
 
-        if response.has_focus() {
-            eye.handle_keyboard_navigation(self, ctx.egui_ctx());
-        } else if response.clicked() || eye.did_interact {
-            response.request_focus();
-        }
+        eye.save_to_blueprint(
+            ctx.viewer_ctx,
+            eye_property,
+            old_pos,
+            old_look_target,
+            old_eye_up,
+        );
 
+        // Handle spinning after saving to blueprint to not continuously write to the blueprint.
+        self.handle_spinning(ctx, eye_property, &mut eye)?;
+
+        self.last_look_target = Some(eye.look_target);
+        self.last_orbit_radius = Some(eye.pos.distance(eye.look_target));
+        self.last_eye_up = Some(eye.up());
+
+        Ok(eye.get_eye())
+    }
+
+    /// Handles both tracking and clearing tracked entity.
+    ///
+    /// If we are tracking an entity, this will return the current eye we should use.
+    #[expect(clippy::too_many_arguments)]
+    fn handle_tracking_entity(
+        &mut self,
+        ctx: &ViewContext<'_>,
+        eye_property: &ViewProperty,
+        space_cameras: &[SpaceCamera3D],
+        bounding_boxes: &SceneBoundingBoxes,
+        eye: &mut ControlEye,
+        old_pos: Vec3,
+        old_look_target: Vec3,
+        tracking_entity: Option<&re_types::components::EntityPath>,
+    ) -> Option<Eye> {
         if let Some(tracking_entity) = &tracking_entity {
             let tracking_entity = EntityPath::from(tracking_entity.as_str());
             if self.last_tracked_entity.as_ref() == Some(&tracking_entity) {
@@ -689,73 +767,47 @@ impl EyeState {
             }
 
             let did_eye_change = match eye.kind {
-                Eye3DKind::FirstPerson => eye.pos != pos,
-                Eye3DKind::Orbital => eye.look_target != look_target,
+                Eye3DKind::FirstPerson => eye.pos != old_pos,
+                Eye3DKind::Orbital => eye.look_target != old_look_target,
             };
 
             if let Some(target_eye) = find_camera(space_cameras, &tracking_entity) {
-                if eye.did_interact && (eye.pos != pos || eye.look_target != look_target) {
-                    eye_controls.clear_blueprint_component(
+                if eye.did_interact && (eye.pos != old_pos || eye.look_target != old_look_target) {
+                    eye_property.clear_blueprint_component(
                         ctx.viewer_ctx,
                         EyeControls3D::descriptor_tracking_entity(),
                     );
                 } else {
-                    return Ok(target_eye);
+                    return Some(target_eye);
                 }
             } else if eye.did_interact && did_eye_change {
-                eye_controls.clear_blueprint_component(
+                eye_property.clear_blueprint_component(
                     ctx.viewer_ctx,
                     EyeControls3D::descriptor_tracking_entity(),
                 );
             } else {
                 self.start_interpolation();
-                entity_target_eye(&tracking_entity, bounding_boxes, &mut eye);
-                return Ok(eye.get_eye());
+                entity_target_eye(&tracking_entity, bounding_boxes, eye);
+                return Some(eye.get_eye());
             }
         } else {
             self.last_tracked_entity = None;
         }
 
-        // Update blueprint if we've interacted and the component has changed.
-        if eye.did_interact {
-            if eye.pos != pos {
-                eye_controls.save_blueprint_component(
-                    ctx.viewer_ctx,
-                    &EyeControls3D::descriptor_position(),
-                    &Position3D::from(eye.pos),
-                );
-            }
+        None
+    }
 
-            if eye.look_target != look_target {
-                eye_controls.save_blueprint_component(
-                    ctx.viewer_ctx,
-                    &EyeControls3D::descriptor_look_target(),
-                    &Position3D::from(eye.look_target),
-                );
-            }
-
-            if eye.eye_up != eye_up {
-                eye_controls.save_blueprint_component(
-                    ctx.viewer_ctx,
-                    &EyeControls3D::descriptor_eye_up(),
-                    &Vector3D::from(eye.eye_up),
-                );
-            }
-        }
-
-        if eye.did_interact {
-            self.last_interaction = Some(response.ctx.time());
-        }
-
-        // If spin speed isn't zero, apply it.
-        let spin_speed = eye_controls
-            .component_or_fallback::<AngularSpeed>(
-                ctx,
-                EyeControls3D::descriptor_spin_speed().component,
-            )?
-            .0
-            .0;
-
+    /// Spins the view if `spin_speed` isn't zero.
+    fn handle_spinning(
+        &mut self,
+        ctx: &ViewContext<'_>,
+        eye_property: &ViewProperty,
+        eye: &mut ControlEye,
+    ) -> Result<(), ViewPropertyQueryError> {
+        let spin_speed = **eye_property.component_or_fallback::<AngularSpeed>(
+            ctx,
+            EyeControls3D::descriptor_spin_speed().component,
+        )?;
         if spin_speed != 0.0 {
             let spin = self.spin.get_or_insert_default();
 
@@ -782,11 +834,7 @@ impl EyeState {
             self.spin = None;
         }
 
-        self.last_look_target = Some(eye.look_target);
-        self.last_orbit_radius = Some(eye.pos.distance(eye.look_target));
-        self.last_eye_up = Some(eye.up());
-
-        Ok(eye.get_eye())
+        Ok(())
     }
 
     pub fn update(
@@ -796,7 +844,34 @@ impl EyeState {
         space_cameras: &[SpaceCamera3D],
         bounding_boxes: &SceneBoundingBoxes,
     ) -> Result<Eye, ViewPropertyQueryError> {
-        let target_eye = self.update_target_eye(ctx, response, space_cameras, bounding_boxes)?;
+        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query(),
+            ctx.view_id,
+        );
+
+        let target_eye = self.control_and_sync_with_blueprint(
+            ctx,
+            &eye_property,
+            response,
+            space_cameras,
+            bounding_boxes,
+        )?;
+
+        // If we use fallbacks for position and look target, continue to
+        // interpolate to the new default eye. This gives much better robustness
+        // with scenes that change over time.
+        if eye_property
+            .component_or_empty::<Position3D>(EyeControls3D::descriptor_position().component)?
+            .is_none()
+            && eye_property
+                .component_or_empty::<Position3D>(
+                    EyeControls3D::descriptor_look_target().component,
+                )?
+                .is_none()
+        {
+            self.start_interpolation();
+        }
 
         let eye = if let Some(interpolation) = &mut self.interpolation
             && let Some(target_time) =

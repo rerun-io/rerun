@@ -315,13 +315,13 @@ impl SpatialView3D {
             };
 
             if let Some(entity_path) = focused_entity {
-                if state.state_3d.eye_state.last_tracked_entity.as_ref() != Some(entity_path) {
+                if state.last_tracked_entity() != Some(entity_path) {
                     eye_property.save_blueprint_component(
                         ctx,
                         &EyeControls3D::descriptor_tracking_entity(),
                         &re_types::components::EntityPath::from(entity_path),
                     );
-                    state.state_3d.eye_state.last_interaction = Some(ui.time());
+                    state.state_3d.eye_state.last_interaction_time = Some(ui.time());
                 }
             }
 
@@ -503,7 +503,7 @@ fn show_orbit_eye_center(
 
     let should_show_center_of_orbit_camera = state_3d
         .eye_state
-        .last_interaction
+        .last_interaction_time
         .is_some_and(|time| (egui_ctx.time() - time) < 0.35);
 
     if !state_3d.eye_interact_fade_in && should_show_center_of_orbit_camera {
@@ -627,8 +627,7 @@ fn show_projections_from_2d_space(
             tracked_entity: Some(tracked_entity),
             ..
         } => {
-            let current_tracked_entity = state.state_3d.eye_state.last_tracked_entity.as_ref();
-            if current_tracked_entity != Some(tracked_entity)
+            if state.last_tracked_entity() != Some(tracked_entity)
                 && let Some(tracked_camera) = space_cameras
                     .iter()
                     .find(|cam| &cam.ent_path == tracked_entity)
