@@ -447,11 +447,6 @@ impl RawEye {
 
     /// Listen to WSAD and QE to move the eye.
     fn handle_keyboard_navigation(&mut self, eye_state: &mut EyeState, egui_ctx: &egui::Context) {
-        let anything_has_focus = egui_ctx.memory(|mem| mem.focused().is_some());
-        if anything_has_focus {
-            return; // e.g. we're typing in a TextField
-        }
-
         let mut requires_repaint = false;
 
         egui_ctx.input(|input| {
@@ -613,13 +608,13 @@ impl EyeState {
                 .0,
         );
 
-        // If we use fallbacks for either position or look target, continue to
+        // If we use fallbacks for position and look target, continue to
         // interpolate to the new default eye. This gives much better robustness
         // with scenes that change over time.
         if eye_controls
             .component_or_empty::<Position3D>(EyeControls3D::descriptor_position().component)?
             .is_none()
-            || eye_controls
+            && eye_controls
                 .component_or_empty::<Position3D>(
                     EyeControls3D::descriptor_look_target().component,
                 )?
@@ -682,8 +677,16 @@ impl EyeState {
         eye.did_interact |= response.drag_delta().length() > 0.0;
 
         eye.handle_drag(response, drag_threshold);
-        eye.handle_zoom(ctx.egui_ctx());
-        eye.handle_keyboard_navigation(self, ctx.egui_ctx());
+
+        if response.hovered() {
+            eye.handle_zoom(ctx.egui_ctx());
+        }
+
+        if response.has_focus() {
+            eye.handle_keyboard_navigation(self, ctx.egui_ctx());
+        } else if response.clicked() || eye.did_interact {
+            response.request_focus();
+        }
 
         if let Some(tracking_entity) = &tracking_entity {
             let tracking_entity = EntityPath::from(tracking_entity.as_str());
@@ -704,7 +707,7 @@ impl EyeState {
             };
 
             if let Some(target_eye) = find_camera(space_cameras, &tracking_entity) {
-                if eye.did_interact && did_eye_change {
+                if eye.did_interact && (eye.pos != pos || eye.look_target != look_target) {
                     eye_controls.clear_blueprint_component(
                         ctx.viewer_ctx,
                         EyeControls3D::descriptor_tracking_entity(),
