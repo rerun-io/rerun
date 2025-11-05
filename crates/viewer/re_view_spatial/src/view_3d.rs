@@ -227,7 +227,8 @@ impl ViewClass for SpatialView3D {
                 let eye_up: glam::Vec3 = scene_up.into();
 
                 let eye_dir = {
-                    // Make sure right is to the right, and up is up:
+                    // Make sure that the right of the scene is to the right for
+                    // the default camera view.
                     let right = scene_right.into();
                     let fwd = eye_up.cross(right);
                     0.75 * fwd + 0.25 * right - 0.25 * eye_up

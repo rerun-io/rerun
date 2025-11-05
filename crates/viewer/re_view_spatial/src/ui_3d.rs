@@ -483,15 +483,14 @@ fn show_orbit_eye_center(
     line_builder: &mut LineDrawableBuilder<'_>,
     scene_view_coordinates: Option<ViewCoordinates>,
 ) {
+    // These are only none at the start or just as the view resets so can
+    // skip displaying anything then.
     let Some(look_target) = state_3d.eye_state.last_look_target else {
         return;
     };
     let Some(orbit_radius) = state_3d.eye_state.last_orbit_radius else {
         return;
     };
-
-    // We distinguish the eye up-axis from the other two axes:
-    // Default to RFU
     let Some(up) = state_3d.eye_state.last_eye_up else {
         return;
     };
