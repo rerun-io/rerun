@@ -159,12 +159,6 @@ impl Eye {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LastTrackedEntity {
-    /// Currently tracked entity.
-    pub entity: EntityPath,
-}
-
 #[derive(Clone, Debug, PartialEq)]
 struct EyeInterpolation {
     elapsed_time: f32,
@@ -207,7 +201,7 @@ pub struct EyeState {
     ///
     /// This should not be used to get the current tracked entity, get that
     /// via view properties instead.
-    pub last_tracked_entity: Option<LastTrackedEntity>,
+    pub last_tracked_entity: Option<EntityPath>,
 
     interpolation: Option<EyeInterpolation>,
 
@@ -689,14 +683,8 @@ impl EyeState {
 
         if let Some(tracking_entity) = &tracking_entity {
             let tracking_entity = EntityPath::from(tracking_entity.as_str());
-            if self
-                .last_tracked_entity
-                .as_ref()
-                .is_none_or(|e| e.entity != tracking_entity)
-            {
-                self.last_tracked_entity = Some(LastTrackedEntity {
-                    entity: tracking_entity.clone(),
-                });
+            if self.last_tracked_entity.as_ref() == Some(&tracking_entity) {
+                self.last_tracked_entity = Some(tracking_entity.clone());
                 self.start_interpolation();
             }
 

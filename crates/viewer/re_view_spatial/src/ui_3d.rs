@@ -315,14 +315,7 @@ impl SpatialView3D {
             };
 
             if let Some(entity_path) = focused_entity {
-                if state
-                    .state_3d
-                    .eye_state
-                    .last_tracked_entity
-                    .as_ref()
-                    .map(|t| &t.entity)
-                    != Some(entity_path)
-                {
+                if state.state_3d.eye_state.last_tracked_entity.as_ref() != Some(entity_path) {
                     eye_property.save_blueprint_component(
                         ctx,
                         &EyeControls3D::descriptor_tracking_entity(),
@@ -634,12 +627,7 @@ fn show_projections_from_2d_space(
             tracked_entity: Some(tracked_entity),
             ..
         } => {
-            let current_tracked_entity = state
-                .state_3d
-                .eye_state
-                .last_tracked_entity
-                .as_ref()
-                .map(|l| &l.entity);
+            let current_tracked_entity = state.state_3d.eye_state.last_tracked_entity.as_ref();
             if current_tracked_entity != Some(tracked_entity)
                 && let Some(tracked_camera) = space_cameras
                     .iter()
