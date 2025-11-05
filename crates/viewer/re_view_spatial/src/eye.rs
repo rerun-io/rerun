@@ -571,9 +571,7 @@ impl EyeState {
         }
     }
 
-    /// Gets and updates the current target eye.
-    ///
-    /// The bool indicates whether there is user input that would change the eye.
+    /// Gets and updates the current target eye from/to the blueprint.
     fn update_target_eye(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -732,6 +730,7 @@ impl EyeState {
             self.last_tracked_entity = None;
         }
 
+        // Update blueprint if we've interacted and the component has changed.
         if eye.did_interact {
             if eye.pos != pos {
                 eye_controls.save_blueprint_component(
@@ -823,7 +822,7 @@ impl EyeState {
             let t = t.clamp(0.0, 1.0);
             let t = ease_out(t);
 
-            // Make sure to repaint if we're lerping.
+            // Make sure to repaint if we're interpolating.
             ctx.egui_ctx().request_repaint();
 
             interpolation.start.lerp(&target_eye, t)

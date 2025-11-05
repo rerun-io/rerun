@@ -32,10 +32,6 @@ pub use view_3d::SpatialView3D;
 pub(crate) use pickable_textured_rect::{PickableRectSourceData, PickableTexturedRect};
 pub(crate) use pinhole::Pinhole;
 
-// TODO(#8265): Used in tests, shouldn't be needed if it's part of blueprint.
-#[doc(hidden)]
-pub use eye::{Eye, EyeState};
-
 // ---
 
 use re_viewer_context::ViewContext;
