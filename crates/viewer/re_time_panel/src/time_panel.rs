@@ -1517,19 +1517,22 @@ fn help(os: egui::os::OperatingSystem) -> Help {
     // Should we just assume that every mac user has a trackpad, and nobody else does?
     // But some mac users (like @Wumpf) use a mouse with their mac.
     Help::new("Timeline")
+        .control("Select time segment", "Drag time scale")
         .control("Snap to grid", icons::SHIFT)
         .control("Pan", "Middle click drag")
-        .control("Pan vertically", icons::SCROLL)
+        .control("Pan vertically", "Scroll")
         .control(
             "Pan horizontally",
-            IconText::from_modifiers_and(os, Modifiers::SHIFT, icons::SCROLL),
+            (IconText::from_modifiers(os, Modifiers::SHIFT), " + Scroll"),
         )
         .control(
             "Zoom",
-            IconText::from_modifiers_and(os, Modifiers::COMMAND, icons::SCROLL),
+            (
+                IconText::from_modifiers(os, Modifiers::COMMAND),
+                " + Scroll",
+            ),
         )
         .control("Reset view", "Double click")
-        .control_separator()
         .control("Play/Pause", "Space")
 }
 
