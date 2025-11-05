@@ -11,5 +11,7 @@ table SpatialInformation (
   show_bounding_box: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 200);
 
   /// Whether the smoothed bounding box should be shown.
+  ///
+  /// Internally this is used for heuristics, and this is mostly a debugging tool.
   show_smoothed_bounding_box: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 300);
 }

@@ -33,6 +33,8 @@ pub struct SpatialInformation {
     pub show_bounding_box: Option<SerializedComponentBatch>,
 
     /// Whether the smoothed bounding box should be shown.
+    ///
+    /// Internally this is used for heuristics, and this is mostly a debugging tool.
     pub show_smoothed_bounding_box: Option<SerializedComponentBatch>,
 }
 
@@ -243,6 +245,8 @@ impl SpatialInformation {
     }
 
     /// Whether the smoothed bounding box should be shown.
+    ///
+    /// Internally this is used for heuristics, and this is mostly a debugging tool.
     #[inline]
     pub fn with_show_smoothed_bounding_box(
         mut self,

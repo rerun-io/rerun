@@ -27,30 +27,27 @@ namespace rerun::blueprint::archetypes {
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct EyeControls3D {
+        /// The kind of the eye for the spatial 3D view.
+        ///
+        /// This controls how the eye movement behaves when the user interact with the view.
+        /// Defaults to orbital.
+        std::optional<ComponentBatch> kind;
+
         /// The cameras current position.
         std::optional<ComponentBatch> position;
 
         /// The position the camera is currently looking at.
         ///
         /// If this is an orbital camera, this also is the center it orbits around.
+        ///
+        /// By default this is the center of the scene bounds.
         std::optional<ComponentBatch> look_target;
-
-        /// What speed, if any, the camera should spin around the eye-up axis when in orbit mode.
-        std::optional<ComponentBatch> spin_speed;
 
         /// The up-axis of the eye itself, in world-space.
         ///
         /// Initially, the up-axis of the eye will be the same as the up-axis of the scene (or +Z if
         /// the scene has no up axis defined).
-        ///
-        /// A zero vector is valid and will result in 3 degrees of freedom.
         std::optional<ComponentBatch> eye_up;
-
-        /// The kind of the eye for the spatial 3D view.
-        ///
-        /// This controls how the eye movement behaves when the user interact with the view.
-        /// Defaults to orbital.
-        std::optional<ComponentBatch> kind;
 
         /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
         ///
@@ -64,10 +61,20 @@ namespace rerun::blueprint::archetypes {
         /// If this is a camera, it takes over the camera pose, otherwise follows the entity.
         std::optional<ComponentBatch> tracking_entity;
 
+        /// What speed, if any, the camera should spin around the eye-up axis.
+        ///
+        /// Defaults to zero, meaning no spinning.
+        std::optional<ComponentBatch> spin_speed;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.EyeControls3D";
 
+        /// `ComponentDescriptor` for the `kind` field.
+        static constexpr auto Descriptor_kind = ComponentDescriptor(
+            ArchetypeName, "EyeControls3D:kind",
+            Loggable<rerun::blueprint::components::Eye3DKind>::ComponentType
+        );
         /// `ComponentDescriptor` for the `position` field.
         static constexpr auto Descriptor_position = ComponentDescriptor(
             ArchetypeName, "EyeControls3D:position",
@@ -78,20 +85,10 @@ namespace rerun::blueprint::archetypes {
             ArchetypeName, "EyeControls3D:look_target",
             Loggable<rerun::components::Position3D>::ComponentType
         );
-        /// `ComponentDescriptor` for the `spin_speed` field.
-        static constexpr auto Descriptor_spin_speed = ComponentDescriptor(
-            ArchetypeName, "EyeControls3D:spin_speed",
-            Loggable<rerun::blueprint::components::AngularSpeed>::ComponentType
-        );
         /// `ComponentDescriptor` for the `eye_up` field.
         static constexpr auto Descriptor_eye_up = ComponentDescriptor(
             ArchetypeName, "EyeControls3D:eye_up",
             Loggable<rerun::components::Vector3D>::ComponentType
-        );
-        /// `ComponentDescriptor` for the `kind` field.
-        static constexpr auto Descriptor_kind = ComponentDescriptor(
-            ArchetypeName, "EyeControls3D:kind",
-            Loggable<rerun::blueprint::components::Eye3DKind>::ComponentType
         );
         /// `ComponentDescriptor` for the `speed` field.
         static constexpr auto Descriptor_speed = ComponentDescriptor(
@@ -102,6 +99,11 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_tracking_entity = ComponentDescriptor(
             ArchetypeName, "EyeControls3D:tracking_entity",
             Loggable<rerun::components::EntityPath>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `spin_speed` field.
+        static constexpr auto Descriptor_spin_speed = ComponentDescriptor(
+            ArchetypeName, "EyeControls3D:spin_speed",
+            Loggable<rerun::blueprint::components::AngularSpeed>::ComponentType
         );
 
       public:
@@ -119,6 +121,15 @@ namespace rerun::blueprint::archetypes {
         /// Clear all the fields of a `EyeControls3D`.
         static EyeControls3D clear_fields();
 
+        /// The kind of the eye for the spatial 3D view.
+        ///
+        /// This controls how the eye movement behaves when the user interact with the view.
+        /// Defaults to orbital.
+        EyeControls3D with_kind(const rerun::blueprint::components::Eye3DKind& _kind) && {
+            kind = ComponentBatch::from_loggable(_kind, Descriptor_kind).value_or_throw();
+            return std::move(*this);
+        }
+
         /// The cameras current position.
         EyeControls3D with_position(const rerun::components::Position3D& _position) && {
             position =
@@ -129,17 +140,11 @@ namespace rerun::blueprint::archetypes {
         /// The position the camera is currently looking at.
         ///
         /// If this is an orbital camera, this also is the center it orbits around.
+        ///
+        /// By default this is the center of the scene bounds.
         EyeControls3D with_look_target(const rerun::components::Position3D& _look_target) && {
             look_target = ComponentBatch::from_loggable(_look_target, Descriptor_look_target)
                               .value_or_throw();
-            return std::move(*this);
-        }
-
-        /// What speed, if any, the camera should spin around the eye-up axis when in orbit mode.
-        EyeControls3D with_spin_speed(const rerun::blueprint::components::AngularSpeed& _spin_speed
-        ) && {
-            spin_speed =
-                ComponentBatch::from_loggable(_spin_speed, Descriptor_spin_speed).value_or_throw();
             return std::move(*this);
         }
 
@@ -147,19 +152,8 @@ namespace rerun::blueprint::archetypes {
         ///
         /// Initially, the up-axis of the eye will be the same as the up-axis of the scene (or +Z if
         /// the scene has no up axis defined).
-        ///
-        /// A zero vector is valid and will result in 3 degrees of freedom.
         EyeControls3D with_eye_up(const rerun::components::Vector3D& _eye_up) && {
             eye_up = ComponentBatch::from_loggable(_eye_up, Descriptor_eye_up).value_or_throw();
-            return std::move(*this);
-        }
-
-        /// The kind of the eye for the spatial 3D view.
-        ///
-        /// This controls how the eye movement behaves when the user interact with the view.
-        /// Defaults to orbital.
-        EyeControls3D with_kind(const rerun::blueprint::components::Eye3DKind& _kind) && {
-            kind = ComponentBatch::from_loggable(_kind, Descriptor_kind).value_or_throw();
             return std::move(*this);
         }
 
@@ -181,6 +175,16 @@ namespace rerun::blueprint::archetypes {
             tracking_entity =
                 ComponentBatch::from_loggable(_tracking_entity, Descriptor_tracking_entity)
                     .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// What speed, if any, the camera should spin around the eye-up axis.
+        ///
+        /// Defaults to zero, meaning no spinning.
+        EyeControls3D with_spin_speed(const rerun::blueprint::components::AngularSpeed& _spin_speed
+        ) && {
+            spin_speed =
+                ComponentBatch::from_loggable(_spin_speed, Descriptor_spin_speed).value_or_throw();
             return std::move(*this);
         }
 

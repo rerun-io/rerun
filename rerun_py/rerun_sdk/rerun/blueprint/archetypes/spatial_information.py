@@ -48,6 +48,8 @@ class SpatialInformation(Archetype):
         show_smoothed_bounding_box:
             Whether the smoothed bounding box should be shown.
 
+            Internally this is used for heuristics, and this is mostly a debugging tool.
+
         """
 
         # You can define your own __init__ function as a member of SpatialInformationExt in spatial_information_ext.py
@@ -98,6 +100,8 @@ class SpatialInformation(Archetype):
         show_smoothed_bounding_box:
             Whether the smoothed bounding box should be shown.
 
+            Internally this is used for heuristics, and this is mostly a debugging tool.
+
         """
 
         inst = cls.__new__(cls)
@@ -146,6 +150,8 @@ class SpatialInformation(Archetype):
         converter=blueprint_components.EnabledBatch._converter,  # type: ignore[misc]
     )
     # Whether the smoothed bounding box should be shown.
+    #
+    # Internally this is used for heuristics, and this is mostly a debugging tool.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

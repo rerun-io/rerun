@@ -28,30 +28,27 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default)]
 pub struct EyeControls3D {
+    /// The kind of the eye for the spatial 3D view.
+    ///
+    /// This controls how the eye movement behaves when the user interact with the view.
+    /// Defaults to orbital.
+    pub kind: Option<SerializedComponentBatch>,
+
     /// The cameras current position.
     pub position: Option<SerializedComponentBatch>,
 
     /// The position the camera is currently looking at.
     ///
     /// If this is an orbital camera, this also is the center it orbits around.
+    ///
+    /// By default this is the center of the scene bounds.
     pub look_target: Option<SerializedComponentBatch>,
-
-    /// What speed, if any, the camera should spin around the eye-up axis when in orbit mode.
-    pub spin_speed: Option<SerializedComponentBatch>,
 
     /// The up-axis of the eye itself, in world-space.
     ///
     /// Initially, the up-axis of the eye will be the same as the up-axis of the scene (or +Z if
     /// the scene has no up axis defined).
-    ///
-    /// A zero vector is valid and will result in 3 degrees of freedom.
     pub eye_up: Option<SerializedComponentBatch>,
-
-    /// The kind of the eye for the spatial 3D view.
-    ///
-    /// This controls how the eye movement behaves when the user interact with the view.
-    /// Defaults to orbital.
-    pub kind: Option<SerializedComponentBatch>,
 
     /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
     ///
@@ -64,9 +61,26 @@ pub struct EyeControls3D {
     ///
     /// If this is a camera, it takes over the camera pose, otherwise follows the entity.
     pub tracking_entity: Option<SerializedComponentBatch>,
+
+    /// What speed, if any, the camera should spin around the eye-up axis.
+    ///
+    /// Defaults to zero, meaning no spinning.
+    pub spin_speed: Option<SerializedComponentBatch>,
 }
 
 impl EyeControls3D {
+    /// Returns the [`ComponentDescriptor`] for [`Self::kind`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::Eye3DKind`].
+    #[inline]
+    pub fn descriptor_kind() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+            component: "EyeControls3D:kind".into(),
+            component_type: Some("rerun.blueprint.components.Eye3DKind".into()),
+        }
+    }
+
     /// Returns the [`ComponentDescriptor`] for [`Self::position`].
     ///
     /// The corresponding component is [`crate::components::Position3D`].
@@ -91,18 +105,6 @@ impl EyeControls3D {
         }
     }
 
-    /// Returns the [`ComponentDescriptor`] for [`Self::spin_speed`].
-    ///
-    /// The corresponding component is [`crate::blueprint::components::AngularSpeed`].
-    #[inline]
-    pub fn descriptor_spin_speed() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
-            component: "EyeControls3D:spin_speed".into(),
-            component_type: Some("rerun.blueprint.components.AngularSpeed".into()),
-        }
-    }
-
     /// Returns the [`ComponentDescriptor`] for [`Self::eye_up`].
     ///
     /// The corresponding component is [`crate::components::Vector3D`].
@@ -112,18 +114,6 @@ impl EyeControls3D {
             archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
             component: "EyeControls3D:eye_up".into(),
             component_type: Some("rerun.components.Vector3D".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for [`Self::kind`].
-    ///
-    /// The corresponding component is [`crate::blueprint::components::Eye3DKind`].
-    #[inline]
-    pub fn descriptor_kind() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
-            component: "EyeControls3D:kind".into(),
-            component_type: Some("rerun.blueprint.components.Eye3DKind".into()),
         }
     }
 
@@ -150,6 +140,18 @@ impl EyeControls3D {
             component_type: Some("rerun.components.EntityPath".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::spin_speed`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::AngularSpeed`].
+    #[inline]
+    pub fn descriptor_spin_speed() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+            component: "EyeControls3D:spin_speed".into(),
+            component_type: Some("rerun.blueprint.components.AngularSpeed".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
@@ -161,26 +163,26 @@ static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]
 static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
     std::sync::LazyLock::new(|| {
         [
+            EyeControls3D::descriptor_kind(),
             EyeControls3D::descriptor_position(),
             EyeControls3D::descriptor_look_target(),
-            EyeControls3D::descriptor_spin_speed(),
             EyeControls3D::descriptor_eye_up(),
-            EyeControls3D::descriptor_kind(),
             EyeControls3D::descriptor_speed(),
             EyeControls3D::descriptor_tracking_entity(),
+            EyeControls3D::descriptor_spin_speed(),
         ]
     });
 
 static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
     std::sync::LazyLock::new(|| {
         [
+            EyeControls3D::descriptor_kind(),
             EyeControls3D::descriptor_position(),
             EyeControls3D::descriptor_look_target(),
-            EyeControls3D::descriptor_spin_speed(),
             EyeControls3D::descriptor_eye_up(),
-            EyeControls3D::descriptor_kind(),
             EyeControls3D::descriptor_speed(),
             EyeControls3D::descriptor_tracking_entity(),
+            EyeControls3D::descriptor_spin_speed(),
         ]
     });
 
@@ -227,6 +229,9 @@ impl ::re_types_core::Archetype for EyeControls3D {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let kind = arrays_by_descr
+            .get(&Self::descriptor_kind())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_kind()));
         let position = arrays_by_descr
             .get(&Self::descriptor_position())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_position()));
@@ -235,17 +240,9 @@ impl ::re_types_core::Archetype for EyeControls3D {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_look_target())
             });
-        let spin_speed = arrays_by_descr
-            .get(&Self::descriptor_spin_speed())
-            .map(|array| {
-                SerializedComponentBatch::new(array.clone(), Self::descriptor_spin_speed())
-            });
         let eye_up = arrays_by_descr
             .get(&Self::descriptor_eye_up())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_eye_up()));
-        let kind = arrays_by_descr
-            .get(&Self::descriptor_kind())
-            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_kind()));
         let speed = arrays_by_descr
             .get(&Self::descriptor_speed())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_speed()));
@@ -254,14 +251,19 @@ impl ::re_types_core::Archetype for EyeControls3D {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_tracking_entity())
             });
+        let spin_speed = arrays_by_descr
+            .get(&Self::descriptor_spin_speed())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_spin_speed())
+            });
         Ok(Self {
+            kind,
             position,
             look_target,
-            spin_speed,
             eye_up,
-            kind,
             speed,
             tracking_entity,
+            spin_speed,
         })
     }
 }
@@ -271,13 +273,13 @@ impl ::re_types_core::AsComponents for EyeControls3D {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
+            self.kind.clone(),
             self.position.clone(),
             self.look_target.clone(),
-            self.spin_speed.clone(),
             self.eye_up.clone(),
-            self.kind.clone(),
             self.speed.clone(),
             self.tracking_entity.clone(),
+            self.spin_speed.clone(),
         ]
         .into_iter()
         .flatten()
@@ -292,13 +294,13 @@ impl EyeControls3D {
     #[inline]
     pub fn new() -> Self {
         Self {
+            kind: None,
             position: None,
             look_target: None,
-            spin_speed: None,
             eye_up: None,
-            kind: None,
             speed: None,
             tracking_entity: None,
+            spin_speed: None,
         }
     }
 
@@ -313,6 +315,10 @@ impl EyeControls3D {
     pub fn clear_fields() -> Self {
         use ::re_types_core::Loggable as _;
         Self {
+            kind: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::Eye3DKind::arrow_empty(),
+                Self::descriptor_kind(),
+            )),
             position: Some(SerializedComponentBatch::new(
                 crate::components::Position3D::arrow_empty(),
                 Self::descriptor_position(),
@@ -321,17 +327,9 @@ impl EyeControls3D {
                 crate::components::Position3D::arrow_empty(),
                 Self::descriptor_look_target(),
             )),
-            spin_speed: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::AngularSpeed::arrow_empty(),
-                Self::descriptor_spin_speed(),
-            )),
             eye_up: Some(SerializedComponentBatch::new(
                 crate::components::Vector3D::arrow_empty(),
                 Self::descriptor_eye_up(),
-            )),
-            kind: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::Eye3DKind::arrow_empty(),
-                Self::descriptor_kind(),
             )),
             speed: Some(SerializedComponentBatch::new(
                 crate::components::LinearSpeed::arrow_empty(),
@@ -341,7 +339,21 @@ impl EyeControls3D {
                 crate::components::EntityPath::arrow_empty(),
                 Self::descriptor_tracking_entity(),
             )),
+            spin_speed: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::AngularSpeed::arrow_empty(),
+                Self::descriptor_spin_speed(),
+            )),
         }
+    }
+
+    /// The kind of the eye for the spatial 3D view.
+    ///
+    /// This controls how the eye movement behaves when the user interact with the view.
+    /// Defaults to orbital.
+    #[inline]
+    pub fn with_kind(mut self, kind: impl Into<crate::blueprint::components::Eye3DKind>) -> Self {
+        self.kind = try_serialize_field(Self::descriptor_kind(), [kind]);
+        self
     }
 
     /// The cameras current position.
@@ -354,6 +366,8 @@ impl EyeControls3D {
     /// The position the camera is currently looking at.
     ///
     /// If this is an orbital camera, this also is the center it orbits around.
+    ///
+    /// By default this is the center of the scene bounds.
     #[inline]
     pub fn with_look_target(
         mut self,
@@ -363,35 +377,13 @@ impl EyeControls3D {
         self
     }
 
-    /// What speed, if any, the camera should spin around the eye-up axis when in orbit mode.
-    #[inline]
-    pub fn with_spin_speed(
-        mut self,
-        spin_speed: impl Into<crate::blueprint::components::AngularSpeed>,
-    ) -> Self {
-        self.spin_speed = try_serialize_field(Self::descriptor_spin_speed(), [spin_speed]);
-        self
-    }
-
     /// The up-axis of the eye itself, in world-space.
     ///
     /// Initially, the up-axis of the eye will be the same as the up-axis of the scene (or +Z if
     /// the scene has no up axis defined).
-    ///
-    /// A zero vector is valid and will result in 3 degrees of freedom.
     #[inline]
     pub fn with_eye_up(mut self, eye_up: impl Into<crate::components::Vector3D>) -> Self {
         self.eye_up = try_serialize_field(Self::descriptor_eye_up(), [eye_up]);
-        self
-    }
-
-    /// The kind of the eye for the spatial 3D view.
-    ///
-    /// This controls how the eye movement behaves when the user interact with the view.
-    /// Defaults to orbital.
-    #[inline]
-    pub fn with_kind(mut self, kind: impl Into<crate::blueprint::components::Eye3DKind>) -> Self {
-        self.kind = try_serialize_field(Self::descriptor_kind(), [kind]);
         self
     }
 
@@ -418,17 +410,29 @@ impl EyeControls3D {
             try_serialize_field(Self::descriptor_tracking_entity(), [tracking_entity]);
         self
     }
+
+    /// What speed, if any, the camera should spin around the eye-up axis.
+    ///
+    /// Defaults to zero, meaning no spinning.
+    #[inline]
+    pub fn with_spin_speed(
+        mut self,
+        spin_speed: impl Into<crate::blueprint::components::AngularSpeed>,
+    ) -> Self {
+        self.spin_speed = try_serialize_field(Self::descriptor_spin_speed(), [spin_speed]);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for EyeControls3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.position.heap_size_bytes()
+        self.kind.heap_size_bytes()
+            + self.position.heap_size_bytes()
             + self.look_target.heap_size_bytes()
-            + self.spin_speed.heap_size_bytes()
             + self.eye_up.heap_size_bytes()
-            + self.kind.heap_size_bytes()
             + self.speed.heap_size_bytes()
             + self.tracking_entity.heap_size_bytes()
+            + self.spin_speed.heap_size_bytes()
     }
 }

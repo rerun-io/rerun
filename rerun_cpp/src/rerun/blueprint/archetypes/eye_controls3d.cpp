@@ -8,24 +8,24 @@
 namespace rerun::blueprint::archetypes {
     EyeControls3D EyeControls3D::clear_fields() {
         auto archetype = EyeControls3D();
+        archetype.kind =
+            ComponentBatch::empty<rerun::blueprint::components::Eye3DKind>(Descriptor_kind)
+                .value_or_throw();
         archetype.position =
             ComponentBatch::empty<rerun::components::Position3D>(Descriptor_position)
                 .value_or_throw();
         archetype.look_target =
             ComponentBatch::empty<rerun::components::Position3D>(Descriptor_look_target)
                 .value_or_throw();
-        archetype.spin_speed =
-            ComponentBatch::empty<rerun::blueprint::components::AngularSpeed>(Descriptor_spin_speed)
-                .value_or_throw();
         archetype.eye_up =
             ComponentBatch::empty<rerun::components::Vector3D>(Descriptor_eye_up).value_or_throw();
-        archetype.kind =
-            ComponentBatch::empty<rerun::blueprint::components::Eye3DKind>(Descriptor_kind)
-                .value_or_throw();
         archetype.speed = ComponentBatch::empty<rerun::components::LinearSpeed>(Descriptor_speed)
                               .value_or_throw();
         archetype.tracking_entity =
             ComponentBatch::empty<rerun::components::EntityPath>(Descriptor_tracking_entity)
+                .value_or_throw();
+        archetype.spin_speed =
+            ComponentBatch::empty<rerun::blueprint::components::AngularSpeed>(Descriptor_spin_speed)
                 .value_or_throw();
         return archetype;
     }
@@ -33,20 +33,17 @@ namespace rerun::blueprint::archetypes {
     Collection<ComponentColumn> EyeControls3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
         columns.reserve(7);
+        if (kind.has_value()) {
+            columns.push_back(kind.value().partitioned(lengths_).value_or_throw());
+        }
         if (position.has_value()) {
             columns.push_back(position.value().partitioned(lengths_).value_or_throw());
         }
         if (look_target.has_value()) {
             columns.push_back(look_target.value().partitioned(lengths_).value_or_throw());
         }
-        if (spin_speed.has_value()) {
-            columns.push_back(spin_speed.value().partitioned(lengths_).value_or_throw());
-        }
         if (eye_up.has_value()) {
             columns.push_back(eye_up.value().partitioned(lengths_).value_or_throw());
-        }
-        if (kind.has_value()) {
-            columns.push_back(kind.value().partitioned(lengths_).value_or_throw());
         }
         if (speed.has_value()) {
             columns.push_back(speed.value().partitioned(lengths_).value_or_throw());
@@ -54,30 +51,33 @@ namespace rerun::blueprint::archetypes {
         if (tracking_entity.has_value()) {
             columns.push_back(tracking_entity.value().partitioned(lengths_).value_or_throw());
         }
+        if (spin_speed.has_value()) {
+            columns.push_back(spin_speed.value().partitioned(lengths_).value_or_throw());
+        }
         return columns;
     }
 
     Collection<ComponentColumn> EyeControls3D::columns() {
+        if (kind.has_value()) {
+            return columns(std::vector<uint32_t>(kind.value().length(), 1));
+        }
         if (position.has_value()) {
             return columns(std::vector<uint32_t>(position.value().length(), 1));
         }
         if (look_target.has_value()) {
             return columns(std::vector<uint32_t>(look_target.value().length(), 1));
         }
-        if (spin_speed.has_value()) {
-            return columns(std::vector<uint32_t>(spin_speed.value().length(), 1));
-        }
         if (eye_up.has_value()) {
             return columns(std::vector<uint32_t>(eye_up.value().length(), 1));
-        }
-        if (kind.has_value()) {
-            return columns(std::vector<uint32_t>(kind.value().length(), 1));
         }
         if (speed.has_value()) {
             return columns(std::vector<uint32_t>(speed.value().length(), 1));
         }
         if (tracking_entity.has_value()) {
             return columns(std::vector<uint32_t>(tracking_entity.value().length(), 1));
+        }
+        if (spin_speed.has_value()) {
+            return columns(std::vector<uint32_t>(spin_speed.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -93,26 +93,26 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(7);
 
+        if (archetype.kind.has_value()) {
+            cells.push_back(archetype.kind.value());
+        }
         if (archetype.position.has_value()) {
             cells.push_back(archetype.position.value());
         }
         if (archetype.look_target.has_value()) {
             cells.push_back(archetype.look_target.value());
         }
-        if (archetype.spin_speed.has_value()) {
-            cells.push_back(archetype.spin_speed.value());
-        }
         if (archetype.eye_up.has_value()) {
             cells.push_back(archetype.eye_up.value());
-        }
-        if (archetype.kind.has_value()) {
-            cells.push_back(archetype.kind.value());
         }
         if (archetype.speed.has_value()) {
             cells.push_back(archetype.speed.value());
         }
         if (archetype.tracking_entity.has_value()) {
             cells.push_back(archetype.tracking_entity.value());
+        }
+        if (archetype.spin_speed.has_value()) {
+            cells.push_back(archetype.spin_speed.value());
         }
 
         return rerun::take_ownership(std::move(cells));

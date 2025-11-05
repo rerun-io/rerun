@@ -30,13 +30,13 @@ Configuration of debug drawing in the 3D view.
 ### `eye_controls`
 Configuration for the 3D eye
 
+* `kind`: The kind of the eye for the spatial 3D view.
 * `position`: The cameras current position.
 * `look_target`: The position the camera is currently looking at.
-* `spin_speed`: What speed, if any, the camera should spin around the eye-up axis when in orbit mode.
 * `eye_up`: The up-axis of the eye itself, in world-space.
-* `kind`: The kind of the eye for the spatial 3D view.
 * `speed`: Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
 * `tracking_entity`: Currently tracked entity.
+* `spin_speed`: What speed, if any, the camera should spin around the eye-up axis.
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 

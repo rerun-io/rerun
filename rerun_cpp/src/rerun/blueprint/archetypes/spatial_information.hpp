@@ -27,6 +27,8 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> show_bounding_box;
 
         /// Whether the smoothed bounding box should be shown.
+        ///
+        /// Internally this is used for heuristics, and this is mostly a debugging tool.
         std::optional<ComponentBatch> show_smoothed_bounding_box;
 
       public:
@@ -84,6 +86,8 @@ namespace rerun::blueprint::archetypes {
         }
 
         /// Whether the smoothed bounding box should be shown.
+        ///
+        /// Internally this is used for heuristics, and this is mostly a debugging tool.
         SpatialInformation with_show_smoothed_bounding_box(
             const rerun::blueprint::components::Enabled& _show_smoothed_bounding_box
         ) && {
