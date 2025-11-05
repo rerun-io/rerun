@@ -30,7 +30,7 @@ pub fn list_string_to_list_codec_uint32(list_array: &ListArray) -> Result<ListAr
 /// Transforms a StringArray of Foxglove video codec names to a UInt32Array,
 /// where each u32 corresponds to a Rerun VideoCodec enum value.
 #[derive(Default)]
-struct StringToCodecUint32 {}
+struct StringToCodecUInt32 {}
 
 impl Transform for StringToCodecUint32 {
     type Source = StringArray;
