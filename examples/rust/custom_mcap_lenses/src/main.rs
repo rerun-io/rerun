@@ -107,7 +107,7 @@ fn main() -> anyhow::Result<()> {
         .with_lens(instance_poses_lens)
         .with_lens(video_lens);
 
-    let (rec, _serve_guard) = args.rerun.init("rerun_example_japanese_alley")?;
+    let (rec, _serve_guard) = args.rerun.init("rerun_example_custom_mcap_lenses")?;
     rec.set_sink(Box::new(lenses_sink));
     rec.log_file_from_path(args.filepath, None, false)?;
 

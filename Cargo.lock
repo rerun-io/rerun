@@ -2283,6 +2283,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "custom_mcap_lenses"
+version = "0.26.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "arrow",
+ "clap",
+ "re_arrow_util",
+ "rerun",
+]
+
+[[package]]
 name = "custom_store_subscriber"
 version = "0.27.0-alpha.8+dev"
 dependencies = [
@@ -5092,18 +5103,6 @@ name = "itoa"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
-
-[[package]]
-name = "japanese_alley"
-version = "0.26.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "arrow",
- "clap",
- "itertools 0.14.0",
- "re_arrow_util",
- "rerun",
-]
 
 [[package]]
 name = "jiff"
