@@ -10,14 +10,14 @@ use re_log_types::{AbsoluteTimeRangeF, DataSourceMessage, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
 use re_smart_channel::ReceiveSet;
-use re_types::blueprint::components::PanelState;
+use re_types::blueprint::components::{PanelState, PlayState};
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintContext,
     BlueprintUndoState, CommandSender, ComponentUiRegistry, DataQueryResult, DisplayMode,
-    DragAndDropManager, GlobalContext, IndicatedEntities, Item, MaybeVisualizableEntities,
-    PerVisualizer, PlayState, SelectionChange, StorageContext, StoreContext, StoreHub,
-    SystemCommand, SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand,
+    DragAndDropManager, FallbackProviderRegistry, GlobalContext, IndicatedEntities, Item,
+    MaybeVisualizableEntities, PerVisualizer, SelectionChange, StorageContext, StoreContext,
+    StoreHub, SystemCommand, SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand,
     ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
     open_url::{self, ViewerOpenUrl},
 };
@@ -35,6 +35,7 @@ const WATERMARK: bool = false; // Nice for recording media material
 #[cfg(feature = "testing")]
 pub type TestHookFn = Box<dyn FnOnce(&ViewerContext<'_>)>;
 
+// TODO(#11737): Remove the serde derives since almost everything is skipped.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct AppState {
@@ -42,7 +43,9 @@ pub struct AppState {
     pub(crate) app_options: AppOptions,
 
     /// Configuration for the current recording (found in [`EntityDb`]).
+    #[serde(skip)]
     pub time_controls: HashMap<StoreId, TimeControl>,
+    #[serde(skip)]
     pub blueprint_time_control: TimeControl,
 
     /// Maps blueprint id to the current undo state for it.
@@ -178,6 +181,7 @@ impl AppState {
         storage_context: &StorageContext<'_>,
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
+        component_fallback_registry: &FallbackProviderRegistry,
         view_class_registry: &ViewClassRegistry,
         rx_log: &ReceiveSet<DataSourceMessage>,
         command_sender: &CommandSender,
@@ -349,6 +353,7 @@ impl AppState {
                         display_mode,
                     },
                     component_ui_registry,
+                    component_fallback_registry,
                     view_class_registry,
                     connected_receivers: rx_log,
                     store_context,
@@ -404,6 +409,7 @@ impl AppState {
                         display_mode,
                     },
                     component_ui_registry,
+                    component_fallback_registry,
                     view_class_registry,
                     connected_receivers: rx_log,
                     store_context,
@@ -527,7 +533,7 @@ impl AppState {
                         ui.ctx().content_rect().width(),
                     ));
 
-                left_panel.show_animated_inside(
+                let left_panel_response = left_panel.show_animated_inside(
                     ui,
                     app_blueprint.blueprint_panel_state().is_expanded(),
                     |ui: &mut egui::Ui| {
@@ -589,6 +595,11 @@ impl AppState {
                         }
                     },
                 );
+                if let Some(left_panel_response) = left_panel_response {
+                    left_panel_response.response.widget_info(|| {
+                        egui::WidgetInfo::labeled(egui::WidgetType::Panel, true, "blueprint_panel")
+                    });
+                }
 
                 //
                 // Viewport
@@ -713,6 +724,8 @@ impl AppState {
                 .selected_items()
                 .copy_to_clipboard(ui.ctx());
         }
+
+        self.selection_state.on_frame_end();
 
         // Reset the focused item.
         self.focused_item = None;
@@ -916,7 +929,7 @@ pub(crate) fn create_time_control_for<'cfgs>(
         let mut time_ctrl = TimeControl::from_blueprint(blueprint_ctx);
 
         time_ctrl.set_play_state(
-            entity_db.times_per_timeline(),
+            Some(entity_db.times_per_timeline()),
             play_state,
             Some(blueprint_ctx),
         );

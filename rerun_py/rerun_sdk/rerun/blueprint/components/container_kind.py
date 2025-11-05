@@ -60,12 +60,15 @@ class ContainerKind(Enum):
 ContainerKindLike = (
     ContainerKind | Literal["Grid", "Horizontal", "Tabs", "Vertical", "grid", "horizontal", "tabs", "vertical"] | int
 )
+"""A type alias for any ContainerKind-like object."""
+
 ContainerKindArrayLike = (
     ContainerKind
     | Literal["Grid", "Horizontal", "Tabs", "Vertical", "grid", "horizontal", "tabs", "vertical"]
     | int
     | Sequence[ContainerKindLike]
 )
+"""A type alias for any ContainerKind-like array object."""
 
 
 class ContainerKindBatch(BaseBatch[ContainerKindArrayLike], ComponentBatchMixin):

@@ -13,9 +13,9 @@ use wasm_bindgen::prelude::*;
 use re_log::ResultExt as _;
 use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
+use re_types::blueprint::components::PlayState;
 use re_viewer_context::{
-    AsyncRuntimeHandle, PlayState, SystemCommand, SystemCommandSender as _, TimeControlCommand,
-    open_url,
+    AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url,
 };
 
 use crate::history::install_popstate_listener;
@@ -59,7 +59,8 @@ impl WebHandle {
 
         let app_options: Option<AppOptions> = serde_wasm_bindgen::from_value(app_options)?;
 
-        let connection_registry = re_redap_client::ConnectionRegistry::new();
+        let connection_registry =
+            re_redap_client::ConnectionRegistry::new_with_stored_credentials();
 
         Ok(Self {
             runner: eframe::WebRunner::new(),

@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.27.0-alpha.1+dev"
-__version_info__ = (0, 27, 0, "alpha.1")
+__version__ = "0.27.0-alpha.8+dev"
+__version_info__ = (0, 27, 0, "alpha.8")
 
 if sys.version_info < (3, 10):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.10 or later.")
@@ -28,6 +28,7 @@ from . import (
     catalog as catalog,
     dataframe as dataframe,
     experimental as experimental,
+    server as server,
 )
 from ._baseclasses import (
     ComponentBatchLike as ComponentBatchLike,
@@ -35,6 +36,7 @@ from ._baseclasses import (
     ComponentColumn as ComponentColumn,
     ComponentColumnList as ComponentColumnList,
     ComponentDescriptor as ComponentDescriptor,
+    ComponentMixin as ComponentMixin,
     DescribedComponentBatch as DescribedComponentBatch,
 )
 from ._image_encoded import (
@@ -57,6 +59,7 @@ from ._properties import (
 )
 from ._send_columns import (
     TimeColumn as TimeColumn,
+    TimeColumnLike as TimeColumnLike,
     TimeNanosColumn as TimeNanosColumn,
     TimeSecondsColumn as TimeSecondsColumn,
     TimeSequenceColumn as TimeSequenceColumn,
@@ -79,6 +82,7 @@ from .archetypes import (
     Boxes3D as Boxes3D,
     Capsules3D as Capsules3D,
     Clear as Clear,
+    CoordinateFrame as CoordinateFrame,
     Cylinders3D as Cylinders3D,
     DepthImage as DepthImage,
     Ellipsoids3D as Ellipsoids3D,
@@ -147,6 +151,7 @@ from .dynamic_archetype import (
 )
 from .error_utils import (
     set_strict_mode as set_strict_mode,
+    strict_mode as strict_mode,
 )
 from .legacy_notebook import (
     legacy_notebook_show as legacy_notebook_show,

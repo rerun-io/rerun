@@ -62,12 +62,15 @@ Corner2DLike = (
     | Literal["LeftBottom", "LeftTop", "RightBottom", "RightTop", "leftbottom", "lefttop", "rightbottom", "righttop"]
     | int
 )
+"""A type alias for any Corner2D-like object."""
+
 Corner2DArrayLike = (
     Corner2D
     | Literal["LeftBottom", "LeftTop", "RightBottom", "RightTop", "leftbottom", "lefttop", "rightbottom", "righttop"]
     | int
     | Sequence[Corner2DLike]
 )
+"""A type alias for any Corner2D-like array object."""
 
 
 class Corner2DBatch(BaseBatch[Corner2DArrayLike], ComponentBatchMixin):

@@ -1,6 +1,6 @@
 use re_log_types::{TimeInt, TimelineName};
 use re_types::Archetype;
-use re_view::{AnnotationSceneContext, ChunksWithDescriptor, DataResultQuery as _, HybridResults};
+use re_view::{AnnotationSceneContext, ChunksWithComponent, DataResultQuery as _, HybridResults};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError,
@@ -156,7 +156,7 @@ use re_chunk_store::external::re_chunk;
 ///
 /// See [`re_chunk::Chunk::iter_component`] for more information.
 pub fn iter_component<'a, C: re_types::Component>(
-    chunks: &'a ChunksWithDescriptor<'a>,
+    chunks: &'a ChunksWithComponent<'a>,
     timeline: TimelineName,
 ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
     chunks.iter().flat_map(move |chunk| {
@@ -171,7 +171,7 @@ pub fn iter_component<'a, C: re_types::Component>(
 ///
 /// See [`re_chunk::Chunk::iter_slices`] for more information.
 pub fn iter_slices<'a, T: 'a + re_chunk::ChunkComponentSlicer>(
-    chunks: &'a ChunksWithDescriptor<'a>,
+    chunks: &'a ChunksWithComponent<'a>,
     timeline: TimelineName,
 ) -> impl Iterator<Item = ((TimeInt, RowId), T::Item<'a>)> + 'a {
     chunks.iter().flat_map(move |chunk| {

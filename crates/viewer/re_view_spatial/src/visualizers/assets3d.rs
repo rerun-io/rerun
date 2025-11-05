@@ -84,6 +84,7 @@ impl Asset3DVisualizer {
                     .transform_info
                     .target_from_instances(Asset3D::name())
                 {
+                    let world_from_pose = world_from_pose.as_affine3a();
                     instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
                         let pose_from_mesh = mesh_instance.world_from_mesh;
                         let world_from_mesh = world_from_pose * pose_from_mesh;
@@ -143,16 +144,18 @@ impl VisualizerSystem for Asset3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_blob_chunks) = results.get_required_chunks(Asset3D::descriptor_blob())
+                let Some(all_blob_chunks) =
+                    results.get_required_chunks(Asset3D::descriptor_blob().component)
                 else {
                     return Ok(());
                 };
 
                 let timeline = ctx.query.timeline();
                 let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);
-                let all_media_types = results.iter_as(timeline, Asset3D::descriptor_media_type());
+                let all_media_types =
+                    results.iter_as(timeline, Asset3D::descriptor_media_type().component);
                 let all_albedo_factors =
-                    results.iter_as(timeline, Asset3D::descriptor_albedo_factor());
+                    results.iter_as(timeline, Asset3D::descriptor_albedo_factor().component);
 
                 let query_result_hash = results.query_result_hash();
 
@@ -198,10 +201,4 @@ impl VisualizerSystem for Asset3DVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-re_viewer_context::impl_component_fallback_provider!(Asset3DVisualizer => []);

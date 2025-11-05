@@ -3,12 +3,13 @@ use std::sync::Arc;
 use arrow::array::{RecordBatch, RecordBatchOptions, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
-use pyo3::Bound;
 use pyo3::types::PyAnyMethods as _;
+use pyo3::{Bound, PyErr};
 use pyo3::{
     Py, PyAny, PyRef, PyRefMut, PyResult, Python, exceptions::PyRuntimeError,
     exceptions::PyValueError, pyclass, pymethods,
 };
+use re_protos::cloud::v1alpha1::{DeleteIndexesRequest, ListIndexesRequest};
 use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
@@ -22,7 +23,7 @@ use re_protos::{
         ext::{DatasetDetails, IndexProperties},
         index_query_properties,
     },
-    common::v1alpha1::{IfDuplicateBehavior, ext::DatasetHandle},
+    common::v1alpha1::ext::DatasetHandle,
     headers::RerunHeadersInjectorExt as _,
 };
 use re_redap_client::fetch_chunks_response_to_chunk_and_partition_id;
@@ -32,12 +33,13 @@ use crate::dataframe::{AnyComponentColumn, PyIndexColumnSelector, PyRecording, P
 use crate::utils::wait_for_future;
 
 use super::{
-    PyDataFusionTable, PyEntry, PyEntryId, VectorDistanceMetricLike, VectorLike,
-    dataframe_query::PyDataframeQueryView, task::PyTasks, to_py_err,
+    PyDataFusionTable, PyEntry, PyEntryId, PyIndexConfig, PyIndexingResult,
+    VectorDistanceMetricLike, VectorLike, dataframe_query::PyDataframeQueryView, task::PyTasks,
+    to_py_err,
 };
 
 /// A dataset entry in the catalog.
-#[pyclass(name = "DatasetEntry", extends=PyEntry)] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(name = "DatasetEntry", extends=PyEntry, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyDatasetEntry {
     pub dataset_details: DatasetDetails,
     pub dataset_handle: DatasetHandle,
@@ -324,6 +326,50 @@ impl PyDatasetEntry {
         Ok(task_descriptor.partition_id.id)
     }
 
+    /// Register all RRDs under a given prefix to the dataset and return a handle to the tasks.
+    ///
+    /// A prefix is a directory-like path in an object store (e.g. an S3 bucket or ABS container).
+    /// All RRDs that are recursively found under the given prefix will be registered to the dataset.
+    ///
+    /// This method initiates the registration of the recordings to the dataset, and returns
+    /// the corresponding task ids in a [`Tasks`] object.
+    ///
+    /// Parameters
+    /// ----------
+    /// recordings_prefix: str
+    ///     The prefix under which to register all RRDs.
+    ///
+    /// layer_name: Optional[str]
+    ///     The layer to which the recordings will be registered to.
+    ///     If `None`, this defaults to `"base"`.
+    #[allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)]
+    #[pyo3(signature = (
+        recordings_prefix,
+        layer_name = None,
+    ))]
+    #[pyo3(text_signature = "(self, /, recordings_prefix, layer_name = None)")]
+    fn register_prefix(
+        self_: PyRef<'_, Self>,
+        recordings_prefix: String,
+        layer_name: Option<String>,
+    ) -> PyResult<PyTasks> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let results = connection.register_with_dataset_prefix(
+            self_.py(),
+            dataset_id,
+            recordings_prefix,
+            layer_name,
+        )?;
+
+        Ok(PyTasks::new(
+            super_.client.clone_ref(self_.py()),
+            results.into_iter().map(|desc| desc.task_id),
+        ))
+    }
+
     /// Register a batch of RRD URIs to the dataset and return a handle to the tasks.
     ///
     /// This method initiates the registration of multiple recordings to the dataset, and returns
@@ -503,6 +549,8 @@ impl PyDatasetEntry {
         )
     }
 
+    // TODO(RR-2824): we should have a generic `create_index(PyIndexConfig)`
+
     /// Create a full-text search index on the given column.
     #[pyo3(signature = (
             *,
@@ -533,16 +581,11 @@ impl PyDatasetEntry {
         };
 
         let request = CreateIndexRequest {
-            partition_ids: vec![],
-            partition_layers: vec![],
-
             config: Some(IndexConfig {
                 properties: Some(properties.into()),
                 column: Some(component_descriptor.0.into()),
                 time_index: Some(time_selector.timeline.into()),
             }),
-
-            on_duplicate: IfDuplicateBehavior::Overwrite as i32,
         };
 
         wait_for_future(self_.py(), async {
@@ -563,11 +606,38 @@ impl PyDatasetEntry {
     }
 
     /// Create a vector index on the given column.
+    ///
+    /// This will enable indexing and build the vector index over all existing values
+    /// in the specified component column.
+    ///
+    /// Results can be retrieved using the `search_vector` API, which will include
+    /// the time-point on the indexed timeline.
+    ///
+    /// Only one index can be created per component column -- executing this a second
+    /// time for the same component column will replace the existing index.
+    ///
+    /// Parameters
+    /// ----------
+    /// column : AnyComponentColumn
+    ///     The component column to create the index on.
+    /// time_index : IndexColumnSelector
+    ///     Which timeline this index will map to.
+    /// num_partitions : int | None
+    ///     The number of partitions to create for the index.
+    ///     (Deprecated, use target_partition_num_rows instead)
+    /// target_partition_num_rows : int | None
+    ///     The target size (in number of rows) for each partition.
+    ///     Defaults to 4096 if neither this nor num_partitions is specified.
+    /// num_sub_vectors : int
+    ///     The number of sub-vectors to use when building the index.
+    /// distance_metric : VectorDistanceMetricLike
+    ///     The distance metric to use for the index. ("L2", "Cosine", "Dot", "Hamming")
     #[pyo3(signature = (
         *,
         column,
         time_index,
-        num_partitions = 5,
+        num_partitions = None,
+        target_partition_num_rows = None,
         num_sub_vectors = 16,
         distance_metric = VectorDistanceMetricLike::VectorDistanceMetric(crate::catalog::PyVectorDistanceMetric::Cosine),
     ))]
@@ -576,10 +646,12 @@ impl PyDatasetEntry {
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
         time_index: PyIndexColumnSelector,
-        num_partitions: usize,
-        num_sub_vectors: usize,
+        // TODO(RR-2798): Remove num_partitions since deprecated
+        num_partitions: Option<u32>,
+        target_partition_num_rows: Option<u32>,
+        num_sub_vectors: u32,
         distance_metric: VectorDistanceMetricLike,
-    ) -> PyResult<()> {
+    ) -> PyResult<PyIndexingResult> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
@@ -592,27 +664,54 @@ impl PyDatasetEntry {
         let distance_metric: re_protos::cloud::v1alpha1::VectorDistanceMetric =
             distance_metric.try_into()?;
 
+        let (num_partitions, target_partition_num_rows) = match (
+            num_partitions,
+            target_partition_num_rows,
+        ) {
+            // num_partitions is deprecated
+            (Some(n), None) => {
+                re_log::warn!(
+                    "The 'num_partitions' parameter is deprecated. Please use 'target_partition_num_rows' instead."
+                );
+                (Some(n), None)
+            }
+            // target_partition_num_rows is preferred
+            (None, Some(s)) => (None, Some(s)),
+            // If neither is set, default target_partition_num_rows to 4096
+            (None, None) => (None, Some(4096)),
+            // If both are set it's an error
+            (Some(_), Some(_)) => {
+                return Err(PyValueError::new_err(
+                    "Cannot specify both num_partitions and target_partition_num_rows.",
+                ));
+            }
+        };
+
+        // Otherwise
+
         let properties = IndexProperties::VectorIvfPq {
             num_partitions,
+            target_partition_num_rows,
             num_sub_vectors,
             metric: distance_metric,
         };
 
-        let request = CreateIndexRequest {
-            partition_ids: vec![],
-            partition_layers: vec![],
+        let config = re_protos::cloud::v1alpha1::ext::IndexConfig {
+            time_index: time_selector.timeline,
+            column: component_descriptor.0.clone().into(),
+            properties: properties.clone(),
+        };
 
+        let request = CreateIndexRequest {
             config: Some(IndexConfig {
                 properties: Some(properties.into()),
                 column: Some(component_descriptor.0.into()),
                 time_index: Some(time_selector.timeline.into()),
             }),
-
-            on_duplicate: IfDuplicateBehavior::Overwrite as i32,
         };
 
         wait_for_future(self_.py(), async {
-            connection
+            let result = connection
                 .client()
                 .await?
                 .inner()
@@ -622,9 +721,102 @@ impl PyDatasetEntry {
                         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
                 )
                 .await
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner();
 
-            Ok(())
+            Ok(PyIndexingResult {
+                index: config.into(),
+                statistics_json: result.statistics_json,
+                debug_info: result.debug_info,
+            })
+        })
+    }
+
+    /// List all user-defined indexes in this dataset.
+    #[instrument(skip_all, err)]
+    fn list_indexes(self_: PyRef<'_, Self>) -> PyResult<Vec<PyIndexingResult>> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let request = ListIndexesRequest {};
+
+        wait_for_future(self_.py(), async {
+            let result = connection
+                .client()
+                .await?
+                .inner()
+                .list_indexes(
+                    tonic::Request::new(request)
+                        .with_entry_id(dataset_id)
+                        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+                )
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner();
+
+            let indexes: Result<Vec<_>, PyErr> = result
+                .indexes
+                .into_iter()
+                .map(|index| {
+                    let index = re_protos::cloud::v1alpha1::ext::IndexConfig::try_from(index)?;
+                    Ok(PyIndexConfig::from(index))
+                })
+                .collect();
+
+            Ok(itertools::izip!(indexes?, result.statistics_json)
+                .map(|(index, statistics_json)| PyIndexingResult {
+                    index,
+                    statistics_json,
+                    debug_info: None,
+                })
+                .collect())
+        })
+    }
+
+    /// Deletes all user-defined indexes for the specified column.
+    //
+    // TODO(RR-2824): this should also be capable of accepting a `PyIndexConfig` directly.
+    #[instrument(skip_all, err)]
+    fn delete_indexes(
+        self_: PyRef<'_, Self>,
+        column: AnyComponentColumn,
+    ) -> PyResult<Vec<PyIndexConfig>> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let schema = Self::fetch_schema(&self_)?;
+        let component_descriptor = schema.column_for_selector(column)?;
+
+        let request = DeleteIndexesRequest {
+            column: Some(component_descriptor.0.into()),
+        };
+
+        wait_for_future(self_.py(), async {
+            let result = connection
+                .client()
+                .await?
+                .inner()
+                .delete_indexes(
+                    tonic::Request::new(request)
+                        .with_entry_id(dataset_id)
+                        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+                )
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner();
+
+            let indexes: Result<Vec<_>, PyErr> = result
+                .indexes
+                .into_iter()
+                .map(|index| {
+                    let index = re_protos::cloud::v1alpha1::ext::IndexConfig::try_from(index)?;
+                    Ok(PyIndexConfig::from(index))
+                })
+                .collect();
+
+            indexes
         })
     }
 

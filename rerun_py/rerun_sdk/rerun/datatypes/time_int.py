@@ -43,10 +43,12 @@ class TimeInt(TimeIntExt):
 
 if TYPE_CHECKING:
     TimeIntLike = TimeInt | int
+    """A type alias for any TimeInt-like object."""
 else:
     TimeIntLike = Any
 
 TimeIntArrayLike = TimeInt | Sequence[TimeIntLike]
+"""A type alias for any TimeInt-like array object."""
 
 
 class TimeIntBatch(BaseBatch[TimeIntArrayLike]):

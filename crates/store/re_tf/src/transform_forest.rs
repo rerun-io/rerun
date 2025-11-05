@@ -1,9 +1,9 @@
-use glam::Affine3A;
+use glam::DAffine3;
 use nohash_hasher::IntMap;
 use vec1::smallvec_v1::SmallVec1;
 
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::{EntityPath, EntityTree};
+use re_entity_db::{EntityDb, EntityPath, EntityTree};
 use re_types::ArchetypeName;
 
 use crate::{
@@ -29,7 +29,7 @@ pub struct TransformInfo {
     ///
     /// ⚠️ Does not include per instance poses! ⚠️
     /// Include 3D-from-2D / 2D-from-3D pinhole transform if present.
-    target_from_source: glam::Affine3A,
+    target_from_source: glam::DAffine3,
 
     /// List of transforms per instance including poses.
     ///
@@ -38,21 +38,21 @@ pub struct TransformInfo {
     /// If there are poses there may be more than one element.
     ///
     /// Does not take into account archetype specific transforms.
-    target_from_instances: SmallVec1<[glam::Affine3A; 1]>,
+    target_from_instances: SmallVec1<[glam::DAffine3; 1]>,
 
     /// Like [`Self::target_from_instances`] but _on top_ also has archetype specific transforms applied
     /// if there are any present.
     ///
     /// For example, this may have different poses for spheres & boxes.
-    target_from_archetype: IntMap<ArchetypeName, SmallVec1<[glam::Affine3A; 1]>>,
+    target_from_archetype: IntMap<ArchetypeName, SmallVec1<[glam::DAffine3; 1]>>,
 }
 
 impl TransformInfo {
     fn new_root(root: TransformFrameIdHash) -> Self {
         Self {
             root,
-            target_from_source: glam::Affine3A::IDENTITY,
-            target_from_instances: SmallVec1::new(glam::Affine3A::IDENTITY),
+            target_from_source: glam::DAffine3::IDENTITY,
+            target_from_instances: SmallVec1::new(glam::DAffine3::IDENTITY),
             target_from_archetype: Default::default(),
         }
     }
@@ -81,7 +81,7 @@ impl TransformInfo {
         &self,
         entity_name: &EntityPath,
         archetype: ArchetypeName,
-    ) -> glam::Affine3A {
+    ) -> glam::DAffine3 {
         self.warn_on_per_instance_transform(entity_name, archetype);
 
         if let Some(transform) = self.target_from_archetype.get(&archetype) {
@@ -96,7 +96,7 @@ impl TransformInfo {
     pub fn target_from_instances(
         &self,
         archetype: ArchetypeName,
-    ) -> &SmallVec1<[glam::Affine3A; 1]> {
+    ) -> &SmallVec1<[glam::DAffine3; 1]> {
         if let Some(transform) = self.target_from_archetype.get(&archetype) {
             transform
         } else {
@@ -109,7 +109,7 @@ impl TransformInfo {
     /// Or in other words:
     /// `reference_from_source = self`
     /// `target_from_source = target_from_reference * reference_from_source`
-    fn left_multiply(&self, target_from_reference: glam::Affine3A) -> Self {
+    fn left_multiply(&self, target_from_reference: glam::DAffine3) -> Self {
         let Self {
             root,
             target_from_source: reference_from_source,
@@ -175,7 +175,7 @@ impl TransformFromToError {
 struct TargetInfo {
     id: TransformFrameIdHash,
     root: TransformFrameIdHash,
-    target_from_root: glam::Affine3A,
+    target_from_root: glam::DAffine3,
 }
 
 /// Private utility struct for working with a source frame.
@@ -199,7 +199,7 @@ pub struct PinholeTreeRoot {
     pub pinhole_projection: ResolvedPinholeProjection,
 
     /// Transforms the 2D subtree into its parent 3D space.
-    pub parent_root_from_pinhole_root: glam::Affine3A,
+    pub parent_root_from_pinhole_root: glam::DAffine3,
 }
 
 /// Properties of a transform root.
@@ -239,7 +239,7 @@ impl TransformForest {
     /// entities are transformed relative to it.
     pub fn new(
         recording: &re_entity_db::EntityDb,
-        transform_cache: &TransformResolutionCache,
+        transform_cache: &mut TransformResolutionCache,
         time_query: &LatestAtQuery,
     ) -> Self {
         re_tracing::profile_function!();
@@ -256,6 +256,7 @@ impl TransformForest {
         };
         tree.entity_tree_gather_transforms_recursive(
             entity_tree,
+            recording,
             time_query,
             // Ignore potential pinhole camera at the root of the view, since it is regarded as being "above" this root.
             // TODO(andreas): Should we warn about that?
@@ -271,9 +272,10 @@ impl TransformForest {
     fn entity_tree_gather_transforms_recursive(
         &mut self,
         subtree: &EntityTree,
+        entity_db: &EntityDb,
         query: &LatestAtQuery,
         transform_root_from_parent: TransformInfo,
-        transforms_for_timeline: &CachedTransformsForTimeline,
+        transforms_for_timeline: &mut CachedTransformsForTimeline,
     ) {
         let root = transform_root_from_parent.root;
         let root_from_parent = transform_root_from_parent.target_from_source;
@@ -287,7 +289,8 @@ impl TransformForest {
         for child_tree in subtree.children.values() {
             let child_path = &child_tree.path;
 
-            let transforms_at_entity = transforms_at(child_path, query, transforms_for_timeline);
+            let transforms_at_entity =
+                transforms_at(child_path, entity_db, query, transforms_for_timeline);
 
             let root_from_child =
                 root_from_parent * transforms_at_entity.parent_from_entity_tree_transform;
@@ -305,7 +308,7 @@ impl TransformForest {
                     let previous_root = self.roots.insert(new_root_frame_id, new_root_info);
                     debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(andreas): Build out into cycle detection (cycles can't _yet_ happen)
 
-                    (new_root_frame_id, Affine3A::IDENTITY)
+                    (new_root_frame_id, DAffine3::IDENTITY)
                 } else {
                     (root, root_from_child)
                 };
@@ -313,11 +316,11 @@ impl TransformForest {
             // Collect & compute poses.
             let root_from_instances = compute_root_from_instances(
                 target_from_source,
-                transforms_at_entity.entity_from_instance_poses,
+                transforms_at_entity.entity_from_instance_poses.as_ref(),
             );
             let root_from_archetype = compute_root_from_archetype(
                 target_from_source,
-                transforms_at_entity.entity_from_instance_poses,
+                transforms_at_entity.entity_from_instance_poses.as_ref(),
             );
 
             let transform_root_from_child = TransformInfo {
@@ -329,6 +332,7 @@ impl TransformForest {
 
             self.entity_tree_gather_transforms_recursive(
                 child_tree,
+                entity_db,
                 query,
                 transform_root_from_child,
                 transforms_for_timeline,
@@ -359,6 +363,8 @@ impl TransformForest {
 
     /// Computes the transform from one frame to another if there is a path between them.
     ///
+    /// This function computes all T, such that for each source `p_target = T * p_source`
+    ///
     /// `target`: The frame into which to transform.
     /// `sources`: The frames from which to transform.
     ///
@@ -371,7 +377,7 @@ impl TransformForest {
         &self,
         target: TransformFrameIdHash,
         sources: impl Iterator<Item = TransformFrameIdHash>,
-        lookup_image_plane_distance: &dyn Fn(TransformFrameIdHash) -> f32,
+        lookup_image_plane_distance: &dyn Fn(TransformFrameIdHash) -> f64,
     ) -> impl Iterator<
         Item = (
             TransformFrameIdHash,
@@ -476,8 +482,8 @@ fn from_2d_source_to_3d_target(
     target: &TargetInfo,
     source: &SourceInfo<'_>,
     source_pinhole_tree_root: &PinholeTreeRoot,
-    lookup_image_plane_distance: &dyn Fn(TransformFrameIdHash) -> f32,
-    target_from_image_plane_cache: &mut IntMap<TransformFrameIdHash, glam::Affine3A>,
+    lookup_image_plane_distance: &dyn Fn(TransformFrameIdHash) -> f64,
+    target_from_image_plane_cache: &mut IntMap<TransformFrameIdHash, glam::DAffine3>,
 ) -> Result<TransformInfo, TransformFromToError> {
     let PinholeTreeRoot {
         parent_tree_root,
@@ -513,7 +519,7 @@ fn from_3d_source_to_2d_target(
     target: &TargetInfo,
     source: &SourceInfo<'_>,
     target_pinhole_tree_root: &PinholeTreeRoot,
-    target_from_source_root_cache: &mut IntMap<TransformFrameIdHash, glam::Affine3A>,
+    target_from_source_root_cache: &mut IntMap<TransformFrameIdHash, glam::DAffine3>,
 ) -> Result<TransformInfo, TransformFromToError> {
     let PinholeTreeRoot {
         parent_tree_root,
@@ -556,9 +562,9 @@ fn from_3d_source_to_2d_target(
 }
 
 fn left_multiply_smallvec1_of_transforms(
-    target_from_reference: glam::Affine3A,
-    reference_from_source: &SmallVec1<[glam::Affine3A; 1]>,
-) -> SmallVec1<[glam::Affine3A; 1]> {
+    target_from_reference: glam::DAffine3,
+    reference_from_source: &SmallVec1<[glam::DAffine3; 1]>,
+) -> SmallVec1<[glam::DAffine3; 1]> {
     // Easiest to deal with SmallVec1 in-place.
     let mut target_from_source = reference_from_source.clone();
     for transform in &mut target_from_source {
@@ -568,11 +574,11 @@ fn left_multiply_smallvec1_of_transforms(
 }
 
 fn compute_root_from_poses(
-    root_from_entity: glam::Affine3A,
-    instance_from_poses: &[glam::Affine3A],
-) -> SmallVec1<[glam::Affine3A; 1]> {
+    root_from_entity: glam::DAffine3,
+    instance_from_poses: &[glam::DAffine3],
+) -> SmallVec1<[glam::DAffine3; 1]> {
     let Ok(mut reference_from_poses) =
-        SmallVec1::<[glam::Affine3A; 1]>::try_from_slice(instance_from_poses)
+        SmallVec1::<[glam::DAffine3; 1]>::try_from_slice(instance_from_poses)
     else {
         return SmallVec1::new(root_from_entity);
     };
@@ -586,9 +592,9 @@ fn compute_root_from_poses(
 }
 
 fn compute_root_from_instances(
-    reference_from_entity: glam::Affine3A,
+    reference_from_entity: glam::DAffine3,
     pose_transforms: Option<&PoseTransformArchetypeMap>,
-) -> SmallVec1<[glam::Affine3A; 1]> {
+) -> SmallVec1<[glam::DAffine3; 1]> {
     compute_root_from_poses(
         reference_from_entity,
         pose_transforms.map_or(&[], |poses| &poses.instance_from_poses),
@@ -596,9 +602,9 @@ fn compute_root_from_instances(
 }
 
 fn compute_root_from_archetype(
-    reference_from_entity: glam::Affine3A,
+    reference_from_entity: glam::DAffine3,
     entity_from_instance_poses: Option<&PoseTransformArchetypeMap>,
-) -> IntMap<ArchetypeName, SmallVec1<[glam::Affine3A; 1]>> {
+) -> IntMap<ArchetypeName, SmallVec1<[glam::DAffine3; 1]>> {
     entity_from_instance_poses
         .map(|poses| {
             poses
@@ -617,10 +623,10 @@ fn compute_root_from_archetype(
 
 fn pinhole3d_from_image_plane(
     resolved_pinhole_projection: &ResolvedPinholeProjection,
-    pinhole_image_plane_distance: f32,
-) -> glam::Affine3A {
+    pinhole_image_plane_distance: f64,
+) -> glam::DAffine3 {
     let ResolvedPinholeProjection {
-        target: _, // TODO(andreas): Make use of this.
+        parent: _, // TODO(andreas): Make use of this.
         image_from_camera,
         resolution: _,
         view_coordinates,
@@ -631,24 +637,29 @@ fn pinhole3d_from_image_plane(
 
     // Center the image plane and move it along z, scaling the further the image plane is.
     let focal_length = image_from_camera.focal_length_in_pixels();
-    let focal_length = glam::vec2(focal_length.x(), focal_length.y());
+    let focal_length = glam::dvec2(focal_length.x() as f64, focal_length.y() as f64);
     let scale = pinhole_image_plane_distance / focal_length;
-    let translation =
-        (-image_from_camera.principal_point() * scale).extend(pinhole_image_plane_distance);
+    let translation = (glam::DVec2::from(-image_from_camera.principal_point()) * scale)
+        .extend(pinhole_image_plane_distance);
 
-    let image_plane3d_from_2d_content = glam::Affine3A::from_translation(translation)
+    let image_plane3d_from_2d_content = glam::DAffine3::from_translation(translation)
             // We want to preserve any depth that might be on the pinhole image.
             // Use harmonic mean of x/y scale for those.
-            * glam::Affine3A::from_scale(
+            * glam::DAffine3::from_scale(
                 scale.extend(2.0 / (1.0 / scale.x + 1.0 / scale.y)),
             );
 
     // Our interpretation of the pinhole camera implies that the axis semantics, i.e. ViewCoordinates,
     // determine how the image plane is oriented.
     // (see also `CamerasPart` where the frustum lines are set up)
-    let obj_from_image_plane3d = view_coordinates.from_other(&image_view_coordinates());
+    let obj_from_image_plane3d = glam::DMat3::from_cols_array(
+        &view_coordinates
+            .from_other(&image_view_coordinates())
+            .to_cols_array()
+            .map(|x| x as f64),
+    );
 
-    glam::Affine3A::from_mat3(obj_from_image_plane3d) * image_plane3d_from_2d_content
+    glam::DAffine3::from_mat3(obj_from_image_plane3d) * image_plane3d_from_2d_content
 
     // Above calculation is nice for a certain kind of visualizing a projected image plane,
     // but the image plane distance is arbitrary and there might be other, better visualizations!
@@ -656,17 +667,18 @@ fn pinhole3d_from_image_plane(
 
 /// Resolved transforms at an entity.
 #[derive(Default)]
-struct TransformsAtEntity<'a> {
-    parent_from_entity_tree_transform: glam::Affine3A,
-    entity_from_instance_poses: Option<&'a PoseTransformArchetypeMap>,
-    pinhole_projection: Option<&'a ResolvedPinholeProjection>,
+struct TransformsAtEntity {
+    parent_from_entity_tree_transform: glam::DAffine3,
+    entity_from_instance_poses: Option<PoseTransformArchetypeMap>,
+    pinhole_projection: Option<ResolvedPinholeProjection>,
 }
 
-fn transforms_at<'a>(
+fn transforms_at(
     entity_path: &EntityPath,
+    entity_db: &EntityDb,
     query: &LatestAtQuery,
-    transforms_for_timeline: &'a CachedTransformsForTimeline,
-) -> TransformsAtEntity<'a> {
+    transforms_for_timeline: &mut CachedTransformsForTimeline,
+) -> TransformsAtEntity {
     // This is called very frequently, don't put a profile scope here.
 
     let Some(entity_transforms) = transforms_for_timeline
@@ -676,13 +688,17 @@ fn transforms_at<'a>(
     };
 
     let parent_from_entity_tree_transform = entity_transforms
-        .latest_at_transform(query)
+        .latest_at_transform(entity_db, query)
         //  TODO(RR-2511): Don't ignore target frame.
-        .map_or(glam::Affine3A::IDENTITY, |source_to_target| {
+        .map_or(glam::DAffine3::IDENTITY, |source_to_target| {
             source_to_target.transform
         });
-    let entity_from_instance_poses = entity_transforms.latest_at_instance_poses_all(query);
-    let pinhole_projection = entity_transforms.latest_at_pinhole(query);
+    let entity_from_instance_poses = entity_transforms
+        .latest_at_instance_poses(entity_db, query)
+        .cloned();
+    let pinhole_projection = entity_transforms
+        .latest_at_pinhole(entity_db, query)
+        .cloned();
 
     TransformsAtEntity {
         parent_from_entity_tree_transform,
@@ -800,13 +816,10 @@ mod tests {
     fn test_simple_entity_hierarchy() {
         let test_scene = entity_hierarchy_test_scene();
         let mut transform_cache = TransformResolutionCache::default();
-        transform_cache.add_chunks(
-            &test_scene,
-            test_scene.storage_engine().store().iter_chunks(),
-        );
+        transform_cache.add_chunks(test_scene.storage_engine().store().iter_chunks());
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
-        let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+        let transform_forest = TransformForest::new(&test_scene, &mut transform_cache, &query);
 
         let all_entity_paths = test_scene
             .entity_paths()
@@ -887,7 +900,7 @@ mod tests {
             // (this is covered by the snapshot below as well, but its a basic sanity check I wanted to call out)
             let target_result = result.iter().find(|(key, _)| *key == target_frame).unwrap();
             if let Ok(target_result) = &target_result.1 {
-                assert!(target_result.target_from_source == glam::Affine3A::IDENTITY);
+                assert!(target_result.target_from_source == glam::DAffine3::IDENTITY);
             } else {
                 assert_eq!(
                     target_result.1,
@@ -935,10 +948,10 @@ mod tests {
             .unwrap();
 
         let mut transform_cache = TransformResolutionCache::default();
-        transform_cache.add_chunks(&entity_db, entity_db.storage_engine().store().iter_chunks());
+        transform_cache.add_chunks(entity_db.storage_engine().store().iter_chunks());
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
-        let transform_forest = TransformForest::new(&entity_db, &transform_cache, &query);
+        let transform_forest = TransformForest::new(&entity_db, &mut transform_cache, &query);
 
         let target = TransformFrameIdHash::from_entity_path(&EntityPath::from("box"));
         let sources = [TransformFrameIdHash::from_entity_path(&EntityPath::from(
@@ -959,14 +972,14 @@ mod tests {
         );
 
         // It *is* the target, so identity for this!
-        assert_eq!(info.target_from_source, glam::Affine3A::IDENTITY);
+        assert_eq!(info.target_from_source, glam::DAffine3::IDENTITY);
 
         // Instance transforms still apply.
         assert_eq!(
             info.target_from_instances,
-            SmallVec1::<[glam::Affine3A; 1]>::try_from_slice(&[
-                glam::Affine3A::from_translation(glam::vec3(0.0, 10.0, 0.0)),
-                glam::Affine3A::from_translation(glam::vec3(0.0, 20.0, 0.0))
+            SmallVec1::<[glam::DAffine3; 1]>::try_from_slice(&[
+                glam::DAffine3::from_translation(glam::dvec3(0.0, 10.0, 0.0)),
+                glam::DAffine3::from_translation(glam::dvec3(0.0, 20.0, 0.0))
             ])
             .unwrap()
         );
@@ -976,9 +989,9 @@ mod tests {
             info.target_from_archetype,
             std::iter::once((
                 archetypes::Boxes3D::name(),
-                SmallVec1::<[glam::Affine3A; 1]>::try_from_slice(&[
-                    glam::Affine3A::from_translation(glam::vec3(0.0, 10.0, 100.0)),
-                    glam::Affine3A::from_translation(glam::vec3(0.0, 20.0, 200.0))
+                SmallVec1::<[glam::DAffine3; 1]>::try_from_slice(&[
+                    glam::DAffine3::from_translation(glam::dvec3(0.0, 10.0, 100.0)),
+                    glam::DAffine3::from_translation(glam::dvec3(0.0, 20.0, 200.0))
                 ])
                 .unwrap(),
             ))

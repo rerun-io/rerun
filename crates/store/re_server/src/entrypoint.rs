@@ -60,11 +60,6 @@ impl FromStr for NamedPath {
 }
 
 impl Args {
-    pub fn run(self) -> anyhow::Result<()> {
-        let rt = tokio::runtime::Runtime::new()?;
-        rt.block_on(self.run_async())
-    }
-
     pub async fn create_server_handle(self) -> anyhow::Result<ServerHandle> {
         let rerun_cloud_server = {
             use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudServiceServer;
@@ -78,6 +73,7 @@ impl Args {
                 )?;
             }
 
+            #[cfg_attr(not(feature = "lance"), expect(clippy::never_loop))]
             for table in &self.tables {
                 cfg_if::cfg_if! {
                     if #[cfg(feature = "lance")] {
@@ -114,7 +110,7 @@ impl Args {
         Ok(server_handle)
     }
 
-    async fn run_async(self) -> anyhow::Result<()> {
+    pub async fn run_async(self) -> anyhow::Result<()> {
         let mut server_handle = self.create_server_handle().await?;
 
         #[cfg(unix)]

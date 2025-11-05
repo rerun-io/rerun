@@ -158,6 +158,18 @@ impl TimeInt {
             _ => Self::STATIC,
         }
     }
+
+    pub fn closest_multiple_of(&self, snap_interval: i64) -> Self {
+        debug_assert!(1 <= snap_interval);
+        match self.0 {
+            Some(t) => {
+                let v = t.get();
+                let snapped = (v + snap_interval / 2).div_euclid(snap_interval) * snap_interval;
+                Self::new_temporal(snapped)
+            }
+            None => Self::STATIC,
+        }
+    }
 }
 
 impl TryFrom<i64> for TimeInt {
@@ -216,6 +228,18 @@ impl From<re_types_core::datatypes::TimeInt> for TimeInt {
     #[inline]
     fn from(time: re_types_core::datatypes::TimeInt) -> Self {
         Self::new_temporal(time.0)
+    }
+}
+
+impl std::ops::Neg for TimeInt {
+    type Output = Self;
+
+    #[inline]
+    fn neg(self) -> Self::Output {
+        match self.0 {
+            Some(t) => Self(Some(-t)),
+            None => self,
+        }
     }
 }
 

@@ -18,6 +18,7 @@ if TYPE_CHECKING:
         ComponentDescriptor as ComponentDescriptor,
         IndexColumnDescriptor as IndexColumnDescriptor,
         IndexColumnSelector as IndexColumnSelector,
+        IndexingResult as IndexingResult,
     )
 
 AnyColumn: TypeAlias = Union[
@@ -46,11 +47,11 @@ specifying multiple content-expressions and a respective list of components to s
 that expression such as `{"world/cameras/**": ["Image:buffer", "Camera:image_from_camera"]}`.
 """
 
-IndexValuesLike: TypeAlias = npt.NDArray[np.int_] | pa.Int64Array
+IndexValuesLike: TypeAlias = npt.NDArray[np.int_] | npt.NDArray[np.datetime64] | pa.Int64Array
 """
 A type alias for index values.
 
-This can be any numpy-compatible array of integers, or a [`pa.Int64Array`][]
+This can be any numpy-compatible array of integers, or a [`pyarrow.Int64Array`][]
 """
 
 TableLike: TypeAlias = pa.Table | pa.RecordBatch | pa.RecordBatchReader

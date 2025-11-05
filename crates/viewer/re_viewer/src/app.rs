@@ -13,12 +13,14 @@ use re_log_types::{
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
+use re_types::blueprint::components::PlayState;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, Item, NeedsRepaint, PlayState, RecordingOrTable,
-    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore,
-    TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError, command_channel,
+    ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint,
+    RecordingOrTable, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _,
+    TableStore, TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError,
+    command_channel,
     open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url},
     sanitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
@@ -81,6 +83,7 @@ pub struct App {
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
 
     component_ui_registry: ComponentUiRegistry,
+    component_fallback_registry: FallbackProviderRegistry,
 
     rx_log: ReceiveSet<DataSourceMessage>,
     rx_table: ReceiveSetTable,
@@ -179,8 +182,8 @@ impl App {
     ) -> Self {
         re_tracing::profile_function!();
 
-        let connection_registry =
-            connection_registry.unwrap_or_else(re_redap_client::ConnectionRegistry::new);
+        let connection_registry = connection_registry
+            .unwrap_or_else(re_redap_client::ConnectionRegistry::new_with_stored_credentials);
 
         if let Some(storage) = creation_context.storage
             && let Some(tokens) = eframe::get_value(storage, REDAP_TOKEN_KEY)
@@ -245,11 +248,15 @@ impl App {
             state.app_options.show_metrics = false;
         }
 
-        let view_class_registry = crate::default_views::create_view_class_registry()
-            .unwrap_or_else(|err| {
-                re_log::error!("Failed to create view class registry: {err}");
-                Default::default()
-            });
+        let mut component_fallback_registry =
+            re_component_fallbacks::create_component_fallback_registry();
+
+        let view_class_registry =
+            crate::default_views::create_view_class_registry(&mut component_fallback_registry)
+                .unwrap_or_else(|err| {
+                    re_log::error!("Failed to create view class registry: {err}");
+                    Default::default()
+                });
 
         #[allow(clippy::allow_attributes, unused_mut, clippy::needless_update)]
         // false positive on web
@@ -334,6 +341,38 @@ impl App {
             }),
         );
 
+        {
+            // TODO(emilk/egui#7659): This is a workaround consuming the Space key so we can use it
+            // as the play/pause shortcut. Egui's built in behavior is to trigger clicks on the
+            // focused item, and we don't want that. Users can use `Enter` instead.
+            // But of course text edits should still get it so we use this ugly hack to check if
+            // a text edit is focused.
+            let command_sender = command_sender.clone();
+            creation_context.egui_ctx.on_begin_pass(
+                "filter space key",
+                Arc::new(move |ctx| {
+                    if let Some(focused) = ctx.memory(|mem| mem.focused()) {
+                        let is_text_edit_focused =
+                            egui::text_edit::TextEditState::load(ctx, focused).is_some();
+
+                        if !is_text_edit_focused {
+                            let shortcut = UICommand::PlaybackTogglePlayPause
+                                .primary_kb_shortcut(ctx.os())
+                                .expect("Play / pause should have a keyboard shortcut");
+                            debug_assert_eq!(
+                                shortcut.logical_key,
+                                egui::Key::Space,
+                                "Expected space key shortcut"
+                            );
+                            if ctx.input_mut(|i| i.consume_shortcut(&shortcut)) {
+                                command_sender.send_ui(UICommand::PlaybackTogglePlayPause);
+                            }
+                        }
+                    }
+                }),
+            );
+        }
+
         Self {
             main_thread_token,
             build_info,
@@ -352,6 +391,7 @@ impl App {
 
             text_log_rx,
             component_ui_registry,
+            component_fallback_registry,
             rx_log: Default::default(),
             rx_table: Default::default(),
             #[cfg(target_arch = "wasm32")]
@@ -498,7 +538,10 @@ impl App {
 
                 let time_ctrl = self.state.time_control_mut(recording, &bp_ctx);
 
-                let should_diff_state = false;
+                // The state diffs are used to trigger callbacks if they are configured.
+                // If there's no active recording, we should not trigger any callbacks, but since there's an active recording here,
+                // we want to diff state changes.
+                let should_diff_state = true;
                 let response = time_ctrl.update(
                     recording.times_per_timeline(),
                     dt,
@@ -565,14 +608,11 @@ impl App {
     }
 
     /// Adds a new view class to the viewer.
-    #[deprecated(
-        since = "0.24.0",
-        note = "Use `view_class_registry().add_class(..)` instead."
-    )]
     pub fn add_view_class<T: ViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), ViewClassRegistryError> {
-        self.view_class_registry.add_class::<T>()
+        self.view_class_registry
+            .add_class::<T>(&mut self.component_fallback_registry)
     }
 
     /// Accesses the view class registry which can be used to extend the Viewer.
@@ -581,6 +621,10 @@ impl App {
     /// Doing so later in the application life cycle may cause unexpected behavior.
     pub fn view_class_registry(&mut self) -> &mut ViewClassRegistry {
         &mut self.view_class_registry
+    }
+
+    pub fn component_fallback_registry(&mut self) -> &mut FallbackProviderRegistry {
+        &mut self.component_fallback_registry
     }
 
     fn check_keyboard_shortcuts(&self, egui_ctx: &egui::Context) {
@@ -1047,8 +1091,8 @@ impl App {
                 self.app_options_mut().inspect_blueprint_timeline = show;
             }
 
-            SystemCommand::SetSelection(items) => {
-                if let Some(item) = items.single_item() {
+            SystemCommand::SetSelection(set) => {
+                if let Some(item) = set.selection.single_item() {
                     // If the selected item has its own page, switch to it.
                     if let Some(display_mode) = DisplayMode::from_item(item) {
                         if let DisplayMode::LocalRecordings(store_id) = &display_mode {
@@ -1058,7 +1102,7 @@ impl App {
                     }
                 }
 
-                self.state.selection_state.set_selection(items);
+                self.state.selection_state.set_selection(set);
                 egui_ctx.request_repaint(); // Make sure we actually see the new selection.
             }
 
@@ -1238,7 +1282,7 @@ impl App {
             };
 
             self.command_sender
-                .send_system(SystemCommand::SetSelection(item.clone().into()));
+                .send_system(SystemCommand::set_selection(item.clone()));
         }
 
         if let Some((timeline, timecell)) = when {
@@ -1984,6 +2028,7 @@ impl App {
                             storage_context,
                             &self.reflection,
                             &self.component_ui_registry,
+                            &self.component_fallback_registry,
                             &self.view_class_registry,
                             &self.rx_log,
                             &self.command_sender,
@@ -2035,9 +2080,10 @@ impl App {
                     } else {
                         re_log::debug!("Inserted table store with id: `{}`", table.id);
                     }
-                    self.command_sender.send_system(SystemCommand::SetSelection(
-                        re_viewer_context::Item::TableId(table.id.clone()).into(),
-                    ));
+                    self.command_sender
+                        .send_system(SystemCommand::set_selection(
+                            re_viewer_context::Item::TableId(table.id.clone()),
+                        ));
 
                     // If the viewer is in the background, tell the user that it has received something new.
                     egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
@@ -2341,9 +2387,10 @@ impl App {
         store_hub.set_active_recording_id(store_id.clone());
 
         // Also select the new recording:
-        self.command_sender.send_system(SystemCommand::SetSelection(
-            re_viewer_context::Item::StoreId(store_id.clone()).into(),
-        ));
+        self.command_sender
+            .send_system(SystemCommand::set_selection(
+                re_viewer_context::Item::StoreId(store_id.clone()),
+            ));
 
         // If the viewer is in the background, tell the user that it has received something new.
         egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(

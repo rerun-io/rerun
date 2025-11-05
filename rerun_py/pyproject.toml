@@ -35,9 +35,9 @@ name = "Rerun.io"
 text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
-tests = ["pytest==8.4.1"]
-notebook = ["rerun-notebook==0.27.0-alpha.1+dev"]
-datafusion = ["datafusion==49.0.0"]
+tests = ["pytest==8.4.2", "syrupy==5.0.0"]
+notebook = ["rerun-notebook==0.27.0-alpha.8+dev"]
+datafusion = ["datafusion==50.1.0"]
 all = ["rerun-sdk[notebook]", "rerun-sdk[datafusion]"]
 
 [project.urls]
@@ -54,6 +54,8 @@ rerun = "rerun_cli.__main__:main"
 ######################
 
 [tool.ruff]
+src = ["rerun_bindings", "rerun_sdk/*", "../rerun_notebook"]
+
 # https://beta.ruff.rs/docs/configuration/
 
 # Enable unsafe fixes to allow ruff to apply fixes that may change the behavior of the code.
@@ -212,9 +214,30 @@ max-positional-args = 3
   "PLR0917",
 ]
 
+"rerun_py/rerun_sdk/*" = [
+  # Allow using rerun_bindings
+  "TID251",
+]
+"rerun_py/rerun_bindings/*" = [
+  # Allow using rerun_bindings
+  "TID251",
+]
+
+
 [tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]
 combine-as-imports = true # needed so keep rerun_sdk/__init__.py clean
+
+# Sometime Ruff is unable to guess that this is first-party package. Since it's disallowed outside of context where
+# it should be considered first-party (e.g. tests, scripts), it's OK to enforce it here.
+known-first-party = ["rerun_bindings"]
+
+# We should never use these as they are internal APIs. The exception is `rerun`'s implementation, which is covered by
+# `per-file-ignores` exceptions.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"rerun_bindings".msg = "Internal API"
+"rerun_cli".msg = "Only for running CLI"
+
 
 [tool.maturin]
 # We use a python package from inside the rerun_sdk folder to avoid conflicting

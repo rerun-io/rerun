@@ -655,7 +655,7 @@ where
             Command::Rrd(rrd) => rrd.run(),
 
             #[cfg(feature = "oss_server")]
-            Command::Server(server) => server.run(),
+            Command::Server(server) => tokio_runtime.block_on(server.run_async()),
         }
     } else {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
@@ -729,7 +729,7 @@ fn run_impl(
     #[cfg(feature = "native_viewer")] profiler: re_tracing::Profiler,
 ) -> anyhow::Result<()> {
     //TODO(#10068): populate token passed with `--token`
-    let connection_registry = re_redap_client::ConnectionRegistry::new();
+    let connection_registry = re_redap_client::ConnectionRegistry::new_with_stored_credentials();
 
     let server_addr = std::net::SocketAddr::new(args.bind, args.port);
 

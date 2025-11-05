@@ -69,10 +69,12 @@ class ChannelCountPair(ChannelCountPairExt):
 
 if TYPE_CHECKING:
     ChannelCountPairLike = ChannelCountPair | tuple[datatypes.UInt16Like, datatypes.UInt64Like]
+    """A type alias for any ChannelCountPair-like object."""
 else:
     ChannelCountPairLike = Any
 
 ChannelCountPairArrayLike = ChannelCountPair | Sequence[ChannelCountPairLike]
+"""A type alias for any ChannelCountPair-like array object."""
 
 
 class ChannelCountPairBatch(BaseBatch[ChannelCountPairArrayLike]):

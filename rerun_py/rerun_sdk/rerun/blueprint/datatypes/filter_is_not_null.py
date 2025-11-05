@@ -68,10 +68,12 @@ if TYPE_CHECKING:
     from ...blueprint import datatypes as blueprint_datatypes
 
     FilterIsNotNullLike = FilterIsNotNull | blueprint_datatypes.ComponentColumnSelectorLike
+    """A type alias for any FilterIsNotNull-like object."""
 else:
     FilterIsNotNullLike = Any
 
 FilterIsNotNullArrayLike = FilterIsNotNull | Sequence[FilterIsNotNullLike]
+"""A type alias for any FilterIsNotNull-like array object."""
 
 
 class FilterIsNotNullBatch(BaseBatch[FilterIsNotNullArrayLike]):

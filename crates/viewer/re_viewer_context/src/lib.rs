@@ -53,7 +53,7 @@ pub use self::{
     app_options::AppOptions,
     async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend},
     blueprint_helpers::{BlueprintContext, blueprint_timeline, blueprint_timepoint_for_writes},
-    blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, ViewId},
+    blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId},
     cache::{
         Cache, CacheMemoryReport, CacheMemoryReportItem, Caches, ImageDecodeCache, ImageStatsCache,
         SharablePlayableVideoStream, TensorStatsCache, VideoAssetCache, VideoStreamCache,
@@ -63,10 +63,7 @@ pub use self::{
     command_sender::{
         CommandReceiver, CommandSender, SystemCommand, SystemCommandSender, command_channel,
     },
-    component_fallbacks::{
-        ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
-        TypedComponentFallbackProvider,
-    },
+    component_fallbacks::{ComponentFallbackError, FallbackProviderRegistry, typed_fallback_for},
     component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, EditTarget, VariantName},
     contents::{Contents, ContentsName, blueprint_id_to_tile_id},
     display_mode::DisplayMode,
@@ -74,7 +71,7 @@ pub use self::{
     file_dialog::sanitize_file_name,
     global_context::GlobalContext,
     heuristics::suggest_view_for_each_entity,
-    image_info::{ColormapWithRange, ImageInfo, StoredBlobCacheKey},
+    image_info::{ColormapWithRange, ImageInfo, StoredBlobCacheKey, resolution_of_image_at},
     item::{Item, resolve_mono_instance_path, resolve_mono_instance_path_item},
     item_collection::{ItemCollection, ItemContext},
     maybe_mut_ref::MaybeMutRef,
@@ -93,8 +90,8 @@ pub use self::{
     tables::{TableStore, TableStores},
     tensor::{ImageStats, TensorStats},
     time_control::{
-        Looping, PlayState, TIME_PANEL_PATH, TimeControl, TimeControlCommand, TimeControlResponse,
-        TimeView, time_panel_blueprint_entity_path,
+        TIME_PANEL_PATH, TimeControl, TimeControlCommand, TimeControlResponse, TimeView,
+        time_panel_blueprint_entity_path,
     },
     typed_entity_collections::{
         IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, VisualizableEntities,

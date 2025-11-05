@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "blueprint/components/absolute_time_range.hpp"
 #include "blueprint/components/active_tab.hpp"
 #include "blueprint/components/apply_latest_at.hpp"
 #include "blueprint/components/auto_layout.hpp"
@@ -24,9 +25,11 @@
 #include "blueprint/components/included_content.hpp"
 #include "blueprint/components/link_axis.hpp"
 #include "blueprint/components/lock_range_during_zoom.hpp"
+#include "blueprint/components/loop_mode.hpp"
 #include "blueprint/components/map_provider.hpp"
 #include "blueprint/components/near_clip_plane.hpp"
 #include "blueprint/components/panel_state.hpp"
+#include "blueprint/components/play_state.hpp"
 #include "blueprint/components/playback_speed.hpp"
 #include "blueprint/components/query_expression.hpp"
 #include "blueprint/components/root_container.hpp"
@@ -34,6 +37,7 @@
 #include "blueprint/components/selected_columns.hpp"
 #include "blueprint/components/tensor_dimension_index_slider.hpp"
 #include "blueprint/components/time_int.hpp"
+#include "blueprint/components/time_range.hpp"
 #include "blueprint/components/timeline_name.hpp"
 #include "blueprint/components/view_class.hpp"
 #include "blueprint/components/view_fit.hpp"

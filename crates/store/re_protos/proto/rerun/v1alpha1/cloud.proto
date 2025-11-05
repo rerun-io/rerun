@@ -33,6 +33,8 @@ service RerunCloudService {
 
   rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
 
+  rpc CreateTableEntry(CreateTableEntryRequest) returns (CreateTableEntryResponse) {}
+
   // Fetch metadata about a specific dataset.
   //
   // This endpoint requires the standard dataset headers.
@@ -107,6 +109,16 @@ service RerunCloudService {
   // This endpoint requires the standard dataset headers.
   rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
 
+  // List all user-defined indexes in this dataset.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc ListIndexes(ListIndexesRequest) returns (ListIndexesResponse) {}
+
+  // Delete a custom index for a specific column.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc DeleteIndexes(DeleteIndexesRequest) returns (DeleteIndexesResponse) {}
+
   /* Queries */
 
   // Search a previously created index.
@@ -148,6 +160,14 @@ service RerunCloudService {
   rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse) {}
 
   rpc ScanTable(ScanTableRequest) returns (stream ScanTableResponse) {}
+
+  // Write record batches to a table.
+  //
+  // This endpoint requires the standard dataset headers.
+  //
+  // TODO(#11645): endpoints with streaming input are not supported by `grpc-web`.
+  // A non-streaming shim will need to be added if/when the viewer uses this endpoint.
+  rpc WriteTable(stream WriteTableRequest) returns (WriteTableResponse) {}
 
   // --- Tasks ---
 
@@ -261,7 +281,13 @@ message GetPartitionTableSchemaResponse {
 message ScanPartitionTableRequest {
   // A list of column names to be projected server-side.
   //
-  // All of them if left empty.
+  // If empty, all columns are returned.
+  //
+  // If not empty, the returned `RecordBatch` are guaranteed to only have the requested column, in the order they were
+  // requested.
+  //
+  // If a projected column does not exist, or is projected more than once, the `ScanPartitionTable` call will fail with
+  // an `InvalidArgument` error.
   repeated string columns = 3;
 
   reserved 1;
@@ -285,7 +311,13 @@ message GetDatasetManifestSchemaResponse {
 message ScanDatasetManifestRequest {
   // A list of column names to be projected server-side.
   //
-  // All of them if left empty.
+  // If empty, all columns are returned.
+  //
+  // If not empty, the returned `RecordBatch` are guaranteed to only have the requested column, in the order they were
+  // requested.
+  //
+  // If a projected column does not exist, or is projected more than once, the `ScanDatasetManifest` call will fail with
+  // an `InvalidArgument` error.
   repeated string columns = 3;
 }
 
@@ -306,25 +338,61 @@ message GetDatasetSchemaResponse {
 /* Indexing */
 
 message CreateIndexRequest {
-  // List of specific partitions that will be indexed (all if left empty).
-  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
-
-  // List of specific partition layers that will be indexed (all if left empty).
-  //
-  // If non-empty, this must match the length of `partition_ids`.
-  repeated string partition_layers = 5;
-
   IndexConfig config = 3;
-
-  // Specify behavior when index for a partition was already created.
-  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 4;
 
   reserved 1;
   reserved "dataset_id";
+
+  reserved 2;
+  reserved "partition_ids";
+
+  reserved 4;
+  reserved "on_duplicate";
+
+  reserved 5;
+  reserved "partition_layers";
 }
 
 message CreateIndexResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
+  reserved 1;
+  reserved "data";
+
+  // The properties/configuration of the newly created index.
+  IndexConfig index = 3;
+
+  // Backend-specific statistics about the index.
+  //
+  // This is guaranteed to be valid JSON.
+  bytes statistics_json = 4;
+
+  // Optional debug information about the index-creation task
+  DebugInfo debug_info = 2;
+}
+
+message ListIndexesRequest {}
+
+message ListIndexesResponse {
+  // The respective properties/configuration of the indexes.
+  repeated IndexConfig indexes = 1;
+
+  // Backend-specific statistics about the indexes.
+  //
+  // This is guaranteed to be valid JSON.
+  //
+  // If non-empty, this is the same length as `indexes`, and in the same order.
+  repeated bytes statistics_json = 2;
+}
+
+message DeleteIndexesRequest {
+  // Which column to delete the indexes for.
+  IndexColumn column = 1;
+}
+
+message DeleteIndexesResponse {
+  // Which indexes were actually deleted.
+  //
+  // Can be empty if no matching indexes were found.
+  repeated IndexConfig indexes = 1;
 }
 
 message IndexConfig {
@@ -364,9 +432,16 @@ message InvertedIndex {
 }
 
 message VectorIvfPqIndex {
+  // num_partitions is deprecated. Use target_partition_num_rows instead
+  // TODO(RR-2798): Remove in 0.6
   optional uint32 num_partitions = 1;
+
   optional uint32 num_sub_vectors = 2;
+
   VectorDistanceMetric distance_metrics = 3;
+
+  // Target size of the IVF partition in rows
+  optional uint32 target_partition_num_rows = 4;
 }
 
 enum VectorDistanceMetric {
@@ -589,6 +664,24 @@ message ScanTableResponse {
   rerun.common.v1alpha1.DataframePart dataframe_part = 1;
 }
 
+enum TableInsertMode {
+  // Always reserve unspecified as default value
+  TABLE_INSERT_MODE_UNSPECIFIED = 0;
+
+  // Appends new rows to the existing table without modifying any existing rows.
+  TABLE_INSERT_MODE_APPEND = 1;
+
+  // Overwrites all existing rows in the table with the new rows.
+  TABLE_INSERT_MODE_OVERWRITE = 2;
+}
+
+message WriteTableRequest {
+  rerun.common.v1alpha1.DataframePart dataframe_part = 1;
+  TableInsertMode insert_mode = 2;
+}
+
+message WriteTableResponse {}
+
 // --- Maintenance ---
 
 message DoMaintenanceRequest {
@@ -722,6 +815,29 @@ message CreateDatasetEntryRequest {
 
 message CreateDatasetEntryResponse {
   DatasetEntry dataset = 1;
+}
+
+// CreateTableEntry
+
+message CreateTableEntryRequest {
+  // Name of the dataset entry to create.
+  //
+  // The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
+  // with the same name already exists, the request will fail. Entry names ending with `__manifest` are reserved.
+  string name = 1;
+
+  // Information about the table to register.
+  //
+  // This must be encoded message of one one of the following supported types:
+  // - LanceTable
+  google.protobuf.Any provider_details = 2;
+
+  // Schema of the table to create
+  rerun.common.v1alpha1.Schema schema = 3;
+}
+
+message CreateTableEntryResponse {
+  TableEntry table = 1;
 }
 
 // ReadDatasetEntry
@@ -875,4 +991,10 @@ message SystemTable {
 message LanceTable {
   // The URL of the Lance table.
   string table_url = 1;
+}
+
+// Optional debug info
+message DebugInfo {
+  // The amount of memory used by the task or service call in bytes
+  optional uint64 memory_used = 1;
 }

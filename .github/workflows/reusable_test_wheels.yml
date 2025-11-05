@@ -81,18 +81,13 @@ jobs:
               container="'rerunio/ci_docker:0.16.0'"
               ;;
             windows-x64)
-              runner="windows-latest-8-cores"
+              runner="windows-latest-16-cores"
               target="x86_64-pc-windows-msvc"
               container="null"
               ;;
             macos-arm64)
               runner="macos-13-xlarge" # This is an Arm vm, https://docs.github.com/en/actions/using-github-hosted-runners/about-larger-runners/about-larger-runners#about-macos-larger-runners
               target="aarch64-apple-darwin"
-              container="null"
-              ;;
-            macos-x64)
-              runner="macos-13-large" # This is an Intel vm, see https://docs.github.com/en/actions/using-github-hosted-runners/about-larger-runners/about-larger-runners#about-macos-larger-runners
-              target="x86_64-apple-darwin"
               container="null"
               ;;
             *) echo "Invalid platform" && exit 1 ;;

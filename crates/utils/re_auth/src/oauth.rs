@@ -90,7 +90,7 @@ pub enum CredentialsError {
     #[error("failed to load credentials: {0}")]
     Load(#[from] CredentialsLoadError),
 
-    #[error("failed to refresh credentials: {0}")]
+    #[error("{0}")]
     Refresh(#[from] CredentialsRefreshError),
 }
 

@@ -12,10 +12,9 @@ use re_dataframe_ui::RequestedObject;
 use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
 use re_log_types::EntryId;
 use re_protos::TypeConversionError;
-use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableEntry};
+use re_protos::cloud::v1alpha1::ext::{EntryDetails, ProviderDetails, TableEntry};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, ext::DatasetEntry};
 use re_protos::external::prost;
-use re_protos::external::prost::Name as _;
 use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
 use re_ui::{Icon, icons};
 use re_viewer_context::AsyncRuntimeHandle;
@@ -106,8 +105,12 @@ impl Entries {
         origin: re_uri::Origin,
         session_context: Arc<SessionContext>,
     ) -> Self {
-        let entries_fut =
-            fetch_entries_and_register_tables(connection_registry, origin, session_context);
+        let entries_fut = fetch_entries_and_register_tables(
+            connection_registry,
+            origin,
+            session_context,
+            runtime.clone(),
+        );
 
         Self {
             entries: RequestedObject::new_with_repaint(runtime, egui_ctx.clone(), entries_fut),
@@ -136,6 +139,7 @@ async fn fetch_entries_and_register_tables(
     connection_registry: ConnectionRegistryHandle,
     origin: re_uri::Origin,
     session_ctx: Arc<SessionContext>,
+    runtime: AsyncRuntimeHandle,
 ) -> EntryResult<HashMap<EntryId, Entry>> {
     let mut client = connection_registry.client(origin.clone()).await?;
 
@@ -148,9 +152,10 @@ async fn fetch_entries_and_register_tables(
         .await?;
 
     let origin_ref = &origin;
+    let runtime_ref = &runtime;
     let futures_iter = entries
         .into_iter()
-        .filter_map(move |e| fetch_entry_details(client.clone(), origin_ref, e));
+        .filter_map(move |e| fetch_entry_details(client.clone(), origin_ref, e, runtime_ref));
 
     let mut entries = HashMap::default();
 
@@ -163,10 +168,10 @@ async fn fetch_entries_and_register_tables(
         });
 
         let is_system_table = match &inner_result {
-            Ok(EntryInner::Table(table)) => {
-                table.table_entry.provider_details.type_url
-                    == re_protos::cloud::v1alpha1::SystemTable::type_url()
-            }
+            Ok(EntryInner::Table(table)) => matches!(
+                table.table_entry.provider_details,
+                ProviderDetails::SystemTable(_)
+            ),
             Err(_) | Ok(EntryInner::Dataset(_)) => false,
         };
         if !is_system_table {
@@ -192,6 +197,7 @@ fn fetch_entry_details(
     client: ConnectionClient,
     origin: &re_uri::Origin,
     entry: EntryDetails,
+    runtime: &AsyncRuntimeHandle,
 ) -> Option<impl Future<Output = FetchEntryDetailsOutput>> {
     // We could also box the future but then we'd need to use `.boxed()` natively and
     // `.boxed_local()` on wasm. Either passes the `Send` type info transparently.
@@ -208,7 +214,7 @@ fn fetch_entry_details(
                 .map(move |res| (entry, res)),
         ))),
         EntryKind::Table => Some(Left(Right(
-            fetch_table_details(client, entry.id, origin)
+            fetch_table_details(client, entry.id, origin, runtime.clone())
                 .map_ok(|(table, table_provider)| (EntryInner::Table(table), table_provider))
                 .map(move |res| (entry, res)),
         ))),
@@ -248,17 +254,24 @@ async fn fetch_dataset_details(
     Ok((result, table_provider))
 }
 
+#[cfg_attr(target_arch = "wasm32", expect(unused_variables))]
 async fn fetch_table_details(
     mut client: ConnectionClient,
     id: EntryId,
     origin: &re_uri::Origin,
+    runtime: AsyncRuntimeHandle,
 ) -> EntryResult<(Table, Arc<dyn TableProvider>)> {
     let result = client.read_table_entry(id).await.map(|table_entry| Table {
         table_entry,
         origin: origin.clone(),
     })?;
 
-    let table_provider = TableEntryTableProvider::new(client, id)
+    #[cfg(target_arch = "wasm32")]
+    let runtime = None;
+    #[cfg(not(target_arch = "wasm32"))]
+    let runtime = Some(runtime.inner().clone());
+
+    let table_provider = TableEntryTableProvider::new(client, id, runtime)
         .into_provider()
         .await
         .map_err(|err| ApiError::internal(err, "failed creating table-entry table provider"))?;

@@ -1,7 +1,8 @@
 use std::hash::Hash;
 
 use egui::{
-    CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Widget as _, WidgetInfo, WidgetText,
+    CollapsingResponse, Color32, NumExt as _, Rangef, Rect, StrokeKind, Widget as _, WidgetInfo,
+    WidgetText,
     emath::{GuiRounding as _, Rot2},
     pos2,
 };
@@ -623,13 +624,28 @@ pub trait UiExt {
         self.ui().painter().add(shadow);
     }
 
+    fn draw_focus_outline(&self, rect: Rect) {
+        self.ui().painter().rect_stroke(
+            rect,
+            4,
+            self.tokens().focus_outline_stroke,
+            StrokeKind::Inside,
+        );
+        self.ui().painter().rect_stroke(
+            rect,
+            4,
+            self.tokens().focus_halo_stroke,
+            StrokeKind::Outside,
+        );
+    }
+
     /// Convenience function to create a [`list_item::list_item_scope`].
     #[inline]
     fn list_item_scope<R>(
         &mut self,
         id_salt: impl std::hash::Hash,
         content: impl FnOnce(&mut egui::Ui) -> R,
-    ) -> R {
+    ) -> egui::InnerResponse<R> {
         list_item::list_item_scope(self.ui_mut(), id_salt, content)
     }
 
@@ -671,7 +687,7 @@ pub trait UiExt {
                 id,
                 default_open,
                 list_item::LabelContent::new(label),
-                |ui| list_item::list_item_scope(ui, id, children_ui),
+                |ui| list_item::list_item_scope(ui, id, children_ui).inner,
             )
             .body_response
             .map(|r| r.inner)
@@ -1247,15 +1263,16 @@ pub trait UiExt {
         id_salt: impl std::hash::Hash,
         selected_text: String,
         content: impl FnOnce(&mut egui::Ui),
-    ) {
+    ) -> egui::Response {
         // TODO(emilk): make the button itself a `ListItem2`
-        egui::ComboBox::from_id_salt(id_salt)
-            .selected_text(selected_text)
+        let response = egui::ComboBox::from_id_salt(id_salt)
+            .selected_text(selected_text.clone())
             .show_ui(self.ui_mut(), |ui| {
                 list_item::list_item_scope(ui, "inner_scope", |ui| {
                     content(ui);
                 });
             });
+        response.response
     }
 
     /// Use the provided range as full span for the nested content.

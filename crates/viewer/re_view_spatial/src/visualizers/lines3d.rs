@@ -7,9 +7,9 @@ use re_types::{
 };
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
+    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use crate::{
@@ -64,12 +64,18 @@ impl Lines3DVisualizer {
             // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
             let radii =
                 process_radius_slice(entity_path, num_instances, data.radii, Radius::default());
-            let colors =
-                process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
+            let colors = process_color_slice(
+                ctx,
+                LineStrips3D::descriptor_colors().component,
+                num_instances,
+                &annotation_infos,
+                data.colors,
+            );
 
             let world_from_obj = ent_context
                 .transform_info
-                .single_transform_required_for_entity(entity_path, LineStrips3D::name());
+                .single_transform_required_for_entity(entity_path, LineStrips3D::name())
+                .as_affine3a();
 
             let mut line_batch = line_builder
                 .batch(entity_path.to_string())
@@ -131,7 +137,9 @@ impl Lines3DVisualizer {
                     }),
                     labels: &data.labels,
                     colors: &colors,
-                    show_labels: data.show_labels.unwrap_or_else(|| self.fallback_for(ctx)),
+                    show_labels: data.show_labels.unwrap_or_else(|| {
+                        typed_fallback_for(ctx, LineStrips3D::descriptor_show_labels().component)
+                    }),
                     annotation_infos: &annotation_infos,
                 },
                 world_from_obj,
@@ -196,7 +204,7 @@ impl VisualizerSystem for Lines3DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_strip_chunks) =
-                    results.get_required_chunks(LineStrips3D::descriptor_strips())
+                    results.get_required_chunks(LineStrips3D::descriptor_strips().component)
                 else {
                     return Ok(());
                 };
@@ -220,12 +228,16 @@ impl VisualizerSystem for Lines3DVisualizer {
 
                 let timeline = ctx.query.timeline();
                 let all_strips_indexed = iter_slices::<&[[f32; 3]]>(&all_strip_chunks, timeline);
-                let all_colors = results.iter_as(timeline, LineStrips3D::descriptor_colors());
-                let all_radii = results.iter_as(timeline, LineStrips3D::descriptor_radii());
-                let all_labels = results.iter_as(timeline, LineStrips3D::descriptor_labels());
-                let all_class_ids = results.iter_as(timeline, LineStrips3D::descriptor_class_ids());
+                let all_colors =
+                    results.iter_as(timeline, LineStrips3D::descriptor_colors().component);
+                let all_radii =
+                    results.iter_as(timeline, LineStrips3D::descriptor_radii().component);
+                let all_labels =
+                    results.iter_as(timeline, LineStrips3D::descriptor_labels().component);
+                let all_class_ids =
+                    results.iter_as(timeline, LineStrips3D::descriptor_class_ids().component);
                 let all_show_labels =
-                    results.iter_as(timeline, LineStrips3D::descriptor_show_labels());
+                    results.iter_as(timeline, LineStrips3D::descriptor_show_labels().component);
 
                 let data = re_query::range_zip_1x5(
                     all_strips_indexed,
@@ -267,26 +279,4 @@ impl VisualizerSystem for Lines3DVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-impl TypedComponentFallbackProvider<Color> for Lines3DVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
-        auto_color_for_entity_path(ctx.target_entity_path)
-    }
-}
-
-impl TypedComponentFallbackProvider<ShowLabels> for Lines3DVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback(
-            ctx,
-            &LineStrips3D::descriptor_strips(),
-            &LineStrips3D::descriptor_labels(),
-        )
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(Lines3DVisualizer => [Color, ShowLabels]);

@@ -1,4 +1,4 @@
-use parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock};
+use parking_lot::{ArcMutexGuard, Mutex, RawMutex};
 use std::sync::Arc;
 
 use re_chunk_store::ChunkStoreEvent;
@@ -6,33 +6,31 @@ use re_entity_db::EntityDb;
 use re_tf::TransformResolutionCache;
 use re_viewer_context::{Cache, CacheMemoryReport};
 
-/// Stores a [`re_tf::TransformResolutionCache`] for each recording.
+/// Stores a [`TransformResolutionCache`] for each recording.
 ///
 /// Ensures that the cache stays up to date.
 #[derive(Default)]
 pub struct TransformDatabaseStoreCache {
     initialized: bool,
-    transform_cache: Arc<RwLock<TransformResolutionCache>>,
+    transform_cache: Arc<Mutex<TransformResolutionCache>>,
 }
 
 impl TransformDatabaseStoreCache {
-    /// Gets read access to the transform cache.
+    /// Gets access to the transform cache.
     ///
     /// If the cache was newly added, will make sure that all existing chunks in the entity db are processed.
-    ///
-    /// While the lock is held, no new updates can be applied to the transform cache.
-    pub fn read_lock_transform_cache(
+    pub fn lock_transform_cache(
         &mut self,
         entity_db: &EntityDb,
-    ) -> ArcRwLockReadGuard<RawRwLock, TransformResolutionCache> {
+    ) -> ArcMutexGuard<RawMutex, TransformResolutionCache> {
         if !self.initialized {
             self.initialized = true;
             self.transform_cache
-                .write()
-                .add_chunks(entity_db, entity_db.storage_engine().store().iter_chunks());
+                .lock()
+                .add_chunks(entity_db.storage_engine().store().iter_chunks());
         }
 
-        self.transform_cache.read_arc()
+        self.transform_cache.lock_arc()
     }
 }
 
@@ -55,17 +53,17 @@ impl Cache for TransformDatabaseStoreCache {
         "Transform Database"
     }
 
-    fn on_store_events(&mut self, events: &[&ChunkStoreEvent], entity_db: &EntityDb) {
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {
         re_tracing::profile_function!();
 
         debug_assert!(
-            self.transform_cache.try_write().is_some(),
+            self.transform_cache.try_lock().is_some(),
             "Transform cache is still locked on processing store events. This should never happen."
         );
 
         self.transform_cache
-            .write()
-            .apply_all_updates(entity_db, events.iter().copied());
+            .lock()
+            .process_store_events(events.iter().copied());
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

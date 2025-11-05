@@ -503,9 +503,6 @@ impl UICommand {
         use strum::IntoEnumIterator as _;
 
         let anything_has_focus = egui_ctx.memory(|mem| mem.focused().is_some());
-        if anything_has_focus {
-            return None; // e.g. we're typing in a TextField
-        }
 
         let mut commands: Vec<(KeyboardShortcut, Self)> = Self::iter()
             .flat_map(|cmd| {
@@ -530,6 +527,18 @@ impl UICommand {
 
         egui_ctx.input_mut(|input| {
             for (kb_shortcut, command) in commands {
+                if anything_has_focus {
+                    // If a text edit has focus, is should usually get exclusive access to that input.
+                    // For instance: use alt-arrows to move the cursor a whole word (at least on mac).
+                    // The exception are shortcuts with ctrl/cmd in them:
+                    let is_command = kb_shortcut.modifiers.command
+                        || kb_shortcut.modifiers.mac_cmd
+                        || kb_shortcut.modifiers.ctrl;
+                    if !is_command {
+                        continue; // ignore
+                    }
+                }
+
                 if input.consume_shortcut(&kb_shortcut) {
                     // Clear the shortcut key from input to prevent it from propagating to other UI component.
                     input.keys_down.remove(&kb_shortcut.logical_key);

@@ -63,7 +63,7 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
     let chunk_keys = concat_record_batches(&chunk_info)
         .sort_rows_by(&[QueryDatasetResponse::FIELD_CHUNK_ID])
         .unwrap()
-        .filtered_columns(&required_columns_ref);
+        .project_columns(&required_columns_ref);
 
     let mut chunks = service
         .fetch_chunks(tonic::Request::new(FetchChunksRequest {

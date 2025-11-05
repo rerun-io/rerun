@@ -4,7 +4,14 @@ description = "Authentication helpers for Rerun"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
-include.workspace = true
+include = [
+  "../../Cargo.lock", # So that users can pass `--locked` to `cargo install rerun-cli`
+  "../../LICENSE-APACHE",
+  "../../LICENSE-MIT",
+  "**/*.rs",
+  "Cargo.toml",
+  "src/status_page.html",
+]
 license.workspace = true
 publish = true
 repository.workspace = true
@@ -51,7 +58,7 @@ webbrowser = { workspace = true, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 base64.workspace = true
-rand.workspace = true
+rand = { workspace = true, features = ["std", "std_rng", "os_rng"] }
 serde.workspace = true
 ehttp = { workspace = true, optional = true, features = ["json", "native-async"] }
 directories = { workspace = true, optional = true }
@@ -61,3 +68,4 @@ ehttp = { workspace = true, optional = true, features = ["json"] }
 
 [dev-dependencies]
 rand = { workspace = true, features = ["std", "std_rng"] }
+serde_json.workspace = true

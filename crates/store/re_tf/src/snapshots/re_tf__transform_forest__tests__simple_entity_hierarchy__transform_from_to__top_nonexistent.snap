@@ -4,50 +4,50 @@ expression: "pretty_print_transform_frame_ids_in(&result, &all_transform_frame_i
 ---
 [
     (
-        rerun_tf#/,
+        tf#/,
         Err(
             UnknownTargetFrame(
-                rerun_tf#/top/nonexistent,
+                tf#/top/nonexistent,
             ),
         ),
     ),
     (
-        rerun_tf#/top,
+        tf#/top,
         Err(
             UnknownTargetFrame(
-                rerun_tf#/top/nonexistent,
+                tf#/top/nonexistent,
             ),
         ),
     ),
     (
-        rerun_tf#/top/pinhole,
+        tf#/top/pinhole,
         Err(
             UnknownTargetFrame(
-                rerun_tf#/top/nonexistent,
+                tf#/top/nonexistent,
             ),
         ),
     ),
     (
-        rerun_tf#/top/child3d,
+        tf#/top/child3d,
         Err(
             UnknownTargetFrame(
-                rerun_tf#/top/nonexistent,
+                tf#/top/nonexistent,
             ),
         ),
     ),
     (
-        rerun_tf#/top/nonexistent,
+        tf#/top/nonexistent,
         Err(
             UnknownTargetFrame(
-                rerun_tf#/top/nonexistent,
+                tf#/top/nonexistent,
             ),
         ),
     ),
     (
-        rerun_tf#/top/pinhole/child2d,
+        tf#/top/pinhole/child2d,
         Err(
             UnknownTargetFrame(
-                rerun_tf#/top/nonexistent,
+                tf#/top/nonexistent,
             ),
         ),
     ),

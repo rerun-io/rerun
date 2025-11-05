@@ -678,7 +678,7 @@ pub fn entity_db_button_ui(
     entity_db: &re_entity_db::EntityDb,
     ui_layout: UiLayout,
     include_app_id: bool,
-) {
+) -> egui::Response {
     use re_byte_size::SizeBytes as _;
     use re_viewer_context::{SystemCommand, SystemCommandSender as _};
 
@@ -776,7 +776,8 @@ pub fn entity_db_button_ui(
                     entity_db,
                 );
             })
-    });
+    })
+    .inner;
 
     if response.hovered() {
         ctx.selection_state().set_hovered(item.clone());
@@ -822,7 +823,8 @@ pub fn entity_db_button_ui(
         }
     }
 
-    ctx.handle_select_hover_drag_interactions(&response, item, false);
+    ctx.handle_select_hover_drag_interactions(&response, item.clone(), false);
+    response
 }
 
 pub fn table_id_button_ui(
@@ -865,7 +867,8 @@ pub fn table_id_button_ui(
             .on_hover_ui(|ui| {
                 ui.label(format!("Table: {table_id}"));
             })
-    });
+    })
+    .inner;
 
     if response.hovered() {
         ctx.selection_state().set_hovered(item.clone());

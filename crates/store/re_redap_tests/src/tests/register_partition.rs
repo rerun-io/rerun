@@ -1,6 +1,7 @@
 #![expect(clippy::unwrap_used)]
 
 use arrow::array::{ListArray, RecordBatch, StringArray, TimestampNanosecondArray};
+use arrow::datatypes::Schema;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
 use url::Url;
@@ -8,15 +9,16 @@ use url::Url;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_protos::{
     cloud::v1alpha1::{
-        CreateDatasetEntryRequest, DataSource, DataSourceKind, ScanDatasetManifestRequest,
+        CreateDatasetEntryRequest, DataSource, DataSourceKind, GetDatasetManifestSchemaRequest,
+        GetPartitionTableSchemaRequest, ReadDatasetEntryRequest, ScanDatasetManifestRequest,
         ScanDatasetManifestResponse, ScanPartitionTableRequest, ScanPartitionTableResponse,
-        rerun_cloud_service_server::RerunCloudService,
+        ext::DatasetDetails, rerun_cloud_service_server::RerunCloudService,
     },
     headers::RerunHeadersInjectorExt as _,
 };
 
 use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, prop};
-use crate::{FieldsExt as _, RecordBatchExt as _, create_simple_recording_in};
+use crate::{FieldsExt as _, RecordBatchExt as _, SchemaExt as _, create_simple_recording_in};
 
 pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
@@ -39,6 +41,62 @@ pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
 
     scan_partition_table_and_snapshot(&service, dataset_name, "simple").await;
     scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple").await;
+}
+
+/// Make sure that registering to blueprint dataset works as expected.
+pub async fn register_and_scan_blueprint_dataset(service: impl RerunCloudService) {
+    let blueprint_data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        2,
+        [LayerDefinition::simple_blueprint("blueprint_partition_id")],
+    );
+
+    let dataset_name = "my_dataset1";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    let dataset_details: DatasetDetails = service
+        .read_dataset_entry(
+            tonic::Request::new(ReadDatasetEntryRequest {})
+                .with_entry_name(dataset_name)
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+        .into_inner()
+        .dataset
+        .unwrap()
+        .dataset_details
+        .unwrap()
+        .try_into()
+        .unwrap();
+
+    assert!(dataset_details.blueprint_dataset.is_some());
+
+    // find the dataset name for the blueprint dataset
+    let blueprint_dataset_name = service
+        .read_dataset_entry(
+            tonic::Request::new(ReadDatasetEntryRequest {})
+                .with_entry_id(dataset_details.blueprint_dataset.unwrap())
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+        .into_inner()
+        .dataset
+        .unwrap()
+        .details
+        .unwrap()
+        .name
+        .unwrap();
+
+    service
+        .register_with_dataset_name(
+            &blueprint_dataset_name,
+            blueprint_data_sources_def.to_data_sources(),
+        )
+        .await;
+
+    scan_partition_table_and_snapshot(&service, &blueprint_dataset_name, "simple_blueprint").await;
+    scan_dataset_manifest_and_snapshot(&service, &blueprint_dataset_name, "simple_blueprint").await;
 }
 
 pub async fn register_and_scan_simple_dataset_with_properties(service: impl RerunCloudService) {
@@ -291,6 +349,32 @@ async fn scan_partition_table_and_snapshot(
     )
     .unwrap();
 
+    // check that the _advertised_ schema is consistent with the actual data.
+    let alleged_schema: Schema = service
+        .get_partition_table_schema(
+            tonic::Request::new(GetPartitionTableSchemaRequest {})
+                .with_entry_name(dataset_name)
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+        .into_inner()
+        .schema
+        .unwrap()
+        .try_into()
+        .unwrap();
+
+    // Note: we check fields only because some schema-level sorbet metadata is injected in one of
+    // the paths and not the other. Anyway, that's what matters.
+    assert_eq!(
+        alleged_schema.fields(),
+        batch.schema_ref().fields(),
+        "The actual schema is not consistent with the schema advertised by \
+        `get_partition_table_schema`.\n\nActual:\n{}\n\nAlleged:\n{}\n",
+        batch.schema().format_snapshot(),
+        alleged_schema.format_snapshot(),
+    );
+
     let required_fields = ScanPartitionTableResponse::fields();
     assert!(
         batch.schema().fields().contains_unordered(&required_fields),
@@ -303,7 +387,7 @@ async fn scan_partition_table_and_snapshot(
         ScanPartitionTableResponse::FIELD_LAST_UPDATED_AT,
     ];
     let filtered_batch = batch
-        .unfiltered_columns(&unstable_column_names)
+        .remove_columns(&unstable_column_names)
         .auto_sort_rows()
         .unwrap()
         .sort_property_columns();
@@ -354,6 +438,32 @@ async fn scan_dataset_manifest_and_snapshot(
     )
     .unwrap();
 
+    // check that the _advertised_ schema is consistent with the actual data.
+    let alleged_schema: Schema = service
+        .get_dataset_manifest_schema(
+            tonic::Request::new(GetDatasetManifestSchemaRequest {})
+                .with_entry_name(dataset_name)
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+        .into_inner()
+        .schema
+        .unwrap()
+        .try_into()
+        .unwrap();
+
+    // Note: we check fields only because some schema-level sorbet metadata is injected in one of
+    // the paths and not the other. Anyway, that's what matters.
+    assert_eq!(
+        alleged_schema.fields(),
+        batch.schema_ref().fields(),
+        "The actual schema is not consistent with the schema advertised by \
+        `get_dataset_manifest_schema`.\n\nActual:\n{}\n\nAlleged:\n{}\n",
+        batch.schema().format_snapshot(),
+        alleged_schema.format_snapshot(),
+    );
+
     let required_fields = ScanDatasetManifestResponse::fields();
     assert!(
         batch.schema().fields().contains_unordered(&required_fields),
@@ -369,7 +479,7 @@ async fn scan_dataset_manifest_and_snapshot(
         ScanDatasetManifestResponse::FIELD_REGISTRATION_TIME,
     ];
     let filtered_batch = batch
-        .unfiltered_columns(&unstable_column_names)
+        .remove_columns(&unstable_column_names)
         .auto_sort_rows()
         .unwrap()
         .sort_property_columns();

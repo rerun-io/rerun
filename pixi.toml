@@ -14,7 +14,7 @@
 # - python scripts/check_env.py
 # - pixi run check-env
 
-[project]
+[workspace]
 name = "rerun"
 authors = ["rerun.io <opensource@rerun.io>"]
 channels = ["conda-forge"]
@@ -313,12 +313,12 @@ nb-strip = "python scripts/nbstripout.py mypy examples/python scripts/ tests/pyt
 py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --config rerun_py/pyproject.toml ."
 py-fmt-check = "ruff check --config rerun_py/pyproject.toml . && ruff format --check --config rerun_py/pyproject.toml"
 # Get non-internal things that are ok to not check rerun on
-py-lint-non-sdk = { cmd = "mypy --config-file rerun_py/.non_sdk_mypy.ini --install-types --non-interactive --no-warn-unused-ignore", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
+py-lint-non-sdk = { cmd = "mypy --config-file rerun_py/.non_sdk_mypy.ini --install-types --non-interactive --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_other", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
 # I couldn't get the config to work correctly so placing relevant directories in command line
 # Until we resolve nbqa config issue keep aligned with nb-strip dirs below
-py-lint-nb-rerun = { cmd = "nbqa mypy examples/python scripts/ tests/python/ docs/snippets/ --config rerun_py/pyproject.toml  ", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
+py-lint-nb-rerun = { cmd = "nbqa mypy examples/python scripts/ tests/python/ docs/snippets/ --config rerun_py/pyproject.toml --cache-dir .mypy_cache_rerun_nb ", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
 # Need to run this in env with rerun installed
-py-lint-rerun = "mypy --config-file rerun_py/pyproject.toml --install-types --non-interactive --no-warn-unused-ignore"
+py-lint-rerun = "mypy --config-file rerun_py/pyproject.toml --install-types --non-interactive --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_sdk"
 py-lint = { depends-on = ["py-lint-non-sdk", "py-lint-rerun", "py-lint-nb-rerun"] }
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
@@ -584,11 +584,12 @@ ninja = "1.11.1.*"
 numpy = ">=2" # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
 prettier = ">=3.6"
 pyarrow = "18.0.0.*" # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
-pytest = ">=8.4.1"
+pytest = ">=8.4.2"
 pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11" # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.12.10.*"
 semver = ">=3.0,<3.1"
+syrupy = "5.0.0.*" # Snapshot testing with pytest
 taplo = "=0.9.1"
 tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67" # For displaying progress in various utility scripts.
@@ -716,7 +717,7 @@ av = "==14.2.0"
 # during the wheel-test task itself is otherwise painful.
 torch = "==2.8.0" # This must match the torch version in any package we install during `wheel-test`
 # DataFusion is needed to run integration tests, but it is an optional dependency for rerun sdk
-datafusion = "==49.0.0"
+datafusion = "==50.1.0"
 
 [feature.wheel-test.dependencies]
 pip = ">=23"
@@ -756,7 +757,7 @@ umap-learn = "==0.5.7"
 [feature.examples-common.pypi-dependencies]
 # External deps
 av = "==14.2.0"
-datafusion = "==49.0.0"
+datafusion = "==50.1.0"
 jupyter = ">=1.0"
 polars = ">=0.12.0"
 
@@ -800,6 +801,7 @@ raw_mesh = { path = "examples/python/raw_mesh", editable = true }
 rgbd = { path = "examples/python/rgbd", editable = true }
 rrt_star = { path = "examples/python/rrt_star", editable = true }
 segment_anything_model = { path = "examples/python/segment_anything_model", editable = true }
+server_tables = { path = "examples/python/server_tables", editable = true }
 shared_recording = { path = "examples/python/shared_recording", editable = true }
 stdio = { path = "examples/python/stdio", editable = true }
 structure_from_motion = { path = "examples/python/structure_from_motion", editable = true }

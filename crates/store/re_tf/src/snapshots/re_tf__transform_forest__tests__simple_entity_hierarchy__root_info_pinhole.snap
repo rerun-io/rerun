@@ -5,9 +5,9 @@ expression: "pretty_print_transform_frame_ids_in(transform_forest.root_info(Tran
 Some(
     Pinhole(
         PinholeTreeRoot {
-            parent_tree_root: rerun_tf#/,
+            parent_tree_root: tf#/,
             pinhole_projection: ResolvedPinholeProjection {
-                target: rerun_tf#/top,
+                parent: tf#/top,
                 image_from_camera: PinholeProjection(
                     Mat3x3(
                         [
@@ -43,25 +43,25 @@ Some(
                     ),
                 ),
             },
-            parent_root_from_pinhole_root: Affine3A {
-                matrix3: Mat3A {
-                    x_axis: Vec3A(
+            parent_root_from_pinhole_root: DAffine3 {
+                matrix3: DMat3 {
+                    x_axis: DVec3(
                         1.0,
                         0.0,
                         0.0,
                     ),
-                    y_axis: Vec3A(
+                    y_axis: DVec3(
                         0.0,
                         1.0,
                         0.0,
                     ),
-                    z_axis: Vec3A(
+                    z_axis: DVec3(
                         0.0,
                         0.0,
                         1.0,
                     ),
                 },
-                translation: Vec3A(
+                translation: DVec3(
                     1.0,
                     1.0,
                     0.0,

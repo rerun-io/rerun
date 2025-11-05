@@ -1,6 +1,6 @@
 //! Utilities for querying out transform types.
 
-use glam::Affine3A;
+use glam::DAffine3;
 use itertools::Either;
 use nohash_hasher::IntMap;
 
@@ -15,7 +15,10 @@ use re_types::{
 };
 use vec1::smallvec_v1::SmallVec1;
 
-use crate::{PoseTransformArchetypeMap, ResolvedPinholeProjection};
+use crate::{
+    PoseTransformArchetypeMap, ResolvedPinholeProjection,
+    transform_resolution_cache::ParentFromChildTransform,
+};
 
 /// Lists all archetypes except [`archetypes::InstancePoses3D`] that have their own instance poses.
 // TODO(andreas, jleibs): Model this out as a generic extension mechanism.
@@ -43,7 +46,115 @@ fn archetypes_with_instance_pose_transforms_and_translation_descriptor()
 
 /// Queries all components that are part of pose transforms, returning the transform from child to parent.
 ///
-/// If any of the components yields an invalid transform, returns a `glam::Affine3A::ZERO` for that instance.
+/// If any of the components yields an invalid transform, returns `None`.
+// TODO(#3849): There's no way to discover invalid transforms right now (they can be intentional but often aren't).
+pub fn query_and_resolve_tree_transform_at_entity(
+    entity_path: &EntityPath,
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+) -> Option<ParentFromChildTransform> {
+    // TODO(RR-2799): Output more than one target at once, doing the usual clamping - means probably we can merge a lot of code here with instance poses!
+    // TODO(andreas): Filter out styling components.
+    let results = entity_db.latest_at(
+        query,
+        entity_path,
+        archetypes::Transform3D::all_component_identifiers(),
+    );
+    if results.components.is_empty() {
+        return None;
+    }
+
+    let parent = results
+        .component_mono_quiet::<components::TransformFrameId>(
+            archetypes::Transform3D::descriptor_parent_frame().component,
+        )
+        .map_or_else(
+            || {
+                TransformFrameIdHash::from_entity_path(
+                    &entity_path.parent().unwrap_or(EntityPath::root()),
+                )
+            },
+            |frame_id| TransformFrameIdHash::new(&frame_id),
+        );
+
+    let mut transform = DAffine3::IDENTITY;
+
+    // It's an error if there's more than one component. Warn in that case.
+    let mono_log_level = re_log::Level::Warn;
+
+    // The order of the components here is important and checked by `debug_assert_transform_field_order`
+    if let Some(translation) = results.component_mono_with_log_level::<components::Translation3D>(
+        archetypes::Transform3D::descriptor_translation().component,
+        mono_log_level,
+    ) {
+        transform = DAffine3::from(translation);
+    }
+    if let Some(axis_angle) = results
+        .component_mono_with_log_level::<components::RotationAxisAngle>(
+            archetypes::Transform3D::descriptor_rotation_axis_angle().component,
+            mono_log_level,
+        )
+    {
+        if let Ok(axis_angle) = DAffine3::try_from(axis_angle) {
+            transform *= axis_angle;
+        } else {
+            return None;
+        }
+    }
+    if let Some(quaternion) = results.component_mono_with_log_level::<components::RotationQuat>(
+        archetypes::Transform3D::descriptor_quaternion().component,
+        mono_log_level,
+    ) {
+        if let Ok(quaternion) = DAffine3::try_from(quaternion) {
+            transform *= quaternion;
+        } else {
+            return None;
+        }
+    }
+    if let Some(scale) = results.component_mono_with_log_level::<components::Scale3D>(
+        archetypes::Transform3D::descriptor_scale().component,
+        mono_log_level,
+    ) {
+        if scale.x() == 0.0 && scale.y() == 0.0 && scale.z() == 0.0 {
+            return None;
+        }
+        transform *= DAffine3::from(scale);
+    }
+    if let Some(mat3x3) = results.component_mono_with_log_level::<components::TransformMat3x3>(
+        archetypes::Transform3D::descriptor_mat3x3().component,
+        mono_log_level,
+    ) {
+        let affine_transform = DAffine3::from(mat3x3);
+        if affine_transform.matrix3.determinant() == 0.0 {
+            return None;
+        }
+        transform *= affine_transform;
+    }
+
+    if results.component_mono_with_log_level::<components::TransformRelation>(
+        archetypes::Transform3D::descriptor_relation().component,
+        mono_log_level,
+    ) == Some(components::TransformRelation::ChildFromParent)
+    {
+        let determinant = transform.matrix3.determinant();
+        if determinant != 0.0 && determinant.is_finite() {
+            transform = transform.inverse();
+        } else {
+            // All "regular invalid" transforms should have been caught.
+            // So ending up here means something else went wrong?
+            re_log::warn_once!(
+                "Failed to express child-from-parent transform at {} since it wasn't invertible",
+                entity_path,
+            );
+        }
+    }
+
+    Some(ParentFromChildTransform { transform, parent })
+}
+
+/// Queries all components that are part of pose transforms, returning the transform from child to parent.
+///
+/// If any of the components yields an invalid transform, returns a `glam::DAffine3::ZERO` for that instance.
 /// (this effectively ignores the instance for most visualizations!)
 // TODO(#3849): There's no way to discover invalid transforms right now (they can be intentional but often aren't).
 pub fn query_and_resolve_instance_poses_at_entity(
@@ -114,7 +225,7 @@ fn query_and_resolve_instance_from_pose_for_archetype_name(
     query: &LatestAtQuery,
     archetype_name: ArchetypeName,
     descriptor_translations: &ComponentDescriptor,
-) -> Vec<Affine3A> {
+) -> Vec<DAffine3> {
     debug_assert_eq!(
         descriptor_translations.component_type,
         Some(components::PoseTranslation3D::name())
@@ -208,29 +319,29 @@ fn query_and_resolve_instance_from_pose_for_archetype_name(
     (0..max_num_instances)
         .map(|_| {
             // We apply these in a specific order - see `debug_assert_transform_field_order`
-            let mut transform = Affine3A::IDENTITY;
+            let mut transform = DAffine3::IDENTITY;
             if let Some(translation) = iter_translation.next() {
-                transform = Affine3A::from(translation);
+                transform = DAffine3::from(translation);
             }
             if let Some(rotation_quat) = iter_rotation_quat.next() {
-                if let Ok(rotation_quat) = Affine3A::try_from(rotation_quat) {
+                if let Ok(rotation_quat) = DAffine3::try_from(rotation_quat) {
                     transform *= rotation_quat;
                 } else {
-                    transform = Affine3A::ZERO;
+                    transform = DAffine3::ZERO;
                 }
             }
             if let Some(rotation_axis_angle) = iter_rotation_axis_angle.next() {
-                if let Ok(axis_angle) = Affine3A::try_from(rotation_axis_angle) {
+                if let Ok(axis_angle) = DAffine3::try_from(rotation_axis_angle) {
                     transform *= axis_angle;
                 } else {
-                    transform = Affine3A::ZERO;
+                    transform = DAffine3::ZERO;
                 }
             }
             if let Some(scale) = iter_scale.next() {
-                transform *= Affine3A::from(scale);
+                transform *= DAffine3::from(scale);
             }
             if let Some(mat3x3) = iter_mat3x3.next() {
-                transform *= Affine3A::from(mat3x3);
+                transform *= DAffine3::from(mat3x3);
             }
             transform
         })
@@ -250,7 +361,7 @@ pub fn query_and_resolve_pinhole_projection_at_entity(
         )
         .map(|(_index, image_from_camera)| ResolvedPinholeProjection {
             // Pinholes don't have an explicit target frame yet, so they always apply to the parent frame.
-            target: TransformFrameIdHash::from_entity_path(
+            parent: TransformFrameIdHash::from_entity_path(
                 &entity_path.parent().unwrap_or(EntityPath::root()),
             ),
 

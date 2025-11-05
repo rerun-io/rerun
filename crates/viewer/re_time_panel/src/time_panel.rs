@@ -1,4 +1,3 @@
-use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use egui::emath::Rangef;
@@ -6,6 +5,7 @@ use egui::{
     Color32, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText,
     Shape, Ui, Vec2, pos2, scroll_area::ScrollSource,
 };
+use egui::{WidgetInfo, WidgetType};
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::guess_instance_path_icon;
@@ -477,6 +477,8 @@ impl TimePanel {
 
         let timeline_rect = {
             let top = ui.min_rect().bottom();
+            ui.response()
+                .widget_info(|| WidgetInfo::labeled(WidgetType::Panel, true, "_streams_tree"));
 
             let size = egui::vec2(self.prev_col_width, DesignTokens::list_item_height());
             ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::LEFT), |ui| {
@@ -1077,116 +1079,13 @@ impl TimePanel {
             SelectionUpdateBehavior::UseSelection,
         );
         ctx.handle_select_hover_drag_interactions(response, item.clone(), is_draggable);
+        ctx.handle_select_focus_sync(response, item.clone());
 
         self.handle_range_selection(ctx, streams_tree_data, entity_db, item.clone(), response);
-
-        self.handle_key_navigation(ctx, streams_tree_data, entity_db, &item);
 
         if Some(item) == self.scroll_to_me_item {
             response.scroll_to_me(None);
             self.scroll_to_me_item = None;
-        }
-    }
-
-    fn handle_key_navigation(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        streams_tree_data: &StreamsTreeData,
-        entity_db: &re_entity_db::EntityDb,
-        item: &Item,
-    ) {
-        if ctx.selection_state().selected_items().single_item() != Some(item) {
-            return;
-        }
-        // Don't do keyboard navigation if something is focused
-        if ctx.egui_ctx().memory(|mem| mem.focused().is_some()) {
-            return;
-        }
-
-        if ctx
-            .egui_ctx()
-            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight))
-            && let Some(collapse_id) = self.collapse_scope().item(item.clone())
-        {
-            collapse_id.set_open(ctx.egui_ctx(), true);
-        }
-
-        if ctx
-            .egui_ctx()
-            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft))
-            && let Some(collapse_id) = self.collapse_scope().item(item.clone())
-        {
-            collapse_id.set_open(ctx.egui_ctx(), false);
-        }
-
-        if ctx
-            .egui_ctx()
-            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
-        {
-            let mut found_current = false;
-
-            let result = streams_tree_data.visit(ctx, entity_db, |entity_or_component| {
-                let tree_item = entity_or_component.item();
-                let is_item_collapsed =
-                    !entity_or_component.is_open(ctx.egui_ctx(), self.collapse_scope());
-
-                if &tree_item == item {
-                    found_current = true;
-
-                    return if is_item_collapsed {
-                        VisitorControlFlow::SkipBranch
-                    } else {
-                        VisitorControlFlow::Continue
-                    };
-                }
-
-                if found_current {
-                    VisitorControlFlow::Break(Some(tree_item))
-                } else if is_item_collapsed {
-                    VisitorControlFlow::SkipBranch
-                } else {
-                    VisitorControlFlow::Continue
-                }
-            });
-
-            if let ControlFlow::Break(Some(item)) = result {
-                ctx.command_sender()
-                    .send_system(SystemCommand::SetSelection(item.clone().into()));
-                self.scroll_to_me_item = Some(item.clone());
-                self.range_selection_anchor_item = Some(item);
-            }
-        }
-
-        if ctx
-            .egui_ctx()
-            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp))
-        {
-            let mut last_item = None;
-
-            let result = streams_tree_data.visit(ctx, entity_db, |entity_or_component| {
-                let tree_item = entity_or_component.item();
-                let is_item_collapsed =
-                    !entity_or_component.is_open(ctx.egui_ctx(), self.collapse_scope());
-
-                if &tree_item == item {
-                    return VisitorControlFlow::Break(last_item.clone());
-                }
-
-                last_item = Some(tree_item);
-
-                if is_item_collapsed {
-                    VisitorControlFlow::SkipBranch
-                } else {
-                    VisitorControlFlow::Continue
-                }
-            });
-
-            if let ControlFlow::Break(Some(item)) = result {
-                ctx.command_sender()
-                    .send_system(SystemCommand::SetSelection(item.clone().into()));
-                self.scroll_to_me_item = Some(item.clone());
-                self.range_selection_anchor_item = Some(item);
-            }
         }
     }
 
@@ -1238,10 +1137,10 @@ impl TimePanel {
                         let mut selection = ctx.selection().clone();
                         selection.extend(items);
                         ctx.command_sender()
-                            .send_system(SystemCommand::SetSelection(selection));
+                            .send_system(SystemCommand::set_selection(selection));
                     } else {
                         ctx.command_sender()
-                            .send_system(SystemCommand::SetSelection(items));
+                            .send_system(SystemCommand::set_selection(items));
                     }
                 }
             }
@@ -1496,10 +1395,15 @@ impl TimePanel {
                     time_type.parse_time(&time_str, ctx.app_options().timestamp_format)
                 {
                     time_commands.push(TimeControlCommand::SetTime(time_int.into()));
+                } else {
+                    re_log::warn!("Failed to parse {time_str:?}");
                 }
                 self.time_edit_string = None;
             }
-            let response = response.on_hover_text(format!("Timestamp: {}", time_int.as_i64()));
+            let response = response.on_hover_text(format!(
+                "Timestamp: {}",
+                re_format::format_int(time_int.as_i64())
+            ));
 
             response.context_menu(|ui| {
                 copy_time_properties_context_menu(ui, time);
@@ -1581,6 +1485,7 @@ fn help(os: egui::os::OperatingSystem) -> Help {
             "Select time segment",
             (icons::SHIFT, "+", "drag time scale"),
         )
+        .control("Snap to grid", icons::SHIFT)
         .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag event canvas"))
         .control(
             "Zoom",
@@ -1773,13 +1678,17 @@ fn paint_time_ranges_gaps(
         .cloned()
         .collect::<Vec<_>>();
 
+    // Margin for the (left or right) end of a gap.
+    // Don't use an arbitrarily large value since it can cause platform-specific rendering issues.
+    const GAP_END_MARGIN: f32 = 100.0;
+
     if let Some(segment_subrange) = valid_time_ranges.first() {
         let gap_edge = *segment_subrange.start() as f32;
+        let gap_edge_left_side = ui.ctx().content_rect().left() - GAP_END_MARGIN;
 
         if zig_zag_first_and_last_edges {
-            // Careful with subtracting a too large number here. Nvidia @ Windows was observed not drawing the rect correctly for -100_000.0
             // Left side of first segment - paint as a very wide gap that we only see the right side of
-            paint_time_gap(gap_edge - 10_000.0, gap_edge);
+            paint_time_gap(gap_edge_left_side, gap_edge);
         } else {
             // Careful with subtracting a too large number here. Nvidia @ Windows was observed not drawing the rect correctly for -100_000.0
             painter.rect_filled(
@@ -1797,12 +1706,14 @@ fn paint_time_ranges_gaps(
 
     if let Some(segment_subrange) = valid_time_ranges.last() {
         let gap_edge = *segment_subrange.end() as f32;
+        let gap_edge_right_side = ui.ctx().content_rect().right() + GAP_END_MARGIN;
+
         if zig_zag_first_and_last_edges {
             // Right side of last segment - paint as a very wide gap that we only see the left side of
-            paint_time_gap(gap_edge, gap_edge + 100_000.0);
+            paint_time_gap(gap_edge, gap_edge_right_side);
         } else {
             painter.rect_filled(
-                Rect::from_min_max(pos2(gap_edge, top), pos2(gap_edge + 100_000.0, bottom)),
+                Rect::from_min_max(pos2(gap_edge, top), pos2(gap_edge_right_side, bottom)),
                 0.0,
                 fill_color,
             );
@@ -1994,13 +1905,16 @@ fn time_marker_ui(
 
         if response.dragged()
             && let Some(pointer_pos) = pointer_pos
-            && let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x)
+            && let Some(time) = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
         {
             let time = time_ranges_ui.clamp_time(time);
             time_commands.push(TimeControlCommand::SetTime(time));
             time_commands.push(TimeControlCommand::Pause);
 
-            x = pointer_pos.x; // avoid frame-delay
+            // Avoid frame-delay:
+            x = time_ranges_ui
+                .x_from_time_f32(time)
+                .unwrap_or(pointer_pos.x);
         }
 
         ui.paint_time_cursor(
@@ -2018,8 +1932,6 @@ fn time_marker_ui(
         let is_pointer_in_timeline_rect =
             ui.ui_contains_pointer() && timeline_rect.contains(pointer_pos);
 
-        let hovered_ctx_id = egui::Id::new("hovered timestamp context");
-
         let on_timeline = !is_hovering_time_cursor
             && !time_area_double_clicked
             && is_pointer_in_time_area_rect
@@ -2030,28 +1942,6 @@ fn time_marker_ui(
             ui.ctx().set_cursor_icon(timeline_cursor_icon);
         }
 
-        // Show a preview bar at this position, if we have right-clicked
-        // on the time panel we want to still draw the line at the
-        // original position.
-        let hovered_x_pos = if let Some(hovered_time) =
-            ui.ctx().memory(|mem| mem.data.get_temp(hovered_ctx_id))
-            && let Some(x) = time_ranges_ui.x_from_time_f32(hovered_time)
-        {
-            Some(x)
-        } else if on_timeline {
-            Some(pointer_pos.x)
-        } else {
-            None
-        };
-
-        if let Some(x) = hovered_x_pos {
-            time_area_painter.vline(
-                x,
-                timeline_rect.top()..=ui.max_rect().bottom(),
-                ui.visuals().widgets.noninteractive.fg_stroke,
-            );
-        }
-
         // Click to move time here:
         let time_area_response = ui.interact(
             time_area_painter.clip_rect(),
@@ -2059,7 +1949,11 @@ fn time_marker_ui(
             egui::Sense::click(),
         );
 
-        let hovered_time = time_ranges_ui.time_from_x_f32(pointer_pos.x);
+        let hovered_time = if time_area_response.hovered() {
+            time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
+        } else {
+            None
+        };
 
         if !is_hovering_the_loop_selection {
             let mut set_time_to_pointer = || {
@@ -2088,23 +1982,38 @@ fn time_marker_ui(
             }
         }
 
-        if let Some(hovered_time) = ui
+        let right_clicked_time_id = egui::Id::new("__right_clicked_time");
+
+        let right_clicked_time = ui
             .ctx()
-            .memory(|mem| mem.data.get_temp(hovered_ctx_id))
-            .or(hovered_time)
-        {
-            if egui::Popup::context_menu(&time_area_response)
+            .memory(|mem| mem.data.get_temp(right_clicked_time_id));
+
+        // If we have right-clicked a time, we show it, else the hovered time.
+        let hovered_time = right_clicked_time.or(hovered_time);
+
+        if let Some(hovered_time) = hovered_time {
+            let hovered_x = time_ranges_ui.x_from_time_f32(hovered_time);
+
+            if let Some(hovered_x) = hovered_x {
+                time_area_painter.vline(
+                    hovered_x,
+                    timeline_rect.top()..=ui.max_rect().bottom(),
+                    ui.visuals().widgets.noninteractive.fg_stroke,
+                );
+            }
+
+            let popup_is_open = egui::Popup::context_menu(&time_area_response)
                 .width(300.0)
                 .show(|ui| {
                     copy_timeline_properties_context_menu(ui, ctx, time_ctrl, hovered_time);
                 })
-                .is_some()
-            {
+                .is_some();
+            if popup_is_open {
                 ui.ctx()
-                    .memory_mut(|mem| mem.data.insert_temp(hovered_ctx_id, hovered_time));
+                    .memory_mut(|mem| mem.data.insert_temp(right_clicked_time_id, hovered_time));
             } else {
                 ui.ctx()
-                    .memory_mut(|mem| mem.data.remove::<TimeReal>(hovered_ctx_id));
+                    .memory_mut(|mem| mem.data.remove::<TimeReal>(right_clicked_time_id));
             }
         }
     }

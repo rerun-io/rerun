@@ -127,7 +127,10 @@ impl std::str::FromStr for Timestamp {
     type Err = jiff::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let jiff_timestamp = jiff::Timestamp::from_str(s)?;
+        // Ignore thin spaces that we put between milliseconds and microseconds for readability:
+        let s: String = s.chars().filter(|&c| c != re_format::THIN_SPACE).collect();
+
+        let jiff_timestamp = jiff::Timestamp::from_str(&s)?;
         Ok(Self(jiff_timestamp.as_nanosecond() as i64))
     }
 }
@@ -158,7 +161,7 @@ impl Timestamp {
                 format!(".{:03}", ns / 1_000_000)
             } else {
                 // NOTE: we currently ignore sub-microsecond
-                format!(".{:06}", ns / 1_000)
+                format!(".{:03} {:03}", (ns / 1_000_000), (ns / 1_000) % 1_000)
             }
         };
 
@@ -181,24 +184,33 @@ impl Timestamp {
 
                 let is_today = zoned.date() == jiff::Timestamp::now().to_zoned(tz.clone()).date();
 
-                let formatted = if timestamp_format.hide_today_date() && is_today {
+                let formatted = if timestamp_format.short()
+                    || (timestamp_format.hide_today_date() && is_today)
+                {
                     zoned.strftime("%H:%M:%S").to_string()
                 } else {
                     zoned.strftime("%Y-%m-%d %H:%M:%S").to_string()
                 };
 
-                let suffix = match timestamp_format.kind() {
-                    TimestampFormatKind::LocalTimezone => tz.to_offset(timestamp).to_string(),
-                    TimestampFormatKind::LocalTimezoneImplicit => String::new(),
-                    TimestampFormatKind::Utc | TimestampFormatKind::SecondsSinceUnixEpoch => {
-                        "Z".to_owned()
+                let nanos = if timestamp_format.short() {
+                    String::new()
+                } else {
+                    format_fractional_nanos(zoned.subsec_nanosecond())
+                };
+
+                let suffix = if timestamp_format.short() {
+                    String::new()
+                } else {
+                    match timestamp_format.kind() {
+                        TimestampFormatKind::LocalTimezone => tz.to_offset(timestamp).to_string(),
+                        TimestampFormatKind::LocalTimezoneImplicit => String::new(),
+                        TimestampFormatKind::Utc | TimestampFormatKind::SecondsSinceUnixEpoch => {
+                            "Z".to_owned()
+                        }
                     }
                 };
 
-                format!(
-                    "{formatted}{}{suffix}",
-                    format_fractional_nanos(zoned.subsec_nanosecond())
-                )
+                format!("{formatted}{nanos}{suffix}",)
             }
         }
     }
@@ -245,13 +257,16 @@ impl Timestamp {
     ///
     /// If it is missing a timezone specifier, the given timezone is assumed.
     pub fn parse_with_format(s: &str, timestamp_format: TimestampFormat) -> Option<Self> {
-        if let Ok(utc) = Self::from_str(s) {
+        // Ignore thin spaces that we put between milliseconds and microseconds for readability:
+        let s: String = s.chars().filter(|&c| c != re_format::THIN_SPACE).collect();
+
+        if let Ok(utc) = Self::from_str(&s) {
             // It has a `Z` suffix
             Some(utc)
-        } else if let Ok(zoned) = jiff::Zoned::from_str(s) {
+        } else if let Ok(zoned) = jiff::Zoned::from_str(&s) {
             // It had a timezone suffix
             Some(Self::from(zoned))
-        } else if let Ok(date_time) = jiff::civil::DateTime::from_str(s) {
+        } else if let Ok(date_time) = jiff::civil::DateTime::from_str(&s) {
             date_time
                 .to_zoned(timestamp_format.to_jiff_time_zone())
                 .ok()
@@ -260,6 +275,19 @@ impl Timestamp {
             // Parse as seconds and convert to nanoseconds
             let seconds = s.parse::<f64>().ok()?;
             Some(Self::from_secs_since_epoch(seconds))
+        } else if timestamp_format.hide_today_date() {
+            // Maybe this is a naked timestamp without any date?
+
+            let tz = timestamp_format.to_jiff_time_zone();
+            let today = jiff::Timestamp::now().to_zoned(tz).date();
+            let today = today.strftime("%Y-%m-%d").to_string();
+
+            if s.starts_with(&today) {
+                None // prevent infinite recursion
+            } else {
+                let datetime_string = format!("{today}T{s}");
+                Self::parse_with_format(&datetime_string, timestamp_format)
+            }
         } else {
             None
         }
@@ -358,7 +386,7 @@ mod tests {
         let datetime = Timestamp::from_str("2022-02-28 22:35:42.0690427Z").unwrap();
         assert_eq!(
             &datetime.format(TimestampFormat::utc()),
-            "2022-02-28 22:35:42.069042Z"
+            "2022-02-28 22:35:42.069 042Z"
         ); // format function is not rounding
     }
 
@@ -375,6 +403,15 @@ mod tests {
             .unwrap();
         let datetime = Timestamp::from(today);
         assert_eq!(&datetime.format(TimestampFormat::utc()), "22:35:42Z");
+
+        assert_eq!(
+            Timestamp::parse_with_format("22:35:42Z", TimestampFormat::utc()),
+            Some(datetime)
+        );
+        assert_eq!(
+            Timestamp::parse_with_format("22:35:42", TimestampFormat::utc()),
+            Some(datetime)
+        );
     }
 
     #[test]
@@ -467,6 +504,19 @@ mod tests {
                 parse("1954-04-11 22:35:42.069", TimestampFormat::local_timezone()),
                 Some(Timestamp::from(
                     jiff::civil::DateTime::from_str("1954-04-11 22:35:42.069")
+                        .unwrap()
+                        .to_zoned(tz.clone())
+                        .unwrap()
+                ))
+            );
+            // Full date and time with microseconds
+            assert_eq!(
+                parse(
+                    "1954-04-11 22:35:42.069 123 987",
+                    TimestampFormat::local_timezone()
+                ),
+                Some(Timestamp::from(
+                    jiff::civil::DateTime::from_str("1954-04-11 22:35:42.069123987")
                         .unwrap()
                         .to_zoned(tz)
                         .unwrap()

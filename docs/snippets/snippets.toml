@@ -2,6 +2,16 @@
 
 # These snippets will be excluded from the snippet index, unconditionally.
 [snippets_ref.snippets.opt_out]
+"archetypes/coordinate_frame_builtin_frames" = [
+  "py",
+  "cpp",
+  "rust",
+] # TODO(RR-2777): Mark as stable when we're ready for it.
+"archetypes/transform3d_hierarchy_frames" = [
+  "py",
+  "cpp",
+  "rust",
+] # TODO(RR-2777): Mark as stable when we're ready for it.
 
 # These archetypes will ignore the associated snippets in the snippet index.
 [snippets_ref.archetypes.opt_out]
@@ -196,6 +206,11 @@ backwards_check = [
 "archetypes/entity_behavior" = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
+]
+"archetypes/transform3d_hierarchy_frames" = [
+  # TODO(RR-2685): Sample is incomplete. Implement cross language once we can have flat entity path hierarchy.
+  "cpp",
+  "rust",
 ]
 "archetypes/video_stream_synthetic" = [
   "cpp", # Not implemented

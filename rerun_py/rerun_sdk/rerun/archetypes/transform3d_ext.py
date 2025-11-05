@@ -10,6 +10,7 @@ from rerun.datatypes import (
     QuaternionLike,
     RotationAxisAngle,
     RotationAxisAngleLike,
+    Utf8Like,
     Vec3DLike,
 )
 
@@ -31,6 +32,8 @@ class Transform3DExt:
         mat3x3: Mat3x3Like | None = None,
         from_parent: bool | None = None,
         relation: TransformRelationLike | None = None,
+        child_frame: Utf8Like | None = None,
+        parent_frame: Utf8Like | None = None,
         axis_length: Float32Like | None = None,
     ) -> None:
         """
@@ -70,6 +73,31 @@ class Transform3DExt:
             Otherwise, the transform maps from the space to its parent.
 
             Mutually exclusive with `from_parent`.
+        child_frame:
+            The child frame this transform transforms from.
+
+            The entity at which the transform relationship of any given child frame is specified mustn't change over time.
+            E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
+            with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
+            An exception to this rule is static time - you may first mention a child frame on one entity statically and later on
+            another one temporally.
+
+            ⚠ This currently also affects the child frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
+            ⚠ This currently is also used as the frame id of [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+
+            If not specified, this is set to the implicit transform frame of the current entity path.
+            This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
+
+            To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
+        parent_frame:
+            The parent frame this transform transforms into.
+
+            ⚠ This currently also affects the parent frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
+
+            If not specified, this is set to the implicit transform frame of the current entity path's parent.
+            This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
+
+            To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
         axis_length:
             Visual length of the 3 axes.
 
@@ -136,6 +164,8 @@ class Transform3DExt:
                     scale=scale if scale is not None else [],
                     mat3x3=mat3x3 if mat3x3 is not None else [],
                     relation=relation if relation is not None else [],
+                    child_frame=child_frame if child_frame is not None else [],
+                    parent_frame=parent_frame if parent_frame is not None else [],
                     axis_length=axis_length if axis_length is not None else [],
                 )
             else:
@@ -146,6 +176,8 @@ class Transform3DExt:
                     scale=scale,
                     mat3x3=mat3x3,
                     relation=relation,
+                    child_frame=child_frame,
+                    parent_frame=parent_frame,
                     axis_length=axis_length,
                 )
             return

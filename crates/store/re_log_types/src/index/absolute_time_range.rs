@@ -177,6 +177,11 @@ impl AbsoluteTimeRangeF {
         self.min <= value && value <= self.max
     }
 
+    /// Returns the point in the center of the range.
+    pub fn center(&self) -> TimeReal {
+        self.min.midpoint(self.max)
+    }
+
     /// Where in the range is this value? Returns 0-1 if within the range.
     ///
     /// Returns <0 if before and >1 if after.

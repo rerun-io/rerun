@@ -3,16 +3,16 @@ use itertools::Itertools as _;
 use re_chunk_store::LatestAtQuery;
 use re_types::{
     Archetype as _, archetypes,
-    components::{Color, MarkerShape, MarkerSize, Name, SeriesVisible},
+    components::{Color, MarkerShape, MarkerSize},
 };
 use re_view::{
     clamped_or_nothing, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext, ViewQuery,
-    ViewStateExt as _, ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
-    auto_color_for_entity_path, external::re_entity_db::InstancePath,
+    IdentifiedViewSystem, ViewContext, ViewQuery, ViewSystemExecutionError, VisualizerQueryInfo,
+    VisualizerSystem, external::re_entity_db::InstancePath, typed_fallback_for,
 };
+use re_viewport_blueprint::ViewPropertyQueryError;
 
 use crate::{
     PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs,
@@ -20,8 +20,7 @@ use crate::{
         all_scalars_indices, allocate_plot_points, collect_colors, collect_radius_ui,
         collect_scalars, collect_series_name, collect_series_visibility, determine_num_series,
     },
-    util::{determine_time_per_pixel, determine_time_range, points_to_series},
-    view_class::TimeSeriesViewState,
+    util,
 };
 
 /// The system for rendering [`archetypes::SeriesPoints`] archetypes.
@@ -35,10 +34,6 @@ impl IdentifiedViewSystem for SeriesPointsSystem {
         "SeriesPoints".into()
     }
 }
-
-// We use a larger default stroke width for scatter plots so the marker is
-// visible.
-const DEFAULT_MARKER_SIZE: f32 = 3.0;
 
 impl VisualizerSystem for SeriesPointsSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
@@ -61,67 +56,26 @@ impl VisualizerSystem for SeriesPointsSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        self.load_scalars(ctx, query);
+        self.load_scalars(ctx, query)?;
         Ok(Vec::new())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-impl TypedComponentFallbackProvider<Color> for SeriesPointsSystem {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
-        auto_color_for_entity_path(ctx.target_entity_path)
-    }
-}
-
-impl TypedComponentFallbackProvider<MarkerSize> for SeriesPointsSystem {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> MarkerSize {
-        MarkerSize::from(DEFAULT_MARKER_SIZE)
-    }
-}
-
-impl TypedComponentFallbackProvider<Name> for SeriesPointsSystem {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Name {
-        let state = ctx.view_state().downcast_ref::<TimeSeriesViewState>();
-
-        state
-            .ok()
-            .and_then(|state| {
-                state
-                    .default_names_for_entities
-                    .get(ctx.target_entity_path)
-                    .map(|name| name.clone().into())
-            })
-            .or_else(|| {
-                ctx.target_entity_path
-                    .last()
-                    .map(|part| part.ui_string().into())
-            })
-            .unwrap_or_default()
-    }
-}
-
-impl TypedComponentFallbackProvider<SeriesVisible> for SeriesPointsSystem {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> SeriesVisible {
-        true.into()
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(SeriesPointsSystem => [Color, MarkerSize, Name, SeriesVisible]);
 
 impl SeriesPointsSystem {
-    fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
+    fn load_scalars(
+        &mut self,
+        ctx: &ViewContext<'_>,
+        query: &ViewQuery<'_>,
+    ) -> Result<(), ViewPropertyQueryError> {
         re_tracing::profile_function!();
 
         let plot_mem =
             egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx(), crate::plot_id(query.view_id));
-        let time_per_pixel = determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
+        let time_per_pixel = util::determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
 
         let data_results = query.iter_visible_data_results(Self::identifier());
 
@@ -132,47 +86,35 @@ impl SeriesPointsSystem {
             for mut one_series in data_results
                 .collect_vec()
                 .par_iter()
-                .map(|data_result| -> Vec<PlotSeries> {
-                    let mut series = vec![];
-                    self.load_series(
-                        ctx,
-                        query,
-                        plot_mem.as_ref(),
-                        time_per_pixel,
-                        data_result,
-                        &mut series,
-                    );
-                    series
-                })
-                .collect::<Vec<_>>()
+                .map(
+                    |data_result| -> Result<Vec<PlotSeries>, ViewPropertyQueryError> {
+                        let mut series = vec![];
+                        Self::load_series(ctx, query, time_per_pixel, data_result, &mut series)?;
+                        Ok(series)
+                    },
+                )
+                .collect::<Result<Vec<_>, ViewPropertyQueryError>>()?
             {
                 self.all_series.append(&mut one_series);
             }
         } else {
             let mut series = vec![];
             for data_result in data_results {
-                self.load_series(
-                    ctx,
-                    query,
-                    plot_mem.as_ref(),
-                    time_per_pixel,
-                    data_result,
-                    &mut series,
-                );
+                Self::load_series(ctx, query, time_per_pixel, data_result, &mut series)?;
             }
             self.all_series = series;
         }
+
+        Ok(())
     }
 
     fn load_series(
-        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
-        plot_mem: Option<&egui_plot::PlotMemory>,
         time_per_pixel: f64,
         data_result: &re_viewer_context::DataResult,
         all_series: &mut Vec<PlotSeries>,
-    ) {
+    ) -> Result<(), ViewPropertyQueryError> {
         re_tracing::profile_function!();
 
         let current_query = ctx.current_query();
@@ -180,12 +122,7 @@ impl SeriesPointsSystem {
 
         let fallback_shape = MarkerShape::default();
 
-        let time_offset = ctx
-            .view_state
-            .downcast_ref::<TimeSeriesViewState>()
-            .map_or(0, |state| state.time_offset);
-        let time_range =
-            determine_time_range(view_query.latest_at, time_offset, data_result, plot_mem);
+        let time_range = util::determine_time_range(ctx)?;
 
         {
             use re_view::RangeResultsExt as _;
@@ -206,14 +143,20 @@ impl SeriesPointsSystem {
 
             // If we have no scalars, we can't do anything.
             let Some(all_scalar_chunks) =
-                results.get_required_chunks(archetypes::Scalars::descriptor_scalars())
+                results.get_required_chunks(archetypes::Scalars::descriptor_scalars().component)
             else {
-                return;
+                return Ok(());
             };
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default values.
-            let fallback_color: Color = self.fallback_for(&query_ctx);
-            let fallback_size: MarkerSize = self.fallback_for(&query_ctx);
+            let fallback_color: Color = typed_fallback_for(
+                &query_ctx,
+                archetypes::SeriesPoints::descriptor_colors().component,
+            );
+            let fallback_size: MarkerSize = typed_fallback_for(
+                &query_ctx,
+                archetypes::SeriesPoints::descriptor_marker_sizes().component,
+            );
             let default_point = PlotPoint {
                 time: 0,
                 value: 0.0,
@@ -279,12 +222,16 @@ impl SeriesPointsSystem {
 
                 {
                     let all_marker_shapes_chunks = bootstrapped_results
-                        .get_optional_chunks(archetypes::SeriesPoints::descriptor_markers())
+                        .get_optional_chunks(
+                            archetypes::SeriesPoints::descriptor_markers().component,
+                        )
                         .iter()
                         .cloned()
                         .chain(
                             results
-                                .get_optional_chunks(archetypes::SeriesPoints::descriptor_markers())
+                                .get_optional_chunks(
+                                    archetypes::SeriesPoints::descriptor_markers().component,
+                                )
                                 .iter()
                                 .cloned(),
                         )
@@ -378,10 +325,9 @@ impl SeriesPointsSystem {
                 &bootstrapped_results,
                 &results,
                 num_series,
-                archetypes::SeriesPoints::descriptor_visible_series(),
+                archetypes::SeriesPoints::descriptor_visible_series().component,
             );
             let series_names = collect_series_name(
-                self,
                 &query_ctx,
                 &bootstrapped_results,
                 &results,
@@ -403,7 +349,7 @@ impl SeriesPointsSystem {
                     InstancePath::instance(data_result.entity_path.clone(), instance as u64)
                 };
 
-                points_to_series(
+                util::points_to_series(
                     instance_path,
                     time_per_pixel,
                     visible,
@@ -417,5 +363,7 @@ impl SeriesPointsSystem {
                 );
             }
         }
+
+        Ok(())
     }
 }

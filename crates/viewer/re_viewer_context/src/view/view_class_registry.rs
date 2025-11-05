@@ -2,13 +2,15 @@ use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
 
 use nohash_hasher::IntMap;
+use re_chunk::ComponentIdentifier;
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle};
 use re_types::ViewClassIdentifier;
 
 use crate::{
-    IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, ViewClass,
-    ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, ViewerContext,
-    VisualizerCollection, VisualizerSystem,
+    IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
+    QueryContext, ViewClass, ViewContextCollection, ViewContextSystem, ViewSystemIdentifier,
+    ViewerContext, VisualizerCollection, VisualizerSystem,
+    component_fallbacks::FallbackProviderRegistry,
     view::view_context_system::ViewContextSystemOncePerFrameResult,
 };
 
@@ -35,6 +37,7 @@ pub enum ViewClassRegistryError {
 /// Utility for registering view systems, passed on to [`crate::ViewClass::on_register`].
 pub struct ViewSystemRegistrator<'a> {
     registry: &'a mut ViewClassRegistry,
+    fallback_registry: &'a mut FallbackProviderRegistry,
     identifier: ViewClassIdentifier,
     context_systems: HashSet<ViewSystemIdentifier>,
     visualizers: HashSet<ViewSystemIdentifier>,
@@ -100,8 +103,9 @@ impl ViewSystemRegistrator<'_> {
                 .visualizers
                 .entry(T::identifier())
                 .or_insert_with(|| {
+                    let visualizer = T::default();
                     let entity_subscriber_handle = ChunkStore::register_subscriber(Box::new(
-                        VisualizerEntitySubscriber::new(&T::default()),
+                        VisualizerEntitySubscriber::new(&visualizer),
                     ));
 
                     VisualizerTypeRegistryEntry {
@@ -119,6 +123,20 @@ impl ViewSystemRegistrator<'_> {
                 T::identifier().as_str(),
             ))
         }
+    }
+
+    /// Register a fallback provider specific to the current view
+    /// and given component.
+    pub fn register_fallback_provider<C: re_types::Component>(
+        &mut self,
+        component: ComponentIdentifier,
+        provider: impl Fn(&QueryContext<'_>) -> C + Send + Sync + 'static,
+    ) {
+        self.fallback_registry.register_view_fallback_provider(
+            self.identifier,
+            component,
+            provider,
+        );
     }
 }
 
@@ -181,6 +199,7 @@ impl ViewClassRegistry {
     /// Fails if a view class with the same name was already registered.
     pub fn add_class<T: ViewClass + Default + 'static>(
         &mut self,
+        fallback_registry: &mut FallbackProviderRegistry,
     ) -> Result<(), ViewClassRegistryError> {
         let class = Box::<T>::default();
 
@@ -189,6 +208,7 @@ impl ViewClassRegistry {
             identifier: T::identifier(),
             context_systems: Default::default(),
             visualizers: Default::default(),
+            fallback_registry,
         };
 
         class.on_register(&mut registrator)?;
@@ -198,6 +218,7 @@ impl ViewClassRegistry {
             identifier,
             context_systems,
             visualizers,
+            fallback_registry: _,
         } = registrator;
 
         if self

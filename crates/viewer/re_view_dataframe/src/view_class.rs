@@ -206,11 +206,9 @@ fn timeline_not_found_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view_id: Vi
         .clicked()
     {
         ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(Item::View(view_id).into()));
+            .send_system(SystemCommand::set_selection(Item::View(view_id)));
     }
 }
-
-re_viewer_context::impl_component_fallback_provider!(DataframeView => []);
 
 #[test]
 fn test_help_view() {
