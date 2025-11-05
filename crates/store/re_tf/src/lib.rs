@@ -141,6 +141,7 @@
 mod component_type_info;
 pub(crate) mod convert;
 mod entity_to_frame_tracking;
+mod frame_id_registry;
 mod transform_aspect;
 mod transform_forest;
 mod transform_queries;
