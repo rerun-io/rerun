@@ -25,9 +25,10 @@ use re_protos::{
         ScanPartitionTableResponse, ScanTableResponse,
         ext::{
             self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
-            CreateTableEntryResponse, DataSource, DatasetDetails, ProviderDetails,
-            ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
-            UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
+            CreateTableEntryResponse, DataSource, DatasetDetails, EntryDetailsUpdate,
+            ProviderDetails, ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
+            UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest,
+            UpdateEntryResponse,
         },
         rerun_cloud_service_server::RerunCloudService,
     },
@@ -564,6 +565,30 @@ impl RerunCloudService for RerunCloudHandler {
         self.store.write().await.delete_dataset(entry_id)?;
 
         Ok(tonic::Response::new(DeleteEntryResponse {}))
+    }
+
+    async fn update_entry(
+        &self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::UpdateEntryRequest>,
+    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateEntryResponse>, tonic::Status>
+    {
+        let UpdateEntryRequest {
+            id: entry_id,
+            entry_details_update: EntryDetailsUpdate { name },
+        } = request.into_inner().try_into()?;
+
+        let mut store = self.store.write().await;
+
+        if let Some(name) = name {
+            store.rename_entry(entry_id, name)?;
+        }
+
+        Ok(tonic::Response::new(
+            UpdateEntryResponse {
+                entry_details: store.entry_details(entry_id)?,
+            }
+            .into(),
+        ))
     }
 
     // --- Manifest Registry ---
@@ -1371,14 +1396,6 @@ impl RerunCloudService for RerunCloudHandler {
                 })
             })) as Self::QueryTasksOnCompletionStream,
         ))
-    }
-
-    async fn update_entry(
-        &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::UpdateEntryRequest>,
-    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateEntryResponse>, tonic::Status>
-    {
-        Err(tonic::Status::unimplemented("update_entry not implemented"))
     }
 
     async fn do_maintenance(
