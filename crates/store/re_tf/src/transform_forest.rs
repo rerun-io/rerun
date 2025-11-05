@@ -681,7 +681,7 @@ fn transforms_at(
 ) -> TransformsAtEntity {
     // This is called very frequently, don't put a profile scope here.
 
-    let Some(mut entity_transforms) = transforms_for_timeline
+    let Some(entity_transforms) = transforms_for_timeline
         .frame_transforms(TransformFrameIdHash::from_entity_path(entity_path))
     else {
         return TransformsAtEntity::default();
@@ -693,12 +693,8 @@ fn transforms_at(
         .map_or(glam::DAffine3::IDENTITY, |source_to_target| {
             source_to_target.transform
         });
-    let entity_from_instance_poses = entity_transforms
-        .latest_at_instance_poses(entity_db, query)
-        .cloned();
-    let pinhole_projection = entity_transforms
-        .latest_at_pinhole(entity_db, query)
-        .cloned();
+    let entity_from_instance_poses = entity_transforms.latest_at_instance_poses(entity_db, query);
+    let pinhole_projection = entity_transforms.latest_at_pinhole(entity_db, query);
 
     TransformsAtEntity {
         parent_from_entity_tree_transform,
