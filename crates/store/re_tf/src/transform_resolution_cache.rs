@@ -17,6 +17,7 @@ use crate::{
         query_and_resolve_tree_transform_at_entity,
     },
 };
+
 use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::external::re_types_core::ArrowString;
@@ -1206,6 +1207,7 @@ mod tests {
     use std::sync::{Arc, OnceLock};
 
     use super::*;
+    use crate::convert;
     use re_chunk_store::{
         Chunk, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle, GarbageCollectionOptions,
         PerStoreChunkSubscriber, RowId,
@@ -1857,11 +1859,9 @@ mod tests {
                 // This involves casting f32 components to f64 and renormalizing, which produces
                 // slightly different values than directly computing in f64.
                 transform: DAffine3::from_quat(
-                    crate::transform_queries::convert::quaternion_to_dquat(
-                        re_types::datatypes::Quaternion::from(
-                            glam::Quat::from_rotation_x(1.0)
-                        )
-                    )
+                    convert::quaternion_to_dquat(re_types::datatypes::Quaternion::from(
+                        glam::Quat::from_rotation_x(1.0)
+                    ))
                     .unwrap()
                 ),
             })
