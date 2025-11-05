@@ -21,6 +21,8 @@ include "./archetypes/spatial_information.fbs";
 include "./archetypes/tensor_scalar_mapping.fbs";
 include "./archetypes/tensor_slice_selection.fbs";
 include "./archetypes/tensor_view_fit.fbs";
+include "./archetypes/text_log_columns.fbs";
+include "./archetypes/text_log_rows.fbs";
 include "./archetypes/time_axis.fbs";
 include "./archetypes/view_blueprint.fbs";
 include "./archetypes/view_contents.fbs";

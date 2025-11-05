@@ -37,6 +37,7 @@ from .root_container import RootContainer, RootContainerBatch
 from .row_share import RowShare, RowShareBatch
 from .selected_columns import SelectedColumns, SelectedColumnsBatch
 from .tensor_dimension_index_slider import TensorDimensionIndexSlider, TensorDimensionIndexSliderBatch
+from .text_log_column import TextLogColumn, TextLogColumnBatch
 from .time_int import TimeInt, TimeIntBatch
 from .time_range import TimeRange, TimeRangeBatch
 from .timeline_name import TimelineName, TimelineNameBatch
@@ -139,6 +140,8 @@ __all__ = [
     "SelectedColumnsBatch",
     "TensorDimensionIndexSlider",
     "TensorDimensionIndexSliderBatch",
+    "TextLogColumn",
+    "TextLogColumnBatch",
     "TimeInt",
     "TimeIntBatch",
     "TimeRange",

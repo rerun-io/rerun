@@ -1,0 +1,18 @@
+namespace rerun.datatypes;
+
+/// A text log column kind.
+union TextLogColumn (
+  "attr.rust.derive": "PartialEq, Eq, Hash"
+) {
+  /// A specific timeline's column.
+  Timeline: rerun.datatypes.Utf8,
+
+  /// Column for which entity path this was logged to.
+  EntityPath: rerun.builtins.UnitType,
+
+  /// Column for log-level.
+  LogLevel: rerun.builtins.UnitType,
+
+  /// The text body the log has.
+  Message: rerun.builtins.UnitType,
+}
