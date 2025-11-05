@@ -3911,6 +3911,7 @@ dependencies = [
  "arrow",
  "clap",
  "re_arrow_util",
+ "re_log_types",
  "rerun",
 ]
 

@@ -6,6 +6,8 @@ use rerun::{
     sink::GrpcSink,
 };
 
+use re_log_types::TimeType;
+
 mod conversions;
 
 #[derive(Debug, clap::Parser)]
@@ -85,6 +87,14 @@ fn main() -> anyhow::Result<()> {
     // TODO(michael): add support for frame_id.
     let video_lens =
         LensBuilder::for_input_column(EntityPathFilter::all(), "foxglove.CompressedVideo:message")
+            .add_time_column(
+                "timestamp",
+                TimeType::TimestampNs,
+                [
+                    Op::access_field("timestamp"),
+                    Op::func(conversions::list_seconds_nanos_to_list_nanos),
+                ],
+            )
             .add_component_column(
                 VideoStream::descriptor_codec(),
                 [

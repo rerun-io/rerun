@@ -1,5 +1,6 @@
 use arrow::array::{
-    Array, Float32Array, Float64Array, ListArray, StringArray, UInt32Array, UInt32Builder,
+    Array, Float32Array, Float64Array, Int32Array, Int64Array, ListArray, StringArray, StructArray,
+    UInt32Array, UInt32Builder,
 };
 use re_arrow_util::transform::{
     BinaryToListUInt8, Cast, MapFixedSizeList, MapList, StructToFixedList, Transform,
@@ -25,6 +26,75 @@ pub fn list_xyz_struct_to_list_fixed(list_array: &ListArray) -> Result<ListArray
 pub fn list_string_to_list_codec_uint32(list_array: &ListArray) -> Result<ListArray, Error> {
     let pipeline = MapList::new(StringToCodecUInt32::default());
     Ok(pipeline.transform(list_array)?)
+}
+
+// Converts a list of structs with i64 `seconds` and i32 `nanos` fields to a list of timestamps in nanoseconds (i64).
+pub fn list_seconds_nanos_to_list_nanos(list_array: &ListArray) -> Result<ListArray, Error> {
+    let pipeline = MapList::new(SecondsNanosToNanos::default());
+    Ok(pipeline.transform(list_array)?)
+}
+
+#[derive(Default)]
+struct SecondsNanosToNanos {}
+
+impl Transform for SecondsNanosToNanos {
+    type Source = StructArray;
+    type Target = Int64Array;
+
+    fn transform(
+        &self,
+        source: &StructArray,
+    ) -> Result<Self::Target, re_arrow_util::transform::Error> {
+        use re_arrow_util::transform::Error;
+
+        let available_fields: Vec<String> =
+            source.fields().iter().map(|f| f.name().clone()).collect();
+
+        let seconds_array =
+            source
+                .column_by_name("seconds")
+                .ok_or_else(|| Error::MissingStructField {
+                    field_name: "seconds".to_owned(),
+                    struct_fields: available_fields.clone(),
+                })?;
+        let nanos_array =
+            source
+                .column_by_name("nanos")
+                .ok_or_else(|| Error::MissingStructField {
+                    field_name: "nanos".to_owned(),
+                    struct_fields: available_fields,
+                })?;
+
+        let seconds_array = seconds_array
+            .as_any()
+            .downcast_ref::<Int64Array>()
+            .ok_or_else(|| Error::UnexpectedListValueType {
+                expected: "Int64Array".to_owned(),
+                actual: seconds_array.data_type().clone(),
+            })?;
+        let nanos_array = nanos_array
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .ok_or_else(|| Error::UnexpectedListValueType {
+                expected: "Int32Array".to_owned(),
+                actual: nanos_array.data_type().clone(),
+            })?;
+
+        let mut output_builder = Int64Array::builder(source.len());
+
+        for i in 0..source.len() {
+            if source.is_null(i) {
+                output_builder.append_null();
+            } else {
+                let seconds = seconds_array.value(i);
+                let nanos = nanos_array.value(i);
+                let total_nanos = seconds * 1_000_000_000 + nanos as i64;
+                output_builder.append_value(total_nanos);
+            }
+        }
+
+        Ok(output_builder.finish())
+    }
 }
 
 /// Transforms a StringArray of Foxglove video codec names to a UInt32Array,

@@ -13,3 +13,4 @@ anyhow.workspace = true
 arrow.workspace = true
 clap = { workspace = true, features = ["derive"] }
 re_arrow_util = { workspace = true }
+re_log_types = { workspace = true }
