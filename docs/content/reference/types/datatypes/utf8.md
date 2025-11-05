@@ -23,6 +23,7 @@ utf8
 * [`GraphNode`](../components/graph_node.md)
 * [`MediaType`](../components/media_type.md)
 * [`Name`](../components/name.md)
+* [`TextLogColumn`](../datatypes/text_log_column.md)
 * [`TextLogLevel`](../components/text_log_level.md)
 * [`Text`](../components/text.md)
 * [`TransformFrameId`](../components/transform_frame_id.md)

@@ -28,6 +28,7 @@ tensor_buffer.rs linguist-generated=true
 tensor_data.rs linguist-generated=true
 tensor_dimension_index_selection.rs linguist-generated=true
 tensor_dimension_selection.rs linguist-generated=true
+text_log_column.rs linguist-generated=true
 utf8pair.rs linguist-generated=true
 uuid.rs linguist-generated=true
 uvec2d.rs linguist-generated=true

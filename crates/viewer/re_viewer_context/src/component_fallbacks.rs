@@ -180,6 +180,26 @@ impl FallbackProviderRegistry {
         );
     }
 
+    pub fn register_view_array_fallback_provider<
+        C: re_types::Component,
+        I: IntoIterator<Item = C>,
+    >(
+        &mut self,
+        view: ViewClassIdentifier,
+        component: ComponentIdentifier,
+        provider: impl Fn(&QueryContext<'_>) -> I + Send + Sync + 'static,
+    ) {
+        self.register_dyn_view_fallback_provider(
+            view,
+            component,
+            Box::new(move |query_context| {
+                let values = provider(query_context);
+
+                C::to_arrow(values.into_iter().map(Cow::Owned))
+            }),
+        );
+    }
+
     fn get_fallback_function<'a>(
         &'a self,
         component: ComponentIdentifier,

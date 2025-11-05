@@ -37,6 +37,7 @@
 #include "blueprint/components/row_share.hpp"
 #include "blueprint/components/selected_columns.hpp"
 #include "blueprint/components/tensor_dimension_index_slider.hpp"
+#include "blueprint/components/text_log_column.hpp"
 #include "blueprint/components/time_int.hpp"
 #include "blueprint/components/time_range.hpp"
 #include "blueprint/components/timeline_name.hpp"

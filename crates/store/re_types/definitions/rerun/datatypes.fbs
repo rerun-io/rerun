@@ -29,6 +29,7 @@ include "./datatypes/rotation_axis_angle.fbs";
 include "./datatypes/tensor_buffer.fbs";
 include "./datatypes/tensor_data.fbs";
 include "./datatypes/tensor_dimension_selection.fbs";
+include "./datatypes/text_log_column.fbs";
 include "./datatypes/time_int.fbs";
 include "./datatypes/time_range.fbs";
 include "./datatypes/uint16.fbs";
