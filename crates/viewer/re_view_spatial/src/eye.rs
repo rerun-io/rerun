@@ -393,12 +393,8 @@ impl RawEye {
                 if let Some(pointer_pos) = response.ctx.pointer_latest_pos() {
                     self.roll(&response.rect, pointer_pos, response.drag_delta());
                 }
-                // TODO:
-                // self.ignore_input = true;
             } else if response.dragged_by(ROTATE3D_BUTTON) {
                 self.rotate(response.drag_delta());
-                // TODO:
-                // self.ignore_input = true;
             } else if response.dragged_by(DRAG_PAN3D_BUTTON) {
                 // The pan speed is selected to make the panning feel natural for orbit mode,
                 // but it should probably take FOV and screen size into account
