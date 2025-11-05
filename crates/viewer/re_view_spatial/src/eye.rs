@@ -267,7 +267,7 @@ impl RawEye {
 
     fn up(&self) -> Vec3 {
         let fwd = self.fwd();
-        let right = if fwd == Vec3::Z {
+        let right = if fwd.dot(Vec3::Z).abs() > 0.9999 {
             Vec3::X
         } else {
             fwd.cross(Vec3::Z)
