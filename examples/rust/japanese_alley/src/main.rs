@@ -43,7 +43,7 @@ fn main() -> anyhow::Result<()> {
                     Op::access_field("poses"),
                     Op::flatten(),
                     Op::access_field("position"),
-                    Op::func(conversions::convert_list_struct_to_list_fixed),
+                    Op::func(conversions::list_xyz_struct_to_list_fixed),
                 ],
             )
             .add_static_component_column(
@@ -61,7 +61,7 @@ fn main() -> anyhow::Result<()> {
                     // Lens operations always work on component-column level.
                     Op::access_field("pose"),
                     Op::access_field("position"),
-                    Op::func(conversions::convert_list_struct_to_list_fixed),
+                    Op::func(conversions::list_xyz_struct_to_list_fixed),
                 ],
             )
             .add_static_component_column(
@@ -77,7 +77,7 @@ fn main() -> anyhow::Result<()> {
                 EncodedImage::descriptor_blob(),
                 [
                     Op::access_field("data"),
-                    Op::func(conversions::convert_list_binary_to_list_uint8),
+                    Op::func(conversions::list_binary_to_list_uint8),
                 ],
             )
             .build();
@@ -89,14 +89,14 @@ fn main() -> anyhow::Result<()> {
                 VideoStream::descriptor_codec(),
                 [
                     Op::access_field("format"),
-                    Op::func(conversions::convert_list_string_to_list_codec_uint32),
+                    Op::func(conversions::list_string_to_list_codec_uint32),
                 ],
             )
             .add_component_column(
                 VideoStream::descriptor_sample(),
                 [
                     Op::access_field("data"),
-                    Op::func(conversions::convert_list_binary_to_list_uint8),
+                    Op::func(conversions::list_binary_to_list_uint8),
                 ],
             )
             .build();
