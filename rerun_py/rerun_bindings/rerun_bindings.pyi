@@ -1284,10 +1284,6 @@ class Entry:
         """The entry's name."""
 
     @property
-    def url(self) -> str:
-        """The entry's URL."""
-
-    @property
     def catalog(self) -> CatalogClient:
         """The catalog client that this entry belongs to."""
 
@@ -1621,6 +1617,10 @@ class TableEntry(Entry):
 
     def to_arrow_reader(self) -> pa.RecordBatchReader:
         """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
+
+    @property
+    def url(self) -> str:
+        """The entry's URL."""
 
 class TableInsertMode:
     """The modes of operation when writing tables."""
