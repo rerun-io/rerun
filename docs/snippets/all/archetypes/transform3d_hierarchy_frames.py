@@ -2,7 +2,6 @@
 Logs a transform hierarchy using explicit transform frame relationships.
 
 ⚠️ This is an experimental feature ⚠️
-⚠️ Right now this is still using the implicit entity-frame-hierarchy, but soon it should be switched to arbitrary frames.⚠️
 """
 
 import numpy as np
