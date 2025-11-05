@@ -284,58 +284,58 @@ impl TransformForest {
     fn add_stack_of_transforms(
         &mut self,
         cache: &TransformResolutionCache,
-        transform_stack: &mut Vec<(TransformFrameIdHash, TransformsAtEntity)>,
+        transform_stack: &mut Vec<ParentChildTransforms>,
     ) {
         re_tracing::profile_function!();
 
-        let Some((top_of_stack_frame, top_of_stack_transform)) = transform_stack.last() else {
+        let Some(top_of_stack) = transform_stack.last() else {
             // Should never happen in regular operation.
             return;
         };
 
         // Figure out the root frame for this entire stack.
-        let (mut root_frame, mut root_from_target) =
-            if let Some(parent_from_child) = top_of_stack_transform.parent_from_child.as_ref() {
-                // We have a connection further up the stack. That might we must have stopped because we already know that target!
-                if let Some(root_from_frame) = self.root_from_frame.get(&parent_from_child.parent) {
-                    // Yes, we can short-circuit to a known root!
-                    debug_assert!(self.roots.contains_key(&root_from_frame.root));
-                    (root_from_frame.root, root_from_frame.target_from_source)
-                } else {
-                    // We didn't know the target. Must mean that the target is a new root!
-                    let previous_root = self.roots.insert(
-                        parent_from_child.parent,
-                        // There's apparently no information about this root, so it can't be a pinhole!
-                        TransformTreeRootInfo::TransformFrameRoot,
-                    );
-                    debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(RR-2667): Build out into cycle detection
-
-                    (parent_from_child.parent, glam::DAffine3::IDENTITY)
-                }
+        let (mut root_frame, mut root_from_target) = if let Some(parent_from_child) =
+            top_of_stack.parent_from_child.as_ref()
+        {
+            // We have a connection further up the stack. That might we must have stopped because we already know that target!
+            if let Some(root_from_frame) = self.root_from_frame.get(&parent_from_child.parent) {
+                // Yes, we can short-circuit to a known root!
+                debug_assert!(self.roots.contains_key(&root_from_frame.root));
+                (root_from_frame.root, root_from_frame.target_from_source)
             } else {
-                // We're not pointing at a new root. So we ourselves must be a root!
-                // We could be a (lonely) pinhole with no 3D parent?
-                let previous_root =
-                    if let Some(pinhole_projection) = &top_of_stack_transform.pinhole_projection {
-                        let new_root_info = TransformTreeRootInfo::Pinhole(PinholeTreeRoot {
-                            parent_tree_root: *top_of_stack_frame,
-                            pinhole_projection: pinhole_projection.clone(),
-                            parent_root_from_pinhole_root: glam::DAffine3::IDENTITY,
-                        });
-                        self.roots.insert(*top_of_stack_frame, new_root_info)
-                    } else {
-                        self.roots.insert(
-                            *top_of_stack_frame,
-                            TransformTreeRootInfo::TransformFrameRoot,
-                        )
-                    };
+                // We didn't know the target. Must mean that the target is a new root!
+                let previous_root = self.roots.insert(
+                    parent_from_child.parent,
+                    // There's apparently no information about this root, so it can't be a pinhole!
+                    TransformTreeRootInfo::TransformFrameRoot,
+                );
                 debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(RR-2667): Build out into cycle detection
 
-                (*top_of_stack_frame, glam::DAffine3::IDENTITY)
+                (parent_from_child.parent, glam::DAffine3::IDENTITY)
+            }
+        } else {
+            // We're not pointing at a new root. So we ourselves must be a root!
+            // We could be a (lonely) pinhole with no 3D parent?
+            let previous_root = if let Some(pinhole_projection) = &top_of_stack.pinhole_projection {
+                let new_root_info = TransformTreeRootInfo::Pinhole(PinholeTreeRoot {
+                    parent_tree_root: *top_of_stack.child_frame,
+                    pinhole_projection: pinhole_projection.clone(),
+                    parent_root_from_pinhole_root: glam::DAffine3::IDENTITY,
+                });
+                self.roots.insert(*top_of_stack.child_frame, new_root_info)
+            } else {
+                self.roots.insert(
+                    *top_of_stack.child_frame,
+                    TransformTreeRootInfo::TransformFrameRoot,
+                )
             };
+            debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(RR-2667): Build out into cycle detection
+
+            (*top_of_stack.child_frame, glam::DAffine3::IDENTITY)
+        };
 
         // Walk the stack backwards, collecting transforms as we go.
-        while let Some((current_frame, transforms)) = transform_stack.pop() {
+        while let Some(transforms) = transform_stack.pop() {
             let mut root_from_current_frame = root_from_target
                 * transforms
                     .parent_from_child
@@ -351,7 +351,7 @@ impl TransformForest {
                     pinhole_projection: pinhole_projection.clone(),
                     parent_root_from_pinhole_root: root_from_current_frame,
                 });
-                root_frame = current_frame;
+                root_frame = transforms.child_frame;
 
                 let previous_root = self.roots.insert(root_frame, new_root_info);
                 debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(RR-2667): Build out into cycle detection
@@ -378,13 +378,15 @@ impl TransformForest {
 
             let previous_transform = self
                 .root_from_frame
-                .insert(current_frame, transform_root_from_current);
+                .insert(transforms.child_frame, transform_root_from_current);
 
             // TODO(RR-2667): Build out into cycle detection
             debug_assert!(
                 previous_transform.is_none(),
                 "Root from frame relationship was added already for {:?}. Now targeting {:?}, previously {:?}",
-                cache.frame_id_registry().lookup_frame_id(current_frame),
+                cache
+                    .frame_id_registry()
+                    .lookup_frame_id(transforms.child_frame),
                 cache.frame_id_registry().lookup_frame_id(root_frame),
                 previous_transform.and_then(|f| cache.frame_id_registry().lookup_frame_id(f.root))
             );
@@ -403,7 +405,7 @@ fn walk_towards_parent(
     id_registry: &FrameIdRegistry,
     transforms: &CachedTransformsForTimeline,
     unprocessed_sources: &mut IntSet<TransformFrameIdHash>,
-    transform_stack: &mut Vec<(TransformFrameIdHash, TransformsAtEntity)>,
+    transform_stack: &mut Vec<ParentChildTransforms>,
 ) {
     re_tracing::profile_function!();
 
@@ -417,7 +419,15 @@ fn walk_towards_parent(
         && unprocessed_sources.remove(&current_frame)
     {
         // We either already processed this frame, or we reached the end of our path if this source is not in the list of unprocessed frames.
-        let mut transforms = transforms_at(current_frame, entity_db, query, transforms);
+        let Some(mut transforms) = transforms_at(current_frame, entity_db, query, transforms)
+        else {
+            assert!(
+                !cfg!(debug_assertions),
+                "No transform information at all for frame {:?}.",
+                id_registry.lookup_frame_id(current_frame)
+            );
+            break;
+        };
 
         // Maybe there's an implicit connection that we have to fill in?
         if transforms.parent_from_child.is_none()
@@ -433,7 +443,7 @@ fn walk_towards_parent(
 
         // No matter the previous outcome, we push the transform information we got about this frame onto the stack
         // since we want something for every source we process.
-        transform_stack.push((current_frame, transforms));
+        transform_stack.push(transforms);
     }
 }
 
@@ -447,7 +457,6 @@ fn implicit_transform_parent(
         "Frame id hash {frame:?} is not known to the cache at all."
     );
 
-    // TODO(andreas): this _looks_ quite inefficient (citation needed)
     Some(TransformFrameIdHash::from_entity_path(
         &id_registry
             .lookup_frame_id(frame)?
@@ -782,9 +791,8 @@ fn pinhole3d_from_image_plane(
     // but the image plane distance is arbitrary and there might be other, better visualizations!
 }
 
-/// Resolved transforms at an entity.
-#[derive(Default)]
-struct TransformsAtEntity {
+struct ParentChildTransforms {
+    child_frame: TransformFrameIdHash,
     parent_from_child: Option<ParentFromChildTransform>,
     child_from_instance_poses: Option<PoseTransformArchetypeMap>,
     pinhole_projection: Option<ResolvedPinholeProjection>,
@@ -795,21 +803,21 @@ fn transforms_at(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
     transforms_for_timeline: &CachedTransformsForTimeline,
-) -> TransformsAtEntity {
-    // This is called very frequently, don't put a profile scope here.
+) -> Option<ParentChildTransforms> {
     let Some(source_transforms) = transforms_for_timeline.frame_transforms(source_frame) else {
-        return TransformsAtEntity::default();
+        return None;
     };
 
     let parent_from_child = source_transforms.latest_at_transform(entity_db, query);
     let child_from_instance_poses = source_transforms.latest_at_instance_poses(entity_db, query);
     let pinhole_projection = source_transforms.latest_at_pinhole(entity_db, query);
 
-    TransformsAtEntity {
+    Some(ParentChildTransforms {
+        child_frame,
         parent_from_child,
         child_from_instance_poses,
         pinhole_projection,
-    }
+    })
 }
 
 #[cfg(test)]
@@ -892,7 +900,6 @@ mod tests {
         for (hash, frame) in transform_cache.frame_id_registry().iter_frame_ids() {
             result = result.replace(&format!("{hash:#?}"), &format!("{frame}"));
         }
-
         result
     }
 
@@ -1056,7 +1063,7 @@ mod tests {
             .unwrap()
         );
 
-        // Archetype specific transforms still apply _on top_ of the instance transforms.
+        // Archetype-specific transforms still apply _on top_ of the instance transforms.
         assert_eq!(
             info.target_from_archetype,
             std::iter::once((
