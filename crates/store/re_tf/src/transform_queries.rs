@@ -16,11 +16,11 @@ use re_types::{
 };
 use vec1::smallvec_v1::SmallVec1;
 
+use crate::convert;
 use crate::{
     PoseTransformArchetypeMap, ResolvedPinholeProjection,
     transform_resolution_cache::ParentFromChildTransform,
 };
-use crate::convert;
 
 /// Lists all archetypes except [`archetypes::InstancePoses3D`] that have their own instance poses.
 // TODO(andreas, jleibs): Model this out as a generic extension mechanism.
@@ -117,7 +117,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
     let child = results
         .component_mono_quiet::<components::TransformFrameId>(identifier_child_frame)
         .map_or_else(
-            || TransformFrameIdHash::from_entity_path(&entity_path),
+            || TransformFrameIdHash::from_entity_path(entity_path),
             |frame_id| TransformFrameIdHash::new(&frame_id),
         );
 
@@ -139,7 +139,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
             mono_log_level,
         )
     {
-        let axis_angle = convert::rotation_axis_angle_to_daffine3(axis_angle).map_err(|_| {
+        let axis_angle = convert::rotation_axis_angle_to_daffine3(axis_angle).map_err(|_err| {
             TransformError::InvalidTransform {
                 entity_path: entity_path.clone(),
                 component: identifier_rotation_axis_angles,
@@ -151,7 +151,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
         identifier_quaternions,
         mono_log_level,
     ) {
-        let quaternion = convert::rotation_quat_to_daffine3(quaternion).map_err(|_| {
+        let quaternion = convert::rotation_quat_to_daffine3(quaternion).map_err(|_err| {
             TransformError::InvalidTransform {
                 entity_path: entity_path.clone(),
                 component: identifier_quaternions,
