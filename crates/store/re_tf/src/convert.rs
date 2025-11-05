@@ -37,9 +37,7 @@ pub fn translation_3d_to_daffine3(v: components::Translation3D) -> DAffine3 {
 }
 
 #[inline]
-pub fn rotation_axis_angle_to_daffine3(
-    val: components::RotationAxisAngle,
-) -> Result<DAffine3, ()> {
+pub fn rotation_axis_angle_to_daffine3(val: components::RotationAxisAngle) -> Result<DAffine3, ()> {
     vec3d_to_dvec3(val.0.axis)
         .try_normalize()
         .map(|normalized| DAffine3::from_axis_angle(normalized, val.0.angle.radians() as f64))
@@ -88,17 +86,13 @@ pub fn pose_rotation_axis_angle_to_daffine3(
     } else {
         vec3d_to_dvec3(val.0.axis)
             .try_normalize()
-            .map(|normalized| {
-                DAffine3::from_axis_angle(normalized, val.0.angle.radians() as f64)
-            })
+            .map(|normalized| DAffine3::from_axis_angle(normalized, val.0.angle.radians() as f64))
             .ok_or(())
     }
 }
 
 #[inline]
-pub fn pose_rotation_quat_to_daffine3(
-    val: components::PoseRotationQuat,
-) -> Result<DAffine3, ()> {
+pub fn pose_rotation_quat_to_daffine3(val: components::PoseRotationQuat) -> Result<DAffine3, ()> {
     Ok(DAffine3::from_quat(quaternion_to_dquat(val.0)?))
 }
 
@@ -111,9 +105,7 @@ pub fn pose_scale_3d_to_daffine3(v: components::PoseScale3D) -> DAffine3 {
 }
 
 #[inline]
-pub fn pose_transform_mat3x3_to_daffine3(
-    v: components::PoseTransformMat3x3,
-) -> DAffine3 {
+pub fn pose_transform_mat3x3_to_daffine3(v: components::PoseTransformMat3x3) -> DAffine3 {
     DAffine3 {
         matrix3: DMat3::from_cols_array(&v.0.0.map(|mn| mn as f64)),
         translation: DVec3::ZERO,
