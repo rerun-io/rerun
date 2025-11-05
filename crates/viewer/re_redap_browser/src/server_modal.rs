@@ -345,7 +345,10 @@ fn auth_ui(ui: &mut egui::Ui, cmd: &CommandSender, auth: &mut Authentication) {
                         auth.reset_login_flow();
                     }
                 } else if auth.error.is_some() && auth.login_flow.is_none() {
-                    if ui.button("Try again").clicked() {
+                    if ui
+                        .link(RichText::new("Login again").strong().underline())
+                        .clicked()
+                    {
                         auth.error = None;
                     }
                 } else {
