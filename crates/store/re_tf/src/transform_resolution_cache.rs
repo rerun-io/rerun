@@ -19,6 +19,7 @@ use crate::{
         query_and_resolve_tree_transform_at_entity,
     },
 };
+
 use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::external::re_types_core::ArrowString;
@@ -183,7 +184,10 @@ impl CachedTransformsForTimeline {
                 // Insert clears into the per-child datastructures.
                 for frame in child_frames {
                     if let Some(frame_transforms) = self.per_child_frame_transforms.get_mut(frame) {
-                        frame_transforms.get_mut().add_clear(*time, cleared_path);
+                        frame_transforms
+                            .get_mut()
+                            .events
+                            .insert_clear(*time, cleared_path);
                     } else {
                         debug_panic_missing_child_frame_transforms_for_update_on_entity(
                             cleared_path,
@@ -311,6 +315,136 @@ type PoseTransformTimeMap = BTreeMap<TimeInt, TransformEntry<PoseTransformArchet
 
 type PinholeProjectionMap = BTreeMap<TimeInt, TransformEntry<ResolvedPinholeProjection>>;
 
+#[derive(Clone, Debug, PartialEq)]
+struct TransformsForChildFrameEvents {
+    /// There can be only a single parent at any point in time, but it may change over time.
+    /// Whenever it changes, the previous parent frame is no longer reachable.
+    frame_transforms: FrameTransformTimeMap,
+
+    pose_transforms: Option<Box<PoseTransformTimeMap>>,
+    pinhole_projections: Option<Box<PinholeProjectionMap>>,
+}
+
+impl TransformsForChildFrameEvents {
+    fn new_empty() -> Self {
+        Self {
+            frame_transforms: BTreeMap::new(),
+            pose_transforms: None,
+            pinhole_projections: None,
+        }
+    }
+
+    /// Inserts a cleared transform for the given times.
+    fn insert_clear(&mut self, time: TimeInt, entity_path: &EntityPath) {
+        self.frame_transforms
+            .insert(time, TransformEntry::new_cleared(entity_path.clone()));
+        self.pose_transforms
+            .get_or_insert(Default::default())
+            .insert(time, TransformEntry::new_cleared(entity_path.clone()));
+        self.pinhole_projections
+            .get_or_insert(Default::default())
+            .insert(time, TransformEntry::new_cleared(entity_path.clone()));
+    }
+
+    /// Removes any events at a given time (if any).
+    fn remove_at(&mut self, time: TimeInt) {
+        let Self {
+            frame_transforms,
+            pose_transforms,
+            pinhole_projections,
+        } = self;
+
+        frame_transforms.remove(&time);
+        if let Some(pose_transforms) = pose_transforms.as_mut() {
+            pose_transforms.remove(&time);
+        }
+        if let Some(pinhole_projections) = &mut pinhole_projections.as_mut() {
+            pinhole_projections.remove(&time);
+        }
+    }
+
+    /// Removes all events in a given range and writes them to `destination`.
+    fn remove_in_range(&mut self, range: Range<TimeInt>, destination: &mut Self) {
+        let Self {
+            frame_transforms,
+            pose_transforms,
+            pinhole_projections,
+        } = self;
+
+        let Self {
+            frame_transforms: dst_frame_transforms,
+            pose_transforms: dst_pose_transforms,
+            pinhole_projections: dst_pinhole_projections,
+        } = destination;
+
+        frame_transforms.retain(|time, transform| {
+            if !range.contains(time) {
+                return true;
+            }
+            dst_frame_transforms.insert(*time, transform.clone());
+            false
+        });
+
+        if let Some(pose_transforms) = pose_transforms {
+            let dst_pose_transforms = dst_pose_transforms.get_or_insert_default();
+
+            pose_transforms.retain(|time, transform| {
+                if !range.contains(time) {
+                    return true;
+                }
+                dst_pose_transforms.insert(*time, transform.clone());
+                false
+            });
+        }
+
+        if let Some(pinhole_projections) = pinhole_projections {
+            let dst_pinhole_projections = dst_pinhole_projections.get_or_insert_default();
+
+            pinhole_projections.retain(|time, transform| {
+                if !range.contains(time) {
+                    return true;
+                }
+                dst_pinhole_projections.insert(*time, transform.clone());
+                false
+            });
+        }
+    }
+
+    fn insert_all_of(&mut self, other: &Self) {
+        let Self {
+            frame_transforms,
+            pose_transforms,
+            pinhole_projections,
+        } = self;
+
+        let Self {
+            frame_transforms: src_frame_transforms,
+            pose_transforms: src_pose_transforms,
+            pinhole_projections: src_pinhole_projections,
+        } = other;
+
+        frame_transforms.extend(
+            src_frame_transforms
+                .iter()
+                .map(|(time, transform)| (*time, transform.clone())),
+        );
+        if let Some(src_pose_transforms) = src_pose_transforms {
+            pose_transforms.get_or_insert_default().extend(
+                src_pose_transforms
+                    .iter()
+                    .map(|(time, transform)| (*time, transform.clone())),
+            );
+        }
+        if let Some(src_pinhole_projections) = src_pinhole_projections {
+            pinhole_projections.get_or_insert_default().extend(
+                src_pinhole_projections
+                    .iter()
+                    .map(|(time, transform)| (*time, transform.clone())),
+            );
+        }
+    }
+}
+
 /// Cached transforms from a single child frame to a (potentially changing) parent frame over time.
 ///
 /// Incorporates any static transforms that may apply to this entity.
@@ -326,12 +460,9 @@ pub struct TransformsForChildFrame {
     #[cfg(debug_assertions)]
     timeline: Option<TimelineName>,
 
-    /// There can be only a single parent at any point in time, but it may change over time.
-    /// Whenever it changes, the previous parent frame is no longer reachable.
-    frame_transforms: FrameTransformTimeMap,
+    child_frame: TransformFrameIdHash,
 
-    pose_transforms: Option<Box<PoseTransformTimeMap>>,
-    pinhole_projections: Option<Box<PinholeProjectionMap>>,
+    events: TransformsForChildFrameEvents,
 }
 
 impl TransformsForChildFrame {
@@ -345,13 +476,11 @@ impl TransformsForChildFrame {
         get_new_invalidated_times: impl Fn() -> I,
         entity_path: &EntityPath,
     ) {
-        let Self {
-            #[cfg(debug_assertions)]
-                timeline: _,
+        let TransformsForChildFrameEvents {
             frame_transforms,
             pose_transforms,
             pinhole_projections,
-        } = self;
+        } = &mut self.events;
 
         // This invalidates any time _after_ the first event in this chunk.
         // (e.g. if a rotation is added prior to translations later on,
@@ -430,27 +559,22 @@ impl TransformsForChildFrame {
     fn new(
         child_frame: TransformFrameIdHash,
         _timeline: TimelineName,
-        static_timeline: &CachedTransformsForTimeline,
+        static_timeline: &mut CachedTransformsForTimeline,
     ) -> Mutex<Self> {
-        let mut frame_transforms = BTreeMap::new();
-        let mut pose_transforms = None;
-        let mut pinhole_projections = None;
+        let mut events = TransformsForChildFrameEvents::new_empty();
 
-        if let Some(static_transforms) =
-            static_timeline.per_child_frame_transforms.get(&child_frame)
+        if let Some(static_transforms) = static_timeline
+            .per_child_frame_transforms
+            .get_mut(&child_frame)
         {
-            let static_transforms = static_transforms.lock();
-            frame_transforms = static_transforms.frame_transforms.clone();
-            pose_transforms = static_transforms.pose_transforms.clone();
-            pinhole_projections = static_transforms.pinhole_projections.clone();
+            events = static_transforms.get_mut().events.clone();
         }
 
         Mutex::new(Self {
             #[cfg(debug_assertions)]
             timeline: Some(_timeline),
-            pose_transforms,
-            frame_transforms,
-            pinhole_projections,
+            child_frame,
+            events,
         })
     }
 
@@ -462,133 +586,12 @@ impl TransformsForChildFrame {
         }
     }
 
-    fn new_empty() -> Self {
+    fn new_empty(child_frame: TransformFrameIdHash) -> Self {
         Self {
             #[cfg(debug_assertions)]
             timeline: None,
-            frame_transforms: BTreeMap::new(),
-            pose_transforms: None,
-            pinhole_projections: None,
-        }
-    }
-
-    /// Inserts a cleared transform for the given times.
-    fn add_clear(&mut self, time: TimeInt, entity_path: &EntityPath) {
-        self.frame_transforms
-            .insert(time, TransformEntry::new_cleared(entity_path.clone()));
-        self.pose_transforms
-            .get_or_insert(Default::default())
-            .insert(time, TransformEntry::new_cleared(entity_path.clone()));
-        self.pinhole_projections
-            .get_or_insert(Default::default())
-            .insert(time, TransformEntry::new_cleared(entity_path.clone()));
-    }
-
-    /// Removes any events at a given time (if any).
-    fn remove_event_at(&mut self, time: TimeInt) {
-        let Self {
-            #[cfg(debug_assertions)]
-                timeline: _,
-            frame_transforms,
-            pose_transforms,
-            pinhole_projections,
-        } = self;
-
-        frame_transforms.remove(&time);
-        if let Some(pose_transforms) = pose_transforms.as_mut() {
-            pose_transforms.remove(&time);
-        }
-        if let Some(pinhole_projections) = &mut pinhole_projections.as_mut() {
-            pinhole_projections.remove(&time);
-        }
-    }
-
-    /// Removes all events in a given range and writes them to `destination`.
-    fn remove_events_in_range(&mut self, range: Range<TimeInt>, destination: &mut Self) {
-        let Self {
-            #[cfg(debug_assertions)]
-                timeline: _,
-            frame_transforms,
-            pose_transforms,
-            pinhole_projections,
-        } = self;
-
-        let Self {
-            #[cfg(debug_assertions)]
-                timeline: _,
-            frame_transforms: dst_frame_transforms,
-            pose_transforms: dst_pose_transforms,
-            pinhole_projections: dst_pinhole_projections,
-        } = destination;
-
-        frame_transforms.retain(|time, transform| {
-            if !range.contains(time) {
-                return true;
-            }
-            dst_frame_transforms.insert(*time, transform.clone());
-            false
-        });
-
-        if let Some(pose_transforms) = pose_transforms {
-            let dst_pose_transforms = dst_pose_transforms.get_or_insert_default();
-
-            pose_transforms.retain(|time, transform| {
-                if !range.contains(time) {
-                    return true;
-                }
-                dst_pose_transforms.insert(*time, transform.clone());
-                false
-            });
-        }
-
-        if let Some(pinhole_projections) = pinhole_projections {
-            let dst_pinhole_projections = dst_pinhole_projections.get_or_insert_default();
-
-            pinhole_projections.retain(|time, transform| {
-                if !range.contains(time) {
-                    return true;
-                }
-                dst_pinhole_projections.insert(*time, transform.clone());
-                false
-            });
-        }
-    }
-
-    fn insert_all_events_of(&mut self, other: &Self) {
-        let Self {
-            #[cfg(debug_assertions)]
-                timeline: _,
-            frame_transforms,
-            pose_transforms,
-            pinhole_projections,
-        } = self;
-
-        let Self {
-            #[cfg(debug_assertions)]
-                timeline: _,
-            frame_transforms: src_frame_transforms,
-            pose_transforms: src_pose_transforms,
-            pinhole_projections: src_pinhole_projections,
-        } = other;
-
-        frame_transforms.extend(
-            src_frame_transforms
-                .iter()
-                .map(|(time, transform)| (*time, transform.clone())),
-        );
-        if let Some(src_pose_transforms) = src_pose_transforms {
-            pose_transforms.get_or_insert_default().extend(
-                src_pose_transforms
-                    .iter()
-                    .map(|(time, transform)| (*time, transform.clone())),
-            );
-        }
-        if let Some(src_pinhole_projections) = src_pinhole_projections {
-            pinhole_projections.get_or_insert_default().extend(
-                src_pinhole_projections
-                    .iter()
-                    .map(|(time, transform)| (*time, transform.clone())),
-            );
+            child_frame,
+            events: TransformsForChildFrameEvents::new_empty(),
         }
     }
 
@@ -602,6 +605,7 @@ impl TransformsForChildFrame {
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
 
         let (time_of_last_update_to_this_frame, frame_transform) = self
+            .events
             .frame_transforms
             .range_mut(..query.at().inc())
             .next_back()?;
@@ -610,18 +614,39 @@ impl TransformsForChildFrame {
             CachedTransformValue::Resident(transform) => Some(transform.clone()),
             CachedTransformValue::Cleared => None,
             CachedTransformValue::Invalidated => {
-                let transform = query_and_resolve_tree_transform_at_entity(
+                let transforms = query_and_resolve_tree_transform_at_entity(
                     &frame_transform.entity_path,
                     entity_db,
                     // Do NOT use the original query time since that may give us information about a different child frame!
                     &LatestAtQuery::new(query.timeline(), *time_of_last_update_to_this_frame),
                 );
 
-                frame_transform.value = match &transform {
-                    Some(transform) => CachedTransformValue::Resident(transform.clone()),
-                    None => CachedTransformValue::Cleared,
+                // First, we update the cache value.
+                frame_transform.value = match &transforms {
+                    Ok(transform) => {
+                        if let Some(found) = transform.iter().find_map(|(child, transform)| {
+                            (child == &self.child_frame).then_some(transform)
+                        }) {
+                            CachedTransformValue::Resident(found.clone())
+                        } else {
+                            assert!(
+                                !cfg!(debug_assertions),
+                                "[DEBUG ASSERT] not finding a child here means our book keeping failed"
+                            );
+                            CachedTransformValue::Cleared
+                        }
+                    }
+                    Err(err) => {
+                        re_log::error_once!("Failed to query transformations: {err}");
+                        CachedTransformValue::Cleared
+                    }
                 };
-                transform
+
+                // Then, we retrieve the value from the cache again and return it.
+                match &frame_transform.value {
+                    CachedTransformValue::Resident(transform) => Some(transform.clone()),
+                    CachedTransformValue::Cleared | CachedTransformValue::Invalidated => None,
+                }
             }
         }
     }
@@ -636,6 +661,7 @@ impl TransformsForChildFrame {
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
 
         let pose_transform = self
+            .events
             .pose_transforms
             .as_mut()?
             .range_mut(..query.at().inc())
@@ -669,6 +695,7 @@ impl TransformsForChildFrame {
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
 
         let pinhole_projection = self
+            .events
             .pinhole_projections
             .as_mut()?
             .range_mut(..query.at().inc())
@@ -832,7 +859,7 @@ impl TransformResolutionCache {
                 //
                 // Note that the time range insertion we just did was still necessary regardless since more (different) child frames may be added in between.
                 if previous_frames != frames {
-                    let mut moved_events = TransformsForChildFrame::new_empty();
+                    let mut moved_events = TransformsForChildFrameEvents::new_empty();
                     for previous_child_frame in &previous_frames {
                         let Some(frame_transforms) = per_timeline
                             .per_child_frame_transforms
@@ -844,7 +871,8 @@ impl TransformResolutionCache {
                         // Since (by convention) only this entity can affect `previous_frames`, we have to move all their events in the `changed_range` to the new range.
                         frame_transforms
                             .get_mut()
-                            .remove_events_in_range(changed_range.clone(), &mut moved_events);
+                            .events
+                            .remove_in_range(changed_range.clone(), &mut moved_events);
                     }
                     // …and add them to the new child frames!
                     for new_child_frame in frames {
@@ -855,11 +883,12 @@ impl TransformResolutionCache {
                                 TransformsForChildFrame::new(
                                     new_child_frame,
                                     *timeline,
-                                    &self.static_timeline,
+                                    &mut self.static_timeline,
                                 )
                             })
                             .get_mut()
-                            .insert_all_events_of(&moved_events);
+                            .events
+                            .insert_all_of(&moved_events);
                     }
                 }
             }
@@ -899,7 +928,7 @@ impl TransformResolutionCache {
                             TransformsForChildFrame::new(
                                 *child_frame,
                                 *timeline,
-                                &self.static_timeline,
+                                &mut self.static_timeline,
                             )
                         })
                         .get_mut();
@@ -925,7 +954,9 @@ impl TransformResolutionCache {
                             {
                                 for cleared_time in cleared_times {
                                     if time_range.contains(cleared_time) {
-                                        frame_transforms.add_clear(*cleared_time, entity_path);
+                                        frame_transforms
+                                            .events
+                                            .insert_clear(*cleared_time, entity_path);
                                     }
                                 }
                             }
@@ -1001,7 +1032,7 @@ impl TransformResolutionCache {
                             .per_child_frame_transforms
                             .get_mut(previous_child_frame)
                         {
-                            frame_transform.get_mut().remove_event_at(TimeInt::STATIC);
+                            frame_transform.get_mut().events.remove_at(TimeInt::STATIC);
                         }
                     }
                 }
@@ -1021,7 +1052,7 @@ impl TransformResolutionCache {
             self.static_timeline
                 .per_child_frame_transforms
                 .entry(child_frame)
-                .or_insert_with(|| Mutex::new(TransformsForChildFrame::new_empty()))
+                .or_insert_with(|| Mutex::new(TransformsForChildFrame::new_empty(child_frame)))
                 .get_mut()
                 .insert_invalidated_transform_events(
                     aspects,
@@ -1037,7 +1068,11 @@ impl TransformResolutionCache {
                     .or_insert_with(|| {
                         // Need to add an entry now if there wasn't one before.
                         // Also note that the static transforms we use to construct this might touch on aspects that aren't invalidated, so it's still important to pass that in.
-                        TransformsForChildFrame::new(child_frame, *timeline, &self.static_timeline)
+                        TransformsForChildFrame::new(
+                            child_frame,
+                            *timeline,
+                            &mut self.static_timeline,
+                        )
                     })
                     .get_mut();
 
@@ -1114,28 +1149,31 @@ impl TransformResolutionCache {
                             }
 
                             if aspects.contains(TransformAspect::Frame) {
-                                transforms.frame_transforms.remove(&time);
+                                transforms.events.frame_transforms.remove(&time);
                             }
                             if aspects.contains(TransformAspect::Pose)
-                                && let Some(pose_transforms) = &mut transforms.pose_transforms
+                                && let Some(pose_transforms) =
+                                    &mut transforms.events.pose_transforms
                             {
                                 pose_transforms.remove(&time);
                             }
                             if aspects.contains(TransformAspect::PinholeOrViewCoordinates)
                                 && let Some(pinhole_projections) =
-                                    &mut transforms.pinhole_projections
+                                    &mut transforms.events.pinhole_projections
                             {
                                 pinhole_projections.remove(&time);
                             }
                         }
 
                         // Remove child frame entry if it's empty.
-                        if transforms.frame_transforms.is_empty()
+                        if transforms.events.frame_transforms.is_empty()
                             && transforms
+                                .events
                                 .pose_transforms
                                 .as_ref()
                                 .is_none_or(|pose_transforms| pose_transforms.is_empty())
                             && transforms
+                                .events
                                 .pinhole_projections
                                 .as_ref()
                                 .is_none_or(|pinhole_projections| pinhole_projections.is_empty())
@@ -1215,6 +1253,7 @@ mod tests {
     use std::sync::{Arc, OnceLock};
 
     use super::*;
+    use crate::convert;
     use re_chunk_store::{
         Chunk, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle, GarbageCollectionOptions,
         PerStoreChunkSubscriber, RowId,
@@ -1393,9 +1432,9 @@ mod tests {
             .unwrap();
         #[cfg(debug_assertions)]
         assert_eq!(transforms.timeline, Some(*timeline.name()));
-        assert_eq!(transforms.frame_transforms.len(), 1);
-        assert_eq!(transforms.pose_transforms, None);
-        assert_eq!(transforms.pinhole_projections, None);
+        assert_eq!(transforms.events.frame_transforms.len(), 1);
+        assert_eq!(transforms.events.pose_transforms, None);
+        assert_eq!(transforms.events.pinhole_projections, None);
 
         Ok(())
     }
@@ -1866,7 +1905,7 @@ mod tests {
                 // This involves casting f32 components to f64 and renormalizing, which produces
                 // slightly different values than directly computing in f64.
                 transform: DAffine3::from_quat(
-                    glam::DQuat::try_from(re_types::datatypes::Quaternion::from(
+                    convert::quaternion_to_dquat(re_types::datatypes::Quaternion::from(
                         glam::Quat::from_rotation_x(1.0)
                     ))
                     .unwrap()
