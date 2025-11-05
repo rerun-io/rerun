@@ -1856,9 +1856,11 @@ mod tests {
                 // This involves casting f32 components to f64 and renormalizing, which produces
                 // slightly different values than directly computing in f64.
                 transform: DAffine3::from_quat(
-                    glam::DQuat::try_from(re_types::datatypes::Quaternion::from(
-                        glam::Quat::from_rotation_x(1.0)
-                    ))
+                    crate::transform_queries::convert::quaternion_to_dquat(
+                        re_types::datatypes::Quaternion::from(
+                            glam::Quat::from_rotation_x(1.0)
+                        )
+                    )
                     .unwrap()
                 ),
             })

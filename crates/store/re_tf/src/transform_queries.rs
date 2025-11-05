@@ -129,7 +129,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
         identifier_translations,
         mono_log_level,
     ) {
-        transform = DAffine3::from(translation);
+        transform = convert::translation_3d_to_daffine3(translation);
     }
     if let Some(axis_angle) = results
         .component_mono_with_log_level::<components::RotationAxisAngle>(
@@ -137,22 +137,24 @@ pub fn query_and_resolve_tree_transform_at_entity(
             mono_log_level,
         )
     {
-        let axis_angle =
-            DAffine3::try_from(axis_angle).map_err(|_| TransformError::InvalidTransform {
+        let axis_angle = convert::rotation_axis_angle_to_daffine3(axis_angle).map_err(|_| {
+            TransformError::InvalidTransform {
                 entity_path: entity_path.clone(),
                 component: identifier_rotation_axis_angles,
-            })?;
+            }
+        })?;
         transform *= axis_angle;
     }
     if let Some(quaternion) = results.component_mono_with_log_level::<components::RotationQuat>(
         identifier_quaternions,
         mono_log_level,
     ) {
-        let quaternion =
-            DAffine3::try_from(quaternion).map_err(|_| TransformError::InvalidTransform {
+        let quaternion = convert::rotation_quat_to_daffine3(quaternion).map_err(|_| {
+            TransformError::InvalidTransform {
                 entity_path: entity_path.clone(),
                 component: identifier_quaternions,
-            })?;
+            }
+        })?;
         transform *= quaternion;
     }
     if let Some(scale) = results
@@ -164,13 +166,13 @@ pub fn query_and_resolve_tree_transform_at_entity(
                 component: identifier_scales,
             });
         }
-        transform *= DAffine3::from(scale);
+        transform *= convert::scale_3d_to_daffine3(scale);
     }
     if let Some(mat3x3) = results.component_mono_with_log_level::<components::TransformMat3x3>(
         identifier_mat3x3,
         mono_log_level,
     ) {
-        let affine_transform = DAffine3::from(mat3x3);
+        let affine_transform = convert::transform_mat3x3_to_daffine3(mat3x3);
         if affine_transform.matrix3.determinant() == 0.0 {
             return Err(TransformError::InvalidTransform {
                 entity_path: entity_path.clone(),
@@ -373,27 +375,29 @@ fn query_and_resolve_instance_from_pose_for_archetype_name(
             // We apply these in a specific order - see `debug_assert_transform_field_order`
             let mut transform = DAffine3::IDENTITY;
             if let Some(translation) = iter_translation.next() {
-                transform = DAffine3::from(translation);
+                transform = convert::pose_translation_3d_to_daffine3(translation);
             }
             if let Some(rotation_quat) = iter_rotation_quat.next() {
-                if let Ok(rotation_quat) = DAffine3::try_from(rotation_quat) {
+                if let Ok(rotation_quat) = convert::pose_rotation_quat_to_daffine3(rotation_quat) {
                     transform *= rotation_quat;
                 } else {
                     transform = DAffine3::ZERO;
                 }
             }
             if let Some(rotation_axis_angle) = iter_rotation_axis_angle.next() {
-                if let Ok(axis_angle) = DAffine3::try_from(rotation_axis_angle) {
+                if let Ok(axis_angle) =
+                    convert::pose_rotation_axis_angle_to_daffine3(rotation_axis_angle)
+                {
                     transform *= axis_angle;
                 } else {
                     transform = DAffine3::ZERO;
                 }
             }
             if let Some(scale) = iter_scale.next() {
-                transform *= DAffine3::from(scale);
+                transform *= convert::pose_scale_3d_to_daffine3(scale);
             }
             if let Some(mat3x3) = iter_mat3x3.next() {
-                transform *= DAffine3::from(mat3x3);
+                transform *= convert::pose_transform_mat3x3_to_daffine3(mat3x3);
             }
             transform
         })
@@ -481,4 +485,128 @@ pub fn query_view_coordinates_at_closest_ancestor(
             )
         })
         .map(|(_path, _index, view_coordinates)| view_coordinates)
+}
+
+pub(crate) mod convert {
+    //! Conversion functions for transform components to double precision types.
+    //!
+    //! These conversions are used internally by `re_tf` for transform computations until
+    //! we have proper data type generics. We put them here to make future generic refactoring
+    //! easier.
+
+    use glam::{DAffine3, DMat3, DQuat, DVec3};
+    use re_types::{components, datatypes};
+
+    // ---------------------------------------------------------------------------
+    // Helper functions for datatypes
+
+    #[inline]
+    pub(crate) fn quaternion_to_dquat(q: datatypes::Quaternion) -> Result<DQuat, ()> {
+        let q = q.0;
+        glam::DVec4::new(q[0] as f64, q[1] as f64, q[2] as f64, q[3] as f64)
+            .try_normalize()
+            .map(DQuat::from_vec4)
+            .ok_or(())
+    }
+
+    #[inline]
+    pub(super) fn vec3d_to_dvec3(v: datatypes::Vec3D) -> DVec3 {
+        let v = v.0;
+        DVec3::new(v[0] as f64, v[1] as f64, v[2] as f64)
+    }
+
+    // ---------------------------------------------------------------------------
+    // Component conversion functions
+
+    #[inline]
+    pub(super) fn translation_3d_to_daffine3(v: components::Translation3D) -> DAffine3 {
+        DAffine3 {
+            matrix3: DMat3::IDENTITY,
+            translation: vec3d_to_dvec3(v.0),
+        }
+    }
+
+    #[inline]
+    pub(super) fn rotation_axis_angle_to_daffine3(
+        val: components::RotationAxisAngle,
+    ) -> Result<DAffine3, ()> {
+        vec3d_to_dvec3(val.0.axis)
+            .try_normalize()
+            .map(|normalized| DAffine3::from_axis_angle(normalized, val.0.angle.radians() as f64))
+            .ok_or(())
+    }
+
+    #[inline]
+    pub(super) fn rotation_quat_to_daffine3(val: components::RotationQuat) -> Result<DAffine3, ()> {
+        Ok(DAffine3::from_quat(quaternion_to_dquat(val.0)?))
+    }
+
+    #[inline]
+    pub(super) fn scale_3d_to_daffine3(v: components::Scale3D) -> DAffine3 {
+        DAffine3 {
+            matrix3: DMat3::from_diagonal(vec3d_to_dvec3(v.0)),
+            translation: DVec3::ZERO,
+        }
+    }
+
+    #[inline]
+    pub(super) fn transform_mat3x3_to_daffine3(v: components::TransformMat3x3) -> DAffine3 {
+        DAffine3 {
+            matrix3: DMat3::from_cols_array(&v.0.0.map(|x| x as f64)),
+            translation: DVec3::ZERO,
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Pose component conversion functions
+
+    #[inline]
+    pub(super) fn pose_translation_3d_to_daffine3(v: components::PoseTranslation3D) -> DAffine3 {
+        DAffine3 {
+            matrix3: DMat3::IDENTITY,
+            translation: vec3d_to_dvec3(v.0),
+        }
+    }
+
+    #[inline]
+    pub(super) fn pose_rotation_axis_angle_to_daffine3(
+        val: components::PoseRotationAxisAngle,
+    ) -> Result<DAffine3, ()> {
+        // 0 degrees around any axis is an identity transform.
+        if val.angle.radians == 0. {
+            Ok(DAffine3::IDENTITY)
+        } else {
+            vec3d_to_dvec3(val.0.axis)
+                .try_normalize()
+                .map(|normalized| {
+                    DAffine3::from_axis_angle(normalized, val.0.angle.radians() as f64)
+                })
+                .ok_or(())
+        }
+    }
+
+    #[inline]
+    pub(super) fn pose_rotation_quat_to_daffine3(
+        val: components::PoseRotationQuat,
+    ) -> Result<DAffine3, ()> {
+        Ok(DAffine3::from_quat(quaternion_to_dquat(val.0)?))
+    }
+
+    #[inline]
+    pub(super) fn pose_scale_3d_to_daffine3(v: components::PoseScale3D) -> DAffine3 {
+        DAffine3 {
+            matrix3: DMat3::from_diagonal(vec3d_to_dvec3(v.0)),
+            translation: DVec3::ZERO,
+        }
+    }
+
+    #[inline]
+    pub(super) fn pose_transform_mat3x3_to_daffine3(
+        v: components::PoseTransformMat3x3,
+    ) -> DAffine3 {
+        DAffine3 {
+            matrix3: DMat3::from_cols_array(&v.0.0.map(|mn| mn as f64)),
+            translation: DVec3::ZERO,
+        }
+    }
 }
