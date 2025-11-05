@@ -165,7 +165,7 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
         ],
         target_from_archetype: {},
     },
-    child1: TransformInfo {
+    root: TransformInfo {
         root: root,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -186,7 +186,7 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 ),
             },
             translation: DVec3(
-                4.0,
+                0.0,
                 0.0,
                 0.0,
             ),
@@ -211,7 +211,7 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                     ),
                 },
                 translation: DVec3(
-                    4.0,
+                    0.0,
                     0.0,
                     0.0,
                 ),
@@ -320,6 +320,60 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 },
                 translation: DVec3(
                     0.0,
+                    0.0,
+                    0.0,
+                ),
+            },
+        ],
+        target_from_archetype: {},
+    },
+    child1: TransformInfo {
+        root: root,
+        target_from_source: DAffine3 {
+            matrix3: DMat3 {
+                x_axis: DVec3(
+                    1.0,
+                    0.0,
+                    0.0,
+                ),
+                y_axis: DVec3(
+                    0.0,
+                    1.0,
+                    0.0,
+                ),
+                z_axis: DVec3(
+                    0.0,
+                    0.0,
+                    1.0,
+                ),
+            },
+            translation: DVec3(
+                4.0,
+                0.0,
+                0.0,
+            ),
+        },
+        target_from_instances: [
+            DAffine3 {
+                matrix3: DMat3 {
+                    x_axis: DVec3(
+                        1.0,
+                        0.0,
+                        0.0,
+                    ),
+                    y_axis: DVec3(
+                        0.0,
+                        1.0,
+                        0.0,
+                    ),
+                    z_axis: DVec3(
+                        0.0,
+                        0.0,
+                        1.0,
+                    ),
+                },
+                translation: DVec3(
+                    4.0,
                     0.0,
                     0.0,
                 ),

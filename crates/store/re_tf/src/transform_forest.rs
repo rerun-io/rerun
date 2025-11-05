@@ -48,6 +48,15 @@ pub struct TransformInfo {
 }
 
 impl TransformInfo {
+    fn new_root(root: TransformFrameIdHash) -> Self {
+        Self {
+            root,
+            target_from_source: glam::DAffine3::IDENTITY,
+            target_from_instances: SmallVec1::new(glam::DAffine3::IDENTITY),
+            target_from_archetype: Default::default(),
+        }
+    }
+
     /// Returns the root frame of the tree this transform belongs to.
     ///
     /// This is **not** necessarily the transform's target frame.
@@ -310,6 +319,13 @@ impl TransformForest {
                     TransformTreeRootInfo::TransformFrameRoot,
                 );
                 debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(RR-2667): Build out into cycle detection
+
+                // That parent apparently won't show up in any transform stack (we didn't walk there because there was no information about it!)
+                // So if we don't add this root now to our `root_from_frame` map, we'd never fill out the required self-reference!
+                self.root_from_frame.insert(
+                    parent_from_child.parent,
+                    TransformInfo::new_root(parent_from_child.parent),
+                );
 
                 (parent_from_child.parent, glam::DAffine3::IDENTITY)
             }
@@ -819,14 +835,14 @@ fn transforms_at(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use itertools::Itertools;
     use re_chunk_store::Chunk;
     use re_entity_db::EntityDb;
     use re_log_types::{StoreInfo, TimePoint, TimelineName};
+    use re_types::components::TransformFrameId;
     use re_types::{Archetype as _, RowId, archetypes};
     use std::sync::Arc;
-
-    use super::*;
 
     fn test_pinhole() -> archetypes::Pinhole {
         archetypes::Pinhole::from_focal_length_and_resolution([1.0, 2.0], [100.0, 200.0])
@@ -1142,16 +1158,6 @@ mod tests {
             assert_eq!(transform_forest.roots.len(), 2);
         }
 
-        // Check we have all the right connections.
-        // We don't test for tree rearrangement here, this has been already tested quite a bit in `test_simple_entity_hierarchy`
-        insta::assert_snapshot!(
-            "simple_frame_hierarchy_root_connections",
-            pretty_print_transform_frame_ids_in(
-                &transform_forest.root_from_frame,
-                &transform_cache
-            )
-        );
-
         // Check that there is no connection between the implicit & explicit frames.
         assert_eq!(
             transform_forest
@@ -1172,6 +1178,50 @@ mod tests {
                     source_root: TransformFrameIdHash::entity_path_hierarchy_root(),
                 })
             )]
+        );
+
+        // Check that for our two trees everything is connected with everything
+        for tree_elements in [
+            [
+                TransformFrameId::new("top"),
+                TransformFrameId::new("root"),
+                TransformFrameId::new("child0"),
+                TransformFrameId::new("child1"),
+            ],
+            [
+                TransformFrameId::from_entity_path(&"transforms0".into()),
+                TransformFrameId::from_entity_path(&"transforms1".into()),
+                TransformFrameId::from_entity_path(&"transforms2".into()),
+                TransformFrameId::from_entity_path(&EntityPath::root()),
+            ],
+        ] {
+            for pair in tree_elements.iter().permutations(2) {
+                let from = pair[0];
+                let to = pair[1];
+                assert!(
+                    matches!(
+                        transform_forest
+                            .transform_from_to(
+                                TransformFrameIdHash::new(&from),
+                                [TransformFrameIdHash::new(&to)].into_iter(),
+                                &|_| 1.0
+                            )
+                            .next(),
+                        Some((_, Ok(_)))
+                    ),
+                    "Connection from {from:?} to {to:?}"
+                );
+            }
+        }
+
+        // Blanket check that we have all the right connections. A bit redundant to above checks, but not as stable due to encompassing snapshotting.
+        // We don't test for tree rearrangement here, this has been already tested quite a bit in `test_simple_entity_hierarchy`
+        insta::assert_snapshot!(
+            "simple_frame_hierarchy_root_connections",
+            pretty_print_transform_frame_ids_in(
+                &transform_forest.root_from_frame,
+                &transform_cache
+            )
         );
 
         Ok(())
