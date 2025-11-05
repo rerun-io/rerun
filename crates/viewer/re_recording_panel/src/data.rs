@@ -165,55 +165,31 @@ impl<'a> RecordingPanelData<'a> {
             && self.servers.is_empty()
     }
 
-    /// Iterate over all items in the order they are displayed in the recording panel.
-    pub fn iter_items_in_display_order(&'a self) -> impl Iterator<Item = Item> + 'a {
-        let servers = self.servers.iter().flat_map(|s| {
-            let server_iter = iter::once(Item::RedapServer(s.origin.clone()));
+    /// Search for the relevant store id and, if found, return its sibling entity dbs and its index
+    /// within them.
+    pub fn collection_from_recording(
+        &'a self,
+        store_id: &re_log_types::StoreId,
+    ) -> Option<(usize, Vec<&'a EntityDb>)> {
+        for server in &self.servers {
+            for dataset in server.entries_data.iter_datasets() {
+                let store_iter = dataset.iter_loaded_stores();
 
-            let items = match &s.entries_data {
-                ServerEntriesData::Loaded {
-                    dataset_entries,
-                    table_entries,
-                    failed_entries: _,
-                } => {
-                    let dataset = dataset_entries.iter().flat_map(|dataset| {
-                        let entry = iter::once(Item::RedapEntry(dataset.entry_data.entry_uri()));
-                        let partitions =
-                            dataset.displayed_partitions.iter().filter_map(|partition| {
-                                partition
-                                    .entity_db()
-                                    .map(|entity_db| Item::StoreId(entity_db.store_id().clone()))
-                            });
-                        entry.chain(partitions)
-                    });
-                    let tables = table_entries
-                        .iter()
-                        .map(|table| Item::RedapEntry(table.entry_data.entry_uri()));
-                    Either::Left(dataset.chain(tables))
+                if let Some(pos) = store_iter.clone().position(|db| db.store_id() == store_id) {
+                    return Some((pos, store_iter.collect()));
                 }
-                _ => Either::Right(iter::empty()),
-            };
+            }
+        }
 
-            server_iter.chain(items)
-        });
+        for local_app in self.local_apps.iter().chain(self.example_apps.iter()) {
+            let store_iter = local_app.iter_loaded_stores();
 
-        let local_apps = self.local_apps.iter().flat_map(|app| {
-            iter::once(app.item()).chain(
-                app.loaded_recordings
-                    .iter()
-                    .map(|rec| Item::StoreId(rec.entity_db.store_id().clone())),
-            )
-        });
+            if let Some(pos) = store_iter.clone().position(|db| db.store_id() == store_id) {
+                return Some((pos, store_iter.collect()));
+            }
+        }
 
-        let example_apps = self.example_apps.iter().flat_map(|app| {
-            iter::once(app.item()).chain(
-                app.loaded_recordings
-                    .iter()
-                    .map(|rec| Item::StoreId(rec.entity_db.store_id().clone())),
-            )
-        });
-
-        servers.chain(local_apps).chain(example_apps)
+        None
     }
 }
 
@@ -272,6 +248,10 @@ impl<'a> AppIdData<'a> {
 
     pub fn item(&self) -> Item {
         Item::AppId(self.app_id.clone())
+    }
+
+    pub fn iter_loaded_stores(&'a self) -> impl Iterator<Item = &'a EntityDb> + Clone {
+        self.loaded_recordings.iter().map(|rec| rec.entity_db)
     }
 }
 
@@ -434,6 +414,16 @@ impl<'a> ServerEntriesData<'a> {
             Poll::Pending => Self::Loading,
         }
     }
+
+    pub fn iter_datasets(&'a self) -> impl Iterator<Item = &'a DatasetData<'a>> {
+        match self {
+            Self::Loaded {
+                dataset_entries, ..
+            } => Either::Left(dataset_entries.iter()),
+
+            Self::Error(..) | Self::Loading => Either::Right(iter::empty()),
+        }
+    }
 }
 
 // ---
@@ -443,6 +433,17 @@ impl<'a> ServerEntriesData<'a> {
 pub struct DatasetData<'a> {
     pub entry_data: EntryData,
     pub displayed_partitions: Vec<PartitionData<'a>>,
+}
+
+impl<'a> DatasetData<'a> {
+    pub fn iter_loaded_stores(&'a self) -> impl Iterator<Item = &'a EntityDb> + Clone {
+        self.displayed_partitions
+            .iter()
+            .filter_map(|partition| match partition {
+                PartitionData::Loaded { entity_db } => Some(*entity_db),
+                PartitionData::Loading { .. } => None,
+            })
+    }
 }
 
 // ---

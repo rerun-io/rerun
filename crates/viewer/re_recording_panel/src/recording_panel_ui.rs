@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use egui::{RichText, Widget as _};
-use itertools::Itertools as _;
 
 use re_data_ui::{
     DataUi as _,
@@ -85,28 +84,22 @@ fn shift_through_recordings(
     recording_panel_data: &RecordingPanelData<'_>,
     direction: isize,
 ) {
-    let recordings = recording_panel_data
-        .iter_items_in_display_order()
-        .filter(|item| DisplayMode::from_item(item).is_some())
-        .collect_vec();
-    let displayed_item = ctx.display_mode().item();
+    let current_store_id = ctx.store_context.recording.store_id();
 
-    if let Some(displayed_item) = displayed_item {
-        let current_index = recordings.iter().position(|item| item == &displayed_item);
+    #[expect(clippy::cast_possible_wrap)]
+    if let Some((idx, store_collection)) =
+        recording_panel_data.collection_from_recording(current_store_id)
+    {
+        let len = store_collection.len() as isize;
+        let new_idx = ((idx as isize + direction + len) % len) as usize;
 
-        #[expect(clippy::cast_possible_wrap)]
-        let previous_index = match current_index {
-            Some(idx) => {
-                let len = recordings.len() as isize;
-                ((idx as isize + direction + len) % len) as usize
-            }
-            None => 0,
-        };
-
-        if let Some(previous_item) = recordings.get(previous_index) {
-            ctx.command_sender()
-                .send_system(SystemCommand::SetSelection(previous_item.clone().into()));
-        }
+        // TODO(#11792): this whole feature would be massively more useful if we left the selection
+        // alone and tried to maintain viewer state when switching recording (including current
+        // timeline, time point, selection, etc.)
+        ctx.command_sender()
+            .send_system(SystemCommand::SetSelection(
+                Item::StoreId(store_collection[new_idx].store_id().clone()).into(),
+            ));
     }
 }
 
