@@ -257,16 +257,11 @@ impl TransformForest {
         // Repeat steps 1) & 2) until we've processed all frames.
 
         let transforms = transform_cache.transforms_for_timeline(query.timeline());
-
-        let mut unprocessed_frames: IntSet<_> = transforms.all_child_frames().collect();
-
-        // We also have to add implicit frame ids for all entities in the entity _tree_.
-        // That's more than just the entity paths that have things logged on since there might be arbitrary steps without any data.
-        entity_db.tree().visit_children_recursively(|entity_path| {
-            unprocessed_frames.insert(TransformFrameIdHash::from_entity_path(entity_path));
-        });
-
-        let mut transform_stack = Vec::new(); // Keep pushing & draining from same vector as a simple performance optimization.
+        let mut unprocessed_frames: IntSet<_> = transform_cache
+            .frame_id_registry()
+            .iter_frame_id_hashes()
+            .collect();
+        let mut transform_stack = Vec::new(); // Keep pushing & draining from the same vector as a simple performance optimization.
 
         let mut forest = Self::default();
 

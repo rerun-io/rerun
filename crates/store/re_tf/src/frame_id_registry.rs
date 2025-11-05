@@ -79,6 +79,12 @@ impl FrameIdRegistry {
     ) -> impl Iterator<Item = (&TransformFrameIdHash, &TransformFrameId)> {
         self.frame_id_lookup_table.iter()
     }
+
+    /// Hashes of all frame ids ever encountered.
+    #[inline]
+    pub fn iter_frame_id_hashes(&self) -> impl Iterator<Item = TransformFrameIdHash> {
+        self.frame_id_lookup_table.keys().copied()
+    }
 }
 
 #[cfg(test)]
