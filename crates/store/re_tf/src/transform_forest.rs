@@ -318,20 +318,20 @@ impl TransformForest {
             // We could be a (lonely) pinhole with no 3D parent?
             let previous_root = if let Some(pinhole_projection) = &top_of_stack.pinhole_projection {
                 let new_root_info = TransformTreeRootInfo::Pinhole(PinholeTreeRoot {
-                    parent_tree_root: *top_of_stack.child_frame,
+                    parent_tree_root: top_of_stack.child_frame,
                     pinhole_projection: pinhole_projection.clone(),
                     parent_root_from_pinhole_root: glam::DAffine3::IDENTITY,
                 });
-                self.roots.insert(*top_of_stack.child_frame, new_root_info)
+                self.roots.insert(top_of_stack.child_frame, new_root_info)
             } else {
                 self.roots.insert(
-                    *top_of_stack.child_frame,
+                    top_of_stack.child_frame,
                     TransformTreeRootInfo::TransformFrameRoot,
                 )
             };
             debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(RR-2667): Build out into cycle detection
 
-            (*top_of_stack.child_frame, glam::DAffine3::IDENTITY)
+            (top_of_stack.child_frame, glam::DAffine3::IDENTITY)
         };
 
         // Walk the stack backwards, collecting transforms as we go.
@@ -419,15 +419,7 @@ fn walk_towards_parent(
         && unprocessed_sources.remove(&current_frame)
     {
         // We either already processed this frame, or we reached the end of our path if this source is not in the list of unprocessed frames.
-        let Some(mut transforms) = transforms_at(current_frame, entity_db, query, transforms)
-        else {
-            assert!(
-                !cfg!(debug_assertions),
-                "No transform information at all for frame {:?}.",
-                id_registry.lookup_frame_id(current_frame)
-            );
-            break;
-        };
+        let mut transforms = transforms_at(current_frame, entity_db, query, transforms);
 
         // Maybe there's an implicit connection that we have to fill in?
         if transforms.parent_from_child.is_none()
@@ -799,25 +791,30 @@ struct ParentChildTransforms {
 }
 
 fn transforms_at(
-    source_frame: TransformFrameIdHash,
+    child_frame: TransformFrameIdHash,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
     transforms_for_timeline: &CachedTransformsForTimeline,
-) -> Option<ParentChildTransforms> {
-    let Some(source_transforms) = transforms_for_timeline.frame_transforms(source_frame) else {
-        return None;
+) -> ParentChildTransforms {
+    let Some(source_transforms) = transforms_for_timeline.frame_transforms(child_frame) else {
+        return ParentChildTransforms {
+            child_frame,
+            parent_from_child: None,
+            child_from_instance_poses: None,
+            pinhole_projection: None,
+        };
     };
 
     let parent_from_child = source_transforms.latest_at_transform(entity_db, query);
     let child_from_instance_poses = source_transforms.latest_at_instance_poses(entity_db, query);
     let pinhole_projection = source_transforms.latest_at_pinhole(entity_db, query);
 
-    Some(ParentChildTransforms {
+    ParentChildTransforms {
         child_frame,
         parent_from_child,
         child_from_instance_poses,
         pinhole_projection,
-    })
+    }
 }
 
 #[cfg(test)]
