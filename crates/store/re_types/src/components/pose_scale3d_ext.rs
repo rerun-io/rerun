@@ -28,17 +28,6 @@ impl From<PoseScale3D> for glam::Affine3A {
     }
 }
 
-#[cfg(feature = "glam")]
-impl From<PoseScale3D> for glam::DAffine3 {
-    #[inline]
-    fn from(v: PoseScale3D) -> Self {
-        Self {
-            matrix3: glam::DMat3::from_diagonal(v.0.into()),
-            translation: glam::DVec3::ZERO,
-        }
-    }
-}
-
 impl Default for PoseScale3D {
     #[inline]
     fn default() -> Self {

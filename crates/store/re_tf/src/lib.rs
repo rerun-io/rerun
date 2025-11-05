@@ -139,6 +139,7 @@
 //!
 
 mod component_type_info;
+pub(crate) mod convert;
 mod entity_to_frame_tracking;
 mod transform_aspect;
 mod transform_forest;
