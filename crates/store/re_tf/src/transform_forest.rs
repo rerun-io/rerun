@@ -836,7 +836,7 @@ fn transforms_at(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use itertools::Itertools;
+    use itertools::Itertools as _;
     use re_chunk_store::Chunk;
     use re_entity_db::EntityDb;
     use re_log_types::{StoreInfo, TimePoint, TimelineName};
@@ -1202,8 +1202,8 @@ mod tests {
                     matches!(
                         transform_forest
                             .transform_from_to(
-                                TransformFrameIdHash::new(&from),
-                                [TransformFrameIdHash::new(&to)].into_iter(),
+                                TransformFrameIdHash::new(from),
+                                std::iter::once(TransformFrameIdHash::new(to)),
                                 &|_| 1.0
                             )
                             .next(),

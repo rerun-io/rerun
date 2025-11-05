@@ -226,11 +226,11 @@ impl EntityTransformIdMapping {
         // That said, it rarely changes, so there's definitely an opportunity here for lazy updates!
         re_tracing::profile_function!();
 
-        let mut mapping = EntityTransformIdMapping::default();
+        let mut mapping = Self::default();
 
         // Determine mapping for all _visible_ data results.
         for data_result in query.iter_all_data_results() {
-            mapping.determine_frame_id_mapping_for(&ctx, &data_result);
+            mapping.determine_frame_id_mapping_for(ctx, data_result);
         }
 
         // The origin entity may not be visible, make sure it's included.
@@ -242,7 +242,7 @@ impl EntityTransformIdMapping {
                 .tree
                 .lookup_result_by_path(query.space_origin.hash())
         {
-            mapping.determine_frame_id_mapping_for(&ctx, origin_data_result);
+            mapping.determine_frame_id_mapping_for(ctx, origin_data_result);
         }
 
         mapping
