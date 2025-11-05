@@ -1379,10 +1379,35 @@ impl TimePanel {
         {
             let time_type = time_ctrl.time_type();
 
-            let mut time_str = self
-                .time_edit_string
-                .clone()
-                .unwrap_or_else(|| time_type.format(time_int, ctx.app_options().timestamp_format));
+            /// Pick number of decimals to show based on zoom level
+            ///
+            /// The zoom level is expressed as nanoseconds per ui point (logical pixel).
+            ///
+            /// The formatting should omit trailing sub-second zeroes as far as `subsecond_decimals` perimts it.
+            fn num_subsecond_decimals(nanos_per_point: f64) -> std::ops::RangeInclusive<usize> {
+                if 1e9 < nanos_per_point {
+                    0..=6
+                } else if 1e8 < nanos_per_point {
+                    1..=6
+                } else if 1e6 < nanos_per_point {
+                    3..=6
+                } else if 1e3 < nanos_per_point {
+                    6..=9
+                } else {
+                    9..=9
+                }
+            }
+
+            let subsecond_decimals =
+                num_subsecond_decimals(1.0 / self.time_ranges_ui.points_per_time);
+
+            let mut time_str = self.time_edit_string.clone().unwrap_or_else(|| {
+                time_type.format_opt(
+                    time_int,
+                    ctx.app_options().timestamp_format,
+                    subsecond_decimals,
+                )
+            });
 
             ui.style_mut().spacing.text_edit_width = 200.0;
 

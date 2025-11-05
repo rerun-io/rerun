@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 /// A signed duration represented as nanoseconds since unix epoch
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -43,13 +45,13 @@ impl Duration {
         self.0 as f64 * 1e-9
     }
 
-    /// Format as seconds, approximately.
-    pub fn format_secs(self) -> String {
+    /// The format will omit trailing sub-second zeroes as far as `subsecond_decimals` perimts it.
+    pub fn format_secs(self, subsecond_decimals: RangeInclusive<usize>) -> String {
         re_format::DurationFormatOptions::default()
             .with_always_sign(true)
             .with_only_seconds(true)
-            .with_min_decimals(0)
-            .with_max_decimals(6) // For time panel we want at least microsecond
+            .with_min_decimals(*subsecond_decimals.start())
+            .with_max_decimals(*subsecond_decimals.end())
             .format_nanos(self.as_nanos())
     }
 
@@ -59,7 +61,7 @@ impl Duration {
                 .with_always_sign(true)
                 .with_only_seconds(false)
                 .with_min_decimals(0)
-                .with_max_decimals(6) // For time panel we want at least microsecond
+                .with_max_decimals(9)
                 .format_nanos(self.as_nanos()),
         )
     }
@@ -161,12 +163,23 @@ mod tests {
 
     #[test]
     fn test_formatting_duration() {
-        assert_eq!(&Duration::from_micros(42_000_000).format_secs(), "+42s");
-        assert_eq!(&Duration::from_micros(69_000).format_secs(), "+0.069s");
-        assert_eq!(&Duration::from_micros(69_900).format_secs(), "+0.069 900s");
         assert_eq!(
-            &Duration::from_micros(42_123_000_000).format_secs(),
+            &Duration::from_micros(42_000_000).format_secs(0..=6),
+            "+42s"
+        );
+        assert_eq!(&Duration::from_micros(69_000).format_secs(0..=6), "+0.069s");
+        assert_eq!(
+            &Duration::from_micros(69_900).format_secs(0..=6),
+            "+0.069 900s"
+        );
+        assert_eq!(
+            &Duration::from_micros(42_123_000_000).format_secs(0..=6),
             "+42 123s"
+        );
+        assert_eq!(
+            &Duration::from_nanos(1_234_567_891).format_secs(0..=6),
+            "+1.234 568s",
+            "Should limit decimals and round"
         );
     }
 
@@ -186,6 +199,10 @@ mod tests {
         );
         assert_eq!(
             Duration::from_str("42us").unwrap(),
+            Duration::from_secs(0.000042)
+        );
+        assert_eq!(
+            Duration::from_str("42µs").unwrap(),
             Duration::from_secs(0.000042)
         );
         assert_eq!(
