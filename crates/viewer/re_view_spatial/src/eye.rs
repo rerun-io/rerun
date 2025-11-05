@@ -668,6 +668,9 @@ fn ease_out(t: f32) -> f32 {
 }
 
 impl EyeState {
+    /// Sets the eye in an interpolation state, which completes after [`EyeInterpolation::target_time`]
+    /// or when the interpolated eye has reached the eye either defined in blueprint or from the eye we're
+    /// currently tracking.
     pub fn start_interpolation(&mut self) {
         if let Some(start) = self.last_eye {
             self.interpolation = Some(EyeInterpolation {
@@ -870,6 +873,7 @@ impl EyeState {
                 )?
                 .is_none()
         {
+            // Calling [`Self::start_interpolation`] restarts the interpolation state.
             self.start_interpolation();
         }
 
