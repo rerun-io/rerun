@@ -626,7 +626,7 @@ fn pinhole3d_from_image_plane(
     pinhole_image_plane_distance: f64,
 ) -> glam::DAffine3 {
     let ResolvedPinholeProjection {
-        target: _, // TODO(andreas): Make use of this.
+        parent: _, // TODO(andreas): Make use of this.
         image_from_camera,
         resolution: _,
         view_coordinates,

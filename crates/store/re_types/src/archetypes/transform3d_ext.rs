@@ -18,8 +18,8 @@ impl Transform3D {
         mat3x3: None,
         relation: None,
         axis_length: None,
-        source_frame: None,
-        target_frame: None,
+        child_frame: None,
+        parent_frame: None,
     };
 
     /// Clear all the fields of a `Transform3D`.

@@ -41,7 +41,7 @@ for i in range(6 * 120):
         rr.Transform3D(
             translation=[np.sin(r_planet) * d_planet, np.cos(r_planet) * d_planet, 0.0],
             rotation=rr.RotationAxisAngle(axis=(1, 0, 0), degrees=20),
-            source_frame="tf#/sun/planet",
+            child_frame="tf#/sun/planet",
         ),
     )
     rr.log(
@@ -49,6 +49,6 @@ for i in range(6 * 120):
         rr.Transform3D(
             translation=[np.cos(r_moon) * d_moon, np.sin(r_moon) * d_moon, 0.0],
             relation=rr.TransformRelation.ChildFromParent,
-            source_frame="tf#/sun/planet/moon",
+            child_frame="tf#/sun/planet/moon",
         ),
     )

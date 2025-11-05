@@ -7,7 +7,7 @@ Some(
         PinholeTreeRoot {
             parent_tree_root: tf#/,
             pinhole_projection: ResolvedPinholeProjection {
-                target: tf#/top,
+                parent: tf#/top,
                 image_from_camera: PinholeProjection(
                     Mat3x3(
                         [

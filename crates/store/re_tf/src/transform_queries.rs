@@ -17,7 +17,7 @@ use vec1::smallvec_v1::SmallVec1;
 
 use crate::{
     PoseTransformArchetypeMap, ResolvedPinholeProjection,
-    transform_resolution_cache::SourceToTargetTransform,
+    transform_resolution_cache::ParentFromChildTransform,
 };
 
 /// Lists all archetypes except [`archetypes::InstancePoses3D`] that have their own instance poses.
@@ -52,7 +52,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
-) -> Option<SourceToTargetTransform> {
+) -> Option<ParentFromChildTransform> {
     // TODO(RR-2799): Output more than one target at once, doing the usual clamping - means probably we can merge a lot of code here with instance poses!
     // TODO(andreas): Filter out styling components.
     let results = entity_db.latest_at(
@@ -64,9 +64,9 @@ pub fn query_and_resolve_tree_transform_at_entity(
         return None;
     }
 
-    let target = results
+    let parent = results
         .component_mono_quiet::<components::TransformFrameId>(
-            archetypes::Transform3D::descriptor_target_frame().component,
+            archetypes::Transform3D::descriptor_parent_frame().component,
         )
         .map_or_else(
             || {
@@ -149,7 +149,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
         }
     }
 
-    Some(SourceToTargetTransform { transform, target })
+    Some(ParentFromChildTransform { transform, parent })
 }
 
 /// Queries all components that are part of pose transforms, returning the transform from child to parent.
@@ -361,7 +361,7 @@ pub fn query_and_resolve_pinhole_projection_at_entity(
         )
         .map(|(_index, image_from_camera)| ResolvedPinholeProjection {
             // Pinholes don't have an explicit target frame yet, so they always apply to the parent frame.
-            target: TransformFrameIdHash::from_entity_path(
+            parent: TransformFrameIdHash::from_entity_path(
                 &entity_path.parent().unwrap_or(EntityPath::root()),
             ),
 
