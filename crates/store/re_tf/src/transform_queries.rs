@@ -10,11 +10,9 @@ use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::archetypes::InstancePoses3D;
 use re_types::{
-    Archetype as _, ArchetypeName, Component as _, ComponentDescriptor, ComponentIdentifier,
-    TransformFrameIdHash,
+    ComponentIdentifier, TransformFrameIdHash,
     archetypes::{self},
     components,
-    reflection::ComponentDescriptorExt as _,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -97,7 +95,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
     // It's an error if there's more than one component. Warn in that case.
     let mono_log_level = re_log::Level::Warn;
 
-    // The order of the components here is important and checked by `debug_assert_transform_field_order`
+    // The order of the components here is important.
     if let Some(translation) = results.component_mono_with_log_level::<components::Translation3D>(
         identifier_translations,
         mono_log_level,
@@ -189,44 +187,12 @@ pub fn query_and_resolve_instance_poses_at_entity(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Vec<DAffine3> {
-    query_and_resolve_instance_from_pose_for_archetype_name(
-        entity_path,
-        entity_db,
-        query,
-        archetypes::InstancePoses3D::name(),
-        &archetypes::InstancePoses3D::descriptor_translations(),
-    )
-}
-
-/// Queries pose transforms for a specific archetype.
-///
-/// Note that the component for translation specifically may vary.
-/// (this is technical debt, we should fix this)
-fn query_and_resolve_instance_from_pose_for_archetype_name(
-    entity_path: &EntityPath,
-    entity_db: &EntityDb,
-    query: &LatestAtQuery,
-    archetype_name: ArchetypeName,
-    descriptor_translations: &ComponentDescriptor,
-) -> Vec<DAffine3> {
-    debug_assert_eq!(
-        descriptor_translations.component_type,
-        Some(components::PoseTranslation3D::name())
-    );
-    debug_assert_eq!(descriptor_translations.archetype, Some(archetype_name));
-    let identifier_translations = descriptor_translations.component;
-    let identifier_rotation_axis_angles = InstancePoses3D::descriptor_rotation_axis_angles()
-        .with_builtin_archetype(archetype_name)
-        .component;
-    let identifier_quaternions = InstancePoses3D::descriptor_quaternions()
-        .with_builtin_archetype(archetype_name)
-        .component;
-    let identifier_scales = InstancePoses3D::descriptor_scales()
-        .with_builtin_archetype(archetype_name)
-        .component;
-    let identifier_mat3x3 = InstancePoses3D::descriptor_mat3x3()
-        .with_builtin_archetype(archetype_name)
-        .component;
+    let identifier_translations = archetypes::InstancePoses3D::descriptor_translations().component;
+    let identifier_rotation_axis_angles =
+        InstancePoses3D::descriptor_rotation_axis_angles().component;
+    let identifier_quaternions = InstancePoses3D::descriptor_quaternions().component;
+    let identifier_scales = InstancePoses3D::descriptor_scales().component;
+    let identifier_mat3x3 = InstancePoses3D::descriptor_mat3x3().component;
 
     let result = entity_db.latest_at(
         query,
@@ -271,11 +237,11 @@ fn query_and_resolve_instance_from_pose_for_archetype_name(
     let batch_translation = result
         .component_batch::<components::PoseTranslation3D>(identifier_translations)
         .unwrap_or_default();
-    let batch_rotation_quat = result
-        .component_batch::<components::PoseRotationQuat>(identifier_quaternions)
-        .unwrap_or_default();
     let batch_rotation_axis_angle = result
         .component_batch::<components::PoseRotationAxisAngle>(identifier_rotation_axis_angles)
+        .unwrap_or_default();
+    let batch_rotation_quat = result
+        .component_batch::<components::PoseRotationQuat>(identifier_quaternions)
         .unwrap_or_default();
     let batch_scale = result
         .component_batch::<components::PoseScale3D>(identifier_scales)
@@ -285,39 +251,39 @@ fn query_and_resolve_instance_from_pose_for_archetype_name(
         .unwrap_or_default();
 
     if batch_translation.is_empty()
-        && batch_rotation_quat.is_empty()
         && batch_rotation_axis_angle.is_empty()
+        && batch_rotation_quat.is_empty()
         && batch_scale.is_empty()
         && batch_mat3x3.is_empty()
     {
         return Vec::new();
     }
     let mut iter_translation = clamped_or_nothing(batch_translation, max_num_instances);
-    let mut iter_rotation_quat = clamped_or_nothing(batch_rotation_quat, max_num_instances);
     let mut iter_rotation_axis_angle =
         clamped_or_nothing(batch_rotation_axis_angle, max_num_instances);
+    let mut iter_rotation_quat = clamped_or_nothing(batch_rotation_quat, max_num_instances);
     let mut iter_scale = clamped_or_nothing(batch_scale, max_num_instances);
     let mut iter_mat3x3 = clamped_or_nothing(batch_mat3x3, max_num_instances);
 
     (0..max_num_instances)
         .map(|_| {
-            // We apply these in a specific order - see `debug_assert_transform_field_order`
+            // We apply these in a specific order.
             let mut transform = DAffine3::IDENTITY;
             if let Some(translation) = iter_translation.next() {
                 transform = convert::pose_translation_3d_to_daffine3(translation);
-            }
-            if let Some(rotation_quat) = iter_rotation_quat.next() {
-                if let Ok(rotation_quat) = convert::pose_rotation_quat_to_daffine3(rotation_quat) {
-                    transform *= rotation_quat;
-                } else {
-                    transform = DAffine3::ZERO;
-                }
             }
             if let Some(rotation_axis_angle) = iter_rotation_axis_angle.next() {
                 if let Ok(axis_angle) =
                     convert::pose_rotation_axis_angle_to_daffine3(rotation_axis_angle)
                 {
                     transform *= axis_angle;
+                } else {
+                    transform = DAffine3::ZERO;
+                }
+            }
+            if let Some(rotation_quat) = iter_rotation_quat.next() {
+                if let Ok(rotation_quat) = convert::pose_rotation_quat_to_daffine3(rotation_quat) {
+                    transform *= rotation_quat;
                 } else {
                     transform = DAffine3::ZERO;
                 }

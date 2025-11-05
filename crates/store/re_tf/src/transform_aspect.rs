@@ -8,7 +8,6 @@ bitflags::bitflags! {
     #[derive(Debug, Clone, Copy)]
     pub struct TransformAspect: u8 {
         /// The entity defines one of more frame relationships, i.e. any non-style component of [`archetypes::Transform3D`].
-        // TODO(RR-2511): Add other components here.
         const Frame = 1 << 0;
 
         /// The entity has instance poses, i.e. any non-style component of [`archetypes::InstancePoses3D`].
@@ -23,6 +22,7 @@ bitflags::bitflags! {
 }
 
 impl TransformAspect {
+    // TODO: shouldn't do this from type but from archetype
     /// Converts a component type to a transform aspect.
     pub fn from_component_type(component_type: ComponentType) -> Self {
         let component_info = TransformComponentTypeInfo::get();

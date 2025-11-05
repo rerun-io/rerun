@@ -1,9 +1,11 @@
 use std::iter;
 
 use ordered_float::NotNan;
+use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
 use re_types::{
     ArrowString,
     archetypes::Capsules3D,
+    components,
     components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels},
 };
 use re_view::clamped_or_nothing;
@@ -90,6 +92,9 @@ impl Capsules3DVisualizer {
                 glam::Affine3A::IDENTITY,
                 ProcMeshBatch {
                     half_sizes: &half_sizes,
+                    centers: batch.translations,
+                    rotation_axis_angles: batch.rotation_axis_angles.as_slice(),
+                    quaternions: batch.quaternions,
                     meshes,
                     fill_modes: iter::repeat(batch.fill_mode),
                     line_radii: batch.line_radii,
@@ -113,6 +118,9 @@ struct Capsules3DComponentData<'a> {
     radii: &'a [Radius],
 
     // Clamped to edge
+    translations: &'a [components::PoseTranslation3D],
+    rotation_axis_angles: ChunkComponentIterItem<components::PoseRotationAxisAngle>,
+    quaternions: &'a [components::PoseRotationQuat],
     colors: &'a [Color],
     labels: Vec<ArrowString>,
     line_radii: &'a [Radius],
@@ -193,6 +201,14 @@ impl VisualizerSystem for Capsules3DVisualizer {
                 let timeline = ctx.query.timeline();
                 let all_lengths_indexed = iter_slices::<f32>(&all_length_chunks, timeline);
                 let all_radii_indexed = iter_slices::<f32>(&all_radius_chunks, timeline);
+                let all_translations =
+                    results.iter_as(timeline, Capsules3D::descriptor_translations().component);
+                let all_rotation_axis_angles = results.iter_as(
+                    timeline,
+                    Capsules3D::descriptor_rotation_axis_angles().component,
+                );
+                let all_quaternions =
+                    results.iter_as(timeline, Capsules3D::descriptor_quaternions().component);
                 let all_colors =
                     results.iter_as(timeline, Capsules3D::descriptor_colors().component);
                 let all_labels =
@@ -206,9 +222,12 @@ impl VisualizerSystem for Capsules3DVisualizer {
                 let all_class_ids =
                     results.iter_as(timeline, Capsules3D::descriptor_class_ids().component);
 
-                let data = re_query::range_zip_2x6(
+                let data = re_query::range_zip_2x9(
                     all_lengths_indexed,
                     all_radii_indexed,
+                    all_translations.slice::<[f32; 3]>(),
+                    all_rotation_axis_angles.component_slow::<components::PoseRotationAxisAngle>(),
+                    all_quaternions.slice::<[f32; 4]>(),
                     all_colors.slice::<u32>(),
                     all_line_radii.slice::<f32>(),
                     all_fill_modes.slice::<u8>(),
@@ -221,6 +240,9 @@ impl VisualizerSystem for Capsules3DVisualizer {
                         _index,
                         lengths,
                         radii,
+                        translations,
+                        rotation_axis_angles,
+                        quaternions,
                         colors,
                         line_radii,
                         fill_modes,
@@ -231,6 +253,9 @@ impl VisualizerSystem for Capsules3DVisualizer {
                         Capsules3DComponentData {
                             lengths: bytemuck::cast_slice(lengths),
                             radii: bytemuck::cast_slice(radii),
+                            translations: translations.map_or(&[], bytemuck::cast_slice),
+                            rotation_axis_angles: rotation_axis_angles.unwrap_or_default(),
+                            quaternions: quaternions.map_or(&[], bytemuck::cast_slice),
                             colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
                             labels: labels.unwrap_or_default(),
                             line_radii: line_radii
