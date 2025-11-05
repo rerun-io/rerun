@@ -188,15 +188,20 @@ fn run_view_ui_and_save_snapshot(
         // * 7: The logo is back to normal (frame 0) again.
 
         test_context.with_blueprint_ctx(|ctx, _| {
-            ViewProperty::from_archetype::<EyeControls3D>(
+            let property = ViewProperty::from_archetype::<EyeControls3D>(
                 ctx.current_blueprint(),
                 ctx.blueprint_query(),
                 view_id,
-            )
-            .save_blueprint_component(
+            );
+            property.save_blueprint_component(
                 &ctx,
                 &EyeControls3D::descriptor_position(),
                 &Position3D::new(0.0, 8.0, 10.0),
+            );
+            property.save_blueprint_component(
+                &ctx,
+                &EyeControls3D::descriptor_look_target(),
+                &Position3D::new(0.0, 0.0, 2.0),
             );
         });
 
@@ -211,6 +216,7 @@ fn run_view_ui_and_save_snapshot(
                     TimeControlCommand::SetTime((time as i64).into()),
                 ],
             );
+            test_context.handle_system_commands(&harness.ctx);
 
             harness.run();
 

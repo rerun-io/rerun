@@ -133,9 +133,10 @@ fn run_view_ui_and_save_snapshot(
         .save_blueprint_component(
             &ctx,
             &EyeControls3D::descriptor_position(),
-            &Position3D::new(0.0, 8.0, 10.0),
+            &Position3D::new(0.0, 5.0, 3.0),
         );
     });
+    test_context.handle_system_commands(&harness.ctx);
     harness.run();
 
     harness.snapshot(name);
