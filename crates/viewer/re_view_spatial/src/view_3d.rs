@@ -147,7 +147,12 @@ impl ViewClass for SpatialView3D {
 
                 let speed = match kind {
                     Eye3DKind::FirstPerson => {
-                        0.1 * view_state.bounding_boxes.current.size().length() as f64
+                        let l = view_state.bounding_boxes.current.size().length() as f64;
+                        if l.is_finite() {
+                            0.1 * l
+                        } else {
+                            1.0
+                        }
                     },
                     Eye3DKind::Orbital => {
                         let Ok(position) = eye.component_or_fallback::<Position3D>(ctx.view_ctx, EyeControls3D::descriptor_position().component) else {
