@@ -2,8 +2,8 @@ use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
 use re_renderer::renderer::{GpuMeshInstance, LineStripFlags};
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, RenderContext};
+use re_types::ComponentIdentifier;
 use re_types::components::{self, FillMode};
-use re_types::{ArchetypeName, ComponentIdentifier};
 use re_view::{clamped_or_nothing, process_annotation_slices, process_color_slice};
 use re_viewer_context::{QueryContext, ViewQuery, ViewSystemExecutionError, typed_fallback_for};
 
@@ -80,12 +80,10 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
     }
 
     /// Add a batch of data to be drawn.
-    #[expect(clippy::too_many_arguments)]
     pub fn add_batch(
         &mut self,
         query_context: &QueryContext<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
-        archetype_name: ArchetypeName,
         color_component: ComponentIdentifier,
         show_labels_component: ComponentIdentifier,
         constant_instance_transform: glam::Affine3A,
@@ -100,9 +98,8 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
         // Draw as many boxes as we have max(instances, boxes), all components get repeated over that number.
         // TODO(#7026): We should formalize this kind of hybrid joining better.
 
-        let target_from_instances = ent_context
-            .transform_info
-            .target_from_instances(archetype_name);
+        // TODO: I broke all of these.
+        let target_from_instances = ent_context.transform_info.target_from_instances();
 
         let num_instances = batch.half_sizes.len().max(target_from_instances.len());
 

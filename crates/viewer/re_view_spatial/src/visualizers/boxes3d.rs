@@ -1,7 +1,7 @@
 use std::iter;
 
 use re_types::{
-    Archetype as _, ArrowString,
+    ArrowString,
     archetypes::Boxes3D,
     components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels},
 };
@@ -52,7 +52,6 @@ impl Boxes3DVisualizer {
             builder.add_batch(
                 query_context,
                 ent_context,
-                Boxes3D::name(),
                 Boxes3D::descriptor_colors().component,
                 Boxes3D::descriptor_show_labels().component,
                 constant_instance_transform,

@@ -1,7 +1,7 @@
 use std::iter;
 
 use re_types::{
-    Archetype as _, ArrowString,
+    ArrowString,
     archetypes::Cylinders3D,
     components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels},
 };
@@ -75,7 +75,6 @@ impl Cylinders3DVisualizer {
             builder.add_batch(
                 query_context,
                 ent_context,
-                Cylinders3D::name(),
                 Cylinders3D::descriptor_colors().component,
                 Cylinders3D::descriptor_show_labels().component,
                 glam::Affine3A::IDENTITY,

@@ -2,7 +2,7 @@ use std::iter;
 
 use ordered_float::NotNan;
 use re_types::{
-    Archetype as _, ArrowString,
+    ArrowString,
     archetypes::Capsules3D,
     components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels},
 };
@@ -85,7 +85,6 @@ impl Capsules3DVisualizer {
             builder.add_batch(
                 query_context,
                 ent_context,
-                Capsules3D::name(),
                 Capsules3D::descriptor_colors().component,
                 Capsules3D::descriptor_show_labels().component,
                 glam::Affine3A::IDENTITY,

@@ -1,7 +1,7 @@
 use std::iter;
 
 use re_types::{
-    Archetype as _, ArrowString,
+    ArrowString,
     archetypes::Ellipsoids3D,
     components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels},
 };
@@ -57,7 +57,6 @@ impl Ellipsoids3DVisualizer {
             builder.add_batch(
                 query_context,
                 ent_context,
-                Ellipsoids3D::name(),
                 Ellipsoids3D::descriptor_colors().component,
                 Ellipsoids3D::descriptor_show_labels().component,
                 glam::Affine3A::IDENTITY,

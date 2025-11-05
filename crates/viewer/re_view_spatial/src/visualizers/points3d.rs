@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
-    Archetype as _, ArrowString,
+    ArrowString,
     archetypes::Points3D,
     components::{ClassId, Color, KeypointId, Position3D, Radius, ShowLabels},
 };
@@ -108,7 +108,7 @@ impl Points3DVisualizer {
             // for performance).
             for world_from_obj in ent_context
                 .transform_info
-                .target_from_instances(Points3D::name())
+                .target_from_instances()
                 .iter()
                 .map(|transform| transform.as_affine3a())
             {
