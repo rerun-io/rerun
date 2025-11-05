@@ -21,6 +21,10 @@ rr.log("sun", rr.Points3D([0.0, 0.0, 0.0], radii=1.0, colors=[255, 200, 10]), rr
 rr.log("planet", rr.Points3D([0.0, 0.0, 0.0], radii=0.4, colors=[40, 80, 200]), rr.CoordinateFrame("planet_frame"))
 rr.log("moon", rr.Points3D([0.0, 0.0, 0.0], radii=0.15, colors=[180, 180, 180]), rr.CoordinateFrame("moon_frame"))
 
+# The viewer automatically creates a 3D view at `/`. To connect it to our transform hierarchy, we set its coordinate frame
+# to `sun_frame` as well. Alternatively, we could also set a blueprint that makes `/sun` the space origin.
+rr.log("/", rr.CoordinateFrame("sun_frame"))
+
 # Draw fixed paths where the planet & moon move.
 d_planet = 6.0
 d_moon = 3.0
@@ -28,9 +32,6 @@ angles = np.arange(0.0, 1.01, 0.01) * np.pi * 2
 circle = np.array([np.sin(angles), np.cos(angles), angles * 0.0], dtype=np.float32).transpose()
 rr.log("planet_path", rr.LineStrips3D(circle * d_planet), rr.CoordinateFrame("sun_frame"))
 rr.log("moon_path", rr.LineStrips3D(circle * d_moon), rr.CoordinateFrame("planet_frame"))
-
-# TODO: have to connect up tree to `tf#/` to show anything
-rr.log("todo_remove", rr.Transform3D(source_frame="sun_frame", target_frame="tf#/"))
 
 # Movement via transforms.
 for i in range(6 * 120):

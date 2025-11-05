@@ -4042,7 +4042,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "space_origin",
                         display_name: "Space origin",
                         component_type: "rerun.blueprint.components.ViewOrigin".into(),
-                        docstring_md: "The \"anchor point\" of this view.\n\nDefaults to the root path '/' if not specified.\n\nThe transform at this path forms the reference point for all scene->world transforms in this view.\nI.e. the position of this entity path in space forms the origin of the coordinate system in this view.\nFurthermore, this is the primary indicator for heuristics on what entities we show in this view.",
+                        docstring_md: "The \"anchor point\" of this view.\n\nIn other words, the coordinate frame at this entity becomes the reference frame of the view.\n\nDefaults to the root path '/' if not specified.\n\nThe transform at this path forms the reference point for all scene->world transforms in this view.\nI.e. the position of this entity path in space forms the origin of the coordinate system in this view.\nFurthermore, this is the primary indicator for heuristics on what entities we show in this view.",
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
