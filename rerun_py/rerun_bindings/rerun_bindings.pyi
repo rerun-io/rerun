@@ -1619,8 +1619,8 @@ class TableEntry(Entry):
         """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
 
     @property
-    def url(self) -> str:
-        """The entry's URL."""
+    def storage_url(self) -> str:
+        """The table's storage URL."""
 
 class TableInsertMode:
     """The modes of operation when writing tables."""

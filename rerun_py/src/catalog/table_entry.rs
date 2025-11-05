@@ -78,9 +78,9 @@ impl PyTableEntry {
             .call_method1("from_stream", (df,))
     }
 
-    /// The entry's URL.
+    /// The table's storage URL.
     #[getter]
-    pub fn url(&self) -> String {
+    pub fn storage_url(&self) -> String {
         self.url.clone().unwrap_or_default()
     }
 }
