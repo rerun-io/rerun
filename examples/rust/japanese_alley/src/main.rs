@@ -18,7 +18,7 @@ struct Args {
     filepath: std::path::PathBuf,
 }
 
-// TODO: This example is still missing `tf`-style transforms.
+// TODO(grtlr): This example is still missing `tf`-style transforms.
 
 fn main() -> anyhow::Result<()> {
     re_log::setup_logging();
@@ -72,7 +72,7 @@ fn main() -> anyhow::Result<()> {
 
     let image_lens =
         LensBuilder::for_input_column(EntityPathFilter::all(), "foxglove.CompressedImage:message")
-            // TODO: We leave out the `format` column because the `png` contents are not a valid MIME type.
+            // TODO(grtlr): We leave out the `format` column because the `png` contents are not a valid MIME type.
             .add_component_column(
                 EncodedImage::descriptor_blob(),
                 [
@@ -82,7 +82,7 @@ fn main() -> anyhow::Result<()> {
             )
             .build();
 
-    // TODO(Michael): add support for frame_id.
+    // TODO(michael): add support for frame_id.
     let video_lens =
         LensBuilder::for_input_column(EntityPathFilter::all(), "foxglove.CompressedVideo:message")
             .add_component_column(

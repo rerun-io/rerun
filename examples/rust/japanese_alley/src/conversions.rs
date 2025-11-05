@@ -68,7 +68,7 @@ impl Transform for StringToCodecUint32 {
 /// Tests that supported codecs are correctly converted, and checks case-insensitivity and null handling.
 #[test]
 fn test_string_to_codec_uint32() {
-    // Note: mixed codecs normally don't make sense, but should be fine from from a pure conversion perspective.
+    // Note: mixed codecs normally don't make sense, but should be fine from a pure conversion perspective.
     let input_array = StringArray::from(vec![Some("H264"), None, Some("h264"), Some("H265")]);
     assert_eq!(input_array.null_count(), 1);
     let output_array = StringToCodecUint32::default()
