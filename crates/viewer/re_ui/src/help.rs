@@ -8,6 +8,7 @@ pub struct Help {
     title: Option<String>,
     docs_link: Option<String>,
     sections: Vec<HelpSection>,
+    horizontal_spacing: f32,
 }
 
 /// A single section, separated by a [`egui::Separator`].
@@ -47,6 +48,7 @@ impl Help {
             title: Some(title.to_string()),
             docs_link: None,
             sections: Vec::new(),
+            horizontal_spacing: 12.0,
         }
     }
 
@@ -56,7 +58,14 @@ impl Help {
             title: None,
             docs_link: None,
             sections: Vec::new(),
+            horizontal_spacing: 12.0,
         }
+    }
+
+    /// Minimum distance between key and value
+    pub fn horizontal_spacing(mut self, horizontal_spacing: f32) -> Self {
+        self.horizontal_spacing = horizontal_spacing;
+        self
     }
 
     /// Add a docs link, to be shown in the top right corner.
@@ -128,6 +137,7 @@ impl Help {
             title,
             docs_link,
             sections,
+            horizontal_spacing,
         } = self;
 
         let show_heading = title.is_some() || docs_link.is_some();
@@ -164,12 +174,12 @@ impl Help {
                 Self::separator(ui);
             }
 
-            section_ui(ui, section);
+            section_ui(ui, section, horizontal_spacing);
         }
     }
 }
 
-fn section_ui(ui: &mut Ui, section: HelpSection) {
+fn section_ui(ui: &mut Ui, section: HelpSection, horizontal_spacing: f32) {
     let tokens = ui.tokens();
 
     match section {
@@ -178,7 +188,7 @@ fn section_ui(ui: &mut Ui, section: HelpSection) {
         }
         HelpSection::Controls(controls) => {
             for mut row in controls {
-                egui::Sides::new().spacing(12.0).show(
+                egui::Sides::new().spacing(horizontal_spacing).show(
                     ui,
                     |ui| {
                         ui.strong(RichText::new(&row.text).size(11.0));
