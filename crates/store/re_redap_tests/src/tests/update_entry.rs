@@ -3,7 +3,7 @@ use arrow::datatypes::{DataType, Field, Schema};
 use re_protos::cloud::v1alpha1::{
     ext::{
         CreateDatasetEntryRequest, CreateTableEntryRequest, CreateTableEntryResponse, DatasetEntry,
-        EntryDetailsUpdate, LanceTable, ProviderDetails as _, TableEntry, UpdateEntryRequest,
+        EntryDetailsUpdate, LanceTable, ProviderDetails, TableEntry, UpdateEntryRequest,
         UpdateEntryResponse,
     },
     rerun_cloud_service_server::RerunCloudService,
@@ -206,9 +206,7 @@ async fn create_table_entry(
 
     let table_url =
         url::Url::from_directory_path(tmp_dir.path()).expect("create url from tmp directory");
-    let provider_details = LanceTable { table_url }
-        .try_as_any()
-        .expect("convert provider details to any");
+    let provider_details = ProviderDetails::LanceTable(LanceTable { table_url });
 
     service
         .create_table_entry(tonic::Request::new(
