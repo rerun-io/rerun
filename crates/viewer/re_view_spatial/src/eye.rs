@@ -194,7 +194,7 @@ impl EyeInterpolation {
     }
 }
 
-/// Some non-persistant state for the eye.
+/// Some non-persistent state for the eye.
 ///
 /// Note: we use "eye" so we don't confuse this with logged camera.
 #[derive(Default, Clone, Debug, PartialEq)]
