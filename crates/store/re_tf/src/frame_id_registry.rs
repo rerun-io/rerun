@@ -28,7 +28,7 @@ impl FrameIdRegistry {
     /// Implementation note:
     /// Having the registration of frame ids separate from other frame id related bookkeeping makes things more modular
     /// at the price of additional overhead. However, we generally assume that retrieving `TransformFrameId`/`TransformFrameIdHash` from a string is fast.
-    pub fn register_all_ids_in_chunk(&mut self, chunk: &re_chunk_store::Chunk) {
+    pub fn register_all_frames_in_chunk(&mut self, chunk: &re_chunk_store::Chunk) {
         // Ensure all implicit frames from this entity all the way up to the root are known.
         // Note that in-between entities may never be mentioned in any chunk, but we want to make sure they're known to the system.
         let mut entity_path = chunk.entity_path();
@@ -83,7 +83,7 @@ mod tests {
     fn test_register_all_ids_in_chunk() {
         let mut registry = FrameIdRegistry::default();
 
-        registry.register_all_ids_in_chunk(
+        registry.register_all_frames_in_chunk(
             &Chunk::builder("root/robot/hand/pinky")
                 .with_archetype_auto_row(
                     TimePoint::STATIC,
@@ -92,7 +92,7 @@ mod tests {
                 .build()
                 .unwrap(),
         );
-        registry.register_all_ids_in_chunk(
+        registry.register_all_frames_in_chunk(
             &Chunk::builder("root/surprise")
                 .with_archetype_auto_row(
                     TimePoint::STATIC,

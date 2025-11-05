@@ -742,7 +742,7 @@ impl TransformResolutionCache {
             if event.kind == re_chunk_store::ChunkStoreDiffKind::Addition {
                 // Since entity paths lead to implicit frames, we have to prime our lookup table with them even if this chunk doesn't have transform data.
                 self.frame_id_registry
-                    .register_all_ids_in_chunk(&event.chunk);
+                    .register_all_frames_in_chunk(&event.chunk);
             }
 
             let aspects = TransformAspect::transform_aspects_of(&event.chunk);
@@ -776,7 +776,7 @@ impl TransformResolutionCache {
 
         for chunk in chunks {
             // Since entity paths lead to implicit frames, we have to prime our lookup table with them even if this chunk doesn't have transform data.
-            self.frame_id_registry.register_all_ids_in_chunk(chunk);
+            self.frame_id_registry.register_all_frames_in_chunk(chunk);
 
             let aspects = TransformAspect::transform_aspects_of(chunk);
             if aspects.is_empty() {
