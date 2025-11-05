@@ -1476,10 +1476,14 @@ impl App {
             }
 
             UICommand::NextRecording => {
-                re_recording_panel::RecordingPanelCommand::SelectNextRecording.send(egui_ctx);
+                self.state
+                    .recording_panel
+                    .send_command(re_recording_panel::RecordingPanelCommand::SelectNextRecording);
             }
             UICommand::PreviousRecording => {
-                re_recording_panel::RecordingPanelCommand::SelectPreviousRecording.send(egui_ctx);
+                self.state.recording_panel.send_command(
+                    re_recording_panel::RecordingPanelCommand::SelectPreviousRecording,
+                );
             }
 
             UICommand::Undo => {

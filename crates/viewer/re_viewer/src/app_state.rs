@@ -57,6 +57,8 @@ pub struct AppState {
     blueprint_time_panel: re_time_panel::TimePanel,
     #[serde(skip)]
     blueprint_tree: re_blueprint_tree::BlueprintTree,
+    #[serde(skip)]
+    pub(crate) recording_panel: re_recording_panel::RecordingPanel,
 
     #[serde(skip)]
     welcome_screen: crate::ui::WelcomeScreen,
@@ -117,6 +119,7 @@ impl Default for AppState {
             selection_panel: Default::default(),
             time_panel: Default::default(),
             blueprint_time_panel: re_time_panel::TimePanel::new_blueprint_panel(),
+            recording_panel: Default::default(),
             blueprint_tree: Default::default(),
             welcome_screen: Default::default(),
             datastore_ui: Default::default(),
@@ -570,7 +573,7 @@ impl AppState {
                                         .max_height(max_recordings_height)
                                         .default_height(160.0_f32.max(recordings_min_height))
                                         .show_inside(ui, |ui| {
-                                            re_recording_panel::recordings_panel_ui(
+                                            self.recording_panel.show_panel(
                                                 &ctx,
                                                 ui,
                                                 redap_servers,
@@ -578,7 +581,7 @@ impl AppState {
                                             );
                                         });
                                 } else {
-                                    re_recording_panel::recordings_panel_ui(
+                                    self.recording_panel.show_panel(
                                         &ctx,
                                         ui,
                                         redap_servers,
@@ -678,11 +681,6 @@ impl AppState {
                 self.open_url_modal.ui(ui);
                 self.share_modal
                     .ui(&ctx, ui, startup_options.web_viewer_base_url().as_ref());
-
-                re_recording_panel::RecordingPanelCommand::handle_recording_panel_commands(
-                    &ctx,
-                    &self.redap_servers,
-                );
 
                 // Only in integration tests: call the test hook if any.
                 #[cfg(feature = "testing")]
