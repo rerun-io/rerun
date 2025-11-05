@@ -137,12 +137,6 @@ class Entry:
         return self._inner.name
 
     @property
-    def catalog(self) -> _catalog.CatalogClient:
-        # TODO: Ideally this should return a wrapped CatalogClient
-        # For now, return the inner catalog
-        return self._inner.catalog
-
-    @property
     def kind(self) -> EntryKind:
         return self._inner.kind
 

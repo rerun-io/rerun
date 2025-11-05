@@ -14,7 +14,6 @@ The tests in `test_current/` and `test_draft/` are intended to match such that o
 ```
 git diff --no-index rerun_py/tests/api_sandbox/test_current rerun_py/tests/api_sandbox/test_draft
 ```
- 
 
 Tests outside of these directories are just misc. for illustration purposes.
 
@@ -26,5 +25,5 @@ This makes heavy use of [`inline_snapshots`](https://github.com/15r10nk/inline-s
 Run this command to fill and fix all snapshots:
 
 ```
- pytest -c rerun_py/pyproject.toml rerun_py/tests/api_sandbox --inline-snapshot=fix,create 
+ pytest -c rerun_py/pyproject.toml rerun_py/tests/api_sandbox --inline-snapshot=fix,create
 ```
