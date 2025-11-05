@@ -186,7 +186,7 @@ impl ViewClass for SpatialView3D {
                     return Position3D::ZERO;
                 }
 
-                Position3D::new(center.x, center.y, center.z)
+                Position3D::from(center)
             },
         );
 
@@ -237,7 +237,7 @@ impl ViewClass for SpatialView3D {
 
                 let eye_pos = center - radius * eye_dir;
 
-                Position3D::new(eye_pos.x, eye_pos.y, eye_pos.z)
+                Position3D::from(eye_pos)
             },
         );
 

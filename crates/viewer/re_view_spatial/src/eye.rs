@@ -10,7 +10,6 @@ use re_types::{
         components::{AngularSpeed, Eye3DKind},
     },
     components::{LinearSpeed, Position3D, Vector3D},
-    datatypes::Vec3D,
 };
 use re_ui::ContextExt as _;
 use re_view::controls::{
@@ -735,7 +734,7 @@ impl EyeState {
                 eye_controls.save_blueprint_component(
                     ctx.viewer_ctx,
                     &EyeControls3D::descriptor_position(),
-                    &Position3D::new(eye.pos.x, eye.pos.y, eye.pos.z),
+                    &Position3D::from(eye.pos),
                 );
             }
 
@@ -743,7 +742,7 @@ impl EyeState {
                 eye_controls.save_blueprint_component(
                     ctx.viewer_ctx,
                     &EyeControls3D::descriptor_look_target(),
-                    &Position3D::new(eye.look_target.x, eye.look_target.y, eye.look_target.z),
+                    &Position3D::from(eye.look_target),
                 );
             }
 
@@ -751,7 +750,7 @@ impl EyeState {
                 eye_controls.save_blueprint_component(
                     ctx.viewer_ctx,
                     &EyeControls3D::descriptor_eye_up(),
-                    &Vector3D(Vec3D::new(eye.eye_up.x, eye.eye_up.y, eye.eye_up.z)),
+                    &Vector3D::from(eye.eye_up),
                 );
             }
         }

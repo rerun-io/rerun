@@ -39,12 +39,6 @@ fn test_transparent_geometry<A: AsComponents>(
         });
     }
 
-    let pos = |d: f32| {
-        let len = 3.5;
-        let dir = Vec3::new(0.25, d, 0.25).normalize();
-        len * dir
-    };
-
     let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view_blueprint =
             ViewBlueprint::new(SpatialView3D::identifier(), RecommendedView::root());
@@ -74,7 +68,7 @@ fn test_transparent_geometry<A: AsComponents>(
             test_context.run_with_single_view(ui, view_id);
         });
 
-    for (i, d) in [-1.0, 1.0].into_iter().enumerate() {
+    for (i, orientation_y) in [-1.0, 1.0].into_iter().enumerate() {
         // Flip the camera orientation to ensure sorting works as expected.
 
         test_context.with_blueprint_ctx(|ctx, _| {
@@ -84,12 +78,14 @@ fn test_transparent_geometry<A: AsComponents>(
                 view_id,
             );
 
-            let v = pos(d);
+            let len = 3.5;
+            let dir = Vec3::new(0.25, orientation_y, 0.25).normalize();
+            let position = len * dir;
 
             eye_property.save_blueprint_component(
                 &ctx,
                 &EyeControls3D::descriptor_position(),
-                &Position3D::new(v.x, v.y, v.z),
+                &Position3D::from(position),
             );
         });
         // Write blueprint by handling system commands.
