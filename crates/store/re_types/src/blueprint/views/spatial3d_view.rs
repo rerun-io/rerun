@@ -32,7 +32,7 @@ pub struct Spatial3DView {
     /// Configuration for the 3D line grid.
     pub line_grid: crate::blueprint::archetypes::LineGrid3D,
 
-    /// Configuration of debug drawing in the 3d view.
+    /// Configuration of debug drawing in the 3D view.
     pub spatial_information: crate::blueprint::archetypes::SpatialInformation,
 
     /// Configuration for the 3D eye

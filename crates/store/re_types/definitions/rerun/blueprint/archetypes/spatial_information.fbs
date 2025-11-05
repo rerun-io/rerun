@@ -1,6 +1,6 @@
 namespace rerun.blueprint.archetypes;
 
-/// This configures extra drawing config for the 3d view.
+/// This configures extra drawing config for the 3D view.
 table SpatialInformation (
     "attr.rerun.scope": "blueprint"
 ) {

@@ -15,7 +15,7 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: This configures extra drawing config for the 3d view.
+    /// **Archetype**: This configures extra drawing config for the 3D view.
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///

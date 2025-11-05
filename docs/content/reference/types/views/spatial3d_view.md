@@ -22,7 +22,7 @@ Configuration for the 3D line grid.
 * `stroke_width`: How thick the lines should be in ui units.
 * `color`: Color used for the grid.
 ### `spatial_information`
-Configuration of debug drawing in the 3d view.
+Configuration of debug drawing in the 3D view.
 
 * `show_axes`: Whether axes should be shown at the origin.
 * `show_bounding_box`: Whether the bounding box should be shown.

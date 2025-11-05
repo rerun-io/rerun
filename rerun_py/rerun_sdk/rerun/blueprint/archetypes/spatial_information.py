@@ -24,7 +24,7 @@ __all__ = ["SpatialInformation"]
 @define(str=False, repr=False, init=False)
 class SpatialInformation(Archetype):
     """
-    **Archetype**: This configures extra drawing config for the 3d view.
+    **Archetype**: This configures extra drawing config for the 3D view.
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """

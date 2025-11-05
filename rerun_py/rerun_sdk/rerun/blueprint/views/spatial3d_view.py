@@ -56,6 +56,10 @@ class Spatial3DView(View):
             background=[100, 149, 237],
             # Configure the eye controls.
             eye_controls=rrb.EyeControls3D(
+                position=(0.0, 0.0, 2.0),
+                look_target=(0.0, 2.0, 0.0),
+                eye_up=(-1.0, 0.0, 0.0),
+                spin_speed=0.2,
                 kind=rrb.Eye3DKind.FirstPerson,
                 speed=20.0,
             ),
@@ -67,6 +71,11 @@ class Spatial3DView(View):
                 plane=rr.components.Plane3D.XY.with_distance(-5.0),
                 stroke_width=2.0,  # Makes the grid lines twice as thick as usual.
                 color=[255, 255, 255, 128],  # Colors the grid a half-transparent white.
+            ),
+            spatial_information=rrb.SpatialInformation(
+                show_axes=True,
+                show_bounding_box=True,
+                show_smoothed_bounding_box=True,
             ),
         ),
         collapse_panels=True,
@@ -151,7 +160,7 @@ class Spatial3DView(View):
         line_grid:
             Configuration for the 3D line grid.
         spatial_information:
-            Configuration of debug drawing in the 3d view.
+            Configuration of debug drawing in the 3D view.
         eye_controls:
             Configuration for the 3D eye
         time_ranges:
