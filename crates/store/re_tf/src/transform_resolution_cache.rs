@@ -572,6 +572,7 @@ impl TransformsForChildFrame {
             events: TransformsForChildFrameEvents::new_empty(),
         }
     }
+
     #[inline]
     pub fn latest_at_transform(
         &mut self,

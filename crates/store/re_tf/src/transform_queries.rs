@@ -52,6 +52,7 @@ pub enum TransformError {
         entity_path: EntityPath,
         component: ComponentIdentifier,
     },
+
     #[error("missing transform on entity `{entity_path}`")]
     MissingTransform { entity_path: EntityPath },
 }
