@@ -337,8 +337,10 @@ impl TransformForest {
             }
         } else {
             // We're not pointing at a new root. So we ourselves must be a root!
-            // We could be a (lonely) pinhole with no 3D parent?
             let previous_root = if let Some(pinhole_projection) = &top_of_stack.pinhole_projection {
+                // We're a (lonely) pinhole with no 3D parent.
+                // Usually pinholes are embedded into a 3D space, but this one doesn't have any more parents,
+                // meaning that everything in this entire tree is 2D.
                 let new_root_info = TransformTreeRootInfo::Pinhole(PinholeTreeRoot {
                     parent_tree_root: top_of_stack.child_frame,
                     pinhole_projection: pinhole_projection.clone(),
