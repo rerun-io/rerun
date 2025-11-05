@@ -3,11 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
+import rerun_draft as rr
 from datafusion import col
 from inline_snapshot import snapshot as inline_snapshot
-
-import rerun_draft as rr
-
 
 if TYPE_CHECKING:
     from pathlib import Path

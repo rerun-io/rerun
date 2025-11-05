@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import datetime
 import sys
-from typing import TYPE_CHECKING
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import rerun as rr
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from pathlib import Path
 
 
 RERUN_DRAFT_PATH = str(Path(__file__).parent)

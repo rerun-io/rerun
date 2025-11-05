@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from rerun import catalog as _catalog
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     import datafusion
+    import pyarrow as pa
 
 
 class CatalogClient:
@@ -85,7 +88,7 @@ class CatalogClient:
         """Writes record batches into an existing table."""
         return self._inner.write_table(name, batches, insert_mode)
 
-    def append_to_table(self, table_name: str, **named_params) -> None:
+    def append_to_table(self, table_name: str, **named_params: Any) -> None:
         """Convert Python objects into columns of data and append them to a table."""
         return self._inner.append_to_table(table_name, **named_params)
 
@@ -117,7 +120,7 @@ class Entry:
         return self._inner.name
 
     @property
-    def catalog(self):
+    def catalog(self) -> _catalog.CatalogClient:
         # TODO: Ideally this should return a wrapped CatalogClient
         # For now, return the inner catalog
         return self._inner.catalog
@@ -127,11 +130,11 @@ class Entry:
         return self._inner.kind
 
     @property
-    def created_at(self):
+    def created_at(self) -> datetime:
         return self._inner.created_at
 
     @property
-    def updated_at(self):
+    def updated_at(self) -> datetime:
         return self._inner.updated_at
 
     def delete(self) -> None:
@@ -151,62 +154,65 @@ class DatasetEntry(Entry):
     def manifest_url(self) -> str:
         return self._inner.manifest_url
 
-    def arrow_schema(self):
+    def arrow_schema(self) -> pa.Schema:
         return self._inner.arrow_schema()
 
-    def blueprint_dataset_id(self):
+    def blueprint_dataset_id(self) -> EntryId | None:
         return self._inner.blueprint_dataset_id()
 
-    def blueprint_dataset(self):
-        return self._inner.blueprint_dataset()
+    def blueprint_dataset(self) -> DatasetEntry | None:
+        result = self._inner.blueprint_dataset()
+        return DatasetEntry(result) if result is not None else None
 
-    def default_blueprint_partition_id(self):
+    def default_blueprint_partition_id(self) -> str | None:
         return self._inner.default_blueprint_partition_id()
 
     def set_default_blueprint_partition_id(self, partition_id: str | None) -> None:
         return self._inner.set_default_blueprint_partition_id(partition_id)
 
-    def schema(self):
+    def schema(self) -> Any:
         return self._inner.schema()
 
     def partition_ids(self) -> list[str]:
         return self._inner.partition_ids()
 
-    def partition_table(self):
+    def partition_table(self) -> Any:
         return self._inner.partition_table()
 
-    def manifest(self):
+    def manifest(self) -> Any:
         return self._inner.manifest()
 
     def partition_url(
         self,
         partition_id: str,
         timeline: str | None = None,
-        start = None,
-        end = None,
+        start=None,
+        end=None,
     ) -> str:
         return self._inner.partition_url(partition_id, timeline, start, end)
 
     def register(self, recording_uri: str, *, recording_layer: str = "base", timeout_secs: int = 60) -> str:
         return self._inner.register(recording_uri, recording_layer=recording_layer, timeout_secs=timeout_secs)
 
-    def register_batch(self, recording_uris: list[str], *, recording_layers: list[str] = []):
+    def register_batch(self, recording_uris: list[str], *, recording_layers: list[str] | None = None) -> Any:
+        if recording_layers is None:
+            recording_layers = []
         return self._inner.register_batch(recording_uris, recording_layers=recording_layers)
 
-    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None):
+    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> Any:
         return self._inner.register_prefix(recordings_prefix, layer_name)
 
-    def download_partition(self, partition_id: str):
+    def download_partition(self, partition_id: str) -> Any:
         return self._inner.download_partition(partition_id)
 
     def dataframe_query_view(
         self,
         *,
         index: str | None,
-        contents,
+        contents: Any,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
-    ):
+    ) -> DataframeQueryView:
         return self._inner.dataframe_query_view(
             index=index,
             contents=contents,
@@ -217,8 +223,8 @@ class DatasetEntry(Entry):
     def create_fts_index(
         self,
         *,
-        column,
-        time_index,
+        column: Any,
+        time_index: Any,
         store_position: bool = False,
         base_tokenizer: str = "simple",
     ) -> None:
@@ -232,13 +238,13 @@ class DatasetEntry(Entry):
     def create_vector_index(
         self,
         *,
-        column,
-        time_index,
+        column: Any,
+        time_index: Any,
         num_partitions: int | None = None,
         target_partition_num_rows: int | None = None,
         num_sub_vectors: int = 16,
-        distance_metric = ...,
-    ):
+        distance_metric: Any = ...,
+    ) -> Any:
         return self._inner.create_vector_index(
             column=column,
             time_index=time_index,
@@ -251,13 +257,13 @@ class DatasetEntry(Entry):
     def list_indexes(self) -> list:
         return self._inner.list_indexes()
 
-    def delete_indexes(self, column):
+    def delete_indexes(self, column: Any) -> list[Any]:
         return self._inner.delete_indexes(column)
 
-    def search_fts(self, query: str, column):
+    def search_fts(self, query: str, column: Any) -> Any:
         return self._inner.search_fts(query, column)
 
-    def search_vector(self, query, column, top_k: int):
+    def search_vector(self, query: Any, column: Any, top_k: int) -> Any:
         return self._inner.search_vector(query, column, top_k)
 
     def do_maintenance(
@@ -265,7 +271,7 @@ class DatasetEntry(Entry):
         optimize_indexes: bool = False,
         retrain_indexes: bool = False,
         compact_fragments: bool = False,
-        cleanup_before = None,
+        cleanup_before=None,
         unsafe_allow_recent_cleanup: bool = False,
     ) -> None:
         return self._inner.do_maintenance(
@@ -283,13 +289,13 @@ class TableEntry(Entry):
     def __init__(self, inner: _catalog.TableEntry) -> None:
         super().__init__(inner)
 
-    def __datafusion_table_provider__(self):
+    def __datafusion_table_provider__(self) -> Any:
         return self._inner.__datafusion_table_provider__()
 
-    def df(self):
+    def df(self) -> Any:
         return self._inner.df()
 
-    def to_arrow_reader(self):
+    def to_arrow_reader(self) -> pa.RecordBatchReader:
         return self._inner.to_arrow_reader()
 
 

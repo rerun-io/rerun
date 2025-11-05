@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from .catalog import CatalogClient
 from rerun import server as _server
+
+from .catalog import CatalogClient
 
 
 class Server:
