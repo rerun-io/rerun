@@ -242,25 +242,36 @@ impl TransformForest {
     ) -> Self {
         re_tracing::profile_function!();
 
+        // Algorithm overview:
+        //
+        // We're using a dynamic programming approach that minimizes queries into the transform cache.
+        //
+        // 1) `walk_towards_parent`:
+        // For a given unprocessed frame, we walk towards their parents until there's either no more connection or we hit a frame
+        // that we already visited. As we walk, we collect all the encountered transforms into a "transform stack" and mark visited frames as processed.
+        // 2) `add_stack_of_transforms`:
+        // Then, apply this transform stack to the existing datastructures.
+        // First, we figure out which root this stack belongs to, then we walk the stack backwards,
+        // computing the respective transforms to the root as we go.
+        //
+        // Repeat steps 1) & 2) until we've processed all frames.
+
         let transforms = transform_cache.transforms_for_timeline(query.timeline());
 
-        let mut unprocessed_sources: IntSet<_> = transforms.all_child_frames().collect();
+        let mut unprocessed_frames: IntSet<_> = transforms.all_child_frames().collect();
 
         // We also have to add implicit frame ids for all entities in the entity _tree_.
         // That's more than just the entity paths that have things logged on since there might be arbitrary steps without any data.
         entity_db.tree().visit_children_recursively(|entity_path| {
-            unprocessed_sources.insert(TransformFrameIdHash::from_entity_path(entity_path));
+            unprocessed_frames.insert(TransformFrameIdHash::from_entity_path(entity_path));
         });
 
         let mut transform_stack = Vec::new(); // Keep pushing & draining from same vector as a simple performance optimization.
 
-        let mut forest = Self {
-            root_from_frame: IntMap::default(),
-            roots: IntMap::default(),
-        };
+        let mut forest = Self::default();
 
         // Pop an arbitrary source frame from the list of unprocessed frames.
-        while let Some(current_frame) = unprocessed_sources.iter().next().copied() {
+        while let Some(current_frame) = unprocessed_frames.iter().next().copied() {
             // Walk as long as we can until we hit something we already processed or end up in a dead end.
             walk_towards_parent(
                 entity_db,
@@ -268,7 +279,7 @@ impl TransformForest {
                 current_frame,
                 transform_cache.frame_id_registry(),
                 transforms,
-                &mut unprocessed_sources,
+                &mut unprocessed_frames,
                 &mut transform_stack,
             );
 
@@ -306,7 +317,7 @@ impl TransformForest {
         let (mut root_frame, mut root_from_target) = if let Some(parent_from_child) =
             top_of_stack.parent_from_child.as_ref()
         {
-            // We have a connection further up the stack. That might we must have stopped because we already know that target!
+            // We have a connection further up the stack. That means we must have stopped because we already know that target!
             if let Some(root_from_frame) = self.root_from_frame.get(&parent_from_child.parent) {
                 // Yes, we can short-circuit to a known root!
                 debug_assert!(self.roots.contains_key(&root_from_frame.root));
@@ -420,7 +431,7 @@ fn walk_towards_parent(
     current_frame: TransformFrameIdHash,
     id_registry: &FrameIdRegistry,
     transforms: &CachedTransformsForTimeline,
-    unprocessed_sources: &mut IntSet<TransformFrameIdHash>,
+    unprocessed_frames: &mut IntSet<TransformFrameIdHash>,
     transform_stack: &mut Vec<ParentChildTransforms>,
 ) {
     re_tracing::profile_function!();
@@ -432,7 +443,7 @@ fn walk_towards_parent(
 
     let mut next_frame = Some(current_frame);
     while let Some(current_frame) = next_frame
-        && unprocessed_sources.remove(&current_frame)
+        && unprocessed_frames.remove(&current_frame)
     {
         // We either already processed this frame, or we reached the end of our path if this source is not in the list of unprocessed frames.
         let mut transforms = transforms_at(current_frame, entity_db, query, transforms);
