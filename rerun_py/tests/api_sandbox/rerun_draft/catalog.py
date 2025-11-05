@@ -102,6 +102,23 @@ class CatalogClient:
         return self._inner.ctx
 
 
+class _SectionTableWrapper:
+    """Wrapper that renames partition columns to section columns in the dataframe."""
+
+    def __init__(self, partition_table: Any) -> None:
+        self._partition_table = partition_table
+        # Get the dataframe and rename columns eagerly
+        self._df = partition_table.df().with_column_renamed("rerun_partition_id", "rerun_section_id")
+
+    def df(self) -> Any:
+        """Get the dataframe with renamed columns."""
+        return self._df
+
+    def __getattr__(self, name: str) -> Any:
+        """Forward all other attribute accesses to the underlying dataframe."""
+        return getattr(self._df, name)
+
+
 class Entry:
     """An entry in the catalog."""
 
@@ -164,32 +181,33 @@ class DatasetEntry(Entry):
         result = self._inner.blueprint_dataset()
         return DatasetEntry(result) if result is not None else None
 
-    def default_blueprint_partition_id(self) -> str | None:
+    def default_blueprint_section_id(self) -> str | None:
         return self._inner.default_blueprint_partition_id()
 
-    def set_default_blueprint_partition_id(self, partition_id: str | None) -> None:
-        return self._inner.set_default_blueprint_partition_id(partition_id)
+    def set_default_blueprint_section_id(self, section_id: str | None) -> None:
+        return self._inner.set_default_blueprint_partition_id(section_id)
 
     def schema(self) -> Any:
         return self._inner.schema()
 
-    def partition_ids(self) -> list[str]:
+    def section_ids(self) -> list[str]:
         return self._inner.partition_ids()
 
-    def partition_table(self) -> Any:
-        return self._inner.partition_table()
+    def section_table(self) -> Any:
+        # Get the partition table from the inner object
+        return _SectionTableWrapper(self._inner.partition_table())
 
     def manifest(self) -> Any:
         return self._inner.manifest()
 
-    def partition_url(
+    def section_url(
         self,
-        partition_id: str,
+        section_id: str,
         timeline: str | None = None,
         start=None,
         end=None,
     ) -> str:
-        return self._inner.partition_url(partition_id, timeline, start, end)
+        return self._inner.partition_url(section_id, timeline, start, end)
 
     def register(self, recording_uri: str, *, recording_layer: str = "base", timeout_secs: int = 60) -> str:
         return self._inner.register(recording_uri, recording_layer=recording_layer, timeout_secs=timeout_secs)
@@ -202,8 +220,8 @@ class DatasetEntry(Entry):
     def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> Any:
         return self._inner.register_prefix(recordings_prefix, layer_name)
 
-    def download_partition(self, partition_id: str) -> Any:
-        return self._inner.download_partition(partition_id)
+    def download_section(self, section_id: str) -> Any:
+        return self._inner.download_partition(section_id)
 
     def dataframe_query_view(
         self,
