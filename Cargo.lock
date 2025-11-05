@@ -2283,17 +2283,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "custom_mcap_lenses"
-version = "0.26.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "arrow",
- "clap",
- "re_arrow_util",
- "rerun",
-]
-
-[[package]]
 name = "custom_store_subscriber"
 version = "0.27.0-alpha.8+dev"
 dependencies = [
@@ -3913,6 +3902,17 @@ name = "four-cc"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "795cbfc56d419a7ce47ccbb7504dd9a5b7c484c083c356e797de08bd988d9629"
+
+[[package]]
+name = "foxglove_lenses"
+version = "0.26.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "arrow",
+ "clap",
+ "re_arrow_util",
+ "rerun",
+]
 
 [[package]]
 name = "fs4"

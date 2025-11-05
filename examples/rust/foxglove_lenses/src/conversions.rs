@@ -23,7 +23,7 @@ pub fn list_xyz_struct_to_list_fixed(list_array: &ListArray) -> Result<ListArray
 
 /// Converts a list of video codec strings to Rerun VideoCodec values (as u32).
 pub fn list_string_to_list_codec_uint32(list_array: &ListArray) -> Result<ListArray, Error> {
-    let pipeline = MapList::new(StringToCodecUint32::default());
+    let pipeline = MapList::new(StringToCodecUInt32::default());
     Ok(pipeline.transform(list_array)?)
 }
 
@@ -32,7 +32,7 @@ pub fn list_string_to_list_codec_uint32(list_array: &ListArray) -> Result<ListAr
 #[derive(Default)]
 struct StringToCodecUInt32 {}
 
-impl Transform for StringToCodecUint32 {
+impl Transform for StringToCodecUInt32 {
     type Source = StringArray;
     type Target = UInt32Array;
 
@@ -71,7 +71,7 @@ fn test_string_to_codec_uint32() {
     // Note: mixed codecs normally don't make sense, but should be fine from a pure conversion perspective.
     let input_array = StringArray::from(vec![Some("H264"), None, Some("h264"), Some("H265")]);
     assert_eq!(input_array.null_count(), 1);
-    let output_array = StringToCodecUint32::default()
+    let output_array = StringToCodecUInt32::default()
         .transform(&input_array)
         .expect("transformation failed");
     assert_eq!(output_array.null_count(), 1);
@@ -91,7 +91,7 @@ fn test_string_to_codec_uint32_unsupported() {
     let unsupported_codecs = ["vp9", "av1"];
     for &bad_codec in &unsupported_codecs {
         let input_array = StringArray::from(vec![Some("h264"), Some(bad_codec)]);
-        let result = StringToCodecUint32::default().transform(&input_array);
+        let result = StringToCodecUInt32::default().transform(&input_array);
         assert!(result.is_err());
         let Err(re_arrow_util::transform::Error::UnexpectedValue { actual, .. }) = result else {
             panic!("wrong error type");

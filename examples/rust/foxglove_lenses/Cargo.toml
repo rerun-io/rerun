@@ -1,5 +1,5 @@
 [package]
-name = "custom_mcap_lenses"
+name = "foxglove_lenses"
 version = "0.26.0-alpha.1+dev"
 edition = "2024"
 rust-version = "1.88"
