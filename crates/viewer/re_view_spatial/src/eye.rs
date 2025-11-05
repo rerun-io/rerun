@@ -369,8 +369,6 @@ impl ControlEye {
         }
     }
 
-    /// Only valid if we [`Self::eye_up`] is non-zero.
-    ///
     /// `[-tau/4, +tau/4]`
     fn pitch(&self) -> f32 {
         self.fwd().dot(self.up()).clamp(-1.0, 1.0).asin()
