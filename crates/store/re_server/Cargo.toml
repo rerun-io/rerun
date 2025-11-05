@@ -25,7 +25,7 @@ default = []
 
 # TODO(lancedb/lance#3073): lance depends on system protoc, so lance must be an opt-in dependency
 ## Enable reading in LanceDB files.
-lance = ["dep:lance"]
+lance = ["dep:lance", "re_redap_tests/lance"]
 
 [dependencies]
 

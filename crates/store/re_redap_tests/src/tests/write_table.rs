@@ -1,7 +1,10 @@
-use crate::tests::common::RerunCloudServiceExt as _;
+use crate::RecordBatchExt;
+use crate::tests::common::{RerunCloudServiceExt as _, concat_record_batches};
 use crate::utils::streaming::make_streaming_request;
 use crate::utils::tables::create_simple_lance_dataset;
 use arrow::array::RecordBatch;
+use arrow::array::record_batch;
+use arrow::datatypes as arrow_schema;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
 use re_protos::cloud::v1alpha1::TableInsertMode;
@@ -102,6 +105,8 @@ pub async fn write_table(service: impl RerunCloudService) {
     let returned_batches = get_table_batches(&service, &entry).await;
     let returned_rows: usize = returned_batches.iter().map(|batch| batch.num_rows()).sum();
     assert_eq!(returned_rows, 2 * original_rows);
+    let combined = concat_record_batches(&returned_batches);
+    insta::assert_snapshot!("append_table", combined.format_snapshot(false));
 
     let overwrite_batches = original_batches
         .iter()
@@ -126,4 +131,42 @@ pub async fn write_table(service: impl RerunCloudService) {
     let returned_batches = get_table_batches(&service, &entry).await;
     let returned_rows: usize = returned_batches.iter().map(|batch| batch.num_rows()).sum();
     assert_eq!(returned_rows, original_rows);
+    let combined = concat_record_batches(&returned_batches);
+    insta::assert_snapshot!("overwrite_table", combined.format_snapshot(false));
+
+    let replacement_batch = record_batch!(
+        ("boolean_nullable", Boolean, [Some(false), Some(true), None]),
+        ("int32_nullable", Int32, [Some(11), None, Some(12)]),
+        ("int64_not_nullable", Int64, [18, 19, 20]),
+        ("utf8_not_nullable", Utf8, ["xyz", "pqr", "stu"])
+    )
+    .expect("Unable to create record batch");
+
+    // let replace_batches = original_batches
+    //     .iter()
+    //     .map(|batch| WriteTableRequest {
+    //         dataframe_part: Some(batch.into()),
+    //         insert_mode: TableInsertMode::Replace.into(),
+    //     })
+    //     .collect_vec();
+    let replace_batches = vec![WriteTableRequest {
+        dataframe_part: Some(replacement_batch.into()),
+        insert_mode: TableInsertMode::Replace.into(),
+    }];
+
+    service
+        .write_table(
+            make_streaming_request(replace_batches)
+                .with_entry_id(entry.id)
+                .expect("Unable to set entry_id on write table"),
+        )
+        .await
+        .expect("Failed to write table in replace mode");
+
+    // We replace with existing rows, so should get the same number back
+    let returned_batches = get_table_batches(&service, &entry).await;
+    let returned_rows: usize = returned_batches.iter().map(|batch| batch.num_rows()).sum();
+    assert_eq!(returned_rows, original_rows);
+    let combined = concat_record_batches(&returned_batches);
+    insta::assert_snapshot!("replace_rows", combined.format_snapshot(false));
 }

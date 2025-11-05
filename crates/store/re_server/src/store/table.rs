@@ -6,12 +6,10 @@ use datafusion::{
     error::DataFusionError, execution::SessionStateBuilder, logical_expr::dml::InsertOp,
 };
 use futures::StreamExt as _;
-
-#[cfg(feature = "lance")]
 use lance::{
     Dataset as LanceDataset,
     datafusion::LanceTableProvider,
-    dataset::{WriteMode, WriteParams},
+    dataset::{MergeInsertBuilder, WhenMatched, WhenNotMatched, WriteMode, WriteParams},
 };
 
 use re_log_types::EntryId;
@@ -170,7 +168,34 @@ impl Table {
                     .map_err(|err| DataFusionError::External(err.into()))?;
             }
             InsertOp::Replace => {
-                exec_err!("Invalid insert operation. Only append and overwrite are supported.")?;
+                let key_columns: Vec<_> = dataset
+                    .schema()
+                    .fields
+                    .iter()
+                    .filter_map(|field| {
+                        if field
+                            .metadata
+                            .get("rerun_table_index")
+                            .map(|v| v.to_lowercase() == "true")
+                            == Some(true)
+                        {
+                            Some(field.name.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                let mut builder = MergeInsertBuilder::try_new(Arc::clone(dataset), key_columns)?;
+
+                let op = builder
+                    .when_not_matched(WhenNotMatched::DoNothing)
+                    .when_matched(WhenMatched::UpdateAll)
+                    .try_build()?;
+
+                let (merge_dataset, _merge_stats) = op.execute_reader(reader).await?;
+
+                *dataset = merge_dataset;
             }
             InsertOp::Overwrite => {
                 params.mode = WriteMode::Overwrite;
