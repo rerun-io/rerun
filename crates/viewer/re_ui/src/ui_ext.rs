@@ -1084,7 +1084,7 @@ pub trait UiExt {
     fn re_hyperlink(
         &mut self,
         text: impl Into<egui::WidgetText>,
-        url: impl ToString,
+        url: impl Into<String>,
         always_new_tab: bool,
     ) -> egui::Response {
         let ui = self.ui_mut();
@@ -1099,10 +1099,10 @@ pub trait UiExt {
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
 
             if response.clicked_with_open_in_background() {
-                ui.ctx().open_url(egui::OpenUrl::new_tab(url.to_string()));
+                ui.ctx().open_url(egui::OpenUrl::new_tab(url.into()));
             } else if response.clicked() {
                 ui.ctx().open_url(egui::OpenUrl {
-                    url: url.to_string(),
+                    url: url.into(),
                     new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
                 });
             }
