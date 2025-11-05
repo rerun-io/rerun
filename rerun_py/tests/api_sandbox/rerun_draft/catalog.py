@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from rerun import catalog as _catalog
+
+if TYPE_CHECKING:
+    import datafusion
 
 
 class CatalogClient:
+    """Client for a remote Rerun catalog server."""
+
     def __init__(self, address: str, token: str | None = None) -> None:
         self._inner = _catalog.CatalogClient(address, token)
 
@@ -11,70 +18,279 @@ class CatalogClient:
         return repr(self._inner)
 
     def all_entries(self) -> list[Entry]:
-        return self._inner.all_entries()
+        """Returns a list of all entries in the catalog."""
+        return [Entry(e) for e in self._inner.all_entries()]
 
     def dataset_entries(self) -> list[DatasetEntry]:
-        return self._inner.dataset_entries()
+        """Returns a list of all dataset entries in the catalog."""
+        return [DatasetEntry(e) for e in self._inner.dataset_entries()]
 
     def table_entries(self) -> list[TableEntry]:
-        return self._inner.table_entries()
+        """Returns a list of all table entries in the catalog."""
+        return [TableEntry(e) for e in self._inner.table_entries()]
 
     def entry_names(self) -> list[str]:
+        """Returns a list of all entry names in the catalog."""
         return self._inner.entry_names()
 
     def dataset_names(self) -> list[str]:
+        """Returns a list of all dataset names in the catalog."""
         return self._inner.dataset_names()
 
     def table_names(self) -> list[str]:
+        """Returns a list of all table names in the catalog."""
         return self._inner.table_names()
 
-    def entries(self):
+    def entries(self) -> datafusion.DataFrame:
+        """Returns a DataFrame containing all entries in the catalog."""
         return self._inner.entries()
 
-    def datasets(self):
+    def datasets(self) -> datafusion.DataFrame:
+        """Returns a DataFrame containing all dataset entries in the catalog."""
         return self._inner.datasets()
 
-    def tables(self):
+    def tables(self) -> datafusion.DataFrame:
+        """Returns a DataFrame containing all table entries in the catalog."""
         return self._inner.tables()
 
     def get_dataset_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
-        return self._inner.get_dataset_entry(id=id, name=name)
+        """Returns a dataset entry by its ID or name."""
+        return DatasetEntry(self._inner.get_dataset_entry(id=id, name=name))
 
     def get_table_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
-        return self._inner.get_table_entry(id=id, name=name)
+        """Returns a table entry by its ID or name."""
+        return TableEntry(self._inner.get_table_entry(id=id, name=name))
 
     def get_dataset(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
-        return self._inner.get_dataset(id=id, name=name)
+        """Returns a dataset by its ID or name."""
+        return DatasetEntry(self._inner.get_dataset(id=id, name=name))
 
-    def get_table(self, *, id: EntryId | str | None = None, name: str | None = None):
+    def get_table(self, *, id: EntryId | str | None = None, name: str | None = None) -> datafusion.DataFrame:
+        """Returns a table by its ID or name as a DataFrame."""
         return self._inner.get_table(id=id, name=name)
 
     def create_dataset(self, name: str) -> DatasetEntry:
-        return self._inner.create_dataset(name)
+        """Creates a new dataset with the given name."""
+        return DatasetEntry(self._inner.create_dataset(name))
 
     def register_table(self, name: str, url: str) -> TableEntry:
-        return self._inner.register_table(name, url)
+        """Registers a foreign Lance table as a new table entry."""
+        return TableEntry(self._inner.register_table(name, url))
 
-    def create_table_entry(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
-        return self._inner.create_table_entry(name, schema, url)
+    def create_table_entry(self, name: str, schema, url: str) -> TableEntry:
+        """Create and register a new table."""
+        return TableEntry(self._inner.create_table_entry(name, schema, url))
 
-    def write_table(self, name: str, batches, insert_mode: TableInsertMode) -> None:
+    def write_table(self, name: str, batches, insert_mode) -> None:
+        """Writes record batches into an existing table."""
         return self._inner.write_table(name, batches, insert_mode)
 
     def append_to_table(self, table_name: str, **named_params) -> None:
+        """Convert Python objects into columns of data and append them to a table."""
         return self._inner.append_to_table(table_name, **named_params)
 
     def do_global_maintenance(self) -> None:
+        """Perform maintenance tasks on the whole system."""
         return self._inner.do_global_maintenance()
 
     @property
-    def ctx(self):
+    def ctx(self) -> datafusion.SessionContext:
+        """Returns a DataFusion session context for querying the catalog."""
         return self._inner.ctx
 
 
-Entry = _catalog.Entry
-DatasetEntry = _catalog.DatasetEntry
-TableEntry = _catalog.TableEntry
+class Entry:
+    """An entry in the catalog."""
+
+    def __init__(self, inner: _catalog.Entry) -> None:
+        self._inner = inner
+
+    def __repr__(self) -> str:
+        return repr(self._inner)
+
+    @property
+    def id(self) -> EntryId:
+        return self._inner.id
+
+    @property
+    def name(self) -> str:
+        return self._inner.name
+
+    @property
+    def catalog(self):
+        # TODO: Ideally this should return a wrapped CatalogClient
+        # For now, return the inner catalog
+        return self._inner.catalog
+
+    @property
+    def kind(self) -> EntryKind:
+        return self._inner.kind
+
+    @property
+    def created_at(self):
+        return self._inner.created_at
+
+    @property
+    def updated_at(self):
+        return self._inner.updated_at
+
+    def delete(self) -> None:
+        return self._inner.delete()
+
+    def update(self, *, name: str | None = None) -> None:
+        return self._inner.update(name=name)
+
+
+class DatasetEntry(Entry):
+    """A dataset entry in the catalog."""
+
+    def __init__(self, inner: _catalog.DatasetEntry) -> None:
+        super().__init__(inner)
+
+    @property
+    def manifest_url(self) -> str:
+        return self._inner.manifest_url
+
+    def arrow_schema(self):
+        return self._inner.arrow_schema()
+
+    def blueprint_dataset_id(self):
+        return self._inner.blueprint_dataset_id()
+
+    def blueprint_dataset(self):
+        return self._inner.blueprint_dataset()
+
+    def default_blueprint_partition_id(self):
+        return self._inner.default_blueprint_partition_id()
+
+    def set_default_blueprint_partition_id(self, partition_id: str | None) -> None:
+        return self._inner.set_default_blueprint_partition_id(partition_id)
+
+    def schema(self):
+        return self._inner.schema()
+
+    def partition_ids(self) -> list[str]:
+        return self._inner.partition_ids()
+
+    def partition_table(self):
+        return self._inner.partition_table()
+
+    def manifest(self):
+        return self._inner.manifest()
+
+    def partition_url(
+        self,
+        partition_id: str,
+        timeline: str | None = None,
+        start = None,
+        end = None,
+    ) -> str:
+        return self._inner.partition_url(partition_id, timeline, start, end)
+
+    def register(self, recording_uri: str, *, recording_layer: str = "base", timeout_secs: int = 60) -> str:
+        return self._inner.register(recording_uri, recording_layer=recording_layer, timeout_secs=timeout_secs)
+
+    def register_batch(self, recording_uris: list[str], *, recording_layers: list[str] = []):
+        return self._inner.register_batch(recording_uris, recording_layers=recording_layers)
+
+    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None):
+        return self._inner.register_prefix(recordings_prefix, layer_name)
+
+    def download_partition(self, partition_id: str):
+        return self._inner.download_partition(partition_id)
+
+    def dataframe_query_view(
+        self,
+        *,
+        index: str | None,
+        contents,
+        include_semantically_empty_columns: bool = False,
+        include_tombstone_columns: bool = False,
+    ):
+        return self._inner.dataframe_query_view(
+            index=index,
+            contents=contents,
+            include_semantically_empty_columns=include_semantically_empty_columns,
+            include_tombstone_columns=include_tombstone_columns,
+        )
+
+    def create_fts_index(
+        self,
+        *,
+        column,
+        time_index,
+        store_position: bool = False,
+        base_tokenizer: str = "simple",
+    ) -> None:
+        return self._inner.create_fts_index(
+            column=column,
+            time_index=time_index,
+            store_position=store_position,
+            base_tokenizer=base_tokenizer,
+        )
+
+    def create_vector_index(
+        self,
+        *,
+        column,
+        time_index,
+        num_partitions: int | None = None,
+        target_partition_num_rows: int | None = None,
+        num_sub_vectors: int = 16,
+        distance_metric = ...,
+    ):
+        return self._inner.create_vector_index(
+            column=column,
+            time_index=time_index,
+            num_partitions=num_partitions,
+            target_partition_num_rows=target_partition_num_rows,
+            num_sub_vectors=num_sub_vectors,
+            distance_metric=distance_metric,
+        )
+
+    def list_indexes(self) -> list:
+        return self._inner.list_indexes()
+
+    def delete_indexes(self, column):
+        return self._inner.delete_indexes(column)
+
+    def search_fts(self, query: str, column):
+        return self._inner.search_fts(query, column)
+
+    def search_vector(self, query, column, top_k: int):
+        return self._inner.search_vector(query, column, top_k)
+
+    def do_maintenance(
+        self,
+        optimize_indexes: bool = False,
+        retrain_indexes: bool = False,
+        compact_fragments: bool = False,
+        cleanup_before = None,
+        unsafe_allow_recent_cleanup: bool = False,
+    ) -> None:
+        return self._inner.do_maintenance(
+            optimize_indexes=optimize_indexes,
+            retrain_indexes=retrain_indexes,
+            compact_fragments=compact_fragments,
+            cleanup_before=cleanup_before,
+            unsafe_allow_recent_cleanup=unsafe_allow_recent_cleanup,
+        )
+
+
+class TableEntry(Entry):
+    """A table entry in the catalog."""
+
+    def __init__(self, inner: _catalog.TableEntry) -> None:
+        super().__init__(inner)
+
+    def __datafusion_table_provider__(self):
+        return self._inner.__datafusion_table_provider__()
+
+    def df(self):
+        return self._inner.df()
+
+    def to_arrow_reader(self):
+        return self._inner.to_arrow_reader()
 
 
 AlreadyExistsError = _catalog.AlreadyExistsError
