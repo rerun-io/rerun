@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used)]
+
 use std::sync::Arc;
 
 use re_arrow_combinators::*;
@@ -16,8 +18,7 @@ fn wrap_in_record_batch(array: ArrayRef) -> RecordBatch {
         vec![Field::new("col", array.data_type().clone(), true)],
         Default::default(),
     ));
-    RecordBatch::try_new_with_options(schema, vec![array], &RecordBatchOptions::default())
-        .unwrap()
+    RecordBatch::try_new_with_options(schema, vec![array], &RecordBatchOptions::default()).unwrap()
 }
 
 struct DisplayRB<T: Array + Clone + 'static>(T);
@@ -180,9 +181,9 @@ fn add_one_to_leaves() {
         .then(MapList::new(MapFixedSizeList::new(MapPrimitive::<
             arrow::datatypes::Float64Type,
             _,
-        >::new(
-            |x| x + 1.0
-        ))));
+        >::new(|x| {
+            x + 1.0
+        }))));
 
     let result = pipeline.transform(&array).unwrap();
 
@@ -220,9 +221,7 @@ fn replace_nulls() {
         .then(MapList::new(StructToFixedList::new(["x", "y"])))
         .then(MapList::new(MapFixedSizeList::new(ReplaceNull::<
             arrow::datatypes::Float64Type,
-        >::new(
-            1337.0
-        ))));
+        >::new(1337.0))));
 
     let result = pipeline.transform(&array).unwrap();
 
