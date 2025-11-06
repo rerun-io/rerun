@@ -840,6 +840,7 @@ impl TimePanel {
                         ui,
                         row_rect,
                         &item,
+                        time_commands,
                     );
                 }
             }
@@ -1045,6 +1046,7 @@ impl TimePanel {
                             ui,
                             row_rect,
                             &item,
+                            time_commands,
                         );
                     }
                 }
@@ -1097,6 +1099,7 @@ impl TimePanel {
         ui: &egui::Ui,
         row_rect: Rect,
         item: &TimePanelItem,
+        time_commands: &mut Vec<TimeControlCommand>,
     ) {
         let hovered_time = data_density_graph::data_density_graph_ui(
             &mut self.data_density_graph_painter,
@@ -1112,6 +1115,16 @@ impl TimePanel {
 
         if let Some(hovered_time) = hovered_time {
             ctx.selection_state().set_hovered(item.to_item());
+
+            if ui.input(|i| i.pointer.primary_clicked()) {
+                ctx.command_sender()
+                    .send_system(SystemCommand::SetSelection(item.to_item().into()));
+
+                time_commands.push(TimeControlCommand::SetTime(hovered_time.into()));
+                time_commands.push(TimeControlCommand::Pause);
+            } else {
+                ctx.selection_state().set_hovered(item.to_item());
+            }
 
             if ui.ctx().dragged_id().is_none() {
                 // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
