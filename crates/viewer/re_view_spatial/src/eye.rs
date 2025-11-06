@@ -486,7 +486,7 @@ impl ControlEye {
         let zoom_factor = egui_ctx.input(|input| {
             // egui's default horizontal_scroll_modifier is shift, which is also our speed-up modifier.
             // This means that a user who wants to speed up scroll-to-zoom will generate a horizontal scroll delta.
-            // To support that, we have to check and use the horizontal delta if no vertical delta is present.
+            // To support that, we have to check and use the horizontal delta if no vertical delta is present (see: #11813).
             let is_maybe_horizontal = input.smooth_scroll_delta.y == 0.;
             let scroll_delta = if is_maybe_horizontal {
                 input.smooth_scroll_delta.x
