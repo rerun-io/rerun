@@ -1907,7 +1907,7 @@ fn copy_time_properties_context_menu(ui: &mut egui::Ui, time: TimeReal) {
 
 /// A vertical line that shows the current time.
 ///
-/// This function both paints it and allows click and drag to interact with the current tim.e
+/// This function both paints it and allows click and drag to interact with the current time.
 #[expect(clippy::too_many_arguments)]
 fn time_marker_ui(
     time_ranges_ui: &TimeRangesUi,
