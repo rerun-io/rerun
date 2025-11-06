@@ -149,7 +149,7 @@ jobs:
   # Run some basics tests on Mac and Windows
   mac-windows-tests:
     name: Test on ${{ matrix.name }}
-    timeout-minutes: 60
+    timeout-minutes: 100 # Windows is very slow
     strategy:
       matrix:
         include:
