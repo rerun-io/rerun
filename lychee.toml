@@ -152,6 +152,7 @@ exclude = [
   'https://www.reddit.com/*', # Gives 403 forbidden on CI.
   'https://www.shadertoy.com/*', # 403 on CI
   'https://www.tensorflow.org/*', # tensorflow.org apparently blocks CI.
+  'https://www.unicode.org/license.txt' # Gives network error on CI.
 
   # Need GitHub login.
   'https://github.com/rerun-io/landing',
