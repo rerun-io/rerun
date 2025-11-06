@@ -142,13 +142,6 @@ pub async fn write_table(service: impl RerunCloudService) {
     )
     .expect("Unable to create record batch");
 
-    // let replace_batches = original_batches
-    //     .iter()
-    //     .map(|batch| WriteTableRequest {
-    //         dataframe_part: Some(batch.into()),
-    //         insert_mode: TableInsertMode::Replace.into(),
-    //     })
-    //     .collect_vec();
     let replace_batches = vec![WriteTableRequest {
         dataframe_part: Some(replacement_batch.into()),
         insert_mode: TableInsertMode::Replace.into(),

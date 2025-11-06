@@ -189,7 +189,7 @@ impl Table {
                 let mut builder = MergeInsertBuilder::try_new(Arc::clone(dataset), key_columns)?;
 
                 let op = builder
-                    .when_not_matched(WhenNotMatched::DoNothing)
+                    .when_not_matched(WhenNotMatched::InsertAll)
                     .when_matched(WhenMatched::UpdateAll)
                     .try_build()?;
 
