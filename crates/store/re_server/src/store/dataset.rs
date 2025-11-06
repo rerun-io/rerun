@@ -2,8 +2,10 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
 use std::sync::Arc;
 
-use arrow::array::{RecordBatch, RecordBatchOptions};
-use arrow::datatypes::{Fields, Schema};
+use arrow::{
+    array::{RecordBatch, RecordBatchOptions},
+    datatypes::{Fields, Schema},
+};
 use itertools::Either;
 
 use re_arrow_util::RecordBatchExt as _;
@@ -19,7 +21,7 @@ use re_protos::{
 
 use crate::store::{Error, InMemoryStore, Layer, Partition, Tracked};
 
-/// The mutable inner state of a Dataset, wrapped in `Tracked` for automatic timestamp updates.
+/// The mutable inner state of a [`Dataset`], wrapped in [`Tracked`] for automatic timestamp updates.
 pub struct DatasetInner {
     name: String,
     details: DatasetDetails,
@@ -58,7 +60,9 @@ impl Dataset {
     }
 
     pub fn set_name(&mut self, name: String) {
-        self.inner.modify().name = name;
+        if name != self.inner.name {
+            self.inner.modify().name = name;
+        }
     }
 
     #[inline]
@@ -104,7 +108,10 @@ impl Dataset {
             }
 
             Ok(Either::Right(partition_ids.iter().filter_map(|id| {
-                self.inner.partitions.get(id).map(|partition| (id, partition))
+                self.inner
+                    .partitions
+                    .get(id)
+                    .map(|partition| (id, partition))
             })))
         }
     }
@@ -244,7 +251,13 @@ impl Dataset {
     }
 
     pub fn dataset_manifest(&self) -> Result<RecordBatch, Error> {
-        let row_count = self.inner.partitions.values().map(|p| p.layer_count()).sum();
+        let row_count = self
+            .inner
+            .partitions
+            .values()
+            .map(|p| p.layer_count())
+            .sum();
+
         let mut layer_names = Vec::with_capacity(row_count);
         let mut partition_ids = Vec::with_capacity(row_count);
         let mut storage_urls = Vec::with_capacity(row_count);
