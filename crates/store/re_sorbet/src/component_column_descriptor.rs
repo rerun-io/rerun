@@ -326,7 +326,9 @@ impl ComponentColumnDescriptor {
                 .get_opt(re_types_core::FIELD_METADATA_KEY_ARCHETYPE)
                 .map(Into::into),
             component,
-            component_type: field.get_opt(re_types_core::FIELD_METADATA_KEY_COMPONENT_TYPE).map(Into::into),
+            component_type: field
+                .get_opt(re_types_core::FIELD_METADATA_KEY_COMPONENT_TYPE)
+                .map(Into::into),
             is_static: field.get_bool("rerun:is_static"),
             is_tombstone: field.get_bool("rerun:is_tombstone"),
             is_semantically_empty: field.get_bool("rerun:is_semantically_empty"),
