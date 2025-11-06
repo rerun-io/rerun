@@ -902,7 +902,7 @@ fn draw_time_cursor(
 
     ui.paint_time_cursor(
         ui.painter(),
-        &time_cursor_response,
+        Some(&time_cursor_response),
         time_x,
         time_cursor_response.rect.y_range(),
     );

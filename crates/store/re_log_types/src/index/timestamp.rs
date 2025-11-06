@@ -5,6 +5,8 @@ use super::{Duration, TimestampFormat};
 use crate::{TimestampFormatKind, external::re_types_core};
 
 /// Encodes a timestamp in nanoseconds since unix epoch.
+///
+/// Can represent any time between the years 1678 - 2261 CE to nanosecond precision.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Timestamp(i64);
 
