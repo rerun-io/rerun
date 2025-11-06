@@ -34,7 +34,7 @@ rerun server --help
 
 ## Connecting to the server
 
-When launching the server the CLI will print out the host and port it is listening on
+When launching the server, the CLI will print out the host and port it is listening on
 (defaulting to: `localhost:51234`).
 
 ### From the viewer
