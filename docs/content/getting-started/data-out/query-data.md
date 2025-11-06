@@ -14,22 +14,22 @@ This supports a workflow to first develop or debug locally on a single recording
 ## Launching the server
 
 The server needs to be opened in a separate window.
-Launch the server using the Rerun CLI.
+Launch the server using the Rerun CLI:
 
 ```console
 rerun server
 ```
 
-For full details run
-
-```console
-rerun server --help
-```
-
-with the most common utility opening a directory of RRDs as a dataset in the server
+You can also pass a directory containing RRDs to be opened as a dataset in the server:
 
 ```console
 rerun server -d <directory_containing_rrds>
+```
+
+For all available options, run:
+
+```console
+rerun server --help
 ```
 
 ## Connecting to the server
