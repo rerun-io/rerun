@@ -20,13 +20,3 @@ impl TryFrom<RotationQuat> for glam::Affine3A {
         Ok(Self::from_quat(glam::Quat::try_from(val.0)?))
     }
 }
-
-#[cfg(feature = "glam")]
-impl TryFrom<RotationQuat> for glam::DAffine3 {
-    type Error = ();
-
-    #[inline]
-    fn try_from(val: RotationQuat) -> Result<Self, Self::Error> {
-        Ok(Self::from_quat(glam::DQuat::try_from(val.0)?))
-    }
-}

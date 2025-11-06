@@ -21,6 +21,7 @@ panel_blueprint.rs linguist-generated=true
 plot_background.rs linguist-generated=true
 plot_legend.rs linguist-generated=true
 scalar_axis.rs linguist-generated=true
+spatial_information.rs linguist-generated=true
 tensor_scalar_mapping.rs linguist-generated=true
 tensor_slice_selection.rs linguist-generated=true
 tensor_view_fit.rs linguist-generated=true

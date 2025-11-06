@@ -14,19 +14,6 @@ impl From<PoseTranslation3D> for glam::Affine3A {
     }
 }
 
-// This is intentionally not implemented for `Vec3`:
-// The transform semantic is expressed here, `Vec3` on the other hand implements conversion to `glam::DVec3`.
-#[cfg(feature = "glam")]
-impl From<PoseTranslation3D> for glam::DAffine3 {
-    #[inline]
-    fn from(v: PoseTranslation3D) -> Self {
-        Self {
-            matrix3: glam::DMat3::IDENTITY,
-            translation: v.0.into(),
-        }
-    }
-}
-
 impl PoseTranslation3D {
     /// No translation.
     pub const ZERO: Self = Self::new(0.0, 0.0, 0.0);

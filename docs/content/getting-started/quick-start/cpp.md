@@ -5,7 +5,7 @@ order: 1
 
 ## Setup
 
-Before adding Rerun to your application, start by [installing the viewer](../installing-viewer.md#installing-the-viewer).
+Before adding Rerun to your application, start by [installing the viewer](../../overview/installing-viewer.md#installing-the-viewer).
 
 ## Learning by example
 
@@ -122,7 +122,7 @@ If you're facing any difficulties, don't hesitate to [open an issue](https://git
 
 ## What's next
 
-If you're ready to move on to more advanced topics, check out the [Viewer Walkthrough](../navigating-the-viewer.md) or our
+If you're ready to move on to more advanced topics, check out the [Viewer Walkthrough](../configure-the-viewer/navigating-the-viewer.md) or our
 more advanced guide for [Logging Data in C++](../data-in/cpp.md) where we will explore the core concepts that make
 Rerun tick and log our first non-trivial dataset.
 

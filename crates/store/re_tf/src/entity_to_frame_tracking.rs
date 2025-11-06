@@ -6,41 +6,40 @@ use std::ops::Range;
 use vec1::smallvec_v1::SmallVec1;
 
 /// Datastructures for tracking which transform relationships are specified by any moment in time for a given entity.
-/// Transform relationships are keyed by their source frame, thus the only thing we ever track is the [`TransformFrameIdHash`] of sources.
+/// Transform relationships are keyed by their child frame, thus the only thing we ever track is the [`TransformFrameIdHash`] of child frames.
 ///
-/// Since, except for static time, we don't allow sources to be mentioned by several different entities over time, we do not have to
+/// Since, except for static time, we don't allow child frames to be mentioned by several different entities over time, we do not have to
 /// split ranges when other entities are updated, which greatly simplifies tracking.
 ///
 /// The list of frame id hashes can never be empty.
 /// If a clear or empty array is logged, we insert the implicit frame again since this is what we always fall back to.
 #[derive(Clone)]
-pub struct EntityToAffectedSources {
-    /// Tracks start times of the ranges over which a set of source ranges is affected.
+pub struct EntityToFrameOverTime {
+    /// Tracks start times of the ranges over which a set of frames is affected.
     ///
     /// This list can never be empty.
     /// If a clear or empty array is logged, we insert the implicit frame again since this is what we always fall back to.
     pub range_starts: BTreeMap<TimeInt, SmallVec1<[TransformFrameIdHash; 1]>>,
 
-    /// All sources that this entity ever affects.
+    /// All frames that this entity ever affects.
     ///
     /// This list can never be empty.
-    /// Always contains the implicit source frame.
-    pub all_sources: IntSet<TransformFrameIdHash>,
+    pub all_frames: IntSet<TransformFrameIdHash>,
 }
 
-impl EntityToAffectedSources {
-    /// Creates a new instance of [`EntityToAffectedSources`] and inserts the implicit frame derived from the entity path at static time.
+impl EntityToFrameOverTime {
+    /// Creates a new instance of [`EntityToFrameOverTime`] and inserts the implicit frame derived from the entity path at static time.
     pub fn new(entity_path: &EntityPath) -> Self {
-        let fallback_source_frame = TransformFrameIdHash::from_entity_path(entity_path);
+        let fallback_child_frame = TransformFrameIdHash::from_entity_path(entity_path);
 
-        // If we see this entity the first time, inject the default source-frame at static time since this is what we use when there's no source specified.
+        // Inject the default frame at static time since this is what we use when there's no frame specified.
         Self {
             range_starts: std::iter::once((
                 TimeInt::STATIC,
-                SmallVec1::from_array_const([fallback_source_frame]),
+                SmallVec1::from_array_const([fallback_child_frame]),
             ))
             .collect(),
-            all_sources: std::iter::once(fallback_source_frame).collect(),
+            all_frames: std::iter::once(fallback_child_frame).collect(),
         }
     }
 
@@ -51,18 +50,19 @@ impl EntityToAffectedSources {
     pub fn insert_range_start(
         &mut self,
         start_time: TimeInt,
-        new_sources: SmallVec1<[TransformFrameIdHash; 1]>,
+        new_frames: SmallVec1<[TransformFrameIdHash; 1]>,
     ) -> (Range<TimeInt>, SmallVec1<[TransformFrameIdHash; 1]>) {
-        self.all_sources.extend(new_sources.iter().copied());
+        // TODO(andreas): missing a mechanism to remove elements from this map if when they no longer show up at all!
+        self.all_frames.extend(new_frames.iter().copied());
 
-        let split_range_sources = self
+        let split_range_frames = self
             .range_starts
             .range(..=start_time)
             .next_back()
-            .map(|(_split_range_start, sources)| sources.clone())
+            .map(|(_split_range_start, frames)| frames.clone())
             .unwrap_or_else(|| {
                 debug_panic_for_empty_ranges();
-                new_sources.clone()
+                new_frames.clone()
             });
         let split_range_end = self
             .range_starts
@@ -70,12 +70,12 @@ impl EntityToAffectedSources {
             .next()
             .map_or(TimeInt::MAX, |(t, _)| *t);
 
-        self.range_starts.insert(start_time, new_sources);
+        self.range_starts.insert(start_time, new_frames);
 
-        (start_time..split_range_end, split_range_sources.clone())
+        (start_time..split_range_end, split_range_frames.clone())
     }
 
-    /// Within a subrange, iterates over all ranges it touches. With each range, it specifies which sources are affected therein.
+    /// Within a subrange, iterates over all ranges it touches. With each range, it specifies which frames are affected therein.
     ///
     /// Returns `Range` since the ranges may contain [`TimeInt::STATIC`].
     pub fn iter_ranges(
@@ -90,7 +90,7 @@ impl EntityToAffectedSources {
         let mut relevant_range_start_iterator = self.range_starts.range(*first_time..).peekable();
 
         itertools::Either::Right(std::iter::from_fn(move || {
-            let (start_time, sources) = relevant_range_start_iterator.next()?;
+            let (start_time, frames) = relevant_range_start_iterator.next()?;
             if *start_time > sub_range.max {
                 return None;
             }
@@ -101,7 +101,7 @@ impl EntityToAffectedSources {
                 *start_time..TimeInt::MAX
             };
 
-            Some((range, sources))
+            Some((range, frames))
         }))
     }
 }
@@ -115,7 +115,7 @@ fn debug_panic_for_empty_ranges() {
 
 #[cfg(test)]
 mod tests {
-    use crate::entity_to_source_frame_tracking::EntityToAffectedSources;
+    use crate::entity_to_frame_tracking::EntityToFrameOverTime;
     use itertools::Itertools as _;
     use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
     use re_types::TransformFrameIdHash;
@@ -128,24 +128,24 @@ mod tests {
     #[test]
     fn test_insert_range_start() {
         let entity_path = EntityPath::parse_forgiving("/my/path");
-        let fallback_source_frame = TransformFrameIdHash::from_entity_path(&entity_path);
-        let mut affected_sources = EntityToAffectedSources::new(&entity_path);
+        let fallback_frame = TransformFrameIdHash::from_entity_path(&entity_path);
+        let mut affected_frames = EntityToFrameOverTime::new(&entity_path);
 
         // Add at the start.
         assert_eq!(
-            affected_sources.insert_range_start(
+            affected_frames.insert_range_start(
                 TimeInt::new_temporal(0),
                 make_smallvec(&[TransformFrameIdHash::from_str("frame0")])
             ),
             (
                 TimeInt::new_temporal(0)..TimeInt::MAX,
-                make_smallvec(&[fallback_source_frame])
+                make_smallvec(&[fallback_frame])
             )
         );
 
         // Add at the end.
         assert_eq!(
-            affected_sources.insert_range_start(
+            affected_frames.insert_range_start(
                 TimeInt::new_temporal(100),
                 make_smallvec(&[
                     TransformFrameIdHash::from_str("frame1"),
@@ -160,7 +160,7 @@ mod tests {
 
         // Add in between.
         assert_eq!(
-            affected_sources.insert_range_start(
+            affected_frames.insert_range_start(
                 TimeInt::new_temporal(50),
                 make_smallvec(&[TransformFrameIdHash::from_str("frame3")])
             ),
@@ -172,7 +172,7 @@ mod tests {
 
         // Override the one in between.
         assert_eq!(
-            affected_sources.insert_range_start(
+            affected_frames.insert_range_start(
                 TimeInt::new_temporal(50),
                 make_smallvec(&[TransformFrameIdHash::from_str("frame4")])
             ),
@@ -184,12 +184,12 @@ mod tests {
     }
 
     #[test]
-    fn test_iterating_affected_source_ranges() {
+    fn test_iterating_affected_frame_ranges() {
         let entity_path = EntityPath::parse_forgiving("/my/path");
-        let mut affected_sources = EntityToAffectedSources::new(&entity_path);
+        let mut affected_frames = EntityToFrameOverTime::new(&entity_path);
 
         assert_eq!(
-            affected_sources
+            affected_frames
                 .iter_ranges(AbsoluteTimeRange::new(TimeInt::MIN, TimeInt::MAX))
                 .collect_vec(),
             vec![(
@@ -198,18 +198,18 @@ mod tests {
             )]
         );
 
-        affected_sources.insert_range_start(
+        affected_frames.insert_range_start(
             TimeInt::new_temporal(0),
             make_smallvec(&[
                 TransformFrameIdHash::from_str("frame0"),
                 TransformFrameIdHash::from_str("frame1"),
             ]),
         );
-        affected_sources.insert_range_start(
+        affected_frames.insert_range_start(
             TimeInt::new_temporal(10),
             make_smallvec(&[TransformFrameIdHash::from_str("frame2")]),
         );
-        affected_sources.insert_range_start(
+        affected_frames.insert_range_start(
             TimeInt::new_temporal(20),
             make_smallvec(&[
                 TransformFrameIdHash::from_str("frame3"),
@@ -242,7 +242,7 @@ mod tests {
         );
 
         assert_eq!(
-            affected_sources
+            affected_frames
                 .iter_ranges(AbsoluteTimeRange::new(TimeInt::MIN, TimeInt::MAX))
                 .collect_vec(),
             [
@@ -256,7 +256,7 @@ mod tests {
             .collect_vec()
         );
         assert_eq!(
-            affected_sources
+            affected_frames
                 .iter_ranges(AbsoluteTimeRange::new(
                     TimeInt::new_temporal(0),
                     TimeInt::new_temporal(10)
@@ -265,7 +265,7 @@ mod tests {
             vec![range_result1.clone(), range_result2.clone()]
         );
         assert_eq!(
-            affected_sources
+            affected_frames
                 .iter_ranges(AbsoluteTimeRange::new(
                     TimeInt::new_temporal(2),
                     TimeInt::new_temporal(3)
@@ -275,7 +275,7 @@ mod tests {
         );
 
         assert_eq!(
-            affected_sources
+            affected_frames
                 .iter_ranges(AbsoluteTimeRange::new(
                     TimeInt::new_temporal(2),
                     TimeInt::new_temporal(13)

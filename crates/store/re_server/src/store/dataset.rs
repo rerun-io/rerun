@@ -54,6 +54,11 @@ impl Dataset {
         &self.name
     }
 
+    pub fn set_name(&mut self, name: String) {
+        self.name = name;
+        self.updated_at = jiff::Timestamp::now();
+    }
+
     #[inline]
     pub fn store_kind(&self) -> StoreKind {
         self.store_kind

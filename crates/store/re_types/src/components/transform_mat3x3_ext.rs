@@ -13,16 +13,3 @@ impl From<TransformMat3x3> for glam::Affine3A {
         }
     }
 }
-
-// This is intentionally not implemented for `Mat3x3`:
-// The transform semantic is expressed here, `Mat3x3` on the other hand implements conversion to `glam::DMat3`.
-#[cfg(feature = "glam")]
-impl From<TransformMat3x3> for glam::DAffine3 {
-    #[inline]
-    fn from(v: TransformMat3x3) -> Self {
-        Self {
-            matrix3: glam::DMat3::from_cols_array(&v.0.0.map(|x| x as f64)),
-            translation: glam::DVec3::ZERO,
-        }
-    }
-}

@@ -17,8 +17,8 @@ import rerun as rr
                 "  scale=[],\n"
                 "  mat3x3=[],\n"
                 "  relation=[],\n"
-                "  source_frame=[],\n"
-                "  target_frame=[],\n"
+                "  child_frame=[],\n"
+                "  parent_frame=[],\n"
                 "  axis_length=[]\n"
                 ")"
             ),
@@ -33,8 +33,8 @@ import rerun as rr
                 "  scale=[],\n"
                 "  mat3x3=[],\n"
                 "  relation=[],\n"
-                "  source_frame=[],\n"
-                "  target_frame=[],\n"
+                "  child_frame=[],\n"
+                "  parent_frame=[],\n"
                 "  axis_length=[]\n"
                 ")"
             ),
