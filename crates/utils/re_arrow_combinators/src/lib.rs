@@ -5,7 +5,7 @@
 //! preserving structural properties like row counts and null handling.
 //!
 //! These transformations serve as building blocks for user-defined functions (UDFs)
-//! in query engines like DataFusion, as well as SDK features like lenses.
+//! in query engines like `DataFusion`, as well as SDK features like lenses.
 
 use std::marker::PhantomData;
 use std::num::TryFromIntError;

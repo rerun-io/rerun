@@ -19,12 +19,8 @@ workspace = true
 all-features = true
 
 
-[features]
-
-
 [dependencies]
 re_arrow_util.workspace = true
-re_types_core.workspace = true
 
 arrow.workspace = true
 thiserror.workspace = true
