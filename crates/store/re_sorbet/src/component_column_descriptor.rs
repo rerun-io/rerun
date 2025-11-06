@@ -224,14 +224,14 @@ impl ComponentColumnDescriptor {
 
         if let Some(archetype_name) = archetype_name {
             metadata.insert(
-                FIELD_METADATA_KEY_ARCHETYPE_NAME.to_owned(),
+                re_types_core::FIELD_METADATA_KEY_ARCHETYPE.to_owned(),
                 archetype_name.full_name().to_owned(),
             );
         }
 
         if let Some(component_type) = component_type {
             metadata.insert(
-                "rerun:component_type".to_owned(),
+                re_types_core::FIELD_METADATA_KEY_COMPONENT_TYPE.to_owned(),
                 component_type.full_name().to_owned(),
             );
         }
@@ -326,7 +326,7 @@ impl ComponentColumnDescriptor {
                 .get_opt(re_types_core::FIELD_METADATA_KEY_ARCHETYPE)
                 .map(Into::into),
             component,
-            component_type: field.get_opt("rerun:component_type").map(Into::into),
+            component_type: field.get_opt(re_types_core::FIELD_METADATA_KEY_COMPONENT_TYPE).map(Into::into),
             is_static: field.get_bool("rerun:is_static"),
             is_tombstone: field.get_bool("rerun:is_tombstone"),
             is_semantically_empty: field.get_bool("rerun:is_semantically_empty"),

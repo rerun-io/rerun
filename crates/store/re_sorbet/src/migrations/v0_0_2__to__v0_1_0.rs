@@ -141,7 +141,7 @@ fn rewire_tagged_components(batch: &RecordBatch) -> RecordBatch {
                 }
                 metadata.insert(re_types_core::FIELD_METADATA_KEY_COMPONENT.to_owned(), component);
                 if let Some(component_type) = component_type {
-                    metadata.insert("rerun:component_type".to_owned(), component_type);
+                    metadata.insert(re_types_core::FIELD_METADATA_KEY_COMPONENT_TYPE.to_owned(), component_type);
                 }
             }
 
