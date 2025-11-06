@@ -1248,7 +1248,6 @@ mod tests {
                         target_from_instances: SmallVec1::new(glam::DAffine3::from_translation(
                             glam::dvec3(-5.0, 0.0, 0.0)
                         )),
-                        target_from_archetype: Default::default(),
                     })
                 )] // TODO(RR-2897): this is broken right now. This is what the result should be:
                    // vec![(
