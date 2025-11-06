@@ -41,7 +41,7 @@ def create_table(client: CatalogClient, directory: Path, table_name: str, schema
 def create_status_log_table(client: CatalogClient, directory: Path) -> DataFrame:
     """Create the status log table."""
     schema = pa.schema([
-        pa.field("rerun_partition_id", pa.utf8()).with_metadata({"rerun_table_index": "true"}),
+        pa.field("rerun_partition_id", pa.utf8()).with_metadata({"rerun:is_table_index": "true"}),
         pa.field("is_complete", pa.bool_()),
         pa.field("update_time", pa.timestamp(unit="ms")),
     ])

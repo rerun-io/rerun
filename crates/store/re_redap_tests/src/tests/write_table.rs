@@ -136,7 +136,7 @@ pub async fn write_table(service: impl RerunCloudService) {
 
     let replacement_batch = record_batch!(
         ("boolean_nullable", Boolean, [Some(false), Some(true), None]),
-        ("int32_nullable", Int32, [Some(11), None, Some(12)]),
+        ("int32_nullable", Int32, [Some(11), Some(-1), Some(12)]),
         ("int64_not_nullable", Int64, [18, 19, 20]),
         ("utf8_not_nullable", Utf8, ["xyz", "pqr", "stu"])
     )
@@ -159,7 +159,9 @@ pub async fn write_table(service: impl RerunCloudService) {
     // We replace with existing rows, so should get the same number back
     let returned_batches = get_table_batches(&service, &entry).await;
     let returned_rows: usize = returned_batches.iter().map(|batch| batch.num_rows()).sum();
-    assert_eq!(returned_rows, original_rows);
+
+    // We have added one row that does not match the original, we should get an insert
+    assert_eq!(returned_rows, original_rows + 1);
     let combined = concat_record_batches(&returned_batches);
     insta::assert_snapshot!("replace_rows", combined.format_snapshot(false));
 }

@@ -175,7 +175,7 @@ impl Table {
                     .filter_map(|field| {
                         if field
                             .metadata
-                            .get("rerun_table_index")
+                            .get("rerun:is_table_index")
                             .map(|v| v.to_lowercase() == "true")
                             == Some(true)
                         {
