@@ -283,10 +283,8 @@ impl ViewContents {
 
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
 
-        let visualizers_per_entity = {
-            re_tracing::profile_scope!("visualizers_per_entity");
-            Self::visualizers_per_entity(visualizable_entities_for_visualizer_systems)
-        };
+        let visualizers_per_entity =
+            Self::visualizers_per_entity(visualizable_entities_for_visualizer_systems);
 
         let executor = QueryExpressionEvaluator {
             visualizers_per_entity: &visualizers_per_entity,
@@ -344,6 +342,8 @@ impl ViewContents {
     fn visualizers_per_entity(
         visualizable_entities_for_visualizer_systems: &PerVisualizer<VisualizableEntities>,
     ) -> IntMap<EntityPathHash, SmallVec<[ViewSystemIdentifier; 4]>> {
+        re_tracing::profile_function!();
+
         let mut visualizers_per_entity = IntMap::default();
         for (visualizer, entities) in visualizable_entities_for_visualizer_systems.iter() {
             for entity_path in entities.iter() {
