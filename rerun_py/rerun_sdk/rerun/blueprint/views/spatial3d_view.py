@@ -75,7 +75,6 @@ class Spatial3DView(View):
             spatial_information=rrb.SpatialInformation(
                 show_axes=True,
                 show_bounding_box=True,
-                show_smoothed_bounding_box=True,
             ),
         ),
         collapse_panels=True,
