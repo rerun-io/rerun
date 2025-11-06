@@ -8,7 +8,7 @@ use std::sync::Arc;
 use egui::{Color32, NumExt as _, Rangef, Rect, Shape, epaint::Vertex, lerp, pos2, remap};
 
 use re_chunk_store::{Chunk, RangeQuery};
-use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimelineName};
+use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimeReal, TimelineName};
 use re_ui::UiExt as _;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
@@ -453,7 +453,7 @@ pub fn data_density_graph_ui(
             .snapped_time_from_x(ui, pointer.x)
             .map(|t| t.round())
     } else {
-        data.hovered_time
+        data.hovered_time.map(|t| t.round())
     }
 }
 
@@ -693,26 +693,28 @@ pub struct DensityGraphBuilder<'a> {
     row_rect: Rect,
 
     pointer_pos: Option<egui::Pos2>,
-    interact_radius: f32,
 
     pub density_graph: DensityGraph,
-    pub hovered_time: Option<TimeInt>,
-    pub hovered_pos: Option<egui::Pos2>,
+
+    closest_event_x_distance: f32,
+    pub hovered_time: Option<TimeReal>,
+    pub hovered_pos: Option<egui::Pos2>, // needed so we can do late-snapping
 }
 
 impl<'a> DensityGraphBuilder<'a> {
     fn new(ui: &'a egui::Ui, time_ranges_ui: &'a TimeRangesUi, row_rect: Rect) -> Self {
         let pointer_pos = ui.input(|i| i.pointer.hover_pos());
-        let interact_radius = ui.style().interaction.resize_grab_radius_side;
+        let interact_radius = ui.style().interaction.interact_radius;
 
         Self {
             time_ranges_ui,
             row_rect,
 
             pointer_pos,
-            interact_radius,
 
             density_graph: DensityGraph::new(row_rect.x_range()),
+
+            closest_event_x_distance: interact_radius,
             hovered_time: None,
             hovered_pos: None,
         }
@@ -745,16 +747,15 @@ impl<'a> DensityGraphBuilder<'a> {
 
         self.density_graph.add_point(x, weight);
 
-        if let Some(pointer_pos) = self.pointer_pos {
-            let is_hovered = {
-                // Are we close enough to the point?
-                let distance_sq = pos2(x, self.row_rect.center().y).distance_sq(pointer_pos);
+        if let Some(pointer_pos) = self.pointer_pos
+            && self.row_rect.y_range().contains(pointer_pos.y)
+        {
+            let x_dist = (x - pointer_pos.x).abs();
 
-                distance_sq < self.interact_radius.powi(2)
-            };
-
-            if is_hovered {
-                self.hovered_time = Some(time);
+            if x_dist < self.closest_event_x_distance {
+                self.closest_event_x_distance = x_dist;
+                self.hovered_time = Some(time.into());
+                self.hovered_pos = None;
             }
         }
     }
@@ -774,25 +775,24 @@ impl<'a> DensityGraphBuilder<'a> {
         self.density_graph
             .add_range((min_x, max_x), num_events as _);
 
-        if let Some(pointer_pos) = self.pointer_pos {
-            let is_hovered = if (max_x - min_x).abs() < 1.0 {
+        if let Some(pointer_pos) = self.pointer_pos
+            && self.row_rect.y_range().contains(pointer_pos.y)
+        {
+            let very_thin_range = (max_x - min_x).abs() < 1.0;
+            if very_thin_range {
                 // Are we close enough to center?
                 let center_x = fast_midpoint(max_x, min_x);
-                let distance_sq = pos2(center_x, self.row_rect.center().y).distance_sq(pointer_pos);
+                let x_dist = (center_x - pointer_pos.x).abs();
 
-                distance_sq < self.interact_radius.powi(2)
-            } else {
-                // Are we within time range rect?
-                let time_range_rect = Rect {
-                    min: egui::pos2(min_x, self.row_rect.min.y),
-                    max: egui::pos2(max_x, self.row_rect.max.y),
-                };
-
-                time_range_rect.contains(pointer_pos)
-            };
-
-            if is_hovered {
+                if x_dist < self.closest_event_x_distance {
+                    self.closest_event_x_distance = x_dist;
+                    self.hovered_pos = Some(pointer_pos);
+                    self.hovered_time = None;
+                }
+            } else if (min_x..=max_x).contains(&pointer_pos.x) {
+                self.closest_event_x_distance = 0.0;
                 self.hovered_pos = Some(pointer_pos);
+                self.hovered_time = None;
             }
         }
     }
