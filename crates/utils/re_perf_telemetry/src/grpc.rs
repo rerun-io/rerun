@@ -10,6 +10,8 @@ const RERUN_HTTP_HEADER_SERVER_VERSION: &str = "x-rerun-server-version";
 
 /// Implements [`tower_http::trace::MakeSpan`] where the trace name is the gRPC method name.
 ///
+/// See details in `make_span` on how we ensure context propagation.
+///
 /// We keep track of a bunch of relevant in-house state associated with the span in `SpanMetadata`.
 #[derive(Debug, Clone)]
 pub struct GrpcMakeSpan {
@@ -34,6 +36,13 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
         let parent_ctx = opentelemetry::global::get_text_map_propagator(|prop| {
             prop.extract(&opentelemetry_http::HeaderExtractor(request.headers()))
         });
+
+        // This replaces the current tracing context with the extracted one, and it ensures that
+        // any spans created within this scope will be children of the extracted context.
+        // Note on the guard: guard must stay alive until after span creation so that tracing::span!()
+        // can inherit the trace context. It is obviously dropped at the end of this function, but that's
+        // ok as the future spans will inherit *this* span, not the old context. This makes sure that
+        // we have propagation e2e (both client and server side), so change carefully.
         let _guard = parent_ctx.attach();
 
         let endpoint = request.uri().path().to_owned();
