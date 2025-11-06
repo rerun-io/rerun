@@ -9,7 +9,7 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathSubs, StoreId, TimePoint, Timeline};
-use re_types::{Archetype as _, archetypes::Points2D, components::Position2D};
+use re_types::{archetypes::Points2D, components::Position2D};
 use re_viewer_context::{
     StoreContext, ViewClassRegistry, VisualizableEntities, blueprint_timeline, Caches,
     PerVisualizer,
@@ -21,9 +21,9 @@ use re_viewport_blueprint::ViewContents;
 // `cargo test` also runs the benchmark setup code, so make sure they run quickly:
 #[cfg(debug_assertions)]
 mod constants {
-    pub const NUM_PARENTS: usize = 10;
-    pub const NUM_CHILDREN_PER_PARENT: usize = 10;
-    pub const NUM_GRANDCHILDREN_PER_CHILD: usize = 5;
+    pub const NUM_PARENTS: usize = 2;
+    pub const NUM_CHILDREN_PER_PARENT: usize = 2;
+    pub const NUM_GRANDCHILDREN_PER_CHILD: usize = 2;
 }
 
 #[cfg(not(debug_assertions))]
@@ -33,8 +33,7 @@ mod constants {
     pub const NUM_GRANDCHILDREN_PER_CHILD: usize = 6;
 }
 
-#[expect(clippy::wildcard_imports)]
-use self::constants::*;
+use self::constants::{NUM_CHILDREN_PER_PARENT, NUM_GRANDCHILDREN_PER_CHILD, NUM_PARENTS};
 
 // ---
 
@@ -125,8 +124,9 @@ fn query_tree_many_entities(c: &mut Criterion) {
 // --- Helpers ---
 
 fn build_entity_tree() -> (EntityDb, PerVisualizer<VisualizableEntities>) {
-    use rand::Rng as _;
-    let mut rng = rand::rng();
+    use rand::{Rng as _, SeedableRng as _};
+    // Use a fixed seed for deterministic, reproducible benchmarks
+    let mut rng = rand::rngs::StdRng::seed_from_u64(42);
 
     let mut recording = EntityDb::new(StoreId::random(
         re_log_types::StoreKind::Recording,

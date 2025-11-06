@@ -368,13 +368,6 @@ struct QueryExpressionEvaluator<'a> {
     override_base_path: EntityPath,
 }
 
-#[derive(Clone, Copy)]
-struct FilterEvaluation {
-    subtree_included: bool,
-    matches: bool,
-    matches_exactly: bool,
-}
-
 impl QueryExpressionEvaluator<'_> {
     fn add_entity_tree_to_data_results_recursive(
         &self,
@@ -383,7 +376,7 @@ impl QueryExpressionEvaluator<'_> {
         num_matching_entities: &mut usize,
         num_visualized_entities: &mut usize,
     ) -> Option<DataResultHandle> {
-        let filter_evaluation = self.evaluate_filter(&tree.path);
+        let filter_evaluation = self.entity_path_filter.evaluate(&tree.path);
 
         // Early-out optimization
         if !filter_evaluation.subtree_included {
@@ -444,56 +437,6 @@ impl QueryExpressionEvaluator<'_> {
             }))
         } else {
             None
-        }
-    }
-
-    fn evaluate_filter(&self, path: &EntityPath) -> FilterEvaluation {
-        let mut subtree_included = false;
-        let mut matches_exactly = false;
-        let mut last_match: Option<(RuleEffect, bool)> = None;
-        let mut found_include_in_subtree = false;
-
-        for (rule, effect) in self.entity_path_filter.rules() {
-            if !found_include_in_subtree
-                && *effect == RuleEffect::Include
-                && rule.resolved_path.starts_with(path)
-            {
-                found_include_in_subtree = true;
-                subtree_included = true;
-            }
-
-            if !matches_exactly
-                && *effect == RuleEffect::Include
-                && !rule.rule.include_subtree()
-                && rule.resolved_path == *path
-            {
-                matches_exactly = true;
-            }
-
-            if rule.matches(path) {
-                last_match = Some((*effect, rule.rule.include_subtree()));
-            }
-        }
-
-        if let Some((effect, include_subtree)) = last_match {
-            match effect {
-                RuleEffect::Include => subtree_included = true,
-                RuleEffect::Exclude => {
-                    if include_subtree && !found_include_in_subtree {
-                        // Entire subtree is excluded, and we've already checked that nothing
-                        // in the subtree was explicitly included.
-                        subtree_included = false;
-                    }
-                }
-            }
-        }
-
-        let matches = last_match.is_some_and(|(effect, _)| effect == RuleEffect::Include);
-
-        FilterEvaluation {
-            subtree_included,
-            matches,
-            matches_exactly,
         }
     }
 }
