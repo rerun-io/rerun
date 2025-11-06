@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use arrow::{
     array::{RecordBatch, RecordBatchOptions},
@@ -33,6 +33,10 @@ pub struct Dataset {
     store_kind: StoreKind,
     created_at: jiff::Timestamp,
     inner: Tracked<DatasetInner>,
+
+    /// Cached schema with the timestamp when it was computed.
+    /// Invalidated when `updated_at` changes.
+    cached_schema: RwLock<Option<(jiff::Timestamp, Arc<Schema>)>>,
 }
 
 impl Dataset {
@@ -46,6 +50,7 @@ impl Dataset {
                 details,
                 partitions: HashMap::default(),
             }),
+            cached_schema: RwLock::new(None),
         }
     }
 
@@ -160,7 +165,36 @@ impl Dataset {
     }
 
     pub fn schema(&self) -> arrow::error::Result<Schema> {
-        Schema::try_merge(self.iter_layers().map(|layer| layer.schema()))
+        // Fast path: check if we have a valid cached schema
+        {
+            let cache = self.cached_schema.read().unwrap();
+            if let Some((cached_at, schema)) = cache.as_ref() {
+                if *cached_at == self.updated_at() {
+                    return Ok(Schema::clone(schema));
+                }
+            }
+        }
+
+        // Slow path: recompute schema
+        let schema = Schema::try_merge(self.iter_layers().map(|layer| layer.schema()))?;
+
+        // Update cache with write lock
+        {
+            let mut cache = self.cached_schema.write().unwrap();
+
+            // Double-check: another thread might have updated the cache while we were computing
+            if let Some((cached_at, cached_schema)) = cache.as_ref() {
+                if *cached_at == self.updated_at() {
+                    return Ok(Schema::clone(cached_schema));
+                }
+            }
+
+            let updated_at = self.updated_at();
+            let schema_arc = Arc::new(schema.clone());
+            *cache = Some((updated_at, Arc::clone(&schema_arc)));
+        }
+
+        Ok(schema)
     }
 
     pub fn partition_ids(&self) -> impl Iterator<Item = PartitionId> {
