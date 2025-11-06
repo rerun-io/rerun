@@ -1533,6 +1533,7 @@ fn help(os: egui::os::OperatingSystem) -> Help {
                 " + Scroll",
             ),
         )
+        .control("Zoom", "Right click drag")
         .control("Reset view", "Double click")
         .control("Play/Pause", "Space")
 }
