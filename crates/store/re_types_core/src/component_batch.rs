@@ -322,7 +322,7 @@ impl From<&SerializedComponentBatch> for arrow::datatypes::Field {
                 )),
                 batch.descriptor.component_type.map(|name| {
                     (
-                        crate::FIELD_METADATA_KEY_COMPONENT.to_owned(),
+                        crate::FIELD_METADATA_KEY_COMPONENT_TYPE.to_owned(),
                         name.to_string(),
                     )
                 }),
