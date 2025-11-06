@@ -9305,7 +9305,6 @@ name = "re_redap_browser"
 version = "0.27.0-alpha.8+dev"
 dependencies = [
  "ahash",
- "base64 0.22.1",
  "datafusion",
  "egui",
  "futures",

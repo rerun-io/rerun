@@ -34,7 +34,6 @@ re_uri.workspace = true
 re_viewer_context.workspace = true
 
 ahash.workspace = true
-base64.workspace = true
 datafusion.workspace = true
 egui.workspace = true
 futures.workspace = true
