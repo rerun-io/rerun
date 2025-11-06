@@ -63,7 +63,8 @@ pub struct ProcMeshBatch<'a, IMesh, IFill> {
     pub class_ids: &'a [components::ClassId],
 }
 
-// TODO: doc what's going on here
+/// Combines transform-like components on the entity with instances pose to view-origin transforms
+/// provided by the transform system.
 // TODO(#7026): We should formalize this kind of hybrid joining better.
 fn combine_instance_poses_with_archetype_transforms(
     num_half_sizes: usize,
