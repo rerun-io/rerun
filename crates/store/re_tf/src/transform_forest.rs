@@ -843,14 +843,18 @@ fn transforms_at(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::sync::Arc;
+
     use itertools::Itertools as _;
+
+    use super::*;
+
+    use crate::TransformFromToError::NoPathBetweenFrames;
     use re_chunk_store::Chunk;
     use re_entity_db::EntityDb;
-    use re_log_types::{StoreInfo, TimePoint, TimelineName};
+    use re_log_types::{StoreInfo, TimeCell, TimePoint, TimelineName};
     use re_types::components::TransformFrameId;
     use re_types::{Archetype as _, RowId, archetypes};
-    use std::sync::Arc;
 
     fn test_pinhole() -> archetypes::Pinhole {
         archetypes::Pinhole::from_focal_length_and_resolution([1.0, 2.0], [100.0, 200.0])
@@ -1231,6 +1235,187 @@ mod tests {
                 &transform_cache
             )
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_handling_unknown_frames_gracefully() -> Result<(), Box<dyn std::error::Error>> {
+        let query = LatestAtQuery::latest(TimelineName::log_tick());
+
+        // Handle empty store & cache.
+        {
+            let test_scene = EntityDb::new(StoreInfo::testing().store_id);
+            let transform_cache = TransformResolutionCache::default();
+            let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+
+            assert_eq!(
+                transform_forest
+                    .transform_from_to(
+                        TransformFrameIdHash::from_str("top"),
+                        std::iter::once(TransformFrameIdHash::from_str("child0")),
+                        &|_| 1.0
+                    )
+                    .collect::<Vec<_>>(),
+                vec![(
+                    TransformFrameIdHash::from_str("child0"),
+                    Err(TransformFromToError::UnknownTargetFrame(
+                        TransformFrameIdHash::from_str("top")
+                    ))
+                )]
+            );
+        }
+
+        // Handle creation from empty cache but full store gracefully.
+        {
+            let transform_cache = TransformResolutionCache::default();
+            let test_scene = simple_frame_hierarchy_test_scene()?;
+            let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+
+            // The forest doesn't know about any of the frames despite having seen the populated store.
+            assert_eq!(
+                transform_forest
+                    .transform_from_to(
+                        TransformFrameIdHash::from_str("top"),
+                        std::iter::once(TransformFrameIdHash::from_str("child0")),
+                        &|_| 1.0
+                    )
+                    .collect::<Vec<_>>(),
+                vec![(
+                    TransformFrameIdHash::from_str("child0"),
+                    Err(TransformFromToError::UnknownTargetFrame(
+                        TransformFrameIdHash::from_str("top")
+                    ))
+                )]
+            );
+        }
+
+        // Handle creation from partially filled cache gracefully.
+        {
+            let mut transform_cache = TransformResolutionCache::default();
+            let mut test_scene = simple_frame_hierarchy_test_scene()?;
+            transform_cache.add_chunks(test_scene.storage_engine().store().iter_chunks());
+
+            // Add a connection the cache doesn't know about.
+            test_scene.add_chunk(&Arc::new(
+                Chunk::builder(EntityPath::from("transforms"))
+                    .with_archetype_auto_row(
+                        [(query.timeline(), TimeCell::from_sequence(0))],
+                        &archetypes::Transform3D::from_translation([4.0, 0.0, 0.0])
+                            .with_child_frame("child2")
+                            .with_parent_frame("top"),
+                    )
+                    .build()?,
+            ))?;
+            // But the forest seen the scene with it.
+            let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+
+            // Forest doesn't know about the newly added `child2` frame.
+            assert_eq!(
+                transform_forest
+                    .transform_from_to(
+                        TransformFrameIdHash::from_str("top"),
+                        std::iter::once(TransformFrameIdHash::from_str("child2")),
+                        &|_| 1.0
+                    )
+                    .collect::<Vec<_>>(),
+                vec![(
+                    TransformFrameIdHash::from_str("child2"),
+                    Err(TransformFromToError::UnknownSourceFrame(
+                        TransformFrameIdHash::from_str("child2")
+                    ))
+                )]
+            );
+        }
+
+        // Extra nasty case: given a cold cache, the cache knows about everything except for a row _on the same time_ which talks about a new frame.
+        // (this also makes sure that we get the right transform back for the known frames even when a latest-at query would yield something the cache doesn't know about)
+        {
+            let mut transform_cache = TransformResolutionCache::default();
+            let mut test_scene = simple_frame_hierarchy_test_scene()?;
+
+            test_scene.add_chunk(&Arc::new(
+                // Add a connection the cache doesn't know about.
+                Chunk::builder(EntityPath::from("transforms"))
+                    .with_archetype_auto_row(
+                        [(query.timeline(), TimeCell::from_sequence(0))],
+                        &archetypes::Transform3D::from_translation([4.0, 0.0, 0.0])
+                            .with_child_frame("child2")
+                            .with_parent_frame("top"),
+                    )
+                    .build()?,
+            ))?;
+            transform_cache.add_chunks(test_scene.storage_engine().store().iter_chunks());
+
+            test_scene.add_chunk(&Arc::new(
+                // Add a connection the cache doesn't know about.
+                Chunk::builder(EntityPath::from("transforms"))
+                    .with_archetype_auto_row(
+                        [(query.timeline(), TimeCell::from_sequence(0))], // Same time before, different parent frame!
+                        &archetypes::Transform3D::from_translation([5.0, 0.0, 0.0])
+                            .with_child_frame("child2")
+                            .with_parent_frame("new_top"),
+                    )
+                    .build()?,
+            ))?;
+            let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+
+            // Forest should know about the old relationship, but not the new.
+            assert_eq!(
+                transform_forest
+                    .transform_from_to(
+                        TransformFrameIdHash::from_str("child2"),
+                        std::iter::once(TransformFrameIdHash::from_str("top")),
+                        &|_| 1.0
+                    )
+                    .collect::<Vec<_>>(),
+                vec![(
+                    TransformFrameIdHash::from_str("top"),
+                    Err(NoPathBetweenFrames {
+                        target: TransformFrameIdHash::from_str("child2"),
+                        src: TransformFrameIdHash::from_str("top"),
+                        target_root: TransformFrameIdHash::from_str("new_top"),
+                        source_root: TransformFrameIdHash::from_str("root"),
+                    }) // TODO(RR-2897): this is broken right now. This is what the result should be:
+                       // Ok(TransformInfo {
+                       //     root: TransformFrameIdHash::from_str("top"),
+                       //     target_from_source: glam::DAffine3::from_translation(glam::dvec3(
+                       //         4.0, 0.0, 0.0
+                       //     )),
+                       //     target_from_instances: Default::default(),
+                       //     target_from_archetype: Default::default(),
+                       // })
+                )]
+            );
+            assert_eq!(
+                transform_forest
+                    .transform_from_to(
+                        TransformFrameIdHash::from_str("child2"),
+                        std::iter::once(TransformFrameIdHash::from_str("new_top")),
+                        &|_| 1.0
+                    )
+                    .collect::<Vec<_>>(),
+                vec![(
+                    TransformFrameIdHash::from_str("new_top"),
+                    Ok(TransformInfo {
+                        root: TransformFrameIdHash::from_str("new_top"),
+                        target_from_source: glam::DAffine3::from_translation(glam::dvec3(
+                            -5.0, 0.0, 0.0
+                        )),
+                        target_from_instances: SmallVec1::new(glam::DAffine3::from_translation(
+                            glam::dvec3(-5.0, 0.0, 0.0)
+                        )),
+                        target_from_archetype: Default::default(),
+                    })
+                )] // TODO(RR-2897): this is broken right now. This is what the result should be:
+                   // vec![(
+                   //     TransformFrameIdHash::from_str("child2"),
+                   //     Err(TransformFromToError::UnknownTargetFrame(
+                   //         TransformFrameIdHash::from_str("new_top")
+                   //     ))
+                   // )]
+            );
+        }
 
         Ok(())
     }
