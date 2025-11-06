@@ -25,6 +25,9 @@ impl FrameIdRegistry {
 
     /// Registers all frame ids mentioned in a chunk, including frames implied by the chunk's entity and its parents.
     ///
+    /// The latter is important since entity-derived ("implicit") frames have an identity connection to their parents.
+    /// This means that it's very common to query about all subpaths in a hierarchy even if those subpaths don't hold any data themselves.
+    ///
     /// Implementation note:
     /// Having the registration of frame ids separate from other frame id related bookkeeping makes things more modular
     /// at the price of additional overhead. However, we generally assume that retrieving `TransformFrameId`/`TransformFrameIdHash` from a string is fast.
@@ -68,6 +71,22 @@ impl FrameIdRegistry {
                     .or_insert_with(|| TransformFrameId::new(frame_id_string.as_str()));
             }
         }
+    }
+
+    /// Iterates over all known frame ids.
+    ///
+    /// Mostly useful for testing.
+    #[inline]
+    pub fn iter_frame_ids(
+        &self,
+    ) -> impl Iterator<Item = (&TransformFrameIdHash, &TransformFrameId)> {
+        self.frame_id_lookup_table.iter()
+    }
+
+    /// Hashes of all frame ids ever encountered.
+    #[inline]
+    pub fn iter_frame_id_hashes(&self) -> impl Iterator<Item = TransformFrameIdHash> {
+        self.frame_id_lookup_table.keys().copied()
     }
 }
 

@@ -1,6 +1,6 @@
 ---
 source: crates/store/re_tf/src/transform_forest.rs
-expression: "pretty_print_transform_frame_ids_in(&result, &all_transform_frame_ids)"
+expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
 ---
 [
     (
@@ -315,10 +315,10 @@ expression: "pretty_print_transform_frame_ids_in(&result, &all_transform_frame_i
         ),
     ),
     (
-        tf#/top/nonexistent,
+        TransformFrameIdHash(D01893A02DC02A5F),
         Err(
             UnknownSourceFrame(
-                tf#/top/nonexistent,
+                TransformFrameIdHash(D01893A02DC02A5F),
             ),
         ),
     ),
