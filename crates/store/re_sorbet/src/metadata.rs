@@ -2,8 +2,17 @@ use std::collections::HashMap;
 
 use arrow::datatypes::Field as ArrowField;
 
+// The following constants are used as metadata keys. See also
+// [`re_types_core::component_descriptor`] for additional constants.
+
+/// The key used to identify the index name in field-level metadata.
 pub const SORBET_INDEX_NAME: &str = "rerun:index_name";
+
+/// The key used to identify the entity path in field-level metadata.
 pub const SORBET_ENTITY_PATH: &str = "rerun:entity_path";
+
+/// The key used to identify the [`re_sorbet::column_kind::ColumnKind`] in
+/// field-level metadata.
 pub const RERUN_KIND: &str = "rerun:kind";
 
 /// Arrow metadata for an arrow record batch.
