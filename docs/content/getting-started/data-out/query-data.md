@@ -21,7 +21,7 @@ rerun server
 You can also pass a directory containing RRDs to be opened as a dataset in the server:
 
 ```console
-rerun server -d <directory_containing_rrds>
+rerun server -d directory_containing_rrds/
 ```
 
 For all available options, run:
