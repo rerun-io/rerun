@@ -81,5 +81,8 @@ pub async fn test_heuristics_mixed_2d_and_3d() {
         blueprint.set_auto_views(true, _viewer_context);
     });
 
+    // Need to step because view coordinates aren't applied in the first frame.
+    harness.run_steps(2);
+
     harness.snapshot_app("heuristics_mixed_2d_and_3d");
 }

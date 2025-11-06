@@ -58,6 +58,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <AngularSpeed as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Angular speed, used for rotation speed for example.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(AngularSpeed::default().to_arrow()?),
+                datatype: AngularSpeed::arrow_datatype(),
+                verify_arrow_array: AngularSpeed::verify_arrow_array,
+            },
+        ),
+        (
             <ApplyLatestAt as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether empty cells in a dataframe should be filled with a latest-at query.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -3466,6 +3476,27 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
+                        name: "position",
+                        display_name: "Position",
+                        component_type: "rerun.components.Position3D".into(),
+                        docstring_md: "The cameras current position.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "look_target",
+                        display_name: "Look target",
+                        component_type: "rerun.components.Position3D".into(),
+                        docstring_md: "The position the camera is currently looking at.\n\nIf this is an orbital camera, this also is the center it orbits around.\n\nBy default this is the center of the scene bounds.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "eye_up",
+                        display_name: "Eye up",
+                        component_type: "rerun.components.Vector3D".into(),
+                        docstring_md: "The up-axis of the eye itself, in world-space.\n\nInitially, the up-axis of the eye will be the same as the up-axis of the scene (or +Z if\nthe scene has no up axis defined).",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
                         name: "speed",
                         display_name: "Speed",
                         component_type: "rerun.components.LinearSpeed".into(),
@@ -3477,6 +3508,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Tracking entity",
                         component_type: "rerun.components.EntityPath".into(),
                         docstring_md: "Currently tracked entity.\n\nIf this is a camera, it takes over the camera pose, otherwise follows the entity.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "spin_speed",
+                        display_name: "Spin speed",
+                        component_type: "rerun.blueprint.components.AngularSpeed".into(),
+                        docstring_md: "What speed, if any, the camera should spin around the eye-up axis.\n\nDefaults to zero, meaning no spinning.",
                         is_required: false,
                     },
                 ],
@@ -3824,6 +3862,31 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Zoom lock",
                         component_type: "rerun.blueprint.components.LockRangeDuringZoom".into(),
                         docstring_md: "If enabled, the Y axis range will remain locked to the specified range when zooming.",
+                        is_required: false,
+                    },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.SpatialInformation"),
+            ArchetypeReflection {
+                display_name: "Spatial information",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "show_axes",
+                        display_name: "Show axes",
+                        component_type: "rerun.blueprint.components.Enabled".into(),
+                        docstring_md: "Whether axes should be shown at the origin.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "show_bounding_box",
+                        display_name: "Show bounding box",
+                        component_type: "rerun.blueprint.components.Enabled".into(),
+                        docstring_md: "Whether the bounding box should be shown.",
                         is_required: false,
                     },
                 ],

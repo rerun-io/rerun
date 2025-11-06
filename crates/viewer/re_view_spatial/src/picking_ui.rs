@@ -204,7 +204,7 @@ pub fn picking(
                 ItemContext::ThreeD {
                     space_3d: query.space_origin.clone(),
                     pos: hovered_point,
-                    tracked_entity: state.state_3d.tracked_entity.clone(),
+                    tracked_entity: state.last_tracked_entity().cloned(),
                     point_in_space_cameras: cameras_visualizer_output
                         .space_cameras
                         .iter()
