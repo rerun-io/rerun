@@ -484,8 +484,16 @@ impl ControlEye {
     /// Handle zoom/scroll input.
     fn handle_zoom(&mut self, egui_ctx: &egui::Context) {
         let zoom_factor = egui_ctx.input(|input| {
-            let (zoom_delta, scroll_delta) = (input.zoom_delta(), input.smooth_scroll_delta.y);
-            zoom_delta * (scroll_delta / 200.0).exp()
+            // egui's default horizontal_scroll_modifier is shift, which is also our speed-up modifier.
+            // This means that a user who wants to speed up scroll-to-zoom will generate a horizontal scroll delta.
+            // To support that, we have to check and use the horizontal delta if no vertical delta is present.
+            let is_maybe_horizontal = input.smooth_scroll_delta.y == 0.;
+            let scroll_delta = if is_maybe_horizontal {
+                input.smooth_scroll_delta.x
+            } else {
+                input.smooth_scroll_delta.y
+            };
+            input.zoom_delta() * (scroll_delta / 200.0).exp()
         });
 
         if zoom_factor == 1.0 {
