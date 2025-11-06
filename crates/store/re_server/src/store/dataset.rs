@@ -1,12 +1,13 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use arrow::{
     array::{RecordBatch, RecordBatchOptions},
     datatypes::{Fields, Schema},
 };
 use itertools::Either;
+use parking_lot::RwLock;
 
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
@@ -167,7 +168,7 @@ impl Dataset {
     pub fn schema(&self) -> arrow::error::Result<Schema> {
         // Fast path: check if we have a valid cached schema
         {
-            let cache = self.cached_schema.read().unwrap();
+            let cache = self.cached_schema.read();
             if let Some((cached_at, schema)) = cache.as_ref() {
                 if *cached_at == self.updated_at() {
                     return Ok(Schema::clone(schema));
@@ -180,7 +181,7 @@ impl Dataset {
 
         // Update cache with write lock
         {
-            let mut cache = self.cached_schema.write().unwrap();
+            let mut cache = self.cached_schema.write();
 
             // Double-check: another thread might have updated the cache while we were computing
             if let Some((cached_at, cached_schema)) = cache.as_ref() {
