@@ -83,7 +83,6 @@ impl TransformFrameIdHash {
     ///
     /// If the string was an entity path derived frame id, also returns that entity path.
     #[inline]
-    #[expect(clippy::should_implement_trait)]
     pub fn from_str_with_optional_derived_path(value: &str) -> (Self, Option<EntityPath>) {
         if let Some(path) = value.strip_prefix(TransformFrameId::ENTITY_HIERARCHY_PREFIX) {
             let path = EntityPath::parse_forgiving(path);
