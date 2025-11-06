@@ -138,7 +138,6 @@
 //! for referring to built-in transform frames.
 //!
 
-mod component_type_info;
 mod entity_to_frame_tracking;
 mod frame_id_registry;
 mod transform_aspect;
