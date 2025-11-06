@@ -9153,6 +9153,7 @@ dependencies = [
  "memory-stats",
  "opentelemetry",
  "opentelemetry-appender-tracing",
+ "opentelemetry-http",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
  "parking_lot",

@@ -326,7 +326,7 @@ impl Telemetry {
                 .with_batch_exporter(exporter)
                 .build();
 
-            // This will be used by the `TracingInjectorInterceptor` & `TracingExtractorInterceptor` to
+            // This will be used by the `TracingInjectorInterceptor` to
             // encode the trace information into the request headers.
             opentelemetry::global::set_text_map_propagator(
                 opentelemetry_sdk::propagation::TraceContextPropagator::new(),
