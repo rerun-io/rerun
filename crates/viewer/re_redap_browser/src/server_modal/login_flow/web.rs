@@ -1,7 +1,12 @@
-use base64::prelude::*;
-use re_auth::oauth::{Credentials, api::AuthenticationResponse};
+use re_auth::oauth::{
+    Credentials,
+    api::{AuthenticateWithCode, Pkce, authorization_url, send_async},
+};
 use re_log::ResultExt as _;
+use re_viewer_context::AsyncRuntimeHandle;
 use std::{cell::RefCell, rc::Rc};
+use url::Url;
+use uuid::Uuid;
 use wasm_bindgen::{JsCast as _, prelude::Closure};
 
 #[expect(clippy::needless_pass_by_value)]
@@ -25,8 +30,9 @@ pub struct State {
     child_window: Option<web_sys::Window>,
     on_storage_event: Option<Closure<StorageEventCallback>>,
 
-    nonce: String,
-    result: Rc<RefCell<Option<Credentials>>>,
+    pkce: Rc<Pkce>,
+    state: String,
+    result: Rc<RefCell<Option<Result<Credentials, String>>>>,
 }
 
 impl Drop for State {
@@ -62,22 +68,26 @@ impl State {
             return Ok(());
         }
 
-        // Open popup window at `/login/v2`:
         let parent_window = web_sys::window().expect("no window available");
-        let origin = parent_window
-            .location()
-            .origin()
-            .map_err(js_value_to_string)?;
 
-        let return_to = format!(
-            "{origin}/signed-in?n={nonce}",
-            nonce = BASE64_URL_SAFE.encode(&self.nonce),
-        );
-        let login_url = format!(
-            "{login_page_url}?r={return_to}",
-            login_page_url = &*re_auth::oauth::api::DEFAULT_LOGIN_URL,
-            return_to = BASE64_URL_SAFE.encode(&return_to),
-        );
+        // Open popup window:
+        //   <origin>/signed-in
+        let redirect_uri = {
+            let location = parent_window.location();
+            let origin = location.origin().map_err(js_value_to_string)?;
+            let mut url = Url::parse(&origin).map_err(|err| err.to_string())?;
+            if url.host_str() == Some("localhost") {
+                // For `localhost`, we have to map it to `127.0.0.1`, otherwise
+                // it's not a valid redirect URI.
+                let port = url.port();
+                url.set_host(Some("127.0.0.1")).ok();
+                url.set_port(port).ok();
+            }
+
+            url.set_path("signed-in");
+            url.to_string()
+        };
+        let login_url = authorization_url(&redirect_uri, &self.state, &self.pkce);
 
         let Some(child_window) = parent_window
             .open_with_url_and_target_and_features(&login_url, "auth", "width=480,height=640")
@@ -103,7 +113,7 @@ impl State {
     pub fn done(&mut self) -> Result<Option<Credentials>, String> {
         // Check if we have credentials
         if let Some(credentials) = self.result.borrow_mut().take() {
-            return Ok(Some(credentials));
+            return credentials.map(Some);
         }
 
         // Check if popup window was manually closed by user
@@ -124,13 +134,9 @@ impl State {
 
     #[expect(clippy::needless_pass_by_ref_mut)]
     pub fn open(ui: &mut egui::Ui) -> Result<Self, String> {
-        let egui_ctx = ui.ctx().clone();
-
         let parent_window = web_sys::window().expect("no window available");
-        let nonce = parent_window
-            .crypto()
-            .map_err(js_value_to_string)?
-            .random_uuid();
+        let pkce = Rc::new(Pkce::new());
+        let state = Uuid::new_v4().to_string();
 
         let result = Rc::new(RefCell::new(None));
 
@@ -141,96 +147,17 @@ impl State {
         // this event listener being fired.
         let on_storage_event = Closure::wrap(Box::new({
             let result = Rc::clone(&result);
-            let nonce = nonce.clone();
+            let pkce = pkce.clone();
+            let stored_state = state.clone();
+            let egui_ctx = ui.ctx().clone();
             move |e: web_sys::StorageEvent| {
-                web_sys::console::log_1(&e);
-
-                // Instead of setting the credentials in localstorage directly,
-                // we instead first set it to a different key, and then only
-                // when everything has succeeded do we store the final credentials
-                // in localstorage. This ensures that if something goes wrong at
-                // any point during the login flow, we do not invalidate the
-                // user's existing credentials until the _very_ end.
-
-                // The payload is received on the `_auth` key,
-                // see `AuthEventPayload` above for what it looks like.
-                if e.key().as_deref() != Some("_auth") {
-                    re_log::debug!("invalid storage event key: _auth");
-                    return;
-                }
-                let Some(new_value) = e.new_value() else {
-                    re_log::debug!("storage event without new value");
-                    return;
-                };
-                let Some(payload) =
-                    serde_json::from_str::<AuthEventPayload>(&new_value).ok_or_log_error()
-                else {
-                    return;
-                };
-                if payload.type_ != "auth" {
-                    re_log::error!("storage event payload.type != auth");
-                    return;
-                }
-                // The payload contains the URL to which the user was redirected to by
-                // the login flow, which stores the nonce and auth response in its search params:
-                let Some(url) = url::Url::parse(&payload.url).ok_or_log_error() else {
-                    return;
-                };
-
-                let n = url.query_pairs().find(|(k, _)| k == "n").map(|(_, v)| v);
-                let t = url.query_pairs().find(|(k, _)| k == "t").map(|(_, v)| v);
-
-                let Some((encoded_nonce, encoded_tokens)) = n.zip(t) else {
-                    re_log::error!("authentication failed: missing n/t params");
-                    return;
-                };
-
-                // The nonce is a base64-encoded v4 uuid.
-                let Some(decoded_nonce) = BASE64_URL_SAFE
-                    .decode(encoded_nonce.as_bytes())
-                    .ok_or_log_error()
-                else {
-                    return;
-                };
-                let Some(decoded_nonce) = String::from_utf8(decoded_nonce).ok_or_log_error() else {
-                    return;
-                };
-                if decoded_nonce != nonce {
-                    re_log::error!("authentication failed: n mismatch");
-                    return;
-                }
-
-                // The auth response is a base64-encoded json object which
-                // holds the token pair, and also user info, such as their email:
-                let Some(response) = BASE64_URL_SAFE
-                    .decode(encoded_tokens.as_bytes())
-                    .ok_or_log_error()
-                else {
-                    return;
-                };
-                let Some(response) =
-                    serde_json::from_slice::<AuthenticationResponse>(&response).ok_or_log_error()
-                else {
-                    return;
-                };
-
-                #[expect(unsafe_code)]
-                let Some(credentials) =
-                // SAFETY: credentials come from a trusted source
-                    unsafe { re_auth::oauth::Credentials::from_auth_response(response) }
-                        .ok_or_log_error()
-                else {
-                    return;
-                };
-
-                // As a last step, we store the actual credentials in local storage:
-                let Some(credentials) = credentials.ensure_stored().ok_or_log_error() else {
-                    return;
-                };
-
-                // And then notify the UI that the login succeeded:
-                *result.borrow_mut() = Some(credentials);
-                egui_ctx.request_repaint();
+                AsyncRuntimeHandle::new_web().spawn_future(try_handle_storage_event(
+                    e,
+                    pkce.clone(),
+                    stored_state.clone(),
+                    result.clone(),
+                    egui_ctx.clone(),
+                ));
             }
         }) as Box<StorageEventCallback>);
 
@@ -241,8 +168,101 @@ impl State {
         Ok(Self {
             child_window: None,
             on_storage_event: Some(on_storage_event),
-            nonce,
+            pkce,
+            state,
             result,
         })
     }
+}
+
+async fn try_handle_storage_event(
+    e: web_sys::StorageEvent,
+    pkce: Rc<Pkce>,
+    stored_state: String,
+    result: Rc<RefCell<Option<Result<Credentials, String>>>>,
+    egui_ctx: egui::Context,
+) {
+    macro_rules! bail {
+        ($err:expr) => {{
+            let err = $err.to_string();
+            re_log::error!("{err}");
+            *result.borrow_mut() = Some(Err(err));
+            return;
+        }};
+    }
+
+    // Instead of setting the credentials in localstorage directly,
+    // we instead first set it to a different key, and then only
+    // when everything has succeeded do we store the final credentials
+    // in localstorage. This ensures that if something goes wrong at
+    // any point during the login flow, we do not invalidate the
+    // user's existing credentials until the _very_ end.
+
+    // The payload is received on the `_auth` key,
+    // see `AuthEventPayload` above for what it looks like.
+    if e.key().as_deref() != Some("_auth") {
+        bail!("invalid storage event key: _auth");
+    }
+    let Some(new_value) = e.new_value() else {
+        bail!("storage event without new value");
+    };
+    let payload = match serde_json::from_str::<AuthEventPayload>(&new_value) {
+        Ok(payload) => payload,
+        Err(err) => {
+            bail!(err);
+        }
+    };
+    if payload.type_ != "auth" {
+        re_log::error!("storage event payload.type != auth");
+        return;
+    }
+    // The payload contains the URL to which the user was redirected to by
+    // the login flow, which stores the code and state in its search params:
+    let Some(url) = url::Url::parse(&payload.url).ok_or_log_error() else {
+        return;
+    };
+
+    let Some(code) = url.query_pairs().find(|(k, _)| k == "code").map(|(_, v)| v) else {
+        bail!("missing code in url");
+    };
+    let Some(state) = url
+        .query_pairs()
+        .find(|(k, _)| k == "state")
+        .map(|(_, v)| v)
+    else {
+        bail!("missing state in url");
+    };
+
+    if state != stored_state {
+        bail!("invalid state");
+    }
+
+    // Now we need to exchange the code for tokens:
+    let res = match send_async(AuthenticateWithCode::new(&code, &pkce, "rerun-viewer")).await {
+        Ok(res) => res,
+        Err(err) => {
+            bail!(err);
+        }
+    };
+
+    #[expect(unsafe_code)]
+    // SAFETY: credentials come from a trusted source
+    let credentials = match unsafe { re_auth::oauth::Credentials::from_auth_response(res.into()) } {
+        Ok(v) => v,
+        Err(err) => {
+            bail!(err);
+        }
+    };
+
+    // As a last step, we store the actual credentials in local storage:
+    let credentials = match credentials.ensure_stored() {
+        Ok(v) => v,
+        Err(err) => {
+            bail!(err);
+        }
+    };
+
+    // And then notify the UI that the login succeeded:
+    *result.borrow_mut() = Some(Ok(credentials));
+    egui_ctx.request_repaint();
 }

@@ -22,16 +22,19 @@ version.workspace = true
 workspace = true
 
 [features]
-cli = ["dep:base64", "dep:indicatif", "dep:serde", "dep:serde_json", "dep:webbrowser", "oauth"]
+cli = ["dep:indicatif", "dep:webbrowser", "oauth"]
 
 oauth = [
   "dep:base64",
   "dep:directories",
   "dep:ehttp",
+  "dep:getrandom",
   "dep:serde",
   "dep:serde_json",
+  "dep:sha2",
   "dep:tiny_http",
   "dep:url",
+  "dep:uuid",
 ]
 
 [dependencies]
@@ -48,14 +51,17 @@ tower.workspace = true
 
 ## Optional dependencies
 base64 = { workspace = true, optional = true }
+getrandom = { workspace = true, optional = true }
 indicatif = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
+sha2 = { workspace = true, optional = true }
 url = { workspace = true, optional = true }
+uuid = { workspace = true, optional = true, features = ["v4"] }
 webbrowser = { workspace = true, optional = true }
 
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-base64.workspace = true
 directories = { workspace = true, optional = true }
 ehttp = { workspace = true, optional = true, features = ["json", "native-async"] }
 rand = { workspace = true, features = ["std", "std_rng", "os_rng"] }

@@ -12,7 +12,6 @@ mod storage;
 /// during network transit.
 const SOFT_EXPIRE_SECS: i64 = 60;
 
-#[cfg(not(target_arch = "wasm32"))]
 pub(crate) static OAUTH_CLIENT_ID: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
     std::env::var("RERUN_OAUTH_CLIENT_ID")
         .ok()
@@ -220,7 +219,7 @@ impl Credentials {
     ///
     #[expect(unsafe_code)]
     pub unsafe fn from_auth_response(
-        res: api::AuthenticationResponse,
+        res: api::RefreshResponse,
     ) -> Result<InMemoryCredentials, MalformedTokenError> {
         // SAFETY: The token comes from a trusted source, which is the authentication API.
         #[expect(unsafe_code)]

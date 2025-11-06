@@ -55,3 +55,4 @@ js-sys.workspace = true
 #     For details see https://github.com/rerun-io/rerun/issues/8766
 wasm-bindgen = "=0.2.100" # ⚠️ read above notice before touching this!
 web-sys = { workspace = true, features = ["Storage", "Window"] }
+uuid.workspace = true

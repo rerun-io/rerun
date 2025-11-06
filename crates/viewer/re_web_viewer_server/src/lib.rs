@@ -151,7 +151,7 @@ impl WebViewerServer {
         if let Some(local_addr) = local_addr.clone().to_ip()
             && local_addr.ip().is_unspecified()
         {
-            return format!("http://localhost:{}", local_addr.port());
+            return format!("http://127.0.0.1:{}", local_addr.port());
         }
         format!("http://{local_addr}")
     }

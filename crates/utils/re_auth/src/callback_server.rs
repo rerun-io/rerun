@@ -1,43 +1,40 @@
-use base64::prelude::*;
-use rand::{Rng as _, SeedableRng as _, rngs::StdRng};
+use uuid::Uuid;
 
-use crate::oauth::{CredentialsStoreError, MalformedTokenError, api::DEFAULT_LOGIN_URL};
-use std::{borrow::Cow, collections::HashMap};
+use crate::oauth::{
+    CredentialsStoreError, MalformedTokenError,
+    api::{Pkce, authorization_url},
+};
+use std::borrow::Cow;
 
 pub struct OauthCallbackServer {
     server: tiny_http::Server,
-    login_url: String,
-    nonce: u128,
+
+    state: String,
+    auth_url: String,
 }
 
 impl OauthCallbackServer {
-    pub fn new(login_page_url: Option<&str>) -> Result<Self, Error> {
-        let server = tiny_http::Server::http("127.0.0.1:0")?;
-        let nonce: u128 = StdRng::from_os_rng().random();
+    pub fn new(pkce: &Pkce) -> Result<Self, Error> {
+        let server = tiny_http::Server::http("127.0.0.1:17340")?;
 
-        let callback_url = format!(
-            "http://{addr}/logged-in?n={n}",
-            addr = server.server_addr(),
-            n = BASE64_URL_SAFE.encode(nonce.to_le_bytes()),
-        );
+        let state: String = Uuid::new_v4().to_string();
 
-        // This is the URL the user should open to log in:
-        let login_url = format!(
-            "{login_page_url}?r={r}",
-            login_page_url = login_page_url.unwrap_or(&DEFAULT_LOGIN_URL),
-            r = BASE64_URL_SAFE.encode(callback_url.as_bytes()),
+        let redirect_uri = format!(
+            "http://{server_addr}/logged-in",
+            server_addr = server.server_addr()
         );
+        let auth_url = authorization_url(&redirect_uri, &state, pkce);
 
         Ok(Self {
             server,
-            login_url,
-            nonce,
+            state,
+            auth_url,
         })
     }
 
     /// Simple web server waiting for a request from the browser to `/callback`,
     /// which provides us with the token payload.
-    pub fn check_for_browser_response(&self) -> Result<Option<AuthenticationResponse>, Error> {
+    pub fn check_for_browser_response(&self) -> Result<Option<String>, Error> {
         let Some(req) = self.server.try_recv().map_err(Error::Http)? else {
             return Ok(None);
         };
@@ -47,15 +44,11 @@ impl OauthCallbackServer {
             return Ok(None);
         }
 
-        let Some(res) = handle_auth_request(&self.server, req, self.nonce)? else {
-            return Ok(None);
-        };
-
-        Ok(Some(res))
+        handle_auth_request(&self.server, req, &self.state)
     }
 
     pub fn get_login_url(&self) -> &str {
-        &self.login_url
+        &self.auth_url
     }
 }
 
@@ -115,12 +108,12 @@ fn handle_other_requests(req: &tiny_http::Request) -> Option<tiny_http::Response
     }
 }
 
-// Handles `/logged-in?t=<base64-encoded token payload>&n=<base64-encoded nonce>`
+// Handles `/logged-in?code=<code>&state=<state>`
 fn handle_auth_request(
     server: &tiny_http::Server,
     req: tiny_http::Request,
-    nonce: u128,
-) -> Result<Option<AuthenticationResponse>, Error> {
+    stored_state: &str,
+) -> Result<Option<String>, Error> {
     // Parse and check the URL pathname
     let Ok(url) = url::Url::parse(&format!("http://{}{}", server.server_addr(), req.url())) else {
         req.respond(tiny_http::Response::empty(400).cors())
@@ -135,58 +128,23 @@ fn handle_auth_request(
     }
 
     // get required query params
-    let Some(serialized_response) = get_query_param(&url, "t") else {
-        status_page_response(req, "Missing query param <code>t</code>")?;
+    let Some(code) = get_query_param(&url, "code") else {
+        status_page_response(req, "Missing query param <code>code</code>")?;
         return Ok(None);
     };
-    let Some(serialized_nonce) = get_query_param(&url, "n") else {
-        status_page_response(req, "Missing query param <code>n</code>")?;
+    let Some(state) = get_query_param(&url, "state") else {
+        status_page_response(req, "Missing query param <code>state</code>")?;
         return Ok(None);
     };
 
-    // decode base64
-    let raw_response = match BASE64_URL_SAFE.decode(serialized_response.as_ref()) {
-        Ok(v) => v,
-        Err(err) => {
-            status_page_response(req, format!("Failed to deserialize response: {err}"))?;
-            return Ok(None);
-        }
-    };
-    let received_nonce_bytes = match BASE64_URL_SAFE.decode(serialized_nonce.as_ref()) {
-        Ok(v) => v,
-        Err(err) => {
-            status_page_response(req, format!("Failed to deserialize nonce: {err}"))?;
-            return Ok(None);
-        }
-    };
-
-    // deserialize
-    let response: AuthenticationResponse = match serde_json::from_slice(&raw_response) {
-        Ok(v) => v,
-        Err(err) => {
-            status_page_response(req, format!("Failed to deserialize response: {err}"))?;
-            return Ok(None);
-        }
-    };
-    let received_nonce: u128 = match received_nonce_bytes.as_slice().try_into() {
-        Ok(nonce_bytes) => u128::from_le_bytes(nonce_bytes),
-        Err(err) => {
-            status_page_response(req, format!("Failed to deserialize nonce: {err}"))?;
-            return Ok(None);
-        }
-    };
-
-    if nonce != received_nonce {
-        status_page_response(
-            req,
-            "Request expired, try running <code>rerun auth login</code> again.",
-        )?;
+    if state != stored_state {
+        status_page_response(req, "Something went wrong: invalid <code>state</code>")?;
         return Ok(None);
     }
 
     status_page_response(req, "Success! You can close this page now.")?;
 
-    Ok(Some(response))
+    Ok(Some(code.into_owned()))
 }
 
 fn status_page_response(req: tiny_http::Request, message: impl Into<String>) -> Result<(), Error> {
@@ -202,86 +160,4 @@ fn status_page_response(req: tiny_http::Request, message: impl Into<String>) -> 
 
 fn get_query_param<'a>(url: &'a url::Url, key: &str) -> Option<Cow<'a, str>> {
     url.query_pairs().find(|(k, _)| k == key).map(|(_, v)| v)
-}
-
-#[expect(dead_code)] // fields may become used at some point in the near future
-#[derive(Debug, Clone, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AuthenticationResponse {
-    user: User,
-    organization_id: Option<String>,
-    access_token: String,
-    refresh_token: String,
-    impersonator: Option<Impersonator>,
-    authentication_method: Option<AuthenticationMethod>,
-    sealed_session: Option<String>,
-    oauth_tokens: Option<OauthTokens>,
-}
-
-impl From<AuthenticationResponse> for crate::oauth::api::AuthenticationResponse {
-    fn from(value: AuthenticationResponse) -> Self {
-        Self {
-            user: value.user.into(),
-            organization_id: value.organization_id,
-            access_token: value.access_token,
-            refresh_token: value.refresh_token,
-        }
-    }
-}
-
-#[expect(dead_code)] // fields may become used at some point in the near future
-#[derive(Debug, Clone, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct User {
-    id: String,
-    email: String,
-    email_verified: bool,
-    profile_picture_url: Option<String>,
-    first_name: Option<String>,
-    last_name: Option<String>,
-    last_sign_in_at: Option<String>,
-    created_at: String,
-    updated_at: String,
-    external_id: Option<String>,
-    metadata: HashMap<String, String>,
-}
-
-impl From<User> for crate::oauth::User {
-    fn from(value: User) -> Self {
-        Self {
-            id: value.id,
-            email: value.email,
-            metadata: value.metadata,
-        }
-    }
-}
-
-#[expect(dead_code)] // fields may become used at some point in the near future
-#[derive(Debug, Clone, serde::Deserialize)]
-struct Impersonator {
-    email: String,
-    reason: Option<String>,
-}
-
-#[expect(clippy::upper_case_acronyms)] // It's better than a serde(rename)
-#[derive(Debug, Clone, serde::Deserialize)]
-enum AuthenticationMethod {
-    SSO,
-    Password,
-    Passkey,
-    AppleOAuth,
-    GitHubOAuth,
-    GoogleOAuth,
-    MicrosoftOAuth,
-    MagicAuth,
-    Impersonation,
-}
-
-#[expect(dead_code)] // fields may become used at some point in the near future
-#[derive(Debug, Clone, serde::Deserialize)]
-struct OauthTokens {
-    access_token: String,
-    refresh_token: String,
-    expires_at: u64,
-    scopes: Vec<String>,
 }

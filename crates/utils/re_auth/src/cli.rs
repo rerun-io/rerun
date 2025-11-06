@@ -4,10 +4,10 @@ use indicatif::ProgressBar;
 
 pub use crate::callback_server::Error;
 use crate::callback_server::OauthCallbackServer;
+use crate::oauth::api::{AuthenticateWithCode, Pkce, send_async};
 use crate::oauth::{self, Credentials};
 
-pub struct LoginOptions<'a> {
-    pub login_page_url: Option<&'a str>,
+pub struct LoginOptions {
     pub open_browser: bool,
     pub force_login: bool,
 }
@@ -41,7 +41,7 @@ pub async fn token() -> Result<(), Error> {
 ///
 /// This first checks if valid credentials already exist locally,
 /// and doesn't perform the login flow if so, unless `options.force_login` is set to `true`.
-pub async fn login(options: LoginOptions<'_>) -> Result<(), Error> {
+pub async fn login(options: LoginOptions) -> Result<(), Error> {
     if !options.force_login {
         // NOTE: If the loading fails for whatever reason, we debug log the error
         // and have the user login again as if nothing happened.
@@ -81,7 +81,8 @@ pub async fn login(options: LoginOptions<'_>) -> Result<(), Error> {
     // Login process:
 
     // 1. Start web server listening for token
-    let server = OauthCallbackServer::new(options.login_page_url)?;
+    let pkce = Pkce::new();
+    let server = OauthCallbackServer::new(&pkce)?;
     p.inc(1);
 
     // 2. Open authorization URL in browser
@@ -106,7 +107,7 @@ pub async fn login(options: LoginOptions<'_>) -> Result<(), Error> {
 
     // 3. Wait for callback
     p.set_message("Waiting for browser…");
-    let auth = loop {
+    let code = loop {
         match server.check_for_browser_response()? {
             None => {
                 p.inc(1);
@@ -116,7 +117,11 @@ pub async fn login(options: LoginOptions<'_>) -> Result<(), Error> {
         }
     };
 
-    // 4. Deserialize credentials
+    // 4. Exchange code for credentials
+    let auth = send_async(AuthenticateWithCode::new(&code, &pkce, "rerun-cli"))
+        .await
+        .map_err(|err| Error::Generic(err.into()))?;
+
     #[expect(unsafe_code)]
     // SAFETY: Credentials come from the auth API
     let credentials = unsafe { Credentials::from_auth_response(auth.into())? };
