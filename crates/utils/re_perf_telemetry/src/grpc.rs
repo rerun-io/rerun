@@ -30,6 +30,12 @@ impl GrpcMakeSpan {
 
 impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
     fn make_span(&mut self, request: &http::Request<B>) -> tracing::Span {
+        // Extract `OpenTelemetry` context from headers before creating the span
+        let parent_ctx = opentelemetry::global::get_text_map_propagator(|prop| {
+            prop.extract(&opentelemetry_http::HeaderExtractor(request.headers()))
+        });
+        let _guard = parent_ctx.attach();
+
         let endpoint = request.uri().path().to_owned();
         let url = request
             .uri()
@@ -252,8 +258,6 @@ impl GrpcOnRequest {
 
 impl<B> tower_http::trace::OnRequest<B> for GrpcOnRequest {
     fn on_request(&mut self, request: &http::Request<B>, span: &tracing::Span) {
-        // It's important that we log the start of gRPC requests in case of a crash!
-
         let Some(span_metadata) = SpanMetadata::get_opt(span.id().as_ref()) else {
             tracing::info!(
                 uri = %request.uri(),
@@ -591,19 +595,13 @@ impl tower_http::trace::OnEos for GrpcOnEos {
     }
 }
 
-pub type ServerTelemetryLayer = tower::layer::util::Stack<
-    tonic::service::interceptor::InterceptorLayer<TracingExtractorInterceptor>,
-    tower::layer::util::Stack<
-        tower_http::trace::TraceLayer<
-            tower_http::trace::GrpcMakeClassifier,
-            GrpcMakeSpan,
-            GrpcOnRequest,
-            GrpcOnResponse,
-            GrpcOnFirstBodyChunk,
-            GrpcOnEos,
-        >,
-        tower::layer::util::Identity,
-    >,
+pub type ServerTelemetryLayer = tower_http::trace::TraceLayer<
+    tower_http::trace::GrpcMakeClassifier,
+    GrpcMakeSpan,
+    GrpcOnRequest,
+    GrpcOnResponse,
+    GrpcOnFirstBodyChunk,
+    GrpcOnEos,
 >;
 
 /// Creates a new [`tower::Layer`] middleware that automatically:
@@ -619,17 +617,12 @@ pub type ServerTelemetryLayer = tower::layer::util::Stack<
 /// * streaming endpoint mid stream error - `on_response` called (but only initially with OK code, no error detected here), `on_eos` called (and existing error handling logic executed).
 ///   `on_failure` is not called here and from code inspection it seems that is only called for immediate failures and polling frame errors (transport errors, although not verified with testing)
 pub fn new_server_telemetry_layer() -> ServerTelemetryLayer {
-    let trace_layer = tower_http::trace::TraceLayer::new_for_grpc()
+    tower_http::trace::TraceLayer::new_for_grpc()
         .make_span_with(GrpcMakeSpan::new())
         .on_request(GrpcOnRequest::new())
         .on_response(GrpcOnResponse::new())
         .on_body_chunk(GrpcOnFirstBodyChunk::new())
-        .on_eos(GrpcOnEos::new());
-
-    tower::ServiceBuilder::new()
-        .layer(trace_layer)
-        .layer(TracingExtractorInterceptor::new_layer())
-        .into_inner()
+        .on_eos(GrpcOnEos::new())
 }
 
 pub type ClientTelemetryLayer = tower::layer::util::Stack<
@@ -666,7 +659,6 @@ pub fn new_client_telemetry_layer() -> ClientTelemetryLayer {
 /// converting to the `OpenTelemetry` format, and finally injected into the request headers, thereby
 /// propagating the trace across network boundaries.
 ///
-/// See also [`TracingExtractorInterceptor`].
 #[derive(Default, Clone)]
 pub struct TracingInjectorInterceptor;
 
@@ -701,57 +693,6 @@ impl tonic::service::Interceptor for TracingInjectorInterceptor {
         opentelemetry::global::get_text_map_propagator(|propagator| {
             propagator.inject_context(&cx, &mut MetadataMap(req.metadata_mut()));
         });
-
-        Ok(req)
-    }
-}
-
-/// This implements a [`tonic::service::Interceptor`] that extracts trace/span metadata from the
-/// request headers, according to W3C standards.
-///
-/// This trace/span information (which is still an `OpenTelemetry` payload, at that point) is then
-/// injected back into the currently opened [`tracing::Span`] (if any), therefore propagating the
-/// trace across network boundaries.
-#[derive(Default, Clone)]
-pub struct TracingExtractorInterceptor;
-
-impl TracingExtractorInterceptor {
-    /// Creates a new [`tower::Layer`] middleware that automatically applies the extractor.
-    ///
-    /// See also [`new_server_telemetry_layer`].
-    pub fn new_layer() -> tonic::service::interceptor::InterceptorLayer<Self> {
-        tonic::service::interceptor::InterceptorLayer::new(Self)
-    }
-}
-
-impl tonic::service::Interceptor for TracingExtractorInterceptor {
-    fn call(&mut self, req: tonic::Request<()>) -> Result<tonic::Request<()>, tonic::Status> {
-        struct MetadataMap<'a>(&'a tonic::metadata::MetadataMap);
-
-        impl opentelemetry::propagation::Extractor for MetadataMap<'_> {
-            fn get(&self, key: &str) -> Option<&str> {
-                self.0.get(key)?.to_str().ok()
-            }
-
-            fn keys(&self) -> Vec<&str> {
-                self.0
-                    .keys()
-                    .map(|key| match key {
-                        tonic::metadata::KeyRef::Ascii(v) => v.as_str(),
-                        tonic::metadata::KeyRef::Binary(v) => v.as_str(),
-                    })
-                    .collect::<Vec<_>>()
-            }
-        }
-
-        // Grab the trace information from the headers, in OpenTelemetry format.
-        let parent_ctx = opentelemetry::global::get_text_map_propagator(|prop| {
-            prop.extract(&MetadataMap(req.metadata()))
-        });
-
-        // Convert the trace information back into `tracing` and inject it into the current span (if any).
-        use tracing_opentelemetry::OpenTelemetrySpanExt as _;
-        tracing::Span::current().set_parent(parent_ctx).ok(); // Errors are expected if telemetry is disabled
 
         Ok(req)
     }
