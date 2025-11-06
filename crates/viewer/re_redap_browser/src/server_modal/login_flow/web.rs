@@ -132,7 +132,7 @@ impl State {
         Ok(None)
     }
 
-    #[expect(clippy::needless_pass_by_ref_mut)]
+    #[expect(clippy::needless_pass_by_ref_mut, clippy::unnecessary_wraps)]
     pub fn open(ui: &mut egui::Ui) -> Result<Self, String> {
         let parent_window = web_sys::window().expect("no window available");
         let pkce = Rc::new(Pkce::new());
