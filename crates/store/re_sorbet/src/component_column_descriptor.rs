@@ -203,7 +203,10 @@ impl ComponentColumnDescriptor {
                 crate::metadata::RERUN_KIND.to_owned(),
                 ColumnKind::Component.to_string(),
             ),
-            ("rerun:component".to_owned(), component.to_string()),
+            (
+                re_types_core::FIELD_METADATA_KEY_COMPONENT.to_owned(),
+                component.to_string(),
+            ),
         ]);
 
         match batch_type {
@@ -309,11 +312,12 @@ impl ComponentColumnDescriptor {
                 EntityPath::root() // TODO(#8744): make entity_path optional for general sorbet batches
             };
 
-        let component = if let Some(component) = field.get_opt("rerun:component") {
-            ComponentIdentifier::from(component)
-        } else {
-            ComponentIdentifier::new(field.name()) // fallback
-        };
+        let component =
+            if let Some(component) = field.get_opt(re_types_core::FIELD_METADATA_KEY_COMPONENT) {
+                ComponentIdentifier::from(component)
+            } else {
+                ComponentIdentifier::new(field.name()) // fallback
+            };
 
         let schema = Self {
             store_datatype: field.data_type().clone(),

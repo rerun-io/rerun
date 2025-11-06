@@ -83,13 +83,13 @@ fn rewire_tagged_components(batch: &RecordBatch) -> RecordBatch {
                         component.ends_with("Indicator"),
                         "Expected component to end with 'Indicator', got: {component:?}"
                     );
-                    metadata.insert("rerun:component".to_owned(), component);
+                    metadata.insert(re_types_core::FIELD_METADATA_KEY_COMPONENT.to_owned(), component);
                 } else if field_name.starts_with("rerun.") {
                     // Long name
-                    metadata.insert("rerun:component".to_owned(), field_name.clone());
+                    metadata.insert(re_types_core::FIELD_METADATA_KEY_COMPONENT.to_owned(), field_name.clone());
                 } else {
                     // Short name: expand it to be long
-                    metadata.insert("rerun:component".to_owned(), format!("rerun.components.{field_name}"));
+                    metadata.insert(re_types_core::FIELD_METADATA_KEY_COMPONENT.to_owned(), format!("rerun.components.{field_name}"));
                 }
 
                 // Remove everything else.
@@ -139,7 +139,7 @@ fn rewire_tagged_components(batch: &RecordBatch) -> RecordBatch {
                 if let Some(archetype) = archetype {
                     metadata.insert(re_types_core::FIELD_METADATA_KEY_ARCHETYPE.to_owned(), archetype);
                 }
-                metadata.insert("rerun:component".to_owned(), component);
+                metadata.insert(re_types_core::FIELD_METADATA_KEY_COMPONENT.to_owned(), component);
                 if let Some(component_type) = component_type {
                     metadata.insert("rerun:component_type".to_owned(), component_type);
                 }
