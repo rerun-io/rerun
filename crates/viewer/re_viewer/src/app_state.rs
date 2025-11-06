@@ -187,19 +187,16 @@ struct VisualizableEntitiesCacheEntry {
 #[derive(Clone, PartialEq, Eq, Hash)]
 struct VisualizableEntitiesCacheKey {
     recording_generation: re_chunk_store::ChunkStoreGeneration,
-    blueprint_generation: re_chunk_store::ChunkStoreGeneration,
     space_origin: EntityPath,
 }
 
 impl VisualizableEntitiesCacheKey {
     fn new(
         recording_generation: re_chunk_store::ChunkStoreGeneration,
-        blueprint_generation: re_chunk_store::ChunkStoreGeneration,
         space_origin: &EntityPath,
     ) -> Self {
         Self {
             recording_generation,
-            blueprint_generation,
             space_origin: space_origin.clone(),
         }
     }
@@ -372,7 +369,6 @@ impl AppState {
                         .map(|view| {
                             let cache_key = VisualizableEntitiesCacheKey::new(
                                 recording_generation.clone(),
-                                blueprint_generation.clone(),
                                 &view.space_origin,
                             );
 
