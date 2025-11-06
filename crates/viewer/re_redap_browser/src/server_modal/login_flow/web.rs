@@ -201,10 +201,10 @@ async fn try_handle_storage_event(
     // The payload is received on the `_auth` key,
     // see `AuthEventPayload` above for what it looks like.
     if e.key().as_deref() != Some("_auth") {
-        bail!("invalid storage event key: _auth");
+        return;
     }
     let Some(new_value) = e.new_value() else {
-        bail!("storage event without new value");
+        bail!("auth storage event without new value");
     };
     let payload = match serde_json::from_str::<AuthEventPayload>(&new_value) {
         Ok(payload) => payload,
