@@ -106,7 +106,7 @@ impl IndexColumnDescriptor {
 
         let mut metadata = std::collections::HashMap::from([
             (
-                "rerun:kind".to_owned(),
+                crate::metadata::RERUN_KIND.to_owned(),
                 crate::ColumnKind::Index.to_string(),
             ),
             ("rerun:index_name".to_owned(), timeline.name().to_string()),

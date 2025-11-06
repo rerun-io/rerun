@@ -199,7 +199,10 @@ impl ComponentColumnDescriptor {
         } = self;
 
         let mut metadata = std::collections::HashMap::from([
-            ("rerun:kind".to_owned(), ColumnKind::Component.to_string()),
+            (
+                crate::metadata::RERUN_KIND.to_owned(),
+                ColumnKind::Component.to_string(),
+            ),
             ("rerun:component".to_owned(), component.to_string()),
         ]);
 

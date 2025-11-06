@@ -63,7 +63,7 @@ fn rewire_tagged_components(batch: &RecordBatch) -> RecordBatch {
             // These metadata fields don't require value changes.
             rename_key(&mut metadata, "rerun.index_name", "rerun:index_name");
             rename_key(&mut metadata, "rerun.entity_path", "rerun:entity_path");
-            rename_key(&mut metadata, "rerun.kind", "rerun:kind");
+            rename_key(&mut metadata, "rerun.kind", crate::metadata::RERUN_KIND);
             rename_key(&mut metadata, "rerun.is_static", "rerun:is_static");
             rename_key(&mut metadata, "rerun.is_indicator", "rerun:is_indicator");
             rename_key(&mut metadata, "rerun.is_tombstone", "rerun:is_tombstone");

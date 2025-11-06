@@ -2,6 +2,15 @@ use std::collections::HashMap;
 
 use arrow::datatypes::Field as ArrowField;
 
+pub const SORBET_INDEX_NAME: &str = "rerun:index_name";
+pub const SORBET_ENTITY_PATH: &str = "rerun:entity_path";
+pub const SORBET_ARCHETYPE_NAME: &str = "rerun:archetype";
+pub const SORBET_COMPONENT: &str = "rerun:component";
+pub const SORBET_COMPONENT_TYPE: &str = "rerun:component_type";
+pub const RERUN_KIND: &str = "rerun:kind";
+pub const RERUN_KIND_CONTROL: &str = "control";
+pub const RERUN_KIND_INDEX: &str = "index";
+
 /// Arrow metadata for an arrow record batch.
 pub type ArrowBatchMetadata = HashMap<String, String>;
 

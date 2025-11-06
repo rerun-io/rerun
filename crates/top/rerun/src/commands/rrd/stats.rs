@@ -416,7 +416,11 @@ fn compute_stats(app: bool, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
                 .fields
                 .iter()
                 .filter(|&field| {
-                    field.metadata().get("rerun:kind").map(|s| s.as_str()) == Some("index")
+                    field
+                        .metadata()
+                        .get(re_sorbet::metadata::RERUN_KIND)
+                        .map(|s| s.as_str())
+                        == Some("index")
                         || field.metadata().get("rerun.kind").map(|s| s.as_str()) == Some("index")
                 })
                 .map(|field| field.name().to_owned())
@@ -427,7 +431,11 @@ fn compute_stats(app: bool, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
                 .fields
                 .iter()
                 .filter(|&field| {
-                    field.metadata().get("rerun:kind").map(|s| s.as_str()) == Some("data")
+                    field
+                        .metadata()
+                        .get(re_sorbet::metadata::RERUN_KIND)
+                        .map(|s| s.as_str())
+                        == Some("data")
                         || field.metadata().get("rerun.kind").map(|s| s.as_str()) == Some("data")
                 })
                 .map(|field| field.name().to_owned())
