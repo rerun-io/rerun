@@ -7,7 +7,7 @@ use arrow::{
     datatypes::{Fields, Schema},
 };
 use itertools::Either;
-use parking_lot::RwLock;
+use parking_lot::Mutex;
 
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
@@ -37,7 +37,7 @@ pub struct Dataset {
 
     /// Cached schema with the timestamp when it was computed.
     /// Invalidated when `updated_at` changes.
-    cached_schema: RwLock<Option<(jiff::Timestamp, Arc<Schema>)>>,
+    cached_schema: Mutex<Option<(jiff::Timestamp, Arc<Schema>)>>,
 }
 
 impl Dataset {
@@ -51,7 +51,7 @@ impl Dataset {
                 details,
                 partitions: HashMap::default(),
             }),
-            cached_schema: RwLock::new(None),
+            cached_schema: Mutex::new(None),
         }
     }
 
@@ -166,34 +166,21 @@ impl Dataset {
     }
 
     pub fn schema(&self) -> arrow::error::Result<Schema> {
-        // Fast path: check if we have a valid cached schema
-        {
-            let cache = self.cached_schema.read();
-            if let Some((cached_at, schema)) = cache.as_ref() {
-                if *cached_at == self.updated_at() {
-                    return Ok(Schema::clone(schema));
-                }
+        let mut cache = self.cached_schema.lock();
+
+        let updated_at = self.updated_at();
+
+        // Check if we have a valid cached schema
+        if let Some((cached_at, schema)) = cache.as_ref() {
+            if *cached_at == updated_at {
+                return Ok(Schema::clone(schema));
             }
         }
 
-        // Slow path: recompute schema
+        // Recompute schema
         let schema = Schema::try_merge(self.iter_layers().map(|layer| layer.schema()))?;
-
-        // Update cache with write lock
-        {
-            let mut cache = self.cached_schema.write();
-
-            // Double-check: another thread might have updated the cache while we were computing
-            if let Some((cached_at, cached_schema)) = cache.as_ref() {
-                if *cached_at == self.updated_at() {
-                    return Ok(Schema::clone(cached_schema));
-                }
-            }
-
-            let updated_at = self.updated_at();
-            let schema_arc = Arc::new(schema.clone());
-            *cache = Some((updated_at, Arc::clone(&schema_arc)));
-        }
+        let schema_arc = Arc::new(schema.clone());
+        *cache = Some((updated_at, Arc::clone(&schema_arc)));
 
         Ok(schema)
     }
