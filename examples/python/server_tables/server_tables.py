@@ -118,10 +118,13 @@ def process_partitions(client: CatalogClient, dataset: DatasetEntry, partition_l
 
     df.write_table(RESULTS_TABLE_NAME)
 
+    # This command will replace the existing rows with a `True` completion status.
+    # If instead you wish to measure how long it takes your workflow to run, you
+    # can use an append statement as in the previous write.
     client.update_table(
         STATUS_LOG_TABLE_NAME,
         rerun_partition_id=partition_list,
-        is_complete=[True] * len(partition_list),  # Add the `True` value to prevent this from processing again
+        is_complete=[True] * len(partition_list),
         update_time=[datetime.now()] * len(partition_list),
     )
 
