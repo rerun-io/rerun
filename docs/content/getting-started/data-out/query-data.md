@@ -9,8 +9,6 @@ This supports a workflow to first develop or debug locally on a single recording
 
 <!-- TODO(RR-2818) add link to doc -->
 
-# Open source server
-
 ## Launching the server
 
 The server needs to be opened in a separate window.
