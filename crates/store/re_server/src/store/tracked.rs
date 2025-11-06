@@ -49,7 +49,7 @@ impl<T> Deref for Tracked<T> {
     }
 }
 
-impl<'a, T> Deref for TrackedGuard<'a, T> {
+impl<T> Deref for TrackedGuard<'_, T> {
     type Target = T;
 
     #[inline]
@@ -58,14 +58,14 @@ impl<'a, T> Deref for TrackedGuard<'a, T> {
     }
 }
 
-impl<'a, T> DerefMut for TrackedGuard<'a, T> {
+impl<T> DerefMut for TrackedGuard<'_, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.tracked.value
     }
 }
 
-impl<'a, T> Drop for TrackedGuard<'a, T> {
+impl<T> Drop for TrackedGuard<'_, T> {
     fn drop(&mut self) {
         self.tracked.updated_at = jiff::Timestamp::now();
     }
