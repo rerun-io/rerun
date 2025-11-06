@@ -1,5 +1,5 @@
 ---
-source: crates/utils/re_arrow_util/src/transform.rs
+source: crates/utils/re_arrow_combinators/tests/transform.rs
 expression: "format!(\"{}\", DisplayRB(result.clone()))"
 ---
 ┌─────────────────────────────────────────────────────┐
