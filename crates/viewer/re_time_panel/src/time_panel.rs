@@ -832,17 +832,14 @@ impl TimePanel {
 
                 // show the density graph only if that item is closed
                 if is_closed {
-                    data_density_graph::data_density_graph_ui(
-                        &mut self.data_density_graph_painter,
+                    self.data_density_graph_ui(
                         ctx,
                         time_ctrl,
                         entity_db,
                         time_area_painter,
                         ui,
-                        &self.time_ranges_ui,
                         row_rect,
                         &item,
-                        true,
                     );
                 }
             }
@@ -1040,17 +1037,14 @@ impl TimePanel {
                             TimePanelSource::Blueprint => ctx.store_context.blueprint,
                         };
 
-                        data_density_graph::data_density_graph_ui(
-                            &mut self.data_density_graph_painter,
+                        self.data_density_graph_ui(
                             ctx,
                             time_ctrl,
                             db,
                             time_area_painter,
                             ui,
-                            &self.time_ranges_ui,
                             row_rect,
                             &item,
-                            true,
                         );
                     }
                 }
@@ -1089,6 +1083,57 @@ impl TimePanel {
         if Some(item) == self.scroll_to_me_item {
             response.scroll_to_me(None);
             self.scroll_to_me_item = None;
+        }
+    }
+
+    /// Paint a data density graph, supporting tooltips.
+    #[expect(clippy::too_many_arguments)]
+    fn data_density_graph_ui(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        time_ctrl: &TimeControl,
+        db: &re_entity_db::EntityDb,
+        time_area_painter: &egui::Painter,
+        ui: &egui::Ui,
+        row_rect: Rect,
+        item: &TimePanelItem,
+    ) {
+        let hovered_time = data_density_graph::data_density_graph_ui(
+            &mut self.data_density_graph_painter,
+            ctx,
+            time_ctrl,
+            db,
+            time_area_painter,
+            ui,
+            &self.time_ranges_ui,
+            row_rect,
+            item,
+        );
+
+        if let Some(hovered_time) = hovered_time {
+            ctx.selection_state().set_hovered(item.to_item());
+
+            if ui.ctx().dragged_id().is_none() {
+                // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
+                //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
+                egui::Tooltip::always_open(
+                    ui.ctx().clone(),
+                    ui.layer_id(),
+                    egui::Id::new("data_tooltip"),
+                    egui::PopupAnchor::Pointer,
+                )
+                .gap(12.0)
+                .show(|ui| {
+                    data_density_graph::show_row_ids_tooltip(
+                        ctx,
+                        ui,
+                        time_ctrl,
+                        db,
+                        item,
+                        hovered_time,
+                    );
+                });
+            }
         }
     }
 
@@ -1355,7 +1400,6 @@ impl TimePanel {
                     &self.time_ranges_ui,
                     time_range_rect.shrink2(egui::vec2(0.0, 10.0)),
                     &TimePanelItem::entity_path(EntityPath::root()),
-                    false,
                 );
 
                 time_marker_ui(

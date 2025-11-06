@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use egui::{Color32, NumExt as _, Rangef, Rect, Shape, Tooltip, epaint::Vertex, lerp, pos2, remap};
+use egui::{Color32, NumExt as _, Rangef, Rect, Shape, epaint::Vertex, lerp, pos2, remap};
 
 use re_chunk_store::{Chunk, RangeQuery};
 use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimelineName};
@@ -412,6 +412,7 @@ fn smooth(density: &[f32]) -> Vec<f32> {
 
 // ----------------------------------------------------------------------------
 
+/// Returns the hovered time, if any.
 #[expect(clippy::too_many_arguments)]
 pub fn data_density_graph_ui(
     data_density_graph_painter: &mut DataDensityGraphPainter,
@@ -423,8 +424,7 @@ pub fn data_density_graph_ui(
     time_ranges_ui: &TimeRangesUi,
     row_rect: Rect,
     item: &TimePanelItem,
-    tooltips_enabled: bool,
-) {
+) -> Option<TimeInt> {
     re_tracing::profile_function!();
 
     let mut data = build_density_graph(
@@ -448,31 +448,12 @@ pub fn data_density_graph_ui(
         ui.tokens().density_graph_outside_valid_ranges,
     );
 
-    let mut hovered_time = data.hovered_time;
-
     if let Some(pointer) = data.hovered_pos {
-        hovered_time = time_ranges_ui
+        time_ranges_ui
             .snapped_time_from_x(ui, pointer.x)
-            .map(|t| t.round());
-    }
-
-    if tooltips_enabled && let Some(hovered_time) = hovered_time {
-        ctx.selection_state().set_hovered(item.to_item());
-
-        if ui.ctx().dragged_id().is_none() {
-            // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
-            //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
-            Tooltip::always_open(
-                ui.ctx().clone(),
-                ui.layer_id(),
-                egui::Id::new("data_tooltip"),
-                egui::PopupAnchor::Pointer,
-            )
-            .gap(12.0)
-            .show(|ui| {
-                show_row_ids_tooltip(ctx, ui, time_ctrl, db, item, hovered_time);
-            });
-        }
+            .map(|t| t.round())
+    } else {
+        data.hovered_time
     }
 }
 
@@ -681,7 +662,7 @@ impl Default for DensityGraphBuilderConfig {
     }
 }
 
-fn show_row_ids_tooltip(
+pub fn show_row_ids_tooltip(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     time_ctrl: &TimeControl,
