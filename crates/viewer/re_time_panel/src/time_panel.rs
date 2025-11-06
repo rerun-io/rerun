@@ -1310,20 +1310,21 @@ impl TimePanel {
             if time_range_rect.width() > 50.0 {
                 ui.allocate_rect(time_range_rect, egui::Sense::hover());
 
-                let time_ranges_ui = initialize_time_ranges_ui(
+                self.time_ranges_ui = initialize_time_ranges_ui(
                     time_ctrl,
                     entity_db,
                     time_range_rect.x_range(),
                     None,
                 );
-                time_ranges_ui.snap_time_control(time_ctrl, time_commands);
+                self.time_ranges_ui
+                    .snap_time_control(time_ctrl, time_commands);
 
                 let painter = ui.painter_at(time_range_rect.expand(4.0));
 
                 if let Some(highlighted_range) = time_ctrl.highlighted_range {
                     paint_range_highlight(
                         highlighted_range,
-                        &time_ranges_ui,
+                        &self.time_ranges_ui,
                         &painter,
                         time_range_rect,
                     );
@@ -1332,7 +1333,7 @@ impl TimePanel {
                 time_selection_ui::collapsed_loop_selection_ui(
                     time_ctrl,
                     &painter,
-                    &time_ranges_ui,
+                    &self.time_ranges_ui,
                     ui,
                     time_range_rect,
                 );
@@ -1351,14 +1352,14 @@ impl TimePanel {
                     entity_db,
                     ui.painter(),
                     ui,
-                    &time_ranges_ui,
+                    &self.time_ranges_ui,
                     time_range_rect.shrink2(egui::vec2(0.0, 10.0)),
                     &TimePanelItem::entity_path(EntityPath::root()),
                     false,
                 );
 
                 time_marker_ui(
-                    &time_ranges_ui,
+                    &self.time_ranges_ui,
                     ui,
                     ctx,
                     time_ctrl,
