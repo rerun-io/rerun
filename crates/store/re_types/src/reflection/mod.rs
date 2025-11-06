@@ -3889,13 +3889,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         docstring_md: "Whether the bounding box should be shown.",
                         is_required: false,
                     },
-                    ArchetypeFieldReflection {
-                        name: "show_smoothed_bounding_box",
-                        display_name: "Show smoothed bounding box",
-                        component_type: "rerun.blueprint.components.Enabled".into(),
-                        docstring_md: "Whether the smoothed bounding box should be shown.\n\nInternally this is used for heuristics, and this is mostly a debugging tool.",
-                        is_required: false,
-                    },
                 ],
             },
         ),

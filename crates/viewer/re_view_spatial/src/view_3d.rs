@@ -596,6 +596,9 @@ impl ViewClass for SpatialView3D {
             ui.end_row();
 
             state.bounding_box_ui(ui, SpatialViewKind::ThreeD);
+
+            #[cfg(debug_assertions)]
+            ui.re_checkbox(&mut state.state_3d.show_smoothed_bbox, "Smoothed bbox");
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {

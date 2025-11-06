@@ -26,7 +26,6 @@ Configuration of debug drawing in the 3D view.
 
 * `show_axes`: Whether axes should be shown at the origin.
 * `show_bounding_box`: Whether the bounding box should be shown.
-* `show_smoothed_bounding_box`: Whether the smoothed bounding box should be shown.
 ### `eye_controls`
 Configuration for the 3D eye
 

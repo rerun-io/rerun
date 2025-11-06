@@ -47,6 +47,8 @@ pub struct View3DState {
 
     eye_interact_fade_in: bool,
     eye_interact_fade_change_time: f64,
+
+    pub show_smoothed_bbox: bool,
 }
 
 impl Default for View3DState {
@@ -56,6 +58,7 @@ impl Default for View3DState {
             scene_view_coordinates: None,
             eye_interact_fade_in: false,
             eye_interact_fade_change_time: f64::NEG_INFINITY,
+            show_smoothed_bbox: false,
         }
     }
 }
@@ -165,11 +168,6 @@ impl SpatialView3D {
             &view_context,
             SpatialInformation::descriptor_show_bounding_box().component,
         )?;
-        let show_smoothed_bounding_box = **information_property.component_or_fallback::<Enabled>(
-            &view_context,
-            SpatialInformation::descriptor_show_smoothed_bounding_box().component,
-        )?;
-
         state_3d.update(scene_view_coordinates);
 
         let eye = state_3d.eye_state.update(
@@ -367,7 +365,7 @@ impl SpatialView3D {
                         .color(ui.tokens().frustum_color)
                 });
         }
-        if show_smoothed_bounding_box {
+        if state.state_3d.show_smoothed_bbox {
             line_builder
                 .batch("scene_bbox_smoothed")
                 .add_box_outline(&state.bounding_boxes.smoothed)

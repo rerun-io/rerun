@@ -31,11 +31,6 @@ pub struct SpatialInformation {
 
     /// Whether the bounding box should be shown.
     pub show_bounding_box: Option<SerializedComponentBatch>,
-
-    /// Whether the smoothed bounding box should be shown.
-    ///
-    /// Internally this is used for heuristics, and this is mostly a debugging tool.
-    pub show_smoothed_bounding_box: Option<SerializedComponentBatch>,
 }
 
 impl SpatialInformation {
@@ -62,18 +57,6 @@ impl SpatialInformation {
             component_type: Some("rerun.blueprint.components.Enabled".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for [`Self::show_smoothed_bounding_box`].
-    ///
-    /// The corresponding component is [`crate::blueprint::components::Enabled`].
-    #[inline]
-    pub fn descriptor_show_smoothed_bounding_box() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
-            component: "SpatialInformation:show_smoothed_bounding_box".into(),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
@@ -82,27 +65,25 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
     std::sync::LazyLock::new(|| {
         [
             SpatialInformation::descriptor_show_axes(),
             SpatialInformation::descriptor_show_bounding_box(),
-            SpatialInformation::descriptor_show_smoothed_bounding_box(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
     std::sync::LazyLock::new(|| {
         [
             SpatialInformation::descriptor_show_axes(),
             SpatialInformation::descriptor_show_bounding_box(),
-            SpatialInformation::descriptor_show_smoothed_bounding_box(),
         ]
     });
 
 impl SpatialInformation {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
 impl ::re_types_core::Archetype for SpatialInformation {
@@ -153,18 +134,9 @@ impl ::re_types_core::Archetype for SpatialInformation {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_show_bounding_box())
             });
-        let show_smoothed_bounding_box = arrays_by_descr
-            .get(&Self::descriptor_show_smoothed_bounding_box())
-            .map(|array| {
-                SerializedComponentBatch::new(
-                    array.clone(),
-                    Self::descriptor_show_smoothed_bounding_box(),
-                )
-            });
         Ok(Self {
             show_axes,
             show_bounding_box,
-            show_smoothed_bounding_box,
         })
     }
 }
@@ -173,14 +145,10 @@ impl ::re_types_core::AsComponents for SpatialInformation {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [
-            self.show_axes.clone(),
-            self.show_bounding_box.clone(),
-            self.show_smoothed_bounding_box.clone(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        [self.show_axes.clone(), self.show_bounding_box.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 
@@ -193,7 +161,6 @@ impl SpatialInformation {
         Self {
             show_axes: None,
             show_bounding_box: None,
-            show_smoothed_bounding_box: None,
         }
     }
 
@@ -215,10 +182,6 @@ impl SpatialInformation {
             show_bounding_box: Some(SerializedComponentBatch::new(
                 crate::blueprint::components::Enabled::arrow_empty(),
                 Self::descriptor_show_bounding_box(),
-            )),
-            show_smoothed_bounding_box: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::Enabled::arrow_empty(),
-                Self::descriptor_show_smoothed_bounding_box(),
             )),
         }
     }
@@ -243,28 +206,11 @@ impl SpatialInformation {
             try_serialize_field(Self::descriptor_show_bounding_box(), [show_bounding_box]);
         self
     }
-
-    /// Whether the smoothed bounding box should be shown.
-    ///
-    /// Internally this is used for heuristics, and this is mostly a debugging tool.
-    #[inline]
-    pub fn with_show_smoothed_bounding_box(
-        mut self,
-        show_smoothed_bounding_box: impl Into<crate::blueprint::components::Enabled>,
-    ) -> Self {
-        self.show_smoothed_bounding_box = try_serialize_field(
-            Self::descriptor_show_smoothed_bounding_box(),
-            [show_smoothed_bounding_box],
-        );
-        self
-    }
 }
 
 impl ::re_byte_size::SizeBytes for SpatialInformation {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.show_axes.heap_size_bytes()
-            + self.show_bounding_box.heap_size_bytes()
-            + self.show_smoothed_bounding_box.heap_size_bytes()
+        self.show_axes.heap_size_bytes() + self.show_bounding_box.heap_size_bytes()
     }
 }

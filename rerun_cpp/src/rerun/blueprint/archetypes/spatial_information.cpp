@@ -15,27 +15,17 @@ namespace rerun::blueprint::archetypes {
                                           Descriptor_show_bounding_box
         )
                                           .value_or_throw();
-        archetype.show_smoothed_bounding_box =
-            ComponentBatch::empty<rerun::blueprint::components::Enabled>(
-                Descriptor_show_smoothed_bounding_box
-            )
-                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> SpatialInformation::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(3);
+        columns.reserve(2);
         if (show_axes.has_value()) {
             columns.push_back(show_axes.value().partitioned(lengths_).value_or_throw());
         }
         if (show_bounding_box.has_value()) {
             columns.push_back(show_bounding_box.value().partitioned(lengths_).value_or_throw());
-        }
-        if (show_smoothed_bounding_box.has_value()) {
-            columns.push_back(
-                show_smoothed_bounding_box.value().partitioned(lengths_).value_or_throw()
-            );
         }
         return columns;
     }
@@ -46,9 +36,6 @@ namespace rerun::blueprint::archetypes {
         }
         if (show_bounding_box.has_value()) {
             return columns(std::vector<uint32_t>(show_bounding_box.value().length(), 1));
-        }
-        if (show_smoothed_bounding_box.has_value()) {
-            return columns(std::vector<uint32_t>(show_smoothed_bounding_box.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -62,16 +49,13 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(3);
+        cells.reserve(2);
 
         if (archetype.show_axes.has_value()) {
             cells.push_back(archetype.show_axes.value());
         }
         if (archetype.show_bounding_box.has_value()) {
             cells.push_back(archetype.show_bounding_box.value());
-        }
-        if (archetype.show_smoothed_bounding_box.has_value()) {
-            cells.push_back(archetype.show_smoothed_bounding_box.value());
         }
 
         return rerun::take_ownership(std::move(cells));

@@ -30,11 +30,7 @@ class SpatialInformation(Archetype):
     """
 
     def __init__(
-        self: Any,
-        *,
-        show_axes: datatypes.BoolLike | None = None,
-        show_bounding_box: datatypes.BoolLike | None = None,
-        show_smoothed_bounding_box: datatypes.BoolLike | None = None,
+        self: Any, *, show_axes: datatypes.BoolLike | None = None, show_bounding_box: datatypes.BoolLike | None = None
     ) -> None:
         """
         Create a new instance of the SpatialInformation archetype.
@@ -45,20 +41,12 @@ class SpatialInformation(Archetype):
             Whether axes should be shown at the origin.
         show_bounding_box:
             Whether the bounding box should be shown.
-        show_smoothed_bounding_box:
-            Whether the smoothed bounding box should be shown.
-
-            Internally this is used for heuristics, and this is mostly a debugging tool.
 
         """
 
         # You can define your own __init__ function as a member of SpatialInformationExt in spatial_information_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(
-                show_axes=show_axes,
-                show_bounding_box=show_bounding_box,
-                show_smoothed_bounding_box=show_smoothed_bounding_box,
-            )
+            self.__attrs_init__(show_axes=show_axes, show_bounding_box=show_bounding_box)
             return
         self.__attrs_clear__()
 
@@ -67,7 +55,6 @@ class SpatialInformation(Archetype):
         self.__attrs_init__(
             show_axes=None,
             show_bounding_box=None,
-            show_smoothed_bounding_box=None,
         )
 
     @classmethod
@@ -84,7 +71,6 @@ class SpatialInformation(Archetype):
         clear_unset: bool = False,
         show_axes: datatypes.BoolLike | None = None,
         show_bounding_box: datatypes.BoolLike | None = None,
-        show_smoothed_bounding_box: datatypes.BoolLike | None = None,
     ) -> SpatialInformation:
         """
         Update only some specific fields of a `SpatialInformation`.
@@ -97,10 +83,6 @@ class SpatialInformation(Archetype):
             Whether axes should be shown at the origin.
         show_bounding_box:
             Whether the bounding box should be shown.
-        show_smoothed_bounding_box:
-            Whether the smoothed bounding box should be shown.
-
-            Internally this is used for heuristics, and this is mostly a debugging tool.
 
         """
 
@@ -109,7 +91,6 @@ class SpatialInformation(Archetype):
             kwargs = {
                 "show_axes": show_axes,
                 "show_bounding_box": show_bounding_box,
-                "show_smoothed_bounding_box": show_smoothed_bounding_box,
             }
 
             if clear_unset:
@@ -141,17 +122,6 @@ class SpatialInformation(Archetype):
         converter=blueprint_components.EnabledBatch._converter,  # type: ignore[misc]
     )
     # Whether the bounding box should be shown.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    show_smoothed_bounding_box: blueprint_components.EnabledBatch | None = field(
-        metadata={"component": True},
-        default=None,
-        converter=blueprint_components.EnabledBatch._converter,  # type: ignore[misc]
-    )
-    # Whether the smoothed bounding box should be shown.
-    #
-    # Internally this is used for heuristics, and this is mostly a debugging tool.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

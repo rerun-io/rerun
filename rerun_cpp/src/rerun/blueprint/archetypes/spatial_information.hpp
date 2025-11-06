@@ -26,11 +26,6 @@ namespace rerun::blueprint::archetypes {
         /// Whether the bounding box should be shown.
         std::optional<ComponentBatch> show_bounding_box;
 
-        /// Whether the smoothed bounding box should be shown.
-        ///
-        /// Internally this is used for heuristics, and this is mostly a debugging tool.
-        std::optional<ComponentBatch> show_smoothed_bounding_box;
-
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] =
@@ -44,11 +39,6 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `show_bounding_box` field.
         static constexpr auto Descriptor_show_bounding_box = ComponentDescriptor(
             ArchetypeName, "SpatialInformation:show_bounding_box",
-            Loggable<rerun::blueprint::components::Enabled>::ComponentType
-        );
-        /// `ComponentDescriptor` for the `show_smoothed_bounding_box` field.
-        static constexpr auto Descriptor_show_smoothed_bounding_box = ComponentDescriptor(
-            ArchetypeName, "SpatialInformation:show_smoothed_bounding_box",
             Loggable<rerun::blueprint::components::Enabled>::ComponentType
         );
 
@@ -82,20 +72,6 @@ namespace rerun::blueprint::archetypes {
             show_bounding_box =
                 ComponentBatch::from_loggable(_show_bounding_box, Descriptor_show_bounding_box)
                     .value_or_throw();
-            return std::move(*this);
-        }
-
-        /// Whether the smoothed bounding box should be shown.
-        ///
-        /// Internally this is used for heuristics, and this is mostly a debugging tool.
-        SpatialInformation with_show_smoothed_bounding_box(
-            const rerun::blueprint::components::Enabled& _show_smoothed_bounding_box
-        ) && {
-            show_smoothed_bounding_box = ComponentBatch::from_loggable(
-                                             _show_smoothed_bounding_box,
-                                             Descriptor_show_smoothed_bounding_box
-            )
-                                             .value_or_throw();
             return std::move(*this);
         }
 

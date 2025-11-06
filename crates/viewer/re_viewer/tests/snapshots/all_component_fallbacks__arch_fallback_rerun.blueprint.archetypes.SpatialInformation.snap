@@ -4,4 +4,3 @@ expression: arch_display
 ---
 show_axes: [false]
 show_bounding_box: [false]
-show_smoothed_bounding_box: [false]
