@@ -1,12 +1,11 @@
-use std::borrow::Cow;
-use std::collections::{BTreeMap, BTreeSet, hash_map::Entry};
-use std::ops::Range;
-
 use ahash::HashMap;
 use glam::DAffine3;
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
+use std::borrow::Cow;
+use std::collections::{BTreeMap, BTreeSet, hash_map::Entry};
+use std::ops::Range;
 use vec1::smallvec_v1::SmallVec1;
 
 use crate::entity_to_frame_tracking::EntityToFrameOverTime;
@@ -25,7 +24,6 @@ use re_entity_db::EntityDb;
 use re_log_types::external::re_types_core::ArrowString;
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types::{
-    ArchetypeName,
     archetypes::{self},
     components::{self},
 };
@@ -238,33 +236,6 @@ impl CachedTransformsForTimeline {
     }
 }
 
-/// Maps from archetype to resolved pose transform.
-///
-/// If there's a concrete archetype in here, the mapped values are the full resolved pose transform.
-///
-/// `TransformResolutionCache` doesn't do tree propagation, however (!!!) there's a mini-tree in here that we already fully apply:
-/// `InstancePose3D` is applied on top of concrete archetype poses.
-#[derive(Clone, Debug, PartialEq, Default)]
-pub struct PoseTransformArchetypeMap {
-    /// Iff there's a concrete archetype in here, the mapped values are the full resolved pose transform.
-    // TODO(andreas): use some kind of small map? Vec of tuples might already be more appropriate?
-    pub instance_from_archetype_poses_per_archetype:
-        IntMap<ArchetypeName, SmallVec1<[DAffine3; 1]>>,
-
-    /// Resolved transforms for the instance poses archetype if any.
-    pub instance_from_poses: Vec<DAffine3>,
-}
-
-impl PoseTransformArchetypeMap {
-    #[cfg(test)]
-    #[inline]
-    fn get(&self, archetype: ArchetypeName) -> &[DAffine3] {
-        self.instance_from_archetype_poses_per_archetype
-            .get(&archetype)
-            .map_or(&self.instance_from_poses, |v| v.as_slice())
-    }
-}
-
 #[derive(Clone, Debug, PartialEq)]
 struct TransformEntry<T> {
     /// The entity path that produced information about this transform at this time.
@@ -308,7 +279,7 @@ enum CachedTransformValue<T> {
 
 type FrameTransformTimeMap = BTreeMap<TimeInt, TransformEntry<ParentFromChildTransform>>;
 
-type PoseTransformTimeMap = BTreeMap<TimeInt, TransformEntry<PoseTransformArchetypeMap>>;
+type PoseTransformTimeMap = BTreeMap<TimeInt, TransformEntry<Vec<DAffine3>>>;
 
 type PinholeProjectionMap = BTreeMap<TimeInt, TransformEntry<ResolvedPinholeProjection>>;
 
@@ -671,18 +642,19 @@ impl TransformsForChildFrame {
         &self,
         entity_db: &EntityDb,
         query: &LatestAtQuery,
-    ) -> Option<PoseTransformArchetypeMap> {
+    ) -> Vec<DAffine3> {
         #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
 
         let mut events = self.events.lock();
 
-        let pose_transform = events
-            .pose_transforms
-            .as_mut()?
-            .range_mut(..query.at().inc())
-            .next_back()?
-            .1;
+        let Some(pose_transforms) = events.pose_transforms.as_mut() else {
+            return Vec::new();
+        };
+        let Some((_t, pose_transform)) = pose_transforms.range_mut(..query.at().inc()).next_back()
+        else {
+            return Vec::new();
+        };
 
         // Separate check to work around borrow checker issue.
         if pose_transform.value == CachedTransformValue::Invalidated {
@@ -695,8 +667,8 @@ impl TransformsForChildFrame {
         }
 
         match &pose_transform.value {
-            CachedTransformValue::Resident(transform) => Some(transform.clone()),
-            CachedTransformValue::Cleared => None,
+            CachedTransformValue::Resident(transform) => transform.clone(),
+            CachedTransformValue::Cleared => Vec::new(),
             CachedTransformValue::Invalidated => unreachable!("Just made transform cache-resident"),
         }
     }
@@ -1266,7 +1238,7 @@ mod tests {
         PerStoreChunkSubscriber, RowId,
     };
     use re_log_types::{StoreId, TimePoint, Timeline};
-    use re_types::{Archetype as _, ChunkId, archetypes, datatypes};
+    use re_types::{ChunkId, archetypes};
 
     #[derive(Debug, Clone, Copy)]
     enum StaticTestFlavor {
@@ -1595,13 +1567,10 @@ mod tests {
                     &entity_db,
                     &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
                 ),
-                Some(PoseTransformArchetypeMap {
-                    instance_from_archetype_poses_per_archetype: IntMap::default(),
-                    instance_from_poses: vec![
-                        DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
-                        DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
-                    ],
-                })
+                vec![
+                    DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
+                    DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
+                ],
             );
             assert_eq!(
                 transforms.latest_at_instance_poses(
@@ -1613,9 +1582,8 @@ mod tests {
             );
             assert_eq!(
                 transforms
-                    .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(*timeline.name(), 1))
-                    .map(|poses| poses.instance_from_poses),
-                Some(vec![
+                    .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(*timeline.name(), 1)),
+                vec![
                     DAffine3::from_scale_rotation_translation(
                         glam::dvec3(10.0, 20.0, 30.0),
                         glam::DQuat::IDENTITY,
@@ -1626,7 +1594,7 @@ mod tests {
                         glam::DQuat::IDENTITY,
                         glam::dvec3(4.0, 5.0, 6.0),
                     ),
-                ])
+                ]
             );
 
             // Timelines that the cache has never seen should still have the static poses.
@@ -1637,16 +1605,14 @@ mod tests {
                 )))
                 .unwrap();
             assert_eq!(
-                transforms
-                    .latest_at_instance_poses(
-                        &entity_db,
-                        &LatestAtQuery::new(TimelineName::new("other"), 123)
-                    )
-                    .map(|poses| poses.instance_from_poses),
-                Some(vec![
+                transforms.latest_at_instance_poses(
+                    &entity_db,
+                    &LatestAtQuery::new(TimelineName::new("other"), 123)
+                ),
+                vec![
                     DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                     DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
-                ])
+                ]
             );
         }
 
@@ -1927,7 +1893,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pose_transforms_instance_poses_only() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_pose_transforms_instance_poses() -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = new_entity_db_with_subscriber_registered();
         let mut cache = TransformResolutionCache::default();
 
@@ -1968,33 +1934,27 @@ mod tests {
 
         assert_eq!(
             transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 0)),
-            None,
+            Vec::new(),
         );
         assert_eq!(
-            transforms
-                .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 1))
-                .map(|poses| poses.instance_from_poses),
-            Some(vec![
+            transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 1)),
+            vec![
                 DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                 DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
                 DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)),
-            ])
+            ]
         );
         assert_eq!(
-            transforms
-                .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 2))
-                .map(|poses| poses.instance_from_poses),
-            Some(vec![
+            transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 2)),
+            vec![
                 DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                 DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
                 DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)),
-            ])
+            ]
         );
         assert_eq!(
-            transforms
-                .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 3))
-                .map(|poses| poses.instance_from_poses),
-            Some(vec![
+            transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 3)),
+            vec![
                 DAffine3::from_scale_rotation_translation(
                     glam::dvec3(2.0, 3.0, 4.0),
                     glam::DQuat::IDENTITY,
@@ -2005,161 +1965,16 @@ mod tests {
                     glam::DQuat::IDENTITY,
                     glam::dvec3(4.0, 5.0, 6.0),
                 ),
-            ])
+            ]
         );
 
         assert_eq!(
             transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 4)),
-            Some(PoseTransformArchetypeMap::default())
+            Vec::new()
         );
         assert_eq!(
             transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 123)),
-            Some(PoseTransformArchetypeMap::default())
-        );
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_mixing_instance_poses() -> Result<(), Box<dyn std::error::Error>> {
-        let mut entity_db = new_entity_db_with_subscriber_registered();
-        let mut cache = TransformResolutionCache::default();
-
-        // Log a few tree transforms at different times.
-        let timeline = Timeline::new_sequence("t");
-        let chunk = Chunk::builder(EntityPath::from("my_entity"))
-            .with_archetype_auto_row(
-                [(timeline, 1)],
-                &archetypes::InstancePoses3D::new().with_translations([
-                    [1.0, 2.0, 3.0],
-                    [4.0, 5.0, 6.0],
-                    [7.0, 8.0, 9.0],
-                ]),
-            )
-            .with_archetype_auto_row(
-                [(timeline, 2)],
-                // Add some "base offset", but only for the first two items.
-                &archetypes::Boxes3D::update_fields()
-                    .with_centers([[10.0, 0.0, 0.0], [0.0, 100.0, 0.0]]),
-            )
-            .with_archetype_auto_row(
-                [(timeline, 3)],
-                // Rotate the box by 90 degrees around the Y axis.
-                &archetypes::Boxes3D::update_fields().with_rotation_axis_angles([
-                    datatypes::RotationAxisAngle::new(
-                        glam::vec3(0.0, 1.0, 0.0),
-                        90.0_f32.to_radians(),
-                    ),
-                ]),
-            )
-            .build()?;
-        entity_db.add_chunk(&Arc::new(chunk))?;
-
-        // Check that the transform cache has the expected transforms.
-        apply_store_subscriber_events(&mut cache, &entity_db);
-        let timeline = *timeline.name();
-        let transforms_per_timeline = cache.transforms_for_timeline(timeline);
-        let transforms = transforms_per_timeline
-            .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
-                "my_entity",
-            )))
-            .unwrap();
-
-        // Pose for instances poses and non-boxes are unchanged over time.
-        for t in 1..=4 {
-            let instance_poses = transforms
-                .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, t))
-                .unwrap();
-
-            for archetype in [
-                archetypes::InstancePoses3D::name(),
-                "made_up_archetype".into(),
-            ] {
-                assert_eq!(
-                    instance_poses.get(archetype),
-                    [
-                        DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
-                        DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
-                        DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)),
-                    ]
-                );
-            }
-        }
-
-        // Poses for boxes change over time.
-        // T1
-        assert_eq!(
-            transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 1)),
-            // All from `InstancePoses3D`
-            Some(PoseTransformArchetypeMap {
-                instance_from_archetype_poses_per_archetype: IntMap::default(),
-                instance_from_poses: vec![
-                    DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
-                    DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
-                    DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)),
-                ]
-            })
-        );
-
-        // T2
-        assert_eq!(
-            transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 2)),
-            Some(PoseTransformArchetypeMap {
-                // All from `InstancePoses3D` combined with box centers.
-                instance_from_archetype_poses_per_archetype: IntMap::from_iter([(
-                    archetypes::Boxes3D::name(),
-                    SmallVec1::try_from_slice(&[
-                        DAffine3::from_translation(glam::dvec3(11.0, 2.0, 3.0)),
-                        DAffine3::from_translation(glam::dvec3(4.0, 105.0, 6.0)),
-                        DAffine3::from_translation(glam::dvec3(7.0, 108.0, 9.0)), // Affected by the last box center which is still splatted.
-                    ])?
-                )]),
-                instance_from_poses: vec![
-                    DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
-                    DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
-                    DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)),
-                ]
-            })
-        );
-
-        // T3.
-        let query_result = transforms
-            .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 3))
-            .unwrap()
-            .instance_from_archetype_poses_per_archetype
-            .get(&archetypes::Boxes3D::name())
-            .expect("Boxes3D archetype should be present")
-            .clone();
-
-        // More readable sanity check on translations which aren't affected by the rotation.
-        assert_eq!(query_result[0].translation, glam::dvec3(11.0, 2.0, 3.0));
-        // Since rotation isn't 100% accurate, we need to check for equality with a small tolerance.
-        let eps = 0.000001;
-        // Rotation on the first box affects all instances since it's splatted.
-        let rotation = DAffine3::from_axis_angle(glam::dvec3(0.0, 1.0, 0.0), 90.0_f64.to_radians());
-        let expected = DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)) * // Pose
-            DAffine3::from_translation(glam::dvec3(10.0, 0.0, 0.0)) * rotation; // Box
-        assert!(
-            query_result[0].abs_diff_eq(expected, eps),
-            "Expected: {:?}\nGot: {:?}",
-            expected,
-            query_result[0]
-        );
-        let expected = DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)) * // Pose
-            (DAffine3::from_translation(glam::dvec3(0.0, 100.0, 0.0)) * rotation); // Box
-        assert!(
-            query_result[1].abs_diff_eq(expected, eps),
-            "Expected: {:?}\nGot: {:?}",
-            expected,
-            query_result[1]
-        );
-        let expected = DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)) * // Pose
-            (DAffine3::from_translation(glam::dvec3(0.0, 100.0, 0.0)) * rotation); // Box
-        assert!(
-            query_result[2].abs_diff_eq(expected, eps),
-            "Expected: {:?}\nGot: {:?}",
-            expected,
-            query_result[2]
+            Vec::new()
         );
 
         Ok(())

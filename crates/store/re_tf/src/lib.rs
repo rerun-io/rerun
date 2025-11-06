@@ -150,8 +150,7 @@ mod transform_resolution_cache;
 pub use transform_forest::{PinholeTreeRoot, TransformForest, TransformFromToError, TransformInfo};
 pub use transform_queries::{query_view_coordinates, query_view_coordinates_at_closest_ancestor};
 pub use transform_resolution_cache::{
-    CachedTransformsForTimeline, PoseTransformArchetypeMap, ResolvedPinholeProjection,
-    TransformResolutionCache,
+    CachedTransformsForTimeline, ResolvedPinholeProjection, TransformResolutionCache,
 };
 
 // Re-export the transform frame id types from re_types.

@@ -2,49 +2,20 @@
 
 use glam::DAffine3;
 use itertools::Either;
-use nohash_hasher::IntMap;
 
+use crate::convert;
+use crate::{ResolvedPinholeProjection, transform_resolution_cache::ParentFromChildTransform};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
+use re_types::archetypes::InstancePoses3D;
 use re_types::{
     Archetype as _, ArchetypeName, Component as _, ComponentDescriptor, ComponentIdentifier,
     TransformFrameIdHash,
-    archetypes::{self, InstancePoses3D},
+    archetypes::{self},
     components,
     reflection::ComponentDescriptorExt as _,
 };
-use vec1::smallvec_v1::SmallVec1;
-
-use crate::convert;
-use crate::{
-    PoseTransformArchetypeMap, ResolvedPinholeProjection,
-    transform_resolution_cache::ParentFromChildTransform,
-};
-
-/// Lists all archetypes except [`archetypes::InstancePoses3D`] that have their own instance poses.
-// TODO(andreas, jleibs): Model this out as a generic extension mechanism.
-fn archetypes_with_instance_pose_transforms_and_translation_descriptor()
--> [(ArchetypeName, ComponentDescriptor); 4] {
-    [
-        (
-            archetypes::Boxes3D::name(),
-            archetypes::Boxes3D::descriptor_centers(),
-        ),
-        (
-            archetypes::Ellipsoids3D::name(),
-            archetypes::Ellipsoids3D::descriptor_centers(),
-        ),
-        (
-            archetypes::Capsules3D::name(),
-            archetypes::Capsules3D::descriptor_translations(),
-        ),
-        (
-            archetypes::Cylinders3D::name(),
-            archetypes::Cylinders3D::descriptor_centers(),
-        ),
-    ]
-}
 
 #[derive(Debug, thiserror::Error)]
 pub enum TransformError {
@@ -217,58 +188,14 @@ pub fn query_and_resolve_instance_poses_at_entity(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
-) -> PoseTransformArchetypeMap {
-    let instance_from_overall_poses = query_and_resolve_instance_from_pose_for_archetype_name(
+) -> Vec<DAffine3> {
+    query_and_resolve_instance_from_pose_for_archetype_name(
         entity_path,
         entity_db,
         query,
         archetypes::InstancePoses3D::name(),
         &archetypes::InstancePoses3D::descriptor_translations(),
-    );
-
-    // Some archetypes support their own instance poses.
-    // TODO(andreas): can we quickly determine whether this is necessary for any given archetype?
-    // TODO(andreas): Should we make all of this a single large query?
-    let mut instance_from_archetype_poses_per_archetype = IntMap::default();
-    for (archetype_name, descriptor_translations) in
-        archetypes_with_instance_pose_transforms_and_translation_descriptor()
-    {
-        if let Ok(mut instance_from_archetype_poses) =
-            SmallVec1::try_from_vec(query_and_resolve_instance_from_pose_for_archetype_name(
-                entity_path,
-                entity_db,
-                query,
-                archetype_name,
-                &descriptor_translations,
-            ))
-        {
-            // "zip" up with the overall poses.
-            let length = instance_from_archetype_poses
-                .len()
-                .max(instance_from_overall_poses.len());
-            instance_from_archetype_poses
-                .resize(length, *instance_from_archetype_poses.last()) // Components repeat.
-                .expect("Overall number of poses can't be zero.");
-
-            for (instance_from_archetype_pose, instance_from_overall_pose) in
-                instance_from_archetype_poses
-                    .iter_mut()
-                    .zip(instance_from_overall_poses.iter())
-            {
-                let overall_pose_archetype_pose = *instance_from_archetype_pose;
-                *instance_from_archetype_pose =
-                    (*instance_from_overall_pose) * overall_pose_archetype_pose;
-            }
-
-            instance_from_archetype_poses_per_archetype
-                .insert(archetype_name, instance_from_archetype_poses);
-        }
-    }
-
-    PoseTransformArchetypeMap {
-        instance_from_archetype_poses_per_archetype,
-        instance_from_poses: instance_from_overall_poses,
-    }
+    )
 }
 
 /// Queries pose transforms for a specific archetype.

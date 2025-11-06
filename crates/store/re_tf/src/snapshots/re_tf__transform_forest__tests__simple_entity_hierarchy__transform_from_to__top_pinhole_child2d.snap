@@ -58,7 +58,6 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
                         ),
                     },
                 ],
-                target_from_archetype: {},
             },
         ),
     ),
@@ -141,58 +140,6 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
                         ),
                     },
                 ],
-                target_from_archetype: {
-                    "rerun.archetypes.Boxes3D": [
-                        DAffine3 {
-                            matrix3: DMat3 {
-                                x_axis: DVec3(
-                                    0.002,
-                                    0.0,
-                                    0.0,
-                                ),
-                                y_axis: DVec3(
-                                    0.0,
-                                    0.004,
-                                    0.0,
-                                ),
-                                z_axis: DVec3(
-                                    0.0,
-                                    0.0,
-                                    0.003,
-                                ),
-                            },
-                            translation: DVec3(
-                                48.019999999999996,
-                                100.036,
-                                -1.5,
-                            ),
-                        },
-                        DAffine3 {
-                            matrix3: DMat3 {
-                                x_axis: DVec3(
-                                    0.002,
-                                    0.0,
-                                    0.0,
-                                ),
-                                y_axis: DVec3(
-                                    0.0,
-                                    0.004,
-                                    0.0,
-                                ),
-                                z_axis: DVec3(
-                                    0.0,
-                                    0.0,
-                                    0.003,
-                                ),
-                            },
-                            translation: DVec3(
-                                48.04,
-                                100.076,
-                                -1.5,
-                            ),
-                        },
-                    ],
-                },
             },
         ),
     ),
@@ -251,7 +198,6 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
                         ),
                     },
                 ],
-                target_from_archetype: {},
             },
         ),
     ),
@@ -310,7 +256,6 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
                         ),
                     },
                 ],
-                target_from_archetype: {},
             },
         ),
     ),
@@ -377,7 +322,6 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
                         ),
                     },
                 ],
-                target_from_archetype: {},
             },
         ),
     ),
