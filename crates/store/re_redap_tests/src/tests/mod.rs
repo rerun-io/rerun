@@ -18,6 +18,7 @@ mod fetch_chunks;
 mod indexes;
 mod query_dataset;
 mod register_partition;
+mod update_entry;
 #[cfg(feature = "lance")]
 mod write_table;
 
@@ -93,5 +94,6 @@ define_redap_tests! {
     register_partition::register_and_scan_simple_dataset_with_properties,
     register_partition::register_and_scan_simple_dataset_with_properties_out_of_order,
     register_partition::register_with_prefix,
+    update_entry::update_entry_tests,
     write_table::write_table
 }

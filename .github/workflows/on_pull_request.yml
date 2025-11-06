@@ -82,6 +82,8 @@ jobs:
               - pixi.toml # maybe our build commands have changed
               - "**/*.rs"
               - "**/*.toml"
+              - "crates/**/*.png"
+              - "tests/rust/**/*.png"
 
             protobuf_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds

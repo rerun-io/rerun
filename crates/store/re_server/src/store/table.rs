@@ -1,25 +1,24 @@
-use arrow::datatypes::SchemaRef;
-use arrow::record_batch::RecordBatch;
-use datafusion::catalog::TableProvider;
-use datafusion::common::exec_err;
-use datafusion::datasource::memory::MemorySourceConfig;
-use datafusion::error::DataFusionError;
-use datafusion::execution::SessionStateBuilder;
-use datafusion::logical_expr::dml::InsertOp;
+use std::sync::Arc;
+
+use arrow::{datatypes::SchemaRef, record_batch::RecordBatch};
+use datafusion::{
+    catalog::TableProvider, common::exec_err, datasource::memory::MemorySourceConfig,
+    error::DataFusionError, execution::SessionStateBuilder, logical_expr::dml::InsertOp,
+};
 use futures::StreamExt as _;
+
 #[cfg(feature = "lance")]
 use lance::{
     Dataset as LanceDataset,
     datafusion::LanceTableProvider,
     dataset::{WriteMode, WriteParams},
 };
+
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::ext::{LanceTable, ProviderDetails};
 use re_protos::cloud::v1alpha1::{
     EntryKind,
-    ext::{EntryDetails, TableEntry},
+    ext::{EntryDetails, ProviderDetails, TableEntry},
 };
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub enum TableType {
@@ -60,6 +59,15 @@ impl Table {
 
     pub fn id(&self) -> EntryId {
         self.id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn set_name(&mut self, name: String) {
+        self.name = name;
+        self.updated_at = jiff::Timestamp::now();
     }
 
     pub fn created_at(&self) -> jiff::Timestamp {
@@ -204,6 +212,8 @@ impl Table {
         url: &url::Url,
         schema: SchemaRef,
     ) -> Result<Self, DataFusionError> {
+        use re_protos::cloud::v1alpha1::ext::LanceTable;
+
         let rb = vec![Ok(RecordBatch::new_empty(Arc::clone(&schema)))];
         let rb = arrow::record_batch::RecordBatchIterator::new(rb.into_iter(), schema);
 

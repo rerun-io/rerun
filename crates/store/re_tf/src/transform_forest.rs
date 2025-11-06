@@ -239,7 +239,7 @@ impl TransformForest {
     /// entities are transformed relative to it.
     pub fn new(
         recording: &re_entity_db::EntityDb,
-        transform_cache: &mut TransformResolutionCache,
+        transform_cache: &TransformResolutionCache,
         time_query: &LatestAtQuery,
     ) -> Self {
         re_tracing::profile_function!();
@@ -275,7 +275,7 @@ impl TransformForest {
         entity_db: &EntityDb,
         query: &LatestAtQuery,
         transform_root_from_parent: TransformInfo,
-        transforms_for_timeline: &mut CachedTransformsForTimeline,
+        transforms_for_timeline: &CachedTransformsForTimeline,
     ) {
         let root = transform_root_from_parent.root;
         let root_from_parent = transform_root_from_parent.target_from_source;
@@ -626,7 +626,7 @@ fn pinhole3d_from_image_plane(
     pinhole_image_plane_distance: f64,
 ) -> glam::DAffine3 {
     let ResolvedPinholeProjection {
-        target: _, // TODO(andreas): Make use of this.
+        parent: _, // TODO(andreas): Make use of this.
         image_from_camera,
         resolution: _,
         view_coordinates,
@@ -677,7 +677,7 @@ fn transforms_at(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
-    transforms_for_timeline: &mut CachedTransformsForTimeline,
+    transforms_for_timeline: &CachedTransformsForTimeline,
 ) -> TransformsAtEntity {
     // This is called very frequently, don't put a profile scope here.
 
@@ -693,12 +693,8 @@ fn transforms_at(
         .map_or(glam::DAffine3::IDENTITY, |source_to_target| {
             source_to_target.transform
         });
-    let entity_from_instance_poses = entity_transforms
-        .latest_at_instance_poses(entity_db, query)
-        .cloned();
-    let pinhole_projection = entity_transforms
-        .latest_at_pinhole(entity_db, query)
-        .cloned();
+    let entity_from_instance_poses = entity_transforms.latest_at_instance_poses(entity_db, query);
+    let pinhole_projection = entity_transforms.latest_at_pinhole(entity_db, query);
 
     TransformsAtEntity {
         parent_from_entity_tree_transform,
@@ -819,7 +815,7 @@ mod tests {
         transform_cache.add_chunks(test_scene.storage_engine().store().iter_chunks());
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
-        let transform_forest = TransformForest::new(&test_scene, &mut transform_cache, &query);
+        let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
 
         let all_entity_paths = test_scene
             .entity_paths()
@@ -951,7 +947,7 @@ mod tests {
         transform_cache.add_chunks(entity_db.storage_engine().store().iter_chunks());
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
-        let transform_forest = TransformForest::new(&entity_db, &mut transform_cache, &query);
+        let transform_forest = TransformForest::new(&entity_db, &transform_cache, &query);
 
         let target = TransformFrameIdHash::from_entity_path(&EntityPath::from("box"));
         let sources = [TransformFrameIdHash::from_entity_path(&EntityPath::from(

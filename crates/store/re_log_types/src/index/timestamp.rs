@@ -1,7 +1,8 @@
+use std::{ops::RangeInclusive, str::FromStr as _};
+
 use super::{Duration, TimestampFormat};
-use crate::TimestampFormatKind;
-use crate::external::re_types_core;
-use std::str::FromStr as _;
+
+use crate::{TimestampFormatKind, external::re_types_core};
 
 /// Encodes a timestamp in nanoseconds since unix epoch.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -151,18 +152,31 @@ impl Timestamp {
     ///
     /// Omits the date of same-day timestamps.
     pub fn format(self, timestamp_format: TimestampFormat) -> String {
-        let format_fractional_nanos = |ns: i32| {
-            let is_whole_sec = ns % 1_000_000_000 == 0;
-            let is_whole_ms = ns % 1_000_000 == 0;
+        let subsecond_decimals = 0..=6; // NOTE: we currently ignore sub-microsecond
+        self.format_opt(timestamp_format, subsecond_decimals)
+    }
 
-            if is_whole_sec {
-                String::new()
-            } else if is_whole_ms {
-                format!(".{:03}", ns / 1_000_000)
-            } else {
-                // NOTE: we currently ignore sub-microsecond
-                format!(".{:03} {:03}", (ns / 1_000_000), (ns / 1_000) % 1_000)
-            }
+    /// Human-readable timestamp.
+    ///
+    /// Omits the date of same-day timestamps.
+    ///
+    /// The format will omit trailing sub-second zeroes as far as `subsecond_decimals` perimts it.
+    pub fn format_opt(
+        self,
+        timestamp_format: TimestampFormat,
+        subsecond_decimals: RangeInclusive<usize>,
+    ) -> String {
+        let format_fractional_nanos = move |ns: i32| {
+            re_format::DurationFormatOptions::default()
+                .with_always_sign(false)
+                .with_min_decimals(*subsecond_decimals.start())
+                .with_max_decimals(*subsecond_decimals.end())
+                .round_towards_zero()
+                .format_nanos(ns as _)
+                // Turn `0.123s` into `.123`:
+                .trim_start_matches('0')
+                .trim_end_matches('s')
+                .to_owned()
         };
 
         let timestamp = jiff::Timestamp::from(self);
