@@ -11,7 +11,7 @@ pub const SORBET_INDEX_NAME: &str = "rerun:index_name";
 /// The key used to identify the entity path in field-level metadata.
 pub const SORBET_ENTITY_PATH: &str = "rerun:entity_path";
 
-/// The key used to identify the [`re_sorbet::column_kind::ColumnKind`] in
+/// The key used to identify the [`crate::column_kind::ColumnKind`] in
 /// field-level metadata.
 pub const RERUN_KIND: &str = "rerun:kind";
 
