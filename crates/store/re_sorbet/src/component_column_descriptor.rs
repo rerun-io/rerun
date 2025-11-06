@@ -208,7 +208,10 @@ impl ComponentColumnDescriptor {
 
         match batch_type {
             BatchType::Dataframe => {
-                metadata.insert("rerun:entity_path".to_owned(), entity_path.to_string());
+                metadata.insert(
+                    crate::metadata::SORBET_ENTITY_PATH.to_owned(),
+                    entity_path.to_string(),
+                );
             }
             BatchType::Chunk => {
                 // The whole chunk is for the same entity, which is set in the record batch metadata.
@@ -218,7 +221,7 @@ impl ComponentColumnDescriptor {
 
         if let Some(archetype_name) = archetype_name {
             metadata.insert(
-                "rerun:archetype".to_owned(),
+                FIELD_METADATA_KEY_ARCHETYPE_NAME.to_owned(),
                 archetype_name.full_name().to_owned(),
             );
         }
@@ -297,13 +300,14 @@ impl ComponentColumnDescriptor {
     /// `chunk_entity_path`: if this column is part of a chunk batch,
     /// what is its entity path (so we can set [`ComponentColumnDescriptor::entity_path`])?
     pub fn from_arrow_field(chunk_entity_path: Option<&EntityPath>, field: &ArrowField) -> Self {
-        let entity_path = if let Some(entity_path) = field.get_opt("rerun:entity_path") {
-            EntityPath::parse_forgiving(entity_path)
-        } else if let Some(chunk_entity_path) = chunk_entity_path {
-            chunk_entity_path.clone()
-        } else {
-            EntityPath::root() // TODO(#8744): make entity_path optional for general sorbet batches
-        };
+        let entity_path =
+            if let Some(entity_path) = field.get_opt(crate::metadata::SORBET_ENTITY_PATH) {
+                EntityPath::parse_forgiving(entity_path)
+            } else if let Some(chunk_entity_path) = chunk_entity_path {
+                chunk_entity_path.clone()
+            } else {
+                EntityPath::root() // TODO(#8744): make entity_path optional for general sorbet batches
+            };
 
         let component = if let Some(component) = field.get_opt("rerun:component") {
             ComponentIdentifier::from(component)
@@ -314,7 +318,9 @@ impl ComponentColumnDescriptor {
         let schema = Self {
             store_datatype: field.data_type().clone(),
             entity_path,
-            archetype: field.get_opt("rerun:archetype").map(Into::into),
+            archetype: field
+                .get_opt(re_types_core::FIELD_METADATA_KEY_ARCHETYPE)
+                .map(Into::into),
             component,
             component_type: field.get_opt("rerun:component_type").map(Into::into),
             is_static: field.get_bool("rerun:is_static"),

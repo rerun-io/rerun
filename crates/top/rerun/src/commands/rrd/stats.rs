@@ -395,7 +395,9 @@ fn compute_stats(app: bool, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
             let schema = decoded.batch.schema();
 
             let entity_path = {
-                let entity_path = schema.metadata().get("rerun:entity_path");
+                let entity_path = schema
+                    .metadata()
+                    .get(re_sorbet::metadata::SORBET_ENTITY_PATH);
                 let entity_path =
                     entity_path.or_else(|| schema.metadata().get("rerun.entity_path"));
                 entity_path.map(ToOwned::to_owned).unwrap_or_default()
