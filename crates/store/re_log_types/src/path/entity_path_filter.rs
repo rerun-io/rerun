@@ -1389,6 +1389,10 @@ mod tests {
         let eval = filter.evaluate(&EntityPath::from("/world"));
         assert!(eval.subtree_included, "/world subtree should be included");
         assert!(eval.matches, "/world should match");
+        assert!(
+            !eval.matches_exactly,
+            "/world should not match exactly (matched by /world/** subtree rule)"
+        );
 
         // Test /world/house - should be included by /world/**
         let eval = filter.evaluate(&EntityPath::from("/world/house"));
@@ -1397,6 +1401,10 @@ mod tests {
             "/world/house subtree should be included"
         );
         assert!(eval.matches, "/world/house should match");
+        assert!(
+            !eval.matches_exactly,
+            "/world/house should not match exactly (matched by /world/** subtree rule)"
+        );
 
         // Test /world/car - should not match but subtree should be included (has exception deeper)
         let eval = filter.evaluate(&EntityPath::from("/world/car"));
@@ -1405,6 +1413,10 @@ mod tests {
             "/world/car subtree should be included (has /world/car/driver exception)"
         );
         assert!(!eval.matches, "/world/car should not match");
+        assert!(
+            !eval.matches_exactly,
+            "/world/car should not match exactly (excluded by - /world/car/**)"
+        );
 
         // Test /world/car/driver - should be included
         let eval = filter.evaluate(&EntityPath::from("/world/car/driver"));
@@ -1425,11 +1437,19 @@ mod tests {
             "/world/car/hood subtree should be excluded"
         );
         assert!(!eval.matches, "/world/car/hood should not match");
+        assert!(
+            !eval.matches_exactly,
+            "/world/car/hood should not match exactly (excluded)"
+        );
 
         // Test /other - should be excluded (no matching rule)
         let eval = filter.evaluate(&EntityPath::from("/other"));
         assert!(!eval.subtree_included, "/other subtree should be excluded");
         assert!(!eval.matches, "/other should not match");
+        assert!(
+            !eval.matches_exactly,
+            "/other should not match exactly (no matching rule)"
+        );
 
         // Test exact match without subtree
         let filter = EntityPathFilter::parse_forgiving(
@@ -1455,6 +1475,10 @@ mod tests {
             "/world/house should not be included (parent has no subtree rule)"
         );
         assert!(!eval.matches, "/world/house should not match");
+        assert!(
+            !eval.matches_exactly,
+            "/world/house should not match exactly (no rule for this path)"
+        );
 
         // Test subtree_included when there's an include rule deeper in the tree
         let filter = EntityPathFilter::parse_forgiving(
@@ -1470,6 +1494,10 @@ mod tests {
             "/world should have subtree_included=true because /world/car/driver is included"
         );
         assert!(!eval.matches, "/world should not match directly");
+        assert!(
+            !eval.matches_exactly,
+            "/world should not match exactly (no rule for this path)"
+        );
 
         let eval = filter.evaluate(&EntityPath::from("/world/car"));
         assert!(
@@ -1477,6 +1505,10 @@ mod tests {
             "/world/car should have subtree_included=true because /world/car/driver is included"
         );
         assert!(!eval.matches, "/world/car should not match directly");
+        assert!(
+            !eval.matches_exactly,
+            "/world/car should not match exactly (no rule for this path)"
+        );
     }
 
     #[test]
