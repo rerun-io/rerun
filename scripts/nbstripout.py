@@ -39,5 +39,5 @@ if __name__ == "__main__":
             # print(f"Stripping notebooks in directory: {list(notebook_dir)}")
             for notebook in list(notebook_dir):
                 futures.append(executor.submit(_strip_notebook, notebook, unknown_args))
-    for future in track(futures, description="Stripping notebooks..."):
+    for future in track(futures, description="Stripping notebooks…"):
         future.result()

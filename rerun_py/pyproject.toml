@@ -192,7 +192,7 @@ max-positional-args = 3
   "I002",
 ]
 "__init__.py" = ["F401", "F403"]
-"examples/python/notebook_neural_field_2d/neural_field_2d.ipynb" = [
+"examples/notebook/notebook_neural_field_2d/neural_field_2d.ipynb" = [
   # Intentional use of  `σ`
   "RUF001",
 ]
