@@ -306,18 +306,9 @@ impl Transform for StructToFixedList {
             return Err(Error::NoFieldNames);
         }
 
-        let available_fields: Vec<String> =
-            source.fields().iter().map(|f| f.name().clone()).collect();
-
         // Get the first field to determine the element type
         let first_field_name = &self.field_names[0];
-        let first_array =
-            source
-                .column_by_name(first_field_name)
-                .ok_or_else(|| Error::MissingStructField {
-                    field_name: first_field_name.clone(),
-                    struct_fields: available_fields.clone(),
-                })?;
+        let first_array = GetField::new(first_field_name).transform(source)?;
         let element_type = first_array.data_type().clone();
 
         // Collect all field arrays, ensuring they all have the same type
@@ -325,13 +316,7 @@ impl Transform for StructToFixedList {
         field_arrays.push(first_array);
 
         for field_name in &self.field_names[1..] {
-            let array =
-                source
-                    .column_by_name(field_name)
-                    .ok_or_else(|| Error::MissingStructField {
-                        field_name: field_name.clone(),
-                        struct_fields: available_fields.clone(),
-                    })?;
+            let array = GetField::new(field_name).transform(source)?;
 
             // Verify type consistency
             if array.data_type() != &element_type {
