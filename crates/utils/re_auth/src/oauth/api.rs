@@ -116,7 +116,7 @@ pub struct RefreshResponse {
 pub(crate) async fn refresh(refresh_token: &RefreshToken) -> Result<RefreshResponse, Error> {
     send_async(AuthenticateWithRefresh {
         grant_type: "refresh_token",
-        client_id: &*OAUTH_CLIENT_ID,
+        client_id: &OAUTH_CLIENT_ID,
         refresh_token: &refresh_token.0,
     })
     .await
