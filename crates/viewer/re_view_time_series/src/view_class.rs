@@ -652,9 +652,7 @@ impl ViewClass for TimeSeriesView {
                 .id(plot_id)
                 .show_grid(**show_grid)
                 .auto_bounds(false)
-                .allow_zoom(false)
-                .allow_scroll(false)
-                .allow_drag(false)
+                .allow_zoom(!zoom_lock)
                 .custom_x_axes(vec![
                     egui_plot::AxisHints::new_x()
                         .min_thickness(min_axis_thickness)
@@ -713,8 +711,8 @@ impl ViewClass for TimeSeriesView {
             let mut plot_double_clicked = false;
             let egui_plot::PlotResponse {
                 inner: _,
-                mut response,
-                mut transform,
+                response,
+                transform,
                 hovered_plot_item,
             } = plot.show(ui, |plot_ui| {
                 if plot_ui.response().secondary_clicked()
@@ -776,19 +774,9 @@ impl ViewClass for TimeSeriesView {
                 })
                 .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
 
-            let is_dragging_time_cursor = if let Some(time_x) = time_x {
-                let time_cursor_response =
-                    draw_time_cursor(ctx, ui, &response, &transform, time_offset, time_x);
-
-                let dragged = time_cursor_response.dragged();
-
-                // Union with time cursor response to be able to pan over it.
-                response |= time_cursor_response;
-
-                dragged
-            } else {
-                false
-            };
+            if let Some(time_x) = time_x {
+                draw_time_cursor(ctx, ui, &response, &transform, time_offset, time_x);
+            }
 
             // Can determine whether we're resetting only now since we need to know whether there's a plot item hovered.
             let is_resetting = plot_double_clicked && hovered_data_result.is_none();
@@ -798,14 +786,12 @@ impl ViewClass for TimeSeriesView {
 
                 ui.ctx().request_repaint(); // Make sure we get another frame with the view reset.
             } else {
-                let transform_changed = handle_plot_input(
-                    &mut transform,
-                    &response,
-                    zoom_lock,
-                    is_dragging_time_cursor,
+                let unchanged_bounds = egui_plot::PlotBounds::from_min_max(
+                    [x_range.start(), y_range.start()],
+                    [x_range.end(), y_range.end()],
                 );
 
-                if transform_changed {
+                if unchanged_bounds != *transform.bounds() {
                     let new_x_range = transform_axis_range(transform, 0);
 
                     let new_view_time_range =
@@ -922,46 +908,6 @@ fn transform_axis_range(transform: egui_plot::PlotTransform, axis: usize) -> Ran
         transform.bounds().min()[axis],
         transform.bounds().max()[axis],
     )
-}
-
-fn handle_plot_input(
-    transform: &mut egui_plot::PlotTransform,
-    response: &egui::Response,
-    zoom_lock: Vec2b,
-    is_dragging_time_cursor: bool,
-) -> bool {
-    let mut transform_changed = false;
-
-    // We manually handle inputs for the plot to better interact with blueprints.
-    let drag_delta =
-        if !is_dragging_time_cursor && response.dragged_by(egui::PointerButton::Primary) {
-            response.drag_delta()
-        } else {
-            egui::Vec2::ZERO
-        };
-    let (scroll_delta, mut zoom_delta) = response
-        .ctx
-        .input(|i| (i.smooth_scroll_delta, i.zoom_delta_2d()));
-
-    if zoom_lock.x {
-        zoom_delta.x = 1.0;
-    }
-    if zoom_lock.y {
-        zoom_delta.y = 1.0;
-    }
-
-    let move_delta = drag_delta + scroll_delta;
-
-    if let Some(hover_pos) = response.hover_pos()
-        && (move_delta != egui::Vec2::ZERO || zoom_delta != egui::Vec2::ONE)
-    {
-        transform.translate_bounds((-move_delta.x as f64, -move_delta.y as f64));
-
-        transform.zoom(zoom_delta, hover_pos);
-
-        transform_changed = true;
-    }
-    transform_changed
 }
 
 fn set_plot_visibility_from_store(
