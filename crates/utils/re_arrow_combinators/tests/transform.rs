@@ -201,7 +201,7 @@ fn convert_to_f32() {
     let pipeline = MapList::new(GetField::new("poses"))
         .then(Flatten::new())
         .then(MapList::new(StructToFixedList::new(["x", "y"])))
-        .then(MapList::new(MapFixedSizeList::new(Cast::<
+        .then(MapList::new(MapFixedSizeList::new(PrimitiveCast::<
             Float64Array,
             Float32Array,
         >::new())));

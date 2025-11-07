@@ -453,11 +453,11 @@ where
 /// The source and target types are specified via generic parameters to maintain type safety.
 /// The target data type is automatically deduced from the target's `ArrowPrimitiveType`.
 #[derive(Clone, Default)]
-pub struct Cast<S, T> {
+pub struct PrimitiveCast<S, T> {
     _phantom: std::marker::PhantomData<(S, T)>,
 }
 
-impl<S, T> Cast<PrimitiveArray<S>, PrimitiveArray<T>>
+impl<S, T> PrimitiveCast<PrimitiveArray<S>, PrimitiveArray<T>>
 where
     S: ArrowPrimitiveType,
     T: ArrowPrimitiveType,
@@ -472,7 +472,7 @@ where
     }
 }
 
-impl<S, T> Transform for Cast<PrimitiveArray<S>, PrimitiveArray<T>>
+impl<S, T> Transform for PrimitiveCast<PrimitiveArray<S>, PrimitiveArray<T>>
 where
     S: ArrowPrimitiveType,
     T: ArrowPrimitiveType,
