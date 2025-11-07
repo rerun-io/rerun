@@ -591,12 +591,12 @@ See [Visualizers and Overrides](../concepts/visualizers-and-overrides.md) for in
 
 ---
 
-## Youtube
+## Youtube overview
+
+While some people might want to read through the documentation on this page, others might prefer to watch a video! If you would like to follow along with the Youtube video, you can find the code used in the video below.
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/kxbkbFVAsBo?si=k2JPz3RbhR1--pcw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
-
-If you would like to follow along with the Youtube video, you can find the code used in the video below.
 
 ```python
 from __future__ import annotations
