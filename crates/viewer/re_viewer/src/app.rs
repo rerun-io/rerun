@@ -100,6 +100,9 @@ pub struct App {
     /// Interface for all recordings and blueprints
     pub(crate) store_hub: Option<StoreHub>,
 
+    /// Metrics for tracking RRD loading performance (when profiling is active)
+    pub(crate) rrd_loading_metrics: crate::rrd_loading_metrics::RrdLoadingMetrics,
+
     /// Notification panel.
     pub(crate) notifications: notifications::NotificationUi,
 
@@ -402,6 +405,7 @@ impl App {
                 blueprint_loader(),
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
+            rrd_loading_metrics: Default::default(),
             notifications: notifications::NotificationUi::new(creation_context.egui_ctx.clone()),
 
             memory_panel: Default::default(),
@@ -434,6 +438,15 @@ impl App {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn set_profiler(&mut self, profiler: re_tracing::Profiler) {
         self.profiler = profiler;
+    }
+
+    /// Check if profiling is currently active.
+    ///
+    /// Use puffin's global state since the Profiler struct doesn't expose `is_running`.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn is_profiling(&self) -> bool {
+        _ = self; // Kept for consistency with other methods
+        re_tracing::reexports::puffin::are_scopes_on()
     }
 
     pub fn connection_registry(&self) -> &ConnectionRegistryHandle {
@@ -549,6 +562,22 @@ impl App {
                     should_diff_state,
                     Some(&bp_ctx),
                 );
+
+                // Detect playback completion for metrics tracking
+                #[cfg(not(target_arch = "wasm32"))]
+                if self.rrd_loading_metrics.is_tracking && !more_data_is_coming {
+                    // Check if all messages have been ingested
+                    let all_ingested = self.rrd_loading_metrics.total_messages > 0
+                        && self.rrd_loading_metrics.total_messages
+                            == self.rrd_loading_metrics.total_ingested;
+
+                    // Once all messages are ingested and no more data is coming, we consider
+                    // loading complete. The user has all the data, even if the timeline is
+                    // still playing through it.
+                    if all_ingested {
+                        self.rrd_loading_metrics.mark_playback_complete();
+                    }
+                }
 
                 if response.needs_repaint == NeedsRepaint::Yes {
                     self.egui_ctx.request_repaint();
@@ -1165,6 +1194,30 @@ impl App {
         egui_ctx: &egui::Context,
         data_source: &LogDataSource,
     ) {
+        re_tracing::profile_function!();
+
+        // Start tracking RRD loading metrics if profiling is active
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let profiling_active = self.is_profiling();
+            re_log::debug!("Profiling active: {profiling_active}");
+
+            if profiling_active {
+                let source_path = match data_source {
+                    LogDataSource::RrdHttpUrl { url, .. } => url.to_string(),
+                    #[cfg(not(target_arch = "wasm32"))]
+                    LogDataSource::FilePath(_, path) => path.display().to_string(),
+                    LogDataSource::FileContents(_, contents) => contents.name.clone(),
+                    #[cfg(not(target_arch = "wasm32"))]
+                    LogDataSource::Stdin => "<stdin>".to_owned(),
+                    LogDataSource::RedapDatasetPartition { uri, .. } => uri.to_string(),
+                    LogDataSource::RedapProxy(uri) => uri.to_string(),
+                };
+                re_log::info!("🎯 Starting RRD loading metrics tracking for: {source_path}");
+                self.rrd_loading_metrics.start_tracking(source_path);
+            }
+        }
+
         // Check if we've already loaded this data source and should just switch to it.
         //
         // Go through all sources that are still loading and those that are already in the store_hub.
@@ -1280,7 +1333,13 @@ impl App {
             .clone()
             .stream(&self.connection_registry, Some(waker))
         {
-            Ok(rx) => self.add_log_receiver(rx),
+            Ok(rx) => {
+                // Mark data source opened for metrics tracking
+                #[cfg(not(target_arch = "wasm32"))]
+                self.rrd_loading_metrics.mark_data_source_opened();
+
+                self.add_log_receiver(rx);
+            }
             Err(err) => {
                 re_log::error!("Failed to open data source: {}", re_error::format(err));
             }
@@ -1940,6 +1999,297 @@ impl App {
             });
     }
 
+    /// Display RRD loading metrics in a floating window when profiling is active.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn rrd_loading_metrics_ui(&self, ui: &egui::Ui) {
+        // Show panel when profiling is active AND we have metrics data
+        let has_metrics_data = self.rrd_loading_metrics.is_tracking
+            || self.rrd_loading_metrics.playback_completed.is_some()
+            || self.rrd_loading_metrics.total_messages > 0;
+
+        if !has_metrics_data {
+            return;
+        }
+
+        egui::Window::new(egui::RichText::new("🎯 RRD Loading Metrics").size(11.0))
+            .default_pos([10.0, 60.0])
+            .default_width(350.0)
+            .resizable(true)
+            .collapsible(true)
+            .show(ui.ctx(), |ui| {
+                ui.spacing_mut().item_spacing.y = 6.0;
+
+                // Source path
+                if let Some(path) = &self.rrd_loading_metrics.source_path {
+                    ui.strong("Source:");
+                    ui.label(path);
+                    ui.add_space(4.0);
+                }
+
+                ui.separator();
+
+                // Status indicator
+                let tokens = re_ui::HasDesignTokens::tokens(ui.ctx());
+                if self.rrd_loading_metrics.is_tracking {
+                    ui.horizontal(|ui| {
+                        ui.strong("Status:");
+                        ui.label(
+                            egui::RichText::new("⏳ Loading...")
+                                .color(tokens.alert_warning.icon),
+                        );
+                    });
+                } else if self.rrd_loading_metrics.playback_completed.is_some() {
+                    ui.horizontal(|ui| {
+                        ui.strong("Status:");
+                        ui.label(
+                            egui::RichText::new("✅ Complete")
+                                .color(tokens.success_text_color),
+                        );
+                    });
+                }
+
+                ui.add_space(4.0);
+
+                // Message counts
+                ui.horizontal(|ui| {
+                    ui.strong("Messages:");
+                    ui.label(format!(
+                        "{} received, {} ingested",
+                        self.rrd_loading_metrics.total_messages,
+                        self.rrd_loading_metrics.total_ingested
+                    ));
+                });
+
+                // Progress bar (only during loading)
+                if self.rrd_loading_metrics.is_tracking
+                    && self.rrd_loading_metrics.total_messages > 0
+                {
+                    let progress = self.rrd_loading_metrics.total_ingested as f32
+                        / self.rrd_loading_metrics.total_messages.max(1) as f32;
+
+                    ui.add_space(2.0);
+                    let progress_bar = egui::ProgressBar::new(progress)
+                        .text(format!("{:.0}%", progress * 100.0))
+                        .animate(true);
+                    ui.add(progress_bar);
+                }
+
+                ui.add_space(4.0);
+                ui.separator();
+                ui.strong("Timing Breakdown");
+                ui.add_space(2.0);
+
+                // Timings grid
+                egui::Grid::new("metrics_grid")
+                    .num_columns(2)
+                    .spacing([40.0, 4.0])
+                    .striped(false)
+                    .show(ui, |ui| {
+                        // Total loading time
+                        let tokens = re_ui::HasDesignTokens::tokens(ui.ctx());
+                        if let Some(total_time) = self.rrd_loading_metrics.total_loading_time() {
+                            ui.label("Total Time:");
+                            ui.label(
+                                egui::RichText::new(format!("{:.3}s", total_time.as_secs_f64()))
+                                    .strong()
+                                    .color(tokens.info_text_color),
+                            );
+                            ui.end_row();
+                        } else if self.rrd_loading_metrics.is_tracking {
+                            if let Some(start) = self.rrd_loading_metrics.loading_start {
+                                let elapsed = start.elapsed();
+                                ui.label("Elapsed:");
+                                ui.label(format!("{:.3}s", elapsed.as_secs_f64()));
+                                ui.end_row();
+                            }
+                        }
+
+                        // Time to first message
+                        if let Some(ttfm) = self.rrd_loading_metrics.time_to_first_message() {
+                            ui.label("First Message:");
+                            ui.label(format!("{:.3}s", ttfm.as_secs_f64()));
+                            ui.end_row();
+                        }
+
+                        // Data source to first message
+                        if let Some(ds_time) =
+                            self.rrd_loading_metrics.data_source_to_first_message()
+                        {
+                            ui.label("Stream Latency:");
+                            ui.label(format!("{:.3}s", ds_time.as_secs_f64()));
+                            ui.end_row();
+                        }
+
+                        // Ingestion lag
+                        if let Some(lag) = self.rrd_loading_metrics.ingestion_lag_time() {
+                            ui.label("Ingestion Lag:");
+                            ui.label(format!("{:.3}s", lag.as_secs_f64()));
+                            ui.end_row();
+                        }
+
+                        // Playback time
+                        if let Some(playback) = self.rrd_loading_metrics.playback_time() {
+                            ui.label("Playback Time:");
+                            ui.label(format!("{:.3}s", playback.as_secs_f64()));
+                            ui.end_row();
+                        }
+
+                        // Throughput
+                        if let Some(throughput) = self.rrd_loading_metrics.throughput_msgs_per_sec()
+                        {
+                            ui.label("Throughput:");
+                            ui.label(format!("{throughput:.0} msgs/sec"));
+                            ui.end_row();
+                        }
+                    });
+
+                // Visual timeline (if completed)
+                if let Some(_total_time) = self.rrd_loading_metrics.total_loading_time() {
+                    ui.add_space(8.0);
+                    ui.separator();
+                    ui.strong("Timeline");
+                    ui.add_space(4.0);
+                    self.draw_metrics_timeline(ui);
+                }
+
+                ui.add_space(4.0);
+
+                // Help text
+                ui.label(
+                    egui::RichText::new("💡 Metrics are captured with --profile flag")
+                        .italics()
+                        .small()
+                        .color(ui.visuals().weak_text_color()),
+                );
+            });
+    }
+
+    /// Draw a visual timeline of the loading phases.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn draw_metrics_timeline(&self, ui: &mut egui::Ui) {
+        let Some(total_time) = self.rrd_loading_metrics.total_loading_time() else {
+            return;
+        };
+
+        let total_secs = total_time.as_secs_f64();
+        if total_secs <= 0.0 {
+            return;
+        }
+
+        let available_width = ui.available_width();
+        let bar_height = 24.0;
+
+        // Define phase colors using theme tokens
+        let tokens = re_ui::HasDesignTokens::tokens(ui.ctx());
+        let opening_color = tokens.alert_info.icon;
+        let ingesting_color = tokens.success_text_color;
+        let playing_color = tokens.alert_warning.icon;
+
+        // Calculate phase durations
+        let ttfm = self
+            .rrd_loading_metrics
+            .time_to_first_message()
+            .map(|d| d.as_secs_f64())
+            .unwrap_or(0.0);
+        let ingestion_start = ttfm;
+        let ingestion_end = self
+            .rrd_loading_metrics
+            .all_messages_ingested
+            .and_then(|end| {
+                self.rrd_loading_metrics
+                    .loading_start
+                    .map(|start| end.duration_since(start).as_secs_f64())
+            })
+            .unwrap_or(total_secs);
+        let playback_time = self
+            .rrd_loading_metrics
+            .playback_time()
+            .map(|d| d.as_secs_f64())
+            .unwrap_or(0.0);
+
+        // Draw the timeline bar
+        let (response, painter) = ui.allocate_painter(
+            egui::vec2(available_width, bar_height),
+            egui::Sense::hover(),
+        );
+
+        let rect = response.rect;
+
+        // Background
+        painter.rect_filled(rect, 2.0, ui.visuals().extreme_bg_color);
+
+        // Phase 1: Data source opening (0 to first message)
+        if ttfm > 0.0 {
+            let width = ((ttfm / total_secs) * rect.width() as f64) as f32;
+            let phase_rect = egui::Rect::from_min_size(rect.min, egui::vec2(width, bar_height));
+            painter.rect_filled(phase_rect, 2.0, opening_color);
+        }
+
+        // Phase 2: Message ingestion
+        if ingestion_end > ingestion_start {
+            let start_x = ((ingestion_start / total_secs) * rect.width() as f64) as f32;
+            let width =
+                (((ingestion_end - ingestion_start) / total_secs) * rect.width() as f64) as f32;
+            let phase_rect = egui::Rect::from_min_size(
+                rect.min + egui::vec2(start_x, 0.0),
+                egui::vec2(width, bar_height),
+            );
+            painter.rect_filled(phase_rect, 2.0, ingesting_color);
+        }
+
+        // Phase 3: Playback
+        if playback_time > 0.0 {
+            let start_x = ((ingestion_end / total_secs) * rect.width() as f64) as f32;
+            let width = ((playback_time / total_secs) * rect.width() as f64) as f32;
+            let phase_rect = egui::Rect::from_min_size(
+                rect.min + egui::vec2(start_x, 0.0),
+                egui::vec2(width, bar_height),
+            );
+            painter.rect_filled(phase_rect, 2.0, playing_color);
+        }
+
+        // Border
+        painter.rect_stroke(
+            rect,
+            2.0,
+            egui::Stroke::new(1.0, ui.visuals().widgets.noninteractive.bg_stroke.color),
+            egui::epaint::StrokeKind::Outside,
+        );
+
+        // Legend
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 12.0;
+
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 4.0;
+                let color_rect =
+                    egui::Rect::from_min_size(ui.cursor().min, egui::vec2(12.0, 12.0));
+                ui.painter().rect_filled(color_rect, 2.0, opening_color);
+                ui.add_space(14.0);
+                ui.small("Opening");
+            });
+
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 4.0;
+                let color_rect =
+                    egui::Rect::from_min_size(ui.cursor().min, egui::vec2(12.0, 12.0));
+                ui.painter().rect_filled(color_rect, 2.0, ingesting_color);
+                ui.add_space(14.0);
+                ui.small("Ingesting");
+            });
+
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 4.0;
+                let color_rect =
+                    egui::Rect::from_min_size(ui.cursor().min, egui::vec2(12.0, 12.0));
+                ui.painter().rect_filled(color_rect, 2.0, playing_color);
+                ui.add_space(14.0);
+                ui.small("Playing");
+            });
+        });
+    }
+
     fn egui_debug_panel_ui(&self, ui: &mut egui::Ui) {
         let egui_ctx = ui.ctx().clone();
 
@@ -2012,6 +2362,10 @@ impl App {
                 self.memory_panel_ui(ui, gpu_resource_stats, store_stats);
 
                 self.egui_debug_panel_ui(ui);
+
+                // Show RRD loading metrics panel when profiling
+                #[cfg(not(target_arch = "wasm32"))]
+                self.rrd_loading_metrics_ui(ui);
 
                 let egui_renderer = &mut frame
                     .wgpu_render_state()
@@ -2122,6 +2476,13 @@ impl App {
         while let Some((channel_source, msg)) = self.rx_log.try_recv() {
             re_log::trace!("Received a message from {channel_source:?}"); // Used by `test_ui_wakeup` test app!
 
+            // Track message reception for metrics
+            #[cfg(not(target_arch = "wasm32"))]
+            if matches!(msg.payload, re_smart_channel::SmartMessagePayload::Msg(_)) {
+                self.rrd_loading_metrics.mark_first_message();
+                self.rrd_loading_metrics.mark_message_received();
+            }
+
             let msg = match msg.payload {
                 re_smart_channel::SmartMessagePayload::Msg(msg) => msg,
 
@@ -2156,13 +2517,26 @@ impl App {
             }
         }
 
+        // Check if all channels are closed (no more data coming) for metrics tracking
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.rrd_loading_metrics.is_tracking {
+            let all_channels_closed = self.rx_log.sources().is_empty();
+            if all_channels_closed
+                && self.rrd_loading_metrics.total_messages > 0
+                && self.rrd_loading_metrics.total_messages
+                    == self.rrd_loading_metrics.total_ingested
+            {
+                self.rrd_loading_metrics.mark_all_ingested();
+            }
+        }
+
         // Run pending system commands in case any of the messages resulted in additional commands.
         // This avoid further frame delays on these commands.
         self.run_pending_system_commands(store_hub, egui_ctx);
     }
 
     fn receive_log_msg(
-        &self,
+        &mut self,
         msg: &LogMsg,
         store_hub: &mut StoreHub,
         egui_ctx: &egui::Context,
@@ -2187,6 +2561,12 @@ impl App {
 
         let was_empty = entity_db.is_empty();
         let entity_db_add_result = entity_db.add(msg);
+
+        // Track message ingestion for metrics (main branch: synchronous ingestion)
+        #[cfg(not(target_arch = "wasm32"))]
+        if entity_db_add_result.is_ok() {
+            self.rrd_loading_metrics.mark_message_ingested();
+        }
 
         // Downgrade to read-only, so we can access caches.
         let entity_db = store_hub
