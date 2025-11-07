@@ -9,15 +9,17 @@ use crate::oauth::OAUTH_CLIENT_ID;
 
 use super::RefreshToken;
 
-static API_BASE_URL: LazyLock<String> = LazyLock::new(|| {
+static RERUN_AUTH_API: LazyLock<String> = LazyLock::new(|| {
     std::env::var("RERUN_AUTH_API_BASE_URL")
         .ok()
         .unwrap_or_else(|| "https://rerun.io/api".into())
 });
 
-fn endpoint(endpoint: impl std::fmt::Display) -> String {
-    format!("{base_url}{endpoint}", base_url = *API_BASE_URL)
-}
+static WORKOS_API: LazyLock<String> = LazyLock::new(|| {
+    std::env::var("WORKOS_API_BASE_URL")
+        .ok()
+        .unwrap_or_else(|| "https://api.workos.com".into())
+});
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -106,7 +108,11 @@ impl IntoRequest for RefreshRequest {
     type Res = RefreshResponse;
 
     fn into_request(self) -> Result<ehttp::Request, Error> {
-        ehttp::Request::json(endpoint("/refresh"), &self).map_err(Error::Serialize)
+        ehttp::Request::json(
+            format_args!("{base}/refresh", base = *RERUN_AUTH_API),
+            &self,
+        )
+        .map_err(Error::Serialize)
     }
 }
 
@@ -132,7 +138,11 @@ impl IntoRequest for JwksRequest {
     type Res = jsonwebtoken::jwk::JwkSet;
 
     fn into_request(self) -> Result<ehttp::Request, Error> {
-        Ok(ehttp::Request::get(endpoint("/jwks")))
+        Ok(ehttp::Request::get(format_args!(
+            "{base}/sso/jwks/{client_id}",
+            base = *WORKOS_API,
+            client_id = *OAUTH_CLIENT_ID,
+        )))
     }
 }
 
@@ -156,6 +166,8 @@ const CHARSET: &[u8] = b"\
 
 impl Pkce {
     pub fn new() -> Self {
+        // verifier needs to be large enough to make reversing the hash impractical
+
         let code_verifier = {
             // generate 128-byte string
             const LEN: usize = 128;
@@ -192,13 +204,15 @@ impl Default for Pkce {
     }
 }
 
-pub fn authorization_url(redirect_uri: &str, state: &str, pkce: &Pkce) -> String {
-    let endpoint = endpoint("/authorize");
-    let client_id = &*OAUTH_CLIENT_ID;
-    let code_challenge = &pkce.code_challenge;
-    format!(
+pub fn authorization_url(
+    redirect_uri: &str,
+    state: &str,
+    pkce: &Pkce,
+    login_hint: Option<&str>,
+) -> String {
+    let mut url = format!(
         "\
-        {endpoint}\
+        {base}/user_management/authorize\
         ?response_type=code\
         &client_id={client_id}\
         &redirect_uri={redirect_uri}\
@@ -206,12 +220,23 @@ pub fn authorization_url(redirect_uri: &str, state: &str, pkce: &Pkce) -> String
         &provider=authkit\
         &code_challenge={code_challenge}\
         &code_challenge_method=S256\
-    "
-    )
+    ",
+        base = *WORKOS_API,
+        client_id = *OAUTH_CLIENT_ID,
+        code_challenge = pkce.code_challenge,
+    );
+
+    if let Some(login_hint) = login_hint {
+        url = format!("{url}&login_hint={login_hint}");
+    }
+
+    url
 }
 
 #[derive(Debug, serde::Serialize)]
 pub struct AuthenticateWithCode<'a> {
+    grant_type: &'a str,
+    client_id: &'a str,
     code: &'a str,
     code_verifier: &'a str,
     user_agent: &'a str,
@@ -220,6 +245,8 @@ pub struct AuthenticateWithCode<'a> {
 impl<'a> AuthenticateWithCode<'a> {
     pub fn new(code: &'a str, pkce: &'a Pkce, user_agent: &'a str) -> Self {
         Self {
+            grant_type: "authorization_code",
+            client_id: &*OAUTH_CLIENT_ID,
             code,
             code_verifier: &pkce.code_verifier,
             user_agent,
@@ -231,7 +258,11 @@ impl IntoRequest for AuthenticateWithCode<'_> {
     type Res = AuthenticationResponse;
 
     fn into_request(self) -> Result<ehttp::Request, Error> {
-        ehttp::Request::json(endpoint("/authenticate"), &self).map_err(Error::Serialize)
+        ehttp::Request::json(
+            format_args!("{base}/user_management/authenticate", base = *WORKOS_API),
+            &self,
+        )
+        .map_err(Error::Serialize)
     }
 }
 
