@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
@@ -11,8 +11,8 @@ use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathSubs, StoreId, TimePoint, Timeline};
 use re_types::{archetypes::Points2D, components::Position2D};
 use re_viewer_context::{
-    StoreContext, ViewClassRegistry, VisualizableEntities, blueprint_timeline, Caches,
-    PerVisualizer,
+    Caches, PerVisualizer, StoreContext, ViewClassRegistry, VisualizableEntities,
+    blueprint_timeline,
 };
 use re_viewport_blueprint::ViewContents;
 
@@ -47,7 +47,7 @@ criterion_main!(benches);
 
 fn query_tree_many_entities(c: &mut Criterion) {
     let mut group = c.benchmark_group("data_query_tree");
-    
+
     let num_entities = NUM_PARENTS * NUM_CHILDREN_PER_PARENT * NUM_GRANDCHILDREN_PER_CHILD;
     group.throughput(criterion::Throughput::Elements(num_entities as _));
 
@@ -73,8 +73,7 @@ fn query_tree_many_entities(c: &mut Criterion) {
         let view_contents = ViewContents::new(
             re_viewer_context::ViewId::random(),
             "3D".into(),
-            EntityPathFilter::parse_forgiving("+ /**")
-                .resolve_forgiving(&EntityPathSubs::empty()),
+            EntityPathFilter::parse_forgiving("+ /**").resolve_forgiving(&EntityPathSubs::empty()),
         );
 
         group.bench_function("include_all", |b| {
@@ -163,17 +162,10 @@ fn build_entity_tree() -> (EntityDb, PerVisualizer<VisualizableEntities>) {
     // Add some data to the entities
     for entity_path in &all_entities {
         let row_id = RowId::new();
-        let position = Position2D::new(
-            rng.random_range(0.0..100.0),
-            rng.random_range(0.0..100.0),
-        );
+        let position = Position2D::new(rng.random_range(0.0..100.0), rng.random_range(0.0..100.0));
 
         let chunk = Chunk::builder(entity_path.clone())
-            .with_archetype(
-                row_id,
-                timepoint.clone(),
-                &Points2D::new(vec![position]),
-            )
+            .with_archetype(row_id, timepoint.clone(), &Points2D::new(vec![position]))
             .build()
             .unwrap();
 
@@ -194,4 +186,3 @@ fn build_entity_tree() -> (EntityDb, PerVisualizer<VisualizableEntities>) {
 
     (recording, visualizable_entities)
 }
-
