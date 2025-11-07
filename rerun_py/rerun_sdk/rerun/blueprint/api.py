@@ -10,7 +10,6 @@ from .._baseclasses import AsComponents, ComponentBatchLike, DescribedComponentB
 from .._spawn import _spawn_viewer
 from ..datatypes import BoolLike, EntityPathLike, Float32ArrayLike, Utf8ArrayLike, Utf8Like
 from ..recording_stream import RecordingStream
-from ..time import to_nanos, to_nanos_since_epoch
 from .archetypes import (
     ContainerBlueprint,
     PanelBlueprint,
@@ -22,10 +21,7 @@ from .archetypes import (
 from .components import PanelState, PanelStateLike
 
 if TYPE_CHECKING:
-    from datetime import datetime, timedelta
     from pathlib import Path
-
-    import numpy as np
 
     from ..memory import MemoryRecording
     from .components.absolute_time_range import AbsoluteTimeRange
