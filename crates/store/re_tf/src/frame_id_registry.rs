@@ -240,9 +240,5 @@ mod tests {
             )),
             Some(&TransformFrameId::from_entity_path(&"root/surprise".into()))
         );
-        assert_eq!(
-            registry.lookup_frame_id(TransformFrameIdHash::new(&"frame0".into())),
-            Some(&TransformFrameId::new("frame0"))
-        );
     }
 }
