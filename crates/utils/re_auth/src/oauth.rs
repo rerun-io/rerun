@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 
 use crate::Jwt;
@@ -245,7 +243,6 @@ impl Credentials {
 pub struct User {
     pub id: String,
     pub email: String,
-    pub metadata: HashMap<String, String>,
 }
 
 /// An access token which was valid at some point in the past.

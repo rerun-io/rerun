@@ -120,7 +120,7 @@ pub async fn login(options: LoginOptions) -> Result<(), Error> {
     };
 
     // 4. Exchange code for credentials
-    let auth = send_async(AuthenticateWithCode::new(&code, &pkce, "rerun-cli"))
+    let auth = send_async(AuthenticateWithCode::new(&code, &pkce))
         .await
         .map_err(|err| Error::Generic(err.into()))?;
 

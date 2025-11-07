@@ -69,7 +69,7 @@ impl State {
                     *credentials.lock() = Some(res);
                 };
                 send_native(
-                    AuthenticateWithCode::new(&code, &self.pkce, "rerun-viewer"),
+                    AuthenticateWithCode::new(&code, &self.pkce),
                     move |res| match res {
                         Ok(res) => {
                             #[expect(unsafe_code)]

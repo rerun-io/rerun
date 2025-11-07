@@ -246,7 +246,7 @@ async fn try_handle_storage_event(
     }
 
     // Now we need to exchange the code for tokens:
-    let res = match send_async(AuthenticateWithCode::new(&code, &pkce, "rerun-viewer")).await {
+    let res = match send_async(AuthenticateWithCode::new(&code, &pkce)).await {
         Ok(res) => res,
         Err(err) => {
             bail!(err);

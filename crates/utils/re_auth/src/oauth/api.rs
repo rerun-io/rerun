@@ -1,6 +1,6 @@
 //! HTTP Client for Rerun's Auth API.
 
-use std::{collections::HashMap, sync::LazyLock};
+use std::sync::LazyLock;
 
 use base64::{Engine as _, prelude::BASE64_URL_SAFE_NO_PAD};
 use sha2::{Digest as _, Sha256};
@@ -8,12 +8,6 @@ use sha2::{Digest as _, Sha256};
 use crate::oauth::OAUTH_CLIENT_ID;
 
 use super::RefreshToken;
-
-static RERUN_AUTH_API: LazyLock<String> = LazyLock::new(|| {
-    std::env::var("RERUN_AUTH_API_BASE_URL")
-        .ok()
-        .unwrap_or_else(|| "https://rerun.io/api".into())
-});
 
 static WORKOS_API: LazyLock<String> = LazyLock::new(|| {
     std::env::var("WORKOS_API_BASE_URL")
@@ -30,17 +24,10 @@ pub enum Error {
     Deserialize(serde_json::Error),
 
     #[error("{0}")]
-    Http(HttpError),
+    Http(String),
 
     #[error("{0}")]
     Request(String),
-}
-
-#[derive(Debug, Clone, serde::Deserialize, thiserror::Error)]
-#[error("{message}")]
-pub struct HttpError {
-    pub code: String,
-    pub message: String,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -52,12 +39,12 @@ pub fn send_native<Req: IntoRequest>(
         Ok(req) => req,
         Err(err) => return on_response(Err(err)),
     };
-    ehttp::fetch(req, |res| {
-        let res = res.map_err(Error::Request).and_then(|res| {
+    ehttp::fetch(req, move |res| {
+        let res = res.map_err(Error::Request).and_then(move |res| {
             if !res.ok {
                 if !res.bytes.is_empty() {
                     re_log::trace!("error response: {:?}", res.text());
-                    let err = serde_json::from_slice(&res.bytes).map_err(Error::Deserialize)?;
+                    let err = String::from_utf8_lossy(&res.bytes).into_owned();
                     return Err(Error::Http(err));
                 } else {
                     return Err(Error::Request(res.status_text.clone()));
@@ -82,7 +69,7 @@ pub async fn send_async<Req: IntoRequest>(req: Req) -> Result<Req::Res, Error> {
     if !res.ok {
         if !res.bytes.is_empty() {
             re_log::trace!("error response: {:?}", res.text());
-            let err = serde_json::from_slice(&res.bytes).map_err(Error::Deserialize)?;
+            let err = String::from_utf8_lossy(&res.bytes).into_owned();
             return Err(Error::Http(err));
         } else {
             return Err(Error::Request(res.status_text.clone()));
@@ -98,18 +85,20 @@ pub trait IntoRequest: Sized {
     fn into_request(self) -> Result<ehttp::Request, Error>;
 }
 
+// NOTE: We use PKCE, so refresh token doesn't require client secret.
 #[derive(serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RefreshRequest {
-    refresh_token: String,
+pub struct AuthenticateWithRefresh<'a> {
+    grant_type: &'a str,
+    client_id: &'a str,
+    refresh_token: &'a str,
 }
 
-impl IntoRequest for RefreshRequest {
+impl IntoRequest for AuthenticateWithRefresh<'_> {
     type Res = RefreshResponse;
 
     fn into_request(self) -> Result<ehttp::Request, Error> {
         ehttp::Request::json(
-            format_args!("{base}/refresh", base = *RERUN_AUTH_API),
+            format_args!("{base}/user_management/authenticate", base = *WORKOS_API),
             &self,
         )
         .map_err(Error::Serialize)
@@ -117,7 +106,6 @@ impl IntoRequest for RefreshRequest {
 }
 
 #[derive(serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct RefreshResponse {
     pub user: super::User,
     pub organization_id: Option<String>,
@@ -126,8 +114,10 @@ pub struct RefreshResponse {
 }
 
 pub(crate) async fn refresh(refresh_token: &RefreshToken) -> Result<RefreshResponse, Error> {
-    send_async(RefreshRequest {
-        refresh_token: refresh_token.0.clone(),
+    send_async(AuthenticateWithRefresh {
+        grant_type: "refresh_token",
+        client_id: &*OAUTH_CLIENT_ID,
+        refresh_token: &refresh_token.0,
     })
     .await
 }
@@ -239,23 +229,21 @@ pub struct AuthenticateWithCode<'a> {
     client_id: &'a str,
     code: &'a str,
     code_verifier: &'a str,
-    user_agent: &'a str,
 }
 
 impl<'a> AuthenticateWithCode<'a> {
-    pub fn new(code: &'a str, pkce: &'a Pkce, user_agent: &'a str) -> Self {
+    pub fn new(code: &'a str, pkce: &'a Pkce) -> Self {
         Self {
             grant_type: "authorization_code",
             client_id: &*OAUTH_CLIENT_ID,
             code,
             code_verifier: &pkce.code_verifier,
-            user_agent,
         }
     }
 }
 
 impl IntoRequest for AuthenticateWithCode<'_> {
-    type Res = AuthenticationResponse;
+    type Res = AuthenticateWithCodeResponse;
 
     fn into_request(self) -> Result<ehttp::Request, Error> {
         ehttp::Request::json(
@@ -266,22 +254,16 @@ impl IntoRequest for AuthenticateWithCode<'_> {
     }
 }
 
-#[expect(dead_code)] // fields may become used at some point in the near future
 #[derive(Debug, Clone, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AuthenticationResponse {
+pub struct AuthenticateWithCodeResponse {
     user: User,
     organization_id: Option<String>,
     access_token: String,
     refresh_token: String,
-    impersonator: Option<Impersonator>,
-    authentication_method: Option<AuthenticationMethod>,
-    sealed_session: Option<String>,
-    oauth_tokens: Option<OauthTokens>,
 }
 
-impl From<AuthenticationResponse> for RefreshResponse {
-    fn from(value: AuthenticationResponse) -> Self {
+impl From<AuthenticateWithCodeResponse> for RefreshResponse {
+    fn from(value: AuthenticateWithCodeResponse) -> Self {
         Self {
             user: value.user.into(),
             organization_id: value.organization_id,
@@ -291,9 +273,8 @@ impl From<AuthenticationResponse> for RefreshResponse {
     }
 }
 
-#[expect(dead_code)] // fields may become used at some point in the near future
+#[expect(dead_code)] // maybe these fields are useful in the future
 #[derive(Debug, Clone, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct User {
     id: String,
     email: String,
@@ -305,7 +286,6 @@ struct User {
     created_at: String,
     updated_at: String,
     external_id: Option<String>,
-    metadata: HashMap<String, String>,
 }
 
 impl From<User> for crate::oauth::User {
@@ -313,37 +293,6 @@ impl From<User> for crate::oauth::User {
         Self {
             id: value.id,
             email: value.email,
-            metadata: value.metadata,
         }
     }
-}
-
-#[expect(dead_code)] // fields may become used at some point in the near future
-#[derive(Debug, Clone, serde::Deserialize)]
-struct Impersonator {
-    email: String,
-    reason: Option<String>,
-}
-
-#[expect(clippy::upper_case_acronyms)] // It's better than a serde(rename)
-#[derive(Debug, Clone, serde::Deserialize)]
-enum AuthenticationMethod {
-    SSO,
-    Password,
-    Passkey,
-    AppleOAuth,
-    GitHubOAuth,
-    GoogleOAuth,
-    MicrosoftOAuth,
-    MagicAuth,
-    Impersonation,
-}
-
-#[expect(dead_code)] // fields may become used at some point in the near future
-#[derive(Debug, Clone, serde::Deserialize)]
-struct OauthTokens {
-    access_token: String,
-    refresh_token: String,
-    expires_at: u64,
-    scopes: Vec<String>,
 }

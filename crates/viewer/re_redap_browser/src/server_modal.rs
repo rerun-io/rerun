@@ -73,7 +73,7 @@ impl Authentication {
         self.login_flow = None;
     }
 
-    fn start_login_flow(&mut self) {
+    fn start_login_flow(&mut self, ui: &mut egui::Ui) {
         let login_hint = self.email.as_deref();
         match LoginFlow::open(ui, login_hint) {
             Ok(flow) => {
@@ -370,7 +370,7 @@ fn auth_ui(ui: &mut egui::Ui, cmd: &CommandSender, auth: &mut Authentication) {
                         .clicked()
                     {
                         auth.error = None;
-                        auth.start_login_flow();
+                        auth.start_login_flow(ui);
                     }
                 } else if auth.error.is_some() {
                     if ui
@@ -380,7 +380,7 @@ fn auth_ui(ui: &mut egui::Ui, cmd: &CommandSender, auth: &mut Authentication) {
                         auth.error = None;
                     }
                 } else {
-                    auth.start_login_flow();
+                    auth.start_login_flow(ui);
                 }
 
                 ui.add_space(6.0);
