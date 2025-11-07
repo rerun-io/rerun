@@ -8,8 +8,8 @@ use smallvec::SmallVec;
 
 use re_entity_db::{EntityDb, EntityTree, external::re_chunk_store::LatestAtQuery};
 use re_log_types::{
-    EntityPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter, ResolvedEntityPathRule,
-    Timeline, path::RuleEffect,
+    EntityPath, EntityPathFilter, EntityPathHash, EntityPathSubs, ResolvedEntityPathFilter,
+    ResolvedEntityPathRule, Timeline, path::RuleEffect,
 };
 use re_types::Loggable as _;
 use re_types::{
@@ -22,7 +22,8 @@ use re_types::{
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     IndicatedEntities, MaybeVisualizableEntities, OverridePath, PerVisualizer, PropertyOverrides,
-    QueryRange, ViewClassRegistry, ViewId, ViewState, ViewerContext, VisualizableEntities,
+    QueryRange, ViewClassRegistry, ViewId, ViewState, ViewSystemIdentifier, ViewerContext,
+    VisualizableEntities,
 };
 
 use crate::{ViewBlueprint, ViewProperty};
@@ -282,9 +283,12 @@ impl ViewContents {
 
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
 
+        let visualizers_per_entity =
+            Self::visualizers_per_entity(visualizable_entities_for_visualizer_systems);
+
         let executor = QueryExpressionEvaluator {
-            visualizable_entities_for_visualizer_systems,
-            entity_path_filter: self.entity_path_filter.clone(),
+            visualizers_per_entity: &visualizers_per_entity,
+            entity_path_filter: &self.entity_path_filter,
             override_base_path: Self::override_path_for_entity(self.view_id, &EntityPath::root()),
         };
 
@@ -334,6 +338,23 @@ impl ViewContents {
             component_defaults,
         }
     }
+
+    fn visualizers_per_entity(
+        visualizable_entities_for_visualizer_systems: &PerVisualizer<VisualizableEntities>,
+    ) -> IntMap<EntityPathHash, SmallVec<[ViewSystemIdentifier; 4]>> {
+        re_tracing::profile_function!();
+
+        let mut visualizers_per_entity = IntMap::default();
+        for (visualizer, entities) in visualizable_entities_for_visualizer_systems.iter() {
+            for entity_path in entities.iter() {
+                visualizers_per_entity
+                    .entry(entity_path.hash())
+                    .or_insert_with(SmallVec::new)
+                    .push(*visualizer);
+            }
+        }
+        visualizers_per_entity
+    }
 }
 
 /// Helper struct for executing the query from [`ViewContents`]
@@ -342,8 +363,8 @@ impl ViewContents {
 /// used to efficiently determine if we should continue the walk or switch
 /// to a pure recursive evaluation.
 struct QueryExpressionEvaluator<'a> {
-    visualizable_entities_for_visualizer_systems: &'a PerVisualizer<VisualizableEntities>,
-    entity_path_filter: ResolvedEntityPathFilter,
+    visualizers_per_entity: &'a IntMap<EntityPathHash, SmallVec<[ViewSystemIdentifier; 4]>>,
+    entity_path_filter: &'a ResolvedEntityPathFilter,
     override_base_path: EntityPath,
 }
 
@@ -355,11 +376,10 @@ impl QueryExpressionEvaluator<'_> {
         num_matching_entities: &mut usize,
         num_visualized_entities: &mut usize,
     ) -> Option<DataResultHandle> {
+        let filter_evaluation = self.entity_path_filter.evaluate(&tree.path);
+
         // Early-out optimization
-        if !self
-            .entity_path_filter
-            .is_anything_in_subtree_included(&tree.path)
-        {
+        if !filter_evaluation.subtree_included {
             return None;
         }
 
@@ -367,16 +387,16 @@ impl QueryExpressionEvaluator<'_> {
 
         let entity_path = &tree.path;
 
-        let matches_filter = self.entity_path_filter.matches(entity_path);
+        let matches_filter = filter_evaluation.matches;
         *num_matching_entities += matches_filter as usize;
 
         // This list will be updated below during `update_overrides_recursive` by calling `choose_default_visualizers`
         // on the view.
         let visualizers: SmallVec<[_; 4]> = if matches_filter {
-            self.visualizable_entities_for_visualizer_systems
-                .iter()
-                .filter_map(|(visualizer, ents)| ents.contains(entity_path).then_some(*visualizer))
-                .collect()
+            self.visualizers_per_entity
+                .get(&entity_path.hash())
+                .cloned()
+                .unwrap_or_default()
         } else {
             Default::default()
         };
@@ -398,7 +418,7 @@ impl QueryExpressionEvaluator<'_> {
         // Ignore empty nodes.
         // Since we recurse downwards, this prunes any branches that don't have anything to contribute to the scene
         // and aren't directly included.
-        let exact_included = self.entity_path_filter.matches_exactly(entity_path);
+        let exact_included = filter_evaluation.matches_exactly;
         if exact_included || !children.is_empty() || !visualizers.is_empty() {
             Some(data_results.insert(DataResultNode {
                 data_result: DataResult {
