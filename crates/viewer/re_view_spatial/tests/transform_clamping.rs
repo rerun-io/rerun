@@ -2,8 +2,9 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
-use re_viewport_blueprint::ViewBlueprint;
+use re_types::{blueprint::archetypes::EyeControls3D, components::Position3D};
+use re_viewer_context::{BlueprintContext as _, RecommendedView, ViewClass as _, ViewId};
+use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 #[test]
 pub fn test_transform_clamping() {
@@ -234,14 +235,17 @@ fn run_view_ui_and_save_snapshot(
             // * NO other boxes/spheres, in particular no magenta ones!
 
             let name = format!("{name}_{target}");
-            let raw_input = harness.input_mut();
-            raw_input
-                .events
-                .push(egui::Event::PointerMoved((100.0, 100.0).into()));
-            raw_input.events.push(egui::Event::MouseWheel {
-                unit: egui::MouseWheelUnit::Line,
-                delta: egui::Vec2::UP * 2.0,
-                modifiers: egui::Modifiers::default(),
+            test_context.with_blueprint_ctx(|ctx, _| {
+                ViewProperty::from_archetype::<EyeControls3D>(
+                    ctx.current_blueprint(),
+                    ctx.blueprint_query(),
+                    view_id,
+                )
+                .save_blueprint_component(
+                    &ctx,
+                    &EyeControls3D::descriptor_position(),
+                    &Position3D::new(15.0, 5.0, 15.0),
+                );
             });
             harness.run_steps(10);
 
@@ -263,14 +267,17 @@ fn run_view_ui_and_save_snapshot(
         // * these points should be in three distinct clusters.
 
         let name = format!("{name}_points");
-        let raw_input = harness.input_mut();
-        raw_input
-            .events
-            .push(egui::Event::PointerMoved((100.0, 100.0).into()));
-        raw_input.events.push(egui::Event::MouseWheel {
-            unit: egui::MouseWheelUnit::Line,
-            delta: egui::Vec2::UP * 2.0,
-            modifiers: egui::Modifiers::default(),
+        test_context.with_blueprint_ctx(|ctx, _| {
+            ViewProperty::from_archetype::<EyeControls3D>(
+                ctx.current_blueprint(),
+                ctx.blueprint_query(),
+                view_id_points,
+            )
+            .save_blueprint_component(
+                &ctx,
+                &EyeControls3D::descriptor_position(),
+                &Position3D::new(3.0, 3.0, 3.0),
+            );
         });
         harness.run_steps(10);
 

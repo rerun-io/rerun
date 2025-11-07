@@ -6,9 +6,11 @@ use ahash::HashMap;
 use glam::DAffine3;
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
+use parking_lot::Mutex;
 use vec1::smallvec_v1::SmallVec1;
 
-use crate::entity_to_source_frame_tracking::EntityToAffectedSources;
+use crate::entity_to_frame_tracking::EntityToFrameOverTime;
+use crate::frame_id_registry::FrameIdRegistry;
 use crate::{
     TransformFrameIdHash,
     transform_aspect::TransformAspect,
@@ -17,6 +19,7 @@ use crate::{
         query_and_resolve_tree_transform_at_entity,
     },
 };
+
 use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::external::re_types_core::ArrowString;
@@ -40,6 +43,11 @@ use re_types::{
 /// * [`components::PinholeProjection`] and [`components::ViewCoordinates`]
 ///   Pinhole projections & associated view coordinates used for visualizing cameras in 3D and embedding 2D in 3D
 pub struct TransformResolutionCache {
+    /// The frame id registry is co-located in the resolution cache for convenience:
+    /// the resolution cache is often the lowest level of transform access and
+    /// thus allowing us to access debug information across the stack.
+    frame_id_registry: FrameIdRegistry,
+
     per_timeline: HashMap<TimelineName, CachedTransformsForTimeline>,
     static_timeline: CachedTransformsForTimeline,
 }
@@ -48,43 +56,44 @@ impl Default for TransformResolutionCache {
     #[inline]
     fn default() -> Self {
         Self {
+            frame_id_registry: Default::default(),
             per_timeline: Default::default(),
             // `CachedTransformsForTimeline` intentionally doesn't implement Default to not accidentally create it without considering static transforms.
             static_timeline: CachedTransformsForTimeline {
-                per_entity_affected_sources: Default::default(),
-                per_source_frame_transforms: Default::default(),
+                per_entity_affected_child_frames: Default::default(),
+                per_child_frame_transforms: Default::default(),
                 recursive_clears: Default::default(), // Unused for static timeline.
             },
         }
     }
 }
 
-/// A transform from a source frame to a target frame.
+/// A transform from a child frame to a parent frame.
 #[derive(Clone, Debug, PartialEq)]
-pub struct SourceToTargetTransform {
+pub struct ParentFromChildTransform {
     /// The frame we're transforming into.
-    pub target: TransformFrameIdHash,
+    pub parent: TransformFrameIdHash,
 
-    /// The transform from the source frame to the target frame.
+    /// The transform from the child frame to the parent frame.
     pub transform: DAffine3,
 }
 
-/// Maps entity paths to [`EntityToAffectedSources`] datastructures.
+/// Maps entity paths to [`EntityToFrameOverTime`] datastructures.
 ///
-/// See [`EntityToAffectedSources`] for details.
+/// See [`EntityToFrameOverTime`] for details.
 #[derive(Default, Clone)]
-struct PerEntityAffectedSources(IntMap<EntityPath, EntityToAffectedSources>);
+struct PerEntityAffectedChildFrames(IntMap<EntityPath, EntityToFrameOverTime>);
 
-impl PerEntityAffectedSources {
-    fn get_or_create_for(&mut self, entity_path: &EntityPath) -> &mut EntityToAffectedSources {
+impl PerEntityAffectedChildFrames {
+    fn get_or_create_for(&mut self, entity_path: &EntityPath) -> &mut EntityToFrameOverTime {
         self.0
             .entry(entity_path.clone())
-            .or_insert_with(|| EntityToAffectedSources::new(entity_path))
+            .or_insert_with(|| EntityToFrameOverTime::new(entity_path))
     }
 }
 
-impl std::ops::Deref for PerEntityAffectedSources {
-    type Target = IntMap<EntityPath, EntityToAffectedSources>;
+impl std::ops::Deref for PerEntityAffectedChildFrames {
+    type Target = IntMap<EntityPath, EntityToFrameOverTime>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -92,7 +101,7 @@ impl std::ops::Deref for PerEntityAffectedSources {
     }
 }
 
-impl std::ops::DerefMut for PerEntityAffectedSources {
+impl std::ops::DerefMut for PerEntityAffectedChildFrames {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
@@ -104,14 +113,15 @@ impl std::ops::DerefMut for PerEntityAffectedSources {
 /// Includes any static transforms that may apply globally.
 /// Therefore, this can't be trivially constructed.
 pub struct CachedTransformsForTimeline {
-    /// Maps entity paths to [`EntityToAffectedSources`] datastructures.
+    /// Maps entity paths to [`EntityToFrameOverTime`] datastructures.
     ///
     /// This allows us to keep track of which incoming (or removed) transform events on entities, apply to which
-    /// source-transform at which time.
-    per_entity_affected_sources: PerEntityAffectedSources,
+    /// parent-from-child-transform at which time.
+    per_entity_affected_child_frames: PerEntityAffectedChildFrames,
 
-    /// Transforms information for each source frame to a target frame over time.
-    per_source_frame_transforms: IntMap<TransformFrameIdHash, TransformsForSourceFrame>,
+    /// Transforms information for each child frame to a parent frame over time.
+    // Note that these are potentially a lot of mutexes, but `parking_lot`-Mutex are incredibly lightweight on all platforms, so not a memory concern.
+    per_child_frame_transforms: IntMap<TransformFrameIdHash, TransformsForChildFrame>,
 
     // We need to keep track of all recursive clears that ever happened and when.
     // Otherwise, new incoming entities may not correctly change their transform at the time of clear.
@@ -121,14 +131,16 @@ pub struct CachedTransformsForTimeline {
 impl CachedTransformsForTimeline {
     fn new(timeline: &TimelineName, static_transforms: &Self) -> Self {
         Self {
-            per_entity_affected_sources: static_transforms.per_entity_affected_sources.clone(),
-            per_source_frame_transforms: static_transforms
-                .per_source_frame_transforms
+            per_entity_affected_child_frames: static_transforms
+                .per_entity_affected_child_frames
+                .clone(),
+            per_child_frame_transforms: static_transforms
+                .per_child_frame_transforms
                 .iter()
                 .map(|(transform_frame, static_transforms)| {
                     (
                         *transform_frame,
-                        TransformsForSourceFrame::new_for_new_empty_timeline(
+                        TransformsForChildFrame::new_for_new_empty_timeline(
                             *timeline,
                             static_transforms,
                         ),
@@ -147,36 +159,38 @@ impl CachedTransformsForTimeline {
         re_tracing::profile_function!();
 
         // Add clears to all existing entities that it affects.
-        for (cleared_path, affected_source_per_start_time) in
-            &mut self.per_entity_affected_sources.iter_mut()
+        for (cleared_path, affected_child_frame_per_start_time) in
+            &mut self.per_entity_affected_child_frames.iter_mut()
         {
             if !cleared_path.starts_with(recursively_cleared_entity_path) {
                 continue;
             }
 
             for time in &times {
-                // Which sources are affected by this clear?
-                let Some((_, sources)) = affected_source_per_start_time
+                // Which child frames are affected by this clear?
+                let Some((_, child_frames)) = affected_child_frame_per_start_time
                     .range_starts
                     .range(..=time)
                     .next_back()
                 else {
                     debug_assert!(
                         false,
-                        "For any given time, there should always be a time in entity_source_ranges that is <= time."
+                        "For any given time, there should always be a time in affected_child_frame_per_start_time that is <= time."
                     );
                     continue;
                 };
 
-                // Insert clears into the per-source datastructures.
-                for source in sources {
-                    if let Some(frame_transforms) = self.per_source_frame_transforms.get_mut(source)
-                    {
-                        frame_transforms.add_clear(*time, cleared_path);
+                // Insert clears into the per-child datastructures.
+                for frame in child_frames {
+                    if let Some(frame_transforms) = self.per_child_frame_transforms.get_mut(frame) {
+                        frame_transforms
+                            .events
+                            .get_mut()
+                            .insert_clear(*time, cleared_path);
                     } else {
-                        debug_panic_missing_source_transforms_for_update_on_entity(
+                        debug_panic_missing_child_frame_transforms_for_update_on_entity(
                             cleared_path,
-                            *source,
+                            *frame,
                         );
                     }
                 }
@@ -206,16 +220,21 @@ impl CachedTransformsForTimeline {
             }
         }
 
-        // Removing clears from `self.per_source_frame_transforms` is not critical since leftover cache entries won't change outcomes.
+        // Removing clears from `self.per_child_frame_transforms` is not critical since leftover cache entries won't change outcomes.
     }
 
-    /// Returns all transforms for a given source frame.
+    /// Returns all transforms for a given child frame.
     #[inline]
     pub fn frame_transforms(
-        &mut self,
+        &self,
         source_frame: TransformFrameIdHash,
-    ) -> Option<&mut TransformsForSourceFrame> {
-        self.per_source_frame_transforms.get_mut(&source_frame)
+    ) -> Option<&TransformsForChildFrame> {
+        self.per_child_frame_transforms.get(&source_frame)
+    }
+
+    /// All child frames for which we have connections to a parent.
+    pub fn all_child_frames(&self) -> impl Iterator<Item = TransformFrameIdHash> {
+        self.per_child_frame_transforms.keys().copied()
     }
 }
 
@@ -250,9 +269,9 @@ impl PoseTransformArchetypeMap {
 struct TransformEntry<T> {
     /// The entity path that produced information about this transform at this time.
     ///
-    /// Note that it is user-data error if there's several entities producing data for the same source at the same time.
-    /// (the entity that holds information about a source->target transform can however change over time!)
-    // TODO(andreas): We decided that for any given source the entity may not change over time except for static. Meaning that we can put this into a lookup table instead.
+    /// Note that it is user-data error if there are several entities producing data for the same child frame at the same time.
+    /// (the entity that holds information about a child->parent transform can, however, change over time!)
+    // TODO(andreas): Due to above restriction we can actually store a single static & dynamic entity for every source frame, meaning we no longer need this struct.
     entity_path: EntityPath,
 
     /// The cached transform value.
@@ -287,36 +306,180 @@ enum CachedTransformValue<T> {
     Cleared,
 }
 
-type FrameTransformTimeMap = BTreeMap<TimeInt, TransformEntry<SourceToTargetTransform>>;
+type FrameTransformTimeMap = BTreeMap<TimeInt, TransformEntry<ParentFromChildTransform>>;
 
 type PoseTransformTimeMap = BTreeMap<TimeInt, TransformEntry<PoseTransformArchetypeMap>>;
 
 type PinholeProjectionMap = BTreeMap<TimeInt, TransformEntry<ResolvedPinholeProjection>>;
 
-/// Cached transforms from a single source frame to a target frame over time.
-///
-/// Incorporates any static transforms that may apply to this entity.
-///
-/// Time points are conservative: it can happen that we generate new events (==cache slots) despite no change
-/// occurring for this source frame.
-/// However, we mustn't ever note down timepoints at which the given source frame is not "active" on its entity.
-/// Doing so would mean that queries using `re_query` yield information about a _different_ source
-/// which we then can't add to the cache entries of the current source.
 #[derive(Clone, Debug, PartialEq)]
-pub struct TransformsForSourceFrame {
-    // Is None if this is about the "static timeline".
-    #[cfg(debug_assertions)]
-    timeline: Option<TimelineName>,
-
-    /// There can be only a single target at any point in time, but it may change over time.
-    /// Whenever it changes, the previous target frame is no longer reachable.
+struct TransformsForChildFrameEvents {
+    /// There can be only a single parent at any point in time, but it may change over time.
+    /// Whenever it changes, the previous parent frame is no longer reachable.
     frame_transforms: FrameTransformTimeMap,
 
     pose_transforms: Option<Box<PoseTransformTimeMap>>,
     pinhole_projections: Option<Box<PinholeProjectionMap>>,
 }
 
-impl TransformsForSourceFrame {
+impl TransformsForChildFrameEvents {
+    fn new_empty() -> Self {
+        Self {
+            frame_transforms: BTreeMap::new(),
+            pose_transforms: None,
+            pinhole_projections: None,
+        }
+    }
+
+    /// Inserts a cleared transform for the given times.
+    fn insert_clear(&mut self, time: TimeInt, entity_path: &EntityPath) {
+        self.frame_transforms
+            .insert(time, TransformEntry::new_cleared(entity_path.clone()));
+        self.pose_transforms
+            .get_or_insert(Default::default())
+            .insert(time, TransformEntry::new_cleared(entity_path.clone()));
+        self.pinhole_projections
+            .get_or_insert(Default::default())
+            .insert(time, TransformEntry::new_cleared(entity_path.clone()));
+    }
+
+    /// Removes any events at a given time (if any).
+    fn remove_at(&mut self, time: TimeInt) {
+        let Self {
+            frame_transforms,
+            pose_transforms,
+            pinhole_projections,
+        } = self;
+
+        frame_transforms.remove(&time);
+        if let Some(pose_transforms) = pose_transforms.as_mut() {
+            pose_transforms.remove(&time);
+        }
+        if let Some(pinhole_projections) = &mut pinhole_projections.as_mut() {
+            pinhole_projections.remove(&time);
+        }
+    }
+
+    /// Removes all events in a given range and writes them to `destination`.
+    fn remove_in_range(&mut self, range: Range<TimeInt>, destination: &mut Self) {
+        let Self {
+            frame_transforms,
+            pose_transforms,
+            pinhole_projections,
+        } = self;
+
+        let Self {
+            frame_transforms: dst_frame_transforms,
+            pose_transforms: dst_pose_transforms,
+            pinhole_projections: dst_pinhole_projections,
+        } = destination;
+
+        frame_transforms.retain(|time, transform| {
+            if !range.contains(time) {
+                return true;
+            }
+            dst_frame_transforms.insert(*time, transform.clone());
+            false
+        });
+
+        if let Some(pose_transforms) = pose_transforms {
+            let dst_pose_transforms = dst_pose_transforms.get_or_insert_default();
+
+            pose_transforms.retain(|time, transform| {
+                if !range.contains(time) {
+                    return true;
+                }
+                dst_pose_transforms.insert(*time, transform.clone());
+                false
+            });
+        }
+
+        if let Some(pinhole_projections) = pinhole_projections {
+            let dst_pinhole_projections = dst_pinhole_projections.get_or_insert_default();
+
+            pinhole_projections.retain(|time, transform| {
+                if !range.contains(time) {
+                    return true;
+                }
+                dst_pinhole_projections.insert(*time, transform.clone());
+                false
+            });
+        }
+    }
+
+    fn insert_all_of(&mut self, other: &Self) {
+        let Self {
+            frame_transforms,
+            pose_transforms,
+            pinhole_projections,
+        } = self;
+
+        let Self {
+            frame_transforms: src_frame_transforms,
+            pose_transforms: src_pose_transforms,
+            pinhole_projections: src_pinhole_projections,
+        } = other;
+
+        frame_transforms.extend(
+            src_frame_transforms
+                .iter()
+                .map(|(time, transform)| (*time, transform.clone())),
+        );
+        if let Some(src_pose_transforms) = src_pose_transforms {
+            pose_transforms.get_or_insert_default().extend(
+                src_pose_transforms
+                    .iter()
+                    .map(|(time, transform)| (*time, transform.clone())),
+            );
+        }
+        if let Some(src_pinhole_projections) = src_pinhole_projections {
+            pinhole_projections.get_or_insert_default().extend(
+                src_pinhole_projections
+                    .iter()
+                    .map(|(time, transform)| (*time, transform.clone())),
+            );
+        }
+    }
+}
+
+/// Cached transforms from a single child frame to a (potentially changing) parent frame over time.
+///
+/// Incorporates any static transforms that may apply to this entity.
+///
+/// Time points are conservative: it can happen that we generate new events (==cache slots) despite no change
+/// occurring for this child frame.
+/// However, we mustn't ever note down timepoints at which the given child frame is not "active" on its entity.
+/// Doing so would mean that queries using `re_query` yield information about a _different_ child frame
+/// which we then can't add to the cache entries of the current frame.
+#[derive(Debug)]
+pub struct TransformsForChildFrame {
+    // Is None if this is about static time.
+    #[cfg(debug_assertions)]
+    timeline: Option<TimelineName>,
+
+    child_frame: TransformFrameIdHash,
+
+    events: Mutex<TransformsForChildFrameEvents>,
+}
+
+impl Clone for TransformsForChildFrame {
+    fn clone(&self) -> Self {
+        Self {
+            #[cfg(debug_assertions)]
+            timeline: self.timeline,
+            child_frame: self.child_frame,
+            events: Mutex::new(self.events.lock().clone()),
+        }
+    }
+}
+
+impl PartialEq for TransformsForChildFrame {
+    fn eq(&self, other: &Self) -> bool {
+        self.child_frame == other.child_frame && *self.events.lock() == *other.events.lock()
+    }
+}
+
+impl TransformsForChildFrame {
     /// Invalidates all transforms for the given aspects starting at the given time `min_time` (inclusive) and adds new invalidated times.
     ///
     /// [`TransformAspect::Clear`] causes all types of transforms to be invalidated and being added to.
@@ -327,13 +490,11 @@ impl TransformsForSourceFrame {
         get_new_invalidated_times: impl Fn() -> I,
         entity_path: &EntityPath,
     ) {
-        let Self {
-            #[cfg(debug_assertions)]
-                timeline: _,
+        let TransformsForChildFrameEvents {
             frame_transforms,
             pose_transforms,
             pinhole_projections,
-        } = self;
+        } = self.events.get_mut();
 
         // This invalidates any time _after_ the first event in this chunk.
         // (e.g. if a rotation is added prior to translations later on,
@@ -393,8 +554,8 @@ impl TransformsForSourceFrame {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedPinholeProjection {
-    /// The target frame of the pinhole projection.
-    pub target: TransformFrameIdHash,
+    /// The parent frame of the pinhole projection.
+    pub parent: TransformFrameIdHash,
 
     pub image_from_camera: components::PinholeProjection,
 
@@ -408,31 +569,26 @@ pub struct ResolvedPinholeProjection {
     pub view_coordinates: components::ViewCoordinates,
 }
 
-impl TransformsForSourceFrame {
+impl TransformsForChildFrame {
     fn new(
-        source_frame: TransformFrameIdHash,
+        child_frame: TransformFrameIdHash,
         _timeline: TimelineName,
-        static_timeline: &CachedTransformsForTimeline,
+        static_timeline: &mut CachedTransformsForTimeline,
     ) -> Self {
-        let mut frame_transforms = BTreeMap::new();
-        let mut pose_transforms = None;
-        let mut pinhole_projections = None;
+        let mut events = TransformsForChildFrameEvents::new_empty();
 
         if let Some(static_transforms) = static_timeline
-            .per_source_frame_transforms
-            .get(&source_frame)
+            .per_child_frame_transforms
+            .get_mut(&child_frame)
         {
-            frame_transforms = static_transforms.frame_transforms.clone();
-            pose_transforms = static_transforms.pose_transforms.clone();
-            pinhole_projections = static_transforms.pinhole_projections.clone();
+            events = static_transforms.events.get_mut().clone();
         }
 
         Self {
             #[cfg(debug_assertions)]
             timeline: Some(_timeline),
-            pose_transforms,
-            frame_transforms,
-            pinhole_projections,
+            child_frame,
+            events: Mutex::new(events),
         }
     }
 
@@ -444,146 +600,27 @@ impl TransformsForSourceFrame {
         }
     }
 
-    fn new_empty() -> Self {
+    fn new_empty(child_frame: TransformFrameIdHash) -> Self {
         Self {
             #[cfg(debug_assertions)]
             timeline: None,
-            frame_transforms: BTreeMap::new(),
-            pose_transforms: None,
-            pinhole_projections: None,
-        }
-    }
-
-    /// Inserts a cleared transform for the given times.
-    fn add_clear(&mut self, time: TimeInt, entity_path: &EntityPath) {
-        self.frame_transforms
-            .insert(time, TransformEntry::new_cleared(entity_path.clone()));
-        self.pose_transforms
-            .get_or_insert(Default::default())
-            .insert(time, TransformEntry::new_cleared(entity_path.clone()));
-        self.pinhole_projections
-            .get_or_insert(Default::default())
-            .insert(time, TransformEntry::new_cleared(entity_path.clone()));
-    }
-
-    /// Removes any events at a given time (if any).
-    fn remove_event_at(&mut self, time: TimeInt) {
-        let Self {
-            #[cfg(debug_assertions)]
-                timeline: _,
-            frame_transforms,
-            pose_transforms,
-            pinhole_projections,
-        } = self;
-
-        frame_transforms.remove(&time);
-        if let Some(pose_transforms) = pose_transforms.as_mut() {
-            pose_transforms.remove(&time);
-        }
-        if let Some(pinhole_projections) = &mut pinhole_projections.as_mut() {
-            pinhole_projections.remove(&time);
-        }
-    }
-
-    /// Removes all events in a given range and writes them to `destination`.
-    fn remove_events_in_range(&mut self, range: Range<TimeInt>, destination: &mut Self) {
-        let Self {
-            #[cfg(debug_assertions)]
-                timeline: _,
-            frame_transforms,
-            pose_transforms,
-            pinhole_projections,
-        } = self;
-
-        let Self {
-            #[cfg(debug_assertions)]
-                timeline: _,
-            frame_transforms: dst_frame_transforms,
-            pose_transforms: dst_pose_transforms,
-            pinhole_projections: dst_pinhole_projections,
-        } = destination;
-
-        frame_transforms.retain(|time, transform| {
-            if !range.contains(time) {
-                return true;
-            }
-            dst_frame_transforms.insert(*time, transform.clone());
-            false
-        });
-
-        if let Some(pose_transforms) = pose_transforms {
-            let dst_pose_transforms = dst_pose_transforms.get_or_insert_default();
-
-            pose_transforms.retain(|time, transform| {
-                if !range.contains(time) {
-                    return true;
-                }
-                dst_pose_transforms.insert(*time, transform.clone());
-                false
-            });
-        }
-
-        if let Some(pinhole_projections) = pinhole_projections {
-            let dst_pinhole_projections = dst_pinhole_projections.get_or_insert_default();
-
-            pinhole_projections.retain(|time, transform| {
-                if !range.contains(time) {
-                    return true;
-                }
-                dst_pinhole_projections.insert(*time, transform.clone());
-                false
-            });
-        }
-    }
-
-    fn insert_all_events_of(&mut self, other: &Self) {
-        let Self {
-            #[cfg(debug_assertions)]
-                timeline: _,
-            frame_transforms,
-            pose_transforms,
-            pinhole_projections,
-        } = self;
-
-        let Self {
-            #[cfg(debug_assertions)]
-                timeline: _,
-            frame_transforms: src_frame_transforms,
-            pose_transforms: src_pose_transforms,
-            pinhole_projections: src_pinhole_projections,
-        } = other;
-
-        frame_transforms.extend(
-            src_frame_transforms
-                .iter()
-                .map(|(time, transform)| (*time, transform.clone())),
-        );
-        if let Some(src_pose_transforms) = src_pose_transforms {
-            pose_transforms.get_or_insert_default().extend(
-                src_pose_transforms
-                    .iter()
-                    .map(|(time, transform)| (*time, transform.clone())),
-            );
-        }
-        if let Some(src_pinhole_projections) = src_pinhole_projections {
-            pinhole_projections.get_or_insert_default().extend(
-                src_pinhole_projections
-                    .iter()
-                    .map(|(time, transform)| (*time, transform.clone())),
-            );
+            child_frame,
+            events: Mutex::new(TransformsForChildFrameEvents::new_empty()),
         }
     }
 
     #[inline]
     pub fn latest_at_transform(
-        &mut self,
+        &self,
         entity_db: &EntityDb,
         query: &LatestAtQuery,
-    ) -> Option<SourceToTargetTransform> {
+    ) -> Option<ParentFromChildTransform> {
         #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
 
-        let (time_of_last_update_to_this_source, frame_transform) = self
+        let mut events = self.events.lock();
+
+        let (time_of_last_update_to_this_frame, frame_transform) = events
             .frame_transforms
             .range_mut(..query.at().inc())
             .next_back()?;
@@ -592,32 +629,55 @@ impl TransformsForSourceFrame {
             CachedTransformValue::Resident(transform) => Some(transform.clone()),
             CachedTransformValue::Cleared => None,
             CachedTransformValue::Invalidated => {
-                let transform = query_and_resolve_tree_transform_at_entity(
+                let transforms = query_and_resolve_tree_transform_at_entity(
                     &frame_transform.entity_path,
                     entity_db,
-                    // Do NOT use the original query time since that may give us information about a different source frame!
-                    &LatestAtQuery::new(query.timeline(), *time_of_last_update_to_this_source),
+                    // Do NOT use the original query time since that may give us information about a different child frame!
+                    &LatestAtQuery::new(query.timeline(), *time_of_last_update_to_this_frame),
                 );
 
-                frame_transform.value = match &transform {
-                    Some(transform) => CachedTransformValue::Resident(transform.clone()),
-                    None => CachedTransformValue::Cleared,
+                // First, we update the cache value.
+                frame_transform.value = match &transforms {
+                    Ok(transform) => {
+                        if let Some(found) = transform.iter().find_map(|(child, transform)| {
+                            (child == &self.child_frame).then_some(transform)
+                        }) {
+                            CachedTransformValue::Resident(found.clone())
+                        } else {
+                            assert!(
+                                !cfg!(debug_assertions),
+                                "[DEBUG ASSERT] not finding a child here means our book keeping failed"
+                            );
+                            CachedTransformValue::Cleared
+                        }
+                    }
+                    Err(err) => {
+                        re_log::error_once!("Failed to query transformations: {err}");
+                        CachedTransformValue::Cleared
+                    }
                 };
-                transform
+
+                // Then, we retrieve the value from the cache again and return it.
+                match &frame_transform.value {
+                    CachedTransformValue::Resident(transform) => Some(transform.clone()),
+                    CachedTransformValue::Cleared | CachedTransformValue::Invalidated => None,
+                }
             }
         }
     }
 
     #[inline]
     pub fn latest_at_instance_poses(
-        &mut self,
+        &self,
         entity_db: &EntityDb,
         query: &LatestAtQuery,
-    ) -> Option<&PoseTransformArchetypeMap> {
+    ) -> Option<PoseTransformArchetypeMap> {
         #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
 
-        let pose_transform = self
+        let mut events = self.events.lock();
+
+        let pose_transform = events
             .pose_transforms
             .as_mut()?
             .range_mut(..query.at().inc())
@@ -635,7 +695,7 @@ impl TransformsForSourceFrame {
         }
 
         match &pose_transform.value {
-            CachedTransformValue::Resident(transform) => Some(transform),
+            CachedTransformValue::Resident(transform) => Some(transform.clone()),
             CachedTransformValue::Cleared => None,
             CachedTransformValue::Invalidated => unreachable!("Just made transform cache-resident"),
         }
@@ -643,14 +703,16 @@ impl TransformsForSourceFrame {
 
     #[inline]
     pub fn latest_at_pinhole(
-        &mut self,
+        &self,
         entity_db: &EntityDb,
         query: &LatestAtQuery,
-    ) -> Option<&ResolvedPinholeProjection> {
+    ) -> Option<ResolvedPinholeProjection> {
         #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
 
-        let pinhole_projection = self
+        let mut events = self.events.lock();
+
+        let pinhole_projection = events
             .pinhole_projections
             .as_mut()?
             .range_mut(..query.at().inc())
@@ -672,7 +734,7 @@ impl TransformsForSourceFrame {
         }
 
         match &pinhole_projection.value {
-            CachedTransformValue::Resident(transform) => Some(transform),
+            CachedTransformValue::Resident(transform) => Some(transform.clone()),
             CachedTransformValue::Cleared => None,
             CachedTransformValue::Invalidated => unreachable!("Just made transform cache-resident"),
         }
@@ -680,17 +742,18 @@ impl TransformsForSourceFrame {
 }
 
 impl TransformResolutionCache {
-    /// Accesses the transform component tracking data for a given timeline.
-    ///
-    /// Returns `None` if the timeline doesn't have any transforms at all.
+    /// Returns the registry of all known frame ids.
     #[inline]
-    pub fn transforms_for_timeline(
-        &mut self,
-        timeline: TimelineName,
-    ) -> &mut CachedTransformsForTimeline {
+    pub fn frame_id_registry(&self) -> &FrameIdRegistry {
+        &self.frame_id_registry
+    }
+
+    /// Accesses the transform component tracking data for a given timeline.
+    #[inline]
+    pub fn transforms_for_timeline(&self, timeline: TimelineName) -> &CachedTransformsForTimeline {
         self.per_timeline
-            .get_mut(&timeline)
-            .unwrap_or(&mut self.static_timeline)
+            .get(&timeline)
+            .unwrap_or(&self.static_timeline)
     }
 
     /// Makes sure the internal transform index is up to date and outdated cache entries are discarded.
@@ -699,7 +762,7 @@ impl TransformResolutionCache {
     /// (which is done by [`crate::TransformForest`])
     ///
     /// This will internally…
-    /// * keep track of which source frames are influenced by which entity
+    /// * keep track of which child frames are influenced by which entity
     /// * invalidate cache entries if needed (may happen conservatively - potentially invalidating more than needed)
     /// * create empty entries for where transforms may change over time (may happen conservatively - creating more entries than needed)
     /// * remove cached entries if chunks were GC'ed
@@ -715,6 +778,12 @@ impl TransformResolutionCache {
         // Instead, we should do so lazily when results for a timeline are queried.
 
         for event in events {
+            if event.kind == re_chunk_store::ChunkStoreDiffKind::Addition {
+                // Since entity paths lead to implicit frames, we have to prime our lookup table with them even if this chunk doesn't have transform data.
+                self.frame_id_registry
+                    .register_all_frames_in_chunk(&event.chunk);
+            }
+
             let aspects = TransformAspect::transform_aspects_of(&event.chunk);
             if aspects.is_empty() {
                 continue;
@@ -733,7 +802,7 @@ impl TransformResolutionCache {
     /// Adds chunks to the transform cache.
     ///
     /// This will internally…
-    /// * keep track of which source frames are influenced by which entity
+    /// * keep track of which child frames are influenced by which entity
     /// * invalidate cache entries if needed (may happen conservatively - potentially invalidating more than needed)
     /// * create empty entries for where transforms may change over time (may happen conservatively - creating more entries than needed)
     ///
@@ -745,6 +814,9 @@ impl TransformResolutionCache {
         // Instead, we should do so lazily when results for a timeline are queried.
 
         for chunk in chunks {
+            // Since entity paths lead to implicit frames, we have to prime our lookup table with them even if this chunk doesn't have transform data.
+            self.frame_id_registry.register_all_frames_in_chunk(chunk);
+
             let aspects = TransformAspect::transform_aspects_of(chunk);
             if aspects.is_empty() {
                 continue;
@@ -770,73 +842,76 @@ impl TransformResolutionCache {
                 CachedTransformsForTimeline::new(timeline, &self.static_timeline)
             });
 
-            // Keeps track which of the sources are new for this entity.
-            let mut sources_affected_by_this_entity_for_first_time = IntSet::default();
+            // Keeps track which of the child frames are new for this entity.
+            let mut child_frames_affected_by_this_entity_for_first_time = IntSet::default();
 
-            let affected_sources = per_timeline
-                .per_entity_affected_sources
+            let affected_frames = per_timeline
+                .per_entity_affected_child_frames
                 .entry(entity_path.clone())
                 .or_insert_with(|| {
-                    sources_affected_by_this_entity_for_first_time
+                    child_frames_affected_by_this_entity_for_first_time
                         .insert(TransformFrameIdHash::from_entity_path(entity_path));
-                    EntityToAffectedSources::new(entity_path)
+                    EntityToFrameOverTime::new(entity_path)
                 });
 
-            // First, update the list of when which source is "active" for this entity in case this chunk mentions any sources.
-            for (start_time, sources) in iter_source_frames_in_chunk(chunk, *timeline) {
-                let sources = active_source_array_from_string_slice(entity_path, &sources);
-                sources_affected_by_this_entity_for_first_time.extend(
-                    sources
+            // First, update the list of when which child is "active" for this entity in case this chunk mentions any child frames.
+            for (start_time, child_frames) in iter_child_frames_in_chunk(chunk, *timeline) {
+                let frames = active_frame_array_from_strings(entity_path, &child_frames);
+                child_frames_affected_by_this_entity_for_first_time.extend(
+                    frames
                         .iter()
-                        .filter(|source| !affected_sources.all_sources.contains(source)),
+                        .filter(|frame| !affected_frames.all_frames.contains(frame)),
                 );
 
-                let (changed_range, previous_sources) =
-                    affected_sources.insert_range_start(start_time, sources.clone());
+                let (changed_range, previous_frames) =
+                    affected_frames.insert_range_start(start_time, frames.clone());
 
-                // Since (by convention) only this entity can affect `previous_sources`, we have to drop all their events in the `changed_range`
-                // if `previous_sources` is not equal to `sources`.
+                // Since (by convention) only this entity can affect `previous_frames`, we have to drop all their events in the `changed_range`
+                // if `previous_frames` is not equal to `child_frames`.
                 //
-                // Note that the time range insertion we just did was still necessary regardless since more (different) sources may be added in between.
-                if previous_sources != sources {
-                    let mut moved_events = TransformsForSourceFrame::new_empty();
-                    for previous_source_frame in &previous_sources {
+                // Note that the time range insertion we just did was still necessary regardless since more (different) child frames may be added in between.
+                if previous_frames != frames {
+                    let mut moved_events = TransformsForChildFrameEvents::new_empty();
+                    for previous_child_frame in &previous_frames {
                         let Some(frame_transforms) = per_timeline
-                            .per_source_frame_transforms
-                            .get_mut(previous_source_frame)
+                            .per_child_frame_transforms
+                            .get_mut(previous_child_frame)
                         else {
-                            // No events on this source, so nothing to remove!
+                            // No events on this child frame, so nothing to remove!
                             continue;
                         };
-                        // Since (by convention) only this entity can affect `previous_sources`, we have to move all their events in the `changed_range` to the new range.
+                        // Since (by convention) only this entity can affect `previous_frames`, we have to move all their events in the `changed_range` to the new range.
                         frame_transforms
-                            .remove_events_in_range(changed_range.clone(), &mut moved_events);
+                            .events
+                            .get_mut()
+                            .remove_in_range(changed_range.clone(), &mut moved_events);
                     }
-                    // …and add them to the new sources!
-                    for new_source_frame in sources {
+                    // …and add them to the new child frames!
+                    for new_child_frame in frames {
                         per_timeline
-                            .per_source_frame_transforms
-                            .entry(new_source_frame)
+                            .per_child_frame_transforms
+                            .entry(new_child_frame)
                             .or_insert_with(|| {
-                                TransformsForSourceFrame::new(
-                                    new_source_frame,
+                                TransformsForChildFrame::new(
+                                    new_child_frame,
                                     *timeline,
-                                    &self.static_timeline,
+                                    &mut self.static_timeline,
                                 )
                             })
-                            .insert_all_events_of(&moved_events);
+                            .events
+                            .get_mut()
+                            .insert_all_of(&moved_events);
                     }
                 }
             }
 
-            // Now that our map of active sources is up to date, we can insert "event points" (invalidated cache entries)
-            // into the respective per-source data structures.
-            for (time_range, source_frames) in
-                affected_sources.iter_ranges(time_column.time_range())
+            // Now that our map of active child frames is up to date, we can insert "event points" (invalidated cache entries)
+            // into the respective per-child-frame data structures.
+            for (time_range, child_frames) in affected_frames.iter_ranges(time_column.time_range())
             {
                 // We now look only at the times in the time column that are relevant for this child-frame.
                 // Note that there may be more times than actual relevant updates, but crucially, all queries
-                // to the current entity path yield information about the sources in `source_frames`.
+                // to the current entity path yield information about the frames in `child_frames`.
                 let times_with_potential_update = if time_column.time_range().min
                     >= time_range.start
                     // Careful, we're comparing a std `Range` with `AbsoluteTimeRange`!
@@ -855,17 +930,17 @@ impl TransformResolutionCache {
                     )
                 };
 
-                // Note down that all these source frames were updated at the given times.
-                for source_frame in source_frames {
-                    // Invalidate all frames for this source frame.
+                // Note down that all these child frames were updated at the given times.
+                for child_frame in child_frames {
+                    // Invalidate all frames for this child frame.
                     let frame_transforms = per_timeline
-                        .per_source_frame_transforms
-                        .entry(*source_frame)
+                        .per_child_frame_transforms
+                        .entry(*child_frame)
                         .or_insert_with(|| {
-                            TransformsForSourceFrame::new(
-                                *source_frame,
+                            TransformsForChildFrame::new(
+                                *child_frame,
                                 *timeline,
-                                &self.static_timeline,
+                                &mut self.static_timeline,
                             )
                         });
 
@@ -880,9 +955,9 @@ impl TransformResolutionCache {
                         entity_path,
                     );
 
-                    // If we've never seen this entity update these source-frames,
+                    // If we've never seen this entity update these child frames,
                     // we have to make sure that we take recursive clears into account.
-                    if sources_affected_by_this_entity_for_first_time.contains(source_frame) {
+                    if child_frames_affected_by_this_entity_for_first_time.contains(child_frame) {
                         let mut ancestor = entity_path.clone();
                         loop {
                             if let Some(cleared_times) =
@@ -890,7 +965,10 @@ impl TransformResolutionCache {
                             {
                                 for cleared_time in cleared_times {
                                     if time_range.contains(cleared_time) {
-                                        frame_transforms.add_clear(*cleared_time, entity_path);
+                                        frame_transforms
+                                            .events
+                                            .get_mut()
+                                            .insert_clear(*cleared_time, entity_path);
                                     }
                                 }
                             }
@@ -934,59 +1012,59 @@ impl TransformResolutionCache {
         debug_assert!(chunk.is_static());
 
         let entity_path = chunk.entity_path();
-        let fallback_sources = [TransformFrameIdHash::from_entity_path(entity_path)];
+        let fallback_child_frames = [TransformFrameIdHash::from_entity_path(entity_path)];
 
-        let affected_sources = self
+        let affected_child_frames = self
             .static_timeline
-            .per_entity_affected_sources
+            .per_entity_affected_child_frames
             .get_or_create_for(entity_path);
 
-        // Note down that for these source frames we may have new static transforms.
-        let source_frames = source_frames_in_static_chunk(chunk);
-        let source_frames =
-            active_source_array_from_string_slice(entity_path, &source_frames.unwrap_or_default());
+        // Note down that for these child frames we may have new static transforms.
+        let child_frames = child_frames_in_static_chunk(chunk);
+        let child_frames =
+            active_frame_array_from_strings(entity_path, &child_frames.unwrap_or_default());
         {
-            let (changed_range, previous_sources) =
-                affected_sources.insert_range_start(TimeInt::STATIC, source_frames.clone());
+            let (changed_range, previous_frames) =
+                affected_child_frames.insert_range_start(TimeInt::STATIC, child_frames.clone());
             debug_assert_eq!(changed_range, TimeInt::STATIC..TimeInt::STATIC);
 
-            if previous_sources != source_frames
-                && previous_sources.as_slice() != fallback_sources.as_slice()
+            if previous_frames != child_frames
+                && previous_frames.as_slice() != fallback_child_frames.as_slice()
             {
                 for per_timeline_transforms in &mut self.per_timeline.values_mut() {
-                    // Propagate the new static sources to `entity_source_ranges` on all timelines.
+                    // Propagate the new static child frames to `per_entity_affected_child_frames` on all timelines.
                     per_timeline_transforms
-                        .per_entity_affected_sources
+                        .per_entity_affected_child_frames
                         .get_or_create_for(entity_path)
-                        .insert_range_start(TimeInt::STATIC, source_frames.clone());
+                        .insert_range_start(TimeInt::STATIC, child_frames.clone());
 
-                    // Invalidate the static status on the previous sources.
-                    for previous_source_frame in &previous_sources {
+                    // Invalidate the static status on the previous child frames.
+                    for previous_child_frame in &previous_frames {
                         if let Some(frame_transform) = per_timeline_transforms
-                            .per_source_frame_transforms
-                            .get_mut(previous_source_frame)
+                            .per_child_frame_transforms
+                            .get_mut(previous_child_frame)
                         {
-                            frame_transform.remove_event_at(TimeInt::STATIC);
+                            frame_transform.events.get_mut().remove_at(TimeInt::STATIC);
                         }
                     }
                 }
             }
         }
         debug_assert_eq!(
-            affected_sources.range_starts.len(),
+            affected_child_frames.range_starts.len(),
             1,
-            "There should be only information about the static source frame"
+            "There should be only information about the static child frame"
         );
 
-        // Adding a static transform invalidates affected source frames on ALL timelines, since the resulting transforms at all times may be different now.
+        // Adding a static transform invalidates affected child frames on ALL timelines, since the resulting transforms at all times may be different now.
         // TODO(andreas): This is too conservative for long recordings - we should know when a static transform is fully "shadowed", so we don't have to invalidate as aggressively.
         // Furthermore, since we want to incorporate the static transforms into all timelines, we have to add this event to all timelines.
-        for source_frame in source_frames {
+        for child_frame in child_frames {
             // Note down the events/invalidations on the static timeline itself.
             self.static_timeline
-                .per_source_frame_transforms
-                .entry(source_frame)
-                .or_insert_with(TransformsForSourceFrame::new_empty)
+                .per_child_frame_transforms
+                .entry(child_frame)
+                .or_insert_with(|| TransformsForChildFrame::new_empty(child_frame))
                 .insert_invalidated_transform_events(
                     aspects,
                     TimeInt::STATIC,
@@ -996,15 +1074,15 @@ impl TransformResolutionCache {
 
             for (timeline, per_timeline_transforms) in &mut self.per_timeline {
                 let entity_transforms = per_timeline_transforms
-                    .per_source_frame_transforms
-                    .entry(source_frame)
+                    .per_child_frame_transforms
+                    .entry(child_frame)
                     .or_insert_with(|| {
                         // Need to add an entry now if there wasn't one before.
                         // Also note that the static transforms we use to construct this might touch on aspects that aren't invalidated, so it's still important to pass that in.
-                        TransformsForSourceFrame::new(
-                            source_frame,
+                        TransformsForChildFrame::new(
+                            child_frame,
                             *timeline,
-                            &self.static_timeline,
+                            &mut self.static_timeline,
                         )
                     });
 
@@ -1054,121 +1132,119 @@ impl TransformResolutionCache {
             }
 
             // Remove existing data.
-            if let Some(affected_sources) = per_timeline
-                .per_entity_affected_sources
+            if let Some(affected_frames) = per_timeline
+                .per_entity_affected_child_frames
                 .get_mut(entity_path)
             {
-                for (time_range, source_frames) in
-                    affected_sources.iter_ranges(time_column.time_range())
+                for (time_range, child_frames) in
+                    affected_frames.iter_ranges(time_column.time_range())
                 {
-                    for source in source_frames {
-                        let Some(source_transforms) =
-                            per_timeline.per_source_frame_transforms.get_mut(source)
+                    for child_frame in child_frames {
+                        let Some(transforms) =
+                            per_timeline.per_child_frame_transforms.get_mut(child_frame)
                         else {
-                            debug_panic_missing_source_transforms_for_update_on_entity(
+                            debug_panic_missing_child_frame_transforms_for_update_on_entity(
                                 entity_path,
-                                *source,
+                                *child_frame,
                             );
                             continue;
                         };
+                        let transforms = transforms.events.get_mut();
 
                         // Remove from our record of where this entity updates things.
                         for time in time_column.times() {
-                            // Only if this entity actually had an update for a given source at a time, do we have to remove transforms from that source.
+                            // Only if this entity actually had an update for a given child frame at a time, do we have to remove transforms from that child frame.
                             if !time_range.contains(&time) {
                                 continue;
                             }
 
                             if aspects.contains(TransformAspect::Frame) {
-                                source_transforms.frame_transforms.remove(&time);
+                                transforms.frame_transforms.remove(&time);
                             }
                             if aspects.contains(TransformAspect::Pose)
-                                && let Some(pose_transforms) =
-                                    &mut source_transforms.pose_transforms
+                                && let Some(pose_transforms) = &mut transforms.pose_transforms
                             {
                                 pose_transforms.remove(&time);
                             }
                             if aspects.contains(TransformAspect::PinholeOrViewCoordinates)
                                 && let Some(pinhole_projections) =
-                                    &mut source_transforms.pinhole_projections
+                                    &mut transforms.pinhole_projections
                             {
                                 pinhole_projections.remove(&time);
                             }
                         }
 
-                        // Remove source entry if it's empty.
-                        if source_transforms.frame_transforms.is_empty()
-                            && source_transforms
+                        // Remove child frame entry if it's empty.
+                        if transforms.frame_transforms.is_empty()
+                            && transforms
                                 .pose_transforms
                                 .as_ref()
                                 .is_none_or(|pose_transforms| pose_transforms.is_empty())
-                            && source_transforms
+                            && transforms
                                 .pinhole_projections
                                 .as_ref()
                                 .is_none_or(|pinhole_projections| pinhole_projections.is_empty())
                         {
-                            per_timeline.per_source_frame_transforms.remove(source);
+                            per_timeline.per_child_frame_transforms.remove(child_frame);
                         }
                     }
                 }
 
-                // TODO(andreas): Remove empty source update mentions.
+                // TODO(andreas): Remove empty child frame update mentions.
             }
 
-            // Remove entire timeline if it's empty.
-            if per_timeline.per_source_frame_transforms.is_empty() {
+            // Remove the entire timeline if it's empty.
+            if per_timeline.per_child_frame_transforms.is_empty() {
                 self.per_timeline.remove(timeline);
             }
         }
     }
 }
 
-fn debug_panic_missing_source_transforms_for_update_on_entity(
+fn debug_panic_missing_child_frame_transforms_for_update_on_entity(
     entity_path: &EntityPath,
-    source: TransformFrameIdHash,
+    child_frame: TransformFrameIdHash,
 ) {
-    // There was no actual transform change for this source frame after all.
     assert!(
         !cfg!(debug_assertions),
-        "DEBUG ASSERTION: Internally inconsistent state: entity {entity_path:?} had updates for source frame {source:?} but no transforms for that source frame were found. Please report this as a bug."
+        "DEBUG ASSERTION: Internally inconsistent state: entity {entity_path:?} had updates for child frame {child_frame:?} but no transforms for that child frame were found. Please report this as a bug."
     );
 }
 
-/// Iterates over all source frames that are in a chunk.
-pub fn iter_source_frames_in_chunk(
+/// Iterates over all child frames that are in a chunk.
+pub fn iter_child_frames_in_chunk(
     chunk: &Chunk,
     timeline: TimelineName,
 ) -> impl Iterator<Item = (TimeInt, Vec<ArrowString>)> {
-    // TODO(RR-2627, RR-2680): Custom source is not supported yet for Pinhole & Poses, we instead use whatever is on `Transform3D`.
-    let source_frame_component = archetypes::Transform3D::descriptor_source_frame().component;
+    // TODO(RR-2627, RR-2680): Custom child frame is not supported yet for Pinhole & Poses, we instead use whatever is on `Transform3D`.
+    let child_frame_component = archetypes::Transform3D::descriptor_child_frame().component;
 
     itertools::izip!(
         chunk
-            .iter_component_indices(timeline, source_frame_component)
+            .iter_component_indices(timeline, child_frame_component)
             .map(|(t, _)| t),
-        chunk.iter_slices::<String>(source_frame_component),
+        chunk.iter_slices::<String>(child_frame_component),
     )
 }
 
-/// Iterates over all source frames that are in a chunk.
-pub fn source_frames_in_static_chunk(chunk: &Chunk) -> Option<Vec<ArrowString>> {
+/// Iterates over all child frames that are in a chunk.
+pub fn child_frames_in_static_chunk(chunk: &Chunk) -> Option<Vec<ArrowString>> {
     debug_assert!(chunk.is_static());
 
-    // TODO(RR-2627, RR-2680): Custom source is not supported yet for Pinhole & Poses, we instead use whatever is on `Transform3D`.
-    let source_frame_component = archetypes::Transform3D::descriptor_source_frame().component;
+    // TODO(RR-2627, RR-2680): Custom child frame is not supported yet for Pinhole & Poses, we instead use whatever is on `Transform3D`.
+    let child_frame_component = archetypes::Transform3D::descriptor_child_frame().component;
 
-    chunk.iter_slices::<String>(source_frame_component).next()
+    chunk.iter_slices::<String>(child_frame_component).next()
 }
 
-/// Given a slice of arrow strings representing currently active sources, retrieve the list of active source frame hashes.
-///
-/// If there are no sources, this returns the implicit source since this one is active if nothing else was specified.
-fn active_source_array_from_string_slice(
+/// Given a slice of arrow strings representing frames, retrieve the list of frame hashes.
+/// If there are no child frames, this returns the implicit child frame since this one is active if nothing else was specified.
+fn active_frame_array_from_strings(
     entity_path: &EntityPath,
-    sources: &[ArrowString],
+    frame_names: &[ArrowString],
 ) -> SmallVec1<[TransformFrameIdHash; 1]> {
     SmallVec1::try_from_smallvec(
-        sources
+        frame_names
             .iter()
             .map(|s| TransformFrameIdHash::from_str(s.as_str()))
             .collect(),
@@ -1184,6 +1260,7 @@ mod tests {
     use std::sync::{Arc, OnceLock};
 
     use super::*;
+    use crate::convert;
     use re_chunk_store::{
         Chunk, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle, GarbageCollectionOptions,
         PerStoreChunkSubscriber, RowId,
@@ -1362,9 +1439,9 @@ mod tests {
             .unwrap();
         #[cfg(debug_assertions)]
         assert_eq!(transforms.timeline, Some(*timeline.name()));
-        assert_eq!(transforms.frame_transforms.len(), 1);
-        assert_eq!(transforms.pose_transforms, None);
-        assert_eq!(transforms.pinhole_projections, None);
+        assert_eq!(transforms.events.lock().frame_transforms.len(), 1);
+        assert_eq!(transforms.events.lock().pose_transforms, None);
+        assert_eq!(transforms.events.lock().pinhole_projections, None);
 
         Ok(())
     }
@@ -1420,8 +1497,8 @@ mod tests {
                     &entity_db,
                     &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
                 ),
-                Some(SourceToTargetTransform {
-                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                     transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                 })
             );
@@ -1436,8 +1513,8 @@ mod tests {
             assert_eq!(
                 transforms
                     .latest_at_transform(&entity_db, &LatestAtQuery::new(*timeline.name(), 1)),
-                Some(SourceToTargetTransform {
-                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                     transform: DAffine3::from_scale_rotation_translation(
                         glam::dvec3(123.0, 234.0, 345.0),
                         glam::DQuat::IDENTITY,
@@ -1458,8 +1535,8 @@ mod tests {
                     &entity_db,
                     &LatestAtQuery::new(TimelineName::new("other"), 123)
                 ),
-                Some(SourceToTargetTransform {
-                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                     transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                 })
             );
@@ -1518,7 +1595,7 @@ mod tests {
                     &entity_db,
                     &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
                 ),
-                Some(&PoseTransformArchetypeMap {
+                Some(PoseTransformArchetypeMap {
                     instance_from_archetype_poses_per_archetype: IntMap::default(),
                     instance_from_poses: vec![
                         DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
@@ -1527,21 +1604,18 @@ mod tests {
                 })
             );
             assert_eq!(
+                transforms.latest_at_instance_poses(
+                    &entity_db,
+                    &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
+                ),
                 transforms
-                    .latest_at_instance_poses(
-                        &entity_db,
-                        &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
-                    )
-                    .cloned(),
-                transforms
-                    .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(*timeline.name(), 0))
-                    .cloned(),
+                    .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(*timeline.name(), 0)),
             );
             assert_eq!(
                 transforms
                     .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(*timeline.name(), 1))
-                    .map(|poses| &poses.instance_from_poses),
-                Some(&vec![
+                    .map(|poses| poses.instance_from_poses),
+                Some(vec![
                     DAffine3::from_scale_rotation_translation(
                         glam::dvec3(10.0, 20.0, 30.0),
                         glam::DQuat::IDENTITY,
@@ -1568,8 +1642,8 @@ mod tests {
                         &entity_db,
                         &LatestAtQuery::new(TimelineName::new("other"), 123)
                     )
-                    .map(|poses| &poses.instance_from_poses),
-                Some(&vec![
+                    .map(|poses| poses.instance_from_poses),
+                Some(vec![
                     DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                     DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
                 ])
@@ -1635,28 +1709,24 @@ mod tests {
                     &entity_db,
                     &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
                 ),
-                Some(&ResolvedPinholeProjection {
-                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                Some(ResolvedPinholeProjection {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                     image_from_camera: image_from_camera_final,
                     resolution: Some([2.0, 2.0].into()),
                     view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
                 })
             );
             assert_eq!(
-                transforms
-                    .latest_at_pinhole(
-                        &entity_db,
-                        &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
-                    )
-                    .cloned(),
-                transforms
-                    .latest_at_pinhole(&entity_db, &LatestAtQuery::new(*timeline.name(), 0))
-                    .cloned(),
+                transforms.latest_at_pinhole(
+                    &entity_db,
+                    &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
+                ),
+                transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(*timeline.name(), 0))
             );
             assert_eq!(
                 transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(*timeline.name(), 1)),
-                Some(&ResolvedPinholeProjection {
-                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                Some(ResolvedPinholeProjection {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                     image_from_camera: image_from_camera_final,
                     resolution: Some([2.0, 2.0].into()),
                     view_coordinates: components::ViewCoordinates::BLU,
@@ -1675,8 +1745,8 @@ mod tests {
                     &entity_db,
                     &LatestAtQuery::new(TimelineName::new("other"), 123)
                 ),
-                Some(&ResolvedPinholeProjection {
-                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                Some(ResolvedPinholeProjection {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                     image_from_camera: image_from_camera_final,
                     resolution: Some([2.0, 2.0].into()),
                     view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
@@ -1738,21 +1808,17 @@ mod tests {
                 None
             );
             assert_eq!(
-                transforms
-                    .latest_at_pinhole(
-                        &entity_db,
-                        &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
-                    )
-                    .cloned(),
-                transforms
-                    .latest_at_pinhole(&entity_db, &LatestAtQuery::new(*timeline.name(), 0))
-                    .cloned(),
+                transforms.latest_at_pinhole(
+                    &entity_db,
+                    &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
+                ),
+                transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(*timeline.name(), 0)),
             );
             // Once we get a pinhole camera, the view coordinates should be there.
             assert_eq!(
                 transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(*timeline.name(), 1)),
-                Some(&ResolvedPinholeProjection {
-                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                Some(ResolvedPinholeProjection {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                     image_from_camera,
                     resolution: None,
                     view_coordinates: components::ViewCoordinates::BLU,
@@ -1803,22 +1869,22 @@ mod tests {
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+            Some(ParentFromChildTransform {
+                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 2)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+            Some(ParentFromChildTransform {
+                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+            Some(ParentFromChildTransform {
+                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 transform: DAffine3::from_scale_rotation_translation(
                     glam::dvec3(1.0, 2.0, 3.0),
                     glam::DQuat::IDENTITY,
@@ -1828,14 +1894,14 @@ mod tests {
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 4)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+            Some(ParentFromChildTransform {
+                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 // Note: We must use the same conversion path as the actual implementation:
                 // glam::Quat (f32) -> Quaternion (f32) -> glam::DQuat (f64)
                 // This involves casting f32 components to f64 and renormalizing, which produces
                 // slightly different values than directly computing in f64.
                 transform: DAffine3::from_quat(
-                    glam::DQuat::try_from(re_types::datatypes::Quaternion::from(
+                    convert::quaternion_to_dquat(re_types::datatypes::Quaternion::from(
                         glam::Quat::from_rotation_x(1.0)
                     ))
                     .unwrap()
@@ -1844,15 +1910,15 @@ mod tests {
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 5)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+            Some(ParentFromChildTransform {
+                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 transform: DAffine3::IDENTITY, // Empty transform is treated as connected with identity.
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 123)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+            Some(ParentFromChildTransform {
+                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 transform: DAffine3::IDENTITY, // Empty transform is treated as connected with identity.
             })
         );
@@ -1907,8 +1973,8 @@ mod tests {
         assert_eq!(
             transforms
                 .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 1))
-                .map(|poses| &poses.instance_from_poses),
-            Some(&vec![
+                .map(|poses| poses.instance_from_poses),
+            Some(vec![
                 DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                 DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
                 DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)),
@@ -1917,8 +1983,8 @@ mod tests {
         assert_eq!(
             transforms
                 .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 2))
-                .map(|poses| &poses.instance_from_poses),
-            Some(&vec![
+                .map(|poses| poses.instance_from_poses),
+            Some(vec![
                 DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                 DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
                 DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)),
@@ -1927,8 +1993,8 @@ mod tests {
         assert_eq!(
             transforms
                 .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 3))
-                .map(|poses| &poses.instance_from_poses),
-            Some(&vec![
+                .map(|poses| poses.instance_from_poses),
+            Some(vec![
                 DAffine3::from_scale_rotation_translation(
                     glam::dvec3(2.0, 3.0, 4.0),
                     glam::DQuat::IDENTITY,
@@ -1944,11 +2010,11 @@ mod tests {
 
         assert_eq!(
             transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 4)),
-            Some(&PoseTransformArchetypeMap::default())
+            Some(PoseTransformArchetypeMap::default())
         );
         assert_eq!(
             transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 123)),
-            Some(&PoseTransformArchetypeMap::default())
+            Some(PoseTransformArchetypeMap::default())
         );
 
         Ok(())
@@ -2025,7 +2091,7 @@ mod tests {
         assert_eq!(
             transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 1)),
             // All from `InstancePoses3D`
-            Some(&PoseTransformArchetypeMap {
+            Some(PoseTransformArchetypeMap {
                 instance_from_archetype_poses_per_archetype: IntMap::default(),
                 instance_from_poses: vec![
                     DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
@@ -2038,7 +2104,7 @@ mod tests {
         // T2
         assert_eq!(
             transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 2)),
-            Some(&PoseTransformArchetypeMap {
+            Some(PoseTransformArchetypeMap {
                 // All from `InstancePoses3D` combined with box centers.
                 instance_from_archetype_poses_per_archetype: IntMap::from_iter([(
                     archetypes::Boxes3D::name(),
@@ -2062,7 +2128,8 @@ mod tests {
             .unwrap()
             .instance_from_archetype_poses_per_archetype
             .get(&archetypes::Boxes3D::name())
-            .expect("Boxes3D archetype should be present");
+            .expect("Boxes3D archetype should be present")
+            .clone();
 
         // More readable sanity check on translations which aren't affected by the rotation.
         assert_eq!(query_result[0].translation, glam::dvec3(11.0, 2.0, 3.0));
@@ -2138,8 +2205,8 @@ mod tests {
         );
         assert_eq!(
             transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline, 1)),
-            Some(&ResolvedPinholeProjection {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+            Some(ResolvedPinholeProjection {
+                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 image_from_camera,
                 resolution: None,
                 view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
@@ -2147,8 +2214,8 @@ mod tests {
         );
         assert_eq!(
             transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline, 2)),
-            Some(&ResolvedPinholeProjection {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+            Some(ResolvedPinholeProjection {
+                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 image_from_camera,
                 resolution: None,
                 view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
@@ -2156,8 +2223,8 @@ mod tests {
         );
         assert_eq!(
             transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline, 3)),
-            Some(&ResolvedPinholeProjection {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+            Some(ResolvedPinholeProjection {
+                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 image_from_camera,
                 resolution: None,
                 view_coordinates: components::ViewCoordinates::BLU,
@@ -2198,28 +2265,31 @@ mod tests {
         // Check that the transform cache has the expected transforms.
         apply_store_subscriber_events(&mut cache, &entity_db);
         let timeline = *timeline.name();
-        let transforms_per_timeline = cache.transforms_for_timeline(timeline);
-        let transforms = transforms_per_timeline
-            .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
-                "my_entity",
-            )))
-            .unwrap();
 
-        // Check that the transform cache has the expected transforms.
-        assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 1)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
-            })
-        );
-        assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 3)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_translation(glam::dvec3(2.0, 3.0, 4.0)),
-            })
-        );
+        {
+            let transforms_per_timeline = cache.transforms_for_timeline(timeline);
+            let transforms = transforms_per_timeline
+                .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
+                    "my_entity",
+                )))
+                .unwrap();
+
+            // Check that the transform cache has the expected transforms.
+            assert_eq!(
+                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 1)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
+                })
+            );
+            assert_eq!(
+                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 3)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: DAffine3::from_translation(glam::dvec3(2.0, 3.0, 4.0)),
+                })
+            );
+        }
 
         // Add a transform between the two that invalidates the one at time stamp 3.
         let timeline = Timeline::new_sequence("t");
@@ -2244,15 +2314,15 @@ mod tests {
         // Check that the transform cache has the expected transforms.
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 1)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+            Some(ParentFromChildTransform {
+                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 2)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+            Some(ParentFromChildTransform {
+                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 transform: DAffine3::from_scale_rotation_translation(
                     glam::dvec3(-1.0, -2.0, -3.0),
                     glam::DQuat::IDENTITY,
@@ -2262,8 +2332,8 @@ mod tests {
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 3)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+            Some(ParentFromChildTransform {
+                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 transform: DAffine3::from_scale_rotation_translation(
                     glam::dvec3(-1.0, -2.0, -3.0),
                     glam::DQuat::IDENTITY,
@@ -2316,16 +2386,16 @@ mod tests {
                     assert_eq!(
                         transforms
                             .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
-                        Some(SourceToTargetTransform {
-                            target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                        Some(ParentFromChildTransform {
+                            parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                             transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                         })
                     );
                     assert_eq!(
                         transforms
                             .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
-                        Some(SourceToTargetTransform {
-                            target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                        Some(ParentFromChildTransform {
+                            parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                             transform: DAffine3::from_translation(glam::dvec3(3.0, 4.0, 5.0)),
                         })
                     );
@@ -2353,8 +2423,8 @@ mod tests {
                 assert_eq!(
                     transforms
                         .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
-                    Some(SourceToTargetTransform {
-                        target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    Some(ParentFromChildTransform {
+                        parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                         transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                     })
                 );
@@ -2366,8 +2436,8 @@ mod tests {
                 assert_eq!(
                     transforms
                         .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
-                    Some(SourceToTargetTransform {
-                        target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    Some(ParentFromChildTransform {
+                        parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                         transform: DAffine3::from_translation(glam::dvec3(3.0, 4.0, 5.0)),
                     })
                 );
@@ -2441,8 +2511,8 @@ mod tests {
 
                 assert_eq!(
                     transform.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 1)),
-                    Some(SourceToTargetTransform {
-                        target: TransformFrameIdHash::from_entity_path(&path.parent().unwrap()),
+                    Some(ParentFromChildTransform {
+                        parent: TransformFrameIdHash::from_entity_path(&path.parent().unwrap()),
                         transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                     })
                 );
@@ -2457,14 +2527,14 @@ mod tests {
     }
 
     #[derive(Debug, Clone, Copy)]
-    enum SourceTargetChangesOverTimeTestMode {
+    enum ChildParentFrameChangesOverTimeTestMode {
         SingleChunk,
         MultipleChunksInOrder,
         MultipleChunksReverseOrder,
     }
 
-    fn test_single_source_and_target_over_time(
-        mode: SourceTargetChangesOverTimeTestMode,
+    fn test_single_child_and_parent_over_time(
+        mode: ChildParentFrameChangesOverTimeTestMode,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = new_entity_db_with_subscriber_registered();
         let mut cache = TransformResolutionCache::default();
@@ -2481,29 +2551,29 @@ mod tests {
                 [(timeline, 2)],
                 &archetypes::Transform3D::update_fields()
                     .with_translation([2.0, 0.0, 0.0])
-                    .with_source_frame("frame0"),
+                    .with_child_frame("frame0"),
             )
             .with_archetype_auto_row(
                 [(timeline, 3)],
                 &archetypes::Transform3D::update_fields()
                     .with_translation([3.0, 0.0, 0.0])
-                    .with_target_frame("frame1"),
+                    .with_parent_frame("frame1"),
             )
             .with_archetype_auto_row(
                 [(timeline, 4)],
                 &archetypes::Transform3D::update_fields()
                     .with_translation([4.0, 0.0, 0.0])
-                    .with_source_frame("frame2")
-                    .with_target_frame("frame3"),
+                    .with_child_frame("frame2")
+                    .with_parent_frame("frame3"),
             )
             .build()?;
 
         match mode {
-            SourceTargetChangesOverTimeTestMode::SingleChunk => {
+            ChildParentFrameChangesOverTimeTestMode::SingleChunk => {
                 entity_db.add_chunk(&Arc::new(chunk))?;
                 apply_store_subscriber_events(&mut cache, &entity_db);
             }
-            SourceTargetChangesOverTimeTestMode::MultipleChunksInOrder => {
+            ChildParentFrameChangesOverTimeTestMode::MultipleChunksInOrder => {
                 for row_idx in 0..chunk.num_rows() {
                     entity_db.add_chunk(&Arc::new(
                         chunk.row_sliced(row_idx, 1).with_id(ChunkId::new()),
@@ -2511,7 +2581,7 @@ mod tests {
                     apply_store_subscriber_events(&mut cache, &entity_db);
                 }
             }
-            SourceTargetChangesOverTimeTestMode::MultipleChunksReverseOrder => {
+            ChildParentFrameChangesOverTimeTestMode::MultipleChunksReverseOrder => {
                 for row_idx in (0..chunk.num_rows()).rev() {
                     entity_db.add_chunk(&Arc::new(
                         chunk.row_sliced(row_idx, 1).with_id(ChunkId::new()),
@@ -2534,8 +2604,8 @@ mod tests {
             assert_eq!(
                 transforms_implicit_frame
                     .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
-                Some(SourceToTargetTransform {
-                    target: TransformFrameIdHash::entity_path_hierarchy_root(),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                     transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
                 }),
                 "querying at t=={t}"
@@ -2554,32 +2624,33 @@ mod tests {
         assert_eq!(
             transforms_frame0
                 .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 2)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
+            Some(ParentFromChildTransform {
+                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 transform: DAffine3::from_translation(glam::dvec3(2.0, 0.0, 0.0)),
             })
         );
         assert_eq!(
             transforms_frame0
                 .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::from_str("frame1"),
+            Some(ParentFromChildTransform {
+                parent: TransformFrameIdHash::from_str("frame1"),
                 transform: DAffine3::from_translation(glam::dvec3(3.0, 0.0, 0.0)),
             })
         );
         assert_eq!(
             transforms_frame0
                 .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 4)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::from_str("frame1"),
+            Some(ParentFromChildTransform {
+                parent: TransformFrameIdHash::from_str("frame1"),
                 transform: DAffine3::from_translation(glam::dvec3(3.0, 0.0, 0.0)),
             })
         );
 
-        // frame1 is never a source, only a target.
-        assert_eq!(
-            timeline_transforms.frame_transforms(TransformFrameIdHash::from_str("custom_frame1")),
-            None
+        // frame1 is never a child, only a parent.
+        assert!(
+            timeline_transforms
+                .frame_transforms(TransformFrameIdHash::from_str("custom_frame1"))
+                .is_none(),
         );
 
         // State of frame2 over time.
@@ -2597,47 +2668,48 @@ mod tests {
             assert_eq!(
                 transforms_frame2
                     .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
-                Some(SourceToTargetTransform {
-                    target: TransformFrameIdHash::from_str("frame3"),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::from_str("frame3"),
                     transform: DAffine3::from_translation(glam::dvec3(4.0, 0.0, 0.0)),
                 }),
                 "querying at t=={t}"
             );
         }
 
-        // frame3 is never a source, only a target.
-        assert_eq!(
-            timeline_transforms.frame_transforms(TransformFrameIdHash::from_str("custom_frame3")),
-            None
+        // frame3 is never a child, only a parent.
+        assert!(
+            timeline_transforms
+                .frame_transforms(TransformFrameIdHash::from_str("custom_frame3"))
+                .is_none()
         );
 
         Ok(())
     }
 
     #[test]
-    fn test_single_source_and_target_over_time_single_chunk()
+    fn test_single_child_and_parent_over_time_single_chunk()
     -> Result<(), Box<dyn std::error::Error>> {
-        test_single_source_and_target_over_time(SourceTargetChangesOverTimeTestMode::SingleChunk)
+        test_single_child_and_parent_over_time(ChildParentFrameChangesOverTimeTestMode::SingleChunk)
     }
 
     #[test]
-    fn test_single_source_and_target_over_time_multiple_chunks_in_order()
+    fn test_single_child_and_parent_over_time_multiple_chunks_in_order()
     -> Result<(), Box<dyn std::error::Error>> {
-        test_single_source_and_target_over_time(
-            SourceTargetChangesOverTimeTestMode::MultipleChunksInOrder,
+        test_single_child_and_parent_over_time(
+            ChildParentFrameChangesOverTimeTestMode::MultipleChunksInOrder,
         )
     }
 
     #[test]
-    fn test_single_source_and_target_over_time_multiple_chunks_reverse_order()
+    fn test_single_child_and_parent_over_time_multiple_chunks_reverse_order()
     -> Result<(), Box<dyn std::error::Error>> {
-        test_single_source_and_target_over_time(
-            SourceTargetChangesOverTimeTestMode::MultipleChunksReverseOrder,
+        test_single_child_and_parent_over_time(
+            ChildParentFrameChangesOverTimeTestMode::MultipleChunksReverseOrder,
         )
     }
 
     #[test]
-    fn test_static_source_frames() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_static_child_frames() -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = new_entity_db_with_subscriber_registered();
         let mut cache = TransformResolutionCache::default();
 
@@ -2653,7 +2725,7 @@ mod tests {
                     TimePoint::STATIC,
                     &archetypes::Transform3D::update_fields()
                         .with_translation([1.0, 0.0, 0.0])
-                        .with_source_frame("frame0"),
+                        .with_child_frame("frame0"),
                 )
                 .build()?,
         ))?;
@@ -2663,106 +2735,110 @@ mod tests {
                     [(timeline, 1)],
                     &archetypes::Transform3D::update_fields()
                         .with_translation([2.0, 0.0, 0.0])
-                        .with_source_frame("frame1"),
+                        .with_child_frame("frame1"),
                 )
                 .build()?,
         ))?;
         apply_store_subscriber_events(&mut cache, &entity_db);
 
-        let timeline_transforms = cache.transforms_for_timeline(*timeline.name());
+        {
+            let timeline_transforms = cache.transforms_for_timeline(*timeline.name());
 
-        // Check frame0 only ever sees the static transform.
-        let transforms_frame0 = timeline_transforms
-            .frame_transforms(TransformFrameIdHash::from_str("frame0"))
-            .unwrap();
-        assert_eq!(
-            transforms_frame0
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
-            })
-        );
-        assert_eq!(
-            transforms_frame0
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
-            })
-        );
+            // Check frame0 only ever sees the static transform.
+            let transforms_frame0 = timeline_transforms
+                .frame_transforms(TransformFrameIdHash::from_str("frame0"))
+                .unwrap();
+            assert_eq!(
+                transforms_frame0
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
+                })
+            );
+            assert_eq!(
+                transforms_frame0
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
+                })
+            );
 
-        // Check frame1 only ever sees the temporal transform.
-        let transforms_frame1 = timeline_transforms
-            .frame_transforms(TransformFrameIdHash::from_str("frame1"))
-            .unwrap();
-        assert_eq!(
-            transforms_frame1
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
-            None
-        );
-        assert_eq!(
-            transforms_frame1
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_translation(glam::dvec3(2.0, 0.0, 0.0)),
-            })
-        );
+            // Check frame1 only ever sees the temporal transform.
+            let transforms_frame1 = timeline_transforms
+                .frame_transforms(TransformFrameIdHash::from_str("frame1"))
+                .unwrap();
+            assert_eq!(
+                transforms_frame1
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
+                None
+            );
+            assert_eq!(
+                transforms_frame1
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: DAffine3::from_translation(glam::dvec3(2.0, 0.0, 0.0)),
+                })
+            );
+        }
 
         // Now we change the static chunk to also talk about frame1 (but don't change anything else on it)
         entity_db.add_chunk(&Arc::new(
             Chunk::builder(static_entity_path)
                 .with_archetype_auto_row(
                     TimePoint::STATIC,
-                    &archetypes::Transform3D::update_fields().with_source_frame("frame1"),
+                    &archetypes::Transform3D::update_fields().with_child_frame("frame1"),
                 )
                 .build()?,
         ))?;
         apply_store_subscriber_events(&mut cache, &entity_db);
 
-        let timeline_transforms = cache.transforms_for_timeline(*timeline.name());
+        {
+            let timeline_transforms = cache.transforms_for_timeline(*timeline.name());
 
-        // Check frame0 is now empty all the way.
-        let transforms_frame0 = timeline_transforms
-            .frame_transforms(TransformFrameIdHash::from_str("frame0"))
-            .unwrap();
-        assert_eq!(
-            transforms_frame0
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
-            None
-        );
-        assert_eq!(
-            transforms_frame0
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
-            None
-        );
+            // Check frame0 is now empty all the way.
+            let transforms_frame0 = timeline_transforms
+                .frame_transforms(TransformFrameIdHash::from_str("frame0"))
+                .unwrap();
+            assert_eq!(
+                transforms_frame0
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
+                None
+            );
+            assert_eq!(
+                transforms_frame0
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
+                None
+            );
 
-        // Check frame1 has now both the static and the temporal transform visible.
-        let transforms_frame1 = timeline_transforms
-            .frame_transforms(TransformFrameIdHash::from_str("frame1"))
-            .unwrap();
-        assert_eq!(
-            transforms_frame1
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
-            })
-        );
-        assert_eq!(
-            transforms_frame1
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
-            Some(SourceToTargetTransform {
-                target: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_translation(glam::dvec3(2.0, 0.0, 0.0)),
-            })
-        );
+            // Check frame1 has now both the static and the temporal transform visible.
+            let transforms_frame1 = timeline_transforms
+                .frame_transforms(TransformFrameIdHash::from_str("frame1"))
+                .unwrap();
+            assert_eq!(
+                transforms_frame1
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
+                })
+            );
+            assert_eq!(
+                transforms_frame1
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: DAffine3::from_translation(glam::dvec3(2.0, 0.0, 0.0)),
+                })
+            );
+        }
 
         Ok(())
     }
 
-    // TODO(andreas): We're missing tests for more corner cases involving source frames and (recursive) clears.
+    // TODO(andreas): We're missing tests for more corner cases involving child frames and (recursive) clears.
 
     #[test]
     fn test_gc() -> Result<(), Box<dyn std::error::Error>> {
@@ -2794,20 +2870,19 @@ mod tests {
         entity_db.gc(&GarbageCollectionOptions::gc_everything());
         apply_store_subscriber_events(&mut cache, &entity_db);
 
-        // TODO(andreas): Ensure source ranges get GC'ed as well.
+        // TODO(andreas): Ensure child ranges get GC'ed as well.
         // assert_eq!(
         //     cache
         //         .transforms_for_timeline(*timeline.name())
-        //         .per_entity_source_ranges
+        //         .per_entity_affected_child_frames
         //         .clone(),
-        //     cache.static_timeline.per_entity_source_ranges
+        //     cache.static_timeline.per_entity_affected_child_frames
         // );
         assert_eq!(
             cache
                 .transforms_for_timeline(*timeline.name())
-                .per_source_frame_transforms
-                .clone(),
-            cache.static_timeline.per_source_frame_transforms
+                .per_child_frame_transforms,
+            cache.static_timeline.per_child_frame_transforms
         );
 
         Ok(())

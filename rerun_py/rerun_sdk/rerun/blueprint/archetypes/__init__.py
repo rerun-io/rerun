@@ -21,6 +21,7 @@ from .panel_blueprint import PanelBlueprint
 from .plot_background import PlotBackground
 from .plot_legend import PlotLegend
 from .scalar_axis import ScalarAxis
+from .spatial_information import SpatialInformation
 from .tensor_scalar_mapping import TensorScalarMapping
 from .tensor_slice_selection import TensorSliceSelection
 from .tensor_view_fit import TensorViewFit
@@ -53,6 +54,7 @@ __all__ = [
     "PlotBackground",
     "PlotLegend",
     "ScalarAxis",
+    "SpatialInformation",
     "TensorScalarMapping",
     "TensorSliceSelection",
     "TensorViewFit",

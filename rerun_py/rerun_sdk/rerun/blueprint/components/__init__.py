@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .absolute_time_range import AbsoluteTimeRange, AbsoluteTimeRangeBatch
 from .active_tab import ActiveTab, ActiveTabBatch
+from .angular_speed import AngularSpeed, AngularSpeedBatch
 from .apply_latest_at import ApplyLatestAt, ApplyLatestAtBatch
 from .auto_layout import AutoLayout, AutoLayoutBatch
 from .auto_views import AutoViews, AutoViewsBatch
@@ -54,6 +55,8 @@ __all__ = [
     "AbsoluteTimeRangeBatch",
     "ActiveTab",
     "ActiveTabBatch",
+    "AngularSpeed",
+    "AngularSpeedBatch",
     "ApplyLatestAt",
     "ApplyLatestAtBatch",
     "AutoLayout",

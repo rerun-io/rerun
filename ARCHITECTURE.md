@@ -99,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/6c9a072dd87630c7fb0085b09d46168c5fd4249c/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/6c9a072dd87630c7fb0085b09d46168c5fd4249c/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/6c9a072dd87630c7fb0085b09d46168c5fd4249c/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/6c9a072dd87630c7fb0085b09d46168c5fd4249c/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/6c9a072dd87630c7fb0085b09d46168c5fd4249c/1200w.png">
+  <img src="https://static.rerun.io/crates/9ff35e6610b4636dcb4a20c856f12e9b2161cb6d/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/9ff35e6610b4636dcb4a20c856f12e9b2161cb6d/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/9ff35e6610b4636dcb4a20c856f12e9b2161cb6d/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/9ff35e6610b4636dcb4a20c856f12e9b2161cb6d/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/9ff35e6610b4636dcb4a20c856f12e9b2161cb6d/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -197,7 +197,7 @@ Update instructions:
 ### Data flow
 
 | Crate                | Description                                                       |
-|----------------------|-------------------------------------------------------------------|
+|--------------------- |-------------------------------------------------------------------|
 | re_redap_client      | Official client for the Rerun Data Protocol                       |
 | re_redap_tests       | Official test suite for the Rerun Data Protocol                   |
 | re_data_loader       | Handles loading of Rerun data from file using data loader plugins |
@@ -218,30 +218,31 @@ Update instructions:
 
 ### Utilities
 
-| Crate              | Description                                                                          |
-| ------------------ | ------------------------------------------------------------------------------------ |
-| re_analytics       | Rerun's analytics SDK                                                                |
-| re_arrow_util      | Helpers for working with arrow                                                       |
-| re_auth            | Authentication and authorization helpers                                             |
-| re_byte_size       | Calculate the heap-allocated size of values at runtime                               |
-| re_capabilities    | Capability tokens                                                                    |
-| re_case            | Case conversions, the way Rerun likes them                                           |
-| re_crash_handler   | Detect panics and signals, logging them and optionally sending them to analytics.    |
-| re_error           | Helpers for handling errors.                                                         |
-| re_format          | Miscellaneous tools to format and parse numbers, durations, etc.                     |
-| re_int_histogram   | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
-| re_log             | Helpers for setting up and doing text logging in the Rerun crates.                   |
-| re_mcap            | Convert MCAP into Rerun-compatible data.                                             |
-| re_memory          | Run-time memory tracking and profiling.                                              |
-| re_perf_telemetry  | In and out of process performance profiling utilities for Rerun & Redap              |
-| re_ros_msg         | Parsing and deserializing ROS   messages                                             |
-| re_smart_channel   | A channel that keeps track of latency and queue length.                              |
-| re_span            | An integer range that always has a non-negative length                               |
-| re_string_interner | Yet another string interning library                                                 |
-| re_tracing         | Helpers for tracing/spans/flamegraphs and such.                                      |
-| re_tuid            | 128-bit Time-based Unique Identifier                                                 |
-| re_uri             | Parsing and constructing of Rerun URIs                                               |
-| re_video           | Video decoding library                                                               |
+| Crate                | Description                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| re_analytics         | Rerun's analytics SDK                                                                |
+| re_arrow_combinators | Type-safe, composable transformations for Arrow arrays                               |
+| re_arrow_util        | Helpers for working with arrow                                                       |
+| re_auth              | Authentication and authorization helpers                                             |
+| re_byte_size         | Calculate the heap-allocated size of values at runtime                               |
+| re_capabilities      | Capability tokens                                                                    |
+| re_case              | Case conversions, the way Rerun likes them                                           |
+| re_crash_handler     | Detect panics and signals, logging them and optionally sending them to analytics.    |
+| re_error             | Helpers for handling errors.                                                         |
+| re_format            | Miscellaneous tools to format and parse numbers, durations, etc.                     |
+| re_int_histogram     | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
+| re_log               | Helpers for setting up and doing text logging in the Rerun crates.                   |
+| re_mcap              | Convert MCAP into Rerun-compatible data.                                             |
+| re_memory            | Run-time memory tracking and profiling.                                              |
+| re_perf_telemetry    | In and out of process performance profiling utilities for Rerun & Redap              |
+| re_ros_msg           | Parsing and deserializing ROS   messages                                             |
+| re_smart_channel     | A channel that keeps track of latency and queue length.                              |
+| re_span              | An integer range that always has a non-negative length                               |
+| re_string_interner   | Yet another string interning library                                                 |
+| re_tracing           | Helpers for tracing/spans/flamegraphs and such.                                      |
+| re_tuid              | 128-bit Time-based Unique Identifier                                                 |
+| re_uri               | Parsing and constructing of Rerun URIs                                               |
+| re_video             | Video decoding library                                                               |
 
 ### Test crates
 

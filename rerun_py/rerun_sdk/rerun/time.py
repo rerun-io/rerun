@@ -176,7 +176,7 @@ def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream |
 
     There is no requirement of monotonicity. You can move the time backwards if you like.
 
-    This function marks the timeline as being of a _squential_ type.
+    This function marks the timeline as being of a _sequential_ type.
     You should not use the temporal functions ([`rerun.set_time_seconds`][], [`rerun.set_time_nanos`][])
     on the same timeline, as that will produce undefined behavior.
 

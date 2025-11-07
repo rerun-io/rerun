@@ -40,6 +40,7 @@ accept = [
   "100..=103", # Informational codes.
   "200..=299", # Success codes.
   "429", # Too many requests. This is practically never a sign of a broken link.
+  "403", # A lot of endpoints always return 403 for the link checker
 ]
 
 # Exclude these filesystem paths from getting checked.
@@ -152,6 +153,7 @@ exclude = [
   'https://www.reddit.com/*', # Gives 403 forbidden on CI.
   'https://www.shadertoy.com/*', # 403 on CI
   'https://www.tensorflow.org/*', # tensorflow.org apparently blocks CI.
+  'https://www.unicode.org/license.txt', # Gives network error on CI.
 
   # Need GitHub login.
   'https://github.com/rerun-io/landing',

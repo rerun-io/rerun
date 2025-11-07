@@ -116,15 +116,6 @@ impl From<Vec3D> for glam::Vec3A {
 }
 
 #[cfg(feature = "glam")]
-impl From<Vec3D> for glam::DVec3 {
-    #[inline]
-    fn from(v: Vec3D) -> Self {
-        let v = v.0;
-        Self::new(v[0] as f64, v[1] as f64, v[2] as f64)
-    }
-}
-
-#[cfg(feature = "glam")]
 impl From<glam::Vec3> for Vec3D {
     #[inline]
     fn from(v: glam::Vec3) -> Self {

@@ -922,15 +922,13 @@ pub trait UiExt {
     fn paint_time_cursor(
         &self,
         painter: &egui::Painter,
-        response: &egui::Response,
+        response: Option<&egui::Response>,
         x: f32,
         y: Rangef,
     ) {
         let ui = self.ui();
-        let stroke = if response.dragged() {
-            ui.style().visuals.widgets.active.fg_stroke
-        } else if response.hovered() {
-            ui.style().visuals.widgets.hovered.fg_stroke
+        let stroke = if let Some(response) = response {
+            ui.visuals().widgets.style(response).fg_stroke
         } else {
             ui.visuals().widgets.inactive.fg_stroke
         };
@@ -1086,7 +1084,7 @@ pub trait UiExt {
     fn re_hyperlink(
         &mut self,
         text: impl Into<egui::WidgetText>,
-        url: impl ToString,
+        url: impl Into<String>,
         always_new_tab: bool,
     ) -> egui::Response {
         let ui = self.ui_mut();
@@ -1101,10 +1099,10 @@ pub trait UiExt {
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
 
             if response.clicked_with_open_in_background() {
-                ui.ctx().open_url(egui::OpenUrl::new_tab(url.to_string()));
+                ui.ctx().open_url(egui::OpenUrl::new_tab(url.into()));
             } else if response.clicked() {
                 ui.ctx().open_url(egui::OpenUrl {
-                    url: url.to_string(),
+                    url: url.into(),
                     new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
                 });
             }

@@ -1,9 +1,11 @@
 use egui::{Color32, CursorIcon, Id, NumExt as _, Rect};
 
-use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType};
+use re_log_types::{
+    AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType, TimestampFormat,
+};
 use re_types::blueprint::components::LoopMode;
-use re_ui::UiExt as _;
-use re_viewer_context::{TimeControl, TimeControlCommand};
+use re_ui::{HasDesignTokens as _, UiExt as _, list_item};
+use re_viewer_context::{TimeControl, TimeControlCommand, ViewerContext};
 
 use super::time_ranges_ui::TimeRangesUi;
 
@@ -22,16 +24,8 @@ pub fn paint_timeline_range(
         let visible_history_area_rect =
             Rect::from_x_y_ranges(x_from..=x_to, rect.y_range()).intersect(rect);
 
-        painter.rect_filled(visible_history_area_rect, 0.0, color);
-    }
-}
-
-fn loop_selection_color(time_ctrl: &TimeControl, tokens: &re_ui::DesignTokens) -> Color32 {
-    // Display in a brighter color when active
-    if time_ctrl.loop_mode() == LoopMode::Selection {
-        tokens.loop_selection_color
-    } else {
-        tokens.loop_selection_color.gamma_multiply(0.7)
+        let corner_radius = painter.ctx().tokens().small_corner_radius();
+        painter.rect_filled(visible_history_area_rect, corner_radius, color);
     }
 }
 
@@ -43,17 +37,23 @@ pub fn collapsed_loop_selection_ui(
     time_range_rect: Rect,
 ) {
     if let Some(loop_range) = time_ctrl.loop_selection() {
+        let color = if time_ctrl.loop_mode() == LoopMode::Selection {
+            ui.tokens().loop_selection_color
+        } else {
+            ui.tokens().loop_selection_color_inactive
+        };
         paint_timeline_range(
             loop_range.to_int(),
             time_ranges_ui,
             painter,
             time_range_rect,
-            loop_selection_color(time_ctrl, ui.tokens()),
+            color,
         );
     }
 }
 
 pub fn loop_selection_ui(
+    ctx: &ViewerContext<'_>,
     time_ctrl: &TimeControl,
     time_ranges_ui: &TimeRangesUi,
     ui: &egui::Ui,
@@ -76,11 +76,15 @@ pub fn loop_selection_ui(
 
     let is_active = time_ctrl.loop_mode() == LoopMode::Selection;
 
-    let selection_color = loop_selection_color(time_ctrl, tokens);
-
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
-    let is_pointer_in_timeline =
-        pointer_pos.is_some_and(|pointer_pos| timeline_rect.contains(pointer_pos));
+
+    let timeline_response = ui
+        .interact(
+            *timeline_rect,
+            ui.id().with("timeline"),
+            egui::Sense::drag(),
+        )
+        .on_hover_cursor(crate::CREATE_TIME_LOOP_CURSOR_ICON);
 
     let left_edge_id = ui.id().with("selection_left_edge");
     let right_edge_id = ui.id().with("selection_right_edge");
@@ -106,24 +110,36 @@ pub fn loop_selection_ui(
                 );
             }
 
-            let full_y_range = rect.top()..=time_area_painter.clip_rect().bottom();
+            let full_y_range =
+                egui::Rangef::new(rect.top(), time_area_painter.clip_rect().bottom());
 
-            if is_active {
-                let full_rect = Rect::from_x_y_ranges(rect.x_range(), full_y_range);
-                let rounding = tokens.normal_corner_radius();
-                time_area_painter.rect_filled(full_rect, rounding, selection_color);
-            } else {
-                let rounding = tokens.normal_corner_radius();
-                time_area_painter.rect_filled(rect, rounding, selection_color);
-            }
+            {
+                // Paint selection:
+                let corner_radius = tokens.normal_corner_radius();
+                let corner_radius = egui::CornerRadius {
+                    nw: corner_radius,
+                    ne: corner_radius,
+                    sw: 0,
+                    se: 0,
+                };
 
-            if is_active && !selected_range.is_empty() {
-                paint_range_text(time_ctrl, selected_range, ui, time_area_painter, rect);
+                let full_color = tokens.loop_selection_color;
+                let inactive_color = tokens.loop_selection_color_inactive;
+
+                if is_active {
+                    let full_rect = Rect::from_x_y_ranges(rect.x_range(), full_y_range);
+                    time_area_painter.rect_filled(full_rect, corner_radius, full_color);
+                } else {
+                    time_area_painter.rect_filled(rect, corner_radius, full_color);
+
+                    let bottom_rect =
+                        Rect::from_x_y_ranges(rect.x_range(), rect.bottom()..=full_y_range.max);
+                    time_area_painter.rect_filled(bottom_rect, 0.0, inactive_color);
+                }
             }
 
             // Check for interaction:
-            // To not annoy the user, we only allow interaction when it is active.
-            if is_active {
+            {
                 let left_edge_rect =
                     Rect::from_x_y_ranges(rect.left()..=rect.left(), rect.y_range())
                         .expand(interact_radius);
@@ -132,18 +148,44 @@ pub fn loop_selection_ui(
                     Rect::from_x_y_ranges(rect.right()..=rect.right(), rect.y_range())
                         .expand(interact_radius);
 
+                let time_type = time_ctrl.time_type();
+
                 // Check middle first, so that the edges "wins" (are on top)
                 let middle_response = ui
                     .interact(rect, middle_id, egui::Sense::click_and_drag())
-                    .on_hover_and_drag_cursor(CursorIcon::Move);
+                    .on_hover_and_drag_cursor(CursorIcon::Move)
+                    .on_hover_ui_at_pointer(|ui| {
+                        TimeLoopPart::Middle.tooltip_ui(
+                            ui,
+                            time_type,
+                            selected_range,
+                            ctx.app_options().timestamp_format,
+                        );
+                    });
 
                 let left_response = ui
                     .interact(left_edge_rect, left_edge_id, egui::Sense::drag())
-                    .on_hover_and_drag_cursor(CursorIcon::ResizeWest);
+                    .on_hover_and_drag_cursor(CursorIcon::ResizeWest)
+                    .on_hover_ui_at_pointer(|ui| {
+                        TimeLoopPart::Beginning.tooltip_ui(
+                            ui,
+                            time_type,
+                            selected_range,
+                            ctx.app_options().timestamp_format,
+                        );
+                    });
 
                 let right_response = ui
                     .interact(right_edge_rect, right_edge_id, egui::Sense::drag())
-                    .on_hover_and_drag_cursor(CursorIcon::ResizeEast);
+                    .on_hover_and_drag_cursor(CursorIcon::ResizeEast)
+                    .on_hover_ui_at_pointer(|ui| {
+                        TimeLoopPart::End.tooltip_ui(
+                            ui,
+                            time_type,
+                            selected_range,
+                            ctx.app_options().timestamp_format,
+                        );
+                    });
 
                 if left_response.dragged() {
                     drag_right_loop_selection_edge(
@@ -164,10 +206,15 @@ pub fn loop_selection_ui(
                 }
 
                 on_drag_loop_selection(ui, &middle_response, time_ranges_ui, &mut selected_range);
-            } else {
-                // inactive - show a tooltip at least:
-                ui.interact(rect, middle_id, egui::Sense::hover())
-                        .on_hover_text("Click the loop button to turn on the loop selection, or use shift-drag to select a new loop selection");
+
+                if middle_response.clicked() {
+                    let new_loop_mode = if time_ctrl.loop_mode() == LoopMode::Selection {
+                        LoopMode::Off
+                    } else {
+                        LoopMode::Selection
+                    };
+                    time_commands.push(TimeControlCommand::SetLoopMode(new_loop_mode));
+                }
             }
         }
 
@@ -184,19 +231,64 @@ pub fn loop_selection_ui(
     }
 
     // Start new selection?
-    if let Some(pointer_pos) = pointer_pos {
-        let is_anything_being_dragged = ui.ctx().dragged_id().is_some();
-        if is_pointer_in_timeline
-            && !is_anything_being_dragged
-            && ui.input(|i| i.pointer.primary_down() && i.modifiers.shift_only())
-            && let Some(time) = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
-        {
+    if let Some(pointer_pos) = pointer_pos
+        && timeline_response.hovered()
+        && let Some(time) = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
+    {
+        // Show preview:
+        let x = time_ranges_ui
+            .x_from_time_f32(time)
+            .unwrap_or(pointer_pos.x);
+        ui.painter().vline(
+            x,
+            timeline_rect.y_range(),
+            ui.visuals().widgets.noninteractive.fg_stroke,
+        );
+
+        if timeline_response.dragged() && ui.input(|i| i.pointer.is_decidedly_dragging()) {
+            // Start new selection
             time_commands.push(TimeControlCommand::SetLoopSelection(
                 AbsoluteTimeRangeF::point(time).to_int(),
             ));
             time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
             ui.ctx().set_dragged_id(right_edge_id);
         }
+    }
+}
+
+/// What part of the time loop selection is the user hovering?
+#[derive(Clone, Copy, Debug, Hash)]
+enum TimeLoopPart {
+    Beginning,
+    Middle,
+    End,
+}
+
+impl TimeLoopPart {
+    pub fn tooltip_ui(
+        &self,
+        ui: &mut egui::Ui,
+        time_type: TimeType,
+        range: AbsoluteTimeRangeF,
+        timestamp_format: TimestampFormat,
+    ) {
+        let range = range.to_int();
+        list_item::list_item_scope(ui, self, |ui| {
+            ui.list_item_flat_noninteractive(
+                list_item::PropertyContent::new("Start")
+                    .value_text(time_type.format(range.min, timestamp_format)),
+            );
+            ui.list_item_flat_noninteractive(
+                list_item::PropertyContent::new("Stop")
+                    .value_text(time_type.format(range.max, timestamp_format)),
+            );
+
+            let length = i64::try_from(range.abs_length()).unwrap_or(i64::MAX);
+            ui.list_item_flat_noninteractive(
+                list_item::PropertyContent::new("Length")
+                    .value_text(format_duration(time_type, length.into())),
+            );
+        });
     }
 }
 
@@ -327,68 +419,6 @@ fn on_drag_loop_selection(
     }
 
     Some(())
-}
-
-fn paint_range_text(
-    time_ctrl: &TimeControl,
-    selected_range: AbsoluteTimeRangeF,
-    ui: &egui::Ui,
-    painter: &egui::Painter,
-    selection_rect: Rect,
-) {
-    use egui::{Pos2, Stroke};
-
-    let text_color = ui.visuals().strong_text_color();
-
-    let arrow_color = text_color.gamma_multiply(0.75);
-    let arrow_stroke = Stroke::new(1.0, arrow_color);
-
-    fn paint_arrow_from_to(painter: &egui::Painter, origin: Pos2, to: Pos2, stroke: Stroke) {
-        use egui::emath::Rot2;
-        let vec = to - origin;
-        let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
-        let tip_length = 6.0;
-        let tip = origin + vec;
-        let dir = vec.normalized();
-        painter.line_segment([origin, tip], stroke);
-        painter.line_segment([tip, tip - tip_length * (rot * dir)], stroke);
-        painter.line_segment([tip, tip - tip_length * (rot.inverse() * dir)], stroke);
-    }
-
-    let range_text = format_duration(time_ctrl.time_type(), selected_range.length().abs());
-    if range_text.is_empty() {
-        return;
-    }
-
-    let font_id = egui::TextStyle::Small.resolve(ui.style());
-    let text_rect = painter.text(
-        selection_rect.center(),
-        egui::Align2::CENTER_CENTER,
-        range_text,
-        font_id,
-        text_color,
-    );
-
-    // Draw arrows on either side, if we have the space for it:
-    let text_rect = text_rect.expand(2.0); // Add some margin around text
-    let selection_rect = selection_rect.shrink(1.0); // Add some margin inside of the selection rect
-    let min_arrow_length = 12.0;
-    if selection_rect.left() + min_arrow_length <= text_rect.left() {
-        paint_arrow_from_to(
-            painter,
-            text_rect.left_center(),
-            selection_rect.left_center(),
-            arrow_stroke,
-        );
-    }
-    if text_rect.right() + min_arrow_length <= selection_rect.right() {
-        paint_arrow_from_to(
-            painter,
-            text_rect.right_center(),
-            selection_rect.right_center(),
-            arrow_stroke,
-        );
-    }
 }
 
 /// Human-readable description of a duration

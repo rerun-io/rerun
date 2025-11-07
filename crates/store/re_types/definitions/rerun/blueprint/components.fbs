@@ -2,6 +2,7 @@
 
 include "./components/absolute_time_range.fbs";
 include "./components/active_tab.fbs";
+include "./components/angular_speed.fbs";
 include "./components/apply_latest_at.fbs";
 include "./components/auto_layout.fbs";
 include "./components/auto_views.fbs";

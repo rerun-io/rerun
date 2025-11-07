@@ -8,18 +8,18 @@ use arrow::datatypes::{DataType, Field, Schema, SchemaRef, TimeUnit};
 use datafusion::catalog::MemTable;
 use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
+
 use re_chunk_store::{Chunk, ChunkStoreConfig};
 use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
         EntryKind,
-        ext::{DatasetDetails, EntryDetails, LanceTable, ProviderDetails, TableEntry},
+        ext::{DatasetDetails, EntryDetails, ProviderDetails, TableEntry},
     },
     common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId},
 };
 use re_tuid::Tuid;
 use re_types_core::{ComponentBatch as _, Loggable as _};
-use url::Url;
 
 use crate::entrypoint::NamedPath;
 use crate::store::table::TableType;
@@ -28,7 +28,6 @@ use crate::store::{ChunkKey, Dataset, Error, Table};
 const ENTRIES_TABLE_NAME: &str = "__entries";
 
 pub struct InMemoryStore {
-    // TODO(ab): track created/modified time
     datasets: HashMap<EntryId, Dataset>,
     tables: HashMap<EntryId, Table>,
     id_by_name: HashMap<String, EntryId>,
@@ -173,6 +172,8 @@ impl InMemoryStore {
     ) -> Result<EntryId, Error> {
         use std::sync::Arc;
 
+        use re_protos::cloud::v1alpha1::ext::LanceTable;
+
         let directory = named_path.path.canonicalize()?;
         if !directory.is_dir() {
             return Err(std::io::Error::new(
@@ -201,7 +202,7 @@ impl InMemoryStore {
                 .await
                 .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?,
         ));
-        let table_url = Url::from_directory_path(&directory).or(Err(std::io::Error::new(
+        let table_url = url::Url::from_directory_path(&directory).or(Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
             "Cannot turn directory into URL",
         )))?;
@@ -230,13 +231,46 @@ impl InMemoryStore {
         Ok(entry_id)
     }
 
+    pub fn rename_entry(&mut self, entry_id: EntryId, entry_name: String) -> Result<(), Error> {
+        if let Some(existing_entry_id) = self.id_by_name.get(&entry_name) {
+            return if existing_entry_id == &entry_id {
+                // nothing to do, the rename is a no-op
+                Ok(())
+            } else {
+                // name is already taken
+                Err(Error::DuplicateEntryNameError(entry_name))
+            };
+        }
+
+        if let Some(dataset) = self.datasets.get_mut(&entry_id) {
+            dataset.set_name(entry_name.clone());
+        } else if let Some(table) = self.tables.get_mut(&entry_id) {
+            table.set_name(entry_name.clone());
+        } else {
+            return Err(Error::EntryIdNotFound(entry_id));
+        }
+
+        self.id_by_name.insert(entry_name, entry_id);
+        self.update_entries_table()
+    }
+
+    pub fn entry_details(&self, entry_id: EntryId) -> Result<EntryDetails, Error> {
+        if let Some(dataset) = self.datasets.get(&entry_id) {
+            Ok(dataset.as_entry_details())
+        } else if let Some(table) = self.tables.get(&entry_id) {
+            Ok(table.as_entry_details())
+        } else {
+            Err(Error::EntryIdNotFound(entry_id))
+        }
+    }
+
     #[cfg(feature = "lance")] // only used by the `lance` feature
     fn add_table_entry(
         &mut self,
         entry_name: &str,
         entry_id: EntryId,
         table: TableType,
-        provider_details: LanceTable,
+        provider_details: re_protos::cloud::v1alpha1::ext::LanceTable,
     ) -> Result<(), Error> {
         self.id_by_name.insert(entry_name.to_owned(), entry_id);
         self.tables.insert(
