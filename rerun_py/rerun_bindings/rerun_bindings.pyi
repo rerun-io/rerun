@@ -1618,6 +1618,10 @@ class TableEntry(Entry):
     def to_arrow_reader(self) -> pa.RecordBatchReader:
         """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
 
+    @property
+    def storage_url(self) -> str:
+        """The table's storage URL."""
+
 class TableInsertMode:
     """The modes of operation when writing tables."""
 
@@ -1864,6 +1868,11 @@ class CatalogClientInternal:
 
     @staticmethod
     def datafusion_major_version() -> int: ...
+
+    # ---
+
+    @property
+    def url(self) -> str: ...
 
     # ---
 

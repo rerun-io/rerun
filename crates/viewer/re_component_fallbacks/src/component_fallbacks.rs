@@ -360,11 +360,11 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
 
     // Transform3D
     registry.register_component_fallback_provider(
-        archetypes::Transform3D::descriptor_source_frame().component,
+        archetypes::Transform3D::descriptor_child_frame().component,
         |ctx| components::TransformFrameId::from_entity_path(ctx.target_entity_path),
     );
     registry.register_component_fallback_provider(
-        archetypes::Transform3D::descriptor_target_frame().component,
+        archetypes::Transform3D::descriptor_parent_frame().component,
         |ctx| {
             components::TransformFrameId::from_entity_path(
                 &ctx.target_entity_path

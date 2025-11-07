@@ -21,6 +21,7 @@ panel_blueprint.py linguist-generated=true
 plot_background.py linguist-generated=true
 plot_legend.py linguist-generated=true
 scalar_axis.py linguist-generated=true
+spatial_information.py linguist-generated=true
 tensor_scalar_mapping.py linguist-generated=true
 tensor_slice_selection.py linguist-generated=true
 tensor_view_fit.py linguist-generated=true

@@ -93,6 +93,7 @@ rerun-cli = { path = "crates/top/rerun-cli", version = "=0.27.0-alpha.8", defaul
 
 # crates/utils:
 re_analytics = { path = "crates/utils/re_analytics", version = "=0.27.0-alpha.8", default-features = false }
+re_arrow_combinators = { path = "crates/utils/re_arrow_combinators", version = "=0.27.0-alpha.8", default-features = false }
 re_arrow_util = { path = "crates/utils/re_arrow_util", version = "=0.27.0-alpha.8", default-features = false }
 re_auth = { path = "crates/utils/re_auth", version = "=0.27.0-alpha.8", default-features = false }
 re_byte_size = { path = "crates/utils/re_byte_size", version = "=0.27.0-alpha.8", default-features = false }
@@ -285,6 +286,7 @@ numpy = "0.25.0"
 objc2-app-kit = "0.3.2"
 opentelemetry = { version = "0.31.0", features = ["metrics"] }
 opentelemetry-appender-tracing = "0.31.0"
+opentelemetry-http = "0.31.0"
 opentelemetry-otlp = "0.31.0"
 opentelemetry_sdk = { version = "0.31.0", features = ["rt-tokio"] }
 ordered-float = "5.1.0"

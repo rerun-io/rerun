@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{ops::RangeInclusive, sync::Arc};
 
 use arrow::datatypes::DataType as ArrowDataType;
 
@@ -101,6 +101,17 @@ impl TimeType {
         time_int: impl Into<TimeInt>,
         timestamp_format: TimestampFormat,
     ) -> String {
+        let subsecond_decimals = 0..=6; // NOTE: we currently ignore sub-microsecond
+        self.format_opt(time_int, timestamp_format, subsecond_decimals)
+    }
+
+    /// The format will omit trailing sub-second zeroes as far as `subsecond_decimals` perimts it.
+    pub fn format_opt(
+        &self,
+        time_int: impl Into<TimeInt>,
+        timestamp_format: TimestampFormat,
+        subsecond_decimals: RangeInclusive<usize>,
+    ) -> String {
         let time_int = time_int.into();
         match time_int {
             TimeInt::STATIC => "<static>".into(),
@@ -108,8 +119,9 @@ impl TimeType {
             TimeInt::MAX => "end".into(),
             _ => match self {
                 Self::Sequence => format!("#{}", re_format::format_int(time_int.as_i64())),
-                Self::DurationNs => super::Duration::from(time_int).format_secs(),
-                Self::TimestampNs => super::Timestamp::from(time_int).format(timestamp_format),
+                Self::DurationNs => super::Duration::from(time_int).format_secs(subsecond_decimals),
+                Self::TimestampNs => super::Timestamp::from(time_int)
+                    .format_opt(timestamp_format, subsecond_decimals),
             },
         }
     }
