@@ -4035,13 +4035,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
-                        name: "time",
-                        display_name: "Time",
-                        component_type: "rerun.blueprint.components.TimeInt".into(),
-                        docstring_md: "What time the time cursor should be on.",
-                        is_required: false,
-                    },
-                    ArchetypeFieldReflection {
                         name: "playback_speed",
                         display_name: "Playback speed",
                         component_type: "rerun.blueprint.components.PlaybackSpeed".into(),

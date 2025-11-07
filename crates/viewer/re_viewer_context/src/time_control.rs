@@ -24,21 +24,12 @@ pub fn time_panel_blueprint_entity_path() -> EntityPath {
 
 /// Helper trait to write time panel related blueprint components.
 trait TimeBlueprintExt {
-    fn set_time(&self, time: impl Into<TimeInt>);
-
-    fn time(&self) -> Option<TimeInt>;
-
     fn set_timeline(&self, timeline: TimelineName);
 
     fn timeline(&self) -> Option<TimelineName>;
 
     /// Replaces the current timeline with the automatic one.
     fn clear_timeline(&self);
-
-    /// Clears the blueprint time cursor, and will instead fall back
-    /// to a default one, most likely the one saved in time control's
-    /// per timeline state.
-    fn clear_time(&self);
 
     fn set_playback_speed(&self, playback_speed: f64);
     fn playback_speed(&self) -> Option<f64>;
@@ -58,34 +49,12 @@ trait TimeBlueprintExt {
 }
 
 impl<T: BlueprintContext> TimeBlueprintExt for T {
-    fn set_time(&self, time: impl Into<TimeInt>) {
-        let time: TimeInt = time.into();
-        self.save_static_blueprint_component(
-            time_panel_blueprint_entity_path(),
-            &TimePanelBlueprint::descriptor_time(),
-            &re_types::blueprint::components::TimeInt(time.as_i64().into()),
-        );
-    }
-
-    fn time(&self) -> Option<TimeInt> {
-        let (_, time) = self
-            .current_blueprint()
-            .latest_at_component_quiet::<re_types::blueprint::components::TimeInt>(
-                &time_panel_blueprint_entity_path(),
-                self.blueprint_query(),
-                TimePanelBlueprint::descriptor_time().component,
-            )?;
-
-        Some(TimeInt::saturated_temporal_i64(time.0.0))
-    }
-
     fn set_timeline(&self, timeline: TimelineName) {
         self.save_blueprint_component(
             time_panel_blueprint_entity_path(),
             &TimePanelBlueprint::descriptor_timeline(),
             &re_types::blueprint::components::TimelineName::from(timeline.as_str()),
         );
-        self.clear_time();
     }
 
     fn timeline(&self) -> Option<TimelineName> {
@@ -104,13 +73,6 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
         self.clear_blueprint_component(
             time_panel_blueprint_entity_path(),
             TimePanelBlueprint::descriptor_timeline(),
-        );
-    }
-
-    fn clear_time(&self) {
-        self.clear_static_blueprint_component(
-            time_panel_blueprint_entity_path(),
-            TimePanelBlueprint::descriptor_time(),
         );
     }
 
@@ -495,22 +457,7 @@ impl TimeControl {
         if let Some(times_per_timeline) = times_per_timeline {
             self.select_valid_timeline(times_per_timeline);
         }
-
-        if let Some(time) = blueprint_ctx.time() {
-            if self.time_int() != Some(time) {
-                self.states
-                    .entry(*self.timeline().name())
-                    .or_insert_with(|| TimeState::new(time))
-                    .time = time.into();
-            }
-        }
-        // If the blueprint time wasn't set, but the current state's time was, we likely just switched timelines, so restore that timeline's time.
-        else if let Some(state) = self.states.get(self.timeline().name()) {
-            blueprint_ctx.set_time(state.time.floor());
-        }
-        // If we can't restore that timeline's state, we are on a new timeline.
-        //
-        // Then insert that new state at the start. Or end if we're following.
+        // If we are on a new timeline insert that new state at the start. Or end if we're following.
         else if let Some(times_per_timeline) = times_per_timeline
             && let Some(full_valid_range) = self.full_valid_range(times_per_timeline)
         {
@@ -576,14 +523,7 @@ impl TimeControl {
     ///
     /// If `blueprint_ctx` is some, this will also update the time stored in
     /// the blueprint if `time_int` has changed.
-    fn update_time(&mut self, blueprint_ctx: Option<&impl BlueprintContext>, time: TimeReal) {
-        let time_int = time.floor();
-        if self.time_int() != Some(time_int)
-            && let Some(blueprint_ctx) = blueprint_ctx
-        {
-            blueprint_ctx.set_time(time_int);
-        }
-
+    fn update_time(&mut self, time: TimeReal) {
         self.states
             .entry(*self.timeline.name())
             .or_insert_with(|| TimeState::new(time))
@@ -643,7 +583,7 @@ impl TimeControl {
 
                 if self.loop_mode == LoopMode::Off && full_valid_range.max() <= state.time {
                     // We've reached the end of the data
-                    self.update_time(blueprint_ctx, full_valid_range.max().into());
+                    self.update_time(full_valid_range.max().into());
 
                     if more_data_is_coming {
                         // then let's wait for it without pausing!
@@ -701,13 +641,13 @@ impl TimeControl {
                     new_time = new_time.clamp(clamp_range.min().into(), clamp_range.max().into());
                 }
 
-                self.update_time(blueprint_ctx, new_time);
+                self.update_time(new_time);
 
                 NeedsRepaint::Yes
             }
             PlayState::Following => {
                 // Set the time to the max:
-                self.update_time(blueprint_ctx, full_valid_range.max().into());
+                self.update_time(full_valid_range.max().into());
 
                 NeedsRepaint::No // no need for request_repaint - we already repaint when new data arrives
             }
@@ -881,9 +821,6 @@ impl TimeControl {
                 {
                     self.states
                         .insert(*timeline_name, TimeState::new(full_valid_range.min));
-                    if let Some(blueprint_ctx) = blueprint_ctx {
-                        blueprint_ctx.set_time(full_valid_range.min);
-                    }
                 }
 
                 NeedsRepaint::Yes
@@ -956,10 +893,6 @@ impl TimeControl {
                 if let Some(full_valid_range) = self.full_valid_range(times_per_timeline) {
                     self.following = false;
 
-                    if let Some(blueprint_ctx) = blueprint_ctx {
-                        blueprint_ctx.set_time(full_valid_range.min);
-                    }
-
                     if let Some(state) = self.states.get_mut(self.timeline.name()) {
                         state.time = full_valid_range.min.into();
                     }
@@ -1024,18 +957,13 @@ impl TimeControl {
             }
             TimeControlCommand::SetTime(time) => {
                 let time_int = time.floor();
-                let update_blueprint = self.time_int() != Some(time_int);
-                if let Some(blueprint_ctx) = blueprint_ctx
-                    && update_blueprint
-                {
-                    blueprint_ctx.set_time(time_int);
-                }
+                let repaint = self.time_int() != Some(time_int);
                 self.states
                     .entry(*self.timeline.name())
                     .or_insert_with(|| TimeState::new(*time))
                     .time = *time;
 
-                if update_blueprint {
+                if repaint {
                     NeedsRepaint::Yes
                 } else {
                     NeedsRepaint::No
@@ -1100,16 +1028,10 @@ impl TimeControl {
                     if let Some(state) = self.states.get_mut(self.timeline.name()) {
                         if max(&timeline_stats.per_time) <= state.time {
                             let new_time = min(&timeline_stats.per_time);
-                            if let Some(blueprint_ctx) = blueprint_ctx {
-                                blueprint_ctx.set_time(new_time);
-                            }
                             state.time = new_time.into();
                         }
                     } else {
                         let new_time = min(&timeline_stats.per_time);
-                        if let Some(blueprint_ctx) = blueprint_ctx {
-                            blueprint_ctx.set_time(new_time);
-                        }
                         self.states
                             .insert(*self.timeline.name(), TimeState::new(new_time));
                     }
@@ -1124,9 +1046,6 @@ impl TimeControl {
                 {
                     // Set the time to the max:
                     let new_time = max(&timeline_stats.per_time);
-                    if let Some(blueprint_ctx) = blueprint_ctx {
-                        blueprint_ctx.set_time(new_time);
-                    }
                     self.states
                         .entry(*self.timeline.name())
                         .or_insert_with(|| TimeState::new(new_time))
@@ -1153,9 +1072,6 @@ impl TimeControl {
             } else {
                 step_back_time(time, &timeline_stats.per_time).into()
             };
-            if let Some(ctx) = blueprint_ctx {
-                ctx.set_time(new_time.floor());
-            }
 
             if let Some(state) = self.states.get_mut(self.timeline.name()) {
                 state.time = new_time;
@@ -1180,9 +1096,6 @@ impl TimeControl {
             } else {
                 step_fwd_time(time, &stats.per_time).into()
             };
-            if let Some(ctx) = blueprint_ctx {
-                ctx.set_time(new_time.floor());
-            }
 
             if let Some(state) = self.states.get_mut(self.timeline.name()) {
                 state.time = new_time;
@@ -1236,9 +1149,6 @@ impl TimeControl {
                 && max(&stats.per_time) <= state.time
             {
                 let new_time = min(&stats.per_time);
-                if let Some(blueprint_ctx) = blueprint_ctx {
-                    blueprint_ctx.set_time(new_time);
-                }
                 state.time = new_time.into();
                 self.playing = true;
                 self.following = false;

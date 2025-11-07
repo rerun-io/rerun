@@ -443,17 +443,12 @@ class SelectionPanel(Panel):
 class TimePanel(Panel):
     """The state of the time panel."""
 
-    time: int | None
-
     def __init__(
         self,
         *,
         expanded: bool | None = None,
         state: PanelStateLike | None = None,
         timeline: Utf8Like | None = None,
-        sequence_cursor: int | None = None,
-        duration_cursor: int | float | timedelta | np.timedelta64 | None = None,
-        timestamp_cursor: int | float | datetime | np.datetime64 | None = None,
         playback_speed: float | None = None,
         fps: float | None = None,
         play_state: PlayStateLike | None = None,
@@ -475,15 +470,6 @@ class TimePanel(Panel):
         timeline:
             What timeline the timepanel should display.
 
-        sequence_cursor:
-            The time cursor for a sequence timeline.
-
-        duration_cursor:
-            The time cursor for a duration timeline.
-
-        timestamp_cursor:
-            The time cursor for a timestamp timeline.
-
         playback_speed:
             A time playback speed multiplier.
 
@@ -504,22 +490,8 @@ class TimePanel(Panel):
 
         """
         super().__init__(blueprint_path="time_panel", expanded=expanded, state=state)
+
         self.timeline = timeline
-
-        if sum(x is not None for x in (sequence_cursor, duration_cursor, timestamp_cursor)) > 1:
-            raise ValueError(
-                "At most one of `sequence`, `duration`, and `timestamp` must be set",
-            )
-
-        if sequence_cursor is not None:
-            self.time = sequence_cursor
-        elif duration_cursor is not None:
-            self.time = to_nanos(duration_cursor)
-        elif timestamp_cursor is not None:
-            self.time = to_nanos_since_epoch(timestamp_cursor)
-        else:
-            self.time = None
-
         self.playback_speed = playback_speed
         self.fps = fps
         self.play_state = play_state
@@ -539,9 +511,8 @@ class TimePanel(Panel):
 
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
 
-        if self.time is not None or self.play_state is not None:
+        if self.play_state is not None:
             static_arch = TimePanelBlueprint(
-                time=self.time,
                 play_state=self.play_state,
             )
 
