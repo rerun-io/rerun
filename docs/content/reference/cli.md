@@ -257,8 +257,6 @@ To sign up, contact us through the form linked at <https://rerun.io/#open-source
 
 **Options**
 
-* `--login-url <LOGIN_URL>`
-
 * `--no-open-browser <NO_OPEN_BROWSER>`
 > Post a link instead of directly opening in the browser.
 >
