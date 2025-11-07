@@ -21,7 +21,6 @@ bitflags::bitflags! {
 }
 
 impl TransformAspect {
-    // TODO: shouldn't do this from type but from archetype
     /// Converts a component type to a transform aspect.
     pub fn from_archetype(archetype: ArchetypeName) -> Self {
         if archetypes::Transform3D::name() == archetype {
