@@ -6,8 +6,6 @@ mod compare;
 mod format;
 mod format_data_type;
 
-pub mod transform;
-
 pub use self::arrays::*;
 pub use self::batches::*;
 pub use self::compare::*;

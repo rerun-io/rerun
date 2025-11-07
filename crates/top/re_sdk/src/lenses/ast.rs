@@ -11,7 +11,7 @@ use arrow::{
     datatypes::DataType,
 };
 
-use re_arrow_util::transform::{self, Transform as _};
+use re_arrow_combinators::{self as transform, Transform as _};
 use re_chunk::{
     ArrowArray as _, Chunk, ChunkComponents, ChunkId, ComponentIdentifier, EntityPath, Timeline,
     TimelineName,
