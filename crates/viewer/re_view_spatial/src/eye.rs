@@ -187,6 +187,13 @@ impl EyeInterpolation {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+struct TrackingInterpolation {
+    last_pos: Vec3,
+    new_pos: Vec3,
+    elapsed_time: f32,
+}
+
 /// Some non-persistent state for the eye.
 ///
 /// Note: we use "eye" so we don't confuse this with logged camera.
@@ -202,6 +209,8 @@ pub struct EyeState {
     /// This should not be used to get the current tracked entity, get that
     /// via view properties instead.
     pub last_tracked_entity: Option<EntityPath>,
+
+    tracking_interpolation: Option<TrackingInterpolation>,
 
     interpolation: Option<EyeInterpolation>,
 
@@ -229,8 +238,6 @@ struct ControlEye {
     fov_y: Option<f32>,
 
     did_interact: bool,
-
-    written_radius: bool,
 }
 
 impl ControlEye {
@@ -287,14 +294,6 @@ impl ControlEye {
                 .0,
         );
 
-        let has_look_target = eye_property
-            .component_or_empty::<Position3D>(EyeControls3D::descriptor_look_target().component)?
-            .is_some();
-
-        let has_position = eye_property
-            .component_or_empty::<Position3D>(EyeControls3D::descriptor_position().component)?
-            .is_some();
-
         Ok(Self {
             pos,
             look_target,
@@ -302,7 +301,6 @@ impl ControlEye {
             speed,
             eye_up,
             did_interact: false,
-            written_radius: has_position && has_look_target,
             fov_y,
         })
     }
@@ -618,52 +616,6 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<E
     found_camera.and_then(Eye::from_camera)
 }
 
-/// Returns the new center and orbit radius for the eye.
-fn entity_target_eye(
-    entity_path: &EntityPath,
-    bounding_boxes: &SceneBoundingBoxes,
-    eye: &mut ControlEye,
-) {
-    // Note that we may want to focus on an _instance_ instead in the future:
-    // The problem with that is that there may be **many** instances (think point cloud)
-    // and they may not be consistent over time.
-    // -> we don't know the bounding box of every instance (right now)
-    // -> tracking instances over time may not be desired
-    //    (this can happen with entities as well, but is less likely).
-    //
-    // For future reference, it's also worth pointing out that for interactions in the view we
-    // already have the 3D position:
-    // if let Some(SelectedSpaceContext::ThreeD {
-    //     pos: Some(clicked_point),
-    //     ..
-    // }) = ctx.selection_state().hovered_space_context()
-
-    if let Some(entity_bbox) = bounding_boxes.per_entity.get(&entity_path.hash()) {
-        let radius = entity_bbox.centered_bounding_sphere_radius() * 1.5;
-        let orbit_radius = if radius < 0.0001 {
-            // Handle zero-sized bounding boxes:
-            (bounding_boxes.current.centered_bounding_sphere_radius() * 1.5).at_least(0.01)
-        } else if eye.written_radius {
-            eye.pos.distance(eye.look_target)
-        } else {
-            radius
-        };
-
-        let fwd = eye.fwd();
-
-        match eye.kind {
-            Eye3DKind::FirstPerson => {
-                eye.pos = entity_bbox.center();
-                eye.look_target = entity_bbox.center() + fwd;
-            }
-            Eye3DKind::Orbital => {
-                eye.look_target = entity_bbox.center();
-                eye.pos = entity_bbox.center() - fwd * orbit_radius;
-            }
-        }
-    }
-}
-
 fn ease_out(t: f32) -> f32 {
     1. - (1. - t) * (1. - t)
 }
@@ -679,6 +631,10 @@ impl EyeState {
                 start,
             });
         }
+    }
+
+    fn stop_interpolation(&mut self) {
+        self.interpolation = None;
     }
 
     /// Gets and updates the current target eye from/to the blueprint.
@@ -717,6 +673,17 @@ impl EyeState {
         // to stop tracking.
         eye.handle_input(self, response, drag_threshold);
 
+        eye.save_to_blueprint(
+            ctx.viewer_ctx,
+            eye_property,
+            old_pos,
+            old_look_target,
+            old_eye_up,
+        );
+
+        // Handle spinning after saving to blueprint to not continuously write to the blueprint.
+        self.handle_spinning(ctx, eye_property, &mut eye)?;
+
         if let Some(tracked_eye) = self.handle_tracking_entity(
             ctx,
             eye_property,
@@ -729,17 +696,6 @@ impl EyeState {
         ) {
             return Ok(tracked_eye);
         }
-
-        eye.save_to_blueprint(
-            ctx.viewer_ctx,
-            eye_property,
-            old_pos,
-            old_look_target,
-            old_eye_up,
-        );
-
-        // Handle spinning after saving to blueprint to not continuously write to the blueprint.
-        self.handle_spinning(ctx, eye_property, &mut eye)?;
 
         self.last_look_target = Some(eye.look_target);
         self.last_orbit_radius = Some(eye.pos.distance(eye.look_target));
@@ -764,10 +720,12 @@ impl EyeState {
         tracking_entity: Option<&re_types::components::EntityPath>,
     ) -> Option<Eye> {
         if let Some(tracking_entity) = &tracking_entity {
+            // Don't do normal interpolation when tracking.
+            self.stop_interpolation();
             let tracking_entity = EntityPath::from(tracking_entity.as_str());
-            if self.last_tracked_entity.as_ref() == Some(&tracking_entity) {
+            if self.last_tracked_entity.as_ref() != Some(&tracking_entity) {
+                self.tracking_interpolation = None;
                 self.last_tracked_entity = Some(tracking_entity.clone());
-                self.start_interpolation();
             }
 
             let did_eye_change = match eye.kind {
@@ -790,8 +748,105 @@ impl EyeState {
                     EyeControls3D::descriptor_tracking_entity(),
                 );
             } else {
-                self.start_interpolation();
-                entity_target_eye(&tracking_entity, bounding_boxes, eye);
+                // Note that we may want to focus on an _instance_ instead in the future:
+                // The problem with that is that there may be **many** instances (think point cloud)
+                // and they may not be consistent over time.
+                // -> we don't know the bounding box of every instance (right now)
+                // -> tracking instances over time may not be desired
+                //    (this can happen with entities as well, but is less likely).
+                //
+                // For future reference, it's also worth pointing out that for interactions in the view we
+                // already have the 3D position:
+                // if let Some(SelectedSpaceContext::ThreeD {
+                //     pos: Some(clicked_point),
+                //     ..
+                // }) = ctx.selection_state().hovered_space_context()
+
+                if let Some(entity_bbox) = bounding_boxes.per_entity.get(&tracking_entity.hash()) {
+                    if self.tracking_interpolation.is_none() {
+                        let fwd = eye.fwd();
+                        let radius = entity_bbox.centered_bounding_sphere_radius() * 1.5;
+                        let radius = if radius < 0.0001 {
+                            // Handle zero-sized bounding boxes:
+                            (bounding_boxes.current.centered_bounding_sphere_radius() * 1.5)
+                                .at_least(0.02)
+                        } else {
+                            radius
+                        };
+                        eye.pos = eye.look_target - fwd * radius;
+                        // Force write of pos and look target to not use fallbacks for that.
+                        eye_property.save_blueprint_component(
+                            ctx.viewer_ctx,
+                            &EyeControls3D::descriptor_position(),
+                            &Position3D::from(eye.pos),
+                        );
+
+                        eye_property.save_blueprint_component(
+                            ctx.viewer_ctx,
+                            &EyeControls3D::descriptor_look_target(),
+                            &Position3D::from(eye.look_target),
+                        );
+                    }
+
+                    let orbit_radius = eye.pos.distance(eye.look_target);
+
+                    const TARGET_TIME: f32 = 0.1;
+                    let tracking_interpolation =
+                        self.tracking_interpolation
+                            .get_or_insert(TrackingInterpolation {
+                                last_pos: entity_bbox.center(),
+                                new_pos: entity_bbox.center(),
+                                elapsed_time: TARGET_TIME,
+                            });
+
+                    if tracking_interpolation
+                        .new_pos
+                        .distance(entity_bbox.center())
+                        < 0.0001
+                    {
+                        tracking_interpolation.new_pos = entity_bbox.center();
+                    }
+                    let dt = ctx.egui_ctx().input(|i| i.stable_dt).at_most(0.1);
+                    tracking_interpolation.elapsed_time += dt;
+                    let t = tracking_interpolation.elapsed_time / TARGET_TIME;
+                    let t = t.clamp(0.0, 1.0);
+
+                    let current_pos = Vec3::lerp(
+                        tracking_interpolation.last_pos,
+                        tracking_interpolation.new_pos,
+                        t,
+                    );
+                    let pos = if tracking_interpolation.new_pos == entity_bbox.center() {
+                        current_pos
+                    } else {
+                        tracking_interpolation.last_pos = current_pos;
+                        tracking_interpolation.new_pos = entity_bbox.center();
+                        tracking_interpolation.elapsed_time = dt;
+                        let t = tracking_interpolation.elapsed_time / TARGET_TIME;
+                        let t = t.clamp(0.0, 1.0);
+                        let t = ease_out(t);
+
+                        Vec3::lerp(
+                            tracking_interpolation.last_pos,
+                            tracking_interpolation.new_pos,
+                            t,
+                        )
+                    };
+
+                    let fwd = eye.fwd();
+
+                    match eye.kind {
+                        Eye3DKind::FirstPerson => {
+                            eye.pos = pos;
+                            eye.look_target = pos + fwd;
+                        }
+                        Eye3DKind::Orbital => {
+                            eye.look_target = pos;
+                            eye.pos = pos - fwd * orbit_radius;
+                        }
+                    }
+                }
+
                 return Some(eye.get_eye());
             }
         } else {
@@ -893,12 +948,9 @@ impl EyeState {
 
             interpolation.start.lerp(&target_eye, t)
         } else {
+            self.stop_interpolation();
             target_eye
         };
-
-        if eye == target_eye {
-            self.interpolation = None;
-        }
 
         self.last_eye = Some(eye);
 
