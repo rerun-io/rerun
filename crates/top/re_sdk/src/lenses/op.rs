@@ -6,7 +6,7 @@
 
 use std::sync::Arc;
 
-use re_arrow_combinators::{self as transform, Transform as _};
+use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
 use re_chunk::{
     ArrowArray as _,
     external::arrow::{
@@ -26,7 +26,7 @@ pub struct AccessField {
 
 impl AccessField {
     pub fn call(&self, list_array: &ListArray) -> Result<ListArray, Error> {
-        transform::MapList::new(transform::GetField::new(self.field_name.clone()))
+        MapList::new(GetField::new(self.field_name.clone()))
             .transform(list_array)
             .map_err(Into::into)
     }

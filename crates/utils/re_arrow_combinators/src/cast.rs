@@ -1,0 +1,58 @@
+//! Transforms that cast arrays to different types.
+
+use arrow::array::{Array, ArrowPrimitiveType, PrimitiveArray};
+use arrow::compute::cast;
+
+use crate::{Error, Transform};
+
+/// Casts a primitive array from one type to another using Arrow's type casting.
+///
+/// This uses Arrow's `cast` function for primitive type conversions. Null values are preserved.
+/// Some conversions may be lossy (e.g., f64 to f32, i64 to i32).
+///
+/// The source and target types are specified via generic parameters to maintain type safety.
+/// The target data type is automatically deduced from the target's `ArrowPrimitiveType`.
+#[derive(Clone, Default)]
+pub struct PrimitiveCast<S, T> {
+    _phantom: std::marker::PhantomData<(S, T)>,
+}
+
+impl<S, T> PrimitiveCast<PrimitiveArray<S>, PrimitiveArray<T>>
+where
+    S: ArrowPrimitiveType,
+    T: ArrowPrimitiveType,
+{
+    /// Create a new cast transformation.
+    ///
+    /// The target data type is automatically deduced from the target primitive type `T`.
+    pub fn new() -> Self {
+        Self {
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<S, T> Transform for PrimitiveCast<PrimitiveArray<S>, PrimitiveArray<T>>
+where
+    S: ArrowPrimitiveType,
+    T: ArrowPrimitiveType,
+{
+    type Source = PrimitiveArray<S>;
+    type Target = PrimitiveArray<T>;
+
+    fn transform(&self, source: &PrimitiveArray<S>) -> Result<PrimitiveArray<T>, Error> {
+        let source_ref: &dyn Array = source;
+        let target_type = T::DATA_TYPE;
+        let casted = cast(source_ref, &target_type)?;
+
+        casted
+            .as_any()
+            .downcast_ref::<PrimitiveArray<T>>()
+            .ok_or_else(|| Error::TypeMismatch {
+                expected: std::any::type_name::<PrimitiveArray<T>>().to_owned(),
+                actual: casted.data_type().clone(),
+                context: "cast result".to_owned(),
+            })
+            .cloned()
+    }
+}
