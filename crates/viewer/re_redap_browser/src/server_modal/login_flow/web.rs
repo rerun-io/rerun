@@ -253,16 +253,14 @@ async fn try_handle_storage_event(
         }
     };
 
-    #[expect(unsafe_code)]
-    // SAFETY: credentials come from a trusted source
-    let credentials = match unsafe { re_auth::oauth::Credentials::from_auth_response(res.into()) } {
+    let credentials = match re_auth::oauth::Credentials::from_auth_response(res.into()) {
         Ok(v) => v,
         Err(err) => {
             bail!(err);
         }
     };
 
-    // As a last step, we store the actual credentials in local storage:
+    // As the last step, we store the credentials in local storage:
     let credentials = match credentials.ensure_stored() {
         Ok(v) => v,
         Err(err) => {

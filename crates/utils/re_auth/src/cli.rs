@@ -124,10 +124,8 @@ pub async fn login(options: LoginOptions) -> Result<(), Error> {
         .await
         .map_err(|err| Error::Generic(err.into()))?;
 
-    #[expect(unsafe_code)]
-    // SAFETY: Credentials come from the auth API
-    let credentials = unsafe { Credentials::from_auth_response(auth.into())? };
-    let credentials = credentials.ensure_stored()?;
+    // 5. Store credentials
+    let credentials = Credentials::from_auth_response(auth.into())?.ensure_stored()?;
 
     p.finish_and_clear();
 

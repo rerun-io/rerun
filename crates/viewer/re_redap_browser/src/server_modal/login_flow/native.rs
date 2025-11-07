@@ -72,15 +72,12 @@ impl State {
                     AuthenticateWithCode::new(&code, &self.pkce),
                     move |res| match res {
                         Ok(res) => {
-                            #[expect(unsafe_code)]
-                            let credentials =
-                            // SAFETY: credentials come from a trusted source
-                                match unsafe { Credentials::from_auth_response(res.into()) }
-                                    .map_err(|err| err.to_string())
-                                {
-                                    Ok(c) => c,
-                                    Err(err) => return on_done(Err(err)),
-                                };
+                            let credentials = match Credentials::from_auth_response(res.into())
+                                .map_err(|err| err.to_string())
+                            {
+                                Ok(c) => c,
+                                Err(err) => return on_done(Err(err)),
+                            };
                             let credentials =
                                 match credentials.ensure_stored().map_err(|err| err.to_string()) {
                                     Ok(c) => c,

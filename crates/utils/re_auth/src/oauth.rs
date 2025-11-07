@@ -74,10 +74,7 @@ pub async fn refresh_credentials(
     );
 
     let response = api::refresh(&credentials.refresh_token).await?;
-    #[expect(unsafe_code)]
-    // SAFETY: credentials come from a trusted source
-    let credentials = unsafe { Credentials::from_auth_response(response)? };
-    let credentials = credentials
+    let credentials = Credentials::from_auth_response(response)?
         .ensure_stored()
         .map_err(|err| CredentialsRefreshError::Store(err.0))?;
     re_log::debug!("credentials refreshed successfully");
@@ -207,21 +204,12 @@ impl Credentials {
     ///
     /// Assumes the credentials are valid and not expired.
     ///
-    /// # Safety
-    ///
-    /// Misusing this will not cause UB, but we're still marking it unsafe
-    /// to ensure it is not used lightly.
-    ///
     /// The authentication response must come from a trusted source, such
     /// as the authentication API.
-    ///
-    #[expect(unsafe_code)]
-    pub unsafe fn from_auth_response(
+    pub fn from_auth_response(
         res: api::RefreshResponse,
     ) -> Result<InMemoryCredentials, MalformedTokenError> {
-        // SAFETY: The token comes from a trusted source, which is the authentication API.
-        #[expect(unsafe_code)]
-        let access_token = unsafe { AccessToken::unverified(Jwt(res.access_token))? };
+        let access_token = AccessToken::unverified(Jwt(res.access_token))?;
         Ok(InMemoryCredentials(Self {
             user: res.user,
             refresh_token: RefreshToken(res.refresh_token),
@@ -277,13 +265,8 @@ impl AccessToken {
 
     /// Construct an [`AccessToken`] without verifying it.
     ///
-    /// ## Safety
-    ///
-    /// - The token should come from a trusted source, like the Rerun auth API.
-    // Note: Misusing this will not cause UB, but we're still marking it unsafe
-    // to ensure it is not used lightly.
-    #[expect(unsafe_code)]
-    pub(crate) unsafe fn unverified(jwt: Jwt) -> Result<Self, MalformedTokenError> {
+    /// The token should come from a trusted source, like the Rerun auth API.
+    pub(crate) fn unverified(jwt: Jwt) -> Result<Self, MalformedTokenError> {
         use base64::prelude::*;
 
         let (_header, rest) = jwt
