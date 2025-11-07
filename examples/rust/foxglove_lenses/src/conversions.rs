@@ -2,7 +2,7 @@ use arrow::array::{
     Array, Float32Array, Float64Array, Int32Array, Int64Array, ListArray, StringArray, StructArray,
     UInt32Array, UInt32Builder,
 };
-use re_arrow_util::transform::{
+use re_arrow_combinators::{
     BinaryToListUInt8, Cast, MapFixedSizeList, MapList, StructToFixedList, Transform,
 };
 
@@ -41,11 +41,8 @@ impl Transform for SecondsNanosToNanos {
     type Source = StructArray;
     type Target = Int64Array;
 
-    fn transform(
-        &self,
-        source: &StructArray,
-    ) -> Result<Self::Target, re_arrow_util::transform::Error> {
-        use re_arrow_util::transform::Error;
+    fn transform(&self, source: &StructArray) -> Result<Self::Target, re_arrow_combinators::Error> {
+        use re_arrow_combinators::Error;
 
         let available_fields: Vec<String> =
             source.fields().iter().map(|f| f.name().clone()).collect();
@@ -106,11 +103,8 @@ impl Transform for StringToCodecUInt32 {
     type Source = StringArray;
     type Target = UInt32Array;
 
-    fn transform(
-        &self,
-        source: &StringArray,
-    ) -> Result<Self::Target, re_arrow_util::transform::Error> {
-        use re_arrow_util::transform::Error;
+    fn transform(&self, source: &StringArray) -> Result<Self::Target, re_arrow_combinators::Error> {
+        use re_arrow_combinators::Error;
 
         let mut output_builder = UInt32Builder::with_capacity(source.len());
 
@@ -163,7 +157,7 @@ fn test_string_to_codec_uint32_unsupported() {
         let input_array = StringArray::from(vec![Some("h264"), Some(bad_codec)]);
         let result = StringToCodecUInt32::default().transform(&input_array);
         assert!(result.is_err());
-        let Err(re_arrow_util::transform::Error::UnexpectedValue { actual, .. }) = result else {
+        let Err(re_arrow_combinators::Error::UnexpectedValue { actual, .. }) = result else {
             panic!("wrong error type");
         };
         assert_eq!(actual, bad_codec);
