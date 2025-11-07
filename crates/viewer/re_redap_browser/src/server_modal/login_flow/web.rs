@@ -177,7 +177,7 @@ impl State {
             on_storage_event: Some(on_storage_event),
             pkce,
             state,
-            login_hint: login_hint.map(|v| v.to_string()),
+            login_hint: login_hint.map(|v| v.to_owned()),
             result,
         })
     }
