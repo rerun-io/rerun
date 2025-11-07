@@ -42,11 +42,13 @@ pub async fn token() -> Result<(), Error> {
 /// This first checks if valid credentials already exist locally,
 /// and doesn't perform the login flow if so, unless `options.force_login` is set to `true`.
 pub async fn login(options: LoginOptions) -> Result<(), Error> {
+    let mut login_hint = None;
     if !options.force_login {
         // NOTE: If the loading fails for whatever reason, we debug log the error
         // and have the user login again as if nothing happened.
         match oauth::load_credentials() {
             Ok(Some(credentials)) => {
+                login_hint = Some(credentials.user().email.clone());
                 match oauth::refresh_credentials(credentials).await {
                     Ok(credentials) => {
                         println!("You're already logged in as: {}", credentials.user().email);
@@ -82,7 +84,7 @@ pub async fn login(options: LoginOptions) -> Result<(), Error> {
 
     // 1. Start web server listening for token
     let pkce = Pkce::new();
-    let server = OauthCallbackServer::new(&pkce)?;
+    let server = OauthCallbackServer::new(&pkce, login_hint.as_deref())?;
     p.inc(1);
 
     // 2. Open authorization URL in browser

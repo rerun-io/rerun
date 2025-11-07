@@ -72,6 +72,19 @@ impl Authentication {
     fn reset_login_flow(&mut self) {
         self.login_flow = None;
     }
+
+    fn start_login_flow(&mut self) {
+        let login_hint = self.email.as_deref();
+        match LoginFlow::open(ui, login_hint) {
+            Ok(flow) => {
+                self.login_flow = Some(flow);
+                self.error = None;
+            }
+            Err(err) => {
+                self.error = Some(err);
+            }
+        }
+    }
 }
 
 pub struct ServerModal {
@@ -331,7 +344,23 @@ fn auth_ui(ui: &mut egui::Ui, cmd: &CommandSender, auth: &mut Authentication) {
                     auth.error = None;
                 }
             } else {
-                if let Some(email) = &auth.email {
+                if let Some(flow) = &mut auth.login_flow {
+                    if let Some(result) = flow.ui(ui, cmd) {
+                        match result {
+                            LoginFlowResult::Success(credentials) => {
+                                auth.email = Some(credentials.user().email.clone());
+                                auth.error = None;
+                                // Clear login flow to close popup window
+                                auth.reset_login_flow();
+                            }
+                            LoginFlowResult::Failure(err) => {
+                                auth.error = Some(err);
+                                // Clear login flow so user can retry
+                                auth.reset_login_flow();
+                            }
+                        }
+                    }
+                } else if let Some(email) = &auth.email {
                     ui.label("Continue as ");
                     ui.label(RichText::new(email).strong().underline());
 
@@ -340,11 +369,10 @@ fn auth_ui(ui: &mut egui::Ui, cmd: &CommandSender, auth: &mut Authentication) {
                         .on_hover_text("Clear login status")
                         .clicked()
                     {
-                        auth.email = None;
                         auth.error = None;
-                        auth.reset_login_flow();
+                        auth.start_login_flow();
                     }
-                } else if auth.error.is_some() && auth.login_flow.is_none() {
+                } else if auth.error.is_some() {
                     if ui
                         .link(RichText::new("Login again").strong().underline())
                         .clicked()
@@ -352,35 +380,7 @@ fn auth_ui(ui: &mut egui::Ui, cmd: &CommandSender, auth: &mut Authentication) {
                         auth.error = None;
                     }
                 } else {
-                    if auth.login_flow.is_none() {
-                        match LoginFlow::open(ui) {
-                            Ok(flow) => {
-                                auth.login_flow = Some(flow);
-                                auth.error = None;
-                            }
-                            Err(err) => {
-                                auth.error = Some(err);
-                            }
-                        }
-                    }
-
-                    if let Some(flow) = &mut auth.login_flow {
-                        if let Some(result) = flow.ui(ui, cmd) {
-                            match result {
-                                LoginFlowResult::Success(credentials) => {
-                                    auth.email = Some(credentials.user().email.clone());
-                                    auth.error = None;
-                                    // Clear login flow to close popup window
-                                    auth.reset_login_flow();
-                                }
-                                LoginFlowResult::Failure(err) => {
-                                    auth.error = Some(err);
-                                    // Clear login flow so user can retry
-                                    auth.reset_login_flow();
-                                }
-                            }
-                        }
-                    }
+                    auth.start_login_flow();
                 }
 
                 ui.add_space(6.0);

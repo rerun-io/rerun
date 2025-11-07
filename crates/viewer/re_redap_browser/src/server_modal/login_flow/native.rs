@@ -101,11 +101,11 @@ impl State {
         }
     }
 
-    pub fn open(_ui: &mut egui::Ui) -> Result<Self, String> {
+    pub fn open(_ui: &mut egui::Ui, login_hint: Option<&str>) -> Result<Self, String> {
         let pkce = Pkce::new();
 
         // Whenever the modal is open, we always keep the callback server running:
-        let callback_server = OauthCallbackServer::new(&pkce)
+        let callback_server = OauthCallbackServer::new(&pkce, login_hint)
             .map_err(|err| format!("Failed to start callback server: {err}"))?;
 
         Ok(Self {
