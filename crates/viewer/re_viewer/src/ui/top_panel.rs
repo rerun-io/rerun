@@ -342,6 +342,8 @@ fn panel_buttons_r2l(
     ui: &mut egui::Ui,
     store_hub: &StoreHub,
 ) {
+    let display_mode = app.state.navigation.peek();
+
     #[cfg(target_arch = "wasm32")]
     if app.is_fullscreen_allowed() {
         let (icon, label) = if app.is_fullscreen_mode() {
@@ -360,46 +362,58 @@ fn panel_buttons_r2l(
     }
 
     // selection panel
-    if !app_blueprint.selection_panel_overridden()
-        && ui
-            .medium_icon_toggle_button(
-                &re_ui::icons::RIGHT_PANEL_TOGGLE,
-                "Selection panel toggle",
-                &mut app_blueprint.selection_panel_state().is_expanded(),
-            )
-            .on_hover_ui(|ui| UICommand::ToggleSelectionPanel.tooltip_ui(ui))
-            .clicked()
-    {
-        app_blueprint.toggle_selection_panel(&app.command_sender);
-    }
+    ui.add_enabled_ui(
+        display_mode.has_selection_panel() && !app_blueprint.selection_panel_overridden(),
+        |ui| {
+            if ui
+                .medium_icon_toggle_button(
+                    &re_ui::icons::RIGHT_PANEL_TOGGLE,
+                    "Selection panel toggle",
+                    &mut app_blueprint.selection_panel_state().is_expanded(),
+                )
+                .on_hover_ui(|ui| UICommand::ToggleSelectionPanel.tooltip_ui(ui))
+                .clicked()
+            {
+                app_blueprint.toggle_selection_panel(&app.command_sender);
+            }
+        },
+    );
 
     // time panel
-    if !app_blueprint.time_panel_overridden()
-        && ui
-            .medium_icon_toggle_button(
-                &re_ui::icons::BOTTOM_PANEL_TOGGLE,
-                "Time panel toggle",
-                &mut app_blueprint.time_panel_state().is_expanded(),
-            )
-            .on_hover_ui(|ui| UICommand::ToggleTimePanel.tooltip_ui(ui))
-            .clicked()
-    {
-        app_blueprint.toggle_time_panel(&app.command_sender);
-    }
+    ui.add_enabled_ui(
+        display_mode.has_time_panel() && !app_blueprint.time_panel_overridden(),
+        |ui| {
+            if ui
+                .medium_icon_toggle_button(
+                    &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+                    "Time panel toggle",
+                    &mut app_blueprint.time_panel_state().is_expanded(),
+                )
+                .on_hover_ui(|ui| UICommand::ToggleTimePanel.tooltip_ui(ui))
+                .clicked()
+            {
+                app_blueprint.toggle_time_panel(&app.command_sender);
+            }
+        },
+    );
 
     // blueprint panel
-    if !app_blueprint.blueprint_panel_overridden()
-        && ui
-            .medium_icon_toggle_button(
-                &re_ui::icons::LEFT_PANEL_TOGGLE,
-                "Blueprint panel toggle",
-                &mut app_blueprint.blueprint_panel_state().is_expanded(),
-            )
-            .on_hover_ui(|ui| UICommand::ToggleBlueprintPanel.tooltip_ui(ui))
-            .clicked()
-    {
-        app_blueprint.toggle_blueprint_panel(&app.command_sender);
-    }
+    ui.add_enabled_ui(
+        display_mode.has_blueprint_panel() && !app_blueprint.blueprint_panel_overridden(),
+        |ui| {
+            if ui
+                .medium_icon_toggle_button(
+                    &re_ui::icons::LEFT_PANEL_TOGGLE,
+                    "Blueprint panel toggle",
+                    &mut app_blueprint.blueprint_panel_state().is_expanded(),
+                )
+                .on_hover_ui(|ui| UICommand::ToggleBlueprintPanel.tooltip_ui(ui))
+                .clicked()
+            {
+                app_blueprint.toggle_blueprint_panel(&app.command_sender);
+            }
+        },
+    );
 
     app.notifications.notification_toggle_button(ui);
 
