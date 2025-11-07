@@ -127,7 +127,10 @@ fn test_fields() -> Vec<(Field, &'static str)> {
             Field::new("user_metadata", DataType::Float32, false).with_metadata(
                 [
                     ("hello".to_owned(), "world".to_owned()),
-                    ("rerun:entity_path".to_owned(), "/entity/path".to_owned()),
+                    (
+                        re_sorbet::metadata::SORBET_ENTITY_PATH.to_owned(),
+                        "/entity/path".to_owned(),
+                    ),
                 ]
                 .into_iter()
                 .collect(),
