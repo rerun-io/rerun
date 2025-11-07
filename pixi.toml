@@ -307,7 +307,9 @@ misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
 misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
 
 # Until we resolve nbqa config issue keep aligned with nbqa dirs above
-nb-strip = "python scripts/nbstripout.py mypy examples/python scripts/ tests/python/ docs/snippets/ --extra-keys='metadata.language_info metadata.vscode metadata.kernelspec cell.metadata.vscode' --drop-empty-cells"
+nb-strip = "python scripts/nbstripout.py --directories mypy examples/ scripts/ tests/python/ docs/snippets/ -- --extra-keys='metadata.language_info metadata.vscode metadata.kernelspec cell.metadata.vscode' --drop-empty-cells"
+nb-strip-check = "python scripts/nbstripout.py --directories mypy examples/ scripts/ tests/python/ docs/snippets/ -- --verify --extra-keys='metadata.language_info metadata.vscode metadata.kernelspec cell.metadata.vscode' --drop-empty-cells"
+
 
 # Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
 py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --config rerun_py/pyproject.toml ."
