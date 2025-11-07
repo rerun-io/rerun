@@ -10,7 +10,7 @@ use crate::oauth::OAUTH_CLIENT_ID;
 use super::RefreshToken;
 
 static WORKOS_API: LazyLock<String> = LazyLock::new(|| {
-    std::env::var("WORKOS_API_BASE_URL")
+    std::env::var("RERUN_OAUTH_SERVER_URL")
         .ok()
         .unwrap_or_else(|| "https://api.workos.com".into())
 });
