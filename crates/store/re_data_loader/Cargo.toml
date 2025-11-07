@@ -63,3 +63,9 @@ re_chunk_store.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
 
 insta = { workspace = true, features = ["glob"] }
+criterion.workspace = true
+mimalloc.workspace = true
+
+[[bench]]
+name = "parallel_ingestion_bench"
+harness = false

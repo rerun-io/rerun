@@ -295,6 +295,20 @@ impl StoreHub {
         self.store_bundle.get(store_id)
     }
 
+    /// Process pending work from background ingestion workers for all stores (native only).
+    ///
+    /// This should be called once per frame to process chunks from all `EntityDb` workers.
+    /// Each `EntityDb` polls its worker and adds processed chunks to its store.
+    ///
+    /// Returns a map of [`StoreId`] to a vector of processing results for that store.
+    ///
+    /// On native: Processes worker output for all `EntityDb`s
+    /// On Wasm: This method doesn't exist (compile error if called)
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn on_frame_start(&mut self) -> re_entity_db::IngestionWorkerResults {
+        self.store_bundle.on_frame_start()
+    }
+
     // ---------------------
     // Add and remove stores
 
